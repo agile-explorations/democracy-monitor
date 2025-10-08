@@ -1,0 +1,112 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import * as cheerio from 'cheerio';
+
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const cache = new Map<string, { ts: number; data: any }>();
+
+type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
+
+const TRACKER_CONFIGS: Record<TrackerSource, {
+  url: string;
+  selector: string;
+  titleSelector: string;
+  linkSelector: string;
+  dateSelector?: string;
+}> = {
+  brookings: {
+    url: 'https://www.brookings.edu/articles/tracking-regulatory-changes-in-the-second-trump-administration/',
+    selector: '.post-content table tr',
+    titleSelector: 'td:first-child',
+    linkSelector: 'td a',
+    dateSelector: 'td:nth-child(2)'
+  },
+  naacp: {
+    url: 'https://www.naacpldf.org/tracking-project-2025/',
+    selector: '.tracking-item, article',
+    titleSelector: 'h3, .title, h2',
+    linkSelector: 'a'
+  },
+  democracywatch: {
+    url: 'https://www.democracywatchtracker.org/',
+    selector: '.legislation-item, .tracker-item',
+    titleSelector: '.title, h3',
+    linkSelector: 'a'
+  },
+  progressive: {
+    url: 'https://progressivereform.org/tracking-trump-2/project-2025-executive-action-tracker/',
+    selector: '.entry-content li, .tracker-list li',
+    titleSelector: 'a, strong',
+    linkSelector: 'a'
+  }
+};
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  try {
+    const { source } = req.query;
+
+    if (!source || typeof source !== 'string' || !(source in TRACKER_CONFIGS)) {
+      return res.status(400).json({
+        error: 'Invalid source. Use: brookings, naacp, democracywatch, or progressive'
+      });
+    }
+
+    const config = TRACKER_CONFIGS[source as TrackerSource];
+    const cacheKey = source;
+
+    // Check cache
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+      res.setHeader('Cache-Control', 'public, s-maxage=3600');
+      return res.status(200).json({ cached: true, ...cached.data });
+    }
+
+    // Fetch the tracker page
+    const response = await fetch(config.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `Failed to fetch ${source}: ${response.status}`
+      });
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+
+    const items: Array<{ title: string; link?: string; date?: string }> = [];
+
+    $(config.selector).each((_, elem) => {
+      const $elem = $(elem);
+      const title = $elem.find(config.titleSelector).first().text().trim();
+      const link = $elem.find(config.linkSelector).first().attr('href');
+      const date = config.dateSelector ? $elem.find(config.dateSelector).text().trim() : undefined;
+
+      if (title && title.length > 3) {
+        items.push({
+          title,
+          link: link?.startsWith('http') ? link : (link ? new URL(link, config.url).toString() : config.url),
+          date
+        });
+      }
+    });
+
+    const result = {
+      type: 'tracker_scrape',
+      source,
+      sourceUrl: config.url,
+      items: items.slice(0, 15),
+      scrapedAt: new Date().toISOString()
+    };
+
+    cache.set(cacheKey, { ts: Date.now(), data: result });
+
+    res.setHeader('Cache-Control', 'public, s-maxage=3600');
+    res.status(200).json({ cached: false, ...result });
+  } catch (err: any) {
+    res.status(500).json({ error: String(err?.message || err) });
+  }
+}
