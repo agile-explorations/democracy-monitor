@@ -124,9 +124,9 @@ AI currently receives only document titles — not full text. This makes AI asse
 ## OSS-P1 — Open-Source High Priority (contributors will look for these)
 
 ### Documentation
-- [ ] Rewrite README.md: project mission, how it works, screenshots/demo link, architecture overview, how to run locally, how to contribute, license badge
-- [ ] Add CONTRIBUTING.md: dev setup, code style, how to write tests, PR guidelines, issue reporting
-- [ ] Add CODE_OF_CONDUCT.md (Contributor Covenant)
+- [x] Rewrite README.md: project mission, how it works, demo mode, architecture overview, how to run locally, how to contribute, license badge
+- [x] Add CONTRIBUTING.md: dev setup, code style, how to write tests, PR guidelines, issue reporting
+- [x] Add CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
 - [ ] Decide on CLAUDE.md: keep for AI-assisted dev, and/or add ARCHITECTURE.md for human contributors
 
 ### Code Quality
