@@ -1,0 +1,38 @@
+# Security rules
+#
+# These rules catch common security mistakes that ESLint can't express.
+# Run with: pnpm lint:patterns
+
+rules:
+  # WHY: API keys committed to source control are exposed to anyone with
+  # repo access (and in git history forever, even if deleted later). Keys
+  # must come from environment variables. This rule matches string literals
+  # that look like OpenAI (sk-...) or Anthropic (sk-ant-...) API keys.
+  - id: no-hardcoded-api-keys
+    pattern-regex: '[''"](?:sk-|key-)[a-zA-Z0-9_-]{20,}[''"]'
+    message: >-
+      Possible hardcoded API key. Use environment variables instead
+      (e.g., process.env.OPENAI_API_KEY). Keys in source control are
+      exposed in git history even if deleted later.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      exclude:
+        - '*.test.*'
+        - '*.md'
+
+  # WHY: External URLs in lib/services/ should go through the proxy layer
+  # (pages/api/proxy.ts) which enforces the host allowlist, caches responses,
+  # and handles CORS. Direct fetch to external URLs bypasses these protections
+  # and will fail from the browser due to CORS.
+  - id: no-raw-external-fetch
+    pattern-regex: "fetch\\(['\"]https?://"
+    message: >-
+      Use the proxy layer (/api/proxy) or feed-service instead of
+      fetching external URLs directly. The proxy enforces the host
+      allowlist, handles CORS, and caches responses.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - lib/services

@@ -160,13 +160,13 @@ Without automated guardrails, code standards are suggestions. These items create
 **CI pipeline (do this first — everything else builds on it):**
 
 - [x] Add GitHub Actions workflow: run `pnpm lint`, `pnpm build` (catches type errors), and `pnpm test` on every PR to `main`
-- [ ] Add coverage floor check — prevent test coverage from _decreasing_ (not a target, just a ratchet)
+- [x] Add coverage floor check — prevent test coverage from _decreasing_ (not a target, just a ratchet)
 
 **Formatting:**
 
 - [x] Add Prettier with opinionated config — eliminates style debates in code review
 - [x] Add `pnpm format` and `pnpm format:check` scripts to `package.json`
-- [ ] Run Prettier on existing codebase (one-time commit, separate from any functional changes) — formatting done, needs dedicated commit
+- [x] Run Prettier on existing codebase (one-time commit, separate from any functional changes)
 
 **Pre-commit hooks:**
 
@@ -179,17 +179,17 @@ Current `.eslintrc.json` is nearly empty (just `next/core-web-vitals`). Add rule
 - [x] Add `eslint-plugin-react` rules: `function-component-definition` (function declarations), `destructuring-assignment` (in signature), `no-unstable-nested-components`, `hook-use-state` (enforce `[value, setValue]` naming), `jsx-no-useless-fragment`
 - [x] Add `eslint-plugin-import` rules: `order` (consistent import grouping + alphabetize), `no-duplicates`, `consistent-type-specifier-style` (enforce `import type`)
 - [x] Add rule to flag unnecessary `import React` (not needed with Next.js JSX transform)
-- [ ] Establish event handler naming convention (`handle*` for internal handlers, `on*` for callback props) and document in patterns guide
+- [x] Establish event handler naming convention (`handle*` for internal handlers, `on*` for callback props) and document in patterns guide
 
 **Semgrep/OpenGrep — project-specific patterns ESLint can't express:**
 OpenGrep (Apache 2.0 fork of Semgrep) lets you write AST-pattern rules in YAML. Better fit for an OSS project than Semgrep's tightened license.
 
-- [ ] Add `.opengrep/` directory with custom rule files
-- [ ] Rule: useEffect fetch calls must be wrapped in try/catch with explicit error handling (current codebase has mix of silent failures, empty catch blocks, and proper handling)
-- [ ] Rule: ban single-object `useState` for unrelated state (enforce separate `useState` calls)
-- [ ] Rule: flag `import React from 'react'` when only JSX is used (supplement ESLint rule)
-- [ ] Add `pnpm lint:patterns` script and integrate into CI pipeline
-- [ ] Document the _why_ behind each custom rule so contributors understand intent, not just constraint
+- [x] Add `.opengrep/` directory with custom rule files
+- [x] Rule: useEffect fetch calls must be wrapped in try/catch with explicit error handling (current codebase has mix of silent failures, empty catch blocks, and proper handling)
+- [x] Rule: ban single-object `useState` for unrelated state (enforce separate `useState` calls)
+- [x] Rule: flag `import React from 'react'` when only JSX is used (supplement ESLint rule)
+- [x] Add `pnpm lint:patterns` script and integrate into CI pipeline
+- [x] Document the _why_ behind each custom rule so contributors understand intent, not just constraint
 
 ### Test Coverage (currently ~39% of services, 0% of API routes/components)
 

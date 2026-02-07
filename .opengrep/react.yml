@@ -1,0 +1,58 @@
+# React pattern rules
+#
+# These rules enforce React conventions used throughout this codebase.
+# Run with: pnpm lint:patterns
+
+rules:
+  # WHY: Unhandled fetch failures inside useEffect cause silent errors and
+  # broken loading states. The UI shows "Loading..." forever or renders stale
+  # data with no indication of failure. Every fetch in an effect needs explicit
+  # error handling so the component can show a meaningful failure state.
+  - id: useeffect-fetch-try-catch
+    patterns:
+      - pattern: fetch(...)
+      - pattern-inside: |
+          useEffect(...)
+      - pattern-not-inside: |
+          try { ... } catch { ... }
+      - pattern-not-inside: |
+          try { ... } catch ($ERR) { ... }
+      - pattern-not-inside: |
+          try { ... } catch { ... } finally { ... }
+      - pattern-not-inside: |
+          try { ... } catch ($ERR) { ... } finally { ... }
+    message: >-
+      fetch() inside useEffect must be wrapped in try/catch.
+      Unhandled failures cause silent errors and broken loading states.
+    languages: [typescript]
+    severity: WARNING
+
+  # WHY: Cramming unrelated state into a single useState object causes
+  # unnecessary re-renders — updating one field re-renders everything that
+  # reads any field. Separate useState calls let React batch updates and
+  # skip re-renders for unchanged values. This rule flags useState with an
+  # inline object type spanning 5+ lines (heuristic for 4+ fields).
+  # False positives are possible when fields ARE related (e.g., a fetch
+  # state machine with status + data + error) — use a comment to suppress.
+  - id: prefer-separate-useState
+    pattern-regex: "useState<\\{(?:[^}]*\\n){5,}"
+    message: >-
+      useState with 4+ fields — consider splitting into separate useState
+      calls if the fields represent unrelated concerns.
+    languages: [typescript]
+    severity: INFO
+    paths:
+      include:
+        - components
+
+  # WHY: Next.js uses the automatic JSX transform (React 17+), so importing
+  # the React default export is unnecessary. Named imports (useState, useEffect,
+  # etc.) still work without it. This supplements the ESLint no-restricted-imports
+  # rule as a belt-and-suspenders check.
+  - id: no-default-react-import
+    pattern-regex: "import React[,\\s].*from ['\"]react['\"]"
+    message: >-
+      Unnecessary default React import. Next.js JSX transform handles it.
+      Use named imports: import { useState } from 'react'.
+    languages: [typescript]
+    severity: WARNING

@@ -54,10 +54,18 @@ pnpm db:migrate   # Apply migrations to PostgreSQL
 
 ### Style
 
-- ESLint config extends `next/core-web-vitals`
-- No Prettier — use the existing formatting in each file as a guide
+- **Prettier** enforces formatting — run `pnpm format` to auto-fix
+- **ESLint** extends `next/core-web-vitals` with additional React and import rules
+- Pre-commit hooks run both automatically via `husky` + `lint-staged`
 - Prefer named exports over default exports
 - Keep components focused — extract when a file exceeds ~250 lines
+- Don't `import React` — the Next.js JSX transform handles it. Use named imports: `import { useState } from 'react'`
+
+### Event handler naming
+
+- **`on*`** for callback props passed to a component: `onItemsLoaded`, `onAssessmentLoaded`
+- **`handle*`** for functions that handle events inside a component: `handleAiToggle`, `handleItemsLoaded`
+- Simple one-liner state toggles can stay inline: `onClick={() => setExpanded(!expanded)}`
 
 ### Directory structure
 

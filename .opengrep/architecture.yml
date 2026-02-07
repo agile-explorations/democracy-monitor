@@ -1,0 +1,54 @@
+# Architecture boundary rules
+#
+# These rules enforce the unidirectional dependency flow:
+#   lib/ (pure logic) → pages/api/ (server routes) → components/ (UI)
+# No layer should import from a layer above it.
+# AI SDK access must go through the provider abstraction.
+# Run with: pnpm lint:patterns
+
+rules:
+  # WHY: lib/ contains pure business logic, data, and services. It must not
+  # depend on React components or Next.js pages — otherwise it can't be
+  # tested in isolation, reused in API routes, or extracted into a shared
+  # package. If lib/ code needs UI-layer data, pass it as a function argument.
+  - id: no-component-import-in-lib
+    pattern-regex: 'import .+ from [''"]@/(components|pages)/'
+    message: >-
+      lib/ must not import from components/ or pages/. Pass data as
+      arguments instead — lib/ should be testable without the UI layer.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include:
+        - lib
+
+  # WHY: API routes run on the server. Importing React components pulls in
+  # client-side code (hooks, DOM APIs, CSS) that will fail at runtime and
+  # bloat the server bundle. API routes should only import from lib/.
+  - id: no-component-import-in-api
+    pattern-regex: 'import .+ from [''"]@/components/'
+    message: >-
+      API routes must not import from components/. API routes are
+      server-side — import from lib/ instead.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include:
+        - pages/api
+
+  # WHY: The AI provider abstraction in lib/ai/provider.ts exists so the
+  # app can switch between OpenAI and Anthropic (or add new providers)
+  # without touching every call site. Importing the SDKs directly bypasses
+  # availability checks, error normalization, and the provider factory.
+  # Only lib/ai/*.ts files should touch the raw SDKs.
+  - id: no-direct-ai-sdk
+    pattern-regex: 'import .+ from [''"](openai|@anthropic-ai/sdk)[''"]'
+    message: >-
+      Import AI functionality from lib/ai/provider.ts instead of using
+      the SDK directly. The provider abstraction handles availability
+      checks, error normalization, and provider switching.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      exclude:
+        - lib/ai

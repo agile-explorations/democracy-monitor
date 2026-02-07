@@ -8,9 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 pnpm dev          # Start dev server at http://localhost:3000
 pnpm build        # Production build
 pnpm start        # Start production server
-pnpm lint         # ESLint (extends next/core-web-vitals)
-pnpm test         # Run Vitest test suite
-pnpm test:watch   # Run Vitest in watch mode
+pnpm lint          # ESLint (extends next/core-web-vitals)
+pnpm lint:patterns # OpenGrep custom pattern rules (.opengrep/)
+pnpm test          # Run Vitest test suite
+pnpm test:coverage # Run tests with coverage thresholds
+pnpm test:watch    # Run Vitest in watch mode
 pnpm db:generate  # Generate Drizzle migrations from schema
 pnpm db:migrate   # Apply migrations to PostgreSQL
 ```
