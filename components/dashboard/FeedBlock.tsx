@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FeedItem, FeedPayload } from '@/lib/parsers/feed-parser';
 import { parseResult } from '@/lib/parsers/feed-parser';
 import { fetchData } from '@/lib/services/feed-service';

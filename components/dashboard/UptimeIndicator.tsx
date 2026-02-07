@@ -1,4 +1,3 @@
-import React from 'react';
 import type { UptimeHistory } from '@/lib/types/resilience';
 
 interface UptimeIndicatorProps {

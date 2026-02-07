@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 
 interface Layer3Props {

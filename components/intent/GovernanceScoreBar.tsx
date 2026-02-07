@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface GovernanceScoreBarProps {
   score: number; // -2 to +2
   label?: string;

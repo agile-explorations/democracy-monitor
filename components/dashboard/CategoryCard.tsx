@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 import { Card } from '@/components/ui/Card';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 
 interface CrossReferenceProps {

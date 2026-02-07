@@ -1,4 +1,3 @@
-import React from 'react';
 import type { SuppressionAlert as SuppressionAlertType } from '@/lib/types/resilience';
 
 interface SuppressionAlertProps {

@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface EvidenceItem {
   text: string;
   direction: 'concerning' | 'reassuring';

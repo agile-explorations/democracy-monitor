@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CategoryCard } from '@/components/dashboard/CategoryCard';
 import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';

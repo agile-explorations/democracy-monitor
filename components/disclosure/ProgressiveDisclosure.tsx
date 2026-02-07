@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';

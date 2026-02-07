@@ -1,4 +1,3 @@
-import React from 'react';
 import { CrossReference } from '@/components/dashboard/CrossReference';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 

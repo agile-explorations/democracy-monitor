@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DebateView } from '@/components/analysis/DebateView';
 import { LegalAnalysisView } from '@/components/analysis/LegalAnalysis';
 import { TrendAlert } from '@/components/analysis/TrendAlert';

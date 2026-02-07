@@ -1,4 +1,3 @@
-import React from 'react';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import { GOVERNANCE_FRAMEWORK } from '@/lib/data/governance-framework';
 import type { IntentAssessment } from '@/lib/types/intent';

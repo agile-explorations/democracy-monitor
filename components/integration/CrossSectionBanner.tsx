@@ -1,4 +1,3 @@
-import React from 'react';
 import type { StatusLevel } from '@/lib/types';
 import type { IntentAssessment } from '@/lib/types/intent';
 

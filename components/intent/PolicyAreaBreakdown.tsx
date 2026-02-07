@@ -1,4 +1,3 @@
-import React from 'react';
 import type { PolicyArea } from '@/lib/types/intent';
 import { GovernanceScoreBar } from './GovernanceScoreBar';
 

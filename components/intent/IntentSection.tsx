@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import type { IntentAssessment } from '@/lib/types/intent';
 import { IntentOverview } from './IntentOverview';

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { IntentStatement } from '@/lib/types/intent';
 
 interface RecentStatementsProps {

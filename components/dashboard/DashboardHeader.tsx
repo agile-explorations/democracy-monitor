@@ -1,5 +1,3 @@
-import React from 'react';
-
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;

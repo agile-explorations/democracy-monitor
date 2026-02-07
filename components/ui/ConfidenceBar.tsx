@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface ConfidenceBarProps {
   confidence: number; // 0 to 1
   label?: string;

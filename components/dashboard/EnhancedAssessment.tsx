@@ -1,4 +1,3 @@
-import React from 'react';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import { CounterEvidence } from '@/components/ui/CounterEvidence';
 import { EvidenceBalance } from '@/components/ui/EvidenceBalance';

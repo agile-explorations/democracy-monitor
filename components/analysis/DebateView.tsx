@@ -1,4 +1,3 @@
-import React from 'react';
 import type { DebateResult } from '@/lib/types/debate';
 
 interface DebateViewProps {

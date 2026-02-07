@@ -178,7 +178,7 @@ Current `.eslintrc.json` is nearly empty (just `next/core-web-vitals`). Add rule
 
 - [x] Add `eslint-plugin-react` rules: `function-component-definition` (function declarations), `destructuring-assignment` (in signature), `no-unstable-nested-components`, `hook-use-state` (enforce `[value, setValue]` naming), `jsx-no-useless-fragment`
 - [x] Add `eslint-plugin-import` rules: `order` (consistent import grouping + alphabetize), `no-duplicates`, `consistent-type-specifier-style` (enforce `import type`)
-- [ ] Add rule to flag unnecessary `import React` (not needed with Next.js JSX transform)
+- [x] Add rule to flag unnecessary `import React` (not needed with Next.js JSX transform)
 - [ ] Establish event handler naming convention (`handle*` for internal handlers, `on*` for callback props) and document in patterns guide
 
 **Semgrep/OpenGrep — project-specific patterns ESLint can't express:**

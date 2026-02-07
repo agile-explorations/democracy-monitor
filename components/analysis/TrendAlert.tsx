@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TrendAnomaly } from '@/lib/types/trends';
 
 interface TrendAlertProps {

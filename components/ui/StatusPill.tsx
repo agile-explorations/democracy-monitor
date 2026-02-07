@@ -1,4 +1,3 @@
-import React from 'react';
 import type { StatusLevel } from '@/lib/types';
 
 const COLORS: Record<StatusLevel, string> = {

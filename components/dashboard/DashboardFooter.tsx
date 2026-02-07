@@ -1,5 +1,3 @@
-import React from 'react';
-
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';
   const dt = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d;

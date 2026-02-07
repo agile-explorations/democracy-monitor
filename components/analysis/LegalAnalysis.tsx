@@ -1,4 +1,3 @@
-import React from 'react';
 import type { LegalAnalysisResult } from '@/lib/types/legal';
 
 interface LegalAnalysisProps {
