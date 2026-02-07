@@ -7,14 +7,14 @@ Items are grouped by priority. Work top-down within each tier.
 ## P0 — Critical (assessment correctness + misleading UX)
 
 ### Assessment Methodology
-- [ ] Add word-boundary protection to keyword matching — "mass" should not match "Massachusetts" (regex `\b` or tokenize-then-match)
-- [ ] Require 2+ capture-tier keyword matches with corroboration before triggering "Capture" status (single match → Drift at most)
-- [ ] Rename "confidence" to "data coverage" throughout UI and types — current metric measures volume, not judgment quality
-- [ ] Add explicit disclaimer to assessment output: "Automated keyword analysis — not a substitute for expert judgment"
+- [x] Add word-boundary protection to keyword matching — "mass" should not match "Massachusetts" (regex `\b` or tokenize-then-match)
+- [x] Require 2+ capture-tier keyword matches with corroboration before triggering "Capture" status (single match → Drift at most)
+- [x] Rename "confidence" to "data coverage" throughout UI and types — current metric measures volume, not judgment quality
+- [x] Add explicit disclaimer to assessment output: "Automated keyword analysis — not a substitute for expert judgment"
 
 ### UX — First Impressions
-- [ ] Replace "Warning" fallback during loading with a skeleton/spinner state so cards don't flash alarming status before assessment completes
-- [ ] Invert information hierarchy: show assessment summary as the default view; move raw RSS feeds behind a "View Sources" toggle
+- [x] Replace "Warning" fallback during loading with a skeleton/spinner state so cards don't flash alarming status before assessment completes
+- [x] Invert information hierarchy: show assessment summary as the default view; move raw RSS feeds behind a "View Sources" toggle
 
 ---
 

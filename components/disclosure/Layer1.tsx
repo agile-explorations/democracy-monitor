@@ -5,17 +5,17 @@ import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 
 interface Layer1Props {
   level: StatusLevel;
-  confidence?: number;
+  dataCoverage?: number;
   reason: string;
 }
 
-export function Layer1({ level, confidence, reason }: Layer1Props) {
+export function Layer1({ level, dataCoverage, reason }: Layer1Props) {
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <StatusPill level={level} />
-      {confidence !== undefined && (
+      {dataCoverage !== undefined && (
         <div className="w-24">
-          <ConfidenceBar confidence={confidence} />
+          <ConfidenceBar confidence={dataCoverage} />
         </div>
       )}
       {reason && (

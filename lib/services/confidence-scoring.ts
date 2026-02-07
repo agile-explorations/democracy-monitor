@@ -10,7 +10,7 @@ interface ConfidenceFactors {
 
 const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme court', 'judicial'];
 
-export function calculateConfidence(
+export function calculateDataCoverage(
   items: any[],
   keywordResult: AssessmentResult,
   aiStatus?: string

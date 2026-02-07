@@ -1,6 +1,7 @@
 import type { PolicyArea, IntentScore, IntentAssessment, GovernanceCategory, IntentStatement } from '@/lib/types/intent';
 import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import { classifyGovernance } from '@/lib/data/governance-framework';
+import { matchKeyword } from '@/lib/utils/keyword-match';
 
 const POLICY_AREAS: PolicyArea[] = [
   'rule_of_law',
@@ -11,15 +12,14 @@ const POLICY_AREAS: PolicyArea[] = [
 ];
 
 function scoreText(text: string, keywords: { authoritarian: string[]; democratic: string[] }): number {
-  const lower = text.toLowerCase();
   let authCount = 0;
   let demoCount = 0;
 
   for (const kw of keywords.authoritarian) {
-    if (lower.includes(kw)) authCount++;
+    if (matchKeyword(text, kw)) authCount++;
   }
   for (const kw of keywords.democratic) {
-    if (lower.includes(kw)) demoCount++;
+    if (matchKeyword(text, kw)) demoCount++;
   }
 
   if (authCount === 0 && demoCount === 0) return 0;

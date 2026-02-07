@@ -34,7 +34,7 @@ export default function Methodology() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-800">Layer 3: AI-Enhanced Analysis</h3>
-                  <p>When AI providers are configured (OpenAI and/or Anthropic), the dashboard can perform enhanced analysis including confidence scoring, evidence balance (concerning vs. reassuring), and counter-evidence generation.</p>
+                  <p>When AI providers are configured (OpenAI and/or Anthropic), the dashboard can perform enhanced analysis including data coverage scoring, evidence balance (concerning vs. reassuring), and counter-evidence generation.</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-slate-800">Layer 4: Multi-Agent Debate</h3>

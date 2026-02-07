@@ -8,7 +8,7 @@ import { Layer3 } from './Layer3';
 import { Layer4 } from './Layer4';
 
 interface EnhancedData {
-  confidence: number;
+  dataCoverage: number;
   evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   howWeCouldBeWrong: string[];
@@ -108,7 +108,7 @@ export function ProgressiveDisclosure({
       {currentLayer === 1 && (
         <Layer1
           level={level}
-          confidence={enhancedData?.confidence}
+          dataCoverage={enhancedData?.dataCoverage}
           reason={autoStatus?.reason || ''}
         />
       )}

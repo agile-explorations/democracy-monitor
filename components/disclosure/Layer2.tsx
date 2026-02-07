@@ -3,7 +3,7 @@ import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 import { CrossReference } from '@/components/dashboard/CrossReference';
 
 interface EnhancedData {
-  confidence: number;
+  dataCoverage: number;
   evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   howWeCouldBeWrong: string[];

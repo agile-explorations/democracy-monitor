@@ -34,7 +34,7 @@ export function IntentOverview({ assessment }: IntentOverviewProps) {
           score={(assessment.rhetoricScore + assessment.actionScore) / 2}
           label="Overall Position"
         />
-        <ConfidenceBar confidence={assessment.confidence} label="Data Confidence" />
+        <ConfidenceBar confidence={assessment.confidence} label="Assessment Confidence" />
       </div>
     </div>
   );

@@ -115,15 +115,15 @@ function getEnhanced(category: string, scenario: ScenarioName): EnhancedAssessme
     ...(status !== 'Capture' ? [{ text: 'Historical context suggests periodic fluctuations are normal', direction: 'reassuring' as const }] : []),
   ];
 
-  const confidence = status === 'Capture' ? 0.85 : status === 'Drift' ? 0.72 : status === 'Warning' ? 0.65 : 0.9;
+  const dataCoverage = status === 'Capture' ? 0.85 : status === 'Drift' ? 0.72 : status === 'Warning' ? 0.65 : 0.9;
 
   return {
     category,
     status,
     reason: base.reason,
     matches: base.matches,
-    confidence,
-    confidenceFactors: {
+    dataCoverage,
+    dataCoverageFactors: {
       sourceAuthority: 0.8,
       evidenceVolume: status === 'Capture' ? 0.9 : 0.6,
       patternConsistency: status === 'Drift' || status === 'Capture' ? 0.85 : 0.5,
@@ -142,7 +142,7 @@ function getEnhanced(category: string, scenario: ScenarioName): EnhancedAssessme
       model: 'demo-fixture',
       status,
       reasoning: base.reason + ' This assessment is based on analysis of recent official documents and regulatory filings.',
-      confidence,
+      confidence: dataCoverage,
       tokensUsed: { input: 1200, output: 450 },
       latencyMs: 0,
     },

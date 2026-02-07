@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateConfidence } from '@/lib/services/confidence-scoring';
+import { calculateDataCoverage } from '@/lib/services/confidence-scoring';
 import type { AssessmentResult } from '@/lib/types';
 
 function makeResult(overrides: Partial<AssessmentResult> = {}): AssessmentResult {
@@ -11,11 +11,11 @@ function makeResult(overrides: Partial<AssessmentResult> = {}): AssessmentResult
   };
 }
 
-describe('calculateConfidence', () => {
+describe('calculateDataCoverage', () => {
   it('returns a confidence between 0 and 1', () => {
     const items = [{ title: 'Test item', agency: 'GAO' }];
     const result = makeResult({ matches: ['test'] });
-    const { confidence } = calculateConfidence(items, result);
+    const { confidence } = calculateDataCoverage(items, result);
     expect(confidence).toBeGreaterThanOrEqual(0);
     expect(confidence).toBeLessThanOrEqual(1);
   });
@@ -32,8 +32,8 @@ describe('calculateConfidence', () => {
     ];
     const result = makeResult({ matches: ['test'] });
 
-    const { factors: fewFactors } = calculateConfidence(fewSources, result);
-    const { factors: manyFactors } = calculateConfidence(manySources, result);
+    const { factors: fewFactors } = calculateDataCoverage(fewSources, result);
+    const { factors: manyFactors } = calculateDataCoverage(manySources, result);
 
     expect(manyFactors.sourceDiversity).toBeGreaterThan(fewFactors.sourceDiversity);
   });
@@ -49,8 +49,8 @@ describe('calculateConfidence', () => {
     ];
     const result = makeResult({ matches: ['test'] });
 
-    const { factors: noAuthFactors } = calculateConfidence(noAuthority, result);
-    const { factors: highAuthFactors } = calculateConfidence(highAuthority, result);
+    const { factors: noAuthFactors } = calculateDataCoverage(noAuthority, result);
+    const { factors: highAuthFactors } = calculateDataCoverage(highAuthority, result);
 
     expect(highAuthFactors.authorityWeight).toBeGreaterThan(noAuthFactors.authorityWeight);
   });
@@ -60,8 +60,8 @@ describe('calculateConfidence', () => {
     const manyItems = Array.from({ length: 10 }, (_, i) => ({ title: `Item ${i}` }));
     const result = makeResult();
 
-    const { factors: fewFactors } = calculateConfidence(fewItems, result);
-    const { factors: manyFactors } = calculateConfidence(manyItems, result);
+    const { factors: fewFactors } = calculateDataCoverage(fewItems, result);
+    const { factors: manyFactors } = calculateDataCoverage(manyItems, result);
 
     expect(manyFactors.evidenceCoverage).toBeGreaterThan(fewFactors.evidenceCoverage);
   });
@@ -71,8 +71,8 @@ describe('calculateConfidence', () => {
     const noMatches = makeResult({ matches: [] });
     const manyMatches = makeResult({ matches: ['a', 'b', 'c', 'd', 'e'] });
 
-    const { factors: noMatchFactors } = calculateConfidence(items, noMatches);
-    const { factors: manyMatchFactors } = calculateConfidence(items, manyMatches);
+    const { factors: noMatchFactors } = calculateDataCoverage(items, noMatches);
+    const { factors: manyMatchFactors } = calculateDataCoverage(items, manyMatches);
 
     expect(manyMatchFactors.keywordDensity).toBeGreaterThan(noMatchFactors.keywordDensity);
   });
@@ -80,35 +80,35 @@ describe('calculateConfidence', () => {
   it('sets AI agreement to 1 when keyword and AI status match', () => {
     const items = [{ title: 'Item' }];
     const result = makeResult({ status: 'Drift' });
-    const { factors } = calculateConfidence(items, result, 'Drift');
+    const { factors } = calculateDataCoverage(items, result, 'Drift');
     expect(factors.aiAgreement).toBe(1);
   });
 
   it('sets AI agreement to 0.7 when statuses are adjacent', () => {
     const items = [{ title: 'Item' }];
     const result = makeResult({ status: 'Drift' });
-    const { factors } = calculateConfidence(items, result, 'Warning');
+    const { factors } = calculateDataCoverage(items, result, 'Warning');
     expect(factors.aiAgreement).toBe(0.7);
   });
 
   it('sets AI agreement to 0.4 when statuses are 2 apart', () => {
     const items = [{ title: 'Item' }];
     const result = makeResult({ status: 'Capture' });
-    const { factors } = calculateConfidence(items, result, 'Warning');
+    const { factors } = calculateDataCoverage(items, result, 'Warning');
     expect(factors.aiAgreement).toBe(0.4);
   });
 
   it('sets AI agreement to 0.2 when statuses are 3 apart', () => {
     const items = [{ title: 'Item' }];
     const result = makeResult({ status: 'Capture' });
-    const { factors } = calculateConfidence(items, result, 'Stable');
+    const { factors } = calculateDataCoverage(items, result, 'Stable');
     expect(factors.aiAgreement).toBe(0.2);
   });
 
   it('defaults AI agreement to 0.5 when no AI status provided', () => {
     const items = [{ title: 'Item' }];
     const result = makeResult();
-    const { factors } = calculateConfidence(items, result);
+    const { factors } = calculateDataCoverage(items, result);
     expect(factors.aiAgreement).toBe(0.5);
   });
 
@@ -119,7 +119,7 @@ describe('calculateConfidence', () => {
       { title: 'Warning', isWarning: true },
     ];
     const result = makeResult({ matches: ['real'] });
-    const { factors } = calculateConfidence(items, result);
+    const { factors } = calculateDataCoverage(items, result);
     // Only 1 valid item out of 3, so coverage should be 0.1 (1/10)
     expect(factors.evidenceCoverage).toBe(0.1);
   });

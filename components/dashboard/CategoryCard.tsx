@@ -32,7 +32,7 @@ interface AutoStatus {
 }
 
 interface EnhancedData {
-  confidence: number;
+  dataCoverage: number;
   evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   howWeCouldBeWrong: string[];
@@ -58,12 +58,14 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
   const [autoStatus, setAutoStatus] = useState<AutoStatus | null>(null);
   const [allItems, setAllItems] = useState<FeedItem[]>([]);
   const [loadedCount, setLoadedCount] = useState(0);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
+  const [showSources, setShowSources] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [enhancedData, setEnhancedData] = useState<EnhancedData | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const level = (autoStatus?.level || statusMap[cat.key] || 'Warning') as StatusLevel;
+  const isAssessing = !autoStatus && loadedCount < cat.signals.length;
+  const level = (autoStatus?.level || statusMap[cat.key] || (isAssessing ? undefined : 'Warning')) as StatusLevel | undefined;
 
   useEffect(() => {
     if (loadedCount === cat.signals.length && allItems.length > 0) {
@@ -103,9 +105,9 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       });
       const data = await response.json();
 
-      if (data.confidence !== undefined) {
+      if (data.dataCoverage !== undefined || data.confidence !== undefined) {
         setEnhancedData({
-          confidence: data.confidence,
+          dataCoverage: data.dataCoverage ?? data.confidence ?? 0,
           evidenceFor: data.evidenceFor || [],
           evidenceAgainst: data.evidenceAgainst || [],
           howWeCouldBeWrong: data.howWeCouldBeWrong || [],
@@ -143,10 +145,16 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h3 className="text-lg font-semibold text-slate-900">{cat.title}</h3>
-          <StatusPill level={level} />
+          {level ? (
+            <StatusPill level={level} />
+          ) : (
+            <span className="px-2 py-1 rounded-full border text-xs font-medium bg-slate-100 text-slate-400 border-slate-200 animate-pulse">
+              Assessing...
+            </span>
+          )}
           {enhancedData && (
             <div className="w-24">
-              <ConfidenceBar confidence={enhancedData.confidence} />
+              <ConfidenceBar confidence={enhancedData.dataCoverage} />
             </div>
           )}
           {autoStatus?.auto && <span className="text-xs text-slate-500 italic">auto-assessed</span>}
@@ -167,16 +175,27 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
                 onClick={() => setShowDetails(!showDetails)}
                 className="text-xs text-blue-600 hover:text-blue-800 underline"
               >
-                {showDetails ? 'Hide Details' : 'View Details'}
+                {showDetails ? 'Hide Analysis' : 'View Analysis'}
               </button>
             )}
+            <button
+              onClick={() => setShowSources(!showSources)}
+              className="text-xs text-slate-500 hover:text-slate-700 underline"
+            >
+              {showSources ? 'Hide Sources' : 'View Sources'}
+            </button>
           </div>
         </div>
         <p className="text-sm text-slate-600">{cat.description}</p>
         {autoStatus?.reason && (
-          <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded px-2 py-1">
-            <strong>Assessment:</strong> {autoStatus.reason}
-          </p>
+          <div className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 space-y-1">
+            <p className="text-slate-700">
+              <strong>Assessment:</strong> {autoStatus.reason}
+            </p>
+            <p className="text-slate-400 italic">
+              Automated keyword analysis — not a substitute for expert judgment
+            </p>
+          </div>
         )}
 
         <CrossReference crossRef={crossRef || null} />
@@ -189,7 +208,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
           <EnhancedAssessment data={enhancedData} />
         )}
 
-        {showDetails && autoStatus && (
+        {showDetails && autoStatus && level && (
           <ProgressiveDisclosure
             categoryKey={cat.key}
             level={level}
@@ -201,7 +220,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
           />
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+      <div className={showSources ? 'grid grid-cols-1 md:grid-cols-2 gap-4 mt-4' : 'hidden'}>
         {cat.signals.map((s, i) => (
           <Card key={i}>
             <FeedBlock signalDef={s} onItemsLoaded={handleItemsLoaded} />

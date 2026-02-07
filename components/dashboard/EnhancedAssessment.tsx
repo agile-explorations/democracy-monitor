@@ -4,7 +4,7 @@ import { EvidenceBalance } from '@/components/ui/EvidenceBalance';
 import { CounterEvidence } from '@/components/ui/CounterEvidence';
 
 interface EnhancedAssessmentData {
-  confidence: number;
+  dataCoverage: number;
   evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
   howWeCouldBeWrong: string[];
@@ -26,7 +26,7 @@ interface EnhancedAssessmentProps {
 export function EnhancedAssessment({ data }: EnhancedAssessmentProps) {
   return (
     <div className="mt-2 space-y-3">
-      <ConfidenceBar confidence={data.confidence} label="Confidence" />
+      <ConfidenceBar confidence={data.dataCoverage} label="Data Coverage" />
 
       {data.consensusNote && (
         <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded px-2 py-1 italic">

@@ -1,5 +1,6 @@
-import type { StatusLevel, AssessmentResult } from '@/lib/types';
+import type { AssessmentResult } from '@/lib/types';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { matchKeyword } from '@/lib/utils/keyword-match';
 
 export function analyzeContent(items: any[], category: string): AssessmentResult {
   const rules = ASSESSMENT_RULES[category];
@@ -31,27 +32,27 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
   const highAuthorityKeywords: string[] = [];
 
   items.forEach(item => {
-    const itemText = `${item.title || ''} ${item.summary || ''} ${item.note || ''} ${item.agency || ''}`.toLowerCase();
+    const itemText = `${item.title || ''} ${item.summary || ''} ${item.note || ''} ${item.agency || ''}`;
 
     // Source weighting: GAO decisions, court orders, and IG reports are authoritative
-    const isHighAuthority = itemText.includes('gao') ||
-                           itemText.includes('court') ||
-                           itemText.includes('inspector general') ||
-                           itemText.includes('violated') ||
-                           itemText.includes('illegal') ||
-                           itemText.includes('unlawful');
+    const isHighAuthority = matchKeyword(itemText, 'gao') ||
+                           matchKeyword(itemText, 'court') ||
+                           matchKeyword(itemText, 'inspector general') ||
+                           matchKeyword(itemText, 'violated') ||
+                           matchKeyword(itemText, 'illegal') ||
+                           matchKeyword(itemText, 'unlawful');
 
     // Check for temporal/pattern indicators
-    const hasPatternLanguage = itemText.includes('unprecedented') ||
-                               itemText.includes('systematic') ||
-                               itemText.includes('pattern of') ||
-                               itemText.includes('multiple') ||
-                               itemText.includes('repeated');
+    const hasPatternLanguage = matchKeyword(itemText, 'unprecedented') ||
+                               matchKeyword(itemText, 'systematic') ||
+                               matchKeyword(itemText, 'pattern of') ||
+                               matchKeyword(itemText, 'multiple') ||
+                               matchKeyword(itemText, 'repeated');
 
-    // Check keywords with context
+    // Check keywords with word-boundary matching
     if (rules.keywords) {
       for (const keyword of rules.keywords.capture || []) {
-        if (itemText.includes(keyword.toLowerCase())) {
+        if (matchKeyword(itemText, keyword)) {
           captureMatches.push(keyword);
           if (isHighAuthority) {
             highAuthorityKeywords.push(`${keyword} (authoritative source)`);
@@ -59,7 +60,7 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
         }
       }
       for (const keyword of rules.keywords.drift || []) {
-        if (itemText.includes(keyword.toLowerCase())) {
+        if (matchKeyword(itemText, keyword)) {
           driftMatches.push(keyword);
           if (hasPatternLanguage) {
             captureMatches.push(`${keyword} (systematic pattern)`);
@@ -67,7 +68,7 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
         }
       }
       for (const keyword of rules.keywords.warning || []) {
-        if (itemText.includes(keyword.toLowerCase())) {
+        if (matchKeyword(itemText, keyword)) {
           warningMatches.push(keyword);
         }
       }
@@ -79,17 +80,34 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
   driftMatches = [...new Set(driftMatches)];
   warningMatches = [...new Set(warningMatches)];
 
-  // Assess based on severity
+  // Assess based on severity — require corroboration for Capture
   const itemCount = items.filter(i => !i.isError && !i.isWarning).length;
+  const hasHighAuthority = highAuthorityKeywords.length > 0;
 
-  if (captureMatches.length > 0) {
-    const hasHighAuthority = highAuthorityKeywords.length > 0;
+  if (captureMatches.length >= 2) {
+    // 2+ capture matches → Capture
     return {
       status: 'Capture',
       reason: hasHighAuthority
         ? `Serious violations found by official sources (GAO, courts, or IGs): ${captureMatches.slice(0, 3).join(', ')}`
-        : `Critical warning signs detected: ${captureMatches.slice(0, 3).join(', ')}`,
+        : `Multiple critical warning signs detected: ${captureMatches.slice(0, 3).join(', ')}`,
       matches: captureMatches,
+      detail: {
+        captureCount: captureMatches.length,
+        driftCount: driftMatches.length,
+        warningCount: warningMatches.length,
+        itemsReviewed: itemCount,
+        hasAuthoritative: hasHighAuthority
+      }
+    };
+  }
+
+  if (captureMatches.length === 1) {
+    // Single capture match → Drift (requires corroboration for Capture)
+    return {
+      status: 'Drift',
+      reason: `Critical warning sign detected but needs corroboration: ${captureMatches[0]}`,
+      matches: [...captureMatches, ...driftMatches],
       detail: {
         captureCount: captureMatches.length,
         driftCount: driftMatches.length,

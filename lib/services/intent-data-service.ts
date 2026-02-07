@@ -1,6 +1,7 @@
 import type { IntentStatement, PolicyArea } from '@/lib/types/intent';
 import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { matchKeyword } from '@/lib/utils/keyword-match';
 
 const CACHE_TTL_S = 3600; // 1 hour
 
@@ -106,7 +107,6 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
 }
 
 function classifyPolicyArea(text: string): PolicyArea {
-  const lower = text.toLowerCase();
   const areas: PolicyArea[] = [
     'rule_of_law', 'civil_liberties', 'elections',
     'media_freedom', 'institutional_independence',
@@ -121,7 +121,7 @@ function classifyPolicyArea(text: string): PolicyArea {
     let count = 0;
 
     for (const kw of [...rhetoricKws.authoritarian, ...rhetoricKws.democratic, ...actionKws.authoritarian, ...actionKws.democratic]) {
-      if (lower.includes(kw)) count++;
+      if (matchKeyword(text, kw)) count++;
     }
 
     if (count > bestScore) {
@@ -141,17 +141,16 @@ function classifyType(_docType: string, text: string): 'rhetoric' | 'action' {
 }
 
 function quickScore(text: string, type: 'rhetoric' | 'action', area: PolicyArea): number {
-  const lower = text.toLowerCase();
   const keywords = type === 'rhetoric' ? RHETORIC_KEYWORDS[area] : ACTION_KEYWORDS[area];
 
   let authCount = 0;
   let demoCount = 0;
 
   for (const kw of keywords.authoritarian) {
-    if (lower.includes(kw)) authCount++;
+    if (matchKeyword(text, kw)) authCount++;
   }
   for (const kw of keywords.democratic) {
-    if (lower.includes(kw)) demoCount++;
+    if (matchKeyword(text, kw)) demoCount++;
   }
 
   if (authCount === 0 && demoCount === 0) return 0;

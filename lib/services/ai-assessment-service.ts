@@ -1,6 +1,6 @@
 import type { StatusLevel, AssessmentResult } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
-import { calculateConfidence } from './confidence-scoring';
+import { calculateDataCoverage } from './confidence-scoring';
 import { categorizeEvidence, type EvidenceItem } from './evidence-balance';
 import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import { buildAssessmentPrompt, ASSESSMENT_SYSTEM_PROMPT } from '@/lib/ai/prompts/assessment';
@@ -16,8 +16,8 @@ export interface EnhancedAssessment {
   status: StatusLevel;
   reason: string;
   matches: string[];
-  confidence: number;
-  confidenceFactors?: Record<string, number>;
+  dataCoverage: number;
+  dataCoverageFactors?: Record<string, number>;
   evidenceFor: EvidenceItem[];
   evidenceAgainst: EvidenceItem[];
   howWeCouldBeWrong: string[];
@@ -147,8 +147,8 @@ export async function enhancedAssessment(
     howWeCouldBeWrong = generateKeywordCounterEvidence(keywordResult.status, category);
   }
 
-  // Step 4: Calculate confidence
-  const { confidence, factors } = calculateConfidence(
+  // Step 4: Calculate data coverage
+  const { confidence: dataCoverage, factors } = calculateDataCoverage(
     items,
     keywordResult,
     aiResult?.status
@@ -172,8 +172,8 @@ export async function enhancedAssessment(
     status: finalStatus,
     reason: aiResult?.reasoning || keywordResult.reason,
     matches: keywordResult.matches,
-    confidence,
-    confidenceFactors: factors as unknown as Record<string, number>,
+    dataCoverage,
+    dataCoverageFactors: factors as unknown as Record<string, number>,
     evidenceFor: evidenceFor.slice(0, 5),
     evidenceAgainst: evidenceAgainst.slice(0, 5),
     howWeCouldBeWrong: howWeCouldBeWrong.slice(0, 5),
