@@ -2,6 +2,22 @@ import type { AssessmentResult } from '@/lib/types';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
+// Authoritative agency identifiers — matched against the `agency` field, not content text
+const HIGH_AUTHORITY_AGENCIES = [
+  'government accountability office', 'gao',
+  'congressional budget office', 'cbo',
+  'inspector general', 'oig',
+  'office of special counsel', 'osc',
+  'supreme court', 'federal courts',
+  'congressional research service', 'crs',
+];
+
+function isHighAuthoritySource(agency?: string): boolean {
+  if (!agency) return false;
+  const lower = agency.toLowerCase();
+  return HIGH_AUTHORITY_AGENCIES.some(a => lower.includes(a));
+}
+
 export function analyzeContent(items: any[], category: string): AssessmentResult {
   const rules = ASSESSMENT_RULES[category];
   if (!rules) {
@@ -32,27 +48,24 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
   const highAuthorityKeywords: string[] = [];
 
   items.forEach(item => {
-    const itemText = `${item.title || ''} ${item.summary || ''} ${item.note || ''} ${item.agency || ''}`;
+    // Content text: only title + summary (actual document content)
+    // Excluded: note (our editorial descriptions), agency (source metadata)
+    const contentText = `${item.title || ''} ${item.summary || ''}`;
 
-    // Source weighting: GAO decisions, court orders, and IG reports are authoritative
-    const isHighAuthority = matchKeyword(itemText, 'gao') ||
-                           matchKeyword(itemText, 'court') ||
-                           matchKeyword(itemText, 'inspector general') ||
-                           matchKeyword(itemText, 'violated') ||
-                           matchKeyword(itemText, 'illegal') ||
-                           matchKeyword(itemText, 'unlawful');
+    // Authority: determined by source agency field, not content keywords
+    const isHighAuthority = isHighAuthoritySource(item.agency);
 
-    // Check for temporal/pattern indicators
-    const hasPatternLanguage = matchKeyword(itemText, 'unprecedented') ||
-                               matchKeyword(itemText, 'systematic') ||
-                               matchKeyword(itemText, 'pattern of') ||
-                               matchKeyword(itemText, 'multiple') ||
-                               matchKeyword(itemText, 'repeated');
+    // Check for temporal/pattern indicators in content text only
+    const hasPatternLanguage = matchKeyword(contentText, 'unprecedented') ||
+                               matchKeyword(contentText, 'systematic') ||
+                               matchKeyword(contentText, 'pattern of') ||
+                               matchKeyword(contentText, 'multiple') ||
+                               matchKeyword(contentText, 'repeated');
 
-    // Check keywords with word-boundary matching
+    // Check keywords against content text only (not note or agency metadata)
     if (rules.keywords) {
       for (const keyword of rules.keywords.capture || []) {
-        if (matchKeyword(itemText, keyword)) {
+        if (matchKeyword(contentText, keyword)) {
           captureMatches.push(keyword);
           if (isHighAuthority) {
             highAuthorityKeywords.push(`${keyword} (authoritative source)`);
@@ -60,7 +73,7 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
         }
       }
       for (const keyword of rules.keywords.drift || []) {
-        if (matchKeyword(itemText, keyword)) {
+        if (matchKeyword(contentText, keyword)) {
           driftMatches.push(keyword);
           if (hasPatternLanguage) {
             captureMatches.push(`${keyword} (systematic pattern)`);
@@ -68,7 +81,7 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
         }
       }
       for (const keyword of rules.keywords.warning || []) {
-        if (matchKeyword(itemText, keyword)) {
+        if (matchKeyword(contentText, keyword)) {
           warningMatches.push(keyword);
         }
       }
@@ -196,7 +209,7 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
   }
 
   // If we have successful data and no red flags, it's Stable
-  if (itemCount > 0) {
+  if (itemCount >= 3) {
     return {
       status: 'Stable',
       reason: 'Everything looks normal - no warning signs detected',
@@ -211,16 +224,20 @@ export function analyzeContent(items: any[], category: string): AssessmentResult
     };
   }
 
+  // Insufficient data — not enough items for a reliable assessment
   return {
     status: 'Warning',
-    reason: 'Not enough information to make an assessment',
+    reason: itemCount === 0
+      ? 'Not enough information to make an assessment'
+      : `Only ${itemCount} source${itemCount === 1 ? '' : 's'} available — insufficient for a reliable assessment`,
     matches: [],
     detail: {
       captureCount: 0,
       driftCount: 0,
       warningCount: 0,
-      itemsReviewed: 0,
-      hasAuthoritative: false
+      itemsReviewed: itemCount,
+      hasAuthoritative: false,
+      insufficientData: true
     }
   };
 }

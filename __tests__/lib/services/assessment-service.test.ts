@@ -8,14 +8,25 @@ describe('analyzeContent', () => {
     expect(result.reason).toContain('No assessment rules');
   });
 
-  it('returns Stable when items have no matching keywords', () => {
+  it('returns Stable when items have no matching keywords and sufficient data', () => {
     const items = [
       { title: 'Routine quarterly report on agency operations' },
       { title: 'Annual budget summary released' },
+      { title: 'Monthly staffing update from OPM' },
     ];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Stable');
     expect(result.matches).toHaveLength(0);
+  });
+
+  it('returns insufficient data Warning when fewer than 3 items with no keywords', () => {
+    const items = [
+      { title: 'Routine quarterly report on agency operations' },
+    ];
+    const result = analyzeContent(items, 'civilService');
+    expect(result.status).toBe('Warning');
+    expect(result.detail?.insufficientData).toBe(true);
+    expect(result.reason).toContain('insufficient');
   });
 
   it('returns Warning for a single drift keyword match', () => {
@@ -58,11 +69,21 @@ describe('analyzeContent', () => {
 
   it('returns Capture with high authority flag for GAO findings with multiple matches', () => {
     const items = [
-      { title: 'GAO decision: violated impoundment control act with illegal impoundment of funds', agency: 'GAO' },
+      { title: 'Violated impoundment control act with illegal impoundment of funds', agency: 'Government Accountability Office' },
     ];
     const result = analyzeContent(items, 'fiscal');
     expect(result.status).toBe('Capture');
     expect(result.detail?.hasAuthoritative).toBe(true);
+  });
+
+  it('authority comes from agency field, not content text', () => {
+    // "GAO" in title text should NOT trigger authority — only the agency field matters
+    const items = [
+      { title: 'Article mentions GAO in passing about violated impoundment control act and illegal impoundment' },
+    ];
+    const result = analyzeContent(items, 'fiscal');
+    // Should still detect capture keywords but NOT flag as authoritative
+    expect(result.detail?.hasAuthoritative).toBe(false);
   });
 
   it('handles igs oversight.gov down special case', () => {
@@ -122,5 +143,26 @@ describe('analyzeContent', () => {
     // "reclassification" should NOT match inside "classification"
     // because "reclassification" != "classification" at word boundary
     expect(result.matches).not.toContain('reclassification');
+  });
+
+  it('does not match keywords in note field (editorial descriptions)', () => {
+    const items = [
+      { title: 'Routine quarterly report', note: 'Looking for rules that could let the President fire career workers via schedule f' },
+      { title: 'Annual budget summary released' },
+      { title: 'Monthly staffing update from OPM' },
+    ];
+    const result = analyzeContent(items, 'civilService');
+    // "schedule f" in our note field should NOT trigger a keyword match
+    expect(result.matches).not.toContain('schedule f');
+    expect(result.status).toBe('Stable');
+  });
+
+  it('does not match keywords in agency field', () => {
+    const items = [
+      { title: 'Routine quarterly report', agency: 'Office of Inspector General' },
+    ];
+    // "inspector general" appears in agency but should not trigger igs keywords
+    const result = analyzeContent(items, 'igs');
+    expect(result.matches).not.toContain('inspector general');
   });
 });

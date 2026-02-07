@@ -15,7 +15,7 @@ export function Layer1({ level, dataCoverage, reason }: Layer1Props) {
       <StatusPill level={level} />
       {dataCoverage !== undefined && (
         <div className="w-24">
-          <ConfidenceBar confidence={dataCoverage} />
+          <ConfidenceBar confidence={dataCoverage} label="Data Coverage" />
         </div>
       )}
       {reason && (

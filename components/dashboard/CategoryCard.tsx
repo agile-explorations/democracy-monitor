@@ -28,6 +28,7 @@ interface AutoStatus {
     warningCount: number;
     itemsReviewed: number;
     hasAuthoritative: boolean;
+    insufficientData?: boolean;
   };
 }
 
@@ -65,6 +66,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
   const [aiLoading, setAiLoading] = useState(false);
 
   const isAssessing = !autoStatus && loadedCount < cat.signals.length;
+  const isInsufficientData = autoStatus?.detail?.insufficientData === true;
   const level = (autoStatus?.level || statusMap[cat.key] || (isAssessing ? undefined : 'Warning')) as StatusLevel | undefined;
 
   useEffect(() => {
@@ -145,30 +147,42 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h3 className="text-lg font-semibold text-slate-900">{cat.title}</h3>
-          {level ? (
-            <StatusPill level={level} />
-          ) : (
+          {!level ? (
             <span className="px-2 py-1 rounded-full border text-xs font-medium bg-slate-100 text-slate-400 border-slate-200 animate-pulse">
               Assessing...
             </span>
+          ) : isInsufficientData ? (
+            <span className="px-2 py-1 rounded-full border text-xs font-medium bg-slate-100 text-slate-500 border-slate-300">
+              Insufficient Data
+            </span>
+          ) : (
+            <StatusPill level={level} />
           )}
           {enhancedData && (
             <div className="w-24">
               <ConfidenceBar confidence={enhancedData.dataCoverage} />
             </div>
           )}
-          {autoStatus?.auto && <span className="text-xs text-slate-500 italic">auto-assessed</span>}
+          {autoStatus?.auto && (
+            <span
+              className="text-xs text-slate-500 italic cursor-help"
+              title="Status determined by keyword analysis of official government documents. See methodology page for details."
+            >
+              auto-assessed
+            </span>
+          )}
           <div className="flex items-center gap-2 ml-auto">
             {autoStatus?.auto && (
-              <label className="flex items-center gap-1 text-xs text-purple-600 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={aiEnabled}
-                  onChange={handleAiToggle}
-                  className="rounded text-purple-600"
-                />
-                AI
-              </label>
+              <button
+                onClick={handleAiToggle}
+                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                  aiEnabled
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-purple-50 text-purple-700 border border-purple-300 hover:bg-purple-100'
+                }`}
+              >
+                {aiLoading ? 'Analyzing...' : aiEnabled ? 'AI On' : 'AI Analysis'}
+              </button>
             )}
             {autoStatus?.auto && (
               <button

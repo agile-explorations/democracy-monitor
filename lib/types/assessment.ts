@@ -6,6 +6,7 @@ export interface AssessmentDetail {
   warningCount: number;
   itemsReviewed: number;
   hasAuthoritative: boolean;
+  insufficientData?: boolean;
 }
 
 export interface AssessmentResult {

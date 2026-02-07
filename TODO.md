@@ -21,10 +21,10 @@ Items are grouped by priority. Work top-down within each tier.
 ## P1 — High (reduce false positives + improve discoverability)
 
 ### Assessment Methodology
-- [ ] Add context-aware filtering: skip keyword matches inside proper nouns, datelines, and boilerplate headers
-- [ ] Decouple authority weighting from content-word matching — weight by source domain reliability, not keyword presence in domain name
-- [ ] Add "unknown/insufficient data" status for categories with < 3 feed items instead of defaulting to Warning
-- [ ] Tune governance classification thresholds — common political rhetoric ("executive authority", "unitary executive") should not alone push scores into alarming tiers
+- [x] Add context-aware filtering: only match keywords against title + summary (exclude note field and agency metadata)
+- [x] Decouple authority weighting from content-word matching — authority now determined by agency field, not content keywords
+- [x] Add "unknown/insufficient data" status for categories with < 3 feed items instead of defaulting to Warning
+- [x] Tune governance classification thresholds — rhetoric-only signals capped at competitive_authoritarian (action score >= 0.3 required for alarming tiers)
 
 ### RAG Pipeline — give AI actual document content (pgvector)
 AI currently receives only document titles — not full text. This makes AI assessment, debate, and legal analysis superficial. Most of the infrastructure already exists but isn't wired together.
@@ -50,9 +50,10 @@ AI currently receives only document titles — not full text. This makes AI asse
 - Trend analysis on *content* not just keyword counts
 
 ### UX — Discoverability & Clarity
-- [ ] Replace the small AI checkbox with a prominent "Get AI Analysis" button with brief explanation of what it does
+- [x] Replace the small AI checkbox with a prominent "AI Analysis" button with loading state
 - [ ] Hide implementation details (provider, model, latency) behind a developer toggle; show plain-language summary to end users
-- [ ] Add a brief "How this works" tooltip or info icon to each category card explaining the assessment methodology
+- [x] Add methodology tooltips to StatusPill (hover for explanation) and "auto-assessed" label
+- [x] Add "Data Coverage" label to ConfidenceBar in progressive disclosure Layer 1
 - [ ] Fix vocabulary inconsistency: align system-health labels (Operational/Degraded/Down) with category-level labels (Stable/Warning/Drift/Capture) or explain the distinction
 
 ---

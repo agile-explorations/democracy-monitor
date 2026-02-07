@@ -69,8 +69,14 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
     ? allActions.reduce((a, b) => a + b, 0) / allActions.length
     : 0;
 
-  const overallScore = (avgRhetoric + avgAction) / 2;
+  let overallScore = (avgRhetoric + avgAction) / 2;
   const overallGap = Math.abs(avgRhetoric - avgAction);
+
+  // Rhetoric alone should not push classification beyond "competitive_authoritarian".
+  // Require meaningful action-side signals (>= 0.3) to reach alarming tiers.
+  if (avgAction < 0.3 && overallScore > 0.5) {
+    overallScore = Math.min(overallScore, 0.5);
+  }
 
   const governance = classifyGovernance(overallScore);
 
