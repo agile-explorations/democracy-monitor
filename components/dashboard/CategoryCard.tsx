@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import type { Category, StatusLevel } from '@/lib/types';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import { Card } from '@/components/ui/Card';
 import { FeedBlock } from './FeedBlock';
+import { EnhancedAssessment } from './EnhancedAssessment';
 
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';
@@ -26,6 +28,22 @@ interface AutoStatus {
   };
 }
 
+interface EnhancedData {
+  confidence: number;
+  evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
+  evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
+  howWeCouldBeWrong: string[];
+  aiResult?: {
+    provider: string;
+    model: string;
+    status: string;
+    reasoning: string;
+    confidence: number;
+    latencyMs: number;
+  };
+  consensusNote?: string;
+}
+
 interface CategoryCardProps {
   cat: Category;
   statusMap: Record<string, string>;
@@ -37,6 +55,9 @@ export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
   const [allItems, setAllItems] = useState<FeedItem[]>([]);
   const [loadedCount, setLoadedCount] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [enhancedData, setEnhancedData] = useState<EnhancedData | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const level = (autoStatus?.level || statusMap[cat.key] || 'Warning') as StatusLevel;
 
@@ -68,6 +89,46 @@ export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
     }
   };
 
+  const runAiAssessment = async () => {
+    setAiLoading(true);
+    try {
+      const response = await fetch('/api/assess-status?ai=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: cat.key, items: allItems })
+      });
+      const data = await response.json();
+
+      if (data.confidence !== undefined) {
+        setEnhancedData({
+          confidence: data.confidence,
+          evidenceFor: data.evidenceFor || [],
+          evidenceAgainst: data.evidenceAgainst || [],
+          howWeCouldBeWrong: data.howWeCouldBeWrong || [],
+          aiResult: data.aiResult,
+          consensusNote: data.consensusNote,
+        });
+
+        // Update status with enhanced reason if AI provided one
+        if (data.aiResult?.reasoning) {
+          setAutoStatus(prev => prev ? { ...prev, reason: data.aiResult.reasoning } : prev);
+        }
+      }
+    } catch (err) {
+      console.error('AI assessment failed:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAiToggle = () => {
+    const newVal = !aiEnabled;
+    setAiEnabled(newVal);
+    if (newVal && !enhancedData && allItems.length > 0) {
+      runAiAssessment();
+    }
+  };
+
   const handleItemsLoaded = (items: FeedItem[]) => {
     setAllItems(prev => [...prev, ...items]);
     setLoadedCount(prev => prev + 1);
@@ -76,18 +137,36 @@ export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
   return (
     <Card>
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h3 className="text-lg font-semibold text-slate-900">{cat.title}</h3>
           <StatusPill level={level} />
-          {autoStatus?.auto && <span className="text-xs text-slate-500 italic">auto-assessed</span>}
-          {autoStatus?.auto && (
-            <button
-              onClick={() => setShowDetails(!showDetails)}
-              className="text-xs text-blue-600 hover:text-blue-800 underline ml-auto"
-            >
-              {showDetails ? 'Hide Details' : 'View Assessment Details'}
-            </button>
+          {enhancedData && (
+            <div className="w-24">
+              <ConfidenceBar confidence={enhancedData.confidence} />
+            </div>
           )}
+          {autoStatus?.auto && <span className="text-xs text-slate-500 italic">auto-assessed</span>}
+          <div className="flex items-center gap-2 ml-auto">
+            {autoStatus?.auto && (
+              <label className="flex items-center gap-1 text-xs text-purple-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={aiEnabled}
+                  onChange={handleAiToggle}
+                  className="rounded text-purple-600"
+                />
+                AI
+              </label>
+            )}
+            {autoStatus?.auto && (
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                {showDetails ? 'Hide Details' : 'View Details'}
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-sm text-slate-600">{cat.description}</p>
         {autoStatus?.reason && (
@@ -95,6 +174,15 @@ export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
             <strong>Assessment:</strong> {autoStatus.reason}
           </p>
         )}
+
+        {aiLoading && (
+          <p className="text-xs text-purple-600 italic">Running AI analysis...</p>
+        )}
+
+        {aiEnabled && enhancedData && (
+          <EnhancedAssessment data={enhancedData} />
+        )}
+
         {showDetails && autoStatus && (
           <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-xs space-y-2">
             <h4 className="font-semibold text-blue-900">How We Determined This Status</h4>

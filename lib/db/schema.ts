@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, varchar, real } from 'drizzle-orm/pg-core';
 
 export const cacheEntries = pgTable('cache_entries', {
   id: serial('id').primaryKey(),
@@ -30,6 +30,22 @@ export const assessments = pgTable('assessments', {
   assessedAt: timestamp('assessed_at', { withTimezone: true }).defaultNow().notNull(),
   aiProvider: varchar('ai_provider', { length: 50 }),
   confidence: integer('confidence'),
+});
+
+export const aiAnalysisHistory = pgTable('ai_analysis_history', {
+  id: serial('id').primaryKey(),
+  category: varchar('category', { length: 50 }).notNull(),
+  provider: varchar('provider', { length: 50 }).notNull(),
+  model: varchar('model', { length: 100 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  confidence: real('confidence'),
+  reasoning: text('reasoning'),
+  tokensInput: integer('tokens_input'),
+  tokensOutput: integer('tokens_output'),
+  latencyMs: integer('latency_ms'),
+  keywordStatus: varchar('keyword_status', { length: 20 }),
+  consensus: boolean('consensus'),
+  analyzedAt: timestamp('analyzed_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const siteUptime = pgTable('site_uptime', {
