@@ -1,4 +1,4 @@
-import type { StatusLevel, AssessmentResult } from '@/lib/types';
+import type { StatusLevel, AssessmentResult, ContentItem } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
 import { calculateDataCoverage } from './confidence-scoring';
 import { categorizeEvidence, type EvidenceItem } from './evidence-balance';
@@ -36,7 +36,7 @@ export interface EnhancedAssessment {
 }
 
 export async function enhancedAssessment(
-  items: any[],
+  items: ContentItem[],
   category: string,
   options?: { providers?: string[]; skipCache?: boolean }
 ): Promise<EnhancedAssessment> {

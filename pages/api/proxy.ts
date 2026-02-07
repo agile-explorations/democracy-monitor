@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const key = CacheKeys.proxy(url.toString());
-    const cached = await cacheGet<any>(key);
+    const cached = await cacheGet<Record<string, unknown>>(key);
     if (cached) {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Cache-Control', `public, s-maxage=${CACHE_TTL_S}`);
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const contentType = upstream.headers.get('content-type') || '';
     const text = await upstream.text();
 
-    let out: any = { url: url.toString(), contentType, status: upstream.status };
+    let out: Record<string, unknown> = { url: url.toString(), contentType, status: upstream.status };
 
     // Check for common error patterns
     if (text.includes('Access Denied') || text.includes('403 Forbidden') || text.includes('blocked')) {
@@ -107,7 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', `public, s-maxage=${CACHE_TTL_S}`);
     res.status(200).json({ cached: false, data: out });
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message || err) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }

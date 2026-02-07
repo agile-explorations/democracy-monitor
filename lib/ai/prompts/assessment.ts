@@ -1,9 +1,9 @@
-import type { StatusLevel } from '@/lib/types';
+import type { StatusLevel, ContentItem } from '@/lib/types';
 
 export function buildAssessmentPrompt(
   category: string,
   categoryTitle: string,
-  items: Array<{ title: string; summary?: string; agency?: string; pubDate?: string }>,
+  items: ContentItem[],
   keywordStatus: StatusLevel,
   keywordReason: string
 ): string {

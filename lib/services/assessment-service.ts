@@ -1,4 +1,4 @@
-import type { AssessmentResult } from '@/lib/types';
+import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
@@ -18,7 +18,7 @@ function isHighAuthoritySource(agency?: string): boolean {
   return HIGH_AUTHORITY_AGENCIES.some(a => lower.includes(a));
 }
 
-export function analyzeContent(items: any[], category: string): AssessmentResult {
+export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
   const rules = ASSESSMENT_RULES[category];
   if (!rules) {
     return { status: 'Warning', reason: 'No assessment rules configured', matches: [] };

@@ -1,4 +1,4 @@
-export async function fetchData(url: string, _type: string): Promise<any> {
+export async function fetchData(url: string, _type: string): Promise<unknown> {
   // Direct fetch for internal APIs
   if (url.startsWith('/api/')) {
     const r = await fetch(url);

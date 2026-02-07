@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ...assessment,
       assessedAt: new Date().toISOString()
     });
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message || err) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }

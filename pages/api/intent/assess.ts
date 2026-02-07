@@ -12,7 +12,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
 
   try {
     const cacheKey = 'intent:assessment';
-    const cached = await cacheGet<any>(cacheKey);
+    const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
       return res.status(200).json(cached);
     }
@@ -44,7 +44,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
     await cacheSet(cacheKey, assessment, CACHE_TTL_S);
 
     res.status(200).json(assessment);
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message || err) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }

@@ -28,10 +28,10 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
     if (!response.ok) return [];
 
     const data = await response.json();
-    const statements: IntentStatement[] = (data.results || []).map((doc: any) => {
+    const statements: IntentStatement[] = (data.results || []).map((doc: { title?: string; abstract?: string; type?: string; publication_date?: string; html_url?: string }) => {
       const text = `${doc.title || ''} ${doc.abstract || ''}`;
       const policyArea = classifyPolicyArea(text);
-      const type = classifyType(doc.type, text);
+      const type = classifyType(doc.type || '', text);
       const score = quickScore(text, type, policyArea);
 
       return {

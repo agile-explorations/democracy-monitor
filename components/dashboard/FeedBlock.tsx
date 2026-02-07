@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { Signal } from '@/lib/types';
-import type { FeedItem } from '@/lib/parsers/feed-parser';
+import type { FeedItem, FeedPayload } from '@/lib/parsers/feed-parser';
 import { fetchData } from '@/lib/services/feed-service';
 import { parseResult } from '@/lib/parsers/feed-parser';
 
@@ -21,7 +21,7 @@ export function FeedBlock({ signalDef, onItemsLoaded }: FeedBlockProps) {
   const load = async () => {
     setState({ status: 'loading' });
     try {
-      const payload = await fetchData(signalDef.url, signalDef.type);
+      const payload = await fetchData(signalDef.url, signalDef.type) as FeedPayload;
       const items = parseResult(payload, signalDef.type, signalDef.url);
       setState({ status: 'ok', items, ts: Date.now() });
       if (onItemsLoaded && items) {

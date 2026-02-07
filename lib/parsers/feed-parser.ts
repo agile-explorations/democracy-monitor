@@ -8,16 +8,42 @@ export interface FeedItem {
   isWarning?: boolean;
 }
 
-export function parseResult(payload: any, signalType: string, baseUrl: string): FeedItem[] {
+interface FeedPayloadItem {
+  title?: string | { _?: string };
+  link?: string | { href?: string; _?: string };
+  id?: string;
+  pubDate?: string;
+  published?: string;
+  updated?: string;
+  date?: string;
+  agency?: string;
+  text?: string;
+  href?: string;
+}
+
+export interface FeedPayload {
+  type?: string;
+  items?: FeedPayloadItem[];
+  sourceUrl?: string;
+  data?: {
+    type?: string;
+    error?: string;
+    items?: FeedPayloadItem[];
+    anchors?: FeedPayloadItem[];
+    json?: FeedItem[];
+  };
+}
+
+export function parseResult(payload: FeedPayload, signalType: string, baseUrl: string): FeedItem[] {
   // Handle Federal Register API responses
   if (signalType === 'federal_register' || payload?.type === 'federal_register') {
     const items = payload?.items || [];
     if (items.length === 0) {
       return [{ title: 'No recent documents found', link: baseUrl, isWarning: true }];
     }
-    return items.slice(0, 8).map((it: any) => ({
-      title: it.title || '(document)',
-      link: it.link,
+    return items.slice(0, 8).map((it) => ({
+      title: (typeof it.title === 'string' ? it.title : it.title?._) || '(document)',
+      link: typeof it.link === 'string' ? it.link : undefined,
       pubDate: it.pubDate,
       agency: it.agency
     }));
@@ -29,9 +55,9 @@ export function parseResult(payload: any, signalType: string, baseUrl: string): 
     if (items.length === 0) {
       return [{ title: 'No items found - tracker may have changed structure', link: payload?.sourceUrl || baseUrl, isWarning: true }];
     }
-    return items.slice(0, 10).map((it: any) => ({
-      title: it.title,
-      link: it.link,
+    return items.slice(0, 10).map((it) => ({
+      title: (typeof it.title === 'string' ? it.title : it.title?._) || '(item)',
+      link: typeof it.link === 'string' ? it.link : undefined,
       date: it.date
     }));
   }
@@ -44,9 +70,9 @@ export function parseResult(payload: any, signalType: string, baseUrl: string): 
 
   if (d.type === 'rss') {
     const items = d.items || [];
-    return items.slice(0, 8).map((it: any) => {
-      const title = typeof it.title === 'string' ? it.title : it.title?._ || it.title;
-      const link = typeof it.link === 'string' ? it.link : it.link?.href || it.link?._ || it.id;
+    return items.slice(0, 8).map((it) => {
+      const title = typeof it.title === 'string' ? it.title : it.title?._;
+      const link = typeof it.link === 'string' ? it.link : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
       const pubDate = it.pubDate || it.published || it.updated;
 
       return {
@@ -62,8 +88,8 @@ export function parseResult(payload: any, signalType: string, baseUrl: string): 
     if (anchors.length === 0) {
       return [{ title: 'No links found - site may be blocking requests', link: baseUrl, isWarning: true }];
     }
-    return anchors.slice(0, 10).map((a: any) => ({
-      title: a.text || a.href,
+    return anchors.slice(0, 10).map((a) => ({
+      title: a.text || a.href || '(link)',
       link: a.href
     }));
   }

@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cacheKey = CacheKeys.federalRegister(url);
 
     // Check cache
-    const cached = await cacheGet<any>(cacheKey);
+    const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
       res.setHeader('Cache-Control', 'public, s-maxage=600');
       return res.status(200).json({ cached: true, ...cached });
@@ -54,11 +54,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
 
     // Transform to our format
-    const items = (data.results || []).map((doc: any) => ({
+    const items = (data.results || []).map((doc: { title?: string; html_url?: string; publication_date?: string; agencies?: { name: string }[]; type?: string; abstract?: string }) => ({
       title: doc.title,
       link: doc.html_url,
       pubDate: doc.publication_date,
-      agency: doc.agencies?.map((a: any) => a.name).join(', '),
+      agency: doc.agencies?.map((a) => a.name).join(', '),
       type: doc.type,
       summary: doc.abstract
     }));
@@ -74,7 +74,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.setHeader('Cache-Control', 'public, s-maxage=600');
     res.status(200).json({ cached: false, ...result });
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message || err) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }

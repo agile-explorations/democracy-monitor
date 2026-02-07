@@ -1,4 +1,4 @@
-import type { StatusLevel } from '@/lib/types';
+import type { StatusLevel, ContentItem } from '@/lib/types';
 
 export interface EvidenceItem {
   text: string;
@@ -21,7 +21,7 @@ const REASSURING_INDICATORS = [
 ];
 
 export function categorizeEvidence(
-  items: any[],
+  items: ContentItem[],
   status: StatusLevel
 ): { evidenceFor: EvidenceItem[]; evidenceAgainst: EvidenceItem[] } {
   const evidenceFor: EvidenceItem[] = [];

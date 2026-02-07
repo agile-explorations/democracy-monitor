@@ -130,9 +130,9 @@ AI currently receives only document titles — not full text. This makes AI asse
 - [ ] Decide on CLAUDE.md: keep for AI-assisted dev, and/or add ARCHITECTURE.md for human contributors
 
 ### Code Quality
-- [ ] Narrow `any` types in API routes and parsers (consider Zod schemas for external API responses)
-- [ ] Run dead-import analysis (`ts-prune` or `eslint-plugin-unused-imports`)
-- [ ] Decide whether to keep or trim COMPREHENSIVE_ENHANCEMENT_PLAN.md (56KB internal planning doc)
+- [x] Narrow `any` types — added `ContentItem` type, replaced all `any` in services/API routes/parsers/components
+- [x] Dead-import analysis — ran `ts-prune`; 3 unused components found (DailyDigest, SourceBadge, SuppressionAlert) but kept for future wiring
+- [x] Removed COMPREHENSIVE_ENHANCEMENT_PLAN.md (obsolete; all phases complete; TODO.md is current roadmap)
 
 ### Test Coverage (currently ~39% of services, 0% of API routes/components)
 - [ ] Add API route smoke tests (proxy, assess-status, federal-register at minimum)

@@ -29,8 +29,8 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
       const data = await response.json();
       setAssessment(data);
       if (onAssessmentLoaded) onAssessmentLoaded(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load intent assessment');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load intent assessment');
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import type { AssessmentResult } from '@/lib/types';
+import type { AssessmentResult, ContentItem } from '@/lib/types';
 
 interface ConfidenceFactors {
   sourceDiversity: number;     // 0-1: how many different source types
@@ -11,7 +11,7 @@ interface ConfidenceFactors {
 const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme court', 'judicial'];
 
 export function calculateDataCoverage(
-  items: any[],
+  items: ContentItem[],
   keywordResult: AssessmentResult,
   aiStatus?: string
 ): { confidence: number; factors: ConfidenceFactors } {

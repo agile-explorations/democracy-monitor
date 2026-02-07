@@ -59,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cacheKey = CacheKeys.scrapeTracker(source);
 
     // Check cache
-    const cached = await cacheGet<any>(cacheKey);
+    const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
       res.setHeader('Cache-Control', 'public, s-maxage=3600');
       return res.status(200).json({ cached: true, ...cached });
@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.setHeader('Cache-Control', 'public, s-maxage=3600');
     res.status(200).json({ cached: false, ...result });
-  } catch (err: any) {
-    res.status(500).json({ error: String(err?.message || err) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }

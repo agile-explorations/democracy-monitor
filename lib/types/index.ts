@@ -1,5 +1,6 @@
 export type { SignalType, StatusLevel, Signal, Category } from './categories';
 export type {
+  ContentItem,
   AssessmentDetail,
   AssessmentResult,
   AssessmentRule,
