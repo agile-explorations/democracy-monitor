@@ -176,8 +176,8 @@ Without automated guardrails, code standards are suggestions. These items create
 **ESLint — tighten React pattern enforcement:**
 Current `.eslintrc.json` is nearly empty (just `next/core-web-vitals`). Add rules to codify the patterns already used in this codebase:
 
-- [ ] Add `eslint-plugin-react` rules: `function-component-definition` (arrow functions), `destructuring-assignment` (in signature), `no-unstable-nested-components`, `hook-use-state` (enforce `[value, setValue]` naming)
-- [ ] Add `eslint-plugin-import` rules: `order` (consistent import grouping), `no-duplicates`, `consistent-type-specifier-style` (enforce `import type`)
+- [x] Add `eslint-plugin-react` rules: `function-component-definition` (function declarations), `destructuring-assignment` (in signature), `no-unstable-nested-components`, `hook-use-state` (enforce `[value, setValue]` naming), `jsx-no-useless-fragment`
+- [x] Add `eslint-plugin-import` rules: `order` (consistent import grouping + alphabetize), `no-duplicates`, `consistent-type-specifier-style` (enforce `import type`)
 - [ ] Add rule to flag unnecessary `import React` (not needed with Next.js JSX transform)
 - [ ] Establish event handler naming convention (`handle*` for internal handlers, `on*` for callback props) and document in patterns guide
 
