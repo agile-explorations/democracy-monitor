@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results = await checkAllSites();
     await recordResults(results);
 
-    const downSites = results.filter(r => !r.isUp);
+    const downSites = results.filter((r) => !r.isUp);
 
     res.status(200).json({
       checked: results.length,

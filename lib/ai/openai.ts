@@ -1,5 +1,11 @@
 import OpenAI from 'openai';
-import type { AIProvider, AICompletionOptions, AICompletionResult, AIEmbeddingProvider, AIEmbeddingResult } from '@/lib/types';
+import type {
+  AIProvider,
+  AICompletionOptions,
+  AICompletionResult,
+  AIEmbeddingProvider,
+  AIEmbeddingResult,
+} from '@/lib/types';
 
 export class OpenAIProvider implements AIProvider, AIEmbeddingProvider {
   name = 'openai';

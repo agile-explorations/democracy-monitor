@@ -4,18 +4,24 @@ import { matchKeyword } from '@/lib/utils/keyword-match';
 
 // Authoritative agency identifiers — matched against the `agency` field, not content text
 const HIGH_AUTHORITY_AGENCIES = [
-  'government accountability office', 'gao',
-  'congressional budget office', 'cbo',
-  'inspector general', 'oig',
-  'office of special counsel', 'osc',
-  'supreme court', 'federal courts',
-  'congressional research service', 'crs',
+  'government accountability office',
+  'gao',
+  'congressional budget office',
+  'cbo',
+  'inspector general',
+  'oig',
+  'office of special counsel',
+  'osc',
+  'supreme court',
+  'federal courts',
+  'congressional research service',
+  'crs',
 ];
 
 function isHighAuthoritySource(agency?: string): boolean {
   if (!agency) return false;
   const lower = agency.toLowerCase();
-  return HIGH_AUTHORITY_AGENCIES.some(a => lower.includes(a));
+  return HIGH_AUTHORITY_AGENCIES.some((a) => lower.includes(a));
 }
 
 export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
@@ -26,16 +32,17 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
 
   // Special case: Check if oversight.gov is down for igs category
   if (category === 'igs') {
-    const oversightDown = items.some(item =>
-      item.title?.includes('CURRENTLY DOWN') ||
-      item.title?.includes('offline') ||
-      item.note?.includes('lack of apportionment')
+    const oversightDown = items.some(
+      (item) =>
+        item.title?.includes('CURRENTLY DOWN') ||
+        item.title?.includes('offline') ||
+        item.note?.includes('lack of apportionment'),
     );
     if (oversightDown) {
       return {
         status: 'Drift',
         reason: 'Oversight.gov (central IG portal) is offline due to funding issues',
-        matches: ['oversight.gov shutdown']
+        matches: ['oversight.gov shutdown'],
       };
     }
   }
@@ -47,7 +54,7 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
   // Analyze each item with source weighting
   const highAuthorityKeywords: string[] = [];
 
-  items.forEach(item => {
+  items.forEach((item) => {
     // Content text: only title + summary (actual document content)
     // Excluded: note (our editorial descriptions), agency (source metadata)
     const contentText = `${item.title || ''} ${item.summary || ''}`;
@@ -56,11 +63,12 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
     const isHighAuthority = isHighAuthoritySource(item.agency);
 
     // Check for temporal/pattern indicators in content text only
-    const hasPatternLanguage = matchKeyword(contentText, 'unprecedented') ||
-                               matchKeyword(contentText, 'systematic') ||
-                               matchKeyword(contentText, 'pattern of') ||
-                               matchKeyword(contentText, 'multiple') ||
-                               matchKeyword(contentText, 'repeated');
+    const hasPatternLanguage =
+      matchKeyword(contentText, 'unprecedented') ||
+      matchKeyword(contentText, 'systematic') ||
+      matchKeyword(contentText, 'pattern of') ||
+      matchKeyword(contentText, 'multiple') ||
+      matchKeyword(contentText, 'repeated');
 
     // Check keywords against content text only (not note or agency metadata)
     if (rules.keywords) {
@@ -94,7 +102,7 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
   warningMatches = [...new Set(warningMatches)];
 
   // Assess based on severity — require corroboration for Capture
-  const itemCount = items.filter(i => !i.isError && !i.isWarning).length;
+  const itemCount = items.filter((i) => !i.isError && !i.isWarning).length;
   const hasHighAuthority = highAuthorityKeywords.length > 0;
 
   if (captureMatches.length >= 2) {
@@ -110,8 +118,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: driftMatches.length,
         warningCount: warningMatches.length,
         itemsReviewed: itemCount,
-        hasAuthoritative: hasHighAuthority
-      }
+        hasAuthoritative: hasHighAuthority,
+      },
     };
   }
 
@@ -126,8 +134,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: driftMatches.length,
         warningCount: warningMatches.length,
         itemsReviewed: itemCount,
-        hasAuthoritative: hasHighAuthority
-      }
+        hasAuthoritative: hasHighAuthority,
+      },
     };
   }
 
@@ -141,8 +149,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: driftMatches.length,
         warningCount: warningMatches.length,
         itemsReviewed: itemCount,
-        hasAuthoritative: false
-      }
+        hasAuthoritative: false,
+      },
     };
   }
 
@@ -156,8 +164,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: 1,
         warningCount: warningMatches.length,
         itemsReviewed: itemCount,
-        hasAuthoritative: false
-      }
+        hasAuthoritative: false,
+      },
     };
   }
 
@@ -171,8 +179,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: 0,
         warningCount: warningMatches.length,
         itemsReviewed: itemCount,
-        hasAuthoritative: false
-      }
+        hasAuthoritative: false,
+      },
     };
   }
 
@@ -188,8 +196,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
           driftCount: 0,
           warningCount: 0,
           itemsReviewed: itemCount,
-          hasAuthoritative: false
-        }
+          hasAuthoritative: false,
+        },
       };
     }
     if (itemCount >= rules.volumeThreshold.drift) {
@@ -202,8 +210,8 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
           driftCount: 0,
           warningCount: 0,
           itemsReviewed: itemCount,
-          hasAuthoritative: false
-        }
+          hasAuthoritative: false,
+        },
       };
     }
   }
@@ -219,17 +227,18 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         driftCount: 0,
         warningCount: 0,
         itemsReviewed: itemCount,
-        hasAuthoritative: false
-      }
+        hasAuthoritative: false,
+      },
     };
   }
 
   // Insufficient data — not enough items for a reliable assessment
   return {
     status: 'Warning',
-    reason: itemCount === 0
-      ? 'Not enough information to make an assessment'
-      : `Only ${itemCount} source${itemCount === 1 ? '' : 's'} available — insufficient for a reliable assessment`,
+    reason:
+      itemCount === 0
+        ? 'Not enough information to make an assessment'
+        : `Only ${itemCount} source${itemCount === 1 ? '' : 's'} available — insufficient for a reliable assessment`,
     matches: [],
     detail: {
       captureCount: 0,
@@ -237,7 +246,7 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
       warningCount: 0,
       itemsReviewed: itemCount,
       hasAuthoritative: false,
-      insufficientData: true
-    }
+      insufficientData: true,
+    },
   };
 }

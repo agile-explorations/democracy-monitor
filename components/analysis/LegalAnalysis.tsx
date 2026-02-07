@@ -15,9 +15,7 @@ export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
         </span>
       </div>
 
-      <div className="text-xs text-slate-700 whitespace-pre-wrap">
-        {analysis.analysis}
-      </div>
+      <div className="text-xs text-slate-700 whitespace-pre-wrap">{analysis.analysis}</div>
 
       {analysis.citations.length > 0 && (
         <div className="mt-2">
@@ -25,7 +23,9 @@ export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
           <div className="space-y-1.5">
             {analysis.citations.map((citation, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
-                <span className={`mt-0.5 ${citation.verified ? 'text-green-600' : 'text-yellow-600'}`}>
+                <span
+                  className={`mt-0.5 ${citation.verified ? 'text-green-600' : 'text-yellow-600'}`}
+                >
                   {citation.verified ? '\u2713' : '?'}
                 </span>
                 <div>
@@ -46,7 +46,9 @@ export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
           <h5 className="text-xs font-semibold text-red-800 mb-1">Constitutional Concerns</h5>
           <ul className="space-y-0.5">
             {analysis.constitutionalConcerns.map((concern, i) => (
-              <li key={i} className="text-xs text-red-700">{'•'} {concern}</li>
+              <li key={i} className="text-xs text-red-700">
+                {'•'} {concern}
+              </li>
             ))}
           </ul>
         </div>
@@ -57,7 +59,9 @@ export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
           <h5 className="text-xs font-semibold text-slate-800 mb-1">Relevant Precedents</h5>
           <ul className="space-y-0.5">
             {analysis.precedents.map((precedent, i) => (
-              <li key={i} className="text-xs text-slate-600">{'•'} {precedent}</li>
+              <li key={i} className="text-xs text-slate-600">
+                {'•'} {precedent}
+              </li>
             ))}
           </ul>
         </div>

@@ -4,7 +4,7 @@ export function buildCounterEvidencePrompt(
   categoryTitle: string,
   status: StatusLevel,
   reasoning: string,
-  evidenceItems: string[]
+  evidenceItems: string[],
 ): string {
   const evidenceList = evidenceItems
     .slice(0, 10)

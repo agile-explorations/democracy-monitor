@@ -42,20 +42,19 @@ export async function checkSite(site: MonitoredSite): Promise<UptimeResult> {
 }
 
 export async function checkAllSites(): Promise<UptimeResult[]> {
-  const results = await Promise.allSettled(
-    MONITORED_SITES.map(site => checkSite(site))
-  );
+  const results = await Promise.allSettled(MONITORED_SITES.map((site) => checkSite(site)));
 
-  return results.map(r => r.status === 'fulfilled'
-    ? r.value
-    : {
-        hostname: 'unknown',
-        status: 0,
-        responseTimeMs: null,
-        isUp: false,
-        checkedAt: new Date().toISOString(),
-        error: 'Check failed',
-      }
+  return results.map((r) =>
+    r.status === 'fulfilled'
+      ? r.value
+      : {
+          hostname: 'unknown',
+          status: 0,
+          responseTimeMs: null,
+          isUp: false,
+          checkedAt: new Date().toISOString(),
+          error: 'Check failed',
+        },
   );
 }
 
@@ -75,7 +74,7 @@ export async function recordResults(results: UptimeResult[]): Promise<void> {
 
 export async function getUptimeHistory(): Promise<UptimeHistory[]> {
   if (!isDbAvailable()) {
-    return MONITORED_SITES.map(site => ({
+    return MONITORED_SITES.map((site) => ({
       hostname: site.hostname,
       name: site.name,
       current: {
@@ -100,35 +99,33 @@ export async function getUptimeHistory(): Promise<UptimeHistory[]> {
 
   for (const site of MONITORED_SITES) {
     // Get latest check
-    const latest = await db.select()
+    const latest = await db
+      .select()
       .from(siteUptime)
       .where(eq(siteUptime.hostname, site.hostname))
       .orderBy(desc(siteUptime.checkedAt))
       .limit(1);
 
     // Get 24h checks
-    const checks24h = await db.select()
+    const checks24h = await db
+      .select()
       .from(siteUptime)
-      .where(and(
-        eq(siteUptime.hostname, site.hostname),
-        gte(siteUptime.checkedAt, oneDayAgo)
-      ));
+      .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, oneDayAgo)));
 
     // Get 7d checks
-    const checks7d = await db.select()
+    const checks7d = await db
+      .select()
       .from(siteUptime)
-      .where(and(
-        eq(siteUptime.hostname, site.hostname),
-        gte(siteUptime.checkedAt, sevenDaysAgo)
-      ));
+      .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, sevenDaysAgo)));
 
-    const upCount24h = checks24h.filter(c => c.isUp).length;
-    const upCount7d = checks7d.filter(c => c.isUp).length;
+    const upCount24h = checks24h.filter((c) => c.isUp).length;
+    const upCount7d = checks7d.filter((c) => c.isUp).length;
 
     // Find when downtime started (last consecutive downtime)
     let downSince: string | null = null;
     if (latest[0] && !latest[0].isUp) {
-      const recentChecks = await db.select()
+      const recentChecks = await db
+        .select()
         .from(siteUptime)
         .where(eq(siteUptime.hostname, site.hostname))
         .orderBy(desc(siteUptime.checkedAt))

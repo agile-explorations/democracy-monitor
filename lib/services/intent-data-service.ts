@@ -12,15 +12,15 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
 
   try {
     const params = new URLSearchParams({
-      'per_page': '20',
-      'order': 'newest',
+      per_page: '20',
+      order: 'newest',
       'conditions[type][]': 'PRESDOCU',
     });
     const url = `https://www.federalregister.gov/api/v1/documents.json?${params}`;
 
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'DemocracyMonitor/2.0',
       },
     });
@@ -28,23 +28,31 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
     if (!response.ok) return [];
 
     const data = await response.json();
-    const statements: IntentStatement[] = (data.results || []).map((doc: { title?: string; abstract?: string; type?: string; publication_date?: string; html_url?: string }) => {
-      const text = `${doc.title || ''} ${doc.abstract || ''}`;
-      const policyArea = classifyPolicyArea(text);
-      const type = classifyType(doc.type || '', text);
-      const score = quickScore(text, type, policyArea);
+    const statements: IntentStatement[] = (data.results || []).map(
+      (doc: {
+        title?: string;
+        abstract?: string;
+        type?: string;
+        publication_date?: string;
+        html_url?: string;
+      }) => {
+        const text = `${doc.title || ''} ${doc.abstract || ''}`;
+        const policyArea = classifyPolicyArea(text);
+        const type = classifyType(doc.type || '', text);
+        const score = quickScore(text, type, policyArea);
 
-      return {
-        text: doc.title,
-        source: 'Federal Register',
-        sourceTier: 1 as const,
-        type,
-        policyArea,
-        score,
-        date: doc.publication_date,
-        url: doc.html_url,
-      };
-    });
+        return {
+          text: doc.title,
+          source: 'Federal Register',
+          sourceTier: 1 as const,
+          type,
+          policyArea,
+          score,
+          date: doc.publication_date,
+          url: doc.html_url,
+        };
+      },
+    );
 
     await cacheSet(cacheKey, statements, CACHE_TTL_S);
     return statements;
@@ -62,7 +70,7 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
     const response = await fetch('https://www.whitehouse.gov/briefing-room/feed/', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DemocracyDashboard/2.0)',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
+        Accept: 'application/rss+xml, application/xml, text/xml',
       },
     });
 
@@ -76,8 +84,8 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
     const titleMatches = text.matchAll(/<title><!\[CDATA\[(.*?)\]\]><\/title>/g);
     const linkMatches = text.matchAll(/<link>(https:\/\/www\.whitehouse\.gov[^<]*)<\/link>/g);
 
-    const titles = Array.from(titleMatches).map(m => m[1]);
-    const links = Array.from(linkMatches).map(m => m[1]);
+    const titles = Array.from(titleMatches).map((m) => m[1]);
+    const links = Array.from(linkMatches).map((m) => m[1]);
 
     for (let i = 0; i < Math.min(titles.length, links.length, 15); i++) {
       const titleText = titles[i];
@@ -108,8 +116,11 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
 
 function classifyPolicyArea(text: string): PolicyArea {
   const areas: PolicyArea[] = [
-    'rule_of_law', 'civil_liberties', 'elections',
-    'media_freedom', 'institutional_independence',
+    'rule_of_law',
+    'civil_liberties',
+    'elections',
+    'media_freedom',
+    'institutional_independence',
   ];
 
   let bestArea: PolicyArea = 'rule_of_law';
@@ -120,7 +131,12 @@ function classifyPolicyArea(text: string): PolicyArea {
     const actionKws = ACTION_KEYWORDS[area];
     let count = 0;
 
-    for (const kw of [...rhetoricKws.authoritarian, ...rhetoricKws.democratic, ...actionKws.authoritarian, ...actionKws.democratic]) {
+    for (const kw of [
+      ...rhetoricKws.authoritarian,
+      ...rhetoricKws.democratic,
+      ...actionKws.authoritarian,
+      ...actionKws.democratic,
+    ]) {
       if (matchKeyword(text, kw)) count++;
     }
 
@@ -135,8 +151,15 @@ function classifyPolicyArea(text: string): PolicyArea {
 
 function classifyType(_docType: string, text: string): 'rhetoric' | 'action' {
   const lower = text.toLowerCase();
-  const actionWords = ['executive order', 'proclamation', 'memorandum', 'directive', 'order', 'signed'];
-  const hasActionWord = actionWords.some(w => lower.includes(w));
+  const actionWords = [
+    'executive order',
+    'proclamation',
+    'memorandum',
+    'directive',
+    'order',
+    'signed',
+  ];
+  const hasActionWord = actionWords.some((w) => lower.includes(w));
   return hasActionWord ? 'action' : 'rhetoric';
 }
 

@@ -34,7 +34,7 @@ async function trySource(source: FallbackSource): Promise<unknown | null> {
 
 export async function fetchWithFallback(
   category: string,
-  cacheTtlSeconds = 3600
+  cacheTtlSeconds = 3600,
 ): Promise<FallbackResult | null> {
   const cacheKey = `fallback:${category}`;
   const cached = await cacheGet<FallbackResult>(cacheKey);
@@ -46,15 +46,13 @@ export async function fetchWithFallback(
   // Sort by priority: primary → watchdog → archive
   const priority: Record<string, number> = { primary: 0, watchdog: 1, archive: 2 };
   const sorted = [...config.sources].sort(
-    (a, b) => (priority[a.type] ?? 9) - (priority[b.type] ?? 9)
+    (a, b) => (priority[a.type] ?? 9) - (priority[b.type] ?? 9),
   );
 
   for (const source of sorted) {
     const data = await trySource(source);
     if (data !== null) {
-      const confidence = source.type === 'primary' ? 1.0
-        : source.type === 'watchdog' ? 0.7
-        : 0.4;
+      const confidence = source.type === 'primary' ? 1.0 : source.type === 'watchdog' ? 0.7 : 0.4;
 
       const result: FallbackResult = {
         data,

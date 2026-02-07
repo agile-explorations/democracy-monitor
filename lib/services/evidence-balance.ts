@@ -7,22 +7,52 @@ export interface EvidenceItem {
 }
 
 const CONCERNING_INDICATORS = [
-  'violated', 'illegal', 'unlawful', 'defied', 'refused', 'contempt',
-  'fired', 'removed', 'terminated', 'blocked', 'obstructed', 'suppressed',
-  'override', 'bypass', 'circumvent', 'undermine', 'erode', 'weaken',
-  'unprecedented', 'systematic', 'pattern of', 'mass',
+  'violated',
+  'illegal',
+  'unlawful',
+  'defied',
+  'refused',
+  'contempt',
+  'fired',
+  'removed',
+  'terminated',
+  'blocked',
+  'obstructed',
+  'suppressed',
+  'override',
+  'bypass',
+  'circumvent',
+  'undermine',
+  'erode',
+  'weaken',
+  'unprecedented',
+  'systematic',
+  'pattern of',
+  'mass',
 ];
 
 const REASSURING_INDICATORS = [
-  'upheld', 'protected', 'restored', 'compliance', 'cooperat',
-  'bipartisan', 'transparency', 'accountability', 'oversight',
-  'independent', 'safeguard', 'reform', 'strengthen',
-  'court ordered', 'injunction granted', 'investigation opened',
+  'upheld',
+  'protected',
+  'restored',
+  'compliance',
+  'cooperat',
+  'bipartisan',
+  'transparency',
+  'accountability',
+  'oversight',
+  'independent',
+  'safeguard',
+  'reform',
+  'strengthen',
+  'court ordered',
+  'injunction granted',
+  'investigation opened',
 ];
 
 export function categorizeEvidence(
   items: ContentItem[],
-  status: StatusLevel
+  status: StatusLevel,
 ): { evidenceFor: EvidenceItem[]; evidenceAgainst: EvidenceItem[] } {
   const evidenceFor: EvidenceItem[] = [];
   const evidenceAgainst: EvidenceItem[] = [];
@@ -33,8 +63,8 @@ export function categorizeEvidence(
     const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
     const title = item.title || '(untitled)';
 
-    const concerningScore = CONCERNING_INDICATORS.filter(w => text.includes(w)).length;
-    const reassuringScore = REASSURING_INDICATORS.filter(w => text.includes(w)).length;
+    const concerningScore = CONCERNING_INDICATORS.filter((w) => text.includes(w)).length;
+    const reassuringScore = REASSURING_INDICATORS.filter((w) => text.includes(w)).length;
 
     if (concerningScore > reassuringScore && concerningScore > 0) {
       evidenceFor.push({

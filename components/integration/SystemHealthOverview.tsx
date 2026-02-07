@@ -8,22 +8,27 @@ interface SystemHealthOverviewProps {
 }
 
 export function SystemHealthOverview({ statusMap }: SystemHealthOverviewProps) {
-  const statuses = CATEGORIES.map(cat => ({
+  const statuses = CATEGORIES.map((cat) => ({
     key: cat.key,
     title: cat.title,
     status: (statusMap[cat.key] || 'Warning') as StatusLevel,
   }));
 
-  const stableCount = statuses.filter(s => s.status === 'Stable').length;
-  const warningCount = statuses.filter(s => s.status === 'Warning').length;
-  const driftCount = statuses.filter(s => s.status === 'Drift').length;
-  const captureCount = statuses.filter(s => s.status === 'Capture').length;
+  const stableCount = statuses.filter((s) => s.status === 'Stable').length;
+  const warningCount = statuses.filter((s) => s.status === 'Warning').length;
+  const driftCount = statuses.filter((s) => s.status === 'Drift').length;
+  const captureCount = statuses.filter((s) => s.status === 'Capture').length;
 
-  const overallHealth = captureCount > 0 ? 'Critical'
-    : driftCount >= 3 ? 'Serious'
-    : driftCount > 0 ? 'Concerning'
-    : warningCount > 3 ? 'Caution'
-    : 'Healthy';
+  const overallHealth =
+    captureCount > 0
+      ? 'Critical'
+      : driftCount >= 3
+        ? 'Serious'
+        : driftCount > 0
+          ? 'Concerning'
+          : warningCount > 3
+            ? 'Caution'
+            : 'Healthy';
 
   const healthColor = {
     Critical: 'text-red-700',
@@ -59,11 +64,11 @@ export function SystemHealthOverview({ statusMap }: SystemHealthOverviewProps) {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5">
-        {statuses.map(s => (
-          <div key={s.key} className="flex items-center gap-1 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
+        {statuses.map((s) => (
+          <div key={s.key} className="flex items-center gap-1.5 text-xs py-0.5">
             <StatusPill level={s.status} />
-            <span className="text-slate-600 truncate max-w-[120px]">{s.title}</span>
+            <span className="text-slate-600">{s.title}</span>
           </div>
         ))}
       </div>

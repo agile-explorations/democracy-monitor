@@ -11,10 +11,10 @@ Your verdict must be evidence-based and balanced.`;
 export function buildArbitratorPrompt(
   category: string,
   status: string,
-  messages: Array<{ role: string; content: string }>
+  messages: Array<{ role: string; content: string }>,
 ): string {
   const transcript = messages
-    .map(m => `[${m.role.toUpperCase()}]: ${m.content}`)
+    .map((m) => `[${m.role.toUpperCase()}]: ${m.content}`)
     .join('\n\n---\n\n');
 
   return `CATEGORY: ${category}

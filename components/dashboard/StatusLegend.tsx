@@ -9,19 +9,27 @@ export function StatusLegend() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div className="flex items-start gap-2">
           <StatusPill level="Stable" />
-          <span className="text-slate-600">Everything is working normally - courts and watchdogs are doing their jobs</span>
+          <span className="text-slate-600">
+            Everything is working normally - courts and watchdogs are doing their jobs
+          </span>
         </div>
         <div className="flex items-start gap-2">
           <StatusPill level="Warning" />
-          <span className="text-slate-600">Some problems detected, but institutions are still pushing back</span>
+          <span className="text-slate-600">
+            Some problems detected, but institutions are still pushing back
+          </span>
         </div>
         <div className="flex items-start gap-2">
           <StatusPill level="Drift" />
-          <span className="text-slate-600">Multiple warning signs - power is becoming more centralized</span>
+          <span className="text-slate-600">
+            Multiple warning signs - power is becoming more centralized
+          </span>
         </div>
         <div className="flex items-start gap-2">
           <StatusPill level="Capture" />
-          <span className="text-slate-600">Serious violations found - the President is ignoring laws or court orders</span>
+          <span className="text-slate-600">
+            Serious violations found - the President is ignoring laws or court orders
+          </span>
         </div>
       </div>
     </Card>

@@ -18,7 +18,7 @@ describe('GOVERNANCE_FRAMEWORK', () => {
   });
 
   it('categories are ordered from democratic to authoritarian', () => {
-    const keys = GOVERNANCE_FRAMEWORK.map(e => e.key);
+    const keys = GOVERNANCE_FRAMEWORK.map((e) => e.key);
     expect(keys[0]).toBe('liberal_democracy');
     expect(keys[keys.length - 1]).toBe('personalist_rule');
   });

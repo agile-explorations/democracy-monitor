@@ -20,6 +20,7 @@ Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment
 ## Environment
 
 Copy `.env.example` to `.env.local` for local overrides. Variables:
+
 - `ALLOWED_PROXY_HOSTS` — comma-separated hostname whitelist (defaults defined in `lib/allowedHosts.ts`)
 - `PROXY_CACHE_TTL` — cache duration in seconds (default 600)
 - `DATABASE_URL` — PostgreSQL connection string (required for persistence features)
@@ -91,6 +92,7 @@ The assessment in `assessment-service.ts` uses keyword dictionaries organized by
 ### Infrastructure
 
 Configured for **Render.com** deployment via `render.yaml`:
+
 - Web Service (Next.js app)
 - PostgreSQL (Drizzle ORM, future pgvector)
 - Redis Key-Value store (caching)

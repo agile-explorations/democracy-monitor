@@ -10,7 +10,7 @@ function hashContent(content: string): string {
 
 export async function checkForSuppression(
   url: string,
-  currentContent: string
+  currentContent: string,
 ): Promise<SuppressionAlert | null> {
   if (!isDbAvailable()) return null;
 
@@ -18,7 +18,8 @@ export async function checkForSuppression(
   const currentHash = hashContent(currentContent);
 
   // Get previous snapshot
-  const previous = await db.select()
+  const previous = await db
+    .select()
     .from(contentSnapshots)
     .where(eq(contentSnapshots.url, url))
     .limit(1);
@@ -77,12 +78,7 @@ export async function checkForSuppression(
 
 function countReports(content: string): number {
   // Count common report indicators in HTML/text content
-  const reportPatterns = [
-    /<article/gi,
-    /class="report/gi,
-    /<h[23][^>]*>.*?report/gi,
-    /\.pdf/gi,
-  ];
+  const reportPatterns = [/<article/gi, /class="report/gi, /<h[23][^>]*>.*?report/gi, /\.pdf/gi];
 
   let count = 0;
   for (const pattern of reportPatterns) {
@@ -96,9 +92,10 @@ async function updateSnapshot(
   db: ReturnType<typeof getDb>,
   url: string,
   contentHash: string,
-  reportCount: number
+  reportCount: number,
 ): Promise<void> {
-  await db.update(contentSnapshots)
+  await db
+    .update(contentSnapshots)
     .set({
       contentHash,
       reportCount,
@@ -109,7 +106,7 @@ async function updateSnapshot(
 
 export async function checkSiteDown(
   hostname: string,
-  downSinceDays: number
+  downSinceDays: number,
 ): Promise<SuppressionAlert | null> {
   if (downSinceDays >= 7) {
     return {

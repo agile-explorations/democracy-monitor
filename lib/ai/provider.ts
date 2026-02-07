@@ -24,9 +24,6 @@ export function getEmbeddingProvider(): AIEmbeddingProvider {
 }
 
 export function getAvailableProviders(): AIProvider[] {
-  const all: AIProvider[] = [
-    getProvider('openai'),
-    getProvider('anthropic'),
-  ];
+  const all: AIProvider[] = [getProvider('openai'), getProvider('anthropic')];
   return all.filter((p) => p.isAvailable());
 }

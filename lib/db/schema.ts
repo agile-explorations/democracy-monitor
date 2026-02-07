@@ -1,4 +1,15 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean, varchar, real, date } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  integer,
+  jsonb,
+  boolean,
+  varchar,
+  real,
+  date,
+} from 'drizzle-orm/pg-core';
 
 export const cacheEntries = pgTable('cache_entries', {
   id: serial('id').primaryKey(),

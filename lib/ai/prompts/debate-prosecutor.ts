@@ -11,7 +11,7 @@ You are NOT trying to be alarmist. You ARE trying to ensure concerning patterns 
 export function buildProsecutorOpeningPrompt(
   category: string,
   status: string,
-  evidence: string[]
+  evidence: string[],
 ): string {
   return `CATEGORY: ${category}
 CURRENT STATUS: ${status}
@@ -22,9 +22,7 @@ ${evidence.map((e, i) => `${i + 1}. ${e}`).join('\n')}
 Present your opening argument. Identify the most concerning patterns in this evidence. Explain why this category deserves its current status or a more serious one. Be specific and cite evidence items by number. Keep your response under 300 words.`;
 }
 
-export function buildProsecutorRebuttalPrompt(
-  defenseArgument: string
-): string {
+export function buildProsecutorRebuttalPrompt(defenseArgument: string): string {
   return `The defense has argued:
 
 "${defenseArgument}"

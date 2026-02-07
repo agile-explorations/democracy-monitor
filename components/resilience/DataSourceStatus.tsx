@@ -40,7 +40,7 @@ export function DataSourceStatus() {
   if (!data) return null;
 
   const { availability, sites } = data;
-  const downSites = sites.filter(s => !s.current.isUp);
+  const downSites = sites.filter((s) => !s.current.isUp);
 
   return (
     <Card>
@@ -48,7 +48,7 @@ export function DataSourceStatus() {
         <div className="flex items-center gap-3">
           <h4 className="text-sm font-semibold text-slate-900">Data Source Status</h4>
           <div className="flex gap-1">
-            {sites.map(site => (
+            {sites.map((site) => (
               <UptimeIndicator key={site.hostname} site={site} compact />
             ))}
           </div>
@@ -65,13 +65,13 @@ export function DataSourceStatus() {
 
         {downSites.length > 0 && !expanded && (
           <p className="text-xs text-red-600">
-            {downSites.map(s => s.name).join(', ')} — currently down
+            {downSites.map((s) => s.name).join(', ')} — currently down
           </p>
         )}
 
         {expanded && (
           <div className="mt-2 space-y-1.5">
-            {sites.map(site => (
+            {sites.map((site) => (
               <UptimeIndicator key={site.hostname} site={site} />
             ))}
             <p className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-200">

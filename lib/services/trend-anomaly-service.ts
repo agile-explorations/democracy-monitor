@@ -8,14 +8,13 @@ const ANOMALY_THRESHOLD = 2.0; // 2x baseline = anomaly
 
 export function detectAnomalies(trends: KeywordTrend[]): TrendAnomaly[] {
   return trends
-    .filter(t => t.isAnomaly)
-    .map(t => ({
+    .filter((t) => t.isAnomaly)
+    .map((t) => ({
       keyword: t.keyword,
       category: t.category,
       ratio: t.ratio,
-      severity: t.ratio >= 5 ? 'high' as const
-        : t.ratio >= 3 ? 'medium' as const
-        : 'low' as const,
+      severity:
+        t.ratio >= 5 ? ('high' as const) : t.ratio >= 3 ? ('medium' as const) : ('low' as const),
       message: `"${t.keyword}" appeared ${t.currentCount} times (${t.ratio.toFixed(1)}x above 6-month baseline of ${t.baselineAvg.toFixed(1)})`,
       detectedAt: new Date().toISOString(),
     }));
@@ -24,7 +23,7 @@ export function detectAnomalies(trends: KeywordTrend[]): TrendAnomaly[] {
 export function calculateTrends(
   currentCounts: Record<string, number>,
   baselineCounts: Record<string, number>,
-  category: string
+  category: string,
 ): KeywordTrend[] {
   const now = new Date();
   const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -49,7 +48,7 @@ export function calculateTrends(
 
 export function countKeywordsInItems(
   items: Array<{ title?: string; summary?: string }>,
-  category: string
+  category: string,
 ): Record<string, number> {
   const rules = ASSESSMENT_RULES[category];
   if (!rules?.keywords) return {};
@@ -97,20 +96,16 @@ export async function recordTrends(trends: KeywordTrend[]): Promise<void> {
   }
 }
 
-export async function getBaselineCounts(
-  category: string
-): Promise<Record<string, number>> {
+export async function getBaselineCounts(category: string): Promise<Record<string, number>> {
   if (!isDbAvailable()) return {};
 
   const db = getDb();
   const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
 
-  const rows = await db.select()
+  const rows = await db
+    .select()
     .from(keywordTrends)
-    .where(and(
-      eq(keywordTrends.category, category),
-      gte(keywordTrends.periodStart, sixMonthsAgo)
-    ));
+    .where(and(eq(keywordTrends.category, category), gte(keywordTrends.periodStart, sixMonthsAgo)));
 
   const baselines: Record<string, { total: number; count: number }> = {};
 

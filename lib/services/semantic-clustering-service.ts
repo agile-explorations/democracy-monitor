@@ -14,7 +14,7 @@ interface DocumentForClustering {
 function kMeans(
   vectors: number[][],
   k: number,
-  maxIterations = 20
+  maxIterations = 20,
 ): { assignments: number[]; centroids: number[][] } {
   if (vectors.length === 0 || k <= 0) return { assignments: [], centroids: [] };
   k = Math.min(k, vectors.length);
@@ -26,12 +26,12 @@ function kMeans(
   while (indices.size < k) {
     indices.add(Math.floor(Math.random() * vectors.length));
   }
-  let centroids = [...indices].map(i => [...vectors[i]]);
+  let centroids = [...indices].map((i) => [...vectors[i]]);
   let assignments = new Array(vectors.length).fill(0);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     // Assign each vector to nearest centroid
-    const newAssignments = vectors.map(vec => {
+    const newAssignments = vectors.map((vec) => {
       let bestDist = -Infinity;
       let bestIdx = 0;
       for (let c = 0; c < centroids.length; c++) {
@@ -67,11 +67,11 @@ function kMeans(
 
 export async function clusterDocuments(
   documents: DocumentForClustering[],
-  k = 5
+  k = 5,
 ): Promise<SemanticCluster[]> {
   if (documents.length < k) k = Math.max(1, documents.length);
 
-  const texts = documents.map(d => `${d.title}: ${d.text.slice(0, 300)}`);
+  const texts = documents.map((d) => `${d.title}: ${d.text.slice(0, 300)}`);
   const embeddings = await embedBatch(texts);
 
   // Filter out null embeddings
@@ -82,8 +82,8 @@ export async function clusterDocuments(
   if (validPairs.length === 0) return [];
 
   const { assignments, centroids } = kMeans(
-    validPairs.map(p => p.embedding),
-    k
+    validPairs.map((p) => p.embedding),
+    k,
   );
 
   // Build clusters
@@ -106,7 +106,7 @@ export async function clusterDocuments(
       .slice(0, 10)
       .map(([w]) => w);
 
-    const categories = [...new Set(clusterDocs.map(d => d.doc.category))];
+    const categories = [...new Set(clusterDocs.map((d) => d.doc.category))];
 
     // Generate label from AI if available
     let label = `Cluster ${c + 1}`;
@@ -115,10 +115,13 @@ export async function clusterDocuments(
     const providers = getAvailableProviders();
     if (providers.length > 0) {
       try {
-        const titles = clusterDocs.map(d => d.doc.title).slice(0, 5).join(', ');
+        const titles = clusterDocs
+          .map((d) => d.doc.title)
+          .slice(0, 5)
+          .join(', ');
         const result = await providers[0].complete(
           `These documents are grouped together: ${titles}. Top keywords: ${topKeywords.slice(0, 5).join(', ')}. Give a short label (3-5 words) and one-sentence description. Format: LABEL: <label>\nDESCRIPTION: <description>`,
-          { maxTokens: 100, temperature: 0.3 }
+          { maxTokens: 100, temperature: 0.3 },
         );
         const labelMatch = result.content.match(/LABEL:\s*(.+)/);
         const descMatch = result.content.match(/DESCRIPTION:\s*(.+)/);

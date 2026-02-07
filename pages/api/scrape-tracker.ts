@@ -8,38 +8,41 @@ const CACHE_TTL_S = 3600; // 1 hour
 
 type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
 
-const TRACKER_CONFIGS: Record<TrackerSource, {
-  url: string;
-  selector: string;
-  titleSelector: string;
-  linkSelector: string;
-  dateSelector?: string;
-}> = {
+const TRACKER_CONFIGS: Record<
+  TrackerSource,
+  {
+    url: string;
+    selector: string;
+    titleSelector: string;
+    linkSelector: string;
+    dateSelector?: string;
+  }
+> = {
   brookings: {
     url: 'https://www.brookings.edu/articles/tracking-regulatory-changes-in-the-second-trump-administration/',
     selector: '.post-content table tr',
     titleSelector: 'td:first-child',
     linkSelector: 'td a',
-    dateSelector: 'td:nth-child(2)'
+    dateSelector: 'td:nth-child(2)',
   },
   naacp: {
     url: 'https://www.naacpldf.org/tracking-project-2025/',
     selector: '.tracking-item, article',
     titleSelector: 'h3, .title, h2',
-    linkSelector: 'a'
+    linkSelector: 'a',
   },
   democracywatch: {
     url: 'https://www.democracywatchtracker.org/',
     selector: '.legislation-item, .tracker-item',
     titleSelector: '.title, h3',
-    linkSelector: 'a'
+    linkSelector: 'a',
   },
   progressive: {
     url: 'https://progressivereform.org/tracking-trump-2/project-2025-executive-action-tracker/',
     selector: '.entry-content li, .tracker-list li',
     titleSelector: 'a, strong',
-    linkSelector: 'a'
-  }
+    linkSelector: 'a',
+  },
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -51,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!source || typeof source !== 'string' || !(source in TRACKER_CONFIGS)) {
       return res.status(400).json({
-        error: 'Invalid source. Use: brookings, naacp, democracywatch, or progressive'
+        error: 'Invalid source. Use: brookings, naacp, democracywatch, or progressive',
       });
     }
 
@@ -69,13 +72,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await fetch(config.url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
     });
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: `Failed to fetch ${source}: ${response.status}`
+        error: `Failed to fetch ${source}: ${response.status}`,
       });
     }
 
@@ -93,8 +96,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (title && title.length > 3) {
         items.push({
           title,
-          link: link?.startsWith('http') ? link : (link ? new URL(link, config.url).toString() : config.url),
-          date
+          link: link?.startsWith('http')
+            ? link
+            : link
+              ? new URL(link, config.url).toString()
+              : config.url,
+          date,
         });
       }
     });
@@ -104,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       source,
       sourceUrl: config.url,
       items: items.slice(0, 15),
-      scrapedAt: new Date().toISOString()
+      scrapedAt: new Date().toISOString(),
     };
 
     await cacheSet(cacheKey, result, CACHE_TTL_S);

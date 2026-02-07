@@ -101,6 +101,7 @@ The keyword dictionaries in `lib/data/assessment-rules.ts` are the most impactfu
 - **warning** — Minor issues (e.g., "reorganization", "workforce reduction")
 
 When adding keywords:
+
 - Use specific legal/institutional language, not generic terms
 - Consider false positive risk (will this match routine government activity?)
 - Add a test case demonstrating the keyword triggers correctly

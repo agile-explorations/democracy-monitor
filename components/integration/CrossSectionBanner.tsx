@@ -11,11 +11,15 @@ export function CrossSectionBanner({ intentAssessment, statusMap }: CrossSection
   if (!intentAssessment) return null;
 
   const statuses = Object.values(statusMap) as StatusLevel[];
-  const driftCount = statuses.filter(s => s === 'Drift').length;
-  const captureCount = statuses.filter(s => s === 'Capture').length;
+  const driftCount = statuses.filter((s) => s === 'Drift').length;
+  const captureCount = statuses.filter((s) => s === 'Capture').length;
 
   const intentLevel = intentAssessment.overall;
-  const isIntentConcerning = ['competitive_authoritarian', 'closed_authoritarian', 'personalist_rule'].includes(intentLevel);
+  const isIntentConcerning = [
+    'competitive_authoritarian',
+    'closed_authoritarian',
+    'personalist_rule',
+  ].includes(intentLevel);
   const isSystemDrifting = driftCount >= 2 || captureCount >= 1;
 
   // Only show banner when there's divergence or convergence worth noting

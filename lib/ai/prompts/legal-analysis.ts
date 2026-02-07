@@ -11,10 +11,10 @@ export function buildLegalAnalysisPrompt(
   category: string,
   status: string,
   evidence: string[],
-  relevantLegalDocs: Array<{ title: string; citation: string; content: string }>
+  relevantLegalDocs: Array<{ title: string; citation: string; content: string }>,
 ): string {
   const legalContext = relevantLegalDocs
-    .map(d => `### ${d.title} (${d.citation})\n${d.content.slice(0, 500)}`)
+    .map((d) => `### ${d.title} (${d.citation})\n${d.content.slice(0, 500)}`)
     .join('\n\n');
 
   return `CATEGORY: ${category}

@@ -45,7 +45,7 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
       title: (typeof it.title === 'string' ? it.title : it.title?._) || '(document)',
       link: typeof it.link === 'string' ? it.link : undefined,
       pubDate: it.pubDate,
-      agency: it.agency
+      agency: it.agency,
     }));
   }
 
@@ -53,12 +53,18 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
   if (signalType === 'tracker_scrape' || payload?.type === 'tracker_scrape') {
     const items = payload?.items || [];
     if (items.length === 0) {
-      return [{ title: 'No items found - tracker may have changed structure', link: payload?.sourceUrl || baseUrl, isWarning: true }];
+      return [
+        {
+          title: 'No items found - tracker may have changed structure',
+          link: payload?.sourceUrl || baseUrl,
+          isWarning: true,
+        },
+      ];
     }
     return items.slice(0, 10).map((it) => ({
       title: (typeof it.title === 'string' ? it.title : it.title?._) || '(item)',
       link: typeof it.link === 'string' ? it.link : undefined,
-      date: it.date
+      date: it.date,
     }));
   }
 
@@ -72,13 +78,16 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
     const items = d.items || [];
     return items.slice(0, 8).map((it) => {
       const title = typeof it.title === 'string' ? it.title : it.title?._;
-      const link = typeof it.link === 'string' ? it.link : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
+      const link =
+        typeof it.link === 'string'
+          ? it.link
+          : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
       const pubDate = it.pubDate || it.published || it.updated;
 
       return {
         title: title || '(item)',
         link: link,
-        pubDate: pubDate
+        pubDate: pubDate,
       };
     });
   }
@@ -86,11 +95,13 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
   if (d.type === 'html') {
     const anchors = d.anchors || [];
     if (anchors.length === 0) {
-      return [{ title: 'No links found - site may be blocking requests', link: baseUrl, isWarning: true }];
+      return [
+        { title: 'No links found - site may be blocking requests', link: baseUrl, isWarning: true },
+      ];
     }
     return anchors.slice(0, 10).map((a) => ({
       title: a.text || a.href || '(link)',
-      link: a.href
+      link: a.href,
     }));
   }
 

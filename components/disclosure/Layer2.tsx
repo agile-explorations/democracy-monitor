@@ -55,7 +55,9 @@ export function Layer2({ enhancedData, crossRef, detail }: Layer2Props) {
               <p className="font-semibold text-amber-800 mb-1">How we could be wrong:</p>
               <ul className="space-y-0.5">
                 {enhancedData.howWeCouldBeWrong.map((item, i) => (
-                  <li key={i} className="text-amber-700">{'•'} {item}</li>
+                  <li key={i} className="text-amber-700">
+                    {'•'} {item}
+                  </li>
                 ))}
               </ul>
             </div>

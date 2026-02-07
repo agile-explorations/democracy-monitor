@@ -7,7 +7,9 @@ import { getDemoResponse } from '@/lib/demo';
 
 const CACHE_TTL_S = Number(process.env.PROXY_CACHE_TTL) || 600;
 
-function okHost(u: URL) { return getAllowedHosts().includes(u.hostname); }
+function okHost(u: URL) {
+  return getAllowedHosts().includes(u.hostname);
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('proxy', req);
@@ -38,47 +40,65 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const upstream = await fetch(url.toString(), {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate',
-        'DNT': '1',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        DNT: '1',
+        Connection: 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
       },
-      cache: 'no-store'
+      cache: 'no-store',
     });
 
     if (!upstream.ok) {
-      res.status(upstream.status).json({ error: `Upstream error: ${upstream.status} ${upstream.statusText}` });
+      res
+        .status(upstream.status)
+        .json({ error: `Upstream error: ${upstream.status} ${upstream.statusText}` });
       return;
     }
 
     const contentType = upstream.headers.get('content-type') || '';
     const text = await upstream.text();
 
-    let out: Record<string, unknown> = { url: url.toString(), contentType, status: upstream.status };
+    let out: Record<string, unknown> = {
+      url: url.toString(),
+      contentType,
+      status: upstream.status,
+    };
 
     // Check for common error patterns
-    if (text.includes('Access Denied') || text.includes('403 Forbidden') || text.includes('blocked')) {
+    if (
+      text.includes('Access Denied') ||
+      text.includes('403 Forbidden') ||
+      text.includes('blocked')
+    ) {
       out.type = 'error';
       out.error = 'Access denied by remote server';
       out.raw = text.slice(0, 500);
-    } else if (contentType.includes('xml') || contentType.includes('rss') || text.trim().startsWith('<?xml')) {
+    } else if (
+      contentType.includes('xml') ||
+      contentType.includes('rss') ||
+      text.trim().startsWith('<?xml')
+    ) {
       try {
         const parsed = await parseStringPromise(text, { explicitArray: false, mergeAttrs: true });
         const items = parsed?.rss?.channel?.item || parsed?.feed?.entry || [];
         out.type = 'rss';
-        out.items = Array.isArray(items) ? items : (items ? [items] : []);
+        out.items = Array.isArray(items) ? items : items ? [items] : [];
         out.title = parsed?.rss?.channel?.title || parsed?.feed?.title || 'RSS Feed';
       } catch {
         // Try to extract links from HTML instead
-        const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi)).slice(0, 15)
+        const anchors = Array.from(
+          text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi),
+        )
+          .slice(0, 15)
           .map((m) => ({
             href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(),
-            text: m[2].replace(/<[^>]*>/g, '').trim()
+            text: m[2].replace(/<[^>]*>/g, '').trim(),
           }))
-          .filter(item => item.text.length > 0 && !item.text.toLowerCase().includes('skip'));
+          .filter((item) => item.text.length > 0 && !item.text.toLowerCase().includes('skip'));
         out.type = 'html';
         out.anchors = anchors;
       }
@@ -92,12 +112,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } else {
       // Extract anchors with better filtering
-      const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi)).slice(0, 20)
+      const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi))
+        .slice(0, 20)
         .map((m) => ({
           href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(),
-          text: m[2].replace(/<[^>]*>/g, '').trim()
+          text: m[2].replace(/<[^>]*>/g, '').trim(),
         }))
-        .filter(item => item.text.length > 5 && !item.href.includes('javascript:'));
+        .filter((item) => item.text.length > 5 && !item.href.includes('javascript:'));
       out.type = 'html';
       out.anchors = anchors;
     }

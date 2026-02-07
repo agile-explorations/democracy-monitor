@@ -39,7 +39,9 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
   if (loading) {
     return (
       <Card>
-        <h2 className="text-lg font-bold text-slate-900 mb-2">Section 1: Administration&apos;s Intent</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-2">
+          Section 1: Administration&apos;s Intent
+        </h2>
         <p className="text-sm text-slate-500">Loading governance assessment...</p>
       </Card>
     );
@@ -48,9 +50,13 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
   if (error || !assessment) {
     return (
       <Card>
-        <h2 className="text-lg font-bold text-slate-900 mb-2">Section 1: Administration&apos;s Intent</h2>
+        <h2 className="text-lg font-bold text-slate-900 mb-2">
+          Section 1: Administration&apos;s Intent
+        </h2>
         <p className="text-sm text-red-600">{error || 'No assessment data available'}</p>
-        <button onClick={loadAssessment} className="text-xs text-blue-600 underline mt-1">Retry</button>
+        <button onClick={loadAssessment} className="text-xs text-blue-600 underline mt-1">
+          Retry
+        </button>
       </Card>
     );
   }
@@ -59,7 +65,9 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
     <div className="space-y-4">
       <Card>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Section 1: Administration&apos;s Intent</h2>
+          <h2 className="text-lg font-bold text-slate-900">
+            Section 1: Administration&apos;s Intent
+          </h2>
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-xs text-blue-600 hover:text-blue-800 underline"

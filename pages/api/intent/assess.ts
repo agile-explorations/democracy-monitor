@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { fetchPresidentialDocuments, fetchWhiteHouseBriefings } from '@/lib/services/intent-data-service';
+import {
+  fetchPresidentialDocuments,
+  fetchWhiteHouseBriefings,
+} from '@/lib/services/intent-data-service';
 import { scoreStatements } from '@/lib/services/intent-service';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { getDemoResponse } from '@/lib/demo';

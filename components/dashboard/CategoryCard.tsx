@@ -67,7 +67,9 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
 
   const isAssessing = !autoStatus && loadedCount < cat.signals.length;
   const isInsufficientData = autoStatus?.detail?.insufficientData === true;
-  const level = (autoStatus?.level || statusMap[cat.key] || (isAssessing ? undefined : 'Warning')) as StatusLevel | undefined;
+  const level = (autoStatus?.level ||
+    statusMap[cat.key] ||
+    (isAssessing ? undefined : 'Warning')) as StatusLevel | undefined;
 
   useEffect(() => {
     if (loadedCount === cat.signals.length && allItems.length > 0) {
@@ -80,7 +82,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       const response = await fetch('/api/assess-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: cat.key, items: allItems })
+        body: JSON.stringify({ category: cat.key, items: allItems }),
       });
       const data = await response.json();
       setAutoStatus({
@@ -89,7 +91,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
         auto: true,
         matches: data.matches || [],
         assessedAt: data.assessedAt,
-        detail: data.detail
+        detail: data.detail,
       });
       setStatus(cat.key, data.status);
     } catch (err) {
@@ -103,7 +105,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       const response = await fetch('/api/assess-status?ai=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: cat.key, items: allItems })
+        body: JSON.stringify({ category: cat.key, items: allItems }),
       });
       const data = await response.json();
 
@@ -119,7 +121,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
 
         // Update status with enhanced reason if AI provided one
         if (data.aiResult?.reasoning) {
-          setAutoStatus(prev => prev ? { ...prev, reason: data.aiResult.reasoning } : prev);
+          setAutoStatus((prev) => (prev ? { ...prev, reason: data.aiResult.reasoning } : prev));
         }
       }
     } catch (err) {
@@ -138,8 +140,8 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
   };
 
   const handleItemsLoaded = (items: FeedItem[]) => {
-    setAllItems(prev => [...prev, ...items]);
-    setLoadedCount(prev => prev + 1);
+    setAllItems((prev) => [...prev, ...items]);
+    setLoadedCount((prev) => prev + 1);
   };
 
   return (
@@ -214,13 +216,9 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
 
         <CrossReference crossRef={crossRef || null} />
 
-        {aiLoading && (
-          <p className="text-xs text-purple-600 italic">Running AI analysis...</p>
-        )}
+        {aiLoading && <p className="text-xs text-purple-600 italic">Running AI analysis...</p>}
 
-        {aiEnabled && enhancedData && (
-          <EnhancedAssessment data={enhancedData} />
-        )}
+        {aiEnabled && enhancedData && <EnhancedAssessment data={enhancedData} />}
 
         {showDetails && autoStatus && level && (
           <ProgressiveDisclosure

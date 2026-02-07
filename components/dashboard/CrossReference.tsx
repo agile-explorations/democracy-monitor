@@ -16,7 +16,9 @@ export function CrossReference({ crossRef }: CrossReferenceProps) {
   if (!crossRef) return null;
 
   return (
-    <div className={`mt-2 px-2 py-1.5 rounded border text-xs ${SEVERITY_COLORS[crossRef.severity]}`}>
+    <div
+      className={`mt-2 px-2 py-1.5 rounded border text-xs ${SEVERITY_COLORS[crossRef.severity]}`}
+    >
       <span className="font-medium">Intent + Drift:</span> {crossRef.interpretation}
     </div>
   );

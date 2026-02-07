@@ -5,7 +5,7 @@ export function buildAssessmentPrompt(
   categoryTitle: string,
   items: ContentItem[],
   keywordStatus: StatusLevel,
-  keywordReason: string
+  keywordReason: string,
 ): string {
   const itemSummaries = items
     .slice(0, 20)

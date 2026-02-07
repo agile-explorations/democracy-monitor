@@ -23,9 +23,9 @@ export type PolicyArea =
   | 'institutional_independence';
 
 export interface IntentScore {
-  rhetoric: number;  // -2 to +2 (-2 = strong democratic, +2 = strong authoritarian)
-  action: number;    // -2 to +2
-  gap: number;       // absolute difference between rhetoric and action
+  rhetoric: number; // -2 to +2 (-2 = strong democratic, +2 = strong authoritarian)
+  action: number; // -2 to +2
+  gap: number; // absolute difference between rhetoric and action
 }
 
 export interface IntentStatement {

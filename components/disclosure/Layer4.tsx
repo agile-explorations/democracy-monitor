@@ -30,13 +30,13 @@ export function Layer4({ categoryKey, level, evidence }: Layer4Props) {
     const headers = { 'Content-Type': 'application/json' };
 
     const results = await Promise.allSettled([
-      fetch('/api/ai/debate', { method: 'POST', headers, body }).then(r => r.json()),
-      fetch('/api/ai/legal-analysis', { method: 'POST', headers, body }).then(r => r.json()),
+      fetch('/api/ai/debate', { method: 'POST', headers, body }).then((r) => r.json()),
+      fetch('/api/ai/legal-analysis', { method: 'POST', headers, body }).then((r) => r.json()),
       fetch('/api/ai/trends', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ category: categoryKey, items: evidence.map(e => ({ title: e })) }),
-      }).then(r => r.json()),
+        body: JSON.stringify({ category: categoryKey, items: evidence.map((e) => ({ title: e })) }),
+      }).then((r) => r.json()),
     ]);
 
     if (results[0].status === 'fulfilled' && !results[0].value.skipped) {

@@ -7,13 +7,17 @@ Democracy Monitor uses an automated, transparent system to assess the health of 
 ## Key Improvements Over Simple Keyword Matching
 
 ### 1. **Legal/Institutional Focus**
+
 Instead of generic terms like "removal" or "termination," we focus on:
+
 - **Explicit legal violations** - "violated impoundment control act", "illegal withholding"
 - **Formal findings** - GAO decisions, court rulings, IG reports
 - **Statutory references** - Anti-Deficiency Act, Impoundment Control Act, Hatch Act
 
 ### 2. **Source Weighting**
+
 Not all documents are equal:
+
 - **High Authority Sources** (weighted more heavily):
   - GAO legal decisions
   - Court orders and rulings
@@ -25,7 +29,9 @@ Not all documents are equal:
   - General RSS feeds
 
 ### 3. **Pattern Detection**
+
 The system looks for temporal/pattern language:
+
 - "unprecedented"
 - "systematic"
 - "pattern of"
@@ -35,7 +41,9 @@ The system looks for temporal/pattern language:
 When these terms appear with drift-level keywords, they can **escalate** the status to Capture level.
 
 ### 4. **Context-Aware Analysis**
+
 Rather than simple word counts, the system:
+
 - Analyzes each item individually
 - Looks for combinations of concerning terms
 - Detects when authoritative sources make findings
@@ -44,41 +52,48 @@ Rather than simple word counts, the system:
 ## Status Levels Explained
 
 ### 🟢 Stable
+
 - Normal government operations
 - Checks and balances functioning
 - Courts and oversight active
 - No concerning patterns detected
 
 ### 🟡 Warning
+
 - Isolated incidents or complaints filed
 - Investigation opened but not concluded
 - Normal political friction
 - Elevated activity but within historical norms
 
 Examples:
+
 - Hatch Act complaint filed
 - Preliminary court ruling
 - Funding delay for administrative reasons
 
 ### 🟠 Drift
+
 - **Multiple** concerning indicators
 - Structural changes that weaken protections
 - Pattern of resistance to oversight
 - Major system failures (e.g., Oversight.gov down)
 
 Examples:
+
 - Multiple IG vacancies or "acting" appointments
 - Repeated delays in court compliance
 - Pattern of impoundment actions
 - Weakened civil service protections
 
 ### 🔴 Capture
+
 - **Explicit legal violations** found by authoritative sources
 - Systematic override of statutory constraints
 - Court findings of contempt or defiance
 - Mass institutional changes
 
 Examples:
+
 - GAO finds "violated Impoundment Control Act"
 - Court holds agency in contempt
 - Schedule F implementation
@@ -87,9 +102,11 @@ Examples:
 ## Category-Specific Logic
 
 ### Civil Service Neutrality
+
 **Focus**: Legal protections for career civil servants
 
 **Capture Indicators**:
+
 - Schedule F implementation
 - Mass terminations of career staff
 - Political loyalty requirements
@@ -98,9 +115,11 @@ Examples:
 **Why**: Protects non-partisan expertise and prevents politicization
 
 ### Fiscal Independence
+
 **Focus**: Congressional power of the purse
 
 **Capture Indicators**:
+
 - GAO decisions finding illegal impoundment
 - Anti-Deficiency Act violations
 - Unconstitutional refusal to spend
@@ -108,9 +127,11 @@ Examples:
 **Why**: Prevents executive from overriding Congressional appropriations
 
 ### Oversight Integrity
+
 **Focus**: Inspector General independence
 
 **Capture Indicators**:
+
 - Multiple IG removals
 - Systematic obstruction
 - Defunding of oversight functions
@@ -119,9 +140,11 @@ Examples:
 **Why**: IGs are the "eyes and ears" of Congress on executive branch
 
 ### Judicial Compliance
+
 **Focus**: Adherence to court orders
 
 **Capture Indicators**:
+
 - Contempt findings
 - Refusal to comply with orders
 - Willful violations
@@ -129,9 +152,11 @@ Examples:
 **Why**: Rule of law requires executive compliance with judiciary
 
 ### Military & Domestic Policing
+
 **Focus**: Posse Comitatus and Insurrection Act
 
 **Capture Indicators**:
+
 - Insurrection Act invoked domestically
 - Military law enforcement
 - Martial law declared
@@ -139,9 +164,11 @@ Examples:
 **Why**: Military must not be used for domestic law enforcement
 
 ### Rulemaking Autonomy
+
 **Focus**: Independent agency authority
 
 **Capture Indicators**:
+
 - Executive orders overriding statutory authority
 - APA violations
 - Independent agencies forced under White House review
@@ -151,6 +178,7 @@ Examples:
 ## Transparency Features
 
 Every assessment includes:
+
 1. **Exact keywords matched**
 2. **Number of data sources analyzed**
 3. **Total items reviewed**
@@ -162,12 +190,14 @@ Users can click "View Assessment Details" to see the full methodology for any ca
 ## Limitations & Caveats
 
 ### What This System Does Well:
+
 ✅ Detects explicit legal violations
 ✅ Identifies authoritative findings (GAO, courts)
 ✅ Tracks major system failures
 ✅ Spots pattern language
 
 ### What This System Cannot Do:
+
 ❌ Understand complex legal nuance
 ❌ Detect subtle procedural manipulation
 ❌ Evaluate political motivations
@@ -175,11 +205,13 @@ Users can click "View Assessment Details" to see the full methodology for any ca
 ❌ Compare to historical baselines (yet)
 
 ### Known False Positive Risks:
+
 - Normal government reorganizations might trigger warnings
 - Routine litigation might be flagged
 - High volume of executive orders might seem concerning even if lawful
 
 ### Known False Negative Risks:
+
 - Subtle degradation may go undetected
 - Actions not documented in Federal Register
 - Informal pressure campaigns
@@ -188,6 +220,7 @@ Users can click "View Assessment Details" to see the full methodology for any ca
 ## Future Enhancements
 
 Planned improvements:
+
 1. **Historical comparison** - Compare current activity to past administrations
 2. **Cross-category correlation** - Detect when multiple categories deteriorate simultaneously
 3. **Temporal trending** - Track changes over time, not just point-in-time
@@ -197,6 +230,7 @@ Planned improvements:
 ## Data Sources
 
 All assessments are based on:
+
 - Federal Register API (official government records)
 - GAO RSS feeds (legal decisions)
 - Inspector General RSS feeds (oversight reports)
@@ -206,6 +240,7 @@ All assessments are based on:
 ## Methodology Transparency
 
 The full assessment algorithm is **open source** and available in:
+
 ```
 /pages/api/assess-status.ts
 ```

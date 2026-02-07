@@ -1,5 +1,5 @@
 export function buildIntentClassificationPrompt(
-  statements: Array<{ text: string; source: string; date: string }>
+  statements: Array<{ text: string; source: string; date: string }>,
 ): string {
   const statementsText = statements
     .slice(0, 15)

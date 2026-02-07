@@ -21,9 +21,7 @@ describe('calculateDataCoverage', () => {
   });
 
   it('increases with more diverse sources', () => {
-    const fewSources = [
-      { title: 'Item 1', agency: 'GAO' },
-    ];
+    const fewSources = [{ title: 'Item 1', agency: 'GAO' }];
     const manySources = [
       { title: 'Item 1', agency: 'GAO' },
       { title: 'Item 2', agency: 'DOJ' },
@@ -39,9 +37,7 @@ describe('calculateDataCoverage', () => {
   });
 
   it('increases authority weight with authoritative sources', () => {
-    const noAuthority = [
-      { title: 'Regular news item' },
-    ];
+    const noAuthority = [{ title: 'Regular news item' }];
     const highAuthority = [
       { title: 'GAO decision on impoundment', agency: 'GAO' },
       { title: 'Court order compliance report', agency: 'Federal Courts' },

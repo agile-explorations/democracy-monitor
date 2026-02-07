@@ -64,7 +64,8 @@ export function ProgressiveDisclosure({
   useEffect(() => {
     if (autoStatus?.auto && !layer2Data) {
       setLayer2Data({
-        evidenceCount: (enhancedData?.evidenceFor?.length || 0) + (enhancedData?.evidenceAgainst?.length || 0),
+        evidenceCount:
+          (enhancedData?.evidenceFor?.length || 0) + (enhancedData?.evidenceAgainst?.length || 0),
         howWeCouldBeWrong: enhancedData?.howWeCouldBeWrong || [],
         crossRef,
       });
@@ -80,10 +81,11 @@ export function ProgressiveDisclosure({
         {layerLabels.map((label, i) => {
           const layerNum = i + 1;
           const isActive = currentLayer === layerNum;
-          const isAvailable = layerNum === 1
-            || (layerNum === 2 && autoStatus?.auto)
-            || (layerNum === 3 && allItems.length > 0)
-            || (layerNum === 4 && ['Drift', 'Capture'].includes(level));
+          const isAvailable =
+            layerNum === 1 ||
+            (layerNum === 2 && autoStatus?.auto) ||
+            (layerNum === 3 && allItems.length > 0) ||
+            (layerNum === 4 && ['Drift', 'Capture'].includes(level));
 
           return (
             <button
@@ -114,25 +116,16 @@ export function ProgressiveDisclosure({
       )}
 
       {currentLayer === 2 && (
-        <Layer2
-          enhancedData={enhancedData}
-          crossRef={crossRef}
-          detail={autoStatus?.detail}
-        />
+        <Layer2 enhancedData={enhancedData} crossRef={crossRef} detail={autoStatus?.detail} />
       )}
 
-      {currentLayer === 3 && (
-        <Layer3
-          items={allItems}
-          matches={matches || []}
-        />
-      )}
+      {currentLayer === 3 && <Layer3 items={allItems} matches={matches || []} />}
 
       {currentLayer === 4 && (
         <Layer4
           categoryKey={categoryKey}
           level={level}
-          evidence={allItems.map(i => i.title || '').filter(Boolean)}
+          evidence={allItems.map((i) => i.title || '').filter(Boolean)}
         />
       )}
     </div>

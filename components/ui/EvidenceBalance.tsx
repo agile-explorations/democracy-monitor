@@ -23,7 +23,10 @@ export function EvidenceBalance({ evidenceFor, evidenceAgainst }: EvidenceBalanc
             {evidenceFor.map((item, idx) => (
               <li key={idx} className="text-red-600 flex gap-1">
                 <span className="shrink-0">&bull;</span>
-                <span>{item.text}{item.source && <span className="text-slate-400 ml-1">({item.source})</span>}</span>
+                <span>
+                  {item.text}
+                  {item.source && <span className="text-slate-400 ml-1">({item.source})</span>}
+                </span>
               </li>
             ))}
           </ul>
@@ -38,7 +41,10 @@ export function EvidenceBalance({ evidenceFor, evidenceAgainst }: EvidenceBalanc
             {evidenceAgainst.map((item, idx) => (
               <li key={idx} className="text-green-600 flex gap-1">
                 <span className="shrink-0">&bull;</span>
-                <span>{item.text}{item.source && <span className="text-slate-400 ml-1">({item.source})</span>}</span>
+                <span>
+                  {item.text}
+                  {item.source && <span className="text-slate-400 ml-1">({item.source})</span>}
+                </span>
               </li>
             ))}
           </ul>

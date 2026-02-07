@@ -8,12 +8,12 @@ A real-time dashboard that monitors signals of executive-power centralization ac
 
 The dashboard tracks **9 institutional categories** — civil service neutrality, fiscal independence, inspector general oversight, judicial compliance, military constraints, rulemaking autonomy, Hatch Act enforcement, democratic indices, and information availability — and assigns each a status:
 
-| Status | Meaning |
-|--------|---------|
-| **Stable** | No warning signs — institutions functioning normally |
+| Status      | Meaning                                                    |
+| ----------- | ---------------------------------------------------------- |
+| **Stable**  | No warning signs — institutions functioning normally       |
 | **Warning** | Some concerns found, but checks and balances appear intact |
-| **Drift** | Multiple warning signs — power becoming more centralized |
-| **Capture** | Serious violations — laws or court orders being ignored |
+| **Drift**   | Multiple warning signs — power becoming more centralized   |
+| **Capture** | Serious violations — laws or court orders being ignored    |
 
 Assessments are fully transparent: every status shows the exact keywords matched, the number of sources reviewed, and the reasoning behind the determination.
 
@@ -64,14 +64,14 @@ pnpm start
 
 All optional except `DATABASE_URL` for persistence features. See [.env.example](.env.example) for the full list.
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DATABASE_URL` | For persistence | PostgreSQL connection string |
-| `REDIS_URL` | No | Redis for caching (falls back to in-memory) |
-| `OPENAI_API_KEY` | No | Enables AI-enhanced assessment |
-| `ANTHROPIC_API_KEY` | No | Enables AI-enhanced assessment |
-| `DEMO_MODE` | No | `true` serves fixture data with zero external calls |
-| `ALLOWED_PROXY_HOSTS` | No | Comma-separated hostname whitelist for proxy |
+| Variable              | Required        | Description                                         |
+| --------------------- | --------------- | --------------------------------------------------- |
+| `DATABASE_URL`        | For persistence | PostgreSQL connection string                        |
+| `REDIS_URL`           | No              | Redis for caching (falls back to in-memory)         |
+| `OPENAI_API_KEY`      | No              | Enables AI-enhanced assessment                      |
+| `ANTHROPIC_API_KEY`   | No              | Enables AI-enhanced assessment                      |
+| `DEMO_MODE`           | No              | `true` serves fixture data with zero external calls |
+| `ALLOWED_PROXY_HOSTS` | No              | Comma-separated hostname whitelist for proxy        |
 
 ## Architecture
 

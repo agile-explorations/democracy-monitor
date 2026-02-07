@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(200).json({
       category,
       ...assessment,
-      assessedAt: new Date().toISOString()
+      assessedAt: new Date().toISOString(),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

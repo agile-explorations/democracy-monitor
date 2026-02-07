@@ -15,18 +15,21 @@ export function buildDailyDigestPrompt(
     itemCount: number;
     highlights: string[];
   }>,
-  anomalies: Array<{ keyword: string; category: string; ratio: number }>
+  anomalies: Array<{ keyword: string; category: string; ratio: number }>,
 ): string {
   const categorySections = categoryData
-    .map(c => `### ${c.category} (Status: ${c.status})
+    .map(
+      (c) => `### ${c.category} (Status: ${c.status})
 Reason: ${c.reason}
 Items reviewed: ${c.itemCount}
-${c.highlights.length > 0 ? `Key items:\n${c.highlights.map(h => `- ${h}`).join('\n')}` : 'No notable items.'}`)
+${c.highlights.length > 0 ? `Key items:\n${c.highlights.map((h) => `- ${h}`).join('\n')}` : 'No notable items.'}`,
+    )
     .join('\n\n');
 
-  const anomalySection = anomalies.length > 0
-    ? `\n\n### Anomalies Detected\n${anomalies.map(a => `- "${a.keyword}" in ${a.category}: ${a.ratio.toFixed(1)}x above baseline`).join('\n')}`
-    : '';
+  const anomalySection =
+    anomalies.length > 0
+      ? `\n\n### Anomalies Detected\n${anomalies.map((a) => `- "${a.keyword}" in ${a.category}: ${a.ratio.toFixed(1)}x above baseline`).join('\n')}`
+      : '';
 
   return `Generate a daily digest for ${date}.
 

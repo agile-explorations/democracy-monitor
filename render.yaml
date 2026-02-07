@@ -26,7 +26,7 @@ databases:
   - name: epd-db
     plan: basic-1gb
     databaseName: epd
-    postgresMajorVersion: "16"
+    postgresMajorVersion: '16'
 
 keyValueStores:
   - name: epd-redis
@@ -35,7 +35,7 @@ keyValueStores:
 
 crons:
   - name: daily-digest
-    schedule: "0 6 * * *"
+    schedule: '0 6 * * *'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/daily-digest.ts
     envVars:
@@ -50,7 +50,7 @@ crons:
           property: connectionString
 
   - name: hourly-uptime
-    schedule: "0 * * * *"
+    schedule: '0 * * * *'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/uptime-check.ts
     envVars:
@@ -60,7 +60,7 @@ crons:
           property: connectionString
 
   - name: weekly-clustering
-    schedule: "0 3 * * 0"
+    schedule: '0 3 * * 0'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/weekly-clustering.ts
     envVars:

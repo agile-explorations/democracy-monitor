@@ -4,8 +4,15 @@ import { calculateDataCoverage } from './confidence-scoring';
 import { categorizeEvidence, type EvidenceItem } from './evidence-balance';
 import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import { buildAssessmentPrompt, ASSESSMENT_SYSTEM_PROMPT } from '@/lib/ai/prompts/assessment';
-import { buildCounterEvidencePrompt, COUNTER_EVIDENCE_SYSTEM_PROMPT } from '@/lib/ai/prompts/counter-evidence';
-import { parseAIAssessmentResponse, parseCounterEvidenceResponse, type AIAssessmentResponse } from '@/lib/ai/schemas/assessment-response';
+import {
+  buildCounterEvidencePrompt,
+  COUNTER_EVIDENCE_SYSTEM_PROMPT,
+} from '@/lib/ai/prompts/counter-evidence';
+import {
+  parseAIAssessmentResponse,
+  parseCounterEvidenceResponse,
+  type AIAssessmentResponse,
+} from '@/lib/ai/schemas/assessment-response';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CATEGORIES } from '@/lib/data/categories';
 
@@ -38,7 +45,7 @@ export interface EnhancedAssessment {
 export async function enhancedAssessment(
   items: ContentItem[],
   category: string,
-  options?: { providers?: string[]; skipCache?: boolean }
+  options?: { providers?: string[]; skipCache?: boolean },
 ): Promise<EnhancedAssessment> {
   // Step 1: Always run keyword engine first (zero-cost baseline)
   const keywordResult = analyzeContent(items, category);
@@ -60,10 +67,10 @@ export async function enhancedAssessment(
 
   const availableProviders = getAvailableProviders();
   const requestedProviders = options?.providers || ['anthropic', 'openai'];
-  const providerToUse = availableProviders.find(p => requestedProviders.includes(p.name));
+  const providerToUse = availableProviders.find((p) => requestedProviders.includes(p.name));
 
   if (providerToUse) {
-    const categoryDef = CATEGORIES.find(c => c.key === category);
+    const categoryDef = CATEGORIES.find((c) => c.key === category);
     const categoryTitle = categoryDef?.title || category;
 
     try {
@@ -72,7 +79,7 @@ export async function enhancedAssessment(
         categoryTitle,
         items.slice(0, 20),
         keywordResult.status,
-        keywordResult.reason
+        keywordResult.reason,
       );
 
       const completion = await providerToUse.complete(prompt, {
@@ -99,14 +106,14 @@ export async function enhancedAssessment(
         // Merge AI evidence with keyword evidence
         if (parsed.evidenceFor.length > 0) {
           for (const e of parsed.evidenceFor) {
-            if (!evidenceFor.some(ef => ef.text === e)) {
+            if (!evidenceFor.some((ef) => ef.text === e)) {
               evidenceFor.push({ text: e, direction: 'concerning' });
             }
           }
         }
         if (parsed.evidenceAgainst.length > 0) {
           for (const e of parsed.evidenceAgainst) {
-            if (!evidenceAgainst.some(ea => ea.text === e)) {
+            if (!evidenceAgainst.some((ea) => ea.text === e)) {
               evidenceAgainst.push({ text: e, direction: 'reassuring' });
             }
           }
@@ -117,13 +124,16 @@ export async function enhancedAssessment(
     }
 
     // Step 3b: Get counter-evidence for Drift/Capture if we don't have enough
-    if (howWeCouldBeWrong.length < 2 && (keywordResult.status === 'Drift' || keywordResult.status === 'Capture')) {
+    if (
+      howWeCouldBeWrong.length < 2 &&
+      (keywordResult.status === 'Drift' || keywordResult.status === 'Capture')
+    ) {
       try {
         const counterPrompt = buildCounterEvidencePrompt(
-          CATEGORIES.find(c => c.key === category)?.title || category,
+          CATEGORIES.find((c) => c.key === category)?.title || category,
           keywordResult.status,
           keywordResult.reason,
-          keywordResult.matches
+          keywordResult.matches,
         );
 
         const counterCompletion = await providerToUse.complete(counterPrompt, {
@@ -151,7 +161,7 @@ export async function enhancedAssessment(
   const { confidence: dataCoverage, factors } = calculateDataCoverage(
     items,
     keywordResult,
-    aiResult?.status
+    aiResult?.status,
   );
 
   // Step 5: Generate consensus note

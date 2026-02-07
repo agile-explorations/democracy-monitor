@@ -38,17 +38,16 @@ export function EnhancedAssessment({ data }: EnhancedAssessmentProps) {
         <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-purple-800">AI Analysis</span>
-            <span className="text-purple-500">({data.aiResult.provider} / {data.aiResult.model})</span>
+            <span className="text-purple-500">
+              ({data.aiResult.provider} / {data.aiResult.model})
+            </span>
             <span className="text-purple-400 ml-auto">{data.aiResult.latencyMs}ms</span>
           </div>
           <p className="text-purple-700">{data.aiResult.reasoning}</p>
         </div>
       )}
 
-      <EvidenceBalance
-        evidenceFor={data.evidenceFor}
-        evidenceAgainst={data.evidenceAgainst}
-      />
+      <EvidenceBalance evidenceFor={data.evidenceFor} evidenceAgainst={data.evidenceAgainst} />
 
       <CounterEvidence items={data.howWeCouldBeWrong} />
     </div>

@@ -1,6 +1,8 @@
 export function getAllowedHosts(): string[] {
   if (process.env.ALLOWED_PROXY_HOSTS) {
-    return process.env.ALLOWED_PROXY_HOSTS.split(',').map(s => s.trim()).filter(Boolean);
+    return process.env.ALLOWED_PROXY_HOSTS.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
   return [
     'www.gao.gov',
@@ -23,6 +25,6 @@ export function getAllowedHosts(): string[] {
     'www.naacpldf.org',
     'progressivereform.org',
     'www.democracywatchtracker.org',
-    'www.v-dem.net'
+    'www.v-dem.net',
   ];
 }

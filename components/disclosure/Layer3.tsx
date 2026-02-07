@@ -14,7 +14,8 @@ function getSourceTier(item: FeedItem): { tier: number; label: string } {
   if (agency.includes('gao') || title.includes('gao')) return { tier: 1, label: 'Official' };
   if (title.includes('court') || link.includes('court')) return { tier: 1, label: 'Judicial' };
   if (title.includes('inspector general') || title.includes('ig ')) return { tier: 1, label: 'IG' };
-  if (link.includes('.gov') || title.includes('federal register')) return { tier: 2, label: 'Government' };
+  if (link.includes('.gov') || title.includes('federal register'))
+    return { tier: 2, label: 'Government' };
   if (agency.includes('watchdog') || link.includes('pogo')) return { tier: 3, label: 'Watchdog' };
   return { tier: 4, label: 'Other' };
 }
@@ -42,7 +43,10 @@ export function Layer3({ items, matches }: Layer3Props) {
 
           return (
             <div key={i} className="flex items-start gap-2 text-xs p-1.5 bg-slate-50 rounded">
-              <span className="text-amber-500 text-[10px] whitespace-nowrap" title={`Source tier: ${source.label}`}>
+              <span
+                className="text-amber-500 text-[10px] whitespace-nowrap"
+                title={`Source tier: ${source.label}`}
+              >
                 {tierStars}
               </span>
               <div className="flex-1 min-w-0">
@@ -58,13 +62,9 @@ export function Layer3({ items, matches }: Layer3Props) {
                 ) : (
                   <span className="font-medium text-slate-800">{item.title || 'Untitled'}</span>
                 )}
-                {item.agency && (
-                  <p className="text-slate-500 mt-0.5 truncate">{item.agency}</p>
-                )}
+                {item.agency && <p className="text-slate-500 mt-0.5 truncate">{item.agency}</p>}
               </div>
-              <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                {source.label}
-              </span>
+              <span className="text-[10px] text-slate-400 whitespace-nowrap">{source.label}</span>
             </div>
           );
         })}

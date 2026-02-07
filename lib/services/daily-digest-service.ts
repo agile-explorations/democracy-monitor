@@ -16,7 +16,7 @@ export async function generateDailyDigest(
     itemCount: number;
     highlights: string[];
   }>,
-  anomalies: TrendAnomaly[] = []
+  anomalies: TrendAnomaly[] = [],
 ): Promise<DigestEntry | null> {
   const cacheKey = CacheKeys.digest(date);
   const cached = await cacheGet<DigestEntry>(cacheKey);
@@ -25,10 +25,7 @@ export async function generateDailyDigest(
   // Check DB for existing digest
   if (isDbAvailable()) {
     const db = getDb();
-    const existing = await db.select()
-      .from(digests)
-      .where(eq(digests.date, date))
-      .limit(1);
+    const existing = await db.select().from(digests).where(eq(digests.date, date)).limit(1);
 
     if (existing.length > 0) {
       const entry = existing[0];
@@ -51,12 +48,13 @@ export async function generateDailyDigest(
   const providers = getAvailableProviders();
   if (providers.length === 0) return null;
 
-  const provider = providers.find(p => p.name === 'anthropic') || providers[0];
+  const provider = providers.find((p) => p.name === 'anthropic') || providers[0];
 
-  const result = await provider.complete(
-    buildDailyDigestPrompt(date, categoryData, anomalies),
-    { systemPrompt: DIGEST_SYSTEM_PROMPT, maxTokens: 1000, temperature: 0.3 }
-  );
+  const result = await provider.complete(buildDailyDigestPrompt(date, categoryData, anomalies), {
+    systemPrompt: DIGEST_SYSTEM_PROMPT,
+    maxTokens: 1000,
+    temperature: 0.3,
+  });
 
   let parsed: {
     summary: string;
@@ -115,10 +113,7 @@ export async function getDigest(date: string): Promise<DigestEntry | null> {
   if (!isDbAvailable()) return null;
 
   const db = getDb();
-  const rows = await db.select()
-    .from(digests)
-    .where(eq(digests.date, date))
-    .limit(1);
+  const rows = await db.select().from(digests).where(eq(digests.date, date)).limit(1);
 
   if (rows.length === 0) return null;
 

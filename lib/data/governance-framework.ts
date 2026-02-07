@@ -4,7 +4,8 @@ export const GOVERNANCE_FRAMEWORK: GovernanceFrameworkEntry[] = [
   {
     key: 'liberal_democracy',
     label: 'Liberal Democracy',
-    description: 'Full respect for rule of law, independent institutions, free press, civil liberties, and competitive elections.',
+    description:
+      'Full respect for rule of law, independent institutions, free press, civil liberties, and competitive elections.',
     indicators: [
       'Compliance with court orders',
       'Respect for inspector general independence',
@@ -17,7 +18,8 @@ export const GOVERNANCE_FRAMEWORK: GovernanceFrameworkEntry[] = [
   {
     key: 'competitive_authoritarian',
     label: 'Competitive Authoritarian',
-    description: 'Democratic institutions exist but are systematically undermined. Elections occur but the playing field is tilted.',
+    description:
+      'Democratic institutions exist but are systematically undermined. Elections occur but the playing field is tilted.',
     indicators: [
       'Selective enforcement of laws',
       'Pressure on independent agencies',
@@ -30,7 +32,8 @@ export const GOVERNANCE_FRAMEWORK: GovernanceFrameworkEntry[] = [
   {
     key: 'executive_dominant',
     label: 'Executive Dominant',
-    description: 'Executive branch has accumulated significant power over other branches. Checks and balances weakened but not eliminated.',
+    description:
+      'Executive branch has accumulated significant power over other branches. Checks and balances weakened but not eliminated.',
     indicators: [
       'Ignoring congressional subpoenas',
       'Overriding agency independence',
@@ -43,7 +46,8 @@ export const GOVERNANCE_FRAMEWORK: GovernanceFrameworkEntry[] = [
   {
     key: 'illiberal_democracy',
     label: 'Illiberal Democracy',
-    description: 'Elections continue but civil liberties, rule of law, and minority rights are eroded. Institutions serve the executive.',
+    description:
+      'Elections continue but civil liberties, rule of law, and minority rights are eroded. Institutions serve the executive.',
     indicators: [
       'Defiance of court orders',
       'Politicization of law enforcement',
@@ -56,7 +60,8 @@ export const GOVERNANCE_FRAMEWORK: GovernanceFrameworkEntry[] = [
   {
     key: 'personalist_rule',
     label: 'Personalist Rule',
-    description: 'Power fully concentrated in one person. Institutions exist in name only. Rule of law replaced by rule by law.',
+    description:
+      'Power fully concentrated in one person. Institutions exist in name only. Rule of law replaced by rule by law.',
     indicators: [
       'Open defiance of all court orders',
       'Military deployed domestically',

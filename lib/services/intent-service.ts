@@ -1,4 +1,10 @@
-import type { PolicyArea, IntentScore, IntentAssessment, GovernanceCategory, IntentStatement } from '@/lib/types/intent';
+import type {
+  PolicyArea,
+  IntentScore,
+  IntentAssessment,
+  GovernanceCategory,
+  IntentStatement,
+} from '@/lib/types/intent';
 import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import { classifyGovernance } from '@/lib/data/governance-framework';
 import { matchKeyword } from '@/lib/utils/keyword-match';
@@ -11,7 +17,10 @@ const POLICY_AREAS: PolicyArea[] = [
   'institutional_independence',
 ];
 
-function scoreText(text: string, keywords: { authoritarian: string[]; democratic: string[] }): number {
+function scoreText(
+  text: string,
+  keywords: { authoritarian: string[]; democratic: string[] },
+): number {
   let authCount = 0;
   let demoCount = 0;
 
@@ -32,24 +41,26 @@ function scoreText(text: string, keywords: { authoritarian: string[]; democratic
 
 export function scoreStatements(statements: IntentStatement[]): IntentAssessment {
   const policyAreas = {} as Record<PolicyArea, IntentScore>;
-  const rhetoricStatements = statements.filter(s => s.type === 'rhetoric');
-  const actionStatements = statements.filter(s => s.type === 'action');
+  const rhetoricStatements = statements.filter((s) => s.type === 'rhetoric');
+  const actionStatements = statements.filter((s) => s.type === 'action');
 
   for (const area of POLICY_AREAS) {
     const rhetoricTexts = rhetoricStatements
-      .filter(s => s.policyArea === area)
-      .map(s => s.text);
-    const actionTexts = actionStatements
-      .filter(s => s.policyArea === area)
-      .map(s => s.text);
+      .filter((s) => s.policyArea === area)
+      .map((s) => s.text);
+    const actionTexts = actionStatements.filter((s) => s.policyArea === area).map((s) => s.text);
 
-    const rhetoricScore = rhetoricTexts.length > 0
-      ? rhetoricTexts.reduce((sum, t) => sum + scoreText(t, RHETORIC_KEYWORDS[area]), 0) / rhetoricTexts.length
-      : 0;
+    const rhetoricScore =
+      rhetoricTexts.length > 0
+        ? rhetoricTexts.reduce((sum, t) => sum + scoreText(t, RHETORIC_KEYWORDS[area]), 0) /
+          rhetoricTexts.length
+        : 0;
 
-    const actionScore = actionTexts.length > 0
-      ? actionTexts.reduce((sum, t) => sum + scoreText(t, ACTION_KEYWORDS[area]), 0) / actionTexts.length
-      : 0;
+    const actionScore =
+      actionTexts.length > 0
+        ? actionTexts.reduce((sum, t) => sum + scoreText(t, ACTION_KEYWORDS[area]), 0) /
+          actionTexts.length
+        : 0;
 
     policyAreas[area] = {
       rhetoric: Math.round(rhetoricScore * 100) / 100,
@@ -59,15 +70,13 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
   }
 
   // Calculate overall scores
-  const allRhetoric = Object.values(policyAreas).map(p => p.rhetoric);
-  const allActions = Object.values(policyAreas).map(p => p.action);
+  const allRhetoric = Object.values(policyAreas).map((p) => p.rhetoric);
+  const allActions = Object.values(policyAreas).map((p) => p.action);
 
-  const avgRhetoric = allRhetoric.length > 0
-    ? allRhetoric.reduce((a, b) => a + b, 0) / allRhetoric.length
-    : 0;
-  const avgAction = allActions.length > 0
-    ? allActions.reduce((a, b) => a + b, 0) / allActions.length
-    : 0;
+  const avgRhetoric =
+    allRhetoric.length > 0 ? allRhetoric.reduce((a, b) => a + b, 0) / allRhetoric.length : 0;
+  const avgAction =
+    allActions.length > 0 ? allActions.reduce((a, b) => a + b, 0) / allActions.length : 0;
 
   let overallScore = (avgRhetoric + avgAction) / 2;
   const overallGap = Math.abs(avgRhetoric - avgAction);
@@ -81,8 +90,9 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
   const governance = classifyGovernance(overallScore);
 
   // Confidence based on data volume and diversity
-  const confidence = Math.min(1, statements.length / 20) * 0.7 +
-    (new Set(statements.map(s => s.policyArea)).size / POLICY_AREAS.length) * 0.3;
+  const confidence =
+    Math.min(1, statements.length / 20) * 0.7 +
+    (new Set(statements.map((s) => s.policyArea)).size / POLICY_AREAS.length) * 0.3;
 
   return {
     overall: governance.key as GovernanceCategory,
@@ -101,10 +111,13 @@ export function analyzeRhetoricActionGap(assessment: IntentAssessment): string[]
 
   for (const [area, scores] of Object.entries(assessment.policyAreas)) {
     if (scores.gap > 0.5) {
-      const direction = scores.rhetoric > scores.action
-        ? 'Rhetoric is more authoritarian than actions'
-        : 'Actions are more authoritarian than rhetoric';
-      gaps.push(`${formatPolicyArea(area as PolicyArea)}: ${direction} (gap: ${scores.gap.toFixed(1)})`);
+      const direction =
+        scores.rhetoric > scores.action
+          ? 'Rhetoric is more authoritarian than actions'
+          : 'Actions are more authoritarian than rhetoric';
+      gaps.push(
+        `${formatPolicyArea(area as PolicyArea)}: ${direction} (gap: ${scores.gap.toFixed(1)})`,
+      );
     }
   }
 

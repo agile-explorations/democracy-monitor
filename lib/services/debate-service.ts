@@ -1,8 +1,19 @@
 import type { DebateMessage, DebateResult, DebateVerdict } from '@/lib/types/debate';
 import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
-import { PROSECUTOR_SYSTEM_PROMPT, buildProsecutorOpeningPrompt, buildProsecutorRebuttalPrompt } from '@/lib/ai/prompts/debate-prosecutor';
-import { DEFENSE_SYSTEM_PROMPT, buildDefenseOpeningPrompt, buildDefenseRebuttalPrompt } from '@/lib/ai/prompts/debate-defense';
-import { ARBITRATOR_SYSTEM_PROMPT, buildArbitratorPrompt } from '@/lib/ai/prompts/debate-arbitrator';
+import {
+  PROSECUTOR_SYSTEM_PROMPT,
+  buildProsecutorOpeningPrompt,
+  buildProsecutorRebuttalPrompt,
+} from '@/lib/ai/prompts/debate-prosecutor';
+import {
+  DEFENSE_SYSTEM_PROMPT,
+  buildDefenseOpeningPrompt,
+  buildDefenseRebuttalPrompt,
+} from '@/lib/ai/prompts/debate-defense';
+import {
+  ARBITRATOR_SYSTEM_PROMPT,
+  buildArbitratorPrompt,
+} from '@/lib/ai/prompts/debate-arbitrator';
 import { cacheGet, cacheSet } from '@/lib/cache';
 
 const TOTAL_ROUNDS = 5; // opening, opening, rebuttal, rebuttal, verdict
@@ -10,7 +21,7 @@ const TOTAL_ROUNDS = 5; // opening, opening, rebuttal, rebuttal, verdict
 export async function runDebate(
   category: string,
   status: string,
-  evidence: string[]
+  evidence: string[],
 ): Promise<DebateResult | null> {
   const cacheKey = `debate:${category}:${Date.now() - (Date.now() % (6 * 60 * 60 * 1000))}`;
   const cached = await cacheGet<DebateResult>(cacheKey);
@@ -20,8 +31,8 @@ export async function runDebate(
   if (providers.length < 2) return null;
 
   // Assign: Claude = prosecutor, OpenAI = defense (or vice versa)
-  const anthropicProvider = providers.find(p => p.name === 'anthropic');
-  const openaiProvider = providers.find(p => p.name === 'openai');
+  const anthropicProvider = providers.find((p) => p.name === 'anthropic');
+  const openaiProvider = providers.find((p) => p.name === 'openai');
   if (!anthropicProvider || !openaiProvider) return null;
 
   const startedAt = new Date().toISOString();
@@ -30,7 +41,7 @@ export async function runDebate(
   // Round 1: Prosecutor opening (Claude)
   const prosecutorOpening = await anthropicProvider.complete(
     buildProsecutorOpeningPrompt(category, status, evidence),
-    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 }
+    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 },
   );
   messages.push({
     role: 'prosecutor',
@@ -44,7 +55,7 @@ export async function runDebate(
   // Round 2: Defense opening (OpenAI)
   const defenseOpening = await openaiProvider.complete(
     buildDefenseOpeningPrompt(category, status, evidence, prosecutorOpening.content),
-    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 }
+    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 },
   );
   messages.push({
     role: 'defense',
@@ -58,7 +69,7 @@ export async function runDebate(
   // Round 3: Prosecutor rebuttal (Claude)
   const prosecutorRebuttal = await anthropicProvider.complete(
     buildProsecutorRebuttalPrompt(defenseOpening.content),
-    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 }
+    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 },
   );
   messages.push({
     role: 'prosecutor',
@@ -72,7 +83,7 @@ export async function runDebate(
   // Round 4: Defense rebuttal (OpenAI)
   const defenseRebuttal = await openaiProvider.complete(
     buildDefenseRebuttalPrompt(prosecutorRebuttal.content),
-    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 }
+    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 },
   );
   messages.push({
     role: 'defense',
@@ -86,8 +97,12 @@ export async function runDebate(
   // Round 5: Arbitrator verdict (alternating provider)
   const arbitratorProvider = anthropicProvider; // Claude for nuanced judgment
   const arbitratorResult = await arbitratorProvider.complete(
-    buildArbitratorPrompt(category, status, messages.map(m => ({ role: m.role, content: m.content }))),
-    { systemPrompt: ARBITRATOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.3 }
+    buildArbitratorPrompt(
+      category,
+      status,
+      messages.map((m) => ({ role: m.role, content: m.content })),
+    ),
+    { systemPrompt: ARBITRATOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.3 },
   );
 
   let verdict: DebateVerdict;

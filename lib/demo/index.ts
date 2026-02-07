@@ -11,7 +11,12 @@ import { DEMO_SCENARIOS } from './scenarios';
 import * as feeds from './fixtures/feeds';
 import { getDemoAssessment } from './fixtures/assessments';
 import { getDemoIntentAssessment, getDemoIntentStatements } from './fixtures/intent';
-import { getDemoDebate, getDemoLegalAnalysis, getDemoTrends, getDemoDailyDigest } from './fixtures/ai';
+import {
+  getDemoDebate,
+  getDemoLegalAnalysis,
+  getDemoTrends,
+  getDemoDailyDigest,
+} from './fixtures/ai';
 import { getDemoUptimeStatus, getDemoUptimeCheck } from './fixtures/uptime';
 
 export function isDemoMode(): boolean {
@@ -53,8 +58,16 @@ export function getDemoResponse(routeId: string, req: NextApiRequest): unknown |
         source: query.source || 'demo',
         sourceUrl: 'https://demo.example.com',
         items: [
-          { title: 'Democracy Tracker: Weekly Update on Institutional Norms', link: 'https://demo.example.com/1', date: new Date().toISOString() },
-          { title: 'Analysis: Federal Workforce Changes and Their Impact', link: 'https://demo.example.com/2', date: new Date().toISOString() },
+          {
+            title: 'Democracy Tracker: Weekly Update on Institutional Norms',
+            link: 'https://demo.example.com/1',
+            date: new Date().toISOString(),
+          },
+          {
+            title: 'Analysis: Federal Workforce Changes and Their Impact',
+            link: 'https://demo.example.com/2',
+            date: new Date().toISOString(),
+          },
         ],
         scrapedAt: new Date().toISOString(),
       };
@@ -126,8 +139,10 @@ function matchProxyFixture(targetUrl: string): unknown | null {
   if (targetUrl.includes('oversight.gov')) return feeds.igsOversight();
   if (targetUrl.includes('oig.ssa.gov')) return feeds.igsSsa();
   if (targetUrl.includes('supremecourt.gov')) return feeds.courtsSupreme();
-  if (targetUrl.includes('defense.gov') && targetUrl.includes('ContentType=1')) return feeds.militaryNews();
-  if (targetUrl.includes('defense.gov') && targetUrl.includes('ContentType=9')) return feeds.militaryContracts();
+  if (targetUrl.includes('defense.gov') && targetUrl.includes('ContentType=1'))
+    return feeds.militaryNews();
+  if (targetUrl.includes('defense.gov') && targetUrl.includes('ContentType=9'))
+    return feeds.militaryContracts();
 
   // Fallback for any unmatched proxy URL
   return {
@@ -135,7 +150,11 @@ function matchProxyFixture(targetUrl: string): unknown | null {
     data: {
       type: 'rss',
       items: [
-        { title: 'Demo fixture — unmatched proxy URL', link: targetUrl, pubDate: new Date().toISOString() },
+        {
+          title: 'Demo fixture — unmatched proxy URL',
+          link: targetUrl,
+          pubDate: new Date().toISOString(),
+        },
       ],
     },
   };
@@ -168,7 +187,13 @@ function matchFederalRegisterFixture(query: NextApiRequest['query']): unknown {
     cached: false,
     type: 'federal_register',
     items: [
-      { title: 'Demo fixture — Federal Register placeholder', link: 'https://www.federalregister.gov', pubDate: new Date().toISOString(), agency: 'Demo', type: 'NOTICE' },
+      {
+        title: 'Demo fixture — Federal Register placeholder',
+        link: 'https://www.federalregister.gov',
+        pubDate: new Date().toISOString(),
+        agency: 'Demo',
+        type: 'NOTICE',
+      },
     ],
     count: 1,
     url: 'https://www.federalregister.gov',

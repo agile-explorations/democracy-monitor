@@ -9,14 +9,18 @@ interface IntentOverviewProps {
 }
 
 export function IntentOverview({ assessment }: IntentOverviewProps) {
-  const framework = GOVERNANCE_FRAMEWORK.find(f => f.key === assessment.overall);
+  const framework = GOVERNANCE_FRAMEWORK.find((f) => f.key === assessment.overall);
 
   const labelColor =
-    assessment.overall === 'liberal_democracy' ? 'text-green-700 bg-green-100 border-green-200' :
-    assessment.overall === 'competitive_authoritarian' ? 'text-yellow-700 bg-yellow-100 border-yellow-200' :
-    assessment.overall === 'executive_dominant' ? 'text-orange-700 bg-orange-100 border-orange-200' :
-    assessment.overall === 'illiberal_democracy' ? 'text-red-700 bg-red-100 border-red-200' :
-    'text-red-900 bg-red-200 border-red-300';
+    assessment.overall === 'liberal_democracy'
+      ? 'text-green-700 bg-green-100 border-green-200'
+      : assessment.overall === 'competitive_authoritarian'
+        ? 'text-yellow-700 bg-yellow-100 border-yellow-200'
+        : assessment.overall === 'executive_dominant'
+          ? 'text-orange-700 bg-orange-100 border-orange-200'
+          : assessment.overall === 'illiberal_democracy'
+            ? 'text-red-700 bg-red-100 border-red-200'
+            : 'text-red-900 bg-red-200 border-red-300';
 
   return (
     <div className="space-y-3">
@@ -26,9 +30,7 @@ export function IntentOverview({ assessment }: IntentOverviewProps) {
           {framework?.label || assessment.overall}
         </span>
       </div>
-      {framework && (
-        <p className="text-sm text-slate-600">{framework.description}</p>
-      )}
+      {framework && <p className="text-sm text-slate-600">{framework.description}</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <GovernanceScoreBar
           score={(assessment.rhetoricScore + assessment.actionScore) / 2}

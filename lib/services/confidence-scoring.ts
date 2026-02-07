@@ -1,11 +1,11 @@
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 
 interface ConfidenceFactors {
-  sourceDiversity: number;     // 0-1: how many different source types
-  authorityWeight: number;     // 0-1: presence of authoritative sources
-  evidenceCoverage: number;    // 0-1: how many items were analyzed
-  keywordDensity: number;      // 0-1: match density relative to items
-  aiAgreement: number;         // 0-1: keyword/AI agreement (1 if same, 0.5 if adjacent, 0 if far)
+  sourceDiversity: number; // 0-1: how many different source types
+  authorityWeight: number; // 0-1: presence of authoritative sources
+  evidenceCoverage: number; // 0-1: how many items were analyzed
+  keywordDensity: number; // 0-1: match density relative to items
+  aiAgreement: number; // 0-1: keyword/AI agreement (1 if same, 0.5 if adjacent, 0 if far)
 }
 
 const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme court', 'judicial'];
@@ -13,19 +13,19 @@ const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme co
 export function calculateDataCoverage(
   items: ContentItem[],
   keywordResult: AssessmentResult,
-  aiStatus?: string
+  aiStatus?: string,
 ): { confidence: number; factors: ConfidenceFactors } {
-  const validItems = items.filter(i => !i.isError && !i.isWarning);
+  const validItems = items.filter((i) => !i.isError && !i.isWarning);
 
   // Source diversity: how many different source types / agencies
-  const agencies = new Set(validItems.map(i => i.agency).filter(Boolean));
-  const sourceTypes = new Set(items.map(i => i.type || 'unknown'));
+  const agencies = new Set(validItems.map((i) => i.agency).filter(Boolean));
+  const sourceTypes = new Set(items.map((i) => i.type || 'unknown'));
   const sourceDiversity = Math.min(1, (agencies.size + sourceTypes.size) / 6);
 
   // Authority weight: presence of authoritative sources
-  const authoritativeCount = validItems.filter(item => {
+  const authoritativeCount = validItems.filter((item) => {
     const text = `${item.title || ''} ${item.agency || ''}`.toLowerCase();
-    return HIGH_AUTHORITY_SOURCES.some(src => text.includes(src));
+    return HIGH_AUTHORITY_SOURCES.some((src) => text.includes(src));
   }).length;
   const authorityWeight = Math.min(1, authoritativeCount / 3);
 
@@ -34,9 +34,8 @@ export function calculateDataCoverage(
 
   // Keyword density: matches relative to items
   const matchCount = keywordResult.matches.length;
-  const keywordDensity = validItems.length > 0
-    ? Math.min(1, matchCount / Math.max(3, validItems.length * 0.3))
-    : 0;
+  const keywordDensity =
+    validItems.length > 0 ? Math.min(1, matchCount / Math.max(3, validItems.length * 0.3)) : 0;
 
   // AI agreement
   let aiAgreement = 0.5; // default when no AI

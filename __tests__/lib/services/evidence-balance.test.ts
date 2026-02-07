@@ -46,8 +46,8 @@ describe('categorizeEvidence', () => {
     const { evidenceFor, evidenceAgainst } = categorizeEvidence(items, 'Drift');
 
     const allEvidence = [...evidenceFor, ...evidenceAgainst];
-    expect(allEvidence.every(e => e.text !== 'Error fetching data')).toBe(true);
-    expect(allEvidence.every(e => e.text !== 'Source unavailable')).toBe(true);
+    expect(allEvidence.every((e) => e.text !== 'Error fetching data')).toBe(true);
+    expect(allEvidence.every((e) => e.text !== 'Source unavailable')).toBe(true);
   });
 
   it('limits results to 5 items per category', () => {
@@ -70,9 +70,7 @@ describe('categorizeEvidence', () => {
   });
 
   it('prefers concerning when concerning indicators outnumber reassuring', () => {
-    const items = [
-      { title: 'Agency violated the law, refused to comply, and blocked oversight' },
-    ];
+    const items = [{ title: 'Agency violated the law, refused to comply, and blocked oversight' }];
     // "violated", "refused", "blocked" = 3 concerning vs 0 reassuring
     const { evidenceFor } = categorizeEvidence(items, 'Drift');
     expect(evidenceFor.length).toBeGreaterThan(0);
@@ -80,9 +78,7 @@ describe('categorizeEvidence', () => {
   });
 
   it('includes agency as source when available', () => {
-    const items = [
-      { title: 'Agency violated the law', agency: 'GAO' },
-    ];
+    const items = [{ title: 'Agency violated the law', agency: 'GAO' }];
     const { evidenceFor } = categorizeEvidence(items, 'Drift');
     expect(evidenceFor[0].source).toBe('GAO');
   });

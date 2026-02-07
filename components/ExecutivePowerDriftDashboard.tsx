@@ -24,7 +24,9 @@ export default function ExecutivePowerDriftDashboard() {
   const setStatus = (k: string, v: string) => setStatusMap({ ...statusMap, [k]: v });
 
   const saved = useRef(() => setLastTick(Date.now()));
-  useEffect(() => { saved.current = () => setLastTick(Date.now()); }, []);
+  useEffect(() => {
+    saved.current = () => setLastTick(Date.now());
+  }, []);
   useEffect(() => {
     const id = setInterval(() => saved.current(), refreshMs);
     return () => clearInterval(id);
@@ -45,9 +47,15 @@ export default function ExecutivePowerDriftDashboard() {
 
         {/* Navigation */}
         <nav className="flex gap-4 text-xs text-slate-500">
-          <a href="/methodology" className="hover:text-blue-600 underline">Methodology</a>
-          <a href="/sources" className="hover:text-blue-600 underline">Data Sources</a>
-          <a href="/digest" className="hover:text-blue-600 underline">Daily Digests</a>
+          <a href="/methodology" className="hover:text-blue-600 underline">
+            Methodology
+          </a>
+          <a href="/sources" className="hover:text-blue-600 underline">
+            Data Sources
+          </a>
+          <a href="/digest" className="hover:text-blue-600 underline">
+            Daily Digests
+          </a>
         </nav>
 
         <StatusLegend />
@@ -65,7 +73,9 @@ export default function ExecutivePowerDriftDashboard() {
         <IntentSection onAssessmentLoaded={setIntentAssessment} />
 
         {/* Section 2: System Drift — Institutional Health */}
-        <h2 className="text-lg font-bold text-slate-900 pt-2">Section 2: Institutional Health (System Drift)</h2>
+        <h2 className="text-lg font-bold text-slate-900 pt-2">
+          Section 2: Institutional Health (System Drift)
+        </h2>
 
         <div className="grid grid-cols-1 gap-6">
           {CATEGORIES.map((cat) => (

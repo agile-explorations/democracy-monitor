@@ -40,34 +40,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch from Federal Register API (CORS-enabled, no key needed)
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'DemocracyMonitor/1.0'
-      }
+        Accept: 'application/json',
+        'User-Agent': 'DemocracyMonitor/1.0',
+      },
     });
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: `Federal Register API error: ${response.status}`
+        error: `Federal Register API error: ${response.status}`,
       });
     }
 
     const data = await response.json();
 
     // Transform to our format
-    const items = (data.results || []).map((doc: { title?: string; html_url?: string; publication_date?: string; agencies?: { name: string }[]; type?: string; abstract?: string }) => ({
-      title: doc.title,
-      link: doc.html_url,
-      pubDate: doc.publication_date,
-      agency: doc.agencies?.map((a) => a.name).join(', '),
-      type: doc.type,
-      summary: doc.abstract
-    }));
+    const items = (data.results || []).map(
+      (doc: {
+        title?: string;
+        html_url?: string;
+        publication_date?: string;
+        agencies?: { name: string }[];
+        type?: string;
+        abstract?: string;
+      }) => ({
+        title: doc.title,
+        link: doc.html_url,
+        pubDate: doc.publication_date,
+        agency: doc.agencies?.map((a) => a.name).join(', '),
+        type: doc.type,
+        summary: doc.abstract,
+      }),
+    );
 
     const result = {
       type: 'federal_register',
       items,
       count: data.count,
-      url
+      url,
     };
 
     await cacheSet(cacheKey, result, CACHE_TTL_S);

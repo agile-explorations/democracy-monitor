@@ -12,7 +12,7 @@ export function buildDefenseOpeningPrompt(
   category: string,
   status: string,
   evidence: string[],
-  prosecutorArgument: string
+  prosecutorArgument: string,
 ): string {
   return `CATEGORY: ${category}
 CURRENT STATUS: ${status}
@@ -26,9 +26,7 @@ PROSECUTOR'S ARGUMENT:
 Present your opening defense. Provide alternative explanations for the evidence. Identify reasons the situation may be less concerning than the prosecution suggests. Be specific. Keep your response under 300 words.`;
 }
 
-export function buildDefenseRebuttalPrompt(
-  prosecutorRebuttal: string
-): string {
+export function buildDefenseRebuttalPrompt(prosecutorRebuttal: string): string {
   return `The prosecutor has responded:
 
 "${prosecutorRebuttal}"

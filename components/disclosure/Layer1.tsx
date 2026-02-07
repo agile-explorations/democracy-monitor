@@ -18,9 +18,7 @@ export function Layer1({ level, dataCoverage, reason }: Layer1Props) {
           <ConfidenceBar confidence={dataCoverage} label="Data Coverage" />
         </div>
       )}
-      {reason && (
-        <p className="text-xs text-slate-600 flex-1">{reason}</p>
-      )}
+      {reason && <p className="text-xs text-slate-600 flex-1">{reason}</p>}
     </div>
   );
 }

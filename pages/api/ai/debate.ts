@@ -18,7 +18,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Only run debates for Drift/Capture (cost control)
   if (!['Drift', 'Capture'].includes(status)) {
-    return res.status(200).json({ skipped: true, reason: 'Debates only run for Drift/Capture assessments' });
+    return res
+      .status(200)
+      .json({ skipped: true, reason: 'Debates only run for Drift/Capture assessments' });
   }
 
   try {

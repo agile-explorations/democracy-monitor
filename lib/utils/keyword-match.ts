@@ -23,5 +23,5 @@ export function matchKeyword(text: string, keyword: string): boolean {
 
 /** Returns all keywords from `keywords` that match as whole words in `text`. */
 export function matchKeywords(text: string, keywords: string[]): string[] {
-  return keywords.filter(kw => matchKeyword(text, kw));
+  return keywords.filter((kw) => matchKeyword(text, kw));
 }

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { detectAnomalies, calculateTrends, countKeywordsInItems } from '@/lib/services/trend-anomaly-service';
+import {
+  detectAnomalies,
+  calculateTrends,
+  countKeywordsInItems,
+} from '@/lib/services/trend-anomaly-service';
 import type { KeywordTrend } from '@/lib/types/trends';
 
 describe('calculateTrends', () => {
@@ -16,24 +20,24 @@ describe('calculateTrends', () => {
   });
 
   it('marks as anomaly when ratio >= 2 and count >= 2', () => {
-    const current = { 'impoundment': 6 };
-    const baseline = { 'impoundment': 2 };
+    const current = { impoundment: 6 };
+    const baseline = { impoundment: 2 };
     const trends = calculateTrends(current, baseline, 'fiscal');
 
     expect(trends[0].isAnomaly).toBe(true);
   });
 
   it('does not mark as anomaly when count < 2', () => {
-    const current = { 'impoundment': 1 };
-    const baseline = { 'impoundment': 0.3 };
+    const current = { impoundment: 1 };
+    const baseline = { impoundment: 0.3 };
     const trends = calculateTrends(current, baseline, 'fiscal');
 
     expect(trends[0].isAnomaly).toBe(false);
   });
 
   it('does not mark as anomaly when ratio < 2', () => {
-    const current = { 'impoundment': 3 };
-    const baseline = { 'impoundment': 2 };
+    const current = { impoundment: 3 };
+    const baseline = { impoundment: 2 };
     const trends = calculateTrends(current, baseline, 'fiscal');
 
     expect(trends[0].ratio).toBe(1.5);
@@ -50,15 +54,15 @@ describe('calculateTrends', () => {
   });
 
   it('returns 0 ratio when both current and baseline are 0', () => {
-    const current = { 'nothing': 0 };
-    const baseline = { 'nothing': 0 };
+    const current = { nothing: 0 };
+    const baseline = { nothing: 0 };
     const trends = calculateTrends(current, baseline, 'fiscal');
 
     expect(trends[0].ratio).toBe(0);
   });
 
   it('includes period timestamps', () => {
-    const trends = calculateTrends({ 'test': 1 }, {}, 'fiscal');
+    const trends = calculateTrends({ test: 1 }, {}, 'fiscal');
     expect(trends[0].periodStart).toBeTruthy();
     expect(trends[0].periodEnd).toBeTruthy();
     // Period should span about 7 days
@@ -158,9 +162,9 @@ describe('countKeywordsInItems', () => {
 
   it('counts across multiple severity tiers', () => {
     const items = [
-      { title: 'Illegal impoundment by the executive branch' },   // capture keyword
-      { title: 'New rescission proposal under review' },           // drift keyword
-      { title: 'Funding delay reported for the quarter' },         // warning keyword
+      { title: 'Illegal impoundment by the executive branch' }, // capture keyword
+      { title: 'New rescission proposal under review' }, // drift keyword
+      { title: 'Funding delay reported for the quarter' }, // warning keyword
     ];
     const counts = countKeywordsInItems(items, 'fiscal');
 

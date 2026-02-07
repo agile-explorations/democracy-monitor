@@ -36,9 +36,7 @@ export function DailyDigest({ date }: DailyDigestProps) {
     <Card>
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Daily Digest — {digest.date}
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-900">Daily Digest — {digest.date}</h3>
           <span className="text-xs text-slate-500">
             {digest.provider} ({digest.model})
           </span>
@@ -51,7 +49,9 @@ export function DailyDigest({ date }: DailyDigestProps) {
             <h4 className="text-xs font-semibold text-slate-800 mb-1">Highlights</h4>
             <ul className="space-y-1">
               {digest.highlights.map((h, i) => (
-                <li key={i} className="text-xs text-slate-600">{'•'} {h}</li>
+                <li key={i} className="text-xs text-slate-600">
+                  {'•'} {h}
+                </li>
               ))}
             </ul>
           </div>

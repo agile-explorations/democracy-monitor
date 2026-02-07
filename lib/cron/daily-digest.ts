@@ -24,7 +24,7 @@ export async function runDailyDigest(): Promise<void> {
         itemCount: cached?.detail?.itemsReviewed || 0,
         highlights: cached?.matches?.slice(0, 3) || [],
       };
-    })
+    }),
   );
 
   const digest = await generateDailyDigest(date, categoryData);

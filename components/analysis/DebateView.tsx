@@ -8,13 +8,21 @@ interface DebateViewProps {
 const ROLE_STYLES = {
   prosecutor: { bg: 'bg-red-50', border: 'border-red-200', label: 'Prosecutor', icon: '\u2696' },
   defense: { bg: 'bg-blue-50', border: 'border-blue-200', label: 'Defense', icon: '\u{1F6E1}' },
-  arbitrator: { bg: 'bg-purple-50', border: 'border-purple-200', label: 'Arbitrator', icon: '\u2696' },
+  arbitrator: {
+    bg: 'bg-purple-50',
+    border: 'border-purple-200',
+    label: 'Arbitrator',
+    icon: '\u2696',
+  },
 };
 
 export function DebateView({ debate }: DebateViewProps) {
-  const verdictColor = debate.verdict.verdict === 'concerning' ? 'text-red-700'
-    : debate.verdict.verdict === 'reassuring' ? 'text-green-700'
-    : 'text-yellow-700';
+  const verdictColor =
+    debate.verdict.verdict === 'concerning'
+      ? 'text-red-700'
+      : debate.verdict.verdict === 'reassuring'
+        ? 'text-green-700'
+        : 'text-yellow-700';
 
   return (
     <div className="space-y-3">
@@ -29,7 +37,8 @@ export function DebateView({ debate }: DebateViewProps) {
       <div className="p-3 bg-slate-50 border border-slate-200 rounded">
         <div className="flex items-center gap-2 mb-2">
           <span className={`text-sm font-semibold ${verdictColor}`}>
-            Verdict: {debate.verdict.verdict.charAt(0).toUpperCase() + debate.verdict.verdict.slice(1)}
+            Verdict:{' '}
+            {debate.verdict.verdict.charAt(0).toUpperCase() + debate.verdict.verdict.slice(1)}
           </span>
           <span className="text-xs text-slate-500">
             (Agreement Level: {debate.verdict.agreementLevel}/10)
@@ -39,7 +48,9 @@ export function DebateView({ debate }: DebateViewProps) {
         {debate.verdict.keyPoints.length > 0 && (
           <ul className="mt-2 space-y-1">
             {debate.verdict.keyPoints.map((point, i) => (
-              <li key={i} className="text-xs text-slate-600">{'•'} {point}</li>
+              <li key={i} className="text-xs text-slate-600">
+                {'•'} {point}
+              </li>
             ))}
           </ul>
         )}
@@ -52,7 +63,9 @@ export function DebateView({ debate }: DebateViewProps) {
           return (
             <div key={i} className={`${style.bg} ${style.border} border rounded p-2`}>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold">{style.icon} {style.label}</span>
+                <span className="text-xs font-semibold">
+                  {style.icon} {style.label}
+                </span>
                 <span className="text-[10px] text-slate-500">
                   Round {msg.round} | {msg.provider} ({msg.model}) | {msg.latencyMs}ms
                 </span>

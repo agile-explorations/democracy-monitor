@@ -29,15 +29,9 @@ export function UptimeIndicator({ site, compact }: UptimeIndicatorProps) {
           Down since {new Date(site.downSince).toLocaleDateString()}
         </span>
       )}
-      {isUp && (
-        <span className="text-slate-500">
-          {site.uptime24h.toFixed(0)}% (24h)
-        </span>
-      )}
+      {isUp && <span className="text-slate-500">{site.uptime24h.toFixed(0)}% (24h)</span>}
       {site.current.responseTimeMs !== null && isUp && (
-        <span className="text-slate-400">
-          {site.current.responseTimeMs}ms
-        </span>
+        <span className="text-slate-400">{site.current.responseTimeMs}ms</span>
       )}
     </div>
   );

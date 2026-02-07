@@ -6,7 +6,12 @@ describe('parseResult', () => {
     const payload = {
       type: 'federal_register',
       items: [
-        { title: 'Test Rule', link: 'https://example.com/rule', pubDate: '2025-01-01', agency: 'EPA' },
+        {
+          title: 'Test Rule',
+          link: 'https://example.com/rule',
+          pubDate: '2025-01-01',
+          agency: 'EPA',
+        },
       ],
     };
     const result = parseResult(payload, 'federal_register', '/api/federal-register');
@@ -25,9 +30,7 @@ describe('parseResult', () => {
   it('parses tracker_scrape responses', () => {
     const payload = {
       type: 'tracker_scrape',
-      items: [
-        { title: 'Tracking Item 1', link: 'https://example.com/1', date: '2025-01-01' },
-      ],
+      items: [{ title: 'Tracking Item 1', link: 'https://example.com/1', date: '2025-01-01' }],
     };
     const result = parseResult(payload, 'tracker_scrape', '/api/scrape-tracker');
     expect(result).toHaveLength(1);
@@ -38,9 +41,7 @@ describe('parseResult', () => {
     const payload = {
       data: {
         type: 'rss',
-        items: [
-          { title: 'RSS Item', link: 'https://example.com/rss', pubDate: '2025-01-15' },
-        ],
+        items: [{ title: 'RSS Item', link: 'https://example.com/rss', pubDate: '2025-01-15' }],
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed.xml');
@@ -53,9 +54,7 @@ describe('parseResult', () => {
     const payload = {
       data: {
         type: 'html',
-        anchors: [
-          { text: 'Link Text', href: 'https://example.com/page' },
-        ],
+        anchors: [{ text: 'Link Text', href: 'https://example.com/page' }],
       },
     };
     const result = parseResult(payload, 'html', 'https://example.com');
@@ -108,7 +107,11 @@ describe('parseResult', () => {
       data: {
         type: 'rss',
         items: [
-          { title: { _: 'Nested Title' }, link: { href: 'https://example.com' }, updated: '2025-02-01' },
+          {
+            title: { _: 'Nested Title' },
+            link: { href: 'https://example.com' },
+            updated: '2025-02-01',
+          },
         ],
       },
     };

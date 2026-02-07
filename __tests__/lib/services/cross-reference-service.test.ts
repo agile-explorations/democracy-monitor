@@ -33,7 +33,13 @@ describe('getCrossReference', () => {
   });
 
   it('covers all 5 governance categories x 4 status levels', () => {
-    const categories = ['liberal_democracy', 'competitive_authoritarian', 'executive_dominant', 'illiberal_democracy', 'personalist_rule'] as const;
+    const categories = [
+      'liberal_democracy',
+      'competitive_authoritarian',
+      'executive_dominant',
+      'illiberal_democracy',
+      'personalist_rule',
+    ] as const;
     const statuses = ['Stable', 'Warning', 'Drift', 'Capture'] as const;
 
     for (const cat of categories) {
@@ -56,7 +62,9 @@ describe('getCrossReference', () => {
 
     const severityOrder = { low: 0, medium: 1, high: 2, critical: 3 };
     // liberal_democracy + Stable should be less severe than executive_dominant + Stable
-    expect(severityOrder[stableRefs[0].severity]).toBeLessThanOrEqual(severityOrder[stableRefs[2].severity]);
+    expect(severityOrder[stableRefs[0].severity]).toBeLessThanOrEqual(
+      severityOrder[stableRefs[2].severity],
+    );
   });
 });
 

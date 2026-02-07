@@ -7,12 +7,12 @@ export async function runUptimeCheck(): Promise<void> {
   const results = await checkAllSites();
   await recordResults(results);
 
-  const downSites = results.filter(r => !r.isUp);
+  const downSites = results.filter((r) => !r.isUp);
   const elapsed = Date.now() - start;
 
   console.log(
     `[uptime-check] Complete in ${elapsed}ms: ` +
-    `${results.length - downSites.length}/${results.length} sites up`
+      `${results.length - downSites.length}/${results.length} sites up`,
   );
 
   if (downSites.length > 0) {

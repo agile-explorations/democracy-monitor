@@ -20,7 +20,7 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
 
   try {
     const results = await provider.embedBatch(texts);
-    return results.map(r => r.embedding);
+    return results.map((r) => r.embedding);
   } catch (err) {
     console.error('Batch embedding failed:', err);
     return texts.map(() => null);

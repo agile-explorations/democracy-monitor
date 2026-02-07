@@ -15,9 +15,7 @@ export async function runWeeklyClustering(): Promise<void> {
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // Fetch recent documents
-  const recentDocs = await db.select()
-    .from(documents)
-    .where(gte(documents.fetchedAt, oneWeekAgo));
+  const recentDocs = await db.select().from(documents).where(gte(documents.fetchedAt, oneWeekAgo));
 
   if (recentDocs.length === 0) {
     console.log('[weekly-clustering] No documents from past week');
@@ -26,7 +24,7 @@ export async function runWeeklyClustering(): Promise<void> {
 
   console.log(`[weekly-clustering] Clustering ${recentDocs.length} documents...`);
 
-  const docsForClustering = recentDocs.map(doc => ({
+  const docsForClustering = recentDocs.map((doc) => ({
     text: doc.content || doc.title,
     category: doc.category,
     title: doc.title,

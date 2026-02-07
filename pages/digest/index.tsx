@@ -49,27 +49,33 @@ export default function DigestArchive() {
     <>
       <Head>
         <title>Daily Digest Archive — Democracy Monitor</title>
-        <meta name="description" content="Archive of daily digest summaries from the Democracy Monitor." />
+        <meta
+          name="description"
+          content="Archive of daily digest summaries from the Democracy Monitor."
+        />
       </Head>
       <main className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-900">Daily Digest Archive</h1>
-            <Link href="/" className="text-sm text-blue-600 hover:underline">Back to Dashboard</Link>
+            <Link href="/" className="text-sm text-blue-600 hover:underline">
+              Back to Dashboard
+            </Link>
           </div>
 
-          {loading && (
-            <p className="text-sm text-slate-500 italic">Loading digests...</p>
-          )}
+          {loading && <p className="text-sm text-slate-500 italic">Loading digests...</p>}
 
           {!loading && digests.length === 0 && (
             <div className="bg-white border border-slate-200 rounded-lg p-6 text-center">
-              <p className="text-sm text-slate-500">No digests available yet. Digests are generated daily when AI providers are configured.</p>
+              <p className="text-sm text-slate-500">
+                No digests available yet. Digests are generated daily when AI providers are
+                configured.
+              </p>
             </div>
           )}
 
           <div className="space-y-3">
-            {digests.map(digest => (
+            {digests.map((digest) => (
               <Link
                 key={digest.date}
                 href={`/digest/${digest.date}`}

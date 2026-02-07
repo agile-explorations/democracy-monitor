@@ -20,9 +20,7 @@ describe('analyzeContent', () => {
   });
 
   it('returns insufficient data Warning when fewer than 3 items with no keywords', () => {
-    const items = [
-      { title: 'Routine quarterly report on agency operations' },
-    ];
+    const items = [{ title: 'Routine quarterly report on agency operations' }];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Warning');
     expect(result.detail?.insufficientData).toBe(true);
@@ -30,9 +28,7 @@ describe('analyzeContent', () => {
   });
 
   it('returns Warning for a single drift keyword match', () => {
-    const items = [
-      { title: 'New reclassification of positions announced' },
-    ];
+    const items = [{ title: 'New reclassification of positions announced' }];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Warning');
     expect(result.matches).toContain('reclassification');
@@ -49,13 +45,11 @@ describe('analyzeContent', () => {
   });
 
   it('returns Drift for a single capture keyword (requires corroboration for Capture)', () => {
-    const items = [
-      { title: 'Schedule F executive order reinstated' },
-    ];
+    const items = [{ title: 'Schedule F executive order reinstated' }];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Drift');
     expect(result.reason).toContain('needs corroboration');
-    expect(result.matches.some(m => m.includes('schedule f'))).toBe(true);
+    expect(result.matches.some((m) => m.includes('schedule f'))).toBe(true);
   });
 
   it('returns Capture when 2+ capture keywords are found', () => {
@@ -69,7 +63,10 @@ describe('analyzeContent', () => {
 
   it('returns Capture with high authority flag for GAO findings with multiple matches', () => {
     const items = [
-      { title: 'Violated impoundment control act with illegal impoundment of funds', agency: 'Government Accountability Office' },
+      {
+        title: 'Violated impoundment control act with illegal impoundment of funds',
+        agency: 'Government Accountability Office',
+      },
     ];
     const result = analyzeContent(items, 'fiscal');
     expect(result.status).toBe('Capture');
@@ -79,7 +76,10 @@ describe('analyzeContent', () => {
   it('authority comes from agency field, not content text', () => {
     // "GAO" in title text should NOT trigger authority — only the agency field matters
     const items = [
-      { title: 'Article mentions GAO in passing about violated impoundment control act and illegal impoundment' },
+      {
+        title:
+          'Article mentions GAO in passing about violated impoundment control act and illegal impoundment',
+      },
     ];
     const result = analyzeContent(items, 'fiscal');
     // Should still detect capture keywords but NOT flag as authoritative
@@ -87,9 +87,7 @@ describe('analyzeContent', () => {
   });
 
   it('handles igs oversight.gov down special case', () => {
-    const items = [
-      { title: '⚠️ Oversight.gov - CURRENTLY DOWN' },
-    ];
+    const items = [{ title: '⚠️ Oversight.gov - CURRENTLY DOWN' }];
     const result = analyzeContent(items, 'igs');
     expect(result.status).toBe('Drift');
     expect(result.reason).toContain('Oversight.gov');
@@ -110,7 +108,7 @@ describe('analyzeContent', () => {
     // Pattern language + drift keyword creates a "(systematic pattern)" capture match,
     // plus additional drift matches → should reach Capture with corroboration
     expect(['Capture', 'Drift']).toContain(result.status);
-    expect(result.matches.some(m => m.includes('systematic pattern'))).toBe(true);
+    expect(result.matches.some((m) => m.includes('systematic pattern'))).toBe(true);
   });
 
   it('counts detail correctly', () => {
@@ -136,9 +134,7 @@ describe('analyzeContent', () => {
   });
 
   it('does not false-positive on partial word matches', () => {
-    const items = [
-      { title: 'Classification of new job categories finalized' },
-    ];
+    const items = [{ title: 'Classification of new job categories finalized' }];
     const result = analyzeContent(items, 'civilService');
     // "reclassification" should NOT match inside "classification"
     // because "reclassification" != "classification" at word boundary
@@ -147,7 +143,10 @@ describe('analyzeContent', () => {
 
   it('does not match keywords in note field (editorial descriptions)', () => {
     const items = [
-      { title: 'Routine quarterly report', note: 'Looking for rules that could let the President fire career workers via schedule f' },
+      {
+        title: 'Routine quarterly report',
+        note: 'Looking for rules that could let the President fire career workers via schedule f',
+      },
       { title: 'Annual budget summary released' },
       { title: 'Monthly staffing update from OPM' },
     ];
@@ -158,9 +157,7 @@ describe('analyzeContent', () => {
   });
 
   it('does not match keywords in agency field', () => {
-    const items = [
-      { title: 'Routine quarterly report', agency: 'Office of Inspector General' },
-    ];
+    const items = [{ title: 'Routine quarterly report', agency: 'Office of Inspector General' }];
     // "inspector general" appears in agency but should not trigger igs keywords
     const result = analyzeContent(items, 'igs');
     expect(result.matches).not.toContain('inspector general');

@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await recordTrends(trends);
 
     res.status(200).json({
-      trends: trends.filter(t => t.currentCount > 0),
+      trends: trends.filter((t) => t.currentCount > 0),
       anomalies,
       totalKeywordsTracked: trends.length,
       anomalyCount: anomalies.length,
