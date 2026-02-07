@@ -170,7 +170,8 @@ Without automated guardrails, code standards are suggestions. These items create
 
 **Pre-commit hooks:**
 
-- [ ] Add `husky` + `lint-staged` — run lint, type-check, and format on staged files so broken code never lands in a commit
+- [x] Add `husky` + `lint-staged` — run lint and format check on staged files so broken code never lands in a commit
+- [ ] Tighten lint-staged to `eslint --max-warnings 0` after fixing 6 existing `exhaustive-deps` warnings
 
 **ESLint — tighten React pattern enforcement:**
 Current `.eslintrc.json` is nearly empty (just `next/core-web-vitals`). Add rules to codify the patterns already used in this codebase:
