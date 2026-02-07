@@ -1,5 +1,33 @@
+# Dependencies
 node_modules
+
+# Next.js build
 .next
+out
+dist
+build
+
+# Environment
 .env.local
 .env*.local
+
+# Claude Code (user-specific)
+.claude/
+
+# Test coverage
+coverage
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
 dev.log
+*.log

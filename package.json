@@ -1,7 +1,25 @@
 {
   "name": "executive-power-drift-dashboard",
   "version": "1.0.0",
-  "private": true,
+  "description": "Live dashboard tracking signals of executive-power centralization across US government institutions",
+  "license": "MIT",
+  "author": "Michael Kelly",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michaelkelly/executive-power-drift.git"
+  },
+  "bugs": {
+    "url": "https://github.com/michaelkelly/executive-power-drift/issues"
+  },
+  "homepage": "https://github.com/michaelkelly/executive-power-drift#readme",
+  "keywords": [
+    "democracy",
+    "executive-power",
+    "oversight",
+    "transparency",
+    "government",
+    "dashboard"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

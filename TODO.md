@@ -113,6 +113,35 @@ AI currently receives only document titles — not full text. This makes AI asse
 
 ---
 
+## OSS-P0 — Open-Source Blockers (must fix before publishing)
+
+- [x] Add LICENSE file (MIT)
+- [x] `.env.local` already gitignored (was never tracked)
+- [x] Remove `.claude/settings.local.json` from git tracking and add `.claude/` to `.gitignore`
+- [x] Expand `.gitignore` (coverage/, .DS_Store, .vscode/, .idea/, *.swp, OS files, IDE files)
+- [x] Update `package.json`: remove `"private": true`, add `license`, `description`, `repository`, `author`, `keywords`, `bugs`, `homepage`
+
+## OSS-P1 — Open-Source High Priority (contributors will look for these)
+
+### Documentation
+- [ ] Rewrite README.md: project mission, how it works, screenshots/demo link, architecture overview, how to run locally, how to contribute, license badge
+- [ ] Add CONTRIBUTING.md: dev setup, code style, how to write tests, PR guidelines, issue reporting
+- [ ] Add CODE_OF_CONDUCT.md (Contributor Covenant)
+- [ ] Decide on CLAUDE.md: keep for AI-assisted dev, and/or add ARCHITECTURE.md for human contributors
+
+### Code Quality
+- [ ] Narrow `any` types in API routes and parsers (consider Zod schemas for external API responses)
+- [ ] Run dead-import analysis (`ts-prune` or `eslint-plugin-unused-imports`)
+- [ ] Decide whether to keep or trim COMPREHENSIVE_ENHANCEMENT_PLAN.md (56KB internal planning doc)
+
+### Test Coverage (currently ~39% of services, 0% of API routes/components)
+- [ ] Add API route smoke tests (proxy, assess-status, federal-register at minimum)
+- [ ] Add tests for `feed-service.ts` (core data fetching, untested)
+- [ ] Add tests for cache layer fallback logic (`lib/cache/index.ts`)
+- [ ] Add tests for remaining services (ai-assessment, uptime, suppression-detection)
+
+---
+
 ## P2 — Medium (robustness + depth)
 
 ### Assessment Methodology
