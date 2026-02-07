@@ -9,6 +9,9 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 import { StatusLegend } from '@/components/dashboard/StatusLegend';
 import { IntentSection } from '@/components/intent/IntentSection';
+import { SystemHealthOverview } from '@/components/integration/SystemHealthOverview';
+import { CrossSectionBanner } from '@/components/integration/CrossSectionBanner';
+import { DataSourceStatus } from '@/components/resilience/DataSourceStatus';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -39,7 +42,24 @@ export default function ExecutivePowerDriftDashboard() {
     <div className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
       <div className="max-w-6xl mx-auto space-y-6">
         <DashboardHeader refreshMs={refreshMs} setRefreshMs={setRefreshMs} />
+
+        {/* Navigation */}
+        <nav className="flex gap-4 text-xs text-slate-500">
+          <a href="/methodology" className="hover:text-blue-600 underline">Methodology</a>
+          <a href="/sources" className="hover:text-blue-600 underline">Data Sources</a>
+          <a href="/digest" className="hover:text-blue-600 underline">Daily Digests</a>
+        </nav>
+
         <StatusLegend />
+
+        {/* System Health Overview */}
+        <SystemHealthOverview statusMap={statusMap} />
+
+        {/* Cross-section analysis banner */}
+        <CrossSectionBanner intentAssessment={intentAssessment} statusMap={statusMap} />
+
+        {/* Data Source Status */}
+        <DataSourceStatus />
 
         {/* Section 1: Administration's Intent */}
         <IntentSection onAssessmentLoaded={setIntentAssessment} />
