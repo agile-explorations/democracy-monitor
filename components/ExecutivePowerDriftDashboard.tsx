@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
+import { CategoryCard } from '@/components/dashboard/CategoryCard';
+import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { StatusLegend } from '@/components/dashboard/StatusLegend';
+import { CrossSectionBanner } from '@/components/integration/CrossSectionBanner';
+import { SystemHealthOverview } from '@/components/integration/SystemHealthOverview';
+import { IntentSection } from '@/components/intent/IntentSection';
+import { DataSourceStatus } from '@/components/resilience/DataSourceStatus';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { IntentAssessment, GovernanceCategory } from '@/lib/types/intent';
+import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
 import { getCrossReference } from '@/lib/services/cross-reference-service';
 import type { StatusLevel } from '@/lib/types';
-import { CategoryCard } from '@/components/dashboard/CategoryCard';
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
-import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
-import { StatusLegend } from '@/components/dashboard/StatusLegend';
-import { IntentSection } from '@/components/intent/IntentSection';
-import { SystemHealthOverview } from '@/components/integration/SystemHealthOverview';
-import { CrossSectionBanner } from '@/components/integration/CrossSectionBanner';
-import { DataSourceStatus } from '@/components/resilience/DataSourceStatus';
+import type { IntentAssessment, GovernanceCategory } from '@/lib/types/intent';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 

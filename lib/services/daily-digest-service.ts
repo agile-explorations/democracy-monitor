@@ -1,11 +1,11 @@
-import type { DigestEntry, TrendAnomaly } from '@/lib/types/trends';
-import { getAvailableProviders } from '@/lib/ai/provider';
+import { eq } from 'drizzle-orm';
 import { DIGEST_SYSTEM_PROMPT, buildDailyDigestPrompt } from '@/lib/ai/prompts/daily-digest';
+import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { digests } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import type { DigestEntry, TrendAnomaly } from '@/lib/types/trends';
 
 export async function generateDailyDigest(
   date: string,

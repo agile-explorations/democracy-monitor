@@ -1,6 +1,6 @@
 import type { AIProvider, AIEmbeddingProvider } from '@/lib/types';
-import { OpenAIProvider } from './openai';
 import { AnthropicProvider } from './anthropic';
+import { OpenAIProvider } from './openai';
 
 const providers: Record<string, AIProvider> = {};
 

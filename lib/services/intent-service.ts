@@ -1,3 +1,5 @@
+import { classifyGovernance } from '@/lib/data/governance-framework';
+import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import type {
   PolicyArea,
   IntentScore,
@@ -5,8 +7,6 @@ import type {
   GovernanceCategory,
   IntentStatement,
 } from '@/lib/types/intent';
-import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
-import { classifyGovernance } from '@/lib/data/governance-framework';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
 const POLICY_AREAS: PolicyArea[] = [

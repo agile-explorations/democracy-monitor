@@ -1,8 +1,8 @@
-import type { SemanticCluster } from '@/lib/types/trends';
-import { embedBatch, cosineSimilarity } from './embedding-service';
+import { getAvailableProviders } from '@/lib/ai/provider';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { semanticClusters } from '@/lib/db/schema';
-import { getAvailableProviders } from '@/lib/ai/provider';
+import type { SemanticCluster } from '@/lib/types/trends';
+import { embedBatch, cosineSimilarity } from './embedding-service';
 
 interface DocumentForClustering {
   text: string;

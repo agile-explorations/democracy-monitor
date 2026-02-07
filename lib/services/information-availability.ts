@@ -1,8 +1,8 @@
-import type { InformationAvailabilityStatus, SuppressionAlert } from '@/lib/types/resilience';
-import type { StatusLevel } from '@/lib/types';
 import { MONITORED_SITES } from '@/lib/data/monitored-sites';
-import { getUptimeHistory } from './uptime-service';
+import type { StatusLevel } from '@/lib/types';
+import type { InformationAvailabilityStatus, SuppressionAlert } from '@/lib/types/resilience';
 import { checkSiteDown } from './suppression-detection';
+import { getUptimeHistory } from './uptime-service';
 
 export async function assessInformationAvailability(): Promise<InformationAvailabilityStatus> {
   const uptimeHistories = await getUptimeHistory();

@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getDemoResponse } from '@/lib/demo';
 import {
   fetchPresidentialDocuments,
   fetchWhiteHouseBriefings,
 } from '@/lib/services/intent-data-service';
-import { getDemoResponse } from '@/lib/demo';
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('intent/statements', _req);

@@ -1,7 +1,7 @@
-import { clusterDocuments } from '@/lib/services/semantic-clustering-service';
+import { gte } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
-import { gte } from 'drizzle-orm';
+import { clusterDocuments } from '@/lib/services/semantic-clustering-service';
 
 export async function runWeeklyClustering(): Promise<void> {
   console.log('[weekly-clustering] Starting semantic clustering...');

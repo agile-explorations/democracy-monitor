@@ -1,9 +1,8 @@
-import type { UptimeResult, UptimeHistory } from '@/lib/types/resilience';
-import type { MonitoredSite } from '@/lib/types/resilience';
+import { eq, desc, gte, and } from 'drizzle-orm';
 import { MONITORED_SITES } from '@/lib/data/monitored-sites';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { siteUptime } from '@/lib/db/schema';
-import { eq, desc, gte, and } from 'drizzle-orm';
+import type { UptimeResult, UptimeHistory, MonitoredSite } from '@/lib/types/resilience';
 
 const CHECK_TIMEOUT_MS = 10000;
 

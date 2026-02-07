@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { getDemoResponse } from '@/lib/demo';
+import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('ai/assess', req);

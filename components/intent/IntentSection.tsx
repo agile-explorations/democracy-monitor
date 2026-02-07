@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import type { IntentAssessment } from '@/lib/types/intent';
 import { Card } from '@/components/ui/Card';
+import type { IntentAssessment } from '@/lib/types/intent';
 import { IntentOverview } from './IntentOverview';
 import { PolicyAreaBreakdown } from './PolicyAreaBreakdown';
-import { RhetoricActionGap } from './RhetoricActionGap';
 import { RecentStatements } from './RecentStatements';
+import { RhetoricActionGap } from './RhetoricActionGap';
 
 interface IntentSectionProps {
   onAssessmentLoaded?: (assessment: IntentAssessment) => void;

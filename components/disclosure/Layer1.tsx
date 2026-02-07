@@ -1,7 +1,7 @@
 import React from 'react';
-import type { StatusLevel } from '@/lib/types';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
+import { StatusPill } from '@/components/ui/StatusPill';
+import type { StatusLevel } from '@/lib/types';
 
 interface Layer1Props {
   level: StatusLevel;

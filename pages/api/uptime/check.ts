@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { checkAllSites, recordResults } from '@/lib/services/uptime-service';
 import { getDemoResponse } from '@/lib/demo';
+import { checkAllSites, recordResults } from '@/lib/services/uptime-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('uptime/check', req);

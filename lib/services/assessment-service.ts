@@ -1,5 +1,5 @@
-import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
 // Authoritative agency identifiers — matched against the `agency` field, not content text

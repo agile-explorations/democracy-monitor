@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { runDebate } from '@/lib/services/debate-service';
 import { getDemoResponse } from '@/lib/demo';
+import { runDebate } from '@/lib/services/debate-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('ai/debate', req);

@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getDemoResponse } from '@/lib/demo';
 import {
   countKeywordsInItems,
   calculateTrends,
@@ -6,7 +7,6 @@ import {
   getBaselineCounts,
   recordTrends,
 } from '@/lib/services/trend-anomaly-service';
-import { getDemoResponse } from '@/lib/demo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('ai/trends', req);

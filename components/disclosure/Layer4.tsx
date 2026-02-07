@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { DebateView } from '@/components/analysis/DebateView';
+import { LegalAnalysisView } from '@/components/analysis/LegalAnalysis';
+import { TrendAlert } from '@/components/analysis/TrendAlert';
 import type { StatusLevel } from '@/lib/types';
 import type { DebateResult } from '@/lib/types/debate';
 import type { LegalAnalysisResult } from '@/lib/types/legal';
 import type { TrendAnomaly } from '@/lib/types/trends';
-import { DebateView } from '@/components/analysis/DebateView';
-import { LegalAnalysisView } from '@/components/analysis/LegalAnalysis';
-import { TrendAlert } from '@/components/analysis/TrendAlert';
 
 interface Layer4Props {
   categoryKey: string;

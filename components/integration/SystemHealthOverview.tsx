@@ -1,7 +1,7 @@
 import React from 'react';
-import type { StatusLevel } from '@/lib/types';
-import { CATEGORIES } from '@/lib/data/categories';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { CATEGORIES } from '@/lib/data/categories';
+import type { StatusLevel } from '@/lib/types';
 
 interface SystemHealthOverviewProps {
   statusMap: Record<string, string>;

@@ -2,8 +2,8 @@
  * Uptime monitoring fixtures for all 15 monitored sites.
  */
 
-import type { UptimeResult, UptimeHistory, InformationAvailabilityStatus } from '@/lib/types';
 import { MONITORED_SITES } from '@/lib/data/monitored-sites';
+import type { UptimeResult, UptimeHistory, InformationAvailabilityStatus } from '@/lib/types';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 

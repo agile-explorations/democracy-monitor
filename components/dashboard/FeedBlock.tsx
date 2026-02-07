@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import type { Signal } from '@/lib/types';
 import type { FeedItem, FeedPayload } from '@/lib/parsers/feed-parser';
-import { fetchData } from '@/lib/services/feed-service';
 import { parseResult } from '@/lib/parsers/feed-parser';
+import { fetchData } from '@/lib/services/feed-service';
+import type { Signal } from '@/lib/types';
 
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';

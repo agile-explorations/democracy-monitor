@@ -1,8 +1,8 @@
 import React from 'react';
-import type { IntentAssessment } from '@/lib/types/intent';
-import { GOVERNANCE_FRAMEWORK } from '@/lib/data/governance-framework';
-import { GovernanceScoreBar } from './GovernanceScoreBar';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
+import { GOVERNANCE_FRAMEWORK } from '@/lib/data/governance-framework';
+import type { IntentAssessment } from '@/lib/types/intent';
+import { GovernanceScoreBar } from './GovernanceScoreBar';
 
 interface IntentOverviewProps {
   assessment: IntentAssessment;

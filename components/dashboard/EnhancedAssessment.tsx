@@ -1,7 +1,7 @@
 import React from 'react';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
-import { EvidenceBalance } from '@/components/ui/EvidenceBalance';
 import { CounterEvidence } from '@/components/ui/CounterEvidence';
+import { EvidenceBalance } from '@/components/ui/EvidenceBalance';
 
 interface EnhancedAssessmentData {
   dataCoverage: number;

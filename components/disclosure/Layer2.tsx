@@ -1,6 +1,6 @@
 import React from 'react';
-import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 import { CrossReference } from '@/components/dashboard/CrossReference';
+import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 
 interface EnhancedData {
   dataCoverage: number;

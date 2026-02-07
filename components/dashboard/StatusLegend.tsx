@@ -1,6 +1,6 @@
 import React from 'react';
-import { StatusPill } from '@/components/ui/StatusPill';
 import { Card } from '@/components/ui/Card';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 export function StatusLegend() {
   return (

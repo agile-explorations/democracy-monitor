@@ -1,7 +1,7 @@
-import { generateDailyDigest } from '@/lib/services/daily-digest-service';
-import { CATEGORIES } from '@/lib/data/categories';
 import { cacheGet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { CATEGORIES } from '@/lib/data/categories';
+import { generateDailyDigest } from '@/lib/services/daily-digest-service';
 
 export async function runDailyDigest(): Promise<void> {
   const date = new Date().toISOString().split('T')[0];

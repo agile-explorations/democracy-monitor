@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
+import { Card } from '@/components/ui/Card';
+import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
+import { StatusPill } from '@/components/ui/StatusPill';
+import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { Category, StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-import type { FeedItem } from '@/lib/parsers/feed-parser';
-import { StatusPill } from '@/components/ui/StatusPill';
-import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
-import { Card } from '@/components/ui/Card';
-import { FeedBlock } from './FeedBlock';
-import { EnhancedAssessment } from './EnhancedAssessment';
 import { CrossReference } from './CrossReference';
-import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
+import { EnhancedAssessment } from './EnhancedAssessment';
+import { FeedBlock } from './FeedBlock';
 
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';

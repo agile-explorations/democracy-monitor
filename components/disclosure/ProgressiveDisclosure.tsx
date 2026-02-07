@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { Layer1 } from './Layer1';
 import { Layer2 } from './Layer2';
 import { Layer3 } from './Layer3';

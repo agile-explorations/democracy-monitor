@@ -1,6 +1,6 @@
-import type { FallbackSource, FallbackResult } from '@/lib/types/resilience';
-import { getFallbackConfig } from '@/lib/data/fallback-sources';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { getFallbackConfig } from '@/lib/data/fallback-sources';
+import type { FallbackSource, FallbackResult } from '@/lib/types/resilience';
 
 const FETCH_TIMEOUT_MS = 15000;
 

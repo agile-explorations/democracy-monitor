@@ -1,6 +1,6 @@
-import type { IntentStatement, PolicyArea } from '@/lib/types/intent';
-import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
+import type { IntentStatement, PolicyArea } from '@/lib/types/intent';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
 const CACHE_TTL_S = 3600; // 1 hour

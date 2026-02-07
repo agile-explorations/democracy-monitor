@@ -1,9 +1,9 @@
-import type { LegalAnalysisResult, LegalCitation } from '@/lib/types/legal';
-import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import { LEGAL_SYSTEM_PROMPT, buildLegalAnalysisPrompt } from '@/lib/ai/prompts/legal-analysis';
-import { LEGAL_KNOWLEDGE_BASE } from '@/lib/data/legal-knowledge-base';
-import { embedText, cosineSimilarity } from './embedding-service';
+import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { LEGAL_KNOWLEDGE_BASE } from '@/lib/data/legal-knowledge-base';
+import type { LegalAnalysisResult, LegalCitation } from '@/lib/types/legal';
+import { embedText, cosineSimilarity } from './embedding-service';
 
 async function findRelevantLegalDocs(
   context: string,

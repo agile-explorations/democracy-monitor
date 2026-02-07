@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import type { DigestEntry } from '@/lib/types/trends';
 import { Card } from '@/components/ui/Card';
+import type { DigestEntry } from '@/lib/types/trends';
 
 interface DailyDigestProps {
   date?: string;

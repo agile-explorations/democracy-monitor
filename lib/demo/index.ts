@@ -6,18 +6,18 @@
  */
 
 import type { NextApiRequest } from 'next';
-import type { ScenarioName } from './scenarios';
-import { DEMO_SCENARIOS } from './scenarios';
-import * as feeds from './fixtures/feeds';
-import { getDemoAssessment } from './fixtures/assessments';
-import { getDemoIntentAssessment, getDemoIntentStatements } from './fixtures/intent';
 import {
   getDemoDebate,
   getDemoLegalAnalysis,
   getDemoTrends,
   getDemoDailyDigest,
 } from './fixtures/ai';
+import { getDemoAssessment } from './fixtures/assessments';
+import * as feeds from './fixtures/feeds';
+import { getDemoIntentAssessment, getDemoIntentStatements } from './fixtures/intent';
 import { getDemoUptimeStatus, getDemoUptimeCheck } from './fixtures/uptime';
+import type { ScenarioName } from './scenarios';
+import { DEMO_SCENARIOS } from './scenarios';
 
 export function isDemoMode(): boolean {
   return process.env.DEMO_MODE === 'true';

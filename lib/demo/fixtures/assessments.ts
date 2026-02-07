@@ -4,9 +4,9 @@
  * through the keyword engine's complex authority weighting.
  */
 
-import type { StatusLevel, AssessmentResult, AssessmentDetail } from '@/lib/types';
 import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import type { EvidenceItem } from '@/lib/services/evidence-balance';
+import type { StatusLevel, AssessmentResult, AssessmentDetail } from '@/lib/types';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 

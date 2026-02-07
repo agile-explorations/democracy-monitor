@@ -1,6 +1,6 @@
 import React from 'react';
-import type { IntentAssessment } from '@/lib/types/intent';
 import type { StatusLevel } from '@/lib/types';
+import type { IntentAssessment } from '@/lib/types/intent';
 
 interface CrossSectionBannerProps {
   intentAssessment: IntentAssessment | null;

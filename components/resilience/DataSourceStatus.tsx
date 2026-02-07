@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import type { UptimeHistory } from '@/lib/types/resilience';
 import { UptimeIndicator } from '@/components/dashboard/UptimeIndicator';
 import { Card } from '@/components/ui/Card';
+import type { UptimeHistory } from '@/lib/types/resilience';
 
 interface StatusData {
   sites: UptimeHistory[];

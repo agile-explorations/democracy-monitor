@@ -1,8 +1,8 @@
-import type { KeywordTrend, TrendAnomaly } from '@/lib/types/trends';
-import { isDbAvailable, getDb } from '@/lib/db';
-import { keywordTrends } from '@/lib/db/schema';
 import { eq, gte, and } from 'drizzle-orm';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { isDbAvailable, getDb } from '@/lib/db';
+import { keywordTrends } from '@/lib/db/schema';
+import type { KeywordTrend, TrendAnomaly } from '@/lib/types/trends';
 
 const ANOMALY_THRESHOLD = 2.0; // 2x baseline = anomaly
 

@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { analyzeContent } from '@/lib/services/assessment-service';
-import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { getDemoResponse } from '@/lib/demo';
+import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
+import { analyzeContent } from '@/lib/services/assessment-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('assess-status', req);

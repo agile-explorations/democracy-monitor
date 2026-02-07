@@ -1,20 +1,20 @@
-import type { DebateMessage, DebateResult, DebateVerdict } from '@/lib/types/debate';
-import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import {
-  PROSECUTOR_SYSTEM_PROMPT,
-  buildProsecutorOpeningPrompt,
-  buildProsecutorRebuttalPrompt,
-} from '@/lib/ai/prompts/debate-prosecutor';
+  ARBITRATOR_SYSTEM_PROMPT,
+  buildArbitratorPrompt,
+} from '@/lib/ai/prompts/debate-arbitrator';
 import {
   DEFENSE_SYSTEM_PROMPT,
   buildDefenseOpeningPrompt,
   buildDefenseRebuttalPrompt,
 } from '@/lib/ai/prompts/debate-defense';
 import {
-  ARBITRATOR_SYSTEM_PROMPT,
-  buildArbitratorPrompt,
-} from '@/lib/ai/prompts/debate-arbitrator';
+  PROSECUTOR_SYSTEM_PROMPT,
+  buildProsecutorOpeningPrompt,
+  buildProsecutorRebuttalPrompt,
+} from '@/lib/ai/prompts/debate-prosecutor';
+import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import type { DebateMessage, DebateResult, DebateVerdict } from '@/lib/types/debate';
 
 const TOTAL_ROUNDS = 5; // opening, opening, rebuttal, rebuttal, verdict
 

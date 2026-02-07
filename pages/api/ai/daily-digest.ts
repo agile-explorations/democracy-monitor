@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { generateDailyDigest } from '@/lib/services/daily-digest-service';
 import { getDemoResponse } from '@/lib/demo';
+import { generateDailyDigest } from '@/lib/services/daily-digest-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('ai/daily-digest', req);
