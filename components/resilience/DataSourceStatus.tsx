@@ -46,7 +46,10 @@ export function DataSourceStatus() {
     <Card>
       <div className="space-y-2">
         <div className="flex items-center gap-3">
-          <h4 className="text-sm font-semibold text-slate-900">Data Source Status</h4>
+          <h4 className="text-sm font-semibold text-slate-900">
+            Data Source Status{' '}
+            <span className="font-normal text-slate-400">(website availability)</span>
+          </h4>
           <div className="flex gap-1">
             {sites.map((site) => (
               <UptimeIndicator key={site.hostname} site={site} compact />

@@ -31,6 +31,12 @@ export function StatusLegend() {
           </span>
         </div>
       </div>
+      <p className="text-[10px] text-slate-400 mt-3">
+        These statuses describe individual category health. The aggregate &ldquo;System
+        Health&rdquo; label (Healthy/Caution/Concerning/Serious/Critical) is derived from how many
+        categories are at each level. Data source Up/Down indicates whether government websites are
+        reachable.
+      </p>
     </Card>
   );
 }

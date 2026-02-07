@@ -1,3 +1,4 @@
+import { useDevMode } from '@/lib/hooks/useDevMode';
 import type { DebateResult } from '@/lib/types/debate';
 
 interface DebateViewProps {
@@ -16,6 +17,8 @@ const ROLE_STYLES = {
 };
 
 export function DebateView({ debate }: DebateViewProps) {
+  const [devMode] = useDevMode();
+
   const verdictColor =
     debate.verdict.verdict === 'concerning'
       ? 'text-red-700'
@@ -28,7 +31,8 @@ export function DebateView({ debate }: DebateViewProps) {
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-900">Multi-Agent Debate</h4>
         <span className="text-xs text-slate-500">
-          {debate.totalRounds} rounds | {(debate.totalLatencyMs / 1000).toFixed(1)}s
+          {debate.totalRounds} rounds
+          {devMode && <> | {(debate.totalLatencyMs / 1000).toFixed(1)}s</>}
         </span>
       </div>
 
@@ -66,7 +70,13 @@ export function DebateView({ debate }: DebateViewProps) {
                   {style.icon} {style.label}
                 </span>
                 <span className="text-[10px] text-slate-500">
-                  Round {msg.round} | {msg.provider} ({msg.model}) | {msg.latencyMs}ms
+                  Round {msg.round}
+                  {devMode && (
+                    <>
+                      {' '}
+                      | {msg.provider} ({msg.model}) | {msg.latencyMs}ms
+                    </>
+                  )}
                 </span>
               </div>
               <p className="text-xs text-slate-700 whitespace-pre-wrap">{msg.content}</p>

@@ -6,6 +6,23 @@ interface SystemHealthOverviewProps {
   statusMap: Record<string, string>;
 }
 
+function healthExplanation(health: string): string {
+  switch (health) {
+    case 'Critical':
+      return 'One or more categories at Capture level';
+    case 'Serious':
+      return 'Three or more categories at Drift level';
+    case 'Concerning':
+      return 'One or more categories at Drift level';
+    case 'Caution':
+      return 'More than three categories at Warning level';
+    case 'Healthy':
+      return 'No categories at Drift or Capture level';
+    default:
+      return '';
+  }
+}
+
 export function SystemHealthOverview({ statusMap }: SystemHealthOverviewProps) {
   const statuses = CATEGORIES.map((cat) => ({
     key: cat.key,
@@ -41,7 +58,12 @@ export function SystemHealthOverview({ statusMap }: SystemHealthOverviewProps) {
     <div className="bg-white border border-slate-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-slate-900">System Health Overview</h3>
-        <span className={`text-sm font-bold ${healthColor}`}>{overallHealth}</span>
+        <span
+          className={`text-sm font-bold ${healthColor}`}
+          title={healthExplanation(overallHealth)}
+        >
+          {overallHealth}
+        </span>
       </div>
 
       <div className="grid grid-cols-4 gap-2 text-center text-xs mb-3">
@@ -71,6 +93,11 @@ export function SystemHealthOverview({ statusMap }: SystemHealthOverviewProps) {
           </div>
         ))}
       </div>
+
+      <p className="text-[10px] text-slate-400 mt-2">
+        Aggregate health is derived from individual category statuses: any Capture = Critical, 3+
+        Drift = Serious, any Drift = Concerning, 4+ Warning = Caution, otherwise Healthy.
+      </p>
     </div>
   );
 }

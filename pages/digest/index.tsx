@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useDevMode } from '@/lib/hooks/useDevMode';
 
 interface DigestSummary {
   date: string;
@@ -11,6 +12,7 @@ interface DigestSummary {
 export default function DigestArchive() {
   const [digests, setDigests] = useState<DigestSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [devMode] = useDevMode();
 
   useEffect(() => {
     // Load last 7 days of digests
@@ -83,7 +85,7 @@ export default function DigestArchive() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-sm font-semibold text-slate-900">{digest.date}</h2>
-                  <span className="text-xs text-slate-400">{digest.provider}</span>
+                  {devMode && <span className="text-xs text-slate-400">{digest.provider}</span>}
                 </div>
                 <p className="text-xs text-slate-600 line-clamp-2">{digest.summary}</p>
               </Link>

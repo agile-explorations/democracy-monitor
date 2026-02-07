@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
+import { useDevMode } from '@/lib/hooks/useDevMode';
 import type { DigestEntry } from '@/lib/types/trends';
 
 interface DailyDigestProps {
@@ -9,6 +10,7 @@ interface DailyDigestProps {
 export function DailyDigest({ date }: DailyDigestProps) {
   const [digest, setDigest] = useState<DigestEntry | null>(null);
   const [loading, setLoading] = useState(true);
+  const [devMode] = useDevMode();
 
   const targetDate = date || new Date().toISOString().split('T')[0];
 
@@ -37,7 +39,13 @@ export function DailyDigest({ date }: DailyDigestProps) {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-900">Daily Digest — {digest.date}</h3>
           <span className="text-xs text-slate-500">
-            {digest.provider} ({digest.model})
+            {devMode ? (
+              <>
+                {digest.provider} ({digest.model})
+              </>
+            ) : (
+              'AI-generated summary'
+            )}
           </span>
         </div>
 

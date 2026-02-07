@@ -1,3 +1,4 @@
+import { useDevMode } from '@/lib/hooks/useDevMode';
 import type { LegalAnalysisResult } from '@/lib/types/legal';
 
 interface LegalAnalysisProps {
@@ -5,12 +6,20 @@ interface LegalAnalysisProps {
 }
 
 export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
+  const [devMode] = useDevMode();
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-900">Legal Analysis</h4>
         <span className="text-xs text-slate-500">
-          {analysis.provider} ({analysis.model}) | {analysis.latencyMs}ms
+          {devMode ? (
+            <>
+              {analysis.provider} ({analysis.model}) | {analysis.latencyMs}ms
+            </>
+          ) : (
+            'AI-assisted'
+          )}
         </span>
       </div>
 
