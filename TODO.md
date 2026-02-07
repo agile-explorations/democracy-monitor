@@ -26,6 +26,29 @@ Items are grouped by priority. Work top-down within each tier.
 - [ ] Add "unknown/insufficient data" status for categories with < 3 feed items instead of defaulting to Warning
 - [ ] Tune governance classification thresholds — common political rhetoric ("executive authority", "unitary executive") should not alone push scores into alarming tiers
 
+### RAG Pipeline — give AI actual document content (pgvector)
+AI currently receives only document titles — not full text. This makes AI assessment, debate, and legal analysis superficial. Most of the infrastructure already exists but isn't wired together.
+
+**Existing pieces:**
+- `lib/services/embedding-service.ts` — `embedText()`, `embedBatch()`, `cosineSimilarity()` already built
+- `lib/db/schema.ts` — `documents` table has `title`, `content`, `url`, `category` columns (but nothing populates it)
+- `lib/ai/prompts/assessment.ts` — prompt template already supports a `summary` field per item (but it's never populated)
+- Embedding provider abstraction in `lib/ai/provider.ts` with availability checks
+
+**Pipeline to build:**
+- [ ] Add pgvector extension to PostgreSQL and add `embedding vector(1536)` column to `documents` table (new Drizzle migration)
+- [ ] Build ingest step: when feed items are fetched, extract full content — Federal Register API `abstract` field, RSS article body via link fetch + readability extraction, HTML page content
+- [ ] Store extracted documents in `documents` table with full content (deduplicate by URL)
+- [ ] Generate embeddings via `embedBatch()` and store in the vector column
+- [ ] Build retrieval query: given a category + assessment context, find top-K most relevant document chunks via pgvector cosine similarity
+- [ ] Augment AI prompts with retrieved content — populate the `summary` field that assessment/debate/legal prompts already accept
+- [ ] Add content extraction + embedding cache to avoid redundant work on each assessment cycle
+
+**Enables downstream:**
+- Rhetoric→action trajectory (semantic similarity tracks theme migration from rhetoric to action sources)
+- Authoritarian infrastructure tracking (contract documents, executive orders can be embedded and clustered)
+- Trend analysis on *content* not just keyword counts
+
 ### UX — Discoverability & Clarity
 - [ ] Replace the small AI checkbox with a prominent "Get AI Analysis" button with brief explanation of what it does
 - [ ] Hide implementation details (provider, model, latency) behind a developer toggle; show plain-language summary to end users
@@ -57,12 +80,29 @@ Items are grouped by priority. Work top-down within each tier.
 - [ ] Add election federalization keywords to `elections` rhetoric+action: "federalize elections", "federal election control", "take over state elections", "national election authority"
 - [ ] Audit all 5 policy areas for keyword gaps against current real-world rhetoric and executive actions
 
-### Authoritarian Infrastructure Tracking (new analytical layer)
-- [ ] Design "infrastructure buildup" tracking — monitor creation of *capabilities* that could be repurposed (e.g., detention centers built for immigration enforcement that could hold political opponents; involuntary commitment powers that could expand in scope)
-- [ ] Add signals for detention facility construction/expansion (ICE contracts, DHS facility announcements)
-- [ ] Add signals for new executive powers that grant authority over individual liberty (executive orders on commitment, designation authorities, emergency powers)
+### Authoritarian Infrastructure Tracking — coverage gap analysis
+
+**Currently tracked well (3/10):**
+- Loyalist placement / civil service capture (`civilService`, `igs` categories)
+- Fiscal leverage / impoundment (`fiscal` category)
+- Government transparency / information control (`infoAvailability` category)
+
+**Partially tracked (4/10) — need signal expansion:**
+- [ ] `courts`: Add signals for *structural* judicial changes (jurisdiction stripping, court packing proposals, judicial appointment pace) — currently only tracks compliance with existing orders
+- [ ] `military`: Add signals for *emergency power declarations* (IEEPA invocations, national emergency declarations, Insurrection Act preparations) — currently only tracks deployment keywords
+- [ ] `elections`: Add *action* signals for election official replacement, voting infrastructure changes, mail-in ballot restrictions, voter roll purges — currently rhetoric keywords only
+- [ ] `media_freedom` (intent policy area): Promote to a full dashboard category with dedicated signals — press credential revocations, FOIA denial rates, journalist subpoenas, libel law changes
+
+**Not tracked at all (3/10) — need new categories or signals:**
+
+- [ ] **Detention & incarceration infrastructure**: ICE/DHS facility construction and contract awards, FEMA emergency facility readiness, converted warehouse/military base detention capacity, private prison contract expansion. Sources: USAspending.gov contract data, DHS press releases, FOIA logs, Congressional oversight reports
+- [ ] **Surveillance apparatus**: Biometric database expansion, facial recognition deployment (CBP, ICE, local police), social media monitoring contracts, data broker partnerships (LexisNexis/Palantir government contracts), cell-site simulator (Stingray) acquisition. Sources: USAspending.gov, EFF/ACLU tracking, DHS privacy impact assessments
+- [ ] **Criminalization of opposition**: DOJ investigation patterns (politically targeted vs. routine), IRS audit targeting, "domestic terrorist" designations of political groups, prosecution of protesters, weaponized use of material support statutes. Sources: DOJ press releases, PACER federal case filings, ACLU case tracker
+
+### Authoritarian infrastructure — design considerations
+- [ ] Design "stated purpose vs. available capacity" framing — every infrastructure item should show: (1) what it was built/authorized for, (2) what its legal basis permits, (3) historical precedents for repurposing
 - [ ] Track "dual-use" legal precedents: powers created for one stated purpose whose legal basis permits broader application
-- [ ] Surface infrastructure concerns in the Intent section with explicit "stated purpose vs. available capacity" framing
+- [ ] Consider a dedicated "Infrastructure" section separate from the 9 category cards — infrastructure buildup is cross-cutting and doesn't fit neatly into one category
 
 ### Rhetoric → Action Trajectory (new analytical layer)
 - [ ] Track when specific rhetoric themes (e.g., "opponents are terrorists") first appear, and whether corresponding policy actions follow over time
