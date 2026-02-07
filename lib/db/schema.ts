@@ -99,3 +99,59 @@ export const contentSnapshots = pgTable('content_snapshots', {
   reportCount: integer('report_count'),
   snapshotAt: timestamp('snapshot_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const legalDocuments = pgTable('legal_documents', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  type: varchar('type', { length: 20 }).notNull(),
+  citation: varchar('citation', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  relevantCategories: jsonb('relevant_categories').$type<string[]>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const debates = pgTable('debates', {
+  id: serial('id').primaryKey(),
+  category: varchar('category', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  messages: jsonb('messages').notNull(),
+  verdict: jsonb('verdict').notNull(),
+  totalRounds: integer('total_rounds').notNull(),
+  totalLatencyMs: integer('total_latency_ms'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const digests = pgTable('digests', {
+  id: serial('id').primaryKey(),
+  date: varchar('date', { length: 10 }).notNull().unique(),
+  summary: text('summary').notNull(),
+  highlights: jsonb('highlights').$type<string[]>(),
+  categorySummaries: jsonb('category_summaries'),
+  overallAssessment: text('overall_assessment'),
+  provider: varchar('provider', { length: 50 }).notNull(),
+  model: varchar('model', { length: 100 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const keywordTrends = pgTable('keyword_trends', {
+  id: serial('id').primaryKey(),
+  keyword: varchar('keyword', { length: 255 }).notNull(),
+  category: varchar('category', { length: 50 }).notNull(),
+  count: integer('count').notNull(),
+  baselineAvg: real('baseline_avg'),
+  ratio: real('ratio'),
+  isAnomaly: boolean('is_anomaly').notNull(),
+  periodStart: timestamp('period_start', { withTimezone: true }).notNull(),
+  periodEnd: timestamp('period_end', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const semanticClusters = pgTable('semantic_clusters', {
+  id: serial('id').primaryKey(),
+  label: varchar('label', { length: 255 }).notNull(),
+  description: text('description'),
+  documentCount: integer('document_count').notNull(),
+  topKeywords: jsonb('top_keywords').$type<string[]>(),
+  categories: jsonb('categories').$type<string[]>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

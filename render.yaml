@@ -37,7 +37,7 @@ crons:
   - name: daily-digest
     schedule: "0 6 * * *"
     buildCommand: pnpm install
-    startCommand: echo "Daily digest cron - to be implemented in Phase 4"
+    startCommand: npx tsx lib/cron/daily-digest.ts
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -62,7 +62,7 @@ crons:
   - name: weekly-clustering
     schedule: "0 3 * * 0"
     buildCommand: pnpm install
-    startCommand: echo "Weekly clustering - to be implemented in Phase 4"
+    startCommand: npx tsx lib/cron/weekly-clustering.ts
     envVars:
       - key: DATABASE_URL
         fromDatabase:

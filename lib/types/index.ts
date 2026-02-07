@@ -32,3 +32,20 @@ export type {
   ExpectedReport,
   InformationAvailabilityStatus,
 } from './resilience';
+export type {
+  DebateRole,
+  DebateMessage,
+  DebateVerdict,
+  DebateResult,
+} from './debate';
+export type {
+  LegalDocument,
+  LegalCitation,
+  LegalAnalysisResult,
+} from './legal';
+export type {
+  KeywordTrend,
+  TrendAnomaly,
+  SemanticCluster,
+  DigestEntry,
+} from './trends';
