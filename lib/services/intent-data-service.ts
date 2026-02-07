@@ -21,7 +21,7 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ExecutivePowerDriftDashboard/2.0',
+        'User-Agent': 'DemocracyMonitor/2.0',
       },
     });
 

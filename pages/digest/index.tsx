@@ -48,8 +48,8 @@ export default function DigestArchive() {
   return (
     <>
       <Head>
-        <title>Daily Digest Archive — Executive Power Drift Dashboard</title>
-        <meta name="description" content="Archive of daily digest summaries from the Executive Power Drift Dashboard." />
+        <title>Daily Digest Archive — Democracy Monitor</title>
+        <meta name="description" content="Archive of daily digest summaries from the Democracy Monitor." />
       </Head>
       <main className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
         <div className="max-w-4xl mx-auto space-y-6">

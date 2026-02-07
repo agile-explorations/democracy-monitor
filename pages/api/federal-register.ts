@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'ExecutivePowerDriftDashboard/1.0'
+        'User-Agent': 'DemocracyMonitor/1.0'
       }
     });
 

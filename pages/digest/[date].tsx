@@ -34,7 +34,7 @@ export default function DigestPage() {
   return (
     <>
       <Head>
-        <title>Digest {date} — Executive Power Drift Dashboard</title>
+        <title>Digest {date} — Democracy Monitor</title>
       </Head>
       <main className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
         <div className="max-w-4xl mx-auto space-y-6">

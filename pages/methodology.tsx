@@ -5,8 +5,8 @@ export default function Methodology() {
   return (
     <>
       <Head>
-        <title>Methodology — Executive Power Drift Dashboard</title>
-        <meta name="description" content="How the Executive Power Drift Dashboard assesses institutional health." />
+        <title>Methodology — Democracy Monitor</title>
+        <meta name="description" content="How the Democracy Monitor assesses institutional health." />
       </Head>
       <main className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -18,7 +18,7 @@ export default function Methodology() {
           <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6 text-sm text-slate-700">
             <section>
               <h2 className="text-lg font-semibold text-slate-900 mb-2">Overview</h2>
-              <p>The Executive Power Drift Dashboard monitors 9 categories of institutional health using a multi-layered assessment approach that combines keyword analysis, source authority weighting, AI-powered analysis, and cross-referencing between administration intent and institutional status.</p>
+              <p>The Democracy Monitor monitors 9 categories of institutional health using a multi-layered assessment approach that combines keyword analysis, source authority weighting, AI-powered analysis, and cross-referencing between administration intent and institutional status.</p>
             </section>
 
             <section>

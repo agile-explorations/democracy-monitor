@@ -1,17 +1,17 @@
 {
-  "name": "executive-power-drift-dashboard",
+  "name": "democracy-monitor",
   "version": "1.0.0",
   "description": "Live dashboard tracking signals of executive-power centralization across US government institutions",
   "license": "MIT",
   "author": "Michael Kelly",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michaelkelly/executive-power-drift.git"
+    "url": "https://github.com/agile-explorations/democracy-monitor.git"
   },
   "bugs": {
-    "url": "https://github.com/michaelkelly/executive-power-drift/issues"
+    "url": "https://github.com/agile-explorations/democracy-monitor/issues"
   },
-  "homepage": "https://github.com/michaelkelly/executive-power-drift#readme",
+  "homepage": "https://github.com/agile-explorations/democracy-monitor#readme",
   "keywords": [
     "democracy",
     "executive-power",

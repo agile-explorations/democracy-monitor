@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Executive Power Drift — Live Dashboard</title>
+        <title>Democracy Monitor — Live Dashboard</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="description" content="Auto-updating signals that reflect potential centralization of executive power vs. rule-of-law guardrails." />
       </Head>

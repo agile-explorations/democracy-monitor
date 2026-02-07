@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in improving the Executive Power Drift Dashboard. This project benefits from contributors with diverse expertise — software engineering, political science, constitutional law, data journalism, and government transparency.
+Thank you for your interest in improving Democracy Monitor. This project benefits from contributors with diverse expertise — software engineering, political science, constitutional law, data journalism, and government transparency.
 
 ## Getting Started
 
@@ -14,8 +14,8 @@ Thank you for your interest in improving the Executive Power Drift Dashboard. Th
 ### Setup
 
 ```bash
-git clone https://github.com/michaelkelly/executive-power-drift.git
-cd executive-power-drift
+git clone https://github.com/agile-explorations/democracy-monitor.git
+cd democracy-monitor
 pnpm install
 cp .env.example .env.local   # optional
 pnpm dev                      # http://localhost:3000

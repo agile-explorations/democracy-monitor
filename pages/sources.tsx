@@ -7,8 +7,8 @@ export default function Sources() {
   return (
     <>
       <Head>
-        <title>Data Sources — Executive Power Drift Dashboard</title>
-        <meta name="description" content="All data sources used by the Executive Power Drift Dashboard." />
+        <title>Data Sources — Democracy Monitor</title>
+        <meta name="description" content="All data sources used by the Democracy Monitor." />
       </Head>
       <main className="min-h-screen bg-slate-50 py-6 px-4 md:px-8">
         <div className="max-w-4xl mx-auto space-y-6">

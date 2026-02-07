@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: executive-power-drift
+    name: democracy-monitor
     runtime: node
     plan: standard
     buildCommand: pnpm install && pnpm build

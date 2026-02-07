@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Executive Power Drift Dashboard uses an automated, transparent system to assess the health of democratic institutions across 8 categories. This document explains how status levels are determined.
+Democracy Monitor uses an automated, transparent system to assess the health of democratic institutions across 8 categories. This document explains how status levels are determined.
 
 ## Key Improvements Over Simple Keyword Matching
 
