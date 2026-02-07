@@ -1,4 +1,5 @@
 import { CrossReference } from '@/components/dashboard/CrossReference';
+import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 
 interface EnhancedData {
@@ -49,18 +50,14 @@ export function Layer2({ enhancedData, crossRef, detail }: Layer2Props) {
             </div>
           </div>
 
-          {enhancedData.howWeCouldBeWrong.length > 0 && (
-            <div className="bg-amber-50 border border-amber-200 rounded p-2">
-              <p className="font-semibold text-amber-800 mb-1">How we could be wrong:</p>
-              <ul className="space-y-0.5">
-                {enhancedData.howWeCouldBeWrong.map((item, i) => (
-                  <li key={i} className="text-amber-700">
-                    {'•'} {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="bg-slate-50 border border-slate-200 rounded p-2">
+            <p className="font-semibold text-slate-700 mb-1">Data Coverage</p>
+            <ConfidenceBar confidence={enhancedData.dataCoverage} />
+            <p className="text-slate-500 mt-1">
+              Composite score based on source diversity, authority, evidence volume, and assessment
+              agreement
+            </p>
+          </div>
         </>
       )}
 

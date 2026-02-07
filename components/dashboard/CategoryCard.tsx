@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 import { Card } from '@/components/ui/Card';
-import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { Category, StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-import { CrossReference } from './CrossReference';
-import { EnhancedAssessment } from './EnhancedAssessment';
 import { FeedBlock } from './FeedBlock';
 
 function fmtDate(d?: Date | string | number) {
@@ -61,9 +58,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
   const [loadedCount, setLoadedCount] = useState(0);
   const [showDetails, setShowDetails] = useState(true);
   const [showSources, setShowSources] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false);
   const [enhancedData, setEnhancedData] = useState<EnhancedData | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
 
   const isAssessing = !autoStatus && loadedCount < cat.signals.length;
   const isInsufficientData = autoStatus?.detail?.insufficientData === true;
@@ -98,45 +93,35 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
     }
   }, [loadedCount, allItems, cat.key, cat.signals.length, setStatus]);
 
-  const runAiAssessment = async () => {
-    setAiLoading(true);
-    try {
-      const response = await fetch('/api/assess-status?ai=true', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: cat.key, items: allItems }),
-      });
-      const data = await response.json();
+  // Auto-run AI assessment after keyword assessment completes
+  useEffect(() => {
+    if (autoStatus?.auto && !enhancedData && allItems.length > 0) {
+      const runAiAssessment = async () => {
+        try {
+          const response = await fetch('/api/assess-status?ai=true', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: cat.key, items: allItems }),
+          });
+          const data = await response.json();
 
-      if (data.dataCoverage !== undefined || data.confidence !== undefined) {
-        setEnhancedData({
-          dataCoverage: data.dataCoverage ?? data.confidence ?? 0,
-          evidenceFor: data.evidenceFor || [],
-          evidenceAgainst: data.evidenceAgainst || [],
-          howWeCouldBeWrong: data.howWeCouldBeWrong || [],
-          aiResult: data.aiResult,
-          consensusNote: data.consensusNote,
-        });
-
-        // Update status with enhanced reason if AI provided one
-        if (data.aiResult?.reasoning) {
-          setAutoStatus((prev) => (prev ? { ...prev, reason: data.aiResult.reasoning } : prev));
+          if (data.dataCoverage !== undefined || data.confidence !== undefined) {
+            setEnhancedData({
+              dataCoverage: data.dataCoverage ?? data.confidence ?? 0,
+              evidenceFor: data.evidenceFor || [],
+              evidenceAgainst: data.evidenceAgainst || [],
+              howWeCouldBeWrong: data.howWeCouldBeWrong || [],
+              aiResult: data.aiResult,
+              consensusNote: data.consensusNote,
+            });
+          }
+        } catch (err) {
+          console.error('AI assessment failed:', err);
         }
-      }
-    } catch (err) {
-      console.error('AI assessment failed:', err);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const handleAiToggle = () => {
-    const newVal = !aiEnabled;
-    setAiEnabled(newVal);
-    if (newVal && !enhancedData && allItems.length > 0) {
+      };
       runAiAssessment();
     }
-  };
+  }, [autoStatus?.auto, enhancedData, allItems, cat.key]);
 
   const handleItemsLoaded = useCallback((items: FeedItem[]) => {
     setAllItems((prev) => [...prev, ...items]);
@@ -159,11 +144,6 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
           ) : (
             <StatusPill level={level} />
           )}
-          {enhancedData && (
-            <div className="w-24">
-              <ConfidenceBar confidence={enhancedData.dataCoverage} />
-            </div>
-          )}
           {autoStatus?.auto && (
             <span
               className="text-xs text-slate-500 italic cursor-help"
@@ -173,18 +153,6 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
             </span>
           )}
           <div className="flex items-center gap-2 ml-auto">
-            {autoStatus?.auto && (
-              <button
-                onClick={handleAiToggle}
-                className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                  aiEnabled
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-purple-50 text-purple-700 border border-purple-300 hover:bg-purple-100'
-                }`}
-              >
-                {aiLoading ? 'Analyzing...' : aiEnabled ? 'AI On' : 'AI Analysis'}
-              </button>
-            )}
             {autoStatus?.auto && (
               <button
                 onClick={() => setShowDetails(!showDetails)}
@@ -202,22 +170,33 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
           </div>
         </div>
         <p className="text-sm text-slate-600">{cat.description}</p>
-        {autoStatus?.reason && (
+        {(enhancedData?.aiResult?.reasoning || autoStatus?.reason) && (
           <div className="text-xs bg-slate-50 border border-slate-200 rounded px-2 py-1 space-y-1">
             <p className="text-slate-700">
-              <strong>Assessment:</strong> {autoStatus.reason}
+              <strong>Assessment:</strong> {enhancedData?.aiResult?.reasoning || autoStatus?.reason}
             </p>
             <p className="text-slate-400 italic">
-              Automated keyword analysis — not a substitute for expert judgment
+              Automated analysis — not a substitute for expert judgment
             </p>
           </div>
         )}
 
-        <CrossReference crossRef={crossRef || null} />
+        {enhancedData?.consensusNote && (
+          <p className="text-xs text-slate-500 italic">{enhancedData.consensusNote}</p>
+        )}
 
-        {aiLoading && <p className="text-xs text-purple-600 italic">Running AI analysis...</p>}
-
-        {aiEnabled && enhancedData && <EnhancedAssessment data={enhancedData} />}
+        {enhancedData && enhancedData.howWeCouldBeWrong.length > 0 && (
+          <div className="text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1">
+            <p className="font-semibold text-amber-800 mb-1">How we could be wrong:</p>
+            <ul className="space-y-0.5">
+              {enhancedData.howWeCouldBeWrong.map((item, i) => (
+                <li key={i} className="text-amber-700">
+                  {'•'} {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {showDetails && autoStatus && level && (
           <ProgressiveDisclosure

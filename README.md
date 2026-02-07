@@ -31,10 +31,10 @@ For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODO
 See the dashboard without any external API calls or credentials:
 
 ```bash
-DEMO_MODE=true pnpm dev
+./dev-demo.sh mixed      # mixed, stable, crisis, or degrading
 ```
 
-Four scenarios available: `mixed` (default), `stable`, `crisis`, `degrading`. Set via `DEMO_SCENARIO=crisis`.
+Or set the env vars directly: `DEMO_MODE=true DEMO_SCENARIO=crisis pnpm dev`.
 
 ## Quickstart
 

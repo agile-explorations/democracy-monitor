@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-import { Layer1 } from './Layer1';
 import { Layer2 } from './Layer2';
 import { Layer3 } from './Layer3';
 import { Layer4 } from './Layer4';
@@ -48,6 +47,8 @@ interface ProgressiveDisclosureProps {
   matches?: string[];
 }
 
+type TabKey = 'why' | 'evidence' | 'deep';
+
 export function ProgressiveDisclosure({
   categoryKey,
   level,
@@ -57,12 +58,12 @@ export function ProgressiveDisclosure({
   allItems,
   matches,
 }: ProgressiveDisclosureProps) {
-  const [currentLayer, setCurrentLayer] = useState(1);
+  const [currentTab, setCurrentTab] = useState<TabKey>('why');
   const [layer2Data, setLayer2Data] = useState<Record<string, unknown> | null>(null);
 
   const evidence = useMemo(() => allItems.map((i) => i.title || '').filter(Boolean), [allItems]);
 
-  // Prefetch Layer 2 data in background after Layer 1 renders
+  // Prefetch Layer 2 data in background
   useEffect(() => {
     if (autoStatus?.auto && !layer2Data) {
       setLayer2Data({
@@ -74,56 +75,46 @@ export function ProgressiveDisclosure({
     }
   }, [autoStatus, enhancedData, crossRef, layer2Data]);
 
-  const layerLabels = ['Status', 'Why?', 'Evidence', 'Deep Analysis'];
+  const tabs: Array<{ key: TabKey; label: string; available: boolean }> = [
+    { key: 'why', label: 'Why?', available: !!autoStatus?.auto },
+    { key: 'evidence', label: 'Evidence', available: allItems.length > 0 },
+    { key: 'deep', label: 'Deep Analysis', available: ['Drift', 'Capture'].includes(level) },
+  ];
 
   return (
     <div className="space-y-2">
-      {/* Layer navigation */}
+      {/* Tab navigation */}
       <div className="flex gap-1">
-        {layerLabels.map((label, i) => {
-          const layerNum = i + 1;
-          const isActive = currentLayer === layerNum;
-          const isAvailable =
-            layerNum === 1 ||
-            (layerNum === 2 && autoStatus?.auto) ||
-            (layerNum === 3 && allItems.length > 0) ||
-            (layerNum === 4 && ['Drift', 'Capture'].includes(level));
-
-          return (
-            <button
-              key={layerNum}
-              onClick={() => isAvailable && setCurrentLayer(layerNum)}
-              disabled={!isAvailable}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : isAvailable
-                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    : 'bg-slate-50 text-slate-300 cursor-not-allowed'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => tab.available && setCurrentTab(tab.key)}
+            disabled={!tab.available}
+            className={`text-xs px-2 py-1 rounded transition-colors ${
+              currentTab === tab.key
+                ? 'bg-blue-600 text-white'
+                : tab.available
+                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* Layer content */}
-      {currentLayer === 1 && (
-        <Layer1
-          level={level}
-          dataCoverage={enhancedData?.dataCoverage}
-          reason={autoStatus?.reason || ''}
-        />
-      )}
-
-      {currentLayer === 2 && (
+      {/* Tab content */}
+      {currentTab === 'why' && (
         <Layer2 enhancedData={enhancedData} crossRef={crossRef} detail={autoStatus?.detail} />
       )}
 
-      {currentLayer === 3 && <Layer3 items={allItems} matches={matches || []} />}
+      {currentTab === 'evidence' && (
+        <Layer3 items={allItems} matches={matches || []} enhancedData={enhancedData} />
+      )}
 
-      {currentLayer === 4 && <Layer4 categoryKey={categoryKey} level={level} evidence={evidence} />}
+      {currentTab === 'deep' && (
+        <Layer4 categoryKey={categoryKey} level={level} evidence={evidence} />
+      )}
     </div>
   );
 }

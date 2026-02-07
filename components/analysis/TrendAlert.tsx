@@ -16,6 +16,9 @@ export function TrendAlert({ anomalies }: TrendAlertProps) {
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold text-slate-800">Trend Anomalies</h4>
+      <p className="text-xs text-slate-500">
+        Values show keyword frequency relative to the 26-week baseline
+      </p>
       {anomalies.map((anomaly, i) => {
         const style = SEVERITY_STYLES[anomaly.severity];
         return (
@@ -24,7 +27,10 @@ export function TrendAlert({ anomalies }: TrendAlertProps) {
             className={`${style.bg} ${style.border} border rounded px-2 py-1.5 text-xs ${style.text}`}
           >
             <div className="flex items-center gap-2">
-              <span className="font-semibold">{anomaly.ratio.toFixed(1)}x</span>
+              <span className="font-semibold">
+                {anomaly.ratio.toFixed(1)}x{' '}
+                <span className="font-normal opacity-75">(vs. baseline)</span>
+              </span>
               <span>{anomaly.message}</span>
             </div>
           </div>

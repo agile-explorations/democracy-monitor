@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
+./dev-demo.sh <scenario>  # Demo mode: mixed | stable | crisis | degrading
 pnpm dev          # Start dev server at http://localhost:3000
 pnpm build        # Production build
 pnpm start        # Start production server

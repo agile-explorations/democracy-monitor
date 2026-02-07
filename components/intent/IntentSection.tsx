@@ -38,44 +38,40 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
 
   if (loading) {
     return (
-      <Card>
-        <h2 className="text-lg font-bold text-slate-900 mb-2">
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-slate-900 pt-2">
           Section 1: Administration&apos;s Intent
         </h2>
-        <p className="text-sm text-slate-500">Loading governance assessment...</p>
-      </Card>
+        <Card>
+          <p className="text-sm text-slate-500">Loading governance assessment...</p>
+        </Card>
+      </div>
     );
   }
 
   if (error || !assessment) {
     return (
-      <Card>
-        <h2 className="text-lg font-bold text-slate-900 mb-2">
+      <div className="space-y-4">
+        <h2 className="text-lg font-bold text-slate-900 pt-2">
           Section 1: Administration&apos;s Intent
         </h2>
-        <p className="text-sm text-red-600">{error || 'No assessment data available'}</p>
-        <button onClick={loadAssessment} className="text-xs text-blue-600 underline mt-1">
-          Retry
-        </button>
-      </Card>
+        <Card>
+          <p className="text-sm text-red-600">{error || 'No assessment data available'}</p>
+          <button onClick={loadAssessment} className="text-xs text-blue-600 underline mt-1">
+            Retry
+          </button>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-900">
-            Section 1: Administration&apos;s Intent
-          </h2>
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs text-blue-600 hover:text-blue-800 underline"
-          >
-            {expanded ? 'Collapse' : 'Expand Details'}
-          </button>
-        </div>
+      <h2 className="text-lg font-bold text-slate-900 pt-2">
+        Section 1: Administration&apos;s Intent
+      </h2>
 
+      <Card>
         <IntentOverview assessment={assessment} />
 
         <div className="mt-4">
@@ -86,18 +82,23 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
             gaps={[]}
           />
         </div>
-      </Card>
 
-      {expanded && (
-        <>
-          <Card>
+        <div className="mt-3 text-center">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            {expanded ? 'Collapse Details' : 'Expand Details'}
+          </button>
+        </div>
+
+        {expanded && (
+          <div className="mt-4 space-y-4 border-t border-slate-200 pt-4">
             <PolicyAreaBreakdown policyAreas={assessment.policyAreas} />
-          </Card>
-          <Card>
             <RecentStatements statements={assessment.recentStatements} />
-          </Card>
-        </>
-      )}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

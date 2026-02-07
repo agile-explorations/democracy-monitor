@@ -1,8 +1,20 @@
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 
+interface EvidenceItem {
+  text: string;
+  direction: 'concerning' | 'reassuring';
+  source?: string;
+}
+
+interface EnhancedData {
+  evidenceFor?: EvidenceItem[];
+  evidenceAgainst?: EvidenceItem[];
+}
+
 interface Layer3Props {
   items: FeedItem[];
   matches: string[];
+  enhancedData?: EnhancedData | null;
 }
 
 function getSourceTier(item: FeedItem): { tier: number; label: string } {
@@ -19,15 +31,49 @@ function getSourceTier(item: FeedItem): { tier: number; label: string } {
   return { tier: 4, label: 'Other' };
 }
 
-export function Layer3({ items, matches }: Layer3Props) {
+export function Layer3({ items, matches, enhancedData }: Layer3Props) {
   const sortedItems = [...items].sort((a, b) => {
     const tierA = getSourceTier(a).tier;
     const tierB = getSourceTier(b).tier;
     return tierA - tierB;
   });
 
+  const concerning = enhancedData?.evidenceFor?.filter((e) => e.direction === 'concerning') || [];
+  const reassuring =
+    enhancedData?.evidenceAgainst?.filter((e) => e.direction === 'reassuring') || [];
+  const hasEvidenceSummary = concerning.length > 0 || reassuring.length > 0;
+
   return (
     <div className="space-y-2">
+      {hasEvidenceSummary && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-red-50 border border-red-200 rounded p-2 text-xs">
+            <p className="font-semibold text-red-700 mb-1">Concerning</p>
+            <ul className="space-y-0.5">
+              {concerning.map((e, i) => (
+                <li key={i} className="text-red-600">
+                  {'•'} {e.text}
+                </li>
+              ))}
+              {concerning.length === 0 && <li className="text-red-400 italic">None identified</li>}
+            </ul>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded p-2 text-xs">
+            <p className="font-semibold text-green-700 mb-1">Reassuring</p>
+            <ul className="space-y-0.5">
+              {reassuring.map((e, i) => (
+                <li key={i} className="text-green-600">
+                  {'•'} {e.text}
+                </li>
+              ))}
+              {reassuring.length === 0 && (
+                <li className="text-green-400 italic">None identified</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {matches.length > 0 && (
         <div className="text-xs">
           <span className="font-semibold text-slate-700">Keyword matches:</span>{' '}

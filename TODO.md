@@ -59,10 +59,10 @@ AI currently receives only document titles — not full text. This makes AI asse
 ### UX — Discoverability & Clarity
 
 - [x] Replace the small AI checkbox with a prominent "AI Analysis" button with loading state
-- [ ] Hide implementation details (provider, model, latency) behind a developer toggle; show plain-language summary to end users
+- [x] Hide implementation details (provider, model, latency) behind a developer toggle; show plain-language summary to end users
 - [x] Add methodology tooltips to StatusPill (hover for explanation) and "auto-assessed" label
 - [x] Add "Data Coverage" label to ConfidenceBar in progressive disclosure Layer 1
-- [ ] Fix vocabulary inconsistency: align system-health labels (Operational/Degraded/Down) with category-level labels (Stable/Warning/Drift/Capture) or explain the distinction
+- [x] Fix vocabulary inconsistency: align system-health labels (Operational/Degraded/Down) with category-level labels (Stable/Warning/Drift/Capture) or explain the distinction
 
 ---
 
@@ -119,6 +119,10 @@ AI currently receives only document titles — not full text. This makes AI asse
 - [ ] Design "stated purpose vs. available capacity" framing — every infrastructure item should show: (1) what it was built/authorized for, (2) what its legal basis permits, (3) historical precedents for repurposing
 - [ ] Track "dual-use" legal precedents: powers created for one stated purpose whose legal basis permits broader application
 - [ ] Consider a dedicated "Infrastructure" section separate from the 9 category cards — infrastructure buildup is cross-cutting and doesn't fit neatly into one category
+
+### AI Assessment Lifecycle
+
+- [ ] Move AI assessment calls to snapshot creation and store results (currently triggered per page load)
 
 ### Rhetoric → Action Trajectory (new analytical layer)
 
