@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or Discussion
+    url: https://github.com/agile-explorations/democracy-monitor/discussions
+    about: For general questions, ideas, or conversation — use Discussions instead of opening an issue.

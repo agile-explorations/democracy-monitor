@@ -203,10 +203,10 @@ OpenGrep (Apache 2.0 fork of Semgrep) lets you write AST-pattern rules in YAML. 
 
 **GitHub issue templates (`.github/ISSUE_TEMPLATE/`):**
 
-- [ ] Add `bug_report.yml` — structured form: steps to reproduce, expected vs actual behavior, environment
-- [ ] Add `feature_request.yml` — structured form: problem statement, proposed solution, alternatives considered
-- [ ] Add `new_signal.yml` — project-specific: category, source URL, source type (RSS/API/HTML), why this signal matters (lets non-developers contribute signal ideas)
-- [ ] Add `config.yml` — link to Discussions for general questions
+- [x] Add `bug_report.yml` — structured form: steps to reproduce, expected vs actual behavior, environment
+- [x] Add `feature_request.yml` — structured form: problem statement, proposed solution, alternatives considered
+- [x] Add `new_signal.yml` — project-specific: category, source URL, source type (RSS/API/HTML), why this signal matters (lets non-developers contribute signal ideas)
+- [x] Add `config.yml` — link to Discussions for general questions
 
 **"Good first issue" curation:**
 

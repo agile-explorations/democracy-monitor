@@ -1,0 +1,79 @@
+name: New Signal Source
+description: Suggest a new data source for the dashboard to monitor
+labels: ['new signal']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The dashboard's value comes from the breadth and quality of its data sources. You don't need to be a developer to suggest a new signal — just tell us what to watch and why it matters.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Dashboard category
+      description: Which category would this signal feed into?
+      options:
+        - Civil Service (loyalist placement, merit system)
+        - Inspectors General (oversight independence)
+        - Courts (judicial compliance, structural changes)
+        - Fiscal (impoundment, spending control)
+        - Military (civilian control, emergency powers)
+        - Information Availability (FOIA, transparency)
+        - Elections (election integrity, voting infrastructure)
+        - Media Freedom (press access, journalist protections)
+        - New category needed
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: source_url
+    attributes:
+      label: Source URL
+      description: Link to the feed, API endpoint, or web page.
+      placeholder: 'https://example.gov/rss/feed.xml'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source_type
+    attributes:
+      label: Source type
+      options:
+        - RSS / Atom feed
+        - JSON API
+        - HTML page (needs scraping)
+        - PDF / document archive
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this signal valuable?
+      description: What does this source reveal about executive-power dynamics that current signals don't cover?
+      placeholder: 'This tracks inspector general vacancy durations, which indicates whether oversight gaps are being maintained deliberately.'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: signal_type
+    attributes:
+      label: Signal type
+      description: Does this source capture rhetoric (what officials say) or action (what government does)?
+      options:
+        - Action (policy changes, personnel moves, legal filings)
+        - Rhetoric (speeches, statements, press releases)
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else — update frequency, access limitations, similar sources, etc.
+    validations:
+      required: false

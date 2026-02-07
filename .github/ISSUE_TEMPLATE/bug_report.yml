@@ -1,0 +1,56 @@
+name: Bug Report
+description: Report incorrect behavior or a broken feature
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the sections below so we can reproduce and fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: 'When I click the AI Analysis button on the Civil Service category, the loading spinner never stops.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+      placeholder: 'The AI assessment should load and display within a few seconds.'
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps someone else can follow to see the bug.
+      placeholder: |
+        1. Open the dashboard
+        2. Click "AI Analysis" on any category card
+        3. Wait 30+ seconds
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Live site (Render deployment)
+        - Local dev server (pnpm dev)
+        - Demo mode (?demo=mixed or similar)
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, browser console errors, or anything else that might help.
+    validations:
+      required: false
