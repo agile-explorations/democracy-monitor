@@ -12,3 +12,12 @@ export type {
   AIProvider,
   AIEmbeddingProvider,
 } from './ai';
+export type {
+  GovernanceCategory,
+  GovernanceFrameworkEntry,
+  PolicyArea,
+  IntentScore,
+  IntentStatement,
+  IntentAssessment,
+  CrossReference,
+} from './intent';

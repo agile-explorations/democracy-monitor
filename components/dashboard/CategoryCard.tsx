@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import type { Category, StatusLevel } from '@/lib/types';
+import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
 import { Card } from '@/components/ui/Card';
 import { FeedBlock } from './FeedBlock';
 import { EnhancedAssessment } from './EnhancedAssessment';
+import { CrossReference } from './CrossReference';
 
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';
@@ -48,9 +50,10 @@ interface CategoryCardProps {
   cat: Category;
   statusMap: Record<string, string>;
   setStatus: (k: string, v: string) => void;
+  crossRef?: CrossReferenceType | null;
 }
 
-export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
+export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCardProps) {
   const [autoStatus, setAutoStatus] = useState<AutoStatus | null>(null);
   const [allItems, setAllItems] = useState<FeedItem[]>([]);
   const [loadedCount, setLoadedCount] = useState(0);
@@ -174,6 +177,8 @@ export function CategoryCard({ cat, statusMap, setStatus }: CategoryCardProps) {
             <strong>Assessment:</strong> {autoStatus.reason}
           </p>
         )}
+
+        <CrossReference crossRef={crossRef || null} />
 
         {aiLoading && (
           <p className="text-xs text-purple-600 italic">Running AI analysis...</p>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, jsonb, boolean, varchar, real } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, jsonb, boolean, varchar, real, date } from 'drizzle-orm/pg-core';
 
 export const cacheEntries = pgTable('cache_entries', {
   id: serial('id').primaryKey(),
@@ -46,6 +46,30 @@ export const aiAnalysisHistory = pgTable('ai_analysis_history', {
   keywordStatus: varchar('keyword_status', { length: 20 }),
   consensus: boolean('consensus'),
   analyzedAt: timestamp('analyzed_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const intentStatements = pgTable('intent_statements', {
+  id: serial('id').primaryKey(),
+  text: text('text').notNull(),
+  source: varchar('source', { length: 255 }).notNull(),
+  sourceTier: integer('source_tier').notNull(),
+  type: varchar('type', { length: 20 }).notNull(),
+  policyArea: varchar('policy_area', { length: 50 }).notNull(),
+  score: real('score').notNull(),
+  date: date('date').notNull(),
+  url: text('url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const intentAssessments = pgTable('intent_assessments', {
+  id: serial('id').primaryKey(),
+  overall: varchar('overall', { length: 50 }).notNull(),
+  confidence: real('confidence'),
+  rhetoricScore: real('rhetoric_score').notNull(),
+  actionScore: real('action_score').notNull(),
+  gap: real('gap').notNull(),
+  detail: jsonb('detail'),
+  assessedAt: timestamp('assessed_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const siteUptime = pgTable('site_uptime', {
