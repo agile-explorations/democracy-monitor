@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { CATEGORIES } from '@/lib/data/categories';
 
 describe('CATEGORIES', () => {
-  it('has 8 categories', () => {
-    expect(CATEGORIES).toHaveLength(8);
+  it('has 9 categories', () => {
+    expect(CATEGORIES).toHaveLength(9);
   });
 
   it('each category has required fields', () => {
@@ -36,6 +36,7 @@ describe('CATEGORIES', () => {
     expect(keys).toContain('military');
     expect(keys).toContain('rulemaking');
     expect(keys).toContain('indices');
+    expect(keys).toContain('infoAvailability');
   });
 
   it('all category keys are unique', () => {

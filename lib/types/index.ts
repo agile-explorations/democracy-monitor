@@ -21,3 +21,14 @@ export type {
   IntentAssessment,
   CrossReference,
 } from './intent';
+export type {
+  MonitoredSite,
+  UptimeResult,
+  UptimeHistory,
+  FallbackSource,
+  FallbackResult,
+  ContentSnapshot,
+  SuppressionAlert,
+  ExpectedReport,
+  InformationAvailabilityStatus,
+} from './resilience';

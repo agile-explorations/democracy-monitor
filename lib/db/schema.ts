@@ -80,3 +80,22 @@ export const siteUptime = pgTable('site_uptime', {
   checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
   isUp: boolean('is_up').notNull(),
 });
+
+export const alerts = pgTable('alerts', {
+  id: serial('id').primaryKey(),
+  type: varchar('type', { length: 50 }).notNull(),
+  category: varchar('category', { length: 50 }).notNull(),
+  severity: varchar('severity', { length: 20 }).notNull(),
+  message: text('message').notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+});
+
+export const contentSnapshots = pgTable('content_snapshots', {
+  id: serial('id').primaryKey(),
+  url: text('url').notNull().unique(),
+  contentHash: varchar('content_hash', { length: 64 }).notNull(),
+  reportCount: integer('report_count'),
+  snapshotAt: timestamp('snapshot_at', { withTimezone: true }).defaultNow().notNull(),
+});

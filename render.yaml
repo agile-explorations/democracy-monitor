@@ -52,7 +52,7 @@ crons:
   - name: hourly-uptime
     schedule: "0 * * * *"
     buildCommand: pnpm install
-    startCommand: echo "Hourly uptime check - to be implemented in Phase 3"
+    startCommand: npx tsx lib/cron/uptime-check.ts
     envVars:
       - key: DATABASE_URL
         fromDatabase:

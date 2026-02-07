@@ -150,5 +150,24 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'potential risk'
       ]
     }
+  },
+  infoAvailability: {
+    keywords: {
+      capture: [
+        'website removed', 'data deleted', 'reports suppressed',
+        'foia denied', 'transparency blocked', 'records destroyed',
+        'website shutdown', 'portal defunded', 'data purged'
+      ],
+      drift: [
+        'website offline', 'reports delayed', 'data unavailable',
+        'reduced transparency', 'foia backlog', 'publication halted',
+        'content removed', 'report missing', 'access restricted'
+      ],
+      warning: [
+        'site maintenance', 'temporary outage', 'publication delayed',
+        'scheduled downtime', 'data migration'
+      ]
+    },
+    volumeThreshold: { warning: 1, drift: 3, capture: 5 }
   }
 };

@@ -72,5 +72,14 @@ export const CATEGORIES: Category[] = [
       { name: 'Presidential Actions', url: '/api/federal-register?type=PRESDOCU', type: 'federal_register', note: 'Executive orders and other actions by the President' },
       { name: 'All New Regulations', url: '/api/federal-register?type=RULE', type: 'federal_register', note: 'All new rules from government agencies' }
     ]
+  },
+  {
+    key: 'infoAvailability',
+    title: 'Information Availability',
+    description: 'Are government websites, reports, and data still publicly accessible? Tracks whether critical transparency infrastructure is online and whether expected reports are being published.',
+    signals: [
+      { name: 'Government Site Uptime', url: '/api/uptime/status', type: 'json', note: 'Monitoring whether key government websites are accessible' },
+      { name: 'GAO Reports (Availability)', url: 'https://www.gao.gov/rss/reports.xml', type: 'rss', note: 'Checking if GAO continues publishing oversight reports' }
+    ]
   }
 ];
