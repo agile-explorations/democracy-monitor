@@ -13,21 +13,20 @@ export function DailyDigest({ date }: DailyDigestProps) {
   const targetDate = date || new Date().toISOString().split('T')[0];
 
   useEffect(() => {
+    const fetchDigest = async () => {
+      try {
+        const res = await fetch(`/api/digest/${targetDate}`);
+        if (res.ok) {
+          setDigest(await res.json());
+        }
+      } catch {
+        // Digest not available
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchDigest();
   }, [targetDate]);
-
-  const fetchDigest = async () => {
-    try {
-      const res = await fetch(`/api/digest/${targetDate}`);
-      if (res.ok) {
-        setDigest(await res.json());
-      }
-    } catch {
-      // Digest not available
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) return null;
   if (!digest) return null;

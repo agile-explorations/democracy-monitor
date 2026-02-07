@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CategoryCard } from '@/components/dashboard/CategoryCard';
 import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
@@ -21,7 +21,10 @@ export default function ExecutivePowerDriftDashboard() {
   const [lastTick, setLastTick] = useState<number>(Date.now());
   const [intentAssessment, setIntentAssessment] = useState<IntentAssessment | null>(null);
 
-  const setStatus = (k: string, v: string) => setStatusMap({ ...statusMap, [k]: v });
+  const setStatus = useCallback(
+    (k: string, v: string) => setStatusMap((prev) => ({ ...prev, [k]: v })),
+    [setStatusMap],
+  );
 
   const saved = useRef(() => setLastTick(Date.now()));
   useEffect(() => {

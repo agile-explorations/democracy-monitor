@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import type { IntentAssessment } from '@/lib/types/intent';
 import { IntentOverview } from './IntentOverview';
@@ -16,11 +16,7 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    loadAssessment();
-  }, []);
-
-  const loadAssessment = async () => {
+  const loadAssessment = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -34,7 +30,11 @@ export function IntentSection({ onAssessmentLoaded }: IntentSectionProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [onAssessmentLoaded]);
+
+  useEffect(() => {
+    loadAssessment();
+  }, [loadAssessment]);
 
   if (loading) {
     return (

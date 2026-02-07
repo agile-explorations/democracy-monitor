@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { FeedItem, FeedPayload } from '@/lib/parsers/feed-parser';
 import { parseResult } from '@/lib/parsers/feed-parser';
 import { fetchData } from '@/lib/services/feed-service';
@@ -22,7 +22,7 @@ export function FeedBlock({ signalDef, onItemsLoaded }: FeedBlockProps) {
     ts?: number;
   }>({ status: 'idle' });
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setState({ status: 'loading' });
     try {
       const payload = (await fetchData(signalDef.url, signalDef.type)) as FeedPayload;
@@ -37,11 +37,11 @@ export function FeedBlock({ signalDef, onItemsLoaded }: FeedBlockProps) {
         onItemsLoaded([]);
       }
     }
-  };
+  }, [signalDef.url, signalDef.type, onItemsLoaded]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <div className="space-y-2">

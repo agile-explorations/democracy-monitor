@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
@@ -60,6 +60,8 @@ export function ProgressiveDisclosure({
   const [currentLayer, setCurrentLayer] = useState(1);
   const [layer2Data, setLayer2Data] = useState<Record<string, unknown> | null>(null);
 
+  const evidence = useMemo(() => allItems.map((i) => i.title || '').filter(Boolean), [allItems]);
+
   // Prefetch Layer 2 data in background after Layer 1 renders
   useEffect(() => {
     if (autoStatus?.auto && !layer2Data) {
@@ -70,7 +72,7 @@ export function ProgressiveDisclosure({
         crossRef,
       });
     }
-  }, [autoStatus, enhancedData, crossRef]);
+  }, [autoStatus, enhancedData, crossRef, layer2Data]);
 
   const layerLabels = ['Status', 'Why?', 'Evidence', 'Deep Analysis'];
 
@@ -121,13 +123,7 @@ export function ProgressiveDisclosure({
 
       {currentLayer === 3 && <Layer3 items={allItems} matches={matches || []} />}
 
-      {currentLayer === 4 && (
-        <Layer4
-          categoryKey={categoryKey}
-          level={level}
-          evidence={allItems.map((i) => i.title || '').filter(Boolean)}
-        />
-      )}
+      {currentLayer === 4 && <Layer4 categoryKey={categoryKey} level={level} evidence={evidence} />}
     </div>
   );
 }

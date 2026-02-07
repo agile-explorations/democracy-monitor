@@ -171,7 +171,7 @@ Without automated guardrails, code standards are suggestions. These items create
 **Pre-commit hooks:**
 
 - [x] Add `husky` + `lint-staged` — run lint and format check on staged files so broken code never lands in a commit
-- [ ] Tighten lint-staged to `eslint --max-warnings 0` after fixing 6 existing `exhaustive-deps` warnings
+- [x] Tighten lint-staged to `eslint --max-warnings 0` after fixing 6 existing `exhaustive-deps` warnings
 
 **ESLint — tighten React pattern enforcement:**
 Current `.eslintrc.json` is nearly empty (just `next/core-web-vitals`). Add rules to codify the patterns already used in this codebase:
@@ -210,8 +210,8 @@ OpenGrep (Apache 2.0 fork of Semgrep) lets you write AST-pattern rules in YAML. 
 
 **"Good first issue" curation:**
 
-- [ ] Create `good first issue` label on the repo (`gh label create`)
-- [ ] Tag well-scoped, low-risk, self-contained issues — candidates from this TODO:
+- [x] Create `good first issue` label on the repo (exists as GitHub default)
+- [ ] Create GitHub Issues from TODO candidates when ready to invite contributors:
   - "Add negation detection" (P2) — well-defined NLP task, isolated to assessment-service
   - "Add loading indicator for Deep Analysis tab" (P2) — small UI task
   - "Fix vocabulary inconsistency" between health/category labels (P1)

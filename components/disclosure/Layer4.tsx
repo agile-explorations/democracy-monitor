@@ -20,37 +20,39 @@ export function Layer4({ categoryKey, level, evidence }: Layer4Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const loadDeepAnalysis = async () => {
+      setLoading(true);
+
+      const body = JSON.stringify({ category: categoryKey, status: level, evidence });
+      const headers = { 'Content-Type': 'application/json' };
+
+      const results = await Promise.allSettled([
+        fetch('/api/ai/debate', { method: 'POST', headers, body }).then((r) => r.json()),
+        fetch('/api/ai/legal-analysis', { method: 'POST', headers, body }).then((r) => r.json()),
+        fetch('/api/ai/trends', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            category: categoryKey,
+            items: evidence.map((e) => ({ title: e })),
+          }),
+        }).then((r) => r.json()),
+      ]);
+
+      if (results[0].status === 'fulfilled' && !results[0].value.skipped) {
+        setDebate(results[0].value);
+      }
+      if (results[1].status === 'fulfilled' && !results[1].value.skipped) {
+        setLegal(results[1].value);
+      }
+      if (results[2].status === 'fulfilled' && results[2].value.anomalies) {
+        setAnomalies(results[2].value.anomalies);
+      }
+
+      setLoading(false);
+    };
     loadDeepAnalysis();
-  }, [categoryKey]);
-
-  const loadDeepAnalysis = async () => {
-    setLoading(true);
-
-    const body = JSON.stringify({ category: categoryKey, status: level, evidence });
-    const headers = { 'Content-Type': 'application/json' };
-
-    const results = await Promise.allSettled([
-      fetch('/api/ai/debate', { method: 'POST', headers, body }).then((r) => r.json()),
-      fetch('/api/ai/legal-analysis', { method: 'POST', headers, body }).then((r) => r.json()),
-      fetch('/api/ai/trends', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ category: categoryKey, items: evidence.map((e) => ({ title: e })) }),
-      }).then((r) => r.json()),
-    ]);
-
-    if (results[0].status === 'fulfilled' && !results[0].value.skipped) {
-      setDebate(results[0].value);
-    }
-    if (results[1].status === 'fulfilled' && !results[1].value.skipped) {
-      setLegal(results[1].value);
-    }
-    if (results[2].status === 'fulfilled' && results[2].value.anomalies) {
-      setAnomalies(results[2].value.anomalies);
-    }
-
-    setLoading(false);
-  };
+  }, [categoryKey, level, evidence]);
 
   if (loading) {
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 import { Card } from '@/components/ui/Card';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
@@ -73,31 +73,30 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
 
   useEffect(() => {
     if (loadedCount === cat.signals.length && allItems.length > 0) {
+      const assessStatus = async () => {
+        try {
+          const response = await fetch('/api/assess-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: cat.key, items: allItems }),
+          });
+          const data = await response.json();
+          setAutoStatus({
+            level: data.status,
+            reason: data.reason,
+            auto: true,
+            matches: data.matches || [],
+            assessedAt: data.assessedAt,
+            detail: data.detail,
+          });
+          setStatus(cat.key, data.status);
+        } catch (err) {
+          console.error('Status assessment failed:', err);
+        }
+      };
       assessStatus();
     }
-  }, [loadedCount, allItems]);
-
-  const assessStatus = async () => {
-    try {
-      const response = await fetch('/api/assess-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category: cat.key, items: allItems }),
-      });
-      const data = await response.json();
-      setAutoStatus({
-        level: data.status,
-        reason: data.reason,
-        auto: true,
-        matches: data.matches || [],
-        assessedAt: data.assessedAt,
-        detail: data.detail,
-      });
-      setStatus(cat.key, data.status);
-    } catch (err) {
-      console.error('Status assessment failed:', err);
-    }
-  };
+  }, [loadedCount, allItems, cat.key, cat.signals.length, setStatus]);
 
   const runAiAssessment = async () => {
     setAiLoading(true);
@@ -139,10 +138,10 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
     }
   };
 
-  const handleItemsLoaded = (items: FeedItem[]) => {
+  const handleItemsLoaded = useCallback((items: FeedItem[]) => {
     setAllItems((prev) => [...prev, ...items]);
     setLoadedCount((prev) => prev + 1);
-  };
+  }, []);
 
   return (
     <Card>
