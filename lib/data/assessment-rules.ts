@@ -1,0 +1,154 @@
+import type { AssessmentRules } from '@/lib/types';
+
+export const ASSESSMENT_RULES: AssessmentRules = {
+  civilService: {
+    keywords: {
+      capture: [
+        'schedule f', 'excepted schedule f', 'mass termination', 'mass removal',
+        'political appointee conversion', 'title 5 exemption', 'merit system violation',
+        'violated civil service protections', 'unlawful termination', 'systematic purge',
+        'political loyalty test', 'removed for political reasons'
+      ],
+      drift: [
+        'reclassification', 'excepted service', 'policy-influencing position',
+        'career staff removed', 'reduced career positions', 'political control over hiring',
+        'at-will employment', 'bypassing merit system', 'categorical exclusion'
+      ],
+      warning: [
+        'workforce reduction', 'reorganization', 'senior executive service',
+        'position eliminated', 'restructuring'
+      ]
+    },
+    volumeThreshold: { warning: 5, drift: 10, capture: 20 }
+  },
+  fiscal: {
+    keywords: {
+      capture: [
+        'violated impoundment control act', 'illegal impoundment', 'unlawful withholding',
+        'anti-deficiency act violation', 'gao decision', 'violated appropriations law',
+        'illegal rescission', 'unconstitutional refusal', 'contempt for withholding'
+      ],
+      drift: [
+        'deferral', 'apportionment withheld', 'rescission', 'budget authority withheld',
+        'refused to obligate', 'selective implementation', 'funding freeze',
+        'impoundment', 'delayed obligation'
+      ],
+      warning: [
+        'funding delay', 'obligation rate', 'apportionment', 'spend plan'
+      ]
+    },
+    volumeThreshold: { warning: 2, drift: 5, capture: 10 }
+  },
+  igs: {
+    keywords: {
+      capture: [
+        'inspector general removed', 'ig fired', 'ig terminated without cause',
+        'mass ig removal', 'defunded inspector general', 'eliminated ig office',
+        'systematic obstruction of oversight', 'ig independence violated'
+      ],
+      drift: [
+        'acting inspector general', 'ig vacancy', 'funding cut to oversight',
+        'obstruction of investigation', 'denied access', 'ig report suppressed',
+        'oversight.gov', 'lack of apportionment', 'delayed ig appointment',
+        'restricted ig authority'
+      ],
+      warning: [
+        'independence concern', 'access delayed', 'report delayed',
+        'investigation pending'
+      ]
+    },
+    volumeThreshold: { warning: 2, drift: 4, capture: 8 },
+    oversightGovDown: 'drift'
+  },
+  hatch: {
+    keywords: {
+      capture: [
+        'hatch act violation found', 'systematic hatch act violations',
+        'osc enforcement suspended', 'defunded office of special counsel',
+        'violated hatch act', 'osc found violation', 'unlawful partisan activity'
+      ],
+      drift: [
+        'multiple hatch act violations', 'repeated partisan messaging',
+        'official channels for campaign', 'political activity in office',
+        'pattern of violations', 'weakened enforcement'
+      ],
+      warning: [
+        'hatch act complaint', 'osc investigation', 'alleged violation',
+        'partisan communication'
+      ]
+    },
+    volumeThreshold: { warning: 3, drift: 6, capture: 12 }
+  },
+  courts: {
+    keywords: {
+      capture: [
+        'contempt of court', 'defied court order', 'refused to comply',
+        'violated injunction', 'ignored court ruling', 'non-compliance with order',
+        'contempt citation', 'willful violation of court order'
+      ],
+      drift: [
+        'delayed compliance', 'partial compliance', 'slow-walking court order',
+        'emergency stay sought', 'appealing for delay', 'minimal compliance',
+        'procedural objections to compliance'
+      ],
+      warning: [
+        'injunction issued', 'preliminary injunction', 'temporary restraining order',
+        'court ordered', 'judicial review'
+      ]
+    },
+    volumeThreshold: { warning: 5, drift: 10, capture: 15 }
+  },
+  military: {
+    keywords: {
+      capture: [
+        'insurrection act invoked', 'martial law declared', 'military occupation',
+        'troops deployed domestically', 'military law enforcement', 'suspended habeas corpus'
+      ],
+      drift: [
+        'domestic military deployment', 'law enforcement role for military',
+        'posse comitatus', 'preparing to invoke insurrection act',
+        'military on standby', 'federalized national guard'
+      ],
+      warning: [
+        'national guard activated', 'border deployment', 'title 32 activation',
+        'state request for troops'
+      ]
+    },
+    volumeThreshold: { warning: 3, drift: 6, capture: 10 }
+  },
+  rulemaking: {
+    keywords: {
+      capture: [
+        'independent agency overridden', 'executive order supremacy over statute',
+        'violated apa', 'unlawful regulatory action', 'exceeded statutory authority',
+        'unconstitutional rule'
+      ],
+      drift: [
+        'white house review required', 'oira clearance expanded',
+        'regulatory freeze', 'independent agency subject to review',
+        'centralized regulatory control', 'political clearance required'
+      ],
+      warning: [
+        'significant increase in rules', 'review backlog', 'regulatory agenda',
+        'notice and comment'
+      ]
+    },
+    volumeThreshold: { warning: 50, drift: 100, capture: 200 }
+  },
+  indices: {
+    keywords: {
+      capture: [
+        'democracy downgrade', 'authoritarian shift', 'democratic decline',
+        'rule of law erosion', 'institutional collapse'
+      ],
+      drift: [
+        'declining democratic score', 'erosion of norms', 'weakening checks',
+        'executive aggrandizement', 'institutional degradation'
+      ],
+      warning: [
+        'concern raised', 'watchlist', 'monitoring situation',
+        'potential risk'
+      ]
+    }
+  }
+};

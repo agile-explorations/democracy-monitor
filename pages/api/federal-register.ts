@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { cacheGet, cacheSet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 
-const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
-const cache = new Map<string, { ts: number; data: any }>();
+const CACHE_TTL_S = 600; // 10 minutes
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -23,13 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const url = `https://www.federalregister.gov/api/v1/documents.json?${params.toString()}`;
-    const cacheKey = url;
+    const cacheKey = CacheKeys.federalRegister(url);
 
     // Check cache
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    const cached = await cacheGet<any>(cacheKey);
+    if (cached) {
       res.setHeader('Cache-Control', 'public, s-maxage=600');
-      return res.status(200).json({ cached: true, ...cached.data });
+      return res.status(200).json({ cached: true, ...cached });
     }
 
     // Fetch from Federal Register API (CORS-enabled, no key needed)
@@ -65,7 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       url
     };
 
-    cache.set(cacheKey, { ts: Date.now(), data: result });
+    await cacheSet(cacheKey, result, CACHE_TTL_S);
 
     res.setHeader('Cache-Control', 'public, s-maxage=600');
     res.status(200).json({ cached: false, ...result });

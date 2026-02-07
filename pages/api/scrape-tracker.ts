@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import * as cheerio from 'cheerio';
+import { cacheGet, cacheSet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-const cache = new Map<string, { ts: number; data: any }>();
+const CACHE_TTL_S = 3600; // 1 hour
 
 type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
 
@@ -51,13 +52,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const config = TRACKER_CONFIGS[source as TrackerSource];
-    const cacheKey = source;
+    const cacheKey = CacheKeys.scrapeTracker(source);
 
     // Check cache
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    const cached = await cacheGet<any>(cacheKey);
+    if (cached) {
       res.setHeader('Cache-Control', 'public, s-maxage=3600');
-      return res.status(200).json({ cached: true, ...cached.data });
+      return res.status(200).json({ cached: true, ...cached });
     }
 
     // Fetch the tracker page
@@ -102,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       scrapedAt: new Date().toISOString()
     };
 
-    cache.set(cacheKey, { ts: Date.now(), data: result });
+    await cacheSet(cacheKey, result, CACHE_TTL_S);
 
     res.setHeader('Cache-Control', 'public, s-maxage=3600');
     res.status(200).json({ cached: false, ...result });

@@ -1,1 +1,0 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages/index.tsx -> @/components/ExecutivePowerDriftDashboard\":{\"id\":\"pages/index.tsx -> @/components/ExecutivePowerDriftDashboard\",\"files\":[\"static/chunks/components_ExecutivePowerDriftDashboard_tsx.js\"]}}"

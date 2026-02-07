@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { parseStringPromise } from 'xml2js';
 import { getAllowedHosts } from '@/lib/allowedHosts';
+import { cacheGet, cacheSet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 
-const CACHE_TTL_MS = (Number(process.env.PROXY_CACHE_TTL) || 600) * 1000; // default 10 minutes
-
-type CacheEntry = { ts: number; body: any };
-const cache = new Map<string, CacheEntry>();
+const CACHE_TTL_S = Number(process.env.PROXY_CACHE_TTL) || 600;
 
 function okHost(u: URL) { return getAllowedHosts().includes(u.hostname); }
 
@@ -24,17 +23,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    const key = url.toString();
-    const cached = cache.get(key);
-    if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
+    const key = CacheKeys.proxy(url.toString());
+    const cached = await cacheGet<any>(key);
+    if (cached) {
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Cache-Control', `public, s-maxage=${Math.floor(CACHE_TTL_MS/1000)}`);
-      res.status(200).json({ cached: true, data: cached.body });
+      res.setHeader('Cache-Control', `public, s-maxage=${CACHE_TTL_S}`);
+      res.status(200).json({ cached: true, data: cached });
       return;
     }
 
     const upstream = await fetch(url.toString(), {
-      headers: { 
+      headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
@@ -68,41 +67,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         out.type = 'rss';
         out.items = Array.isArray(items) ? items : (items ? [items] : []);
         out.title = parsed?.rss?.channel?.title || parsed?.feed?.title || 'RSS Feed';
-      } catch (e) {
+      } catch {
         // Try to extract links from HTML instead
         const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi)).slice(0, 15)
-          .map((m) => ({ 
-            href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(), 
-            text: m[2].replace(/<[^>]*>/g, '').trim() 
+          .map((m) => ({
+            href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(),
+            text: m[2].replace(/<[^>]*>/g, '').trim()
           }))
           .filter(item => item.text.length > 0 && !item.text.toLowerCase().includes('skip'));
         out.type = 'html';
         out.anchors = anchors;
       }
     } else if (contentType.includes('json')) {
-      try { 
-        out.json = JSON.parse(text); 
-        out.type = 'json'; 
-      } catch { 
+      try {
+        out.json = JSON.parse(text);
+        out.type = 'json';
+      } catch {
         out.type = 'text';
-        out.raw = text.slice(0, 2000); 
+        out.raw = text.slice(0, 2000);
       }
     } else {
       // Extract anchors with better filtering
       const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi)).slice(0, 20)
-        .map((m) => ({ 
-          href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(), 
-          text: m[2].replace(/<[^>]*>/g, '').trim() 
+        .map((m) => ({
+          href: m[1].startsWith('http') ? m[1] : new URL(m[1], url).toString(),
+          text: m[2].replace(/<[^>]*>/g, '').trim()
         }))
         .filter(item => item.text.length > 5 && !item.href.includes('javascript:'));
       out.type = 'html';
       out.anchors = anchors;
     }
 
-    cache.set(key, { ts: Date.now(), body: out });
+    await cacheSet(key, out, CACHE_TTL_S);
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Cache-Control', `public, s-maxage=${Math.floor(CACHE_TTL_MS/1000)}`);
+    res.setHeader('Cache-Control', `public, s-maxage=${CACHE_TTL_S}`);
     res.status(200).json({ cached: false, data: out });
   } catch (err: any) {
     res.status(500).json({ error: String(err?.message || err) });

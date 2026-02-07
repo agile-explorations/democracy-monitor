@@ -1,0 +1,72 @@
+services:
+  - type: web
+    name: executive-power-drift
+    runtime: node
+    plan: standard
+    buildCommand: pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis
+          type: redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: epd-db
+    plan: basic-1gb
+    databaseName: epd
+    postgresMajorVersion: "16"
+
+keyValueStores:
+  - name: epd-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
+crons:
+  - name: daily-digest
+    schedule: "0 6 * * *"
+    buildCommand: pnpm install
+    startCommand: echo "Daily digest cron - to be implemented in Phase 4"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis
+          type: redis
+          property: connectionString
+
+  - name: hourly-uptime
+    schedule: "0 * * * *"
+    buildCommand: pnpm install
+    startCommand: echo "Hourly uptime check - to be implemented in Phase 3"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+
+  - name: weekly-clustering
+    schedule: "0 3 * * 0"
+    buildCommand: pnpm install
+    startCommand: echo "Weekly clustering - to be implemented in Phase 4"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
