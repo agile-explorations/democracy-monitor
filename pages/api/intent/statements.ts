@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { fetchPresidentialDocuments, fetchWhiteHouseBriefings } from '@/lib/services/intent-data-service';
+import { getDemoResponse } from '@/lib/demo';
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+  const demo = getDemoResponse('intent/statements', _req);
+  if (demo) return res.status(200).json(demo);
+
   try {
     const [presidentialDocs, whBriefings] = await Promise.all([
       fetchPresidentialDocuments(),

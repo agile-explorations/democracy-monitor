@@ -2,10 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { fetchPresidentialDocuments, fetchWhiteHouseBriefings } from '@/lib/services/intent-data-service';
 import { scoreStatements } from '@/lib/services/intent-service';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { getDemoResponse } from '@/lib/demo';
 
 const CACHE_TTL_S = 1800; // 30 minutes
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+  const demo = getDemoResponse('intent/assess', _req);
+  if (demo) return res.status(200).json(demo);
+
   try {
     const cacheKey = 'intent:assessment';
     const cached = await cacheGet<any>(cacheKey);

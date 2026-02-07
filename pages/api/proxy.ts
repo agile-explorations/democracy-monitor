@@ -3,12 +3,16 @@ import { parseStringPromise } from 'xml2js';
 import { getAllowedHosts } from '@/lib/allowedHosts';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { getDemoResponse } from '@/lib/demo';
 
 const CACHE_TTL_S = Number(process.env.PROXY_CACHE_TTL) || 600;
 
 function okHost(u: URL) { return getAllowedHosts().includes(u.hostname); }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const demo = getDemoResponse('proxy', req);
+  if (demo) return res.status(200).json(demo);
+
   try {
     const target = (req.query.url || req.query.target) as string | undefined;
     if (!target) {

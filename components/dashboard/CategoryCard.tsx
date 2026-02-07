@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { FeedBlock } from './FeedBlock';
 import { EnhancedAssessment } from './EnhancedAssessment';
 import { CrossReference } from './CrossReference';
+import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 
 function fmtDate(d?: Date | string | number) {
   if (!d) return '\u2014';
@@ -189,51 +190,15 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
         )}
 
         {showDetails && autoStatus && (
-          <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-xs space-y-2">
-            <h4 className="font-semibold text-blue-900">How We Determined This Status</h4>
-            <div className="space-y-2">
-              <p><strong>Status:</strong> <span className={`font-semibold ${autoStatus.level === 'Capture' ? 'text-red-700' : autoStatus.level === 'Drift' ? 'text-orange-700' : autoStatus.level === 'Warning' ? 'text-yellow-700' : 'text-green-700'}`}>{autoStatus.level}</span></p>
-              <p><strong>When checked:</strong> {fmtDate(autoStatus.assessedAt)}</p>
-              <p><strong>Documents reviewed:</strong> {autoStatus.detail?.itemsReviewed || allItems.length} from {cat.signals.length} sources</p>
-
-              {autoStatus.detail && (
-                <div className="mt-3 p-2 bg-white rounded border border-blue-300">
-                  <p className="font-semibold mb-2">What We Found:</p>
-                  {autoStatus.detail.captureCount > 0 && (
-                    <p className="text-red-700">{'\u2022'} {autoStatus.detail.captureCount} serious violation{autoStatus.detail.captureCount !== 1 ? 's' : ''} found</p>
-                  )}
-                  {autoStatus.detail.driftCount > 0 && (
-                    <p className="text-orange-700">{'\u2022'} {autoStatus.detail.driftCount} concerning pattern{autoStatus.detail.driftCount !== 1 ? 's' : ''} detected</p>
-                  )}
-                  {autoStatus.detail.warningCount > 0 && (
-                    <p className="text-yellow-700">{'\u2022'} {autoStatus.detail.warningCount} minor issue{autoStatus.detail.warningCount !== 1 ? 's' : ''} noted</p>
-                  )}
-                  {autoStatus.detail.hasAuthoritative && (
-                    <p className="text-red-700 font-semibold mt-1">Violations confirmed by official sources (GAO, courts, or watchdogs)</p>
-                  )}
-                </div>
-              )}
-
-              {autoStatus.matches && autoStatus.matches.length > 0 && (
-                <div className="mt-2">
-                  <strong>Problem words we found:</strong>
-                  <ul className="list-disc list-inside ml-2 mt-1 space-y-0.5">
-                    {autoStatus.matches.slice(0, 5).map((match, idx) => (
-                      <li key={idx} className="text-red-700">&quot;{match}&quot;</li>
-                    ))}
-                    {autoStatus.matches.length > 5 && (
-                      <li className="text-slate-500">...and {autoStatus.matches.length - 5} more</li>
-                    )}
-                  </ul>
-                </div>
-              )}
-
-              <div className="mt-3 pt-2 border-t border-blue-300 text-slate-600">
-                <strong>How it works:</strong>
-                <p className="mt-1">We search documents for specific words and phrases. Serious violations (like &quot;violated the law&quot; or &quot;illegal&quot;) from official sources (GAO, courts, IGs) automatically trigger red flags.</p>
-              </div>
-            </div>
-          </div>
+          <ProgressiveDisclosure
+            categoryKey={cat.key}
+            level={level}
+            autoStatus={autoStatus}
+            enhancedData={enhancedData}
+            crossRef={crossRef || null}
+            allItems={allItems}
+            matches={autoStatus.matches}
+          />
         )}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">

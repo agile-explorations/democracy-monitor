@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { runLegalAnalysis } from '@/lib/services/legal-analysis-service';
+import { getDemoResponse } from '@/lib/demo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const demo = getDemoResponse('ai/legal-analysis', req);
+  if (demo) return res.status(200).json(demo);
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
