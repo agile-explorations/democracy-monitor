@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
-import { getDemoResponse } from '@/lib/demo';
+import { isDbAvailable } from '@/lib/db';
+import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { storeDocuments } from '@/lib/services/document-store';
 import {
@@ -8,20 +10,33 @@ import {
   statementsToContentItems,
 } from '@/lib/services/intent-data-service';
 import { scoreStatements } from '@/lib/services/intent-service';
+import { getLatestIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 
 const CACHE_TTL_S = 1800; // 30 minutes
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('intent/assess', _req);
-  if (demo) return res.status(200).json(demo);
-
   try {
+    // 1. Check DB for a stored snapshot first
+    if (isDbAvailable()) {
+      try {
+        const snapshot = await getLatestIntentSnapshot();
+        if (snapshot) {
+          res.setHeader('Cache-Control', 'public, s-maxage=300');
+          return res.status(200).json(snapshot);
+        }
+      } catch {
+        // DB read failed — fall through to live fetch
+      }
+    }
+
+    // 2. Check in-memory/Redis cache
     const cacheKey = 'intent:assessment';
     const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
       return res.status(200).json(cached);
     }
 
+    // 3. Live fetch + assessment
     const allStatements = await fetchAllRhetoricSources();
 
     // Fire-and-forget: store documents and embed for RAG pipeline
@@ -44,7 +59,10 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       });
     }
 
-    const assessment = scoreStatements(allStatements);
+    const assessment =
+      getAvailableProviders().length > 0
+        ? await enhancedIntentAssessment(allStatements)
+        : scoreStatements(allStatements);
 
     await cacheSet(cacheKey, assessment, CACHE_TTL_S);
 

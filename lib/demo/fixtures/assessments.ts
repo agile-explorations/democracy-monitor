@@ -7,6 +7,9 @@
 import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import type { EvidenceItem } from '@/lib/services/evidence-balance';
 import type { StatusLevel, AssessmentResult, AssessmentDetail } from '@/lib/types';
+import type { DebateResult } from '@/lib/types/debate';
+import type { LegalAnalysisResult } from '@/lib/types/legal';
+import type { TrendAnomaly } from '@/lib/types/trends';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 
@@ -147,6 +150,275 @@ function getAssessment(category: string, scenario: ScenarioName): AssessmentResu
   };
 }
 
+// --- Deep analysis fixtures --------------------------------------------------
+
+const DEBATE_TOPICS: Record<string, Record<StatusLevel, string>> = {
+  civilService: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether Schedule F reclassifications constitute a systematic dismantling of merit-based civil service protections or a legitimate exercise of executive reorganization authority.',
+    Capture:
+      'Whether the mass conversion of career civil servants to at-will employment represents institutional capture of the federal workforce.',
+  },
+  fiscal: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether delayed fund obligations constitute unlawful impoundment under the Impoundment Control Act or permissible executive budget management.',
+    Capture:
+      'Whether the systematic withholding of congressionally appropriated funds represents a constitutional crisis in the power of the purse.',
+  },
+  igs: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether restrictions on IG access to agency records undermine the independent oversight function established by the Inspector General Act.',
+    Capture:
+      'Whether the removal of multiple Inspectors General and shutdown of Oversight.gov constitutes destruction of the federal oversight apparatus.',
+  },
+  hatch: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether the pattern of unenforced Hatch Act violations signals a breakdown in the boundary between political and civil service functions.',
+    Capture:
+      'Whether the neutralization of OSC enforcement represents a complete politicization of the federal workforce.',
+  },
+  courts: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether delayed compliance with federal court orders represents a challenge to judicial authority or reasonable administrative process.',
+    Capture:
+      'Whether open defiance of court injunctions constitutes a constitutional crisis threatening the separation of powers.',
+  },
+  military: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether domestic deployment of active-duty troops for law enforcement violates the Posse Comitatus Act.',
+    Capture:
+      'Whether routine military use for domestic policing represents a fundamental shift in civil-military relations.',
+  },
+  rulemaking: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether White House directives to independent agencies compromise the regulatory independence established by Congress.',
+    Capture:
+      'Whether bypassing APA procedures under executive pressure eliminates meaningful regulatory independence.',
+  },
+  indices: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether the expansion of executive authority through emergency declarations circumvents constitutional checks on presidential power.',
+    Capture:
+      'Whether governance by executive decree represents a fundamental departure from constitutional democratic norms.',
+  },
+  infoAvailability: {
+    Stable: '',
+    Warning: '',
+    Drift:
+      'Whether government website outages and publication delays reflect infrastructure issues or deliberate information suppression.',
+    Capture:
+      'Whether taking critical transparency sites offline constitutes systematic suppression of public information.',
+  },
+};
+
+function makeDebate(
+  category: string,
+  status: StatusLevel,
+  reason: string,
+): DebateResult | undefined {
+  if (status !== 'Drift' && status !== 'Capture') return undefined;
+  const topic =
+    DEBATE_TOPICS[category]?.[status] || `Analysis of ${status}-level activity in ${category}`;
+  const isConcerning = status === 'Capture';
+  return {
+    category,
+    status,
+    messages: [
+      {
+        role: 'prosecutor',
+        provider: 'demo',
+        model: 'demo-fixture',
+        content: `The evidence strongly suggests ${status.toLowerCase()}-level concern. ${reason} These actions follow a pattern consistent with institutional erosion rather than routine governance.`,
+        round: 1,
+        latencyMs: 0,
+      },
+      {
+        role: 'defense',
+        provider: 'demo',
+        model: 'demo-fixture',
+        content: `While the actions described are notable, they should be evaluated in historical context. Executive reorganization and policy shifts occur in every administration. The characterization of these actions as ${status.toLowerCase()} may overweight their significance.`,
+        round: 1,
+        latencyMs: 0,
+      },
+      {
+        role: 'arbitrator',
+        provider: 'demo',
+        model: 'demo-fixture',
+        content: isConcerning
+          ? `After weighing both perspectives, the evidence supports a concerning assessment. The pattern of actions in ${category} goes beyond normal policy disagreement and raises legitimate institutional concerns.`
+          : `Both sides present valid points. While the actions warrant monitoring, the evidence is mixed. Some indicators suggest institutional stress, but existing safeguards have not been fully tested.`,
+        round: 1,
+        latencyMs: 0,
+      },
+    ],
+    verdict: {
+      agreementLevel: isConcerning ? 8 : 5,
+      verdict: isConcerning ? 'concerning' : 'mixed',
+      summary: topic,
+      keyPoints: [
+        `${status}-level activity detected across multiple signals`,
+        reason.split('.')[0],
+        isConcerning
+          ? 'Pattern is consistent with systematic institutional erosion'
+          : 'Further monitoring recommended to establish trend direction',
+      ],
+    },
+    totalRounds: 1,
+    startedAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    totalLatencyMs: 0,
+  };
+}
+
+const LEGAL_REFS: Record<string, { citation: string; title: string; type: string }[]> = {
+  civilService: [
+    { citation: '5 U.S.C. \u00A7 2301-2302', title: 'Merit System Principles', type: 'statute' },
+    { citation: 'EO 13957 (2020)', title: 'Schedule F Executive Order', type: 'regulation' },
+  ],
+  fiscal: [
+    {
+      citation: '2 U.S.C. \u00A7 681-688',
+      title: 'Impoundment Control Act of 1974',
+      type: 'statute',
+    },
+    {
+      citation: 'Train v. City of New York, 420 U.S. 35 (1975)',
+      title: 'Train v. NYC',
+      type: 'case',
+    },
+  ],
+  igs: [
+    {
+      citation: '5 U.S.C. App. \u00A7 3(b)',
+      title: 'Inspector General Act of 1978',
+      type: 'statute',
+    },
+    {
+      citation: '5 U.S.C. App. \u00A7 8G',
+      title: 'IG Removal Notification Requirement',
+      type: 'statute',
+    },
+  ],
+  hatch: [
+    { citation: '5 U.S.C. \u00A7 7321-7326', title: 'Hatch Act', type: 'statute' },
+    {
+      citation: '5 U.S.C. \u00A7 1212-1216',
+      title: 'Office of Special Counsel Act',
+      type: 'statute',
+    },
+  ],
+  courts: [
+    { citation: 'U.S. Const. Art. III', title: 'Judicial Power', type: 'constitutional' },
+    { citation: 'Cooper v. Aaron, 358 U.S. 1 (1958)', title: 'Cooper v. Aaron', type: 'case' },
+  ],
+  military: [
+    { citation: '18 U.S.C. \u00A7 1385', title: 'Posse Comitatus Act', type: 'statute' },
+    { citation: '10 U.S.C. \u00A7 251-255', title: 'Insurrection Act', type: 'statute' },
+  ],
+  rulemaking: [
+    {
+      citation: '5 U.S.C. \u00A7 553',
+      title: 'Administrative Procedure Act — Rulemaking',
+      type: 'statute',
+    },
+    {
+      citation: "Humphrey's Executor v. United States, 295 U.S. 602 (1935)",
+      title: "Humphrey's Executor",
+      type: 'case',
+    },
+  ],
+  indices: [
+    {
+      citation: 'U.S. Const. Art. I, \u00A7 1',
+      title: 'Legislative Power Vesting Clause',
+      type: 'constitutional',
+    },
+    {
+      citation: 'Youngstown Sheet & Tube Co. v. Sawyer, 343 U.S. 579 (1952)',
+      title: 'Youngstown',
+      type: 'case',
+    },
+  ],
+  infoAvailability: [
+    { citation: '5 U.S.C. \u00A7 552', title: 'Freedom of Information Act', type: 'statute' },
+    { citation: '44 U.S.C. \u00A7 3501', title: 'Paperwork Reduction Act', type: 'statute' },
+  ],
+};
+
+function makeLegalAnalysis(
+  category: string,
+  status: StatusLevel,
+  reason: string,
+): LegalAnalysisResult | undefined {
+  if (status !== 'Drift' && status !== 'Capture') return undefined;
+  const refs = LEGAL_REFS[category] || [];
+  return {
+    category,
+    status,
+    citations: refs.map((r) => ({
+      ...r,
+      relevance: `Relevant to current ${status.toLowerCase()}-level activity in ${category}`,
+      verified: true,
+    })),
+    analysis: `${reason} This raises questions under ${refs.map((r) => r.title).join(' and ')}.`,
+    constitutionalConcerns:
+      status === 'Capture'
+        ? [
+            `Potential violation of separation of powers in ${category}`,
+            'Actions may exceed constitutional executive authority',
+          ]
+        : [`Actions in ${category} warrant constitutional scrutiny`],
+    precedents: refs.filter((r) => r.type === 'case').map((r) => `${r.title} (${r.citation})`),
+    provider: 'demo',
+    model: 'demo-fixture',
+    latencyMs: 0,
+  };
+}
+
+function makeTrendAnomalies(category: string, status: StatusLevel): TrendAnomaly[] {
+  if (status === 'Stable') return [];
+  const now = new Date().toISOString();
+  const anomalies: TrendAnomaly[] = [
+    {
+      keyword: status === 'Capture' ? 'institutional capture' : 'executive authority',
+      category,
+      ratio: status === 'Capture' ? 4.2 : status === 'Drift' ? 2.8 : 1.6,
+      severity: status === 'Capture' ? 'high' : status === 'Drift' ? 'medium' : 'low',
+      message: `Keyword frequency ${status === 'Capture' ? '4.2x' : status === 'Drift' ? '2.8x' : '1.6x'} above baseline for ${category}`,
+      detectedAt: now,
+    },
+  ];
+  if (status === 'Capture' || status === 'Drift') {
+    anomalies.push({
+      keyword: 'oversight',
+      category,
+      ratio: status === 'Capture' ? 3.5 : 2.1,
+      severity: status === 'Capture' ? 'high' : 'medium',
+      message: `Oversight-related keyword frequency elevated ${status === 'Capture' ? '3.5x' : '2.1x'} above baseline`,
+      detectedAt: now,
+    });
+  }
+  return anomalies;
+}
+
+// --- Enhanced assessment builder ---------------------------------------------
+
 function getEnhanced(category: string, scenario: ScenarioName): EnhancedAssessment {
   const base = getAssessment(category, scenario);
   const status = base.status;
@@ -212,6 +484,9 @@ function getEnhanced(category: string, scenario: ScenarioName): EnhancedAssessme
       latencyMs: 0,
     },
     consensusNote: 'AI and keyword assessments agree on the current status level.',
+    debate: makeDebate(category, status, base.reason),
+    legalAnalysis: makeLegalAnalysis(category, status, base.reason),
+    trendAnomalies: makeTrendAnomalies(category, status),
     assessedAt: new Date().toISOString(),
   };
 }

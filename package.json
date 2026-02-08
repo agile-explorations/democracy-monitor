@@ -34,8 +34,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx lib/db/migrate.ts",
     "snapshot": "tsx lib/cron/snapshot.ts",
-    "snapshot:seed": "tsx lib/cron/seed-snapshots.ts",
-    "snapshot:catchup": "tsx lib/cron/catchup-snapshots.ts",
+    "demo:seed": "tsx lib/cron/seed-demo-data.ts",
     "prepare": "husky"
   },
   "dependencies": {

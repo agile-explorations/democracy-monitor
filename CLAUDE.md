@@ -16,6 +16,8 @@ pnpm test:coverage # Run tests with coverage thresholds
 pnpm test:watch    # Run Vitest in watch mode
 pnpm db:generate  # Generate Drizzle migrations from schema
 pnpm db:migrate   # Apply migrations to PostgreSQL
+pnpm snapshot     # Run daily snapshot cron (real data)
+pnpm demo:seed    # DEV ONLY: generate deterministic demo snapshots from fixtures
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
