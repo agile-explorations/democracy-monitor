@@ -89,9 +89,9 @@ AI currently receives only document titles — not full text. This makes AI asse
 
 ### Intent Keywords — Missing Coverage
 
-- [ ] Add "domestic terrorist" political labeling keywords to `civil_liberties` rhetoric: "far-left radical", "domestic terrorist", "enemy within", "radical left", "communist"
-- [ ] Add election federalization keywords to `elections` rhetoric+action: "federalize elections", "federal election control", "take over state elections", "national election authority"
-- [ ] Audit all 5 policy areas for keyword gaps against current real-world rhetoric and executive actions
+- [x] Add "domestic terrorist" political labeling keywords to `civil_liberties` rhetoric: "far-left radical", "domestic terrorist", "enemy within", "radical left", "communist"
+- [x] Add election federalization keywords to `elections` rhetoric+action: "federalize elections", "federal election control", "take over state elections", "national election authority"
+- [x] Audit all 5 policy areas for keyword gaps against current real-world rhetoric and executive actions
 
 ### Authoritarian Infrastructure Tracking — coverage gap analysis
 
