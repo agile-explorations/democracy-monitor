@@ -72,9 +72,9 @@ AI currently receives only document titles — not full text. This makes AI asse
 
 **Tier 1 — No API cost, high value:**
 
-- [ ] Parse White House press conference transcripts (whitehouse.gov publishes full text) — unscripted Q&A captures raw rhetoric that polished press releases omit
-- [ ] Add RSS feeds from major wire services as rhetoric proxy (AP, Reuters, NPR) — when something is said on Truth Social, major outlets report it within hours; tag as `sourceTier: 2`
-- [ ] Add keyword-filtered Google News RSS or similar aggregator for administration rhetoric coverage
+- [x] Parse White House press conference transcripts (whitehouse.gov publishes full text) — unscripted Q&A captures raw rhetoric that polished press releases omit
+- [x] Add RSS feeds from major wire services as rhetoric proxy (AP, Reuters, NPR) — when something is said on Truth Social, major outlets report it within hours; tag as `sourceTier: 2`
+- [x] Add keyword-filtered Google News RSS or similar aggregator for administration rhetoric coverage
 - [ ] Parse GovInfo Congressional Record API for rhetoric from allied legislators — floor speeches and statements often preview policy direction
 
 **Tier 2 — API cost or scraping complexity:**
