@@ -10,6 +10,7 @@ pnpm build        # Production build
 pnpm start        # Start production server
 pnpm lint          # ESLint (extends next/core-web-vitals)
 pnpm lint:patterns # OpenGrep custom pattern rules (.opengrep/)
+pnpm lint:unused   # Knip — find unused files, exports, and dependencies
 pnpm test          # Run Vitest test suite
 pnpm test:coverage # Run tests with coverage thresholds
 pnpm test:watch    # Run Vitest in watch mode

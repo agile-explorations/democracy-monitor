@@ -21,6 +21,22 @@ rules:
         - '*.test.*'
         - '*.md'
 
+  # WHY: sql.raw() injects a raw string into the query, bypassing Drizzle's
+  # parameterization. Even when current callers pass internal constants, the
+  # function signature accepts arbitrary strings — a future caller passing
+  # user input would create a SQL injection vulnerability. Use Drizzle's
+  # sql template tag with parameters instead.
+  - id: no-sql-raw
+    pattern: sql.raw(...)
+    message: >-
+      sql.raw() bypasses parameterization and risks SQL injection.
+      Use Drizzle's sql template tag with parameters instead.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      exclude:
+        - '*.test.*'
+
   # WHY: External URLs in lib/services/ should go through the proxy layer
   # (pages/api/proxy.ts) which enforces the host allowlist, caches responses,
   # and handles CORS. Direct fetch to external URLs bypasses these protections
