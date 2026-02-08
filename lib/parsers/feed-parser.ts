@@ -1,5 +1,6 @@
 export interface FeedItem {
   title: string;
+  summary?: string;
   link?: string;
   pubDate?: string;
   agency?: string;
@@ -19,6 +20,9 @@ interface FeedPayloadItem {
   agency?: string;
   text?: string;
   href?: string;
+  summary?: string;
+  description?: string | { _?: string };
+  'content:encoded'?: string;
 }
 
 export interface FeedPayload {
@@ -34,6 +38,32 @@ export interface FeedPayload {
   };
 }
 
+const MAX_SUMMARY_LENGTH = 800;
+
+/** Strip HTML tags, decode common entities, and collapse whitespace */
+export function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractSummary(item: FeedPayloadItem): string | undefined {
+  const raw =
+    item['content:encoded'] ||
+    (typeof item.description === 'string' ? item.description : item.description?._) ||
+    item.summary;
+  if (!raw) return undefined;
+  const text = stripHtml(raw);
+  return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '…' : text;
+}
+
 export function parseResult(payload: FeedPayload, signalType: string, baseUrl: string): FeedItem[] {
   // Handle Federal Register API responses
   if (signalType === 'federal_register' || payload?.type === 'federal_register') {
@@ -43,6 +73,7 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
     }
     return items.slice(0, 8).map((it) => ({
       title: (typeof it.title === 'string' ? it.title : it.title?._) || '(document)',
+      summary: extractSummary(it),
       link: typeof it.link === 'string' ? it.link : undefined,
       pubDate: it.pubDate,
       agency: it.agency,
@@ -86,6 +117,7 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
 
       return {
         title: title || '(item)',
+        summary: extractSummary(it),
         link: link,
         pubDate: pubDate,
       };

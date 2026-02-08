@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDemoResponse } from '@/lib/demo';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeContent } from '@/lib/services/assessment-service';
+import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { storeDocuments } from '@/lib/services/document-store';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const demo = getDemoResponse('assess-status', req);
@@ -18,6 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!items || !Array.isArray(items)) {
       return res.status(400).json({ error: 'Missing or invalid items array' });
     }
+
+    // Fire-and-forget: store documents and embed for RAG pipeline
+    storeDocuments(items, category)
+      .then(() => embedUnprocessedDocuments(20))
+      .catch((err) => console.error(`RAG pipeline failed for ${category}:`, err));
 
     if (useAI) {
       const result = await enhancedAssessment(items, category);

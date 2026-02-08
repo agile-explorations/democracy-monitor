@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseResult } from '@/lib/parsers/feed-parser';
+import { parseResult, stripHtml } from '@/lib/parsers/feed-parser';
 
 describe('parseResult', () => {
   it('parses federal_register responses', () => {
@@ -119,5 +119,107 @@ describe('parseResult', () => {
     expect(result[0].title).toBe('Nested Title');
     expect(result[0].link).toBe('https://example.com');
     expect(result[0].pubDate).toBe('2025-02-01');
+  });
+
+  it('extracts summary from RSS description field', () => {
+    const payload = {
+      data: {
+        type: 'rss',
+        items: [
+          {
+            title: 'GAO Report',
+            link: 'https://example.com/report',
+            description: '<p>This report examines <b>federal spending</b> patterns.</p>',
+          },
+        ],
+      },
+    };
+    const result = parseResult(payload, 'rss', 'https://example.com/feed');
+    expect(result[0].summary).toBe('This report examines federal spending patterns.');
+  });
+
+  it('extracts summary from RSS content:encoded field', () => {
+    const payload = {
+      data: {
+        type: 'rss',
+        items: [
+          {
+            title: 'Court Ruling',
+            link: 'https://example.com/ruling',
+            description: 'Short desc',
+            'content:encoded':
+              '<div><p>The Supreme Court ruled today on executive authority limits.</p></div>',
+          },
+        ],
+      },
+    };
+    const result = parseResult(payload, 'rss', 'https://example.com/feed');
+    // content:encoded takes priority over description
+    expect(result[0].summary).toBe('The Supreme Court ruled today on executive authority limits.');
+  });
+
+  it('extracts summary from federal_register items', () => {
+    const payload = {
+      type: 'federal_register',
+      items: [
+        {
+          title: 'Executive Order on Reorganization',
+          link: 'https://federalregister.gov/d/2025-001',
+          pubDate: '2025-03-01',
+          agency: 'Executive Office',
+          summary: 'This order directs agencies to submit reorganization plans.',
+        },
+      ],
+    };
+    const result = parseResult(payload, 'federal_register', '/api/federal-register');
+    expect(result[0].summary).toBe('This order directs agencies to submit reorganization plans.');
+  });
+
+  it('truncates long summaries to 800 characters', () => {
+    const longText = 'A'.repeat(1000);
+    const payload = {
+      data: {
+        type: 'rss',
+        items: [{ title: 'Long Item', link: 'https://example.com', description: longText }],
+      },
+    };
+    const result = parseResult(payload, 'rss', 'https://example.com/feed');
+    expect(result[0].summary!.length).toBe(801); // 800 chars + ellipsis
+    expect(result[0].summary!.endsWith('…')).toBe(true);
+  });
+
+  it('handles nested description objects', () => {
+    const payload = {
+      data: {
+        type: 'rss',
+        items: [
+          {
+            title: 'Nested Desc',
+            link: 'https://example.com',
+            description: { _: '<p>Nested content</p>' },
+          },
+        ],
+      },
+    };
+    const result = parseResult(payload, 'rss', 'https://example.com/feed');
+    expect(result[0].summary).toBe('Nested content');
+  });
+});
+
+describe('stripHtml', () => {
+  it('removes HTML tags', () => {
+    expect(stripHtml('<p>Hello <b>world</b></p>')).toBe('Hello world');
+  });
+
+  it('decodes HTML entities', () => {
+    expect(stripHtml('A &amp; B &lt; C &gt; D &quot;E&quot;')).toBe('A & B < C > D "E"');
+  });
+
+  it('collapses whitespace', () => {
+    expect(stripHtml('  hello   world  ')).toBe('hello world');
+  });
+
+  it('handles empty string', () => {
+    expect(stripHtml('')).toBe('');
   });
 });

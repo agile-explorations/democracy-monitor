@@ -9,7 +9,23 @@ import {
   varchar,
   real,
   date,
+  customType,
 } from 'drizzle-orm/pg-core';
+
+const vector = customType<{ data: number[]; driverParam: string }>({
+  dataType() {
+    return 'vector(1536)';
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(',')}]`;
+  },
+  fromDriver(value: unknown): number[] {
+    // pgvector returns "[1,2,3]" format
+    if (typeof value === 'string') return JSON.parse(value);
+    if (Array.isArray(value)) return value as number[];
+    return [];
+  },
+});
 
 export const cacheEntries = pgTable('cache_entries', {
   id: serial('id').primaryKey(),
@@ -25,10 +41,12 @@ export const documents = pgTable('documents', {
   category: varchar('category', { length: 50 }).notNull(),
   title: text('title').notNull(),
   content: text('content'),
-  url: text('url'),
+  url: text('url').unique(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
   metadata: jsonb('metadata'),
+  embedding: vector('embedding'),
+  embeddedAt: timestamp('embedded_at', { withTimezone: true }),
 });
 
 export const assessments = pgTable('assessments', {

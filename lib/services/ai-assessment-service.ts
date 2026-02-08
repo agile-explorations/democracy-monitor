@@ -14,6 +14,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import type { StatusLevel, AssessmentResult, ContentItem } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
 import { calculateDataCoverage } from './confidence-scoring';
+import { retrieveRelevantDocuments } from './document-retriever';
 import { categorizeEvidence } from './evidence-balance';
 import type { EvidenceItem } from './evidence-balance';
 
@@ -74,11 +75,46 @@ export async function enhancedAssessment(
     const categoryDef = CATEGORIES.find((c) => c.key === category);
     const categoryTitle = categoryDef?.title || category;
 
+    // Enrich items with RAG-retrieved content
+    let enrichedItems = items;
+    try {
+      const retrieved = await retrieveRelevantDocuments(
+        `${categoryTitle}: ${keywordResult.reason}`,
+        category,
+        5,
+      );
+
+      if (retrieved.length > 0) {
+        // Enrich existing items by matching URL
+        enrichedItems = items.map((item) => {
+          if (item.summary) return item;
+          const match = retrieved.find((r) => r.url && r.url === item.link);
+          if (match?.content) return { ...item, summary: match.content };
+          return item;
+        });
+
+        // Append high-similarity docs not already in items as additional context
+        const existingUrls = new Set(items.map((i) => i.link).filter(Boolean));
+        for (const doc of retrieved) {
+          if (doc.similarity > 0.5 && doc.url && !existingUrls.has(doc.url)) {
+            enrichedItems.push({
+              title: doc.title,
+              summary: doc.content || undefined,
+              link: doc.url,
+              pubDate: doc.publishedAt?.toISOString(),
+            });
+          }
+        }
+      }
+    } catch {
+      // RAG enrichment is optional; continue with original items
+    }
+
     try {
       const prompt = buildAssessmentPrompt(
         category,
         categoryTitle,
-        items.slice(0, 20),
+        enrichedItems.slice(0, 20),
         keywordResult.status,
         keywordResult.reason,
       );
@@ -130,11 +166,21 @@ export async function enhancedAssessment(
       (keywordResult.status === 'Drift' || keywordResult.status === 'Capture')
     ) {
       try {
+        // Enrich evidence with retrieved document summaries
+        const enrichedMatches = [...keywordResult.matches];
+        const extraItems = enrichedItems.filter((i) => i.summary && !i.isError && !i.isWarning);
+        for (const item of extraItems.slice(0, 5)) {
+          const context = `${item.title}: ${item.summary!.slice(0, 200)}`;
+          if (!enrichedMatches.includes(context)) {
+            enrichedMatches.push(context);
+          }
+        }
+
         const counterPrompt = buildCounterEvidencePrompt(
           CATEGORIES.find((c) => c.key === category)?.title || category,
           keywordResult.status,
           keywordResult.reason,
-          keywordResult.matches,
+          enrichedMatches,
         );
 
         const counterCompletion = await providerToUse.complete(counterPrompt, {

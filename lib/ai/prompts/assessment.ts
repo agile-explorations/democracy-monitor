@@ -13,7 +13,7 @@ export function buildAssessmentPrompt(
       const parts = [`${i + 1}. "${item.title}"`];
       if (item.agency) parts.push(`(${item.agency})`);
       if (item.pubDate) parts.push(`[${item.pubDate}]`);
-      if (item.summary) parts.push(`— ${item.summary.slice(0, 200)}`);
+      if (item.summary) parts.push(`— ${item.summary.slice(0, 500)}`);
       return parts.join(' ');
     })
     .join('\n');

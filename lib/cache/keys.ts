@@ -7,4 +7,6 @@ export const CacheKeys = {
   uptime: (hostname: string) => `uptime:${hostname}`,
   uptimeStatus: () => 'uptime:status',
   fallback: (category: string) => `fallback:${category}`,
+  embedding: (docId: number) => `emb:${docId}`,
+  retrieval: (category: string, queryHash: string) => `rag:${category}:${queryHash}`,
 } as const;
