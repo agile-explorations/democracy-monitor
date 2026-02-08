@@ -1,13 +1,27 @@
 export function buildIntentClassificationPrompt(
   statements: Array<{ text: string; source: string; date: string }>,
+  retrievedDocs?: Array<{ title: string; content: string | null; similarity: number }>,
 ): string {
   const statementsText = statements
     .slice(0, 15)
     .map((s, i) => `${i + 1}. "${s.text}" (${s.source}, ${s.date})`)
     .join('\n');
 
-  return `You are an expert analyst of executive power and democratic governance. Classify the following recent presidential statements and actions on the governance spectrum.
+  let contextSection = '';
+  if (retrievedDocs && retrievedDocs.length > 0) {
+    const docsText = retrievedDocs
+      .slice(0, 5)
+      .map((d, i) => `${i + 1}. ${d.title}: ${(d.content || '').slice(0, 300)}`)
+      .join('\n');
+    contextSection = `
+HISTORICAL CONTEXT (use for pattern identification and escalation tracking):
+${docsText}
 
+`;
+  }
+
+  return `You are an expert analyst of executive power and democratic governance. Classify the following recent presidential statements and actions on the governance spectrum.
+${contextSection}
 RECENT STATEMENTS AND ACTIONS:
 ${statementsText}
 

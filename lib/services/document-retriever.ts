@@ -16,7 +16,7 @@ export interface RetrievedDocument {
  */
 export async function retrieveRelevantDocuments(
   query: string,
-  category: string,
+  categories: string | string[],
   topK = 5,
 ): Promise<RetrievedDocument[]> {
   if (!isDbAvailable()) return [];
@@ -26,13 +26,17 @@ export async function retrieveRelevantDocuments(
 
   const db = getDb();
   const vectorStr = `[${queryEmbedding.join(',')}]`;
+  const categoryArray = Array.isArray(categories) ? categories : [categories];
+  // Build a PostgreSQL array literal: ARRAY['cat1','cat2']
+  // Category keys are internal constants (e.g. 'rule_of_law', 'intent'), not user input.
+  const pgArray = `ARRAY[${categoryArray.map((c) => `'${c}'`).join(',')}]::text[]`;
 
   try {
     const results = await db.execute(
       sql`SELECT title, content, url, published_at,
             1 - (embedding <=> ${vectorStr}::vector) as similarity
           FROM documents
-          WHERE category = ${category}
+          WHERE category = ANY(${sql.raw(pgArray)})
             AND embedding IS NOT NULL
           ORDER BY embedding <=> ${vectorStr}::vector
           LIMIT ${topK}`,
@@ -46,7 +50,7 @@ export async function retrieveRelevantDocuments(
       publishedAt: row.published_at ? new Date(row.published_at as string) : null,
     }));
   } catch (err) {
-    console.error(`Document retrieval failed for ${category}:`, err);
+    console.error(`Document retrieval failed for ${categoryArray.join(',')}:`, err);
     return [];
   }
 }

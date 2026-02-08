@@ -2,6 +2,7 @@
 import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
+import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { storeDocuments } from '@/lib/services/document-store';
@@ -10,6 +11,7 @@ import {
   fetchAllRhetoricSources,
   statementsToContentItems,
 } from '@/lib/services/intent-data-service';
+import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 
 loadEnvConfig(process.cwd());
@@ -62,6 +64,16 @@ export async function runSnapshots(): Promise<void> {
     const stored = await storeDocuments(contentItems, 'intent');
     await embedUnprocessedDocuments(50);
     console.log(`[snapshot] Stored ${stored} rhetoric documents`);
+
+    // Run intent assessment after rhetoric docs are stored
+    console.log('[snapshot] Running intent assessment...');
+    try {
+      const intentResult = await enhancedIntentAssessment(statements, { skipCache: true });
+      await saveIntentSnapshot(intentResult);
+      console.log(`[snapshot] Intent assessment saved: ${intentResult.overall}`);
+    } catch (intentErr) {
+      console.error('[snapshot] Intent assessment failed:', intentErr);
+    }
   } catch (err) {
     console.error('[snapshot] Rhetoric RAG storage failed:', err);
   }

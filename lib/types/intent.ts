@@ -48,6 +48,11 @@ export interface IntentAssessment {
   policyAreas: Record<PolicyArea, IntentScore>;
   recentStatements: IntentStatement[];
   assessedAt: string;
+  aiReasoning?: string;
+  aiOverall?: GovernanceCategory;
+  aiProvider?: string;
+  aiModel?: string;
+  consensusNote?: string;
 }
 
 export interface CrossReference {

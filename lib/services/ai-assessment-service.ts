@@ -84,8 +84,8 @@ export async function enhancedAssessment(
     try {
       const retrieved = await retrieveRelevantDocuments(
         `${categoryTitle}: ${keywordResult.reason}`,
-        category,
-        5,
+        [category, 'intent'],
+        8,
       );
 
       if (retrieved.length > 0) {

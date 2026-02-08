@@ -60,7 +60,7 @@ export async function runLegalAnalysis(
   const start = Date.now();
   const result = await provider.complete(
     buildLegalAnalysisPrompt(category, status, evidence, relevantDocs),
-    { systemPrompt: LEGAL_SYSTEM_PROMPT, maxTokens: 2000, temperature: 0.3 },
+    { systemPrompt: LEGAL_SYSTEM_PROMPT, maxTokens: 3000, temperature: 0.3 },
   );
 
   let parsed: {
@@ -82,7 +82,26 @@ export async function runLegalAnalysis(
     }
     const jsonMatch = jsonSource.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON object found');
-    parsed = JSON.parse(jsonMatch[0]);
+    // Sanitize control characters that LLMs sometimes emit inside JSON strings
+    const sanitized = jsonMatch[0].replace(/[\x00-\x1f\x7f]/g, (ch) =>
+      ch === '\n' || ch === '\r' || ch === '\t' ? ch : ' ',
+    );
+    try {
+      parsed = JSON.parse(sanitized);
+    } catch {
+      // Truncated output — close open arrays/objects and retry
+      let repaired = sanitized.replace(/,\s*$/, '');
+      const openBrackets = (repaired.match(/\[/g) || []).length;
+      const closeBrackets = (repaired.match(/\]/g) || []).length;
+      const openBraces = (repaired.match(/\{/g) || []).length;
+      const closeBraces = (repaired.match(/\}/g) || []).length;
+      // Trim to last complete element (remove trailing partial string/value)
+      repaired = repaired.replace(/,\s*"[^"]*$/, '');
+      repaired = repaired.replace(/,\s*\{[^}]*$/, '');
+      for (let i = 0; i < openBrackets - closeBrackets; i++) repaired += ']';
+      for (let i = 0; i < openBraces - closeBraces; i++) repaired += '}';
+      parsed = JSON.parse(repaired);
+    }
   } catch (err) {
     console.error(
       'Legal analysis parse failed:',

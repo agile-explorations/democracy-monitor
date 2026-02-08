@@ -42,13 +42,13 @@ AI currently receives only document titles — not full text. This makes AI asse
 
 **Pipeline to build:**
 
-- [ ] Add pgvector extension to PostgreSQL and add `embedding vector(1536)` column to `documents` table (new Drizzle migration)
-- [ ] Build ingest step: when feed items are fetched, extract full content — Federal Register API `abstract` field, RSS article body via link fetch + readability extraction, HTML page content
-- [ ] Store extracted documents in `documents` table with full content (deduplicate by URL)
-- [ ] Generate embeddings via `embedBatch()` and store in the vector column
-- [ ] Build retrieval query: given a category + assessment context, find top-K most relevant document chunks via pgvector cosine similarity
-- [ ] Augment AI prompts with retrieved content — populate the `summary` field that assessment/debate/legal prompts already accept
-- [ ] Add content extraction + embedding cache to avoid redundant work on each assessment cycle
+- [x] Add pgvector extension to PostgreSQL and add `embedding vector(1536)` column to `documents` table (new Drizzle migration)
+- [x] Build ingest step: when feed items are fetched, extract full content — Federal Register API `abstract` field, RSS article body via link fetch + readability extraction, HTML page content
+- [x] Store extracted documents in `documents` table with full content (deduplicate by URL)
+- [x] Generate embeddings via `embedBatch()` and store in the vector column
+- [x] Build retrieval query: given a category + assessment context, find top-K most relevant document chunks via pgvector cosine similarity
+- [x] Augment AI prompts with retrieved content — populate the `summary` field that assessment/debate/legal prompts already accept
+- [x] Add content extraction + embedding cache to avoid redundant work on each assessment cycle
 
 **Enables downstream:**
 
@@ -122,7 +122,7 @@ AI currently receives only document titles — not full text. This makes AI asse
 
 ### AI Assessment Lifecycle
 
-- [ ] Move AI assessment calls to snapshot creation and store results (currently triggered per page load)
+- [x] Move AI assessment calls to snapshot creation and store results (currently triggered per page load)
 
 ### Rhetoric → Action Trajectory (new analytical layer)
 
