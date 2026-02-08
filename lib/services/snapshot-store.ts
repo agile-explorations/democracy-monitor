@@ -11,16 +11,7 @@ export async function saveSnapshot(
   assessedAt?: Date,
 ): Promise<void> {
   const db = getDb();
-  await db.insert(assessments).values({
-    category: assessment.category,
-    status: assessment.status,
-    reason: assessment.reason,
-    matches: assessment.matches,
-    detail: assessment as unknown as Record<string, unknown>,
-    assessedAt: assessedAt || new Date(),
-    aiProvider: assessment.aiResult?.provider || null,
-    confidence: assessment.dataCoverage ? Math.round(assessment.dataCoverage * 100) : null,
-  });
+  await db.insert(assessments).values(buildSnapshotRow(assessment, assessedAt));
 }
 
 /**
@@ -62,7 +53,7 @@ export async function getLatestSnapshots(): Promise<Record<string, EnhancedAsses
   return result;
 }
 
-interface AssessmentRow {
+export interface AssessmentRow {
   id: number;
   category: string;
   status: string;
@@ -76,7 +67,31 @@ interface AssessmentRow {
   confidence: number | null;
 }
 
-function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
+/**
+ * Build the insert values object for a snapshot row.
+ * Pure function — no DB interaction.
+ */
+export function buildSnapshotRow(
+  assessment: EnhancedAssessment,
+  assessedAt?: Date,
+): Record<string, unknown> {
+  return {
+    category: assessment.category,
+    status: assessment.status,
+    reason: assessment.reason,
+    matches: assessment.matches,
+    detail: assessment as unknown as Record<string, unknown>,
+    assessedAt: assessedAt || new Date(),
+    aiProvider: assessment.aiResult?.provider || null,
+    confidence: assessment.dataCoverage ? Math.round(assessment.dataCoverage * 100) : null,
+  };
+}
+
+/**
+ * Convert a DB row back to an EnhancedAssessment.
+ * Exported for testability — the core reconstruction logic.
+ */
+export function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
   // The full EnhancedAssessment blob is stored in the detail column
   if (row.detail && typeof row.detail === 'object' && 'category' in row.detail) {
     const assessment = row.detail as unknown as EnhancedAssessment;

@@ -1,44 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
-import { saveSnapshot, getLatestSnapshot, getLatestSnapshots } from '@/lib/services/snapshot-store';
-
-// Mock Drizzle DB
-const mockInsert = vi.fn().mockReturnValue({ values: vi.fn().mockResolvedValue(undefined) });
-const mockSelectChain = {
-  from: vi.fn().mockReturnThis(),
-  where: vi.fn().mockReturnThis(),
-  orderBy: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockResolvedValue([]),
-};
-const mockSelect = vi.fn().mockReturnValue(mockSelectChain);
-const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
-
-vi.mock('@/lib/db', () => ({
-  getDb: () => ({
-    insert: mockInsert,
-    select: mockSelect,
-    execute: mockExecute,
-  }),
-}));
-
-vi.mock('@/lib/db/schema', () => ({
-  assessments: { category: 'category', assessedAt: 'assessed_at' },
-}));
-
-vi.mock('drizzle-orm', () => ({
-  desc: vi.fn((col) => col),
-  eq: vi.fn((col, val) => ({ col, val })),
-  sql: Object.assign(
-    (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
-    { raw: (s: string) => s },
-  ),
-}));
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockSelectChain.limit.mockResolvedValue([]);
-  mockExecute.mockResolvedValue({ rows: [] });
-});
+import type { AssessmentRow } from '@/lib/services/snapshot-store';
+import { buildSnapshotRow, rowToAssessment } from '@/lib/services/snapshot-store';
 
 function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAssessment {
   return {
@@ -56,49 +19,46 @@ function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAs
   };
 }
 
-describe('saveSnapshot', () => {
-  it('inserts assessment into the database', async () => {
+function makeRow(overrides: Partial<AssessmentRow> = {}): AssessmentRow {
+  return {
+    id: 1,
+    category: 'rule_of_law',
+    status: 'Warning',
+    reason: 'Test reason',
+    matches: ['keyword1'],
+    detail: null,
+    confidence: 60,
+    ...overrides,
+  };
+}
+
+describe('buildSnapshotRow', () => {
+  it('maps assessment fields to row values', () => {
     const assessment = makeAssessment();
-    const valuesCall = vi.fn().mockResolvedValue(undefined);
-    mockInsert.mockReturnValueOnce({ values: valuesCall });
+    const row = buildSnapshotRow(assessment);
 
-    await saveSnapshot(assessment);
-
-    expect(mockInsert).toHaveBeenCalled();
-    expect(valuesCall).toHaveBeenCalledWith(
-      expect.objectContaining({
-        category: 'rule_of_law',
-        status: 'Warning',
-        reason: 'Test reason',
-        matches: ['keyword1'],
-      }),
-    );
+    expect(row.category).toBe('rule_of_law');
+    expect(row.status).toBe('Warning');
+    expect(row.reason).toBe('Test reason');
+    expect(row.matches).toEqual(['keyword1']);
   });
 
-  it('uses provided assessedAt date when given', async () => {
-    const assessment = makeAssessment();
-    const customDate = new Date('2026-01-15T06:00:00.000Z');
-    const valuesCall = vi.fn().mockResolvedValue(undefined);
-    mockInsert.mockReturnValueOnce({ values: valuesCall });
+  it('stores full assessment blob in detail column', () => {
+    const assessment = makeAssessment({ dataCoverage: 0.8 });
+    const row = buildSnapshotRow(assessment);
 
-    await saveSnapshot(assessment, customDate);
-
-    const insertedValues = valuesCall.mock.calls[0][0];
-    expect(insertedValues.assessedAt).toEqual(customDate);
+    const detail = row.detail as Record<string, unknown>;
+    expect(detail.category).toBe('rule_of_law');
+    expect(detail.dataCoverage).toBe(0.8);
   });
 
-  it('stores dataCoverage as integer confidence', async () => {
-    const assessment = makeAssessment({ dataCoverage: 0.75 });
-    const valuesCall = vi.fn().mockResolvedValue(undefined);
-    mockInsert.mockReturnValueOnce({ values: valuesCall });
-
-    await saveSnapshot(assessment);
-
-    const insertedValues = valuesCall.mock.calls[0][0];
-    expect(insertedValues.confidence).toBe(75);
+  it('converts dataCoverage to integer confidence', () => {
+    expect(buildSnapshotRow(makeAssessment({ dataCoverage: 0.75 })).confidence).toBe(75);
+    expect(buildSnapshotRow(makeAssessment({ dataCoverage: 0.333 })).confidence).toBe(33);
+    expect(buildSnapshotRow(makeAssessment({ dataCoverage: 0 })).confidence).toBeNull();
   });
 
-  it('stores AI provider when present', async () => {
+  it('extracts AI provider when present', () => {
     const assessment = makeAssessment({
       aiResult: {
         provider: 'anthropic',
@@ -110,113 +70,107 @@ describe('saveSnapshot', () => {
         latencyMs: 1200,
       },
     });
-    const valuesCall = vi.fn().mockResolvedValue(undefined);
-    mockInsert.mockReturnValueOnce({ values: valuesCall });
+    expect(buildSnapshotRow(assessment).aiProvider).toBe('anthropic');
+  });
 
-    await saveSnapshot(assessment);
+  it('sets aiProvider to null when no AI result', () => {
+    expect(buildSnapshotRow(makeAssessment()).aiProvider).toBeNull();
+  });
 
-    const insertedValues = valuesCall.mock.calls[0][0];
-    expect(insertedValues.aiProvider).toBe('anthropic');
+  it('uses provided date when given', () => {
+    const date = new Date('2026-01-15T06:00:00.000Z');
+    expect(buildSnapshotRow(makeAssessment(), date).assessedAt).toEqual(date);
   });
 });
 
-describe('getLatestSnapshot', () => {
-  it('returns null when no rows exist', async () => {
-    mockSelectChain.limit.mockResolvedValueOnce([]);
+describe('rowToAssessment', () => {
+  it('reconstructs assessment from detail blob when present', () => {
+    const storedAssessment = makeAssessment({ category: 'elections', status: 'Drift' });
+    const row = makeRow({
+      detail: storedAssessment as unknown as Record<string, unknown>,
+      assessed_at: new Date('2026-02-01T00:00:00.000Z'),
+    });
 
-    const result = await getLatestSnapshot('rule_of_law');
-
-    expect(result).toBeNull();
-  });
-
-  it('reconstructs assessment from detail blob', async () => {
-    const storedAssessment = makeAssessment();
-    mockSelectChain.limit.mockResolvedValueOnce([
-      {
-        id: 1,
-        category: 'rule_of_law',
-        status: 'Warning',
-        reason: 'Test reason',
-        matches: ['keyword1'],
-        detail: storedAssessment,
-        assessed_at: new Date('2026-02-01T00:00:00.000Z'),
-        confidence: 60,
-      },
-    ]);
-
-    const result = await getLatestSnapshot('rule_of_law');
+    const result = rowToAssessment(row);
 
     expect(result).not.toBeNull();
-    expect(result!.category).toBe('rule_of_law');
-    expect(result!.status).toBe('Warning');
+    expect(result!.category).toBe('elections');
+    expect(result!.status).toBe('Drift');
+    expect(result!.dataCoverage).toBe(0.6);
     expect(result!.assessedAt).toBe('2026-02-01T00:00:00.000Z');
   });
 
-  it('falls back to column-based reconstruction when detail lacks category', async () => {
-    mockSelectChain.limit.mockResolvedValueOnce([
-      {
-        id: 1,
-        category: 'civil_liberties',
-        status: 'Stable',
-        reason: 'Looks good',
-        matches: [],
-        detail: { someOtherData: true }, // no 'category' field
-        assessed_at: new Date('2026-02-01T00:00:00.000Z'),
-        confidence: 80,
-      },
-    ]);
+  it('overrides assessedAt with DB timestamp', () => {
+    const storedAssessment = makeAssessment({ assessedAt: '2026-01-01T00:00:00.000Z' });
+    const row = makeRow({
+      detail: storedAssessment as unknown as Record<string, unknown>,
+      assessed_at: new Date('2026-02-15T12:00:00.000Z'),
+    });
 
-    const result = await getLatestSnapshot('civil_liberties');
+    const result = rowToAssessment(row);
+
+    expect(result!.assessedAt).toBe('2026-02-15T12:00:00.000Z');
+  });
+
+  it('falls back to column-based reconstruction when detail lacks category', () => {
+    const row = makeRow({
+      category: 'civil_liberties',
+      status: 'Stable',
+      reason: 'Looks good',
+      matches: ['transparency'],
+      detail: { someOtherData: true },
+      confidence: 80,
+    });
+
+    const result = rowToAssessment(row);
 
     expect(result).not.toBeNull();
     expect(result!.category).toBe('civil_liberties');
     expect(result!.status).toBe('Stable');
-    expect(result!.dataCoverage).toBe(0.8); // 80/100
-  });
-});
-
-describe('getLatestSnapshots', () => {
-  it('returns empty object when no rows exist', async () => {
-    mockExecute.mockResolvedValueOnce({ rows: [] });
-
-    const result = await getLatestSnapshots();
-
-    expect(result).toEqual({});
+    expect(result!.reason).toBe('Looks good');
+    expect(result!.matches).toEqual(['transparency']);
+    expect(result!.dataCoverage).toBe(0.8);
   });
 
-  it('returns map of category -> assessment', async () => {
-    const assessment1 = makeAssessment({ category: 'rule_of_law' });
-    const assessment2 = makeAssessment({ category: 'civil_liberties', status: 'Stable' });
+  it('falls back when detail is null', () => {
+    const row = makeRow({ detail: null, confidence: 50 });
 
-    mockExecute.mockResolvedValueOnce({
-      rows: [
-        {
-          id: 1,
-          category: 'rule_of_law',
-          status: 'Warning',
-          reason: 'Test',
-          matches: [],
-          detail: assessment1,
-          assessed_at: new Date('2026-02-01'),
-          confidence: 60,
-        },
-        {
-          id: 2,
-          category: 'civil_liberties',
-          status: 'Stable',
-          reason: 'Good',
-          matches: [],
-          detail: assessment2,
-          assessed_at: new Date('2026-02-01'),
-          confidence: 80,
-        },
-      ],
+    const result = rowToAssessment(row);
+
+    expect(result).not.toBeNull();
+    expect(result!.dataCoverage).toBe(0.5);
+    expect(result!.evidenceFor).toEqual([]);
+    expect(result!.evidenceAgainst).toEqual([]);
+  });
+
+  it('sets dataCoverage to 0 when confidence is null', () => {
+    const row = makeRow({ detail: null, confidence: null });
+
+    const result = rowToAssessment(row);
+
+    expect(result!.dataCoverage).toBe(0);
+  });
+
+  it('preserves deep analysis fields from detail blob', () => {
+    const storedAssessment = makeAssessment({
+      debate: { topic: 'test', rounds: [], conclusion: 'Done', status: 'Drift' },
+      legalAnalysis: {
+        category: 'rule_of_law',
+        status: 'Drift',
+        analyses: [],
+        summary: 'Summary',
+      },
+      trendAnomalies: [],
+    });
+    const row = makeRow({
+      detail: storedAssessment as unknown as Record<string, unknown>,
     });
 
-    const result = await getLatestSnapshots();
+    const result = rowToAssessment(row);
 
-    expect(Object.keys(result)).toHaveLength(2);
-    expect(result['rule_of_law'].status).toBe('Warning');
-    expect(result['civil_liberties'].status).toBe('Stable');
+    expect(result!.debate).toBeDefined();
+    expect(result!.debate!.conclusion).toBe('Done');
+    expect(result!.legalAnalysis).toBeDefined();
+    expect(result!.trendAnomalies).toEqual([]);
   });
 });

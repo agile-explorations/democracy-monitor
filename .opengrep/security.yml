@@ -77,3 +77,37 @@ rules:
         - lib/cron
       exclude:
         - '*.test.*'
+
+  # WHY: Asserting on mock call arguments (toHaveBeenCalledWith) or
+  # inspecting mock internals (.mock.calls) tests HOW code works, not
+  # WHAT it produces. These tests break on refactors that preserve the
+  # same external behavior. Prefer asserting on return values or
+  # observable output state instead.
+  - id: no-mock-call-assertions
+    pattern-regex: "\\.(mock\\.calls\\[|toHaveBeenCalledWith\\()"
+    message: >-
+      Prefer asserting on return values or output state rather than mock
+      call arguments. Mock call assertions test implementation (HOW code
+      works) rather than behavior (WHAT it produces), making tests fragile
+      to refactoring.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - '__tests__'
+
+  # WHY: expect(fn).not.toHaveBeenCalled() asserts that a specific code
+  # path was NOT taken — a purely internal implementation detail. If the
+  # code is refactored to call different functions but produces the same
+  # result, these assertions break. Test the output instead.
+  - id: no-negative-mock-assertions
+    pattern-regex: "not\\.toHaveBeenCalled\\("
+    message: >-
+      Asserting that a mock was NOT called tests implementation, not
+      behavior. Instead, verify the output is correct — if the function
+      wasn't needed, its effects won't be in the result.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - '__tests__'
