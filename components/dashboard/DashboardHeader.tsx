@@ -18,16 +18,8 @@ export function DashboardHeader({ refreshMs, setRefreshMs }: DashboardHeaderProp
           ? `${Math.round(refreshMs / HOUR)} hour(s)`
           : `${Math.round(refreshMs / MIN)} min`;
 
-  const isDemo = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
-  const scenario = process.env.NEXT_PUBLIC_DEMO_SCENARIO || 'mixed';
-
   return (
     <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-      {isDemo && (
-        <div className="w-full bg-amber-100 border border-amber-300 text-amber-800 text-xs font-medium px-3 py-1.5 rounded mb-2">
-          Demo Mode — Showing fixture data (scenario: {scenario}). No external calls.
-        </div>
-      )}
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
           Is Democracy Working?

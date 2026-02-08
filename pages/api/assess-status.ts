@@ -1,14 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDemoResponse } from '@/lib/demo';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeContent } from '@/lib/services/assessment-service';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { storeDocuments } from '@/lib/services/document-store';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('assess-status', req);
-  if (demo) return res.status(200).json(demo);
-
   try {
     const { category, items } = req.body;
     const useAI = req.query.ai === 'true';

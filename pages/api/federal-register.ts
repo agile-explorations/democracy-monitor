@@ -1,14 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import { getDemoResponse } from '@/lib/demo';
-
 const CACHE_TTL_S = 600; // 10 minutes
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('federal-register', req);
-  if (demo) return res.status(200).json(demo);
-
   try {
     const { agency, type, term } = req.query;
 

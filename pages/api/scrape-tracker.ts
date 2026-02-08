@@ -2,8 +2,6 @@ import * as cheerio from 'cheerio';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import { getDemoResponse } from '@/lib/demo';
-
 const CACHE_TTL_S = 3600; // 1 hour
 
 type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
@@ -46,9 +44,6 @@ const TRACKER_CONFIGS: Record<
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('scrape-tracker', req);
-  if (demo) return res.status(200).json(demo);
-
   try {
     const { source } = req.query;
 

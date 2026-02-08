@@ -425,21 +425,3 @@ export function getDemoIntentAssessment(scenario: ScenarioName): IntentAssessmen
     assessedAt: new Date().toISOString(),
   };
 }
-
-export function getDemoIntentStatements(scenario: ScenarioName): {
-  statements: IntentStatement[];
-  count: number;
-  sources: { presidentialDocuments: number; whiteHouseBriefings: number };
-} {
-  const statements = STATEMENTS[scenario];
-  return {
-    statements,
-    count: statements.length,
-    sources: {
-      presidentialDocuments: statements.filter(
-        (s) => s.source.includes('Federal Register') || s.source.includes('Proclamation'),
-      ).length,
-      whiteHouseBriefings: statements.filter((s) => s.source.includes('White House')).length,
-    },
-  };
-}

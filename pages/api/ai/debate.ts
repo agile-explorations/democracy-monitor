@@ -1,11 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDemoResponse } from '@/lib/demo';
 import { runDebate } from '@/lib/services/debate-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('ai/debate', req);
-  if (demo) return res.status(200).json(demo);
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

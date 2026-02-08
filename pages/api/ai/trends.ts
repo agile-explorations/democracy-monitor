@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDemoResponse } from '@/lib/demo';
 import {
   countKeywordsInItems,
   calculateTrends,
@@ -9,9 +8,6 @@ import {
 } from '@/lib/services/trend-anomaly-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('ai/trends', req);
-  if (demo) return res.status(200).json(demo);
-
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

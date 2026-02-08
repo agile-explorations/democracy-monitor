@@ -23,13 +23,14 @@ pnpm dev                      # http://localhost:3000
 
 ### Demo Mode
 
-To run without any external API calls:
+Seed the database with deterministic fixture data, then browse via the normal app:
 
 ```bash
-DEMO_MODE=true pnpm dev
+pnpm demo:seed --scenario mixed --days 3
+pnpm dev
 ```
 
-This serves fixture data across all 9 categories with varied statuses — useful for UI development and testing.
+This creates realistic snapshots across all 9 categories with varied statuses — useful for UI development and testing.
 
 ### Commands
 

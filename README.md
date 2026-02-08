@@ -28,13 +28,12 @@ For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODO
 
 ## Demo Mode
 
-See the dashboard without any external API calls or credentials:
+Seed the database with deterministic fixture data, then browse via the normal app:
 
 ```bash
-./dev-demo.sh mixed      # mixed, stable, crisis, or degrading
+pnpm demo:seed --scenario mixed --days 3   # mixed, stable, crisis, or degrading
+pnpm dev                                    # http://localhost:3000
 ```
-
-Or set the env vars directly: `DEMO_MODE=true DEMO_SCENARIO=crisis pnpm dev`.
 
 ## Quickstart
 
@@ -64,14 +63,13 @@ pnpm start
 
 All optional except `DATABASE_URL` for persistence features. See [.env.example](.env.example) for the full list.
 
-| Variable              | Required        | Description                                         |
-| --------------------- | --------------- | --------------------------------------------------- |
-| `DATABASE_URL`        | For persistence | PostgreSQL connection string                        |
-| `REDIS_URL`           | No              | Redis for caching (falls back to in-memory)         |
-| `OPENAI_API_KEY`      | No              | Enables AI-enhanced assessment                      |
-| `ANTHROPIC_API_KEY`   | No              | Enables AI-enhanced assessment                      |
-| `DEMO_MODE`           | No              | `true` serves fixture data with zero external calls |
-| `ALLOWED_PROXY_HOSTS` | No              | Comma-separated hostname whitelist for proxy        |
+| Variable              | Required        | Description                                  |
+| --------------------- | --------------- | -------------------------------------------- |
+| `DATABASE_URL`        | For persistence | PostgreSQL connection string                 |
+| `REDIS_URL`           | No              | Redis for caching (falls back to in-memory)  |
+| `OPENAI_API_KEY`      | No              | Enables AI-enhanced assessment               |
+| `ANTHROPIC_API_KEY`   | No              | Enables AI-enhanced assessment               |
+| `ALLOWED_PROXY_HOSTS` | No              | Comma-separated hostname whitelist for proxy |
 
 ## Architecture
 
@@ -85,7 +83,7 @@ lib/
   cache/          # Redis + in-memory fallback
   ai/             # OpenAI/Anthropic provider abstraction
   db/             # Drizzle ORM schema and migrations
-  demo/           # Demo mode fixtures and routing
+  demo/           # Demo fixture data and scenario definitions (used by seed script)
 
 components/
   dashboard/      # CategoryCard, FeedBlock, StatusLegend

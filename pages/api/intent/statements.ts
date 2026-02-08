@@ -1,11 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDemoResponse } from '@/lib/demo';
 import { fetchAllRhetoricSources } from '@/lib/services/intent-data-service';
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
-  const demo = getDemoResponse('intent/statements', _req);
-  if (demo) return res.status(200).json(demo);
-
   try {
     const allStatements = await fetchAllRhetoricSources();
 
