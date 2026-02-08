@@ -110,8 +110,8 @@ export async function enhancedAssessment(
           }
         }
       }
-    } catch {
-      // RAG enrichment is optional; continue with original items
+    } catch (err) {
+      console.warn('RAG enrichment failed, continuing with original items:', err);
     }
 
     try {
@@ -197,8 +197,8 @@ export async function enhancedAssessment(
         if (counterParsed) {
           howWeCouldBeWrong = counterParsed.counterPoints;
         }
-      } catch {
-        // Counter-evidence is optional; continue without it
+      } catch (err) {
+        console.warn('Counter-evidence retrieval failed:', err);
       }
     }
   }

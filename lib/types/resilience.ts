@@ -24,28 +24,6 @@ export interface UptimeHistory {
   downSince: string | null;
 }
 
-export interface FallbackSource {
-  name: string;
-  type: 'primary' | 'watchdog' | 'archive';
-  url: string;
-  parser: 'json' | 'rss' | 'html';
-}
-
-export interface FallbackResult<T = unknown> {
-  data: T;
-  source: FallbackSource;
-  sourceType: 'primary' | 'watchdog' | 'archive';
-  confidence: number;
-  fallbackUsed: boolean;
-}
-
-export interface ContentSnapshot {
-  url: string;
-  contentHash: string;
-  reportCount: number;
-  snapshotAt: string;
-}
-
 export interface SuppressionAlert {
   url: string;
   type: 'content_removed' | 'content_changed' | 'site_down' | 'report_missing';

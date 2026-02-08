@@ -39,8 +39,8 @@ export async function enrichWithDeepAnalysis(
   } else {
     try {
       assessment.trendAnomalies = await runTrendAnalysis(assessment.category, items);
-    } catch {
-      // Trend analysis is optional
+    } catch (err) {
+      console.warn('Trend analysis failed:', err);
     }
   }
 }

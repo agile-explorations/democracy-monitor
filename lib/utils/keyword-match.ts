@@ -20,8 +20,3 @@ function getKeywordRegex(keyword: string): RegExp {
 export function matchKeyword(text: string, keyword: string): boolean {
   return getKeywordRegex(keyword).test(text);
 }
-
-/** Returns all keywords from `keywords` that match as whole words in `text`. */
-export function matchKeywords(text: string, keywords: string[]): string[] {
-  return keywords.filter((kw) => matchKeyword(text, kw));
-}

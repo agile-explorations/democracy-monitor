@@ -1,4 +1,5 @@
 import { desc } from 'drizzle-orm';
+import { IntentAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { intentAssessments } from '@/lib/db/schema';
 import type { IntentAssessment } from '@/lib/types/intent';
@@ -38,9 +39,13 @@ export async function getLatestIntentSnapshot(): Promise<IntentAssessment | null
   const row = rows[0];
   // The full IntentAssessment is stored in the detail column
   if (row.detail && typeof row.detail === 'object' && 'overall' in row.detail) {
-    const assessment = row.detail as unknown as IntentAssessment;
-    assessment.assessedAt = new Date(row.assessedAt).toISOString();
-    return assessment;
+    const parsed = IntentAssessmentSchema.safeParse(row.detail);
+    if (parsed.success) {
+      const assessment = parsed.data as unknown as IntentAssessment;
+      assessment.assessedAt = new Date(row.assessedAt).toISOString();
+      return assessment;
+    }
+    console.warn('Intent snapshot JSONB validation failed:', parsed.error.message);
   }
 
   // Fallback: reconstruct from columns

@@ -1,7 +1,6 @@
 import { parseStringPromise } from 'xml2js';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import { CATEGORIES } from '@/lib/data/categories';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { Category, Signal } from '@/lib/types';
@@ -22,17 +21,6 @@ export async function fetchCategoryFeeds(category: Category): Promise<FeedItem[]
     }
   }
   return items;
-}
-
-/**
- * Fetch feeds for all categories, returning a map of category key -> FeedItem[].
- */
-export async function fetchAllCategoryFeeds(): Promise<Record<string, FeedItem[]>> {
-  const result: Record<string, FeedItem[]> = {};
-  for (const cat of CATEGORIES) {
-    result[cat.key] = await fetchCategoryFeeds(cat);
-  }
-  return result;
 }
 
 async function fetchSignal(signal: Signal): Promise<FeedItem[]> {

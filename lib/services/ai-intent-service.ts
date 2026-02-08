@@ -45,8 +45,8 @@ export async function enhancedIntentAssessment(
       .map((s) => s.text)
       .join(' ');
     retrievedDocs = await retrieveRelevantDocuments(query, 'intent', 5);
-  } catch {
-    // RAG retrieval is optional; continue without docs
+  } catch (err) {
+    console.warn('RAG retrieval for intent failed:', err);
   }
 
   try {

@@ -24,7 +24,8 @@ function getRedis(): Redis | null {
     });
 
     return redis;
-  } catch {
+  } catch (err) {
+    console.warn('Redis connection failed, using memory cache:', err);
     return null;
   }
 }
@@ -37,8 +38,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
       const value = await client.get(key);
       if (value) return JSON.parse(value) as T;
       return null;
-    } catch {
-      // Fall through to memory cache
+    } catch (err) {
+      console.warn('Redis GET failed, falling back to memory cache:', err);
     }
   }
 
@@ -61,8 +62,8 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
     try {
       await client.set(key, serialized, 'EX', ttlSeconds);
       return;
-    } catch {
-      // Fall through to memory cache
+    } catch (err) {
+      console.warn('Redis SET failed, falling back to memory cache:', err);
     }
   }
 
@@ -71,8 +72,4 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
     value: serialized,
     expiresAt: Date.now() + ttlSeconds * 1000,
   });
-}
-
-export function isRedisAvailable(): boolean {
-  return !!process.env.REDIS_URL;
 }

@@ -1,5 +1,6 @@
 import type { InferInsertModel } from 'drizzle-orm';
 import { desc, eq, sql } from 'drizzle-orm';
+import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
 import type { EnhancedAssessment } from './ai-assessment-service';
@@ -95,16 +96,20 @@ export function buildSnapshotRow(
 export function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
   // The full EnhancedAssessment blob is stored in the detail column
   if (row.detail && typeof row.detail === 'object' && 'category' in row.detail) {
-    const assessment = row.detail as unknown as EnhancedAssessment;
-    // Override assessedAt with the DB timestamp
-    const ts = row.assessed_at || row.assessedAt;
-    if (ts) {
-      assessment.assessedAt = new Date(ts as unknown as string).toISOString();
+    const parsed = EnhancedAssessmentSchema.safeParse(row.detail);
+    if (parsed.success) {
+      const assessment = parsed.data as unknown as EnhancedAssessment;
+      // Override assessedAt with the DB timestamp
+      const ts = row.assessed_at || row.assessedAt;
+      if (ts) {
+        assessment.assessedAt = new Date(ts as unknown as string).toISOString();
+      }
+      return assessment;
     }
-    return assessment;
+    console.warn(`Snapshot JSONB validation failed for ${row.category}:`, parsed.error.message);
   }
 
-  // Fallback: reconstruct from individual columns (older rows without full blob)
+  // Fallback: reconstruct from individual columns (older rows or invalid blob)
   return {
     category: row.category,
     status: row.status as EnhancedAssessment['status'],

@@ -27,16 +27,17 @@ export async function retrieveRelevantDocuments(
   const db = getDb();
   const vectorStr = `[${queryEmbedding.join(',')}]`;
   const categoryArray = Array.isArray(categories) ? categories : [categories];
-  // Build a PostgreSQL array literal: ARRAY['cat1','cat2']
-  // Category keys are internal constants (e.g. 'rule_of_law', 'intent'), not user input.
-  const pgArray = `ARRAY[${categoryArray.map((c) => `'${c}'`).join(',')}]::text[]`;
+  const categoryList = sql.join(
+    categoryArray.map((c) => sql`${c}`),
+    sql`, `,
+  );
 
   try {
     const results = await db.execute(
       sql`SELECT title, content, url, published_at,
             1 - (embedding <=> ${vectorStr}::vector) as similarity
           FROM documents
-          WHERE category = ANY(${sql.raw(pgArray)})
+          WHERE category IN (${categoryList})
             AND embedding IS NOT NULL
           ORDER BY embedding <=> ${vectorStr}::vector
           LIMIT ${topK}`,
