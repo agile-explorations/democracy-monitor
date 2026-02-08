@@ -39,3 +39,41 @@ rules:
       exclude:
         - lib/services/feed-fetcher.ts
         - lib/services/intent-data-service.ts
+
+  # WHY: Components should read AI results from snapshots, not call AI API
+  # routes directly. Direct calls (/api/ai/*) bypass the snapshot system,
+  # cause expensive AI calls on every page load, and produce inconsistent
+  # results across refreshes. AI calls belong in the snapshot cron.
+  - id: no-component-ai-fetch
+    pattern-regex: "fetch\\(['\"`]/api/ai/"
+    message: >-
+      Components should not call /api/ai/* directly. AI results are stored
+      in snapshots by the cron job and read via /api/snapshots/latest.
+      Direct AI calls bypass caching and run on every page load.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include:
+        - components
+
+  # WHY: Cron scripts run via tsx outside of Next.js, so .env.local is not
+  # loaded automatically. Without loadEnvConfig(), DATABASE_URL and API keys
+  # will be undefined, causing silent failures or crashes. Every cron script
+  # that accesses env vars (DB, Redis, AI) must call loadEnvConfig().
+  - id: cron-needs-env-config
+    patterns:
+      - pattern: getDb()
+      - pattern-not-inside: |
+          loadEnvConfig(...)
+          ...
+    message: >-
+      Cron scripts run outside Next.js and must call loadEnvConfig() to
+      load .env.local. Add: import { loadEnvConfig } from '@next/env';
+      loadEnvConfig(process.cwd()); at the top of the file.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include:
+        - lib/cron
+      exclude:
+        - '*.test.*'

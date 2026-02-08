@@ -1,7 +1,11 @@
+// @ts-expect-error @next/env ships with Next.js but lacks type declarations
+import { loadEnvConfig } from '@next/env';
 import { gte } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { clusterDocuments } from '@/lib/services/semantic-clustering-service';
+
+loadEnvConfig(process.cwd());
 
 export async function runWeeklyClustering(): Promise<void> {
   console.log('[weekly-clustering] Starting semantic clustering...');
