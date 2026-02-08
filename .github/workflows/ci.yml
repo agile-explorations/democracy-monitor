@@ -35,8 +35,10 @@ jobs:
 
       - name: Install OpenGrep
         run: |
-          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
-          echo "$HOME/.opengrep/cli/latest" >> $GITHUB_PATH
+          mkdir -p "$HOME/.local/bin"
+          curl -fsSL -o "$HOME/.local/bin/opengrep" https://github.com/opengrep/opengrep/releases/latest/download/opengrep_manylinux_x86
+          chmod +x "$HOME/.local/bin/opengrep"
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       - name: Pattern lint
         run: pnpm lint:patterns
