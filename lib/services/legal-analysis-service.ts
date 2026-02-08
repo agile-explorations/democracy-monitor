@@ -60,7 +60,7 @@ export async function runLegalAnalysis(
   const start = Date.now();
   const result = await provider.complete(
     buildLegalAnalysisPrompt(category, status, evidence, relevantDocs),
-    { systemPrompt: LEGAL_SYSTEM_PROMPT, maxTokens: 1000, temperature: 0.3 },
+    { systemPrompt: LEGAL_SYSTEM_PROMPT, maxTokens: 2000, temperature: 0.3 },
   );
 
   let parsed: {
@@ -70,12 +70,29 @@ export async function runLegalAnalysis(
     precedents: string[];
   };
   try {
-    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(jsonMatch?.[0] || '{}');
-  } catch {
+    // Strip code fences by finding fence markers and slicing between them
+    let jsonSource = result.content;
+    const openFence = result.content.match(/`{3,}\w*[ \t]*\n?/);
+    if (openFence && openFence.index !== undefined) {
+      const start = openFence.index + openFence[0].length;
+      const closeIdx = result.content.indexOf('```', start);
+      if (closeIdx !== -1) {
+        jsonSource = result.content.slice(start, closeIdx);
+      }
+    }
+    const jsonMatch = jsonSource.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON object found');
+    parsed = JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error(
+      'Legal analysis parse failed:',
+      err instanceof Error ? err.message : err,
+      '\nFirst 300 chars:',
+      result.content.slice(0, 300),
+    );
     parsed = {
       citations: [],
-      analysis: result.content,
+      analysis: 'Legal analysis could not be parsed.',
       constitutionalConcerns: [],
       precedents: [],
     };

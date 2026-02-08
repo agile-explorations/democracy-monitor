@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/ui/Markdown';
 import { useDevMode } from '@/lib/hooks/useDevMode';
 import type { DebateResult } from '@/lib/types/debate';
 
@@ -79,7 +80,11 @@ export function DebateView({ debate }: DebateViewProps) {
                   )}
                 </span>
               </div>
-              <p className="text-xs text-slate-700 whitespace-pre-wrap">{msg.content}</p>
+              {msg.role === 'arbitrator' ? (
+                <p className="text-xs text-slate-500 italic">See verdict above</p>
+              ) : (
+                <Markdown content={msg.content} />
+              )}
             </div>
           );
         })}

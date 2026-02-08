@@ -107,9 +107,26 @@ export async function runDebate(
 
   let verdict: DebateVerdict;
   try {
-    const jsonMatch = arbitratorResult.content.match(/\{[\s\S]*\}/);
-    verdict = JSON.parse(jsonMatch?.[0] || '{}');
-  } catch {
+    // Strip code fences by finding fence markers and slicing between them
+    let jsonSource = arbitratorResult.content;
+    const openFence = arbitratorResult.content.match(/`{3,}\w*[ \t]*\n?/);
+    if (openFence && openFence.index !== undefined) {
+      const start = openFence.index + openFence[0].length;
+      const closeIdx = arbitratorResult.content.indexOf('```', start);
+      if (closeIdx !== -1) {
+        jsonSource = arbitratorResult.content.slice(start, closeIdx);
+      }
+    }
+    const jsonMatch = jsonSource.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON object found');
+    verdict = JSON.parse(jsonMatch[0]);
+  } catch (err) {
+    console.error(
+      'Arbiter verdict parse failed:',
+      err instanceof Error ? err.message : err,
+      '\nFirst 300 chars:',
+      arbitratorResult.content.slice(0, 300),
+    );
     verdict = {
       agreementLevel: 5,
       verdict: 'mixed',

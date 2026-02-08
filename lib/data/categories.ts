@@ -1,5 +1,12 @@
 import type { Category } from '@/lib/types';
 
+/** Supreme Court term starts each October. TYear = 2-digit year the term began. */
+function scotusTermYear(): string {
+  const now = new Date();
+  const year = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(year % 100);
+}
+
 export const CATEGORIES: Category[] = [
   {
     key: 'civilService',
@@ -88,10 +95,10 @@ export const CATEGORIES: Category[] = [
       'When a judge orders the government to do something (or stop doing something), does the President follow those orders? This is a key part of our system of checks and balances.',
     signals: [
       {
-        name: 'Supreme Court Orders',
-        url: 'https://www.supremecourt.gov/rss/orders.xml',
+        name: 'Supreme Court Opinions',
+        url: `https://www.supremecourt.gov/rss/slipopinion_rss.aspx?TYear=${scotusTermYear()}`,
         type: 'rss',
-        note: 'Orders from the highest court in America',
+        note: 'Opinions from the highest court in America',
       },
       {
         name: 'Court Compliance Reports',

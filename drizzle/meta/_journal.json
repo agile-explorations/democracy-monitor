@@ -43,6 +43,13 @@
       "when": 1738893300000,
       "tag": "0005_rag_pipeline",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1738979100000,
+      "tag": "0006_fix_documents_url_constraint",
+      "breakpoints": true
     }
   ]
 }

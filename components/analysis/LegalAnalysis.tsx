@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/ui/Markdown';
 import { useDevMode } from '@/lib/hooks/useDevMode';
 import type { LegalAnalysisResult } from '@/lib/types/legal';
 
@@ -23,7 +24,7 @@ export function LegalAnalysisView({ analysis }: LegalAnalysisProps) {
         </span>
       </div>
 
-      <div className="text-xs text-slate-700 whitespace-pre-wrap">{analysis.analysis}</div>
+      <Markdown content={analysis.analysis} />
 
       {analysis.citations.length > 0 && (
         <div className="mt-2">
