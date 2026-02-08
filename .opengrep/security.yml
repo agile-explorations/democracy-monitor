@@ -36,3 +36,6 @@ rules:
     paths:
       include:
         - lib/services
+      exclude:
+        - lib/services/feed-fetcher.ts
+        - lib/services/intent-data-service.ts

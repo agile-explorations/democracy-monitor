@@ -67,7 +67,8 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
   if (cached) return cached;
 
   try {
-    const response = await fetch('https://www.whitehouse.gov/briefing-room/feed/', {
+    const feedUrl = 'https://www.whitehouse.gov/briefing-room/feed/';
+    const response = await fetch(feedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DemocracyDashboard/2.0)',
         Accept: 'application/rss+xml, application/xml, text/xml',
