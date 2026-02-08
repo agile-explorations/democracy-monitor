@@ -1,3 +1,4 @@
+import type { InferInsertModel } from 'drizzle-orm';
 import { desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
@@ -74,7 +75,7 @@ export interface AssessmentRow {
 export function buildSnapshotRow(
   assessment: EnhancedAssessment,
   assessedAt?: Date,
-): Record<string, unknown> {
+): InferInsertModel<typeof assessments> {
   return {
     category: assessment.category,
     status: assessment.status,

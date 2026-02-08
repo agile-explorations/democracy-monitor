@@ -1,9 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { getDemoResponse } from '@/lib/demo';
+import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { storeDocuments } from '@/lib/services/document-store';
 import {
-  fetchPresidentialDocuments,
-  fetchWhiteHouseBriefings,
+  fetchAllRhetoricSources,
+  statementsToContentItems,
 } from '@/lib/services/intent-data-service';
 import { scoreStatements } from '@/lib/services/intent-service';
 
@@ -20,13 +22,13 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       return res.status(200).json(cached);
     }
 
-    // Fetch data from multiple sources
-    const [presidentialDocs, whBriefings] = await Promise.all([
-      fetchPresidentialDocuments(),
-      fetchWhiteHouseBriefings(),
-    ]);
+    const allStatements = await fetchAllRhetoricSources();
 
-    const allStatements = [...presidentialDocs, ...whBriefings];
+    // Fire-and-forget: store documents and embed for RAG pipeline
+    const contentItems = statementsToContentItems(allStatements);
+    storeDocuments(contentItems, 'intent')
+      .then(() => embedUnprocessedDocuments(20))
+      .catch((err) => console.error('RAG pipeline failed for intent:', err));
 
     if (allStatements.length === 0) {
       return res.status(200).json({

@@ -3,7 +3,13 @@ import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
+import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { storeDocuments } from '@/lib/services/document-store';
 import { fetchCategoryFeeds } from '@/lib/services/feed-fetcher';
+import {
+  fetchAllRhetoricSources,
+  statementsToContentItems,
+} from '@/lib/services/intent-data-service';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 
 loadEnvConfig(process.cwd());
@@ -46,6 +52,10 @@ export async function seedSnapshots(days: number): Promise<void> {
           continue;
         }
 
+        storeDocuments(items, cat.key).catch((err) =>
+          console.error(`[seed-snapshots] RAG store failed for ${cat.key}:`, err),
+        );
+
         console.log(`[seed-snapshots]   ${cat.key}: running assessment (${items.length} items)...`);
         const assessment = await enhancedAssessment(items, cat.key, { skipCache: true });
 
@@ -61,6 +71,18 @@ export async function seedSnapshots(days: number): Promise<void> {
         console.error(`[seed-snapshots]   ${cat.key}: ERROR`, err);
       }
     }
+  }
+
+  // Store rhetoric sources for RAG
+  console.log('[seed-snapshots] Fetching rhetoric sources for RAG storage...');
+  try {
+    const statements = await fetchAllRhetoricSources();
+    const contentItems = statementsToContentItems(statements);
+    const stored = await storeDocuments(contentItems, 'intent');
+    await embedUnprocessedDocuments(50);
+    console.log(`[seed-snapshots] Stored ${stored} rhetoric documents`);
+  } catch (err) {
+    console.error('[seed-snapshots] Rhetoric RAG storage failed:', err);
   }
 
   console.log(`[seed-snapshots] Complete: ${total} snapshots created`);

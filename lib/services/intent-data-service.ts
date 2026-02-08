@@ -1,5 +1,6 @@
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
+import type { ContentItem } from '@/lib/types/assessment';
 import type { IntentStatement, PolicyArea } from '@/lib/types/intent';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
@@ -62,12 +63,26 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
 }
 
 export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
-  const cacheKey = 'intent:wh-briefings';
+  return fetchRssFeed(
+    'https://www.whitehouse.gov/briefings-statements/feed/',
+    'intent:wh-briefings',
+    'White House',
+    1,
+    /<link>(https:\/\/www\.whitehouse\.gov[^<]*)<\/link>/g,
+  );
+}
+
+async function fetchRssFeed(
+  feedUrl: string,
+  cacheKey: string,
+  sourceName: string,
+  sourceTier: 1 | 2,
+  linkPattern: RegExp,
+): Promise<IntentStatement[]> {
   const cached = await cacheGet<IntentStatement[]>(cacheKey);
   if (cached) return cached;
 
   try {
-    const feedUrl = 'https://www.whitehouse.gov/briefing-room/feed/';
     const response = await fetch(feedUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DemocracyDashboard/2.0)',
@@ -77,13 +92,11 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
 
     if (!response.ok) return [];
 
-    // Parse as text — actual XML parsing would need xml2js
-    // For now, extract basic items from the feed
     const text = await response.text();
     const items: IntentStatement[] = [];
 
     const titleMatches = text.matchAll(/<title><!\[CDATA\[(.*?)\]\]><\/title>/g);
-    const linkMatches = text.matchAll(/<link>(https:\/\/www\.whitehouse\.gov[^<]*)<\/link>/g);
+    const linkMatches = text.matchAll(linkPattern);
 
     const titles = Array.from(titleMatches).map((m) => m[1]);
     const links = Array.from(linkMatches).map((m) => m[1]);
@@ -98,8 +111,8 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
 
       items.push({
         text: titleText,
-        source: 'White House',
-        sourceTier: 1,
+        source: sourceName,
+        sourceTier,
         type,
         policyArea,
         score,
@@ -113,6 +126,60 @@ export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
   } catch {
     return [];
   }
+}
+
+export async function fetchNPRPolitics(): Promise<IntentStatement[]> {
+  return fetchRssFeed(
+    'https://feeds.npr.org/1014/rss.xml',
+    'intent:npr-politics',
+    'NPR Politics',
+    2,
+    /<link>(https:\/\/www\.npr\.org[^<]*)<\/link>/g,
+  );
+}
+
+export async function fetchAPPolitics(): Promise<IntentStatement[]> {
+  return fetchRssFeed(
+    'https://apnews.com/politics.rss',
+    'intent:ap-politics',
+    'AP News',
+    2,
+    /<link>(https:\/\/apnews\.com[^<]*)<\/link>/g,
+  );
+}
+
+export async function fetchGoogleNewsRhetoric(): Promise<IntentStatement[]> {
+  return fetchRssFeed(
+    'https://news.google.com/rss/search?q=%22executive+power%22+OR+%22presidential+authority%22+OR+%22executive+order%22&hl=en-US&gl=US&ceid=US:en',
+    'intent:google-news-rhetoric',
+    'Google News',
+    2,
+    /<link>(https?:\/\/[^<]*)<\/link>/g,
+  );
+}
+
+export async function fetchAllRhetoricSources(): Promise<IntentStatement[]> {
+  const results = await Promise.allSettled([
+    fetchPresidentialDocuments(),
+    fetchWhiteHouseBriefings(),
+    fetchNPRPolitics(),
+    fetchAPPolitics(),
+    fetchGoogleNewsRhetoric(),
+  ]);
+
+  return results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+}
+
+export function statementsToContentItems(statements: IntentStatement[]): ContentItem[] {
+  return statements
+    .filter((s) => s.url)
+    .map((s) => ({
+      title: s.text,
+      link: s.url,
+      pubDate: s.date,
+      agency: s.source,
+      type: s.type,
+    }));
 }
 
 function classifyPolicyArea(text: string): PolicyArea {

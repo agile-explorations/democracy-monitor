@@ -3,7 +3,13 @@ import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
+import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { storeDocuments } from '@/lib/services/document-store';
 import { fetchCategoryFeeds } from '@/lib/services/feed-fetcher';
+import {
+  fetchAllRhetoricSources,
+  statementsToContentItems,
+} from '@/lib/services/intent-data-service';
 import { getLatestSnapshot, saveSnapshot } from '@/lib/services/snapshot-store';
 
 loadEnvConfig(process.cwd());
@@ -45,6 +51,10 @@ export async function catchupSnapshots(): Promise<void> {
         continue;
       }
 
+      storeDocuments(items, cat.key).catch((err) =>
+        console.error(`[catchup] RAG store failed for ${cat.key}:`, err),
+      );
+
       for (let d = daysSince; d >= 1; d--) {
         const date = new Date(now);
         date.setDate(date.getDate() - d + 1);
@@ -63,6 +73,18 @@ export async function catchupSnapshots(): Promise<void> {
     } catch (err) {
       console.error(`[catchup] ${cat.key}: ERROR`, err);
     }
+  }
+
+  // Store rhetoric sources for RAG
+  console.log('[catchup] Fetching rhetoric sources for RAG storage...');
+  try {
+    const statements = await fetchAllRhetoricSources();
+    const contentItems = statementsToContentItems(statements);
+    const stored = await storeDocuments(contentItems, 'intent');
+    await embedUnprocessedDocuments(50);
+    console.log(`[catchup] Stored ${stored} rhetoric documents`);
+  } catch (err) {
+    console.error('[catchup] Rhetoric RAG storage failed:', err);
   }
 
   console.log(`[catchup] Complete: ${total} snapshots created`);

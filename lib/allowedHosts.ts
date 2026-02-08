@@ -26,5 +26,8 @@ export function getAllowedHosts(): string[] {
     'progressivereform.org',
     'www.democracywatchtracker.org',
     'www.v-dem.net',
+    'feeds.npr.org',
+    'apnews.com',
+    'news.google.com',
   ];
 }
