@@ -1,11 +1,5 @@
 import type { FallbackSource } from '@/lib/types/resilience';
-
-/** Supreme Court term starts each October. TYear = 2-digit year the term began. */
-function scotusTermYear(): string {
-  const now = new Date();
-  const year = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1;
-  return String(year % 100);
-}
+import { scotusTermYear } from '@/lib/utils/date-utils';
 
 export interface FallbackConfig {
   category: string;

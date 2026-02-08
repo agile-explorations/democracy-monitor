@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 import { Card } from '@/components/ui/Card';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { Category, StatusLevel } from '@/lib/types';
+import type { DebateResult } from '@/lib/types/debate';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
+import type { LegalAnalysisResult } from '@/lib/types/legal';
+import type { TrendAnomaly } from '@/lib/types/trends';
 import { FeedBlock } from './FeedBlock';
 
 function fmtDate(d?: Date | string | number) {
@@ -12,6 +15,18 @@ function fmtDate(d?: Date | string | number) {
   const dt = typeof d === 'string' || typeof d === 'number' ? new Date(d) : d;
   return dt.toLocaleString();
 }
+
+function timeAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours === 1) return '1 hour ago';
+  if (hours < 24) return `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? '1 day ago' : `${days} days ago`;
+}
+
+const SNAPSHOT_MAX_AGE_MS = 36 * 60 * 60 * 1000; // 36 hours
 
 interface AutoStatus {
   level: string;
@@ -32,7 +47,11 @@ interface AutoStatus {
 interface EnhancedData {
   dataCoverage: number;
   evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
-  evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
+  evidenceAgainst: Array<{
+    text: string;
+    direction: 'concerning' | 'reassuring';
+    source?: string;
+  }>;
   howWeCouldBeWrong: string[];
   aiResult?: {
     provider: string;
@@ -43,6 +62,9 @@ interface EnhancedData {
     latencyMs: number;
   };
   consensusNote?: string;
+  debate?: DebateResult;
+  legalAnalysis?: LegalAnalysisResult;
+  trendAnomalies?: TrendAnomaly[];
 }
 
 interface CategoryCardProps {
@@ -59,6 +81,9 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
   const [showDetails, setShowDetails] = useState(true);
   const [showSources, setShowSources] = useState(false);
   const [enhancedData, setEnhancedData] = useState<EnhancedData | null>(null);
+  const [snapshotAge, setSnapshotAge] = useState<string | null>(null);
+  const [usedSnapshot, setUsedSnapshot] = useState(false);
+  const usedSnapshotRef = useRef(false);
 
   const isAssessing = !autoStatus && loadedCount < cat.signals.length;
   const isInsufficientData = autoStatus?.detail?.insufficientData === true;
@@ -66,7 +91,57 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
     statusMap[cat.key] ||
     (isAssessing ? undefined : 'Warning')) as StatusLevel | undefined;
 
+  // Step 0: Try loading a snapshot on mount
   useEffect(() => {
+    let cancelled = false;
+    const loadSnapshot = async () => {
+      try {
+        const res = await fetch(`/api/snapshots/latest?category=${cat.key}`);
+        if (!res.ok) return;
+        const snapshot = await res.json();
+        if (cancelled) return;
+
+        // Check freshness
+        const age = Date.now() - new Date(snapshot.assessedAt).getTime();
+        if (age > SNAPSHOT_MAX_AGE_MS) return;
+
+        // Apply snapshot data
+        setAutoStatus({
+          level: snapshot.status,
+          reason: snapshot.reason,
+          auto: true,
+          matches: snapshot.matches || [],
+          assessedAt: snapshot.assessedAt,
+          detail: snapshot.keywordResult?.detail,
+        });
+        setStatus(cat.key, snapshot.status);
+        setEnhancedData({
+          dataCoverage: snapshot.dataCoverage ?? 0,
+          evidenceFor: snapshot.evidenceFor || [],
+          evidenceAgainst: snapshot.evidenceAgainst || [],
+          howWeCouldBeWrong: snapshot.howWeCouldBeWrong || [],
+          aiResult: snapshot.aiResult,
+          consensusNote: snapshot.consensusNote,
+          debate: snapshot.debate,
+          legalAnalysis: snapshot.legalAnalysis,
+          trendAnomalies: snapshot.trendAnomalies,
+        });
+        setSnapshotAge(timeAgo(snapshot.assessedAt));
+        usedSnapshotRef.current = true;
+        setUsedSnapshot(true);
+      } catch {
+        // Snapshot fetch failed — will fall back to live assessment
+      }
+    };
+    loadSnapshot();
+    return () => {
+      cancelled = true;
+    };
+  }, [cat.key, setStatus]);
+
+  // Step 1: Run keyword assessment after all feeds load (skip if snapshot was used)
+  useEffect(() => {
+    if (usedSnapshot) return;
     if (loadedCount === cat.signals.length && allItems.length > 0) {
       const assessStatus = async () => {
         try {
@@ -75,6 +150,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ category: cat.key, items: allItems }),
           });
+          if (usedSnapshotRef.current) return;
           const data = await response.json();
           setAutoStatus({
             level: data.status,
@@ -91,10 +167,11 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       };
       assessStatus();
     }
-  }, [loadedCount, allItems, cat.key, cat.signals.length, setStatus]);
+  }, [loadedCount, allItems, cat.key, cat.signals.length, setStatus, usedSnapshot]);
 
-  // Auto-run AI assessment after keyword assessment completes
+  // Step 2: Auto-run AI assessment after keyword assessment (skip if snapshot was used)
   useEffect(() => {
+    if (usedSnapshot) return;
     if (autoStatus?.auto && !enhancedData && allItems.length > 0) {
       const runAiAssessment = async () => {
         try {
@@ -103,6 +180,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ category: cat.key, items: allItems }),
           });
+          if (usedSnapshotRef.current) return;
           const data = await response.json();
 
           if (data.dataCoverage !== undefined || data.confidence !== undefined) {
@@ -121,7 +199,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
       };
       runAiAssessment();
     }
-  }, [autoStatus?.auto, enhancedData, allItems, cat.key]);
+  }, [autoStatus?.auto, enhancedData, allItems, cat.key, usedSnapshot]);
 
   const handleItemsLoaded = useCallback((items: FeedItem[]) => {
     setAllItems((prev) => [...prev, ...items]);
@@ -150,6 +228,11 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
               title="Status determined by keyword analysis of official government documents. See methodology page for details."
             >
               auto-assessed
+            </span>
+          )}
+          {snapshotAge && (
+            <span className="text-xs text-slate-400" title={autoStatus?.assessedAt || ''}>
+              Updated {snapshotAge}
             </span>
           )}
           <div className="flex items-center gap-2 ml-auto">

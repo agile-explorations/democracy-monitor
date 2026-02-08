@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
+import type { DebateResult } from '@/lib/types/debate';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
+import type { LegalAnalysisResult } from '@/lib/types/legal';
+import type { TrendAnomaly } from '@/lib/types/trends';
 import { Layer2 } from './Layer2';
 import { Layer3 } from './Layer3';
 import { Layer4 } from './Layer4';
@@ -20,6 +23,9 @@ interface EnhancedData {
     latencyMs: number;
   };
   consensusNote?: string;
+  debate?: DebateResult;
+  legalAnalysis?: LegalAnalysisResult;
+  trendAnomalies?: TrendAnomaly[];
 }
 
 interface AutoStatus {
@@ -113,7 +119,11 @@ export function ProgressiveDisclosure({
       )}
 
       {currentTab === 'deep' && (
-        <Layer4 categoryKey={categoryKey} level={level} evidence={evidence} />
+        <Layer4
+          debate={enhancedData?.debate}
+          legalAnalysis={enhancedData?.legalAnalysis}
+          trendAnomalies={enhancedData?.trendAnomalies}
+        />
       )}
     </div>
   );

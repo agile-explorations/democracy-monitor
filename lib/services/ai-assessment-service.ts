@@ -42,6 +42,10 @@ export interface EnhancedAssessment {
   };
   consensusNote?: string;
   assessedAt: string;
+  // Deep analysis (populated by snapshot cron for Drift/Capture)
+  debate?: import('@/lib/types/debate').DebateResult;
+  legalAnalysis?: import('@/lib/types/legal').LegalAnalysisResult;
+  trendAnomalies?: import('@/lib/types/trends').TrendAnomaly[];
 }
 
 export async function enhancedAssessment(

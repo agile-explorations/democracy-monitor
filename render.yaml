@@ -59,6 +59,25 @@ crons:
           name: epd-db
           property: connectionString
 
+  - name: daily-snapshot
+    schedule: '0 6 * * *'
+    buildCommand: pnpm install
+    startCommand: npx tsx lib/cron/snapshot.ts
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis
+          type: redis
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
   - name: weekly-clustering
     schedule: '0 3 * * 0'
     buildCommand: pnpm install
