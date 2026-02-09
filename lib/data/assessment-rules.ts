@@ -18,6 +18,8 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'removed for political reasons',
         'political loyalty oath',
         'mass reclassification to schedule f',
+        'political commissar',
+        'ideological screening',
       ],
       drift: [
         'reclassification',
@@ -32,6 +34,8 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'hiring freeze on career positions',
         'political vetting of applicants',
         'reassigned to lesser role',
+        'loyalty pledge',
+        'burrowing in',
       ],
       warning: [
         'workforce reduction',
@@ -82,6 +86,8 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'spend plan',
         'sequestration risk',
         'debt ceiling debate',
+        'continuing resolution',
+        'debt ceiling',
       ],
     },
     volumeThreshold: { warning: 2, drift: 5, capture: 10 },
@@ -187,6 +193,8 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'judge reassignment',
         'compliance delayed months',
         'nationwide injunction challenged',
+        'standing denied',
+        'justiciability',
       ],
       warning: [
         'injunction issued',
@@ -304,6 +312,8 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'website shutdown',
         'portal defunded',
         'data purged',
+        'climate data removed',
+        'scientific advisory board disbanded',
       ],
       drift: [
         'website offline',
@@ -315,6 +325,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'content removed',
         'report missing',
         'access restricted',
+        'CDC guidance removed',
       ],
       warning: [
         'site maintenance',
@@ -337,6 +348,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'election certification blocked',
         'election postponed',
         'candidate disqualified',
+        'election monitor expelled',
       ],
       drift: [
         'voter roll purge',
@@ -349,6 +361,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'election official threatened',
         'redistricting overturned',
         'campaign finance rules suspended',
+        'observer access denied',
       ],
       warning: [
         'election challenge',
@@ -358,6 +371,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'election audit',
         'election security funding cut',
         'voter registration deadline shortened',
+        'preclearance',
       ],
     },
     volumeThreshold: { warning: 3, drift: 6, capture: 12 },

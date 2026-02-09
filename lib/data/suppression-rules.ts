@@ -101,6 +101,14 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
       keyword: 'unilateral tariff',
       suppress_if_any: ['section 201', 'itc recommendation', 'bipartisan support'],
     },
+    {
+      keyword: 'continuing resolution',
+      suppress_if_any: ['bipartisan', 'passed', 'resolved', 'signed into law'],
+    },
+    {
+      keyword: 'debt ceiling',
+      suppress_if_any: ['bipartisan', 'passed', 'resolved', 'signed into law', 'raised'],
+    },
   ],
   infoAvailability: [
     {

@@ -57,3 +57,15 @@ export type {
   ConfigSnapshot,
   WeekExplanation,
 } from './explanation';
+export type {
+  LegislativeItemType,
+  LegislativeItem,
+  LegislativeTrackingSummary,
+} from './legislative';
+export type {
+  ValidationSource,
+  ValidationDataPoint,
+  ValidationComparison,
+  ValidationSummary,
+} from './validation';
+export { VALIDATION_SOURCES } from './validation';

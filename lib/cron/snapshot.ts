@@ -14,6 +14,8 @@ import {
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
+import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
+import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import {
   computeWeeklyAggregate,
@@ -101,6 +103,17 @@ export async function runSnapshots(): Promise<void> {
     );
   } catch (err) {
     console.error('[snapshot] Rhetoric RAG storage failed:', err);
+  }
+
+  // Fetch legislative tracking data
+  console.log('[snapshot] Fetching congressional record data...');
+  const today = new Date().toISOString().split('T')[0];
+  try {
+    const legislativeItems = await fetchCongressionalRecord({ dateFrom: today, dateTo: today });
+    console.log(`[snapshot] Fetched ${legislativeItems.length} legislative items`);
+    await storeLegislativeItems(legislativeItems);
+  } catch (err) {
+    console.error('[snapshot] Legislative fetch failed:', err);
   }
 
   const elapsed = Date.now() - start;

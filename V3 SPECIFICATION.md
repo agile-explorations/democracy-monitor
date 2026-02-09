@@ -1184,9 +1184,9 @@ Add `pages/api/export/` routes:
 
 ### Sprint 6+ (Future) — Phases 6 + 7
 
-20. **6.1** Rhetoric → action lag analysis
-21. **7.1** P2025 proposal extraction (human workstream starts earlier)
-22. **7.2** P2025 retrieval + LLM judge pipeline
+20. **6.1** Rhetoric → action lag analysis **[DONE]**
+21. **7.1** P2025 proposal extraction (human workstream starts earlier) **[DONE]**
+22. **7.2** P2025 retrieval + LLM judge pipeline **[DONE]**
 23. Dual reading-level AI-generated summaries
 24. Legislative tracking (GovInfo Congressional Record API)
 25. External validation index integration (V-Dem, Freedom House, Bright Line Watch)

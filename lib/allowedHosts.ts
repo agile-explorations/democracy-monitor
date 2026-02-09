@@ -29,5 +29,7 @@ export function getAllowedHosts(): string[] {
     'feeds.npr.org',
     'apnews.com',
     'news.google.com',
+    'api.govinfo.gov',
+    'brightlinewatch.org',
   ];
 }

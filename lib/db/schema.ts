@@ -159,6 +159,8 @@ export const digests = pgTable('digests', {
   highlights: jsonb('highlights').$type<string[]>(),
   categorySummaries: jsonb('category_summaries'),
   overallAssessment: text('overall_assessment'),
+  summaryExpert: text('summary_expert'),
+  categorySummariesExpert: jsonb('category_summaries_expert'),
   provider: varchar('provider', { length: 50 }).notNull(),
   model: varchar('model', { length: 100 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -313,5 +315,45 @@ export const p2025Matches = pgTable(
   (table) => [
     index('idx_p2025_matches_proposal').on(table.proposalId),
     index('idx_p2025_matches_document').on(table.documentId),
+  ],
+);
+
+export const legislativeItems = pgTable(
+  'legislative_items',
+  {
+    id: serial('id').primaryKey(),
+    govInfoId: varchar('govinfo_id', { length: 100 }).notNull().unique(),
+    title: text('title').notNull(),
+    type: varchar('type', { length: 20 }).notNull(),
+    date: date('date').notNull(),
+    url: text('url').notNull(),
+    chamber: varchar('chamber', { length: 10 }).notNull(),
+    committee: varchar('committee', { length: 200 }),
+    relevantCategories: jsonb('relevant_categories').$type<string[]>().notNull(),
+    summary: text('summary'),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_legislative_items_date').on(table.date),
+    index('idx_legislative_items_type').on(table.type),
+  ],
+);
+
+export const validationDataPoints = pgTable(
+  'validation_data_points',
+  {
+    id: serial('id').primaryKey(),
+    source: varchar('source', { length: 30 }).notNull(),
+    date: date('date').notNull(),
+    dimension: varchar('dimension', { length: 50 }).notNull(),
+    score: real('score').notNull(),
+    rawScore: real('raw_score'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_validation_source_date_dim').on(table.source, table.date, table.dimension),
+    index('idx_validation_source').on(table.source),
+    index('idx_validation_date').on(table.date),
   ],
 );
