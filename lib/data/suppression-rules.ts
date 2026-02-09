@@ -19,6 +19,16 @@ export interface SuppressionRule {
  * Per-category suppression rules for keywords most prone to false positives.
  */
 export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
+  civilService: [
+    {
+      keyword: 'hiring freeze on career positions',
+      suppress_if_any: ['government-wide', 'routine', 'temporary'],
+    },
+    {
+      keyword: 'voluntary separation incentive',
+      suppress_if_any: ['routine', 'annual', 'standard offer'],
+    },
+  ],
   courts: [
     {
       keyword: 'court packing',
@@ -86,6 +96,16 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
     {
       keyword: 'funding freeze',
       suppress_if_any: ['lifted', 'reversed', 'court ordered release'],
+    },
+    {
+      keyword: 'unilateral tariff',
+      suppress_if_any: ['section 201', 'itc recommendation', 'bipartisan support'],
+    },
+  ],
+  infoAvailability: [
+    {
+      keyword: 'website removed',
+      suppress_if_any: ['migrated', 'redesigned', 'replaced by', 'archived at'],
     },
   ],
   military: [

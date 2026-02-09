@@ -261,3 +261,57 @@ export const baselines = pgTable(
     index('idx_baselines_baseline_id').on(table.baselineId),
   ],
 );
+
+export const intentWeekly = pgTable(
+  'intent_weekly',
+  {
+    id: serial('id').primaryKey(),
+    policyArea: varchar('policy_area', { length: 50 }).notNull(),
+    weekOf: date('week_of').notNull(),
+    rhetoricScore: real('rhetoric_score').notNull(),
+    actionScore: real('action_score').notNull(),
+    gap: real('gap').notNull(),
+    statementCount: integer('statement_count').notNull().default(0),
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_intent_weekly_area_week').on(table.policyArea, table.weekOf),
+    index('idx_intent_weekly_policy_area').on(table.policyArea),
+    index('idx_intent_weekly_week_of').on(table.weekOf),
+  ],
+);
+
+export const p2025Proposals = pgTable('p2025_proposals', {
+  id: varchar('id', { length: 50 }).primaryKey(),
+  chapter: varchar('chapter', { length: 100 }).notNull(),
+  targetAgency: varchar('target_agency', { length: 100 }),
+  dashboardCategory: varchar('dashboard_category', { length: 50 }),
+  policyArea: varchar('policy_area', { length: 50 }),
+  severity: varchar('severity', { length: 20 }).notNull(),
+  text: text('text').notNull(),
+  summary: text('summary').notNull(),
+  embedding: vector('embedding'),
+  status: varchar('status', { length: 20 }).notNull().default('not_started'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const p2025Matches = pgTable(
+  'p2025_matches',
+  {
+    id: serial('id').primaryKey(),
+    proposalId: varchar('proposal_id', { length: 50 }).notNull(),
+    documentId: integer('document_id'),
+    cosineSimilarity: real('cosine_similarity').notNull(),
+    llmClassification: varchar('llm_classification', { length: 20 }),
+    llmConfidence: real('llm_confidence'),
+    llmReasoning: text('llm_reasoning'),
+    humanReviewed: boolean('human_reviewed').notNull().default(false),
+    humanClassification: varchar('human_classification', { length: 20 }),
+    matchedAt: timestamp('matched_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_p2025_matches_proposal').on(table.proposalId),
+    index('idx_p2025_matches_document').on(table.documentId),
+  ],
+);

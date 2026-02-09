@@ -5,6 +5,7 @@ import { analyzeContent } from '@/lib/services/assessment-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
 import { fetchFederalRegisterHistorical, parseSignalParams } from '@/lib/services/feed-fetcher';
+import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import {
   fetchWhiteHouseHistorical,
   fetchGdeltHistorical,
@@ -249,6 +250,19 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   if (includeRhetoric && !options.category) {
     const rhetoric = await backfillRhetoric(weeks, dryRun);
     totalDocs += rhetoric.whDocs + rhetoric.gdeltDocs;
+
+    // Intent weekly aggregation for each backfilled week
+    if (!dryRun) {
+      console.log('\n[backfill] === Intent Weekly Aggregation ===');
+      for (const week of weeks) {
+        try {
+          await aggregateAllAreas(week.start);
+        } catch (err) {
+          console.error(`[backfill] Intent weekly aggregation failed for ${week.start}:`, err);
+        }
+      }
+      console.log(`[backfill] Intent weekly aggregation complete for ${weeks.length} weeks`);
+    }
   }
 
   console.log(`\n[backfill] === Summary ===`);

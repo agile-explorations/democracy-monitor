@@ -21,7 +21,9 @@ export type {
   IntentStatement,
   IntentAssessment,
   CrossReference,
+  LagAnalysisResult,
 } from './intent';
+export type { P2025Proposal, P2025Classification, P2025Match, P2025Summary } from './p2025';
 export type {
   MonitoredSite,
   UptimeResult,

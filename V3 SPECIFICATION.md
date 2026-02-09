@@ -941,7 +941,7 @@ Respond with: classification, confidence (0-1), and brief reasoning.
 
 **Goal**: Make all methodology artifacts first-class, versionable, testable code.
 
-### 8.1 Methodology Configuration **[PARTIAL — scoring-config.ts created in Sprint 1; env overrides and convergence/drift/p2025 config deferred]**
+### 8.1 Methodology Configuration **[DONE — scoring-config.ts + env overrides + explanation APIs delivered in Sprints 1–5]**
 
 **Priority**: High (before OSS launch)
 **Estimated scope**: ~100 lines refactoring

@@ -13,6 +13,7 @@ import {
   statementsToContentItems,
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
+import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import {
   computeWeeklyAggregate,
@@ -93,6 +94,11 @@ export async function runSnapshots(): Promise<void> {
     } catch (intentErr) {
       console.error('[snapshot] Intent assessment failed:', intentErr);
     }
+
+    // Weekly intent aggregation
+    aggregateAllAreas().catch((err) =>
+      console.error('[snapshot] Intent weekly aggregation failed:', err),
+    );
   } catch (err) {
     console.error('[snapshot] Rhetoric RAG storage failed:', err);
   }

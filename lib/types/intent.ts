@@ -61,3 +61,12 @@ export interface CrossReference {
   interpretation: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
+
+export interface LagAnalysisResult {
+  policyArea: PolicyArea;
+  maxCorrelation: number;
+  lagWeeks: number;
+  interpretation: string;
+  correlationByLag: Array<{ lag: number; correlation: number }>;
+  dataPoints: number;
+}
