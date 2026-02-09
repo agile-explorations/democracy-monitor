@@ -3,7 +3,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
-import type { EnhancedAssessment } from './ai-assessment-service';
+import type { EnhancedAssessment } from '@/lib/types';
 
 /**
  * Save an assessment snapshot to the database.

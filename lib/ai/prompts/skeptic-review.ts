@@ -1,10 +1,7 @@
-import type { StatusLevel, ContentItem } from '@/lib/types';
+import type { StatusLevel, ContentItem, KeywordMatchContext } from '@/lib/types';
+import { formatItemSummaries } from './format-items';
 
-export interface KeywordMatchContext {
-  keyword: string;
-  tier: 'capture' | 'drift' | 'warning';
-  matchedIn: string;
-}
+export type { KeywordMatchContext };
 
 export function buildSkepticReviewPrompt(
   category: string,
@@ -14,16 +11,7 @@ export function buildSkepticReviewPrompt(
   keywordReason: string,
   keywordMatches: KeywordMatchContext[],
 ): string {
-  const itemSummaries = items
-    .slice(0, 20)
-    .map((item, i) => {
-      const parts = [`${i + 1}. "${item.title}"`];
-      if (item.agency) parts.push(`(${item.agency})`);
-      if (item.pubDate) parts.push(`[${item.pubDate}]`);
-      if (item.summary) parts.push(`— ${item.summary.slice(0, 500)}`);
-      return parts.join(' ');
-    })
-    .join('\n');
+  const itemSummaries = formatItemSummaries(items);
 
   const matchDetails = keywordMatches
     .map((m) => `- "${m.keyword}" (${m.tier}) found in: ${m.matchedIn.slice(0, 200)}`)

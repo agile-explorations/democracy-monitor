@@ -1,5 +1,6 @@
 import { INFRASTRUCTURE_THEMES, getAllKeywords } from '@/lib/data/infrastructure-keywords';
 import type { InfrastructureSuppressionRule } from '@/lib/data/infrastructure-keywords';
+import type { EnhancedAssessment } from '@/lib/types';
 import type {
   ConvergenceLevel,
   InfrastructureAssessment,
@@ -7,7 +8,6 @@ import type {
   InfrastructureThemeResult,
 } from '@/lib/types/infrastructure';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-import type { EnhancedAssessment } from './ai-assessment-service';
 
 /**
  * Check if a context-dependent keyword should be suppressed based on co-occurring terms.

@@ -1,7 +1,6 @@
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeContent } from '@/lib/services/assessment-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
@@ -13,7 +12,7 @@ import {
 } from '@/lib/services/rhetoric-fetcher';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
-import type { ContentItem } from '@/lib/types';
+import type { ContentItem, EnhancedAssessment } from '@/lib/types';
 
 loadEnvConfig(process.cwd());
 

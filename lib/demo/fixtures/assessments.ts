@@ -4,12 +4,16 @@
  * through the keyword engine's complex authority weighting.
  */
 
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
-import type { EvidenceItem } from '@/lib/services/evidence-balance';
-import type { StatusLevel, AssessmentResult, AssessmentDetail } from '@/lib/types';
-import type { DebateResult } from '@/lib/types/debate';
-import type { LegalAnalysisResult } from '@/lib/types/legal';
-import type { TrendAnomaly } from '@/lib/types/trends';
+import type {
+  EnhancedAssessment,
+  EvidenceItem,
+  StatusLevel,
+  AssessmentResult,
+  AssessmentDetail,
+  DebateResult,
+  LegalAnalysisResult,
+  TrendAnomaly,
+} from '@/lib/types';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import type { AssessmentRow } from '@/lib/services/snapshot-store';
 import { buildSnapshotRow, rowToAssessment } from '@/lib/services/snapshot-store';
+import type { EnhancedAssessment } from '@/lib/types';
 
 function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAssessment {
   return {

@@ -19,10 +19,9 @@ import { getDemoAssessment } from '@/lib/demo/fixtures/assessments';
 import { getDemoIntentAssessment } from '@/lib/demo/fixtures/intent';
 import type { ScenarioName } from '@/lib/demo/scenarios';
 import { DEMO_SCENARIOS } from '@/lib/demo/scenarios';
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
-import type { IntentAssessment, StatusLevel } from '@/lib/types';
+import type { EnhancedAssessment, IntentAssessment, StatusLevel } from '@/lib/types';
 
 loadEnvConfig(process.cwd());
 

@@ -1,10 +1,6 @@
-import type { StatusLevel, ContentItem } from '@/lib/types';
+import type { StatusLevel, ContentItem, EvidenceItem } from '@/lib/types';
 
-export interface EvidenceItem {
-  text: string;
-  direction: 'concerning' | 'reassuring';
-  source?: string;
-}
+export type { EvidenceItem };
 
 const CONCERNING_INDICATORS = [
   'violated',

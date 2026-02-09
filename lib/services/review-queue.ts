@@ -1,7 +1,7 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { alerts } from '@/lib/db/schema';
-import type { EnhancedAssessment } from './ai-assessment-service';
+import type { StatusLevel, EnhancedAssessment } from '@/lib/types';
 
 export async function flagForReview(assessment: EnhancedAssessment): Promise<void> {
   if (!isDbAvailable()) {
@@ -40,7 +40,7 @@ export async function getPendingReviews() {
 
 export async function resolveReview(
   alertId: number,
-  decision: { finalStatus: string; reason: string; reviewer: string },
+  decision: { finalStatus: StatusLevel; reason: string; reviewer: string },
 ): Promise<void> {
   if (!isDbAvailable()) {
     throw new Error('DB unavailable — cannot resolve review');

@@ -1,4 +1,4 @@
-import type { EnhancedAssessment } from './ai-assessment-service';
+import type { EnhancedAssessment } from '@/lib/types';
 import { runLegalAnalysis } from './legal-analysis-service';
 import {
   countKeywordsInItems,

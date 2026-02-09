@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { runLegalAnalysis } from '@/lib/services/legal-analysis-service';
+import type { EnhancedAssessment } from '@/lib/types';
 
 // Mock the AI/IO services — these are external boundaries
 vi.mock('@/lib/services/legal-analysis-service', () => ({

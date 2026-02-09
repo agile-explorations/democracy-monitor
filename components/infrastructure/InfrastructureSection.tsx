@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
-import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeInfrastructure } from '@/lib/services/infrastructure-analysis';
+import type { EnhancedAssessment } from '@/lib/types';
 import type { InfrastructureAssessment } from '@/lib/types/infrastructure';
 import { InfrastructureOverview } from './InfrastructureOverview';
 import { InfrastructureThemeCard } from './InfrastructureThemeCard';

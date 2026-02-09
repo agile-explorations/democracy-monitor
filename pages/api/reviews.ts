@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPendingReviews, resolveReview } from '@/lib/services/review-queue';
+import type { StatusLevel } from '@/lib/types';
+
+const VALID_STATUSES: StatusLevel[] = ['Stable', 'Warning', 'Drift', 'Capture'];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -14,6 +17,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!alertId || !finalStatus || !reason || !reviewer) {
         return res.status(400).json({
           error: 'Missing required fields: alertId, finalStatus, reason, reviewer',
+        });
+      }
+
+      if (!VALID_STATUSES.includes(finalStatus)) {
+        return res.status(400).json({
+          error: `Invalid finalStatus: must be one of ${VALID_STATUSES.join(', ')}`,
         });
       }
 

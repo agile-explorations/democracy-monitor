@@ -47,3 +47,4 @@ export type {
   SuppressedMatch,
   DocumentScore,
 } from './scoring';
+export type { EvidenceItem, KeywordMatchContext, EnhancedAssessment } from './enhanced-assessment';
