@@ -11,6 +11,7 @@ import {
   date,
   index,
   customType,
+  unique,
 } from 'drizzle-orm/pg-core';
 
 const vector = customType<{ data: number[]; driverParam: string }>({
@@ -211,5 +212,52 @@ export const documentScores = pgTable(
     index('idx_document_scores_category_week').on(table.category, table.weekOf),
     index('idx_document_scores_document_id').on(table.documentId),
     index('idx_document_scores_url').on(table.url),
+  ],
+);
+
+export const weeklyAggregates = pgTable(
+  'weekly_aggregates',
+  {
+    id: serial('id').primaryKey(),
+    category: varchar('category', { length: 50 }).notNull(),
+    weekOf: date('week_of').notNull(),
+    totalSeverity: real('total_severity').notNull(),
+    documentCount: integer('document_count').notNull(),
+    avgSeverityPerDoc: real('avg_severity_per_doc').notNull(),
+    captureProportion: real('capture_proportion').notNull().default(0),
+    driftProportion: real('drift_proportion').notNull().default(0),
+    warningProportion: real('warning_proportion').notNull().default(0),
+    severityMix: real('severity_mix').notNull().default(0),
+    captureMatchCount: integer('capture_match_count').notNull().default(0),
+    driftMatchCount: integer('drift_match_count').notNull().default(0),
+    warningMatchCount: integer('warning_match_count').notNull().default(0),
+    suppressedMatchCount: integer('suppressed_match_count').notNull().default(0),
+    topKeywords: jsonb('top_keywords').$type<string[]>(),
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_weekly_aggregates_category_week').on(table.category, table.weekOf),
+    index('idx_weekly_aggregates_category').on(table.category),
+    index('idx_weekly_aggregates_week_of').on(table.weekOf),
+  ],
+);
+
+export const baselines = pgTable(
+  'baselines',
+  {
+    id: serial('id').primaryKey(),
+    baselineId: varchar('baseline_id', { length: 50 }).notNull(),
+    category: varchar('category', { length: 50 }).notNull(),
+    avgWeeklySeverity: real('avg_weekly_severity').notNull(),
+    stddevWeeklySeverity: real('stddev_weekly_severity').notNull(),
+    avgWeeklyDocCount: real('avg_weekly_doc_count').notNull(),
+    avgSeverityMix: real('avg_severity_mix').notNull(),
+    driftNoiseFloor: real('drift_noise_floor'),
+    embeddingCentroid: vector('embedding_centroid'),
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_baselines_baseline_category').on(table.baselineId, table.category),
+    index('idx_baselines_baseline_id').on(table.baselineId),
   ],
 );

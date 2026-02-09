@@ -12,6 +12,7 @@ import {
   GDELT_QUERIES,
 } from '@/lib/services/rhetoric-fetcher';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
+import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 
 loadEnvConfig(process.cwd());
@@ -128,6 +129,10 @@ async function backfillCategory(
     // Per-document scoring
     const docScores = scoreDocumentBatch(dedupedItems, categoryKey);
     await storeDocumentScores(docScores);
+
+    // Weekly aggregate
+    const agg = await computeWeeklyAggregate(categoryKey, week.start);
+    await storeWeeklyAggregate(agg);
 
     console.log(
       `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs, ${docScores.length} scored, status=${assessment.status}`,

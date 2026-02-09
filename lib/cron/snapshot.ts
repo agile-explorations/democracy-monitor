@@ -14,6 +14,11 @@ import {
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
+import {
+  computeWeeklyAggregate,
+  getWeekOfDate,
+  storeWeeklyAggregate,
+} from '@/lib/services/weekly-aggregator';
 
 loadEnvConfig(process.cwd());
 
@@ -55,6 +60,12 @@ export async function runSnapshots(): Promise<void> {
         console.error(`[snapshot] Score storage failed for ${cat.key}:`, err),
       );
       console.log(`[snapshot]   Scored ${docScores.length} documents`);
+
+      // Weekly aggregate
+      const weekOf = getWeekOfDate();
+      computeWeeklyAggregate(cat.key, weekOf)
+        .then((agg) => storeWeeklyAggregate(agg))
+        .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
 
       succeeded++;
       console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);

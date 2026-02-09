@@ -43,3 +43,9 @@ export function computeSeverityScore(
   const warningScore = warningCount * TIER_WEIGHTS.warning;
   return captureScore + driftScore + warningScore;
 }
+
+/** Number of weeks for the exponential decay half-life in cumulative scoring. */
+export const DECAY_HALF_LIFE_WEEKS = 8;
+
+/** Semantic drift above this multiple of the noise floor is flagged as anomalous. */
+export const SEMANTIC_DRIFT_ANOMALY_THRESHOLD = 2.0;

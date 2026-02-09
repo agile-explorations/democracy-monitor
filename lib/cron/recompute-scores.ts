@@ -7,6 +7,7 @@
  *   pnpm recompute-scores --category courts      # Single category
  *   pnpm recompute-scores --from 2025-01-20      # Date range
  *   pnpm recompute-scores --dry-run              # Preview without writing
+ *   pnpm recompute-scores --aggregate            # Also recompute weekly aggregates
  */
 
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
@@ -15,6 +16,7 @@ import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
+import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import type { DocumentScore } from '@/lib/types/scoring';
 
@@ -26,6 +28,7 @@ interface RecomputeOptions {
   to?: string;
   dryRun?: boolean;
   batchSize?: number;
+  aggregate?: boolean;
 }
 
 async function recomputeScores(options: RecomputeOptions): Promise<void> {
@@ -119,6 +122,21 @@ async function recomputeScores(options: RecomputeOptions): Promise<void> {
   )) {
     console.log(`    ${cat}: ${counts.scored} scored, ${counts.nonZero} with non-zero score`);
   }
+
+  // Recompute weekly aggregates if requested
+  if (options.aggregate && !dryRun) {
+    console.log('\n[recompute] Recomputing weekly aggregates...');
+    const allAggs = await computeAllWeeklyAggregates({ from: options.from, to: options.to });
+    let aggCount = 0;
+    for (const [cat, aggs] of Object.entries(allAggs)) {
+      for (const agg of aggs) {
+        await storeWeeklyAggregate(agg);
+        aggCount++;
+      }
+      console.log(`  ${cat}: ${aggs.length} weekly aggregates`);
+    }
+    console.log(`  Total weekly aggregates stored: ${aggCount}`);
+  }
 }
 
 if (require.main === module) {
@@ -141,6 +159,9 @@ if (require.main === module) {
         break;
       case '--batch-size':
         options.batchSize = parseInt(args[++i], 10);
+        break;
+      case '--aggregate':
+        options.aggregate = true;
         break;
     }
   }

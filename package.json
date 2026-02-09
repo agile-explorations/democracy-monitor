@@ -38,6 +38,7 @@
     "backfill": "tsx lib/cron/backfill.ts",
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
     "recompute-scores": "tsx lib/cron/recompute-scores.ts",
+    "build-baseline": "tsx lib/cron/backfill-baseline.ts",
     "prepare": "husky"
   },
   "dependencies": {
