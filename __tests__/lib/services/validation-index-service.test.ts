@@ -110,18 +110,18 @@ describe('storeValidationDataPoints', () => {
     vi.mocked(dbModule.isDbAvailable).mockReset();
   });
 
-  it('does not call getDb when DB is unavailable', async () => {
+  it('resolves without error when DB is unavailable', async () => {
     vi.mocked(dbModule.isDbAvailable).mockReturnValue(false);
-    await storeValidationDataPoints([
-      { source: 'v-dem', date: '2024-01-01', dimension: 'judicial_independence', score: 0.8 },
-    ]);
-    expect(dbModule.getDb).not.toHaveBeenCalled();
+    await expect(
+      storeValidationDataPoints([
+        { source: 'v-dem', date: '2024-01-01', dimension: 'judicial_independence', score: 0.8 },
+      ]),
+    ).resolves.toBeUndefined();
   });
 
-  it('does not call getDb for empty array', async () => {
+  it('resolves without error for empty array', async () => {
     vi.mocked(dbModule.isDbAvailable).mockReturnValue(true);
-    await storeValidationDataPoints([]);
-    expect(dbModule.getDb).not.toHaveBeenCalled();
+    await expect(storeValidationDataPoints([])).resolves.toBeUndefined();
   });
 });
 

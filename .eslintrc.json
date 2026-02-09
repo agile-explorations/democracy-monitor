@@ -4,7 +4,7 @@
     "@next/next/no-html-link-for-pages": "off",
 
     "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
-    "max-lines-per-function": ["warn", { "max": 75, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true, "skipComments": true }],
 
     "react/function-component-definition": [
       "warn",
@@ -56,7 +56,7 @@
       }
     },
     {
-      "files": ["components/**", "lib/hooks/**", "lib/cron/**"],
+      "files": ["components/**", "lib/hooks/**"],
       "rules": {
         "max-lines-per-function": "off"
       }
