@@ -1,48 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
-import type { DebateResult } from '@/lib/types/debate';
+import type { AutoStatus, EnhancedData } from '@/lib/types/category-card';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-import type { LegalAnalysisResult } from '@/lib/types/legal';
-import type { TrendAnomaly } from '@/lib/types/trends';
 import { Layer2 } from './Layer2';
 import { Layer3 } from './Layer3';
 import { Layer4 } from './Layer4';
 import { Layer5 } from './Layer5';
-
-interface EnhancedData {
-  dataCoverage: number;
-  evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
-  evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
-  howWeCouldBeWrong: string[];
-  aiResult?: {
-    provider: string;
-    model: string;
-    status: string;
-    reasoning: string;
-    confidence: number;
-    latencyMs: number;
-  };
-  consensusNote?: string;
-  debate?: DebateResult;
-  legalAnalysis?: LegalAnalysisResult;
-  trendAnomalies?: TrendAnomaly[];
-}
-
-interface AutoStatus {
-  level: string;
-  reason: string;
-  auto: boolean;
-  matches?: string[];
-  assessedAt?: string;
-  detail?: {
-    captureCount: number;
-    driftCount: number;
-    warningCount: number;
-    itemsReviewed: number;
-    hasAuthoritative: boolean;
-  };
-}
 
 interface ProgressiveDisclosureProps {
   categoryKey: string;

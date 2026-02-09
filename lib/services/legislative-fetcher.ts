@@ -1,5 +1,6 @@
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import type { LegislativeItem, LegislativeItemType } from '@/lib/types/legislative';
+import { sleep } from '@/lib/utils/async';
 
 /** Search terms for executive power oversight in congressional records. */
 export const OVERSIGHT_SEARCH_TERMS = [
@@ -18,10 +19,6 @@ export const OVERSIGHT_SEARCH_TERMS = [
 ];
 
 const DEFAULT_RATE_LIMIT_MS = 300;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 interface GovInfoPackage {
   packageId?: string;

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   classifyLegislativeRelevance,
   fetchCongressionalRecord,
@@ -62,8 +62,14 @@ describe('OVERSIGHT_SEARCH_TERMS', () => {
 });
 
 describe('fetchCongressionalRecord', () => {
+  const originalFetch = globalThis.fetch;
+
   beforeEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
   });
 
   it('returns empty array when GOVINFO_API_KEY is not set', async () => {
@@ -75,5 +81,130 @@ describe('fetchCongressionalRecord', () => {
     });
 
     expect(items).toEqual([]);
+  });
+
+  it('fetches and filters packages by oversight search terms', async () => {
+    vi.stubEnv('GOVINFO_API_KEY', 'test-api-key');
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/collections/CREC/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              packages: [
+                {
+                  packageId: 'CREC-2025-01-15',
+                  title: 'Oversight hearing on inspector general independence',
+                  dateIssued: '2025-01-15',
+                },
+                {
+                  packageId: 'CREC-2025-01-16',
+                  title: 'Discussion of weather patterns in the midwest',
+                  dateIssued: '2025-01-16',
+                },
+                {
+                  packageId: 'CREC-2025-02-01',
+                  title: 'Executive order review session',
+                  dateIssued: '2025-02-01',
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes('/packages/CREC-2025-01-15/summary')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              title: 'Oversight hearing on inspector general independence',
+              download: { pdfLink: 'https://www.govinfo.gov/content/pkg/CREC-2025-01-15.pdf' },
+              committees: [{ committeeName: 'Oversight Committee', chamber: 'house' }],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    const items = await fetchCongressionalRecord({
+      dateFrom: '2025-01-01',
+      dateTo: '2025-01-31',
+      delayMs: 0,
+    });
+
+    // Should include the IG hearing (matches "inspector general")
+    expect(items.length).toBe(1);
+    expect(items[0].id).toBe('CREC-2025-01-15');
+    expect(items[0].title).toContain('inspector general');
+    // Weather item filtered out (no matching term)
+    // Feb item filtered out (outside date range)
+  });
+
+  it('returns empty array when GovInfo returns 500', async () => {
+    vi.stubEnv('GOVINFO_API_KEY', 'test-api-key');
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+
+    const items = await fetchCongressionalRecord({
+      dateFrom: '2025-01-01',
+      dateTo: '2025-01-31',
+    });
+
+    expect(items).toEqual([]);
+  });
+
+  it('returns items with correct fields', async () => {
+    vi.stubEnv('GOVINFO_API_KEY', 'test-api-key');
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes('/collections/CREC/')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              packages: [
+                {
+                  packageId: 'CREC-2025-01-20',
+                  title: 'Subpoena enforcement regarding executive privilege claims',
+                  dateIssued: '2025-01-20',
+                },
+              ],
+            }),
+        });
+      }
+      if (url.includes('/packages/CREC-2025-01-20/summary')) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              title: 'Subpoena enforcement details',
+              download: { pdfLink: 'https://www.govinfo.gov/content/pkg/CREC-2025-01-20.pdf' },
+              committees: [{ committeeName: 'Judiciary Committee', chamber: 'house' }],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+
+    const items = await fetchCongressionalRecord({
+      dateFrom: '2025-01-01',
+      dateTo: '2025-01-31',
+      delayMs: 0,
+    });
+
+    expect(items.length).toBe(1);
+    const item = items[0];
+    expect(item.id).toBe('CREC-2025-01-20');
+    expect(item.title).toContain('Subpoena');
+    expect(item.date).toBe('2025-01-20');
+    expect(item.url).toBe('https://www.govinfo.gov/content/pkg/CREC-2025-01-20.pdf');
+    expect(item.chamber).toBeDefined();
+    expect(item.committee).toBe('Judiciary Committee');
+    expect(item.relevantCategories).toBeInstanceOf(Array);
+    // Summary different from title, so should be set
+    expect(item.summary).toBe('Subpoena enforcement details');
   });
 });

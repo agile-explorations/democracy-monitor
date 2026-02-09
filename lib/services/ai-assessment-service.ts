@@ -6,7 +6,6 @@ import { getAvailableProviders } from '@/lib/ai/provider';
 import { parseSkepticReviewResponse } from '@/lib/ai/schemas/assessment-response';
 import type { SkepticReviewResponse } from '@/lib/ai/schemas/assessment-response';
 import { cacheGet, cacheSet } from '@/lib/cache';
-import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
   StatusLevel,
@@ -15,12 +14,12 @@ import type {
   AIProvider,
   EnhancedAssessment,
   EvidenceItem,
-  KeywordMatchContext,
 } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
 import { calculateDataCoverage } from './confidence-scoring';
 import { retrieveRelevantDocuments } from './document-retriever';
 import { categorizeEvidence } from './evidence-balance';
+import { buildKeywordMatchContexts, generateKeywordCounterEvidence } from './keyword-match-context';
 import { flagForReview } from './review-queue';
 import { resolveDowngrade, clampToCeiling } from './status-ordering';
 import type { DowngradeDecision } from './status-ordering';
@@ -40,73 +39,43 @@ interface SkepticReviewResult {
   additionalEvidenceAgainst: EvidenceItem[];
 }
 
-export async function enhancedAssessment(
-  items: ContentItem[],
-  category: string,
-  options?: { providers?: string[]; skipCache?: boolean },
-): Promise<EnhancedAssessment> {
-  // Step 1: Always run keyword engine first (zero-cost baseline)
-  const keywordResult = analyzeContent(items, category);
-
-  // Step 2: Calculate evidence balance
-  const { evidenceFor, evidenceAgainst } = categorizeEvidence(items, keywordResult.status);
-
-  const cacheKey = `ai-skeptic:${category}:${keywordResult.status}:${items.length}`;
-
-  // Check cache first
-  if (!options?.skipCache) {
-    const cached = await cacheGet<EnhancedAssessment>(cacheKey);
-    if (cached) return cached;
-  }
-
-  // Step 3: Try AI skeptic review if providers are available
-  const availableProviders = getAvailableProviders();
-  const requestedProviders = options?.providers || ['anthropic', 'openai'];
-  const providerToUse = availableProviders.find((p) => requestedProviders.includes(p.name));
-
-  const categoryDef = CATEGORIES.find((c) => c.key === category);
-  const categoryTitle = categoryDef?.title || category;
-
-  let skepticResult: SkepticReviewResult | null = null;
-
-  if (providerToUse) {
-    const enrichedItems = await enrichWithRAG(items, categoryTitle, keywordResult.reason, category);
-    skepticResult = await runSkepticReview(
-      providerToUse,
-      category,
-      categoryTitle,
-      enrichedItems,
-      keywordResult,
-      items,
-    );
-  }
-
-  // Merge skeptic evidence with keyword evidence
-  if (skepticResult) {
-    for (const e of skepticResult.additionalEvidenceFor) {
-      if (!evidenceFor.some((ef) => ef.text === e.text)) {
-        evidenceFor.push(e);
-      }
-    }
-    for (const e of skepticResult.additionalEvidenceAgainst) {
-      if (!evidenceAgainst.some((ea) => ea.text === e.text)) {
-        evidenceAgainst.push(e);
-      }
+function mergeSkepticEvidence(
+  evidenceFor: EvidenceItem[],
+  evidenceAgainst: EvidenceItem[],
+  skepticResult: SkepticReviewResult,
+): void {
+  for (const e of skepticResult.additionalEvidenceFor) {
+    if (!evidenceFor.some((ef) => ef.text === e.text)) {
+      evidenceFor.push(e);
     }
   }
+  for (const e of skepticResult.additionalEvidenceAgainst) {
+    if (!evidenceAgainst.some((ea) => ea.text === e.text)) {
+      evidenceAgainst.push(e);
+    }
+  }
+}
+
+function buildEnhancedResult(params: {
+  category: string;
+  items: ContentItem[];
+  keywordResult: AssessmentResult;
+  skepticResult: SkepticReviewResult | null;
+  evidenceFor: EvidenceItem[];
+  evidenceAgainst: EvidenceItem[];
+}): EnhancedAssessment {
+  const { category, items, keywordResult, skepticResult, evidenceFor, evidenceAgainst } = params;
 
   const howWeCouldBeWrong =
     skepticResult?.howWeCouldBeWrong ??
     generateKeywordCounterEvidence(keywordResult.status, category);
 
-  // Step 4: Calculate data coverage
   const { confidence: dataCoverage, factors } = calculateDataCoverage(
     items,
     keywordResult,
     skepticResult?.aiResult.status,
   );
 
-  // Step 5: Generate consensus note + final status
   const consensusNote = skepticResult
     ? buildConsensusNote(skepticResult, keywordResult.status)
     : undefined;
@@ -116,7 +85,7 @@ export async function enhancedAssessment(
       ? skepticResult.recommendedStatus
       : keywordResult.status;
 
-  const result: EnhancedAssessment = {
+  return {
     category,
     status: finalStatus,
     reason: skepticResult?.aiResult.reasoning || keywordResult.reason,
@@ -136,16 +105,68 @@ export async function enhancedAssessment(
     keywordReview: skepticResult?.keywordReview,
     whatWouldChangeMind: skepticResult?.whatWouldChangeMind,
   };
+}
 
-  // Flag for human review if needed
+export async function enhancedAssessment(
+  items: ContentItem[],
+  category: string,
+  options?: { providers?: string[]; skipCache?: boolean },
+): Promise<EnhancedAssessment> {
+  const keywordResult = analyzeContent(items, category);
+  const { evidenceFor, evidenceAgainst } = categorizeEvidence(items, keywordResult.status);
+  const cacheKey = `ai-skeptic:${category}:${keywordResult.status}:${items.length}`;
+
+  if (!options?.skipCache) {
+    const cached = await cacheGet<EnhancedAssessment>(cacheKey);
+    if (cached) return cached;
+  }
+
+  const skepticResult = await trySkepticReview(items, category, keywordResult, options);
+
+  if (skepticResult) {
+    mergeSkepticEvidence(evidenceFor, evidenceAgainst, skepticResult);
+  }
+
+  const result = buildEnhancedResult({
+    category,
+    items,
+    keywordResult,
+    skepticResult,
+    evidenceFor,
+    evidenceAgainst,
+  });
+
   if (result.flaggedForReview) {
     flagForReview(result).catch((err) => console.error('Failed to flag for review:', err));
   }
 
-  // Cache the result
   await cacheSet(cacheKey, result, AI_CACHE_TTL_S);
-
   return result;
+}
+
+async function trySkepticReview(
+  items: ContentItem[],
+  category: string,
+  keywordResult: AssessmentResult,
+  options?: { providers?: string[] },
+): Promise<SkepticReviewResult | null> {
+  const availableProviders = getAvailableProviders();
+  const requestedProviders = options?.providers || ['anthropic', 'openai'];
+  const providerToUse = availableProviders.find((p) => requestedProviders.includes(p.name));
+  if (!providerToUse) return null;
+
+  const categoryDef = CATEGORIES.find((c) => c.key === category);
+  const categoryTitle = categoryDef?.title || category;
+  const enrichedItems = await enrichWithRAG(items, categoryTitle, keywordResult.reason, category);
+
+  return runSkepticReview(
+    providerToUse,
+    category,
+    categoryTitle,
+    enrichedItems,
+    keywordResult,
+    items,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -269,80 +290,4 @@ function buildConsensusNote(
     return `AI (${provider}) disagrees with ${keywordStatus} (recommends ${skepticResult.recommendedStatus}), flagged for human review`;
   }
   return `AI (${provider}) agrees with keyword assessment: ${keywordStatus}`;
-}
-
-/** Strip annotations like "(authoritative source)" or "(systematic pattern)" from a keyword match. */
-function stripAnnotation(match: string): string {
-  return match
-    .replace(/\s*\(.*\)\s*$/, '')
-    .trim()
-    .toLowerCase();
-}
-
-function buildKeywordMatchContexts(
-  matches: string[],
-  category: string,
-  items: ContentItem[],
-): KeywordMatchContext[] {
-  return matches.map((match) => ({
-    keyword: match,
-    tier: classifyMatchTier(match, category),
-    matchedIn: findMatchSource(match, items),
-  }));
-}
-
-function classifyMatchTier(match: string, category: string): 'capture' | 'drift' | 'warning' {
-  const rules = ASSESSMENT_RULES[category];
-  if (!rules?.keywords) return 'warning';
-
-  const cleanMatch = stripAnnotation(match);
-
-  if (rules.keywords.capture.some((k) => cleanMatch === k.toLowerCase())) return 'capture';
-  if (rules.keywords.drift.some((k) => cleanMatch === k.toLowerCase())) return 'drift';
-  if (rules.keywords.warning.some((k) => cleanMatch === k.toLowerCase())) return 'warning';
-
-  // Matches with annotations (e.g. "keyword (systematic pattern)") are elevated
-  if (match.includes('(systematic pattern)')) return 'capture';
-  if (match.includes('(authoritative source)')) return 'capture';
-
-  return 'warning';
-}
-
-function findMatchSource(match: string, items: ContentItem[]): string {
-  const cleanMatch = stripAnnotation(match);
-
-  for (const item of items) {
-    const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
-    if (text.includes(cleanMatch)) {
-      return item.title || '(untitled)';
-    }
-  }
-
-  return '(source not identified)';
-}
-
-function generateKeywordCounterEvidence(status: StatusLevel, _category: string): string[] {
-  switch (status) {
-    case 'Capture':
-      return [
-        'Keyword matching may trigger on document titles that discuss violations without indicating current violations',
-        'Court-related keywords may reflect ongoing litigation rather than actual defiance',
-        'High-authority source matches may be from historical or analytical reports rather than new findings',
-      ];
-    case 'Drift':
-      return [
-        'Multiple keyword matches may reflect increased reporting rather than increased violations',
-        'Regulatory activity patterns may be within normal variation for this time period',
-      ];
-    case 'Warning':
-      return [
-        'Warning-level keywords often appear in routine government documents',
-        'A single drift keyword match may be coincidental rather than indicative of a pattern',
-      ];
-    case 'Stable':
-      return [
-        'Absence of keyword matches does not guarantee absence of concerning activity',
-        'Some forms of power consolidation may not generate detectable keywords',
-      ];
-  }
 }

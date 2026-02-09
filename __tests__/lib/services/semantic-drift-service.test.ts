@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { getBaseline, BASELINE_CONFIGS } from '@/lib/services/baseline-service';
+import { getBaseline } from '@/lib/services/baseline-service';
 import { cosineSimilarity } from '@/lib/services/embedding-service';
 import { computeWeekCentroid, computeSemanticDrift } from '@/lib/services/semantic-drift-service';
 

@@ -11,19 +11,21 @@
 
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
-import {
-  BASELINE_CONFIGS,
-  computeBaseline,
-  getBaselineConfig,
-  storeBaseline,
-} from '@/lib/services/baseline-service';
+import { computeBaseline, getBaselineConfig, storeBaseline } from '@/lib/services/baseline-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import { fetchFederalRegisterHistorical, parseSignalParams } from '@/lib/services/feed-fetcher';
+import {
+  fetchFederalRegisterHistorical,
+  parseSignalParams,
+} from '@/lib/services/federal-register-fetcher';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
+import { sleep } from '@/lib/utils/async';
+import { deduplicateByUrl } from '@/lib/utils/collections';
+import { getWeekRanges } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -32,27 +34,6 @@ interface BackfillBaselineOptions {
   category?: string;
   dryRun?: boolean;
   skipFetch?: boolean;
-}
-
-function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
-  const ranges: Array<{ start: string; end: string }> = [];
-  const current = new Date(from);
-  const endDate = new Date(to);
-
-  while (current <= endDate) {
-    const weekEnd = new Date(current);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    const actualEnd = weekEnd > endDate ? endDate : weekEnd;
-
-    ranges.push({
-      start: current.toISOString().split('T')[0],
-      end: actualEnd.toISOString().split('T')[0],
-    });
-
-    current.setDate(current.getDate() + 7);
-  }
-
-  return ranges;
 }
 
 async function backfillBaselineCategory(
@@ -97,13 +78,7 @@ async function backfillBaselineCategory(
 
     if (dryRun) continue;
 
-    // Deduplicate by URL
-    const seen = new Set<string>();
-    const dedupedItems = weekItems.filter((item) => {
-      if (!item.link || seen.has(item.link)) return false;
-      seen.add(item.link);
-      return true;
-    });
+    const dedupedItems = deduplicateByUrl(weekItems);
 
     if (dedupedItems.length > 0) {
       await storeDocuments(dedupedItems, categoryKey);
@@ -196,10 +171,6 @@ async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<vo
   }
 
   console.log('\n[baseline] Done.');
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 if (require.main === module) {

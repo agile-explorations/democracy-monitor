@@ -4,7 +4,10 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { analyzeContent } from '@/lib/services/assessment-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import { fetchFederalRegisterHistorical, parseSignalParams } from '@/lib/services/feed-fetcher';
+import {
+  fetchFederalRegisterHistorical,
+  parseSignalParams,
+} from '@/lib/services/federal-register-fetcher';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import {
   fetchWhiteHouseHistorical,
@@ -14,6 +17,9 @@ import {
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem, EnhancedAssessment } from '@/lib/types';
+import { sleep } from '@/lib/utils/async';
+import { deduplicateByUrl } from '@/lib/utils/collections';
+import { getWeekRanges } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -25,27 +31,6 @@ interface BackfillOptions {
   category?: string;
   dryRun?: boolean;
   includeRhetoric?: boolean;
-}
-
-function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
-  const ranges: Array<{ start: string; end: string }> = [];
-  const current = new Date(from);
-  const endDate = new Date(to);
-
-  while (current <= endDate) {
-    const weekEnd = new Date(current);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    const actualEnd = weekEnd > endDate ? endDate : weekEnd;
-
-    ranges.push({
-      start: current.toISOString().split('T')[0],
-      end: actualEnd.toISOString().split('T')[0],
-    });
-
-    current.setDate(current.getDate() + 7);
-  }
-
-  return ranges;
 }
 
 async function backfillCategory(
@@ -91,14 +76,7 @@ async function backfillCategory(
 
     if (dryRun) continue;
 
-    // Deduplicate by URL
-    const seen = new Set<string>();
-    const dedupedItems = weekItems.filter((item) => {
-      if (!item.link || seen.has(item.link)) return false;
-      seen.add(item.link);
-      return true;
-    });
-
+    const dedupedItems = deduplicateByUrl(weekItems);
     if (dedupedItems.length === 0) continue;
 
     // Store documents
@@ -269,10 +247,6 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   console.log(`  API calls: ${dryRun ? `~${totalApiCalls} (estimated)` : totalApiCalls}`);
   console.log(`  Documents stored: ${totalDocs}`);
   console.log(`  Snapshots saved: ${totalSnapshots}`);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 if (require.main === module) {

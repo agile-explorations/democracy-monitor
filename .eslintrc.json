@@ -3,6 +3,9 @@
   "rules": {
     "@next/next/no-html-link-for-pages": "off",
 
+    "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": ["warn", { "max": 75, "skipBlankLines": true, "skipComments": true }],
+
     "react/function-component-definition": [
       "warn",
       { "namedComponents": "function-declaration", "unnamedComponents": "arrow-function" }
@@ -36,5 +39,27 @@
         ]
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "lib/data/**",
+        "lib/db/schema.ts",
+        "__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.fixture.*"
+      ],
+      "rules": {
+        "max-lines": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
+      "files": ["components/**", "lib/hooks/**", "lib/cron/**"],
+      "rules": {
+        "max-lines-per-function": "off"
+      }
+    }
+  ]
 }

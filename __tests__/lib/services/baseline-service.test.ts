@@ -1,13 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { isDbAvailable, getDb } from '@/lib/db';
-import {
-  BASELINE_CONFIGS,
-  getBaselineConfig,
-  computeBaseline,
-  getBaseline,
-  mean,
-  stddev,
-} from '@/lib/services/baseline-service';
+import { getBaselineConfig, computeBaseline, getBaseline } from '@/lib/services/baseline-service';
+import { mean, stddev } from '@/lib/utils/math';
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),

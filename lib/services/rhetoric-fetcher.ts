@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 import type { ContentItem } from '@/lib/types';
+import { sleep } from '@/lib/utils/async';
 
 /**
  * Fetch White House briefing-room archive pages for a date range.
@@ -170,8 +171,4 @@ function formatGdeltDate(gdeltDate: string): string {
     return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}-${cleaned.slice(6, 8)}`;
   }
   return gdeltDate;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1187,13 +1187,13 @@ Add `pages/api/export/` routes:
 20. **6.1** Rhetoric → action lag analysis **[DONE]**
 21. **7.1** P2025 proposal extraction (human workstream starts earlier) **[DONE]**
 22. **7.2** P2025 retrieval + LLM judge pipeline **[DONE]**
-23. Dual reading-level AI-generated summaries
-24. Legislative tracking (GovInfo Congressional Record API)
-25. External validation index integration (V-Dem, Freedom House, Bright Line Watch)
+23. Dual reading-level AI-generated summaries **[DONE]**
+24. Legislative tracking (GovInfo Congressional Record API) **[DONE]**
+25. External validation index integration (V-Dem, Freedom House, Bright Line Watch) **[DONE]**
 
 ---
 
-## Additional Keyword Recommendations
+## Additional Keyword Recommendations **[DONE]**
 
 Add to `assessment-rules.ts` (from review):
 

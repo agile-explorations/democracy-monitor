@@ -1,11 +1,20 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { SEED_VALIDATION_DATA } from '@/lib/data/validation/seed-data';
 import { DIMENSION_TO_CATEGORY, SOURCE_METADATA } from '@/lib/data/validation-dimensions';
+import * as dbModule from '@/lib/db';
 import {
   ALIGNMENT_THRESHOLD,
   STATUS_SCORE,
   computeAlignment,
+  storeValidationDataPoints,
+  getValidationSummary,
+  getValidationTimeSeries,
 } from '@/lib/services/validation-index-service';
+
+vi.mock('@/lib/db', () => ({
+  isDbAvailable: vi.fn(),
+  getDb: vi.fn(),
+}));
 
 describe('DIMENSION_TO_CATEGORY', () => {
   it('maps all dimensions used in seed data', () => {
@@ -93,5 +102,55 @@ describe('STATUS_SCORE', () => {
     expect(STATUS_SCORE['Capture']).toBeLessThan(STATUS_SCORE['Drift']);
     expect(STATUS_SCORE['Drift']).toBeLessThan(STATUS_SCORE['Warning']);
     expect(STATUS_SCORE['Warning']).toBeLessThan(STATUS_SCORE['Stable']);
+  });
+});
+
+describe('storeValidationDataPoints', () => {
+  beforeEach(() => {
+    vi.mocked(dbModule.isDbAvailable).mockReset();
+  });
+
+  it('does not call getDb when DB is unavailable', async () => {
+    vi.mocked(dbModule.isDbAvailable).mockReturnValue(false);
+    await storeValidationDataPoints([
+      { source: 'v-dem', date: '2024-01-01', dimension: 'judicial_independence', score: 0.8 },
+    ]);
+    expect(dbModule.getDb).not.toHaveBeenCalled();
+  });
+
+  it('does not call getDb for empty array', async () => {
+    vi.mocked(dbModule.isDbAvailable).mockReturnValue(true);
+    await storeValidationDataPoints([]);
+    expect(dbModule.getDb).not.toHaveBeenCalled();
+  });
+});
+
+describe('getValidationSummary', () => {
+  beforeEach(() => {
+    vi.mocked(dbModule.isDbAvailable).mockReset();
+  });
+
+  it('returns empty summary when DB is unavailable', async () => {
+    vi.mocked(dbModule.isDbAvailable).mockReturnValue(false);
+
+    const summary = await getValidationSummary();
+
+    expect(summary.sources).toEqual([]);
+    expect(summary.comparisons).toEqual([]);
+    expect(summary.overallAlignment).toBe(0);
+  });
+});
+
+describe('getValidationTimeSeries', () => {
+  beforeEach(() => {
+    vi.mocked(dbModule.isDbAvailable).mockReset();
+  });
+
+  it('returns empty array when DB is unavailable', async () => {
+    vi.mocked(dbModule.isDbAvailable).mockReturnValue(false);
+
+    const series = await getValidationTimeSeries('v-dem', 'judicial_independence');
+
+    expect(series).toEqual([]);
   });
 });

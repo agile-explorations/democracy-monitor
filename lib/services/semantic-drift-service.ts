@@ -1,11 +1,12 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import {
   SEMANTIC_DRIFT_ANOMALY_THRESHOLD,
   SEMANTIC_DRIFT_ELEVATED_THRESHOLD,
 } from '@/lib/methodology/scoring-config';
-import { getBaseline, BASELINE_CONFIGS } from '@/lib/services/baseline-service';
+import { getBaseline } from '@/lib/services/baseline-service';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
 
 export interface SemanticDriftResult {

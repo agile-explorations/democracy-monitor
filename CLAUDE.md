@@ -107,6 +107,7 @@ After completing and committing each sprint's implementation, **MUST** perform a
 5. **Testability** — pure functions extractable from I/O; business logic not buried inside API routes or components
 6. **OpenGrep rule candidates** — for any issue that represents a recurring anti-pattern, evaluate whether a new `.opengrep/security.yml` rule could prevent it. Write and test the rule before fixing the code.
 7. **Test Quality** - All automated tests must test functionality, not implementation.
+8. **File and function length** — ESLint `max-lines` and `max-lines-per-function` rules are enforced (see `.eslintrc.json`). Data/fixture files and tests are exempt via overrides.
 
 ### Where shared code lives
 

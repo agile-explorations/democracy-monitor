@@ -1,15 +1,5 @@
 import type { FeedItem } from '@/lib/parsers/feed-parser';
-
-interface EvidenceItem {
-  text: string;
-  direction: 'concerning' | 'reassuring';
-  source?: string;
-}
-
-interface EnhancedData {
-  evidenceFor?: EvidenceItem[];
-  evidenceAgainst?: EvidenceItem[];
-}
+import type { EnhancedData } from '@/lib/types/category-card';
 
 interface Layer3Props {
   items: FeedItem[];

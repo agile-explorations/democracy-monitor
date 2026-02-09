@@ -1,13 +1,7 @@
 import { CrossReference } from '@/components/dashboard/CrossReference';
 import { ConfidenceBar } from '@/components/ui/ConfidenceBar';
+import type { EnhancedData } from '@/lib/types/category-card';
 import type { CrossReference as CrossReferenceType } from '@/lib/types/intent';
-
-interface EnhancedData {
-  dataCoverage: number;
-  evidenceFor: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
-  evidenceAgainst: Array<{ text: string; direction: 'concerning' | 'reassuring'; source?: string }>;
-  howWeCouldBeWrong: string[];
-}
 
 interface Layer2Props {
   enhancedData: EnhancedData | null;

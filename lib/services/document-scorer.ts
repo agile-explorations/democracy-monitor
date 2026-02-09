@@ -13,60 +13,13 @@ import {
 } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type {
-  DocumentClass,
   DocumentScore,
   KeywordMatch,
   SeverityTier,
   SuppressedMatch,
 } from '@/lib/types/scoring';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-
-// --- Document classification ---
-
-/** Federal Register document type → DocumentClass mapping. */
-const FR_TYPE_MAP: Record<string, DocumentClass> = {
-  'Presidential Document': 'executive_order',
-  Rule: 'final_rule',
-  'Proposed Rule': 'proposed_rule',
-  Notice: 'notice',
-};
-
-/** Source-based classification heuristics (matched against agency or URL). */
-const SOURCE_CLASS_PATTERNS: Array<{ pattern: string; cls: DocumentClass }> = [
-  { pattern: 'supreme court', cls: 'court_opinion' },
-  { pattern: 'scotus', cls: 'court_opinion' },
-  { pattern: 'gao', cls: 'report' },
-  { pattern: 'government accountability', cls: 'report' },
-  { pattern: 'inspector general', cls: 'report' },
-  { pattern: 'cbo', cls: 'report' },
-  { pattern: 'congressional research', cls: 'report' },
-  { pattern: 'department of defense', cls: 'press_release' },
-  { pattern: 'dod', cls: 'press_release' },
-  { pattern: 'white house', cls: 'press_release' },
-];
-
-export function classifyDocument(item: ContentItem): DocumentClass {
-  // Use FR API type field when available
-  if (item.type && FR_TYPE_MAP[item.type]) {
-    return FR_TYPE_MAP[item.type];
-  }
-
-  // Check for executive orders / presidential memoranda in title
-  const title = (item.title || '').toLowerCase();
-  if (title.includes('executive order')) return 'executive_order';
-  if (title.includes('presidential memorandum')) return 'presidential_memorandum';
-
-  // Source-based inference from agency field
-  const agency = (item.agency || '').toLowerCase();
-  const link = (item.link || '').toLowerCase();
-  for (const { pattern, cls } of SOURCE_CLASS_PATTERNS) {
-    if (agency.includes(pattern) || link.includes(pattern)) {
-      return cls;
-    }
-  }
-
-  return 'unknown';
-}
+import { classifyDocument } from './document-classifier';
 
 // --- Context extraction ---
 
@@ -163,6 +116,53 @@ function getWeekOf(dateStr?: string): string {
 
 // --- Core scoring ---
 
+function matchKeywordsWithSuppression(
+  contentText: string,
+  category: string,
+  rules: (typeof ASSESSMENT_RULES)[string],
+): { keywordMatches: KeywordMatch[]; suppressedMatches: SuppressedMatch[] } {
+  const keywordMatches: KeywordMatch[] = [];
+  const suppressedMatches: SuppressedMatch[] = [];
+
+  if (!rules?.keywords) return { keywordMatches, suppressedMatches };
+
+  const tiers: SeverityTier[] = ['capture', 'drift', 'warning'];
+
+  for (const tier of tiers) {
+    const keywords = rules.keywords[tier] || [];
+    for (const keyword of keywords) {
+      if (!matchKeyword(contentText, keyword)) continue;
+
+      const negation = checkNegation(contentText, keyword);
+      if (negation) {
+        suppressedMatches.push({
+          keyword,
+          tier,
+          rule: `negation: ${negation}`,
+          reason: `Negation pattern "${negation}" found near keyword`,
+        });
+        continue;
+      }
+
+      const suppResult = checkSuppression(contentText, keyword, category);
+      if (suppResult.suppressed) {
+        suppressedMatches.push({ keyword, tier, rule: suppResult.rule, reason: suppResult.reason });
+        continue;
+      }
+
+      const effectiveTier = suppResult.downweighted ? downweightTier(tier) : tier;
+      keywordMatches.push({
+        keyword,
+        tier: effectiveTier,
+        weight: TIER_WEIGHTS[effectiveTier],
+        context: extractContext(contentText, keyword),
+      });
+    }
+  }
+
+  return { keywordMatches, suppressedMatches };
+}
+
 export function scoreDocument(item: ContentItem, category: string): DocumentScore {
   const rules = ASSESSMENT_RULES[category];
   const contentText = `${item.title || ''} ${item.summary || ''}`;
@@ -170,70 +170,25 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
   const docClass = classifyDocument(item);
   const classMultiplier = CLASS_MULTIPLIERS[docClass];
 
-  const keywordMatches: KeywordMatch[] = [];
-  const suppressedMatches: SuppressedMatch[] = [];
-
-  if (rules?.keywords) {
-    const tiers: SeverityTier[] = ['capture', 'drift', 'warning'];
-
-    for (const tier of tiers) {
-      const keywords = rules.keywords[tier] || [];
-      for (const keyword of keywords) {
-        if (!matchKeyword(contentText, keyword)) continue;
-
-        // Check negation patterns first
-        const negation = checkNegation(contentText, keyword);
-        if (negation) {
-          suppressedMatches.push({
-            keyword,
-            tier,
-            rule: `negation: ${negation}`,
-            reason: `Negation pattern "${negation}" found near keyword`,
-          });
-          continue;
-        }
-
-        // Check category-specific suppression
-        const suppResult = checkSuppression(contentText, keyword, category);
-        if (suppResult.suppressed) {
-          suppressedMatches.push({
-            keyword,
-            tier,
-            rule: suppResult.rule,
-            reason: suppResult.reason,
-          });
-          continue;
-        }
-
-        // Apply downweight if applicable
-        const effectiveTier = suppResult.downweighted ? downweightTier(tier) : tier;
-
-        keywordMatches.push({
-          keyword,
-          tier: effectiveTier,
-          weight: TIER_WEIGHTS[effectiveTier],
-          context: extractContext(contentText, keyword),
-        });
-      }
-    }
-  }
+  const { keywordMatches, suppressedMatches } = matchKeywordsWithSuppression(
+    contentText,
+    category,
+    rules,
+  );
 
   const captureCount = keywordMatches.filter((m) => m.tier === 'capture').length;
   const driftCount = keywordMatches.filter((m) => m.tier === 'drift').length;
   const warningCount = keywordMatches.filter((m) => m.tier === 'warning').length;
-
   const severityScore = computeSeverityScore(captureCount, driftCount, warningCount);
-  const finalScore = severityScore * classMultiplier;
 
   const scoredAt = new Date().toISOString();
-  const weekOf = getWeekOf(item.pubDate || item.date || scoredAt);
 
   return {
     url: item.link || '',
     documentId: undefined,
     category,
     severityScore,
-    finalScore,
+    finalScore: severityScore * classMultiplier,
     captureCount,
     driftCount,
     warningCount,
@@ -244,7 +199,7 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
     matches: keywordMatches,
     suppressed: suppressedMatches,
     scoredAt,
-    weekOf,
+    weekOf: getWeekOf(item.pubDate || item.date || scoredAt),
     title: item.title || '(untitled)',
     publishedAt: item.pubDate || item.date,
   };

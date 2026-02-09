@@ -1,11 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { FALSE_POSITIVE_CASES } from '@/__tests__/fixtures/scoring/false-positives';
 import { TRUE_POSITIVE_CASES } from '@/__tests__/fixtures/scoring/true-positives';
-import {
-  classifyDocument,
-  scoreDocument,
-  scoreDocumentBatch,
-} from '@/lib/services/document-scorer';
+import { classifyDocument } from '@/lib/services/document-classifier';
+import { scoreDocument, scoreDocumentBatch } from '@/lib/services/document-scorer';
 
 describe('classifyDocument', () => {
   it('classifies Federal Register Presidential Documents as executive_order', () => {

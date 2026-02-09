@@ -3,45 +3,58 @@ import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
-export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
-  const rules = ASSESSMENT_RULES[category];
-  if (!rules) {
-    return { status: 'Warning', reason: 'No assessment rules configured', matches: [] };
-  }
+interface AssessmentDetail {
+  captureCount: number;
+  driftCount: number;
+  warningCount: number;
+  itemsReviewed: number;
+  hasAuthoritative: boolean;
+  insufficientData?: boolean;
+}
 
-  // Special case: Check if oversight.gov is down for igs category
-  if (category === 'igs') {
-    const oversightDown = items.some(
-      (item) =>
-        item.title?.includes('CURRENTLY DOWN') ||
-        item.title?.includes('offline') ||
-        item.note?.includes('lack of apportionment'),
-    );
-    if (oversightDown) {
-      return {
-        status: 'Drift',
-        reason: 'Oversight.gov (central IG portal) is offline due to funding issues',
-        matches: ['oversight.gov shutdown'],
-      };
-    }
-  }
+interface KeywordScanResult {
+  captureMatches: string[];
+  driftMatches: string[];
+  warningMatches: string[];
+  highAuthorityKeywords: string[];
+}
 
+function makeResult(
+  status: AssessmentResult['status'],
+  reason: string,
+  matches: string[],
+  detail: AssessmentDetail,
+): AssessmentResult {
+  return { status, reason, matches, detail };
+}
+
+function checkIgsOverride(items: ContentItem[]): AssessmentResult | null {
+  const oversightDown = items.some(
+    (item) =>
+      item.title?.includes('CURRENTLY DOWN') ||
+      item.title?.includes('offline') ||
+      item.note?.includes('lack of apportionment'),
+  );
+  if (!oversightDown) return null;
+  return {
+    status: 'Drift',
+    reason: 'Oversight.gov (central IG portal) is offline due to funding issues',
+    matches: ['oversight.gov shutdown'],
+  };
+}
+
+function scanKeywords(
+  items: ContentItem[],
+  rules: (typeof ASSESSMENT_RULES)[string],
+): KeywordScanResult {
   let captureMatches: string[] = [];
   let driftMatches: string[] = [];
   let warningMatches: string[] = [];
-
-  // Analyze each item with source weighting
   const highAuthorityKeywords: string[] = [];
 
-  items.forEach((item) => {
-    // Content text: only title + summary (actual document content)
-    // Excluded: note (our editorial descriptions), agency (source metadata)
+  for (const item of items) {
     const contentText = `${item.title || ''} ${item.summary || ''}`;
-
-    // Authority: determined by source agency field, not content keywords
     const isHighAuthority = isHighAuthoritySource(item.agency);
-
-    // Check for temporal/pattern indicators in content text only
     const hasPatternLanguage =
       matchKeyword(contentText, 'unprecedented') ||
       matchKeyword(contentText, 'systematic') ||
@@ -49,7 +62,6 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
       matchKeyword(contentText, 'multiple') ||
       matchKeyword(contentText, 'repeated');
 
-    // Check keywords against content text only (not note or agency metadata)
     if (rules.keywords) {
       for (const keyword of rules.keywords.capture || []) {
         if (matchKeyword(contentText, keyword)) {
@@ -73,159 +85,143 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
         }
       }
     }
-  });
+  }
 
-  // Deduplicate matches
   captureMatches = [...new Set(captureMatches)];
   driftMatches = [...new Set(driftMatches)];
   warningMatches = [...new Set(warningMatches)];
 
-  // Assess based on severity — require corroboration for Capture
-  const itemCount = items.filter((i) => !i.isError && !i.isWarning).length;
-  const hasHighAuthority = highAuthorityKeywords.length > 0;
+  return { captureMatches, driftMatches, warningMatches, highAuthorityKeywords };
+}
+
+function makeDetail(
+  captureCount: number,
+  driftCount: number,
+  warningCount: number,
+  itemsReviewed: number,
+  hasAuthoritative: boolean,
+) {
+  return { captureCount, driftCount, warningCount, itemsReviewed, hasAuthoritative };
+}
+
+function buildAssessmentResult(
+  scan: KeywordScanResult,
+  itemCount: number,
+  rules: (typeof ASSESSMENT_RULES)[string],
+): AssessmentResult {
+  const { captureMatches, driftMatches, warningMatches, highAuthorityKeywords } = scan;
+  const hasAuth = highAuthorityKeywords.length > 0;
+  const detail = makeDetail(
+    captureMatches.length,
+    driftMatches.length,
+    warningMatches.length,
+    itemCount,
+    hasAuth,
+  );
 
   if (captureMatches.length >= 2) {
-    // 2+ capture matches → Capture
-    return {
-      status: 'Capture',
-      reason: hasHighAuthority
-        ? `Serious violations found by official sources (GAO, courts, or IGs): ${captureMatches.slice(0, 3).join(', ')}`
-        : `Multiple critical warning signs detected: ${captureMatches.slice(0, 3).join(', ')}`,
-      matches: captureMatches,
-      detail: {
-        captureCount: captureMatches.length,
-        driftCount: driftMatches.length,
-        warningCount: warningMatches.length,
-        itemsReviewed: itemCount,
-        hasAuthoritative: hasHighAuthority,
-      },
-    };
+    const reason = hasAuth
+      ? `Serious violations found by official sources (GAO, courts, or IGs): ${captureMatches.slice(0, 3).join(', ')}`
+      : `Multiple critical warning signs detected: ${captureMatches.slice(0, 3).join(', ')}`;
+    return makeResult('Capture', reason, captureMatches, detail);
   }
 
   if (captureMatches.length === 1) {
-    // Single capture match → Drift (requires corroboration for Capture)
-    return {
-      status: 'Drift',
-      reason: `Critical warning sign detected but needs corroboration: ${captureMatches[0]}`,
-      matches: [...captureMatches, ...driftMatches],
-      detail: {
-        captureCount: captureMatches.length,
-        driftCount: driftMatches.length,
-        warningCount: warningMatches.length,
-        itemsReviewed: itemCount,
-        hasAuthoritative: hasHighAuthority,
-      },
-    };
+    return makeResult(
+      'Drift',
+      `Critical warning sign detected but needs corroboration: ${captureMatches[0]}`,
+      [...captureMatches, ...driftMatches],
+      detail,
+    );
   }
 
   if (driftMatches.length >= 2) {
-    return {
-      status: 'Drift',
-      reason: `Multiple concerning patterns found: ${driftMatches.slice(0, 3).join(', ')}`,
-      matches: driftMatches,
-      detail: {
-        captureCount: 0,
-        driftCount: driftMatches.length,
-        warningCount: warningMatches.length,
-        itemsReviewed: itemCount,
-        hasAuthoritative: false,
-      },
-    };
+    return makeResult(
+      'Drift',
+      `Multiple concerning patterns found: ${driftMatches.slice(0, 3).join(', ')}`,
+      driftMatches,
+      { ...detail, captureCount: 0, hasAuthoritative: false },
+    );
   }
 
   if (driftMatches.length === 1) {
-    return {
-      status: 'Warning',
-      reason: `One concerning pattern detected: ${driftMatches[0]}`,
-      matches: driftMatches,
-      detail: {
-        captureCount: 0,
-        driftCount: 1,
-        warningCount: warningMatches.length,
-        itemsReviewed: itemCount,
-        hasAuthoritative: false,
-      },
-    };
+    return makeResult(
+      'Warning',
+      `One concerning pattern detected: ${driftMatches[0]}`,
+      driftMatches,
+      { ...detail, captureCount: 0, driftCount: 1, hasAuthoritative: false },
+    );
   }
 
   if (warningMatches.length > 0) {
-    return {
-      status: 'Warning',
-      reason: `Minor issues found: ${warningMatches.slice(0, 3).join(', ')}`,
-      matches: warningMatches,
-      detail: {
-        captureCount: 0,
-        driftCount: 0,
-        warningCount: warningMatches.length,
-        itemsReviewed: itemCount,
-        hasAuthoritative: false,
-      },
-    };
+    return makeResult(
+      'Warning',
+      `Minor issues found: ${warningMatches.slice(0, 3).join(', ')}`,
+      warningMatches,
+      { ...detail, captureCount: 0, driftCount: 0, hasAuthoritative: false },
+    );
   }
 
-  // Volume-based assessment
+  return assessByVolume(itemCount, rules);
+}
+
+function assessByVolume(
+  itemCount: number,
+  rules: (typeof ASSESSMENT_RULES)[string],
+): AssessmentResult {
+  const base = {
+    captureCount: 0,
+    driftCount: 0,
+    warningCount: 0,
+    itemsReviewed: itemCount,
+    hasAuthoritative: false,
+  };
+
   if (rules.volumeThreshold) {
     if (itemCount >= rules.volumeThreshold.capture) {
-      return {
-        status: 'Drift',
-        reason: `Very high activity level (${itemCount} documents) - may show increased government control`,
-        matches: [],
-        detail: {
-          captureCount: 0,
-          driftCount: 0,
-          warningCount: 0,
-          itemsReviewed: itemCount,
-          hasAuthoritative: false,
-        },
-      };
+      return makeResult(
+        'Drift',
+        `Very high activity level (${itemCount} documents) - may show increased government control`,
+        [],
+        base,
+      );
     }
     if (itemCount >= rules.volumeThreshold.drift) {
-      return {
-        status: 'Warning',
-        reason: `Higher than normal activity (${itemCount} documents)`,
-        matches: [],
-        detail: {
-          captureCount: 0,
-          driftCount: 0,
-          warningCount: 0,
-          itemsReviewed: itemCount,
-          hasAuthoritative: false,
-        },
-      };
+      return makeResult(
+        'Warning',
+        `Higher than normal activity (${itemCount} documents)`,
+        [],
+        base,
+      );
     }
   }
 
-  // If we have successful data and no red flags, it's Stable
   if (itemCount >= 3) {
-    return {
-      status: 'Stable',
-      reason: 'Everything looks normal - no warning signs detected',
-      matches: [],
-      detail: {
-        captureCount: 0,
-        driftCount: 0,
-        warningCount: 0,
-        itemsReviewed: itemCount,
-        hasAuthoritative: false,
-      },
-    };
+    return makeResult('Stable', 'Everything looks normal - no warning signs detected', [], base);
   }
 
-  // Insufficient data — not enough items for a reliable assessment
-  return {
-    status: 'Warning',
-    reason:
-      itemCount === 0
-        ? 'Not enough information to make an assessment'
-        : `Only ${itemCount} source${itemCount === 1 ? '' : 's'} available — insufficient for a reliable assessment`,
-    matches: [],
-    detail: {
-      captureCount: 0,
-      driftCount: 0,
-      warningCount: 0,
-      itemsReviewed: itemCount,
-      hasAuthoritative: false,
-      insufficientData: true,
-    },
-  };
+  return makeResult(
+    'Warning',
+    itemCount === 0
+      ? 'Not enough information to make an assessment'
+      : `Only ${itemCount} source${itemCount === 1 ? '' : 's'} available — insufficient for a reliable assessment`,
+    [],
+    { ...base, insufficientData: true },
+  );
+}
+
+export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
+  const rules = ASSESSMENT_RULES[category];
+  if (!rules) {
+    return { status: 'Warning', reason: 'No assessment rules configured', matches: [] };
+  }
+
+  if (category === 'igs') {
+    const override = checkIgsOverride(items);
+    if (override) return override;
+  }
+
+  const scan = scanKeywords(items, rules);
+  const itemCount = items.filter((i) => !i.isError && !i.isWarning).length;
+  return buildAssessmentResult(scan, itemCount, rules);
 }

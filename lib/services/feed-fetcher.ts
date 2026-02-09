@@ -3,7 +3,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { stripHtml } from '@/lib/parsers/feed-parser';
-import type { Category, ContentItem, Signal } from '@/lib/types';
+import type { Category, Signal } from '@/lib/types';
 
 const CACHE_TTL_S = 600; // 10 minutes
 const MAX_SUMMARY_LENGTH = 800;
@@ -221,97 +221,6 @@ async function fetchHtml(signal: Signal): Promise<FeedItem[]> {
 
   await cacheSet(cacheKey, items, CACHE_TTL_S);
   return items;
-}
-
-/**
- * Fetch Federal Register documents for a date range with pagination.
- * Used by the backfill script — calls FR API directly (no caching).
- */
-export async function fetchFederalRegisterHistorical(options: {
-  agency?: string;
-  type?: string;
-  term?: string;
-  dateFrom: string; // YYYY-MM-DD
-  dateTo: string; // YYYY-MM-DD
-  perPage?: number; // default 1000
-  delayMs?: number; // rate limit between pages, default 200ms
-}): Promise<ContentItem[]> {
-  const { agency, type, term, dateFrom, dateTo, perPage = 1000, delayMs = 200 } = options;
-  const allItems: ContentItem[] = [];
-  let page = 1;
-
-  while (true) {
-    const params = new URLSearchParams();
-    params.set('per_page', String(perPage));
-    params.set('page', String(page));
-    params.set('order', 'oldest');
-    params.set('conditions[publication_date][gte]', dateFrom);
-    params.set('conditions[publication_date][lte]', dateTo);
-    if (agency) params.set('conditions[agencies][]', agency);
-    if (type) params.set('conditions[type][]', type);
-    if (term) params.set('conditions[term]', term);
-
-    const url = `https://www.federalregister.gov/api/v1/documents.json?${params.toString()}`;
-
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'DemocracyMonitor/1.0 (backfill)',
-      },
-    });
-
-    if (!response.ok) {
-      console.error(`[fr-historical] HTTP ${response.status} for page ${page}`);
-      break;
-    }
-
-    const data = await response.json();
-    const results: Array<{
-      title?: string;
-      html_url?: string;
-      publication_date?: string;
-      agencies?: { name: string }[];
-      type?: string;
-      abstract?: string;
-    }> = data.results || [];
-
-    for (const doc of results) {
-      allItems.push({
-        title: doc.title || '(document)',
-        link: doc.html_url,
-        pubDate: doc.publication_date,
-        agency: doc.agencies?.map((a) => a.name).join(', '),
-        summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
-        type: doc.type,
-      });
-    }
-
-    if (results.length < perPage) break;
-    page++;
-    await sleep(delayMs);
-  }
-
-  return allItems;
-}
-
-/**
- * Parse a category signal URL to extract FR API parameters.
- */
-export function parseSignalParams(signalUrl: string): {
-  agency?: string;
-  type?: string;
-  term?: string;
-} {
-  const parsed = new URL(signalUrl, 'http://localhost');
-  return {
-    agency: parsed.searchParams.get('agency') || undefined,
-    type: parsed.searchParams.get('type') || undefined,
-    term: parsed.searchParams.get('term') || undefined,
-  };
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function truncate(text: string): string {

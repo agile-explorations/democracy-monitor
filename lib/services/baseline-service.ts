@@ -26,41 +26,22 @@ export async function computeBaseline(config: BaselineConfig): Promise<CategoryB
 
   const db = getDb();
 
-  // Fetch all weekly aggregates within the baseline period
   const rows = await db
     .select()
     .from(weeklyAggregates)
     .where(and(gte(weeklyAggregates.weekOf, config.from), lte(weeklyAggregates.weekOf, config.to)))
     .orderBy(weeklyAggregates.category, weeklyAggregates.weekOf);
 
-  // Group by category
-  const grouped: Record<
-    string,
-    Array<{ weekOf: string; totalSeverity: number; documentCount: number; severityMix: number }>
-  > = {};
+  const grouped: Record<string, typeof rows> = {};
   for (const row of rows) {
     if (!grouped[row.category]) grouped[row.category] = [];
-    grouped[row.category].push({
-      weekOf: row.weekOf,
-      totalSeverity: row.totalSeverity,
-      documentCount: row.documentCount,
-      severityMix: row.severityMix,
-    });
+    grouped[row.category].push(row);
   }
 
   const results: CategoryBaseline[] = [];
 
   for (const [category, weeks] of Object.entries(grouped)) {
     const severities = weeks.map((w) => w.totalSeverity);
-    const docCounts = weeks.map((w) => w.documentCount);
-    const mixes = weeks.map((w) => w.severityMix);
-
-    const avgWeeklySeverity = mean(severities);
-    const stddevWeeklySeverity = stddev(severities);
-    const avgWeeklyDocCount = mean(docCounts);
-    const avgSeverityMix = mean(mixes);
-
-    // Compute embedding centroid and noise floor
     const { centroid, noiseFloor } = await computeEmbeddingBaseline(
       db,
       category,
@@ -72,10 +53,10 @@ export async function computeBaseline(config: BaselineConfig): Promise<CategoryB
     results.push({
       baselineId: config.id,
       category,
-      avgWeeklySeverity,
-      stddevWeeklySeverity,
-      avgWeeklyDocCount,
-      avgSeverityMix,
+      avgWeeklySeverity: mean(severities),
+      stddevWeeklySeverity: stddev(severities),
+      avgWeeklyDocCount: mean(weeks.map((w) => w.documentCount)),
+      avgSeverityMix: mean(weeks.map((w) => w.severityMix)),
       driftNoiseFloor: noiseFloor,
       embeddingCentroid: centroid,
       computedAt: new Date().toISOString(),
@@ -230,8 +211,3 @@ export async function getBaseline(
 export function getBaselineConfig(id: string): BaselineConfig | undefined {
   return BASELINE_CONFIGS.find((c) => c.id === id);
 }
-
-// Re-export for backward compatibility with existing consumers
-export { BASELINE_CONFIGS } from '@/lib/data/baselines';
-export type { BaselineConfig } from '@/lib/data/baselines';
-export { mean, stddev } from '@/lib/utils/math';
