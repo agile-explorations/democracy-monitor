@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { INFRASTRUCTURE_THEMES } from '@/lib/data/infrastructure-keywords';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { CONVERGENCE_ENTRENCHED_THRESHOLD } from '@/lib/methodology/scoring-config';
 import type { ConvergenceLevel } from '@/lib/types/infrastructure';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
@@ -61,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([week, entries]) => {
         let activeThemeCount = 0;
+        const themeIntensities: number[] = [];
 
         for (const theme of INFRASTRUCTURE_THEMES) {
           let matchCount = 0;
@@ -77,13 +79,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           if (matchCount >= theme.activationThreshold) {
             activeThemeCount++;
           }
+          themeIntensities.push(matchCount);
         }
 
-        let convergence: ConvergenceLevel = 'none';
-        if (activeThemeCount >= 2) convergence = 'convergent';
-        else if (activeThemeCount === 1) convergence = 'emerging';
+        const activeIntensities = themeIntensities.filter((i) => i > 0);
+        const convergenceScore =
+          activeIntensities.length < 2
+            ? 0
+            : activeIntensities.reduce((product, i) => product * i, 1);
 
-        return { week, activeThemeCount, convergence };
+        let convergence: ConvergenceLevel = 'none';
+        if (activeThemeCount === 0) convergence = 'none';
+        else if (activeThemeCount === 1) convergence = 'emerging';
+        else if (convergenceScore >= CONVERGENCE_ENTRENCHED_THRESHOLD) convergence = 'entrenched';
+        else convergence = 'active';
+
+        return { week, activeThemeCount, convergence, convergenceScore };
       });
 
     return res.status(200).json(result);

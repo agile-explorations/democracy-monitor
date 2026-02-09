@@ -3,7 +3,7 @@ export type InfrastructureTheme =
   | 'surveillance_apparatus'
   | 'criminalization_opposition';
 
-export type ConvergenceLevel = 'none' | 'emerging' | 'convergent';
+export type ConvergenceLevel = 'none' | 'emerging' | 'active' | 'entrenched';
 
 export interface InfrastructureKeywordMatch {
   keyword: string;
@@ -17,6 +17,7 @@ export interface InfrastructureThemeResult {
   description: string;
   active: boolean;
   matchCount: number;
+  intensity: number;
   matches: InfrastructureKeywordMatch[];
   categoriesInvolved: string[];
   suppressedCount?: number;
@@ -26,6 +27,7 @@ export interface InfrastructureAssessment {
   themes: InfrastructureThemeResult[];
   activeThemeCount: number;
   convergence: ConvergenceLevel;
+  convergenceScore: number;
   convergenceNote: string;
   scannedCategories: number;
   totalItemsScanned: number;

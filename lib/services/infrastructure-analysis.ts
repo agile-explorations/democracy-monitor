@@ -1,5 +1,6 @@
 import { INFRASTRUCTURE_THEMES, getAllKeywords } from '@/lib/data/infrastructure-keywords';
 import type { InfrastructureSuppressionRule } from '@/lib/data/infrastructure-keywords';
+import { CONVERGENCE_ENTRENCHED_THRESHOLD } from '@/lib/methodology/scoring-config';
 import type { EnhancedAssessment } from '@/lib/types';
 import type {
   ConvergenceLevel,
@@ -83,6 +84,7 @@ export function analyzeInfrastructure(
       description: config.description,
       active: matches.length >= config.activationThreshold,
       matchCount: matches.length,
+      intensity: matches.length,
       matches,
       categoriesInvolved: Array.from(categoriesInvolved),
       suppressedCount,
@@ -90,13 +92,15 @@ export function analyzeInfrastructure(
   });
 
   const activeThemeCount = themes.filter((t) => t.active).length;
-  const convergence = getConvergenceLevel(activeThemeCount);
+  const convergenceScore = computeConvergenceScore(themes);
+  const convergence = getConvergenceLevel(convergenceScore, activeThemeCount);
   const convergenceNote = buildConvergenceNote(themes, convergence);
 
   return {
     themes,
     activeThemeCount,
     convergence,
+    convergenceScore,
     convergenceNote,
     scannedCategories: categories.length,
     totalItemsScanned,
@@ -117,10 +121,22 @@ export function analyzeInfrastructureOverTime(
   }));
 }
 
-function getConvergenceLevel(activeCount: number): ConvergenceLevel {
+/**
+ * Compute multiplicative convergence score from active theme intensities.
+ * When 0–1 themes are active, returns 0 (no cross-cutting pattern).
+ * With 2+ themes, returns the product of their intensities.
+ */
+export function computeConvergenceScore(themes: InfrastructureThemeResult[]): number {
+  const activeIntensities = themes.map((t) => t.intensity).filter((i) => i > 0);
+  if (activeIntensities.length < 2) return 0;
+  return activeIntensities.reduce((product, i) => product * i, 1);
+}
+
+export function getConvergenceLevel(score: number, activeCount: number): ConvergenceLevel {
   if (activeCount === 0) return 'none';
   if (activeCount === 1) return 'emerging';
-  return 'convergent';
+  if (score >= CONVERGENCE_ENTRENCHED_THRESHOLD) return 'entrenched';
+  return 'active';
 }
 
 function buildConvergenceNote(
@@ -138,8 +154,13 @@ function buildConvergenceNote(
     return `Emerging pattern: ${theme.label} signals detected across ${theme.categoriesInvolved.length} categor${theme.categoriesInvolved.length === 1 ? 'y' : 'ies'} (${theme.matchCount} keyword matches).`;
   }
 
-  // convergent
   const themeNames = active.map((t) => t.label).join(', ');
   const totalCategories = new Set(active.flatMap((t) => t.categoriesInvolved)).size;
-  return `Convergent infrastructure buildup: ${themeNames} — active across ${totalCategories} categories. Multiple authoritarian infrastructure dimensions are developing simultaneously.`;
+
+  if (convergence === 'active') {
+    return `Convergent infrastructure buildup: ${themeNames} — active across ${totalCategories} categories. Multiple authoritarian infrastructure dimensions are developing simultaneously.`;
+  }
+
+  // entrenched
+  return `Entrenched infrastructure pattern: ${themeNames} — sustained across ${totalCategories} categories. Cross-cutting authoritarian infrastructure is deeply established with high intensity.`;
 }

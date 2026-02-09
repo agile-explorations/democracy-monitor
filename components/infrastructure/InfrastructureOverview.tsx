@@ -3,13 +3,15 @@ import type { InfrastructureAssessment, ConvergenceLevel } from '@/lib/types/inf
 const CONVERGENCE_COLORS: Record<ConvergenceLevel, string> = {
   none: 'bg-green-100 text-green-800 border-green-200',
   emerging: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  convergent: 'bg-red-100 text-red-800 border-red-200',
+  active: 'bg-orange-100 text-orange-800 border-orange-200',
+  entrenched: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const CONVERGENCE_LABELS: Record<ConvergenceLevel, string> = {
   none: 'No Convergence',
   emerging: 'Emerging',
-  convergent: 'Convergent',
+  active: 'Active',
+  entrenched: 'Entrenched',
 };
 
 interface InfrastructureOverviewProps {
@@ -22,9 +24,12 @@ export function InfrastructureOverview({ assessment }: InfrastructureOverviewPro
       <div className="flex items-center gap-3">
         <span
           className={`px-2 py-1 rounded-full border text-xs font-medium cursor-help ${CONVERGENCE_COLORS[assessment.convergence]}`}
-          title={`${assessment.activeThemeCount} of 3 infrastructure themes active`}
+          title={`${assessment.activeThemeCount} of 3 infrastructure themes active (score: ${assessment.convergenceScore})`}
         >
           {CONVERGENCE_LABELS[assessment.convergence]}
+          {assessment.convergenceScore > 0 && (
+            <span className="ml-1 opacity-75">({assessment.convergenceScore})</span>
+          )}
         </span>
         <span className="text-xs text-slate-500">
           {assessment.activeThemeCount}/3 themes active across {assessment.scannedCategories}{' '}

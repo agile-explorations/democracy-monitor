@@ -52,3 +52,6 @@ export const SEMANTIC_DRIFT_ELEVATED_THRESHOLD = 1.0;
 
 /** Semantic drift above this multiple of the noise floor is flagged as anomalous. */
 export const SEMANTIC_DRIFT_ANOMALY_THRESHOLD = 2.0;
+
+/** Convergence score at or above this value (with 2+ active themes) indicates entrenched infrastructure. */
+export const CONVERGENCE_ENTRENCHED_THRESHOLD = 50;

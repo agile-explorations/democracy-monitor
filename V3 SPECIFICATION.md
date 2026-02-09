@@ -1158,10 +1158,10 @@ Add `pages/api/export/` routes:
 
 **Deliverable**: Numerical weekly and cumulative scores with baseline comparison. Semantic drift reported as multiples of normal variation.
 
-### Sprint 3 (AI Redesign) — Phase 3
+### Sprint 3 (AI Redesign) — Phase 3 [DONE]
 
-11. **3.1** AI assessment as skeptic (prompt redesign + disagreement handling)
-12. **3.2** Human review queue (API only)
+11. **3.1** AI assessment as skeptic (prompt redesign + disagreement handling) **[DONE]**
+12. **3.2** Human review queue (API only) **[DONE]**
 
 **Deliverable**: AI can downgrade keyword alerts. Disagreements are flagged. Keyword engine remains authoritative ceiling.
 
