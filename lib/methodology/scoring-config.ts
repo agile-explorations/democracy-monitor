@@ -55,3 +55,30 @@ export const SEMANTIC_DRIFT_ANOMALY_THRESHOLD = 2.0;
 
 /** Convergence score at or above this value (with 2+ active themes) indicates entrenched infrastructure. */
 export const CONVERGENCE_ENTRENCHED_THRESHOLD = 50;
+
+/** Data coverage factor weights (must sum to 1.0). */
+export const DATA_COVERAGE_WEIGHTS = {
+  sourceDiversity: 0.15,
+  authorityWeight: 0.25,
+  evidenceCoverage: 0.2,
+  keywordDensity: 0.15,
+  aiAgreement: 0.25,
+} as const;
+
+/** Maximum distinct sources before diversity score saturates at 1.0. */
+export const SOURCE_DIVERSITY_MAX = 6;
+
+/** Maximum authoritative source count before authority score saturates at 1.0. */
+export const AUTHORITY_COUNT_MAX = 3;
+
+/** Maximum evidence item count before coverage score saturates at 1.0. */
+export const EVIDENCE_COUNT_MAX = 10;
+
+/** Keyword density ratio: matches / (items × ratio) caps the density score. */
+export const KEYWORD_DENSITY_RATIO = 0.3;
+
+/** Characters before a keyword to scan for negation patterns. */
+export const NEGATION_WINDOW_BEFORE = 200;
+
+/** Characters after a keyword to scan for negation patterns. */
+export const NEGATION_WINDOW_AFTER = 50;

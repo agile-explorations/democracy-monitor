@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { StatusLevel } from '@/lib/types';
 import type { DebateResult } from '@/lib/types/debate';
@@ -8,6 +8,7 @@ import type { TrendAnomaly } from '@/lib/types/trends';
 import { Layer2 } from './Layer2';
 import { Layer3 } from './Layer3';
 import { Layer4 } from './Layer4';
+import { Layer5 } from './Layer5';
 
 interface EnhancedData {
   dataCoverage: number;
@@ -53,7 +54,7 @@ interface ProgressiveDisclosureProps {
   matches?: string[];
 }
 
-type TabKey = 'why' | 'evidence' | 'deep';
+type TabKey = 'why' | 'evidence' | 'deep' | 'scoring';
 
 export function ProgressiveDisclosure({
   categoryKey,
@@ -66,8 +67,6 @@ export function ProgressiveDisclosure({
 }: ProgressiveDisclosureProps) {
   const [currentTab, setCurrentTab] = useState<TabKey>('why');
   const [layer2Data, setLayer2Data] = useState<Record<string, unknown> | null>(null);
-
-  const evidence = useMemo(() => allItems.map((i) => i.title || '').filter(Boolean), [allItems]);
 
   // Prefetch Layer 2 data in background
   useEffect(() => {
@@ -85,6 +84,7 @@ export function ProgressiveDisclosure({
     { key: 'why', label: 'Why?', available: !!autoStatus?.auto },
     { key: 'evidence', label: 'Evidence', available: allItems.length > 0 },
     { key: 'deep', label: 'Deep Analysis', available: ['Drift', 'Capture'].includes(level) },
+    { key: 'scoring', label: 'Scoring', available: !!autoStatus?.auto },
   ];
 
   return (
@@ -125,6 +125,8 @@ export function ProgressiveDisclosure({
           trendAnomalies={enhancedData?.trendAnomalies}
         />
       )}
+
+      {currentTab === 'scoring' && <Layer5 categoryKey={categoryKey} />}
     </div>
   );
 }

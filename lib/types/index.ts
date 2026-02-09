@@ -48,3 +48,9 @@ export type {
   DocumentScore,
 } from './scoring';
 export type { EvidenceItem, KeywordMatchContext, EnhancedAssessment } from './enhanced-assessment';
+export type {
+  TierBreakdown,
+  DocumentExplanation,
+  ConfigSnapshot,
+  WeekExplanation,
+} from './explanation';

@@ -1165,10 +1165,10 @@ Add `pages/api/export/` routes:
 
 **Deliverable**: AI can downgrade keyword alerts. Disagreements are flagged. Keyword engine remains authoritative ceiling.
 
-### Sprint 4 (Calibration + Convergence) — Phases 4 + 5
+### Sprint 4 (Calibration + Convergence) — Phases 4 + 5 [DONE]
 
-13. **4.1** Multiplicative convergence
-14. **5.1** Historical validation (first Trump term)
+13. **4.1** Multiplicative convergence **[DONE]**
+14. **5.1** Historical validation (first Trump term) **[DONE]**
 
 **Deliverable**: Convergence scoring graduated. Backtest results available for calibration.
 

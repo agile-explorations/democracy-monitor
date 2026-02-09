@@ -1,3 +1,10 @@
+import {
+  AUTHORITY_COUNT_MAX,
+  DATA_COVERAGE_WEIGHTS,
+  EVIDENCE_COUNT_MAX,
+  KEYWORD_DENSITY_RATIO,
+  SOURCE_DIVERSITY_MAX,
+} from '@/lib/methodology/scoring-config';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 
 interface ConfidenceFactors {
@@ -20,22 +27,24 @@ export function calculateDataCoverage(
   // Source diversity: how many different source types / agencies
   const agencies = new Set(validItems.map((i) => i.agency).filter(Boolean));
   const sourceTypes = new Set(items.map((i) => i.type || 'unknown'));
-  const sourceDiversity = Math.min(1, (agencies.size + sourceTypes.size) / 6);
+  const sourceDiversity = Math.min(1, (agencies.size + sourceTypes.size) / SOURCE_DIVERSITY_MAX);
 
   // Authority weight: presence of authoritative sources
   const authoritativeCount = validItems.filter((item) => {
     const text = `${item.title || ''} ${item.agency || ''}`.toLowerCase();
     return HIGH_AUTHORITY_SOURCES.some((src) => text.includes(src));
   }).length;
-  const authorityWeight = Math.min(1, authoritativeCount / 3);
+  const authorityWeight = Math.min(1, authoritativeCount / AUTHORITY_COUNT_MAX);
 
   // Evidence coverage: items analyzed relative to a reasonable threshold
-  const evidenceCoverage = Math.min(1, validItems.length / 10);
+  const evidenceCoverage = Math.min(1, validItems.length / EVIDENCE_COUNT_MAX);
 
   // Keyword density: matches relative to items
   const matchCount = keywordResult.matches.length;
   const keywordDensity =
-    validItems.length > 0 ? Math.min(1, matchCount / Math.max(3, validItems.length * 0.3)) : 0;
+    validItems.length > 0
+      ? Math.min(1, matchCount / Math.max(3, validItems.length * KEYWORD_DENSITY_RATIO))
+      : 0;
 
   // AI agreement
   let aiAgreement = 0.5; // default when no AI
@@ -56,20 +65,12 @@ export function calculateDataCoverage(
   };
 
   // Weighted average
-  const weights = {
-    sourceDiversity: 0.15,
-    authorityWeight: 0.25,
-    evidenceCoverage: 0.2,
-    keywordDensity: 0.15,
-    aiAgreement: 0.25,
-  };
-
   const confidence =
-    factors.sourceDiversity * weights.sourceDiversity +
-    factors.authorityWeight * weights.authorityWeight +
-    factors.evidenceCoverage * weights.evidenceCoverage +
-    factors.keywordDensity * weights.keywordDensity +
-    factors.aiAgreement * weights.aiAgreement;
+    factors.sourceDiversity * DATA_COVERAGE_WEIGHTS.sourceDiversity +
+    factors.authorityWeight * DATA_COVERAGE_WEIGHTS.authorityWeight +
+    factors.evidenceCoverage * DATA_COVERAGE_WEIGHTS.evidenceCoverage +
+    factors.keywordDensity * DATA_COVERAGE_WEIGHTS.keywordDensity +
+    factors.aiAgreement * DATA_COVERAGE_WEIGHTS.aiAgreement;
 
   return { confidence: Math.round(confidence * 100) / 100, factors };
 }

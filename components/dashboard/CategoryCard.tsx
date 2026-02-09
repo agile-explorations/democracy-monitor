@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ProgressiveDisclosure } from '@/components/disclosure/ProgressiveDisclosure';
 import { Card } from '@/components/ui/Card';
+import { MaturityBadge } from '@/components/ui/MaturityBadge';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { CATEGORY_MATURITY } from '@/lib/data/category-maturity';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import type { Category, StatusLevel } from '@/lib/types';
 import type { DebateResult } from '@/lib/types/debate';
@@ -222,6 +224,7 @@ export function CategoryCard({ cat, statusMap, setStatus, crossRef }: CategoryCa
           ) : (
             <StatusPill level={level} />
           )}
+          {CATEGORY_MATURITY[cat.key] && <MaturityBadge level={CATEGORY_MATURITY[cat.key]} />}
           {autoStatus?.auto && (
             <span
               className="text-xs text-slate-500 italic cursor-help"

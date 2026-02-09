@@ -4,7 +4,13 @@ import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import { NEGATION_PATTERNS, SUPPRESSION_RULES } from '@/lib/data/suppression-rules';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documentScores } from '@/lib/db/schema';
-import { computeSeverityScore, CLASS_MULTIPLIERS } from '@/lib/methodology/scoring-config';
+import {
+  computeSeverityScore,
+  CLASS_MULTIPLIERS,
+  TIER_WEIGHTS,
+  NEGATION_WINDOW_BEFORE,
+  NEGATION_WINDOW_AFTER,
+} from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type {
   DocumentClass,
@@ -61,11 +67,6 @@ export function classifyDocument(item: ContentItem): DocumentClass {
 
   return 'unknown';
 }
-
-/** Characters before the keyword to scan for negation patterns. */
-const NEGATION_WINDOW_BEFORE = 200;
-/** Characters after the keyword to scan for negation patterns. */
-const NEGATION_WINDOW_AFTER = 50;
 
 // --- Context extraction ---
 
@@ -161,12 +162,6 @@ function getWeekOf(dateStr?: string): string {
 }
 
 // --- Core scoring ---
-
-const TIER_WEIGHTS: Record<SeverityTier, number> = {
-  capture: 4,
-  drift: 2,
-  warning: 1,
-};
 
 export function scoreDocument(item: ContentItem, category: string): DocumentScore {
   const rules = ASSESSMENT_RULES[category];
