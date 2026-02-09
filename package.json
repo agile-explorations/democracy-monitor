@@ -35,7 +35,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx lib/db/migrate.ts",
     "snapshot": "tsx lib/cron/snapshot.ts",
+    "backfill": "tsx lib/cron/backfill.ts",
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
+    "recompute-scores": "tsx lib/cron/recompute-scores.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -48,6 +50,7 @@
     "pg": "^8.18.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "recharts": "^3.7.0",
     "xml2js": "0.6.2",
     "zod": "^4.3.6"
   },

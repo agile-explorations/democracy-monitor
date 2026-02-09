@@ -9,6 +9,7 @@ import {
   varchar,
   real,
   date,
+  index,
   customType,
 } from 'drizzle-orm/pg-core';
 
@@ -184,3 +185,31 @@ export const semanticClusters = pgTable('semantic_clusters', {
   categories: jsonb('categories').$type<string[]>(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const documentScores = pgTable(
+  'document_scores',
+  {
+    id: serial('id').primaryKey(),
+    documentId: integer('document_id'),
+    url: text('url').notNull().unique(),
+    category: varchar('category', { length: 50 }).notNull(),
+    severityScore: real('severity_score').notNull(),
+    finalScore: real('final_score').notNull(),
+    captureCount: integer('capture_count').notNull().default(0),
+    driftCount: integer('drift_count').notNull().default(0),
+    warningCount: integer('warning_count').notNull().default(0),
+    suppressedCount: integer('suppressed_count').notNull().default(0),
+    documentClass: varchar('document_class', { length: 20 }).notNull().default('unknown'),
+    classMultiplier: real('class_multiplier').notNull().default(1.0),
+    isHighAuthority: boolean('is_high_authority').notNull().default(false),
+    matches: jsonb('matches').$type<unknown[]>().notNull(),
+    suppressed: jsonb('suppressed').$type<unknown[]>().notNull(),
+    scoredAt: timestamp('scored_at', { withTimezone: true }).defaultNow().notNull(),
+    weekOf: date('week_of').notNull(),
+  },
+  (table) => [
+    index('idx_document_scores_category_week').on(table.category, table.weekOf),
+    index('idx_document_scores_document_id').on(table.documentId),
+    index('idx_document_scores_url').on(table.url),
+  ],
+);

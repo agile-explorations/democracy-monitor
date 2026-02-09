@@ -33,3 +33,17 @@ export type {
 export type { DebateRole, DebateMessage, DebateVerdict, DebateResult } from './debate';
 export type { LegalDocument, LegalCitation, LegalAnalysisResult } from './legal';
 export type { KeywordTrend, TrendAnomaly, SemanticCluster, DigestEntry } from './trends';
+export type {
+  InfrastructureTheme,
+  ConvergenceLevel,
+  InfrastructureKeywordMatch,
+  InfrastructureThemeResult,
+  InfrastructureAssessment,
+} from './infrastructure';
+export type {
+  SeverityTier,
+  DocumentClass,
+  KeywordMatch,
+  SuppressedMatch,
+  DocumentScore,
+} from './scoring';

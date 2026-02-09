@@ -5,6 +5,7 @@ import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
 import { fetchCategoryFeeds } from '@/lib/services/feed-fetcher';
 import {
@@ -47,6 +48,13 @@ export async function runSnapshots(): Promise<void> {
 
       console.log(`[snapshot] Saving snapshot for ${cat.key}: ${assessment.status}`);
       await saveSnapshot(assessment);
+
+      // Per-document scoring
+      const docScores = scoreDocumentBatch(items, cat.key);
+      storeDocumentScores(docScores).catch((err) =>
+        console.error(`[snapshot] Score storage failed for ${cat.key}:`, err),
+      );
+      console.log(`[snapshot]   Scored ${docScores.length} documents`);
 
       succeeded++;
       console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
