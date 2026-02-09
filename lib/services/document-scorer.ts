@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import { NEGATION_PATTERNS, SUPPRESSION_RULES } from '@/lib/data/suppression-rules';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documentScores } from '@/lib/db/schema';
@@ -13,29 +14,6 @@ import type {
   SuppressedMatch,
 } from '@/lib/types/scoring';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-
-// --- Authority detection (mirrors assessment-service.ts:6-25) ---
-
-const HIGH_AUTHORITY_AGENCIES = [
-  'government accountability office',
-  'gao',
-  'congressional budget office',
-  'cbo',
-  'inspector general',
-  'oig',
-  'office of special counsel',
-  'osc',
-  'supreme court',
-  'federal courts',
-  'congressional research service',
-  'crs',
-];
-
-function isHighAuthoritySource(agency?: string): boolean {
-  if (!agency) return false;
-  const lower = agency.toLowerCase();
-  return HIGH_AUTHORITY_AGENCIES.some((a) => lower.includes(a));
-}
 
 // --- Document classification ---
 
@@ -84,6 +62,11 @@ export function classifyDocument(item: ContentItem): DocumentClass {
   return 'unknown';
 }
 
+/** Characters before the keyword to scan for negation patterns. */
+const NEGATION_WINDOW_BEFORE = 200;
+/** Characters after the keyword to scan for negation patterns. */
+const NEGATION_WINDOW_AFTER = 50;
+
 // --- Context extraction ---
 
 function extractContext(text: string, keyword: string, radius: number = 50): string {
@@ -106,9 +89,8 @@ function checkNegation(contentText: string, keyword: string): string | null {
   const lower = contentText.toLowerCase();
   const kwLower = keyword.toLowerCase();
   const kwIdx = lower.indexOf(kwLower);
-  // Check a window around the keyword (200 chars before)
-  const windowStart = Math.max(0, kwIdx - 200);
-  const window = lower.slice(windowStart, kwIdx + kwLower.length + 50);
+  const windowStart = Math.max(0, kwIdx - NEGATION_WINDOW_BEFORE);
+  const window = lower.slice(windowStart, kwIdx + kwLower.length + NEGATION_WINDOW_AFTER);
 
   for (const pattern of NEGATION_PATTERNS) {
     if (window.includes(pattern)) {

@@ -112,6 +112,31 @@ rules:
       include:
         - '__tests__'
 
+  # WHY: A bare catch block that returns a default value without logging
+  # hides the original error, making failures invisible. When the DB is down,
+  # a network call times out, or a query is malformed, the caller silently
+  # gets an empty array or null — and nobody knows anything went wrong.
+  # At minimum, log console.warn() before returning a fallback.
+  - id: no-silent-catch
+    pattern-either:
+      - pattern: |
+          catch (...) {
+            return $RET;
+          }
+      - pattern: |
+          catch {
+            return $RET;
+          }
+    message: >-
+      Silent catch block returns a default value without logging the error.
+      This hides failures and makes debugging difficult. At minimum, add
+      console.warn() or console.error() before the return statement.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - lib/services
+
   # WHY: expect(fn).not.toHaveBeenCalled() asserts that a specific code
   # path was NOT taken — a purely internal implementation detail. If the
   # code is refactored to call different functions but produces the same

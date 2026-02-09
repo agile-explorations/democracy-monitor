@@ -47,5 +47,8 @@ export function computeSeverityScore(
 /** Number of weeks for the exponential decay half-life in cumulative scoring. */
 export const DECAY_HALF_LIFE_WEEKS = 8;
 
+/** Semantic drift at or above this multiple of the noise floor is considered elevated. */
+export const SEMANTIC_DRIFT_ELEVATED_THRESHOLD = 1.0;
+
 /** Semantic drift above this multiple of the noise floor is flagged as anomalous. */
 export const SEMANTIC_DRIFT_ANOMALY_THRESHOLD = 2.0;

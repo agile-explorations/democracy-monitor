@@ -27,6 +27,26 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
   }
 }
 
+/** Compute the element-wise mean of a set of embedding vectors. */
+export function computeCentroid(embeddings: number[][]): number[] | null {
+  if (embeddings.length === 0) return null;
+
+  const dim = embeddings[0].length;
+  const centroid = new Array(dim).fill(0);
+
+  for (const emb of embeddings) {
+    for (let i = 0; i < dim; i++) {
+      centroid[i] += emb[i];
+    }
+  }
+
+  for (let i = 0; i < dim; i++) {
+    centroid[i] /= embeddings.length;
+  }
+
+  return centroid;
+}
+
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
 

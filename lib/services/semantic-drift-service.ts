@@ -1,9 +1,12 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
-import { SEMANTIC_DRIFT_ANOMALY_THRESHOLD } from '@/lib/methodology/scoring-config';
+import {
+  SEMANTIC_DRIFT_ANOMALY_THRESHOLD,
+  SEMANTIC_DRIFT_ELEVATED_THRESHOLD,
+} from '@/lib/methodology/scoring-config';
 import { getBaseline, BASELINE_CONFIGS } from '@/lib/services/baseline-service';
-import { cosineSimilarity } from '@/lib/services/embedding-service';
+import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
 
 export interface SemanticDriftResult {
   category: string;
@@ -40,20 +43,7 @@ export async function computeWeekCentroid(
 
   if (rows.length === 0) return null;
 
-  const dim = rows[0].embedding!.length;
-  const centroid = new Array(dim).fill(0);
-
-  for (const row of rows) {
-    for (let i = 0; i < dim; i++) {
-      centroid[i] += row.embedding![i];
-    }
-  }
-
-  for (let i = 0; i < dim; i++) {
-    centroid[i] /= rows.length;
-  }
-
-  return centroid;
+  return computeCentroid(rows.map((r) => r.embedding!));
 }
 
 /**
@@ -86,7 +76,7 @@ export async function computeSemanticDrift(
 
     if (normalizedDrift >= SEMANTIC_DRIFT_ANOMALY_THRESHOLD) {
       interpretation = `This week's language shift is ${rounded}x normal variation for this category (anomalous)`;
-    } else if (normalizedDrift >= 1) {
+    } else if (normalizedDrift >= SEMANTIC_DRIFT_ELEVATED_THRESHOLD) {
       interpretation = `This week's language shift is ${rounded}x normal variation for this category (elevated)`;
     } else {
       interpretation = `This week's language shift is ${rounded}x normal variation for this category (within normal range)`;

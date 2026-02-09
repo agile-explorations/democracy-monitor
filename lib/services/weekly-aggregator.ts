@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documentScores, weeklyAggregates } from '@/lib/db/schema';
+import { TIER_WEIGHTS } from '@/lib/methodology/scoring-config';
 
 export interface WeeklyAggregate {
   category: string;
@@ -60,7 +61,10 @@ export async function computeWeeklyAggregate(
   const driftProportion = totalMatches > 0 ? driftMatchCount / totalMatches : 0;
   const warningProportion = totalMatches > 0 ? warningMatchCount / totalMatches : 0;
 
-  const severityMix = captureProportion * 4 + driftProportion * 2 + warningProportion * 1;
+  const severityMix =
+    captureProportion * TIER_WEIGHTS.capture +
+    driftProportion * TIER_WEIGHTS.drift +
+    warningProportion * TIER_WEIGHTS.warning;
 
   // Extract top keywords from matches JSONB
   const topKeywords = await extractTopKeywords(db, category, weekOf);
@@ -105,7 +109,8 @@ async function extractTopKeywords(
       LIMIT ${limit}
     `);
     return (rows.rows as Array<{ keyword: string }>).map((r) => r.keyword);
-  } catch {
+  } catch (err) {
+    console.warn(`Failed to extract top keywords for ${category}/${weekOf}:`, err);
     return [];
   }
 }

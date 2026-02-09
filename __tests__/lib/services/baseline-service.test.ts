@@ -15,6 +15,16 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/services/embedding-service', () => ({
+  computeCentroid: vi.fn((embeddings: number[][]) => {
+    if (embeddings.length === 0) return null;
+    const dim = embeddings[0].length;
+    const centroid = new Array(dim).fill(0);
+    for (const emb of embeddings) {
+      for (let i = 0; i < dim; i++) centroid[i] += emb[i];
+    }
+    for (let i = 0; i < dim; i++) centroid[i] /= embeddings.length;
+    return centroid;
+  }),
   cosineSimilarity: vi.fn((a: number[], b: number[]) => {
     let dot = 0,
       na = 0,

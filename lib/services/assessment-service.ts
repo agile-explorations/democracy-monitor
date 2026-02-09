@@ -1,28 +1,7 @@
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-
-// Authoritative agency identifiers — matched against the `agency` field, not content text
-const HIGH_AUTHORITY_AGENCIES = [
-  'government accountability office',
-  'gao',
-  'congressional budget office',
-  'cbo',
-  'inspector general',
-  'oig',
-  'office of special counsel',
-  'osc',
-  'supreme court',
-  'federal courts',
-  'congressional research service',
-  'crs',
-];
-
-function isHighAuthoritySource(agency?: string): boolean {
-  if (!agency) return false;
-  const lower = agency.toLowerCase();
-  return HIGH_AUTHORITY_AGENCIES.some((a) => lower.includes(a));
-}
 
 export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
   const rules = ASSESSMENT_RULES[category];

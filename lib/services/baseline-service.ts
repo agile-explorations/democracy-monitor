@@ -1,20 +1,10 @@
 import { and, eq, gte, lte, sql } from 'drizzle-orm';
+import type { BaselineConfig } from '@/lib/data/baselines';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { baselines, documents, weeklyAggregates } from '@/lib/db/schema';
-import { cosineSimilarity } from '@/lib/services/embedding-service';
-
-export interface BaselineConfig {
-  id: string;
-  label: string;
-  from: string;
-  to: string;
-}
-
-export const BASELINE_CONFIGS: BaselineConfig[] = [
-  { id: 'biden_2024', label: 'Biden 2024', from: '2024-01-01', to: '2025-01-19' },
-  { id: 'biden_2021', label: 'Biden 2021–22', from: '2021-01-20', to: '2022-01-19' },
-  { id: 'obama_2013', label: 'Obama 2013–14', from: '2013-01-20', to: '2014-01-19' },
-];
+import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
+import { mean, stddev } from '@/lib/utils/math';
 
 export interface CategoryBaseline {
   baselineId: string;
@@ -126,16 +116,8 @@ async function computeEmbeddingBaseline(
     if (docs.length === 0) return { centroid: null, noiseFloor: null };
 
     // Compute overall centroid
-    const dim = docs[0].embedding!.length;
-    const centroid = new Array(dim).fill(0);
-    for (const doc of docs) {
-      for (let i = 0; i < dim; i++) {
-        centroid[i] += doc.embedding![i];
-      }
-    }
-    for (let i = 0; i < dim; i++) {
-      centroid[i] /= docs.length;
-    }
+    const centroid = computeCentroid(docs.map((d) => d.embedding!));
+    if (!centroid) return { centroid: null, noiseFloor: null };
 
     // Compute per-week centroids for noise floor
     const weekCentroids: Array<{ weekOf: string; centroid: number[] }> = [];
@@ -151,16 +133,8 @@ async function computeEmbeddingBaseline(
 
       if (weekDocs.length === 0) continue;
 
-      const wc = new Array(dim).fill(0);
-      for (const doc of weekDocs) {
-        for (let i = 0; i < dim; i++) {
-          wc[i] += doc.embedding![i];
-        }
-      }
-      for (let i = 0; i < dim; i++) {
-        wc[i] /= weekDocs.length;
-      }
-      weekCentroids.push({ weekOf, centroid: wc });
+      const wc = computeCentroid(weekDocs.map((d) => d.embedding!));
+      if (wc) weekCentroids.push({ weekOf, centroid: wc });
     }
 
     // Noise floor: stddev of consecutive-week centroid distances
@@ -175,7 +149,8 @@ async function computeEmbeddingBaseline(
     const noiseFloor = mean(distances) + stddev(distances);
 
     return { centroid, noiseFloor };
-  } catch {
+  } catch (err) {
+    console.warn(`Failed to compute embedding baseline for ${category}:`, err);
     return { centroid: null, noiseFloor: null };
   }
 }
@@ -256,16 +231,7 @@ export function getBaselineConfig(id: string): BaselineConfig | undefined {
   return BASELINE_CONFIGS.find((c) => c.id === id);
 }
 
-// --- Utility functions (exported for direct testing) ---
-
-export function mean(values: number[]): number {
-  if (values.length === 0) return 0;
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
-}
-
-export function stddev(values: number[]): number {
-  if (values.length < 2) return 0;
-  const avg = mean(values);
-  const variance = values.reduce((sum, v) => sum + (v - avg) ** 2, 0) / (values.length - 1);
-  return Math.sqrt(variance);
-}
+// Re-export for backward compatibility with existing consumers
+export { BASELINE_CONFIGS } from '@/lib/data/baselines';
+export type { BaselineConfig } from '@/lib/data/baselines';
+export { mean, stddev } from '@/lib/utils/math';

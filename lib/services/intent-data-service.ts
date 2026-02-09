@@ -57,7 +57,8 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
 
     await cacheSet(cacheKey, statements, CACHE_TTL_S);
     return statements;
-  } catch {
+  } catch (err) {
+    console.warn('Failed to fetch presidential documents:', err);
     return [];
   }
 }
@@ -123,7 +124,8 @@ async function fetchRssFeed(
 
     await cacheSet(cacheKey, items, CACHE_TTL_S);
     return items;
-  } catch {
+  } catch (err) {
+    console.warn(`Failed to fetch RSS feed ${feedUrl}:`, err);
     return [];
   }
 }
