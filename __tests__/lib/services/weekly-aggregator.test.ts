@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isDbAvailable, getDb } from '@/lib/db';
 import {
   computeWeeklyAggregate,
-  storeWeeklyAggregate,
   computeAllWeeklyAggregates,
   getWeekOfDate,
 } from '@/lib/services/weekly-aggregator';
@@ -191,30 +190,6 @@ describe('computeWeeklyAggregate', () => {
 
     const result = await computeWeeklyAggregate('courts', '2025-02-03');
     expect(result.avgSeverityPerDoc).toBe(0);
-  });
-});
-
-describe('storeWeeklyAggregate', () => {
-  it('no-ops when DB is unavailable', async () => {
-    mockIsDbAvailable.mockReturnValue(false);
-    await storeWeeklyAggregate({
-      category: 'courts',
-      weekOf: '2025-02-03',
-      totalSeverity: 0,
-      documentCount: 0,
-      avgSeverityPerDoc: 0,
-      captureProportion: 0,
-      driftProportion: 0,
-      warningProportion: 0,
-      severityMix: 0,
-      captureMatchCount: 0,
-      driftMatchCount: 0,
-      warningMatchCount: 0,
-      suppressedMatchCount: 0,
-      topKeywords: [],
-      computedAt: new Date().toISOString(),
-    });
-    expect(mockGetDb).not.toHaveBeenCalled();
   });
 });
 

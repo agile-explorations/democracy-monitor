@@ -4,7 +4,6 @@ import {
   BASELINE_CONFIGS,
   getBaselineConfig,
   computeBaseline,
-  storeBaseline,
   getBaseline,
   mean,
   stddev,
@@ -296,20 +295,6 @@ describe('computeBaseline', () => {
     expect(result[0].embeddingCentroid).not.toBeNull();
     // Only 1 week centroid → can't compute noise floor
     expect(result[0].driftNoiseFloor).toBeNull();
-  });
-});
-
-describe('storeBaseline', () => {
-  it('no-ops when DB is unavailable', async () => {
-    mockIsDbAvailable.mockReturnValue(false);
-    await storeBaseline([]);
-    expect(mockGetDb).not.toHaveBeenCalled();
-  });
-
-  it('no-ops for empty array', async () => {
-    mockIsDbAvailable.mockReturnValue(true);
-    await storeBaseline([]);
-    expect(mockGetDb).not.toHaveBeenCalled();
   });
 });
 

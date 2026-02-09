@@ -264,11 +264,22 @@ describe('computeSemanticDrift', () => {
         }),
       }),
     } as never);
-    mockGetBaseline.mockResolvedValue(null);
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2024',
+      category: 'courts',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0.05,
+      embeddingCentroid: [1, 0, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
 
-    await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('courts', '2025-02-03');
 
-    expect(mockGetBaseline).toHaveBeenCalledWith('biden_2024', 'courts');
+    expect(result).not.toBeNull();
+    expect(result!.baselineId).toBe('biden_2024');
   });
 
   it('interpretation reflects elevated level (1-2x noise floor)', async () => {
