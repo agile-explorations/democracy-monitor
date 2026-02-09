@@ -1172,13 +1172,13 @@ Add `pages/api/export/` routes:
 
 **Deliverable**: Convergence scoring graduated. Backtest results available for calibration.
 
-### Sprint 5 (OSS Launch Prep) — Phases 8.1 + 8.4 + 9
+### Sprint 5 (OSS Launch Prep) — Phases 8.1 + 8.4 + 9 [DONE]
 
-15. **8.1** Methodology config extraction
-16. **8.4** Score explanation APIs
-17. **9.1** Experimental badges
-18. **9.2** Score explanation drill-down UI
-19. **9.3** Data export APIs
+15. **8.1** Methodology config extraction **[DONE]**
+16. **8.4** Score explanation APIs **[DONE]**
+17. **9.1** Experimental badges **[DONE]**
+18. **9.2** Score explanation drill-down UI **[DONE]**
+19. **9.3** Data export APIs **[DONE]**
 
 **Deliverable**: System is transparent, inspectable, and ready for dev community sharing.
 
