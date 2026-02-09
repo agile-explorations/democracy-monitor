@@ -1,9 +1,11 @@
 import { sql } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { INFRASTRUCTURE_THEMES } from '@/lib/data/infrastructure-keywords';
-import { isDbAvailable, getDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { CONVERGENCE_ENTRENCHED_THRESHOLD } from '@/lib/methodology/scoring-config';
 import type { ConvergenceLevel } from '@/lib/types/infrastructure';
+import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
+import { toDateString } from '@/lib/utils/date-utils';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
 /**
@@ -11,13 +13,8 @@ import { matchKeyword } from '@/lib/utils/keyword-match';
  * Returns weekly infrastructure convergence data derived from assessment snapshots.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not configured' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
+  if (!requireDb(res)) return;
 
   const from = (req.query.from as string) || '2025-01-20';
   const to = (req.query.to as string) || undefined;
@@ -48,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     >();
     for (const row of rows.rows) {
       const r = row as Record<string, unknown>;
-      const week = new Date(r.week as string).toISOString().split('T')[0];
+      const week = toDateString(new Date(r.week as string));
       if (!weekMap.has(week)) weekMap.set(week, []);
       weekMap.get(week)!.push({
         category: r.category as string,

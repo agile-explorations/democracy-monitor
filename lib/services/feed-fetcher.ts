@@ -1,11 +1,10 @@
 import { parseStringPromise } from 'xml2js';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { Category, Signal } from '@/lib/types';
-
-const CACHE_TTL_S = 600; // 10 minutes
 const MAX_SUMMARY_LENGTH = 800;
 
 /**
@@ -95,7 +94,7 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
       }),
     );
 
-  await cacheSet(cacheKey, items, CACHE_TTL_S);
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
 }
 
@@ -153,7 +152,7 @@ async function fetchRss(signal: Signal): Promise<FeedItem[]> {
       },
     );
 
-  await cacheSet(cacheKey, items, CACHE_TTL_S);
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
 }
 
@@ -184,7 +183,7 @@ async function fetchJson(signal: Signal): Promise<FeedItem[]> {
       }))
     : [{ title: `${signal.name}: data received`, link: signal.url }];
 
-  await cacheSet(cacheKey, items, CACHE_TTL_S);
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
 }
 
@@ -219,7 +218,7 @@ async function fetchHtml(signal: Signal): Promise<FeedItem[]> {
       ? anchors.map((a) => ({ title: a.text, link: a.href }))
       : [{ title: 'No links found - site may be blocking requests', isWarning: true }];
 
-  await cacheSet(cacheKey, items, CACHE_TTL_S);
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
 }
 

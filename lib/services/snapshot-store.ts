@@ -4,6 +4,7 @@ import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
 import type { EnhancedAssessment } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 
 /**
  * Save an assessment snapshot to the database.
@@ -195,7 +196,7 @@ export async function getWeeklyTrajectory(options?: {
     const cat = r.category as string;
     if (!result[cat]) result[cat] = [];
     result[cat].push({
-      week: new Date(r.week as string).toISOString().split('T')[0],
+      week: toDateString(new Date(r.week as string)),
       status: r.status as string,
       reason: r.reason as string,
       matchCount: Array.isArray(r.matches) ? r.matches.length : 0,

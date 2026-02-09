@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPendingReviews, resolveReview } from '@/lib/services/review-queue';
 import type { StatusLevel } from '@/lib/types';
+import { formatError } from '@/lib/utils/api-helpers';
 
 const VALID_STATUSES: StatusLevel[] = ['Stable', 'Warning', 'Drift', 'Capture'];
 
@@ -33,6 +34,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

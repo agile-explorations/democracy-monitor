@@ -2,6 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 
 /**
  * Upsert documents from feed items into the database for RAG retrieval.
@@ -120,7 +121,7 @@ export async function getDocumentVolume(options?: {
     const cat = r.category as string;
     if (!result[cat]) result[cat] = [];
     result[cat].push({
-      week: new Date(r.week as string).toISOString().split('T')[0],
+      week: toDateString(new Date(r.week as string)),
       count: r.count as number,
     });
   }

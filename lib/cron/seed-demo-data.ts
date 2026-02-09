@@ -22,6 +22,7 @@ import { DEMO_SCENARIOS } from '@/lib/demo/scenarios';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { EnhancedAssessment, IntentAssessment, StatusLevel } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -147,7 +148,7 @@ export async function seedDemoData(
     const date = new Date(now);
     date.setDate(date.getDate() - d);
     date.setHours(6, 0, 0, 0);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = toDateString(date);
 
     for (const cat of CATEGORIES) {
       const base = getDemoAssessment(cat.key, scenario, true) as EnhancedAssessment;

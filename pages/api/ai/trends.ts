@@ -6,11 +6,10 @@ import {
   getBaselineCounts,
   recordTrends,
 } from '@/lib/services/trend-anomaly-service';
+import { requireMethod } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!requireMethod(req, res, 'POST')) return;
 
   const { category, items } = req.body;
 

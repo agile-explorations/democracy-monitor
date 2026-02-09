@@ -10,11 +10,12 @@ import type {
   GovernanceCategory,
 } from '@/lib/types';
 import { POLICY_AREAS } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 
 function daysAgo(n: number): string {
-  return new Date(Date.now() - n * 86400000).toISOString().split('T')[0];
+  return toDateString(new Date(Date.now() - n * 86400000));
 }
 
 function makePolicyScores(rhetoric: number, action: number): Record<PolicyArea, IntentScore> {

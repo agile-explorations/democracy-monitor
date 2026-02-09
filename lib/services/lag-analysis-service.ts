@@ -3,6 +3,7 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { intentWeekly } from '@/lib/db/schema';
 import type { LagAnalysisResult, PolicyArea } from '@/lib/types/intent';
 import { POLICY_AREAS } from '@/lib/types/intent';
+import { roundTo } from '@/lib/utils/math';
 
 const DEFAULT_MAX_LAG = 12;
 const MIN_DATA_POINTS = 4;
@@ -108,7 +109,7 @@ export function computeLagFromSeries(
     const rSlice = rhetoric.slice(0, n - lag);
     const aSlice = action.slice(lag);
     const r = pearsonR(rSlice, aSlice);
-    const rounded = Math.round(r * 1000) / 1000;
+    const rounded = roundTo(r, 3);
 
     correlationByLag.push({ lag, correlation: rounded });
 

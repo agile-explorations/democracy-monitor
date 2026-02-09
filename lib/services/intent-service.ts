@@ -9,6 +9,7 @@ import type {
 } from '@/lib/types/intent';
 import { POLICY_AREAS } from '@/lib/types/intent';
 import { matchKeyword } from '@/lib/utils/keyword-match';
+import { roundTo } from '@/lib/utils/math';
 
 function scoreText(
   text: string,
@@ -29,7 +30,7 @@ function scoreText(
   // Scale: positive = authoritarian, negative = democratic
   const total = authCount + demoCount;
   const raw = (authCount - demoCount) / total;
-  return Math.round(raw * 2 * 100) / 100; // scale to -2 to +2
+  return roundTo(raw * 2, 2); // scale to -2 to +2
 }
 
 export function scoreStatements(statements: IntentStatement[]): IntentAssessment {
@@ -56,9 +57,9 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
         : 0;
 
     policyAreas[area] = {
-      rhetoric: Math.round(rhetoricScore * 100) / 100,
-      action: Math.round(actionScore * 100) / 100,
-      gap: Math.round(Math.abs(rhetoricScore - actionScore) * 100) / 100,
+      rhetoric: roundTo(rhetoricScore, 2),
+      action: roundTo(actionScore, 2),
+      gap: roundTo(Math.abs(rhetoricScore - actionScore), 2),
     };
   }
 
@@ -89,10 +90,10 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
 
   return {
     overall: governance.key as GovernanceCategory,
-    confidence: Math.round(confidence * 100) / 100,
-    rhetoricScore: Math.round(avgRhetoric * 100) / 100,
-    actionScore: Math.round(avgAction * 100) / 100,
-    gap: Math.round(overallGap * 100) / 100,
+    confidence: roundTo(confidence, 2),
+    rhetoricScore: roundTo(avgRhetoric, 2),
+    actionScore: roundTo(avgAction, 2),
+    gap: roundTo(overallGap, 2),
     policyAreas,
     recentStatements: statements.slice(0, 20),
     assessedAt: new Date().toISOString(),

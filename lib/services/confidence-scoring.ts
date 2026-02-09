@@ -6,6 +6,7 @@ import {
   SOURCE_DIVERSITY_MAX,
 } from '@/lib/methodology/scoring-config';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
+import { roundTo } from '@/lib/utils/math';
 
 interface ConfidenceFactors {
   sourceDiversity: number; // 0-1: how many different source types
@@ -16,6 +17,13 @@ interface ConfidenceFactors {
 }
 
 const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme court', 'judicial'];
+
+/** Minimum keyword density denominator to avoid inflated ratios. */
+const MIN_KEYWORD_DENOMINATOR = 3;
+/** Default AI agreement score when no AI assessment is available. */
+const DEFAULT_AI_AGREEMENT = 0.5;
+/** AI agreement scores by distance between keyword and AI status levels. */
+const AI_AGREEMENT_BY_DISTANCE = [1, 0.7, 0.4, 0.2] as const;
 
 export function calculateDataCoverage(
   items: ContentItem[],
@@ -43,17 +51,20 @@ export function calculateDataCoverage(
   const matchCount = keywordResult.matches.length;
   const keywordDensity =
     validItems.length > 0
-      ? Math.min(1, matchCount / Math.max(3, validItems.length * KEYWORD_DENSITY_RATIO))
+      ? Math.min(
+          1,
+          matchCount / Math.max(MIN_KEYWORD_DENOMINATOR, validItems.length * KEYWORD_DENSITY_RATIO),
+        )
       : 0;
 
   // AI agreement
-  let aiAgreement = 0.5; // default when no AI
+  let aiAgreement = DEFAULT_AI_AGREEMENT;
   if (aiStatus) {
     const levels = ['Stable', 'Warning', 'Drift', 'Capture'];
     const kwIdx = levels.indexOf(keywordResult.status);
     const aiIdx = levels.indexOf(aiStatus);
     const distance = Math.abs(kwIdx - aiIdx);
-    aiAgreement = distance === 0 ? 1 : distance === 1 ? 0.7 : distance === 2 ? 0.4 : 0.2;
+    aiAgreement = AI_AGREEMENT_BY_DISTANCE[distance] ?? AI_AGREEMENT_BY_DISTANCE[3];
   }
 
   const factors: ConfidenceFactors = {
@@ -72,5 +83,5 @@ export function calculateDataCoverage(
     factors.keywordDensity * DATA_COVERAGE_WEIGHTS.keywordDensity +
     factors.aiAgreement * DATA_COVERAGE_WEIGHTS.aiAgreement;
 
-  return { confidence: Math.round(confidence * 100) / 100, factors };
+  return { confidence: roundTo(confidence, 2), factors };
 }

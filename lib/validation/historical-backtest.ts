@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { statusIndex } from '@/lib/services/status-ordering';
 import type { StatusLevel } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 import type { KnownEvent } from './known-events';
 
 export interface BacktestResult {
@@ -29,7 +30,7 @@ export function getWeekMonday(dateStr: string): string {
   // Shift Sunday (0) to 7 so Monday=1 is always the start
   const diff = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diff);
-  return d.toISOString().split('T')[0];
+  return toDateString(d);
 }
 
 /**
@@ -80,7 +81,7 @@ export async function runBacktest(
   for (const row of assessmentRows.rows) {
     const r = row as Record<string, unknown>;
     const category = r.category as string;
-    const week = new Date(r.week as string).toISOString().split('T')[0];
+    const week = toDateString(new Date(r.week as string));
     const status = r.status as string;
 
     if (!weeklyData.has(category)) weeklyData.set(category, new Map());

@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { generateDailyDigest } from '@/lib/services/daily-digest-service';
+import { requireMethod } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!requireMethod(req, res, 'POST')) return;
 
   const { date, categoryData, anomalies } = req.body;
 

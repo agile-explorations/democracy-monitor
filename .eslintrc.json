@@ -4,7 +4,7 @@
     "@next/next/no-html-link-for-pages": "off",
 
     "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
-    "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true, "skipComments": true }],
+    "max-lines-per-function": "off",
 
     "react/function-component-definition": [
       "warn",
@@ -44,6 +44,7 @@
     {
       "files": [
         "lib/data/**",
+        "lib/demo/**",
         "lib/db/schema.ts",
         "__tests__/**",
         "**/*.test.ts",
@@ -51,14 +52,7 @@
         "**/*.fixture.*"
       ],
       "rules": {
-        "max-lines": "off",
-        "max-lines-per-function": "off"
-      }
-    },
-    {
-      "files": ["components/**", "lib/hooks/**"],
-      "rules": {
-        "max-lines-per-function": "off"
+        "max-lines": "off"
       }
     }
   ]

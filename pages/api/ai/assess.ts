@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
+import { requireMethod, formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!requireMethod(req, res, 'POST')) return;
 
   try {
     const { category, items, providers } = req.body;
@@ -23,6 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json(result);
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

@@ -3,8 +3,13 @@ import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { keywordTrends } from '@/lib/db/schema';
 import type { KeywordTrend, TrendAnomaly } from '@/lib/types/trends';
+import { ONE_WEEK_MS, SIX_MONTHS_MS } from '@/lib/utils/date-utils';
 
-const ANOMALY_THRESHOLD = 2.0; // 2x baseline = anomaly
+/** Ratio above baseline that constitutes an anomaly. */
+const ANOMALY_THRESHOLD = 2.0;
+/** Ratio thresholds for severity classification. */
+const HIGH_SEVERITY_RATIO = 5;
+const MEDIUM_SEVERITY_RATIO = 3;
 
 export function detectAnomalies(trends: KeywordTrend[]): TrendAnomaly[] {
   return trends
@@ -14,7 +19,11 @@ export function detectAnomalies(trends: KeywordTrend[]): TrendAnomaly[] {
       category: t.category,
       ratio: t.ratio,
       severity:
-        t.ratio >= 5 ? ('high' as const) : t.ratio >= 3 ? ('medium' as const) : ('low' as const),
+        t.ratio >= HIGH_SEVERITY_RATIO
+          ? ('high' as const)
+          : t.ratio >= MEDIUM_SEVERITY_RATIO
+            ? ('medium' as const)
+            : ('low' as const),
       message: `"${t.keyword}" appeared ${t.currentCount} times (${t.ratio.toFixed(1)}x above 6-month baseline of ${t.baselineAvg.toFixed(1)})`,
       detectedAt: new Date().toISOString(),
     }));
@@ -26,7 +35,7 @@ export function calculateTrends(
   category: string,
 ): KeywordTrend[] {
   const now = new Date();
-  const periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const periodStart = new Date(now.getTime() - ONE_WEEK_MS).toISOString();
   const periodEnd = now.toISOString();
 
   return Object.entries(currentCounts).map(([keyword, count]) => {
@@ -100,7 +109,7 @@ export async function getBaselineCounts(category: string): Promise<Record<string
   if (!isDbAvailable()) return {};
 
   const db = getDb();
-  const sixMonthsAgo = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+  const sixMonthsAgo = new Date(Date.now() - SIX_MONTHS_MS);
 
   const rows = await db
     .select()

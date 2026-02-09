@@ -18,6 +18,7 @@ import type {
   SeverityTier,
   SuppressedMatch,
 } from '@/lib/types/scoring';
+import { toDateString } from '@/lib/utils/date-utils';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 import { classifyDocument } from './document-classifier';
 
@@ -111,7 +112,7 @@ function getWeekOf(dateStr?: string): string {
   // Shift Sunday (0) to 7 for Monday-based week
   const diff = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diff);
-  return d.toISOString().split('T')[0];
+  return toDateString(d);
 }
 
 // --- Core scoring ---

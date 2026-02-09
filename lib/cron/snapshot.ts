@@ -22,6 +22,7 @@ import {
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
+import { toDateString } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -107,7 +108,7 @@ export async function runSnapshots(): Promise<void> {
 
   // Fetch legislative tracking data
   console.log('[snapshot] Fetching congressional record data...');
-  const today = new Date().toISOString().split('T')[0];
+  const today = toDateString(new Date());
   try {
     const legislativeItems = await fetchCongressionalRecord({ dateFrom: today, dateTo: today });
     console.log(`[snapshot] Fetched ${legislativeItems.length} legislative items`);

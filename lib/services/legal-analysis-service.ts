@@ -1,8 +1,10 @@
 import { LEGAL_SYSTEM_PROMPT, buildLegalAnalysisPrompt } from '@/lib/ai/prompts/legal-analysis';
-import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
+import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { AI_CACHE_BUCKET_MS, AI_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { LEGAL_KNOWLEDGE_BASE } from '@/lib/data/legal-knowledge-base';
 import type { LegalAnalysisResult, LegalCitation } from '@/lib/types/legal';
+import { selectProvider } from '@/lib/utils/ai-helpers';
 import { embedText, cosineSimilarity } from './embedding-service';
 
 async function findRelevantLegalDocs(
@@ -45,13 +47,11 @@ export async function runLegalAnalysis(
   status: string,
   evidence: string[],
 ): Promise<LegalAnalysisResult | null> {
-  const cacheKey = `legal:${category}:${Date.now() - (Date.now() % (6 * 60 * 60 * 1000))}`;
+  const cacheKey = `legal:${category}:${Date.now() - (Date.now() % AI_CACHE_BUCKET_MS)}`;
   const cached = await cacheGet<LegalAnalysisResult>(cacheKey);
   if (cached) return cached;
 
-  // Prefer Claude for legal analysis
-  const providers = getAvailableProviders();
-  const provider = providers.find((p) => p.name === 'anthropic') || providers[0];
+  const provider = selectProvider(getAvailableProviders());
   if (!provider) return null;
 
   const context = evidence.join('\n');
@@ -137,6 +137,6 @@ export async function runLegalAnalysis(
     latencyMs: result.latencyMs,
   };
 
-  await cacheSet(cacheKey, analysisResult, 6 * 60 * 60);
+  await cacheSet(cacheKey, analysisResult, AI_CACHE_TTL_S);
   return analysisResult;
 }

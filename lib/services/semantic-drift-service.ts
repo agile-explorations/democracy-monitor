@@ -8,6 +8,7 @@ import {
 } from '@/lib/methodology/scoring-config';
 import { getBaseline } from '@/lib/services/baseline-service';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
+import { roundTo } from '@/lib/utils/math';
 
 export interface SemanticDriftResult {
   category: string;
@@ -73,7 +74,7 @@ export async function computeSemanticDrift(
 
   if (noiseFloor && noiseFloor > 0) {
     normalizedDrift = rawCosineDrift / noiseFloor;
-    const rounded = Math.round(normalizedDrift * 10) / 10;
+    const rounded = roundTo(normalizedDrift, 1);
 
     if (normalizedDrift >= SEMANTIC_DRIFT_ANOMALY_THRESHOLD) {
       interpretation = `This week's language shift is ${rounded}x normal variation for this category (anomalous)`;

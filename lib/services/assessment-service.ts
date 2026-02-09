@@ -3,6 +3,15 @@ import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
+/** Minimum capture-keyword matches to escalate to Capture status. */
+const CAPTURE_MATCH_THRESHOLD = 2;
+/** Minimum drift-keyword matches to escalate to Drift status. */
+const DRIFT_MATCH_THRESHOLD = 2;
+/** Maximum keyword matches shown in reason text. */
+const MAX_REASON_MATCHES = 3;
+/** Minimum valid items needed to assess as Stable (below this → insufficient data). */
+const MIN_ITEMS_FOR_STABLE = 3;
+
 interface AssessmentDetail {
   captureCount: number;
   driftCount: number;
@@ -119,10 +128,10 @@ function buildAssessmentResult(
     hasAuth,
   );
 
-  if (captureMatches.length >= 2) {
+  if (captureMatches.length >= CAPTURE_MATCH_THRESHOLD) {
     const reason = hasAuth
-      ? `Serious violations found by official sources (GAO, courts, or IGs): ${captureMatches.slice(0, 3).join(', ')}`
-      : `Multiple critical warning signs detected: ${captureMatches.slice(0, 3).join(', ')}`;
+      ? `Serious violations found by official sources (GAO, courts, or IGs): ${captureMatches.slice(0, MAX_REASON_MATCHES).join(', ')}`
+      : `Multiple critical warning signs detected: ${captureMatches.slice(0, MAX_REASON_MATCHES).join(', ')}`;
     return makeResult('Capture', reason, captureMatches, detail);
   }
 
@@ -135,10 +144,10 @@ function buildAssessmentResult(
     );
   }
 
-  if (driftMatches.length >= 2) {
+  if (driftMatches.length >= DRIFT_MATCH_THRESHOLD) {
     return makeResult(
       'Drift',
-      `Multiple concerning patterns found: ${driftMatches.slice(0, 3).join(', ')}`,
+      `Multiple concerning patterns found: ${driftMatches.slice(0, MAX_REASON_MATCHES).join(', ')}`,
       driftMatches,
       { ...detail, captureCount: 0, hasAuthoritative: false },
     );
@@ -156,7 +165,7 @@ function buildAssessmentResult(
   if (warningMatches.length > 0) {
     return makeResult(
       'Warning',
-      `Minor issues found: ${warningMatches.slice(0, 3).join(', ')}`,
+      `Minor issues found: ${warningMatches.slice(0, MAX_REASON_MATCHES).join(', ')}`,
       warningMatches,
       { ...detail, captureCount: 0, driftCount: 0, hasAuthoritative: false },
     );
@@ -196,7 +205,7 @@ function assessByVolume(
     }
   }
 
-  if (itemCount >= 3) {
+  if (itemCount >= MIN_ITEMS_FOR_STABLE) {
     return makeResult('Stable', 'Everything looks normal - no warning signs detected', [], base);
   }
 

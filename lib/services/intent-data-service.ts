@@ -1,10 +1,10 @@
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { SCRAPE_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { RHETORIC_KEYWORDS, ACTION_KEYWORDS } from '@/lib/data/intent-keywords';
 import type { ContentItem } from '@/lib/types/assessment';
 import type { IntentStatement, PolicyArea } from '@/lib/types/intent';
+import { toDateString } from '@/lib/utils/date-utils';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-
-const CACHE_TTL_S = 3600; // 1 hour
 
 export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
   const cacheKey = 'intent:presidential-docs';
@@ -55,7 +55,7 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
       },
     );
 
-    await cacheSet(cacheKey, statements, CACHE_TTL_S);
+    await cacheSet(cacheKey, statements, SCRAPE_CACHE_TTL_S);
     return statements;
   } catch (err) {
     console.warn('Failed to fetch presidential documents:', err);
@@ -117,12 +117,12 @@ async function fetchRssFeed(
         type,
         policyArea,
         score,
-        date: new Date().toISOString().split('T')[0],
+        date: toDateString(new Date()),
         url: links[i],
       });
     }
 
-    await cacheSet(cacheKey, items, CACHE_TTL_S);
+    await cacheSet(cacheKey, items, SCRAPE_CACHE_TTL_S);
     return items;
   } catch (err) {
     console.warn(`Failed to fetch RSS feed ${feedUrl}:`, err);

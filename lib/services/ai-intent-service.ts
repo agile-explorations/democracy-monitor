@@ -5,11 +5,11 @@ import {
 import { getAvailableProviders } from '@/lib/ai/provider';
 import { parseAIIntentResponse } from '@/lib/ai/schemas/intent-response';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { AI_CACHE_TTL_S } from '@/lib/data/cache-config';
 import type { IntentAssessment, IntentStatement } from '@/lib/types/intent';
+import { selectProvider } from '@/lib/utils/ai-helpers';
 import { retrieveRelevantDocuments } from './document-retriever';
 import { scoreStatements } from './intent-service';
-
-const AI_CACHE_TTL_S = 6 * 60 * 60; // 6 hours
 
 export async function enhancedIntentAssessment(
   statements: IntentStatement[],
@@ -27,10 +27,7 @@ export async function enhancedIntentAssessment(
   }
 
   // Step 3: Try AI enhancement
-  const availableProviders = getAvailableProviders();
-  const providerToUse = availableProviders.find(
-    (p) => p.name === 'anthropic' || p.name === 'openai',
-  );
+  const providerToUse = selectProvider(getAvailableProviders());
 
   if (!providerToUse) {
     await cacheSet(cacheKey, keywordResult, AI_CACHE_TTL_S);

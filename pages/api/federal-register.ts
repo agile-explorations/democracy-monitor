@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-const CACHE_TTL_S = 600; // 10 minutes
+import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
+import { formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -28,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check cache
     const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
-      res.setHeader('Cache-Control', 'public, s-maxage=600');
+      res.setHeader('Cache-Control', `public, s-maxage=${FEED_CACHE_TTL_S}`);
       return res.status(200).json({ cached: true, ...cached });
     }
 
@@ -74,11 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       url,
     };
 
-    await cacheSet(cacheKey, result, CACHE_TTL_S);
+    await cacheSet(cacheKey, result, FEED_CACHE_TTL_S);
 
-    res.setHeader('Cache-Control', 'public, s-maxage=600');
+    res.setHeader('Cache-Control', `public, s-maxage=${FEED_CACHE_TTL_S}`);
     res.status(200).json({ cached: false, ...result });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

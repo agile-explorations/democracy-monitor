@@ -2,7 +2,8 @@ import * as cheerio from 'cheerio';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-const CACHE_TTL_S = 3600; // 1 hour
+import { SCRAPE_CACHE_TTL_S } from '@/lib/data/cache-config';
+import { formatError } from '@/lib/utils/api-helpers';
 
 type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
 
@@ -59,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check cache
     const cached = await cacheGet<Record<string, unknown>>(cacheKey);
     if (cached) {
-      res.setHeader('Cache-Control', 'public, s-maxage=3600');
+      res.setHeader('Cache-Control', `public, s-maxage=${SCRAPE_CACHE_TTL_S}`);
       return res.status(200).json({ cached: true, ...cached });
     }
 
@@ -109,11 +110,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       scrapedAt: new Date().toISOString(),
     };
 
-    await cacheSet(cacheKey, result, CACHE_TTL_S);
+    await cacheSet(cacheKey, result, SCRAPE_CACHE_TTL_S);
 
-    res.setHeader('Cache-Control', 'public, s-maxage=3600');
+    res.setHeader('Cache-Control', `public, s-maxage=${SCRAPE_CACHE_TTL_S}`);
     res.status(200).json({ cached: false, ...result });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

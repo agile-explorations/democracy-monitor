@@ -1,3 +1,9 @@
+/** Round a number to the given number of decimal places. */
+export function roundTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
 /** Arithmetic mean. Returns 0 for empty arrays. */
 export function mean(values: number[]): number {
   if (values.length === 0) return 0;

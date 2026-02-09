@@ -94,9 +94,17 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 The assessment in `assessment-service.ts` uses keyword dictionaries organized by category and severity tier (capture/drift/warning). It normalizes text, searches for keyword matches, weights by source authority, detects pattern language ("systematic", "repeated"), and applies volume thresholds. Documented in `ASSESSMENT_METHODOLOGY.md`.
 
-## Post-sprint code review
+## Sprint process
 
-After completing and committing each sprint's implementation, **MUST** perform a code review of all files created or modified in that sprint **before** moving on to the next sprint. Report findings to the user before making changes.
+Every sprint **MUST** follow this process. It may **ONLY** be skipped with explicit approval from the user.
+
+1. **Analysis** — Research the problem space, read relevant code, identify what needs to change
+2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
+3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
+4. **Sprint number** — Update the sprint log in `MEMORY.md` with the new sprint number and summary
+5. **Implementation** — Do the work
+6. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes.
+7. **Commit** — Stage, format, and commit only after the review is clean
 
 ### What to check
 

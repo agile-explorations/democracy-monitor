@@ -52,3 +52,69 @@ rules:
     paths:
       exclude:
         - lib/ai
+
+  # WHY: API routes had 29 inline method guards (`req.method !== 'GET'`)
+  # with inconsistent error shapes. Sprint 9a extracted requireMethod()
+  # which returns a boolean and sends 405 with a consistent JSON body.
+  # Inline guards regress the DRY fix and produce inconsistent errors.
+  - id: no-inline-method-guard
+    pattern-regex: "req\\.method\\s*[!=]==?\\s*['\"](?:GET|POST|PUT|DELETE)['\"]"
+    message: >-
+      Use requireMethod(req, res, 'GET') from lib/utils/api-helpers
+      instead of inline method checks. The helper returns a consistent
+      405 JSON response and keeps API routes DRY. (Exempt: multi-method
+      handlers like reviews.ts that intentionally route by method.)
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - pages/api
+      exclude:
+        - pages/api/reviews.ts
+
+  # WHY: API routes had 12 inline DB-availability guards with inconsistent
+  # error messages. Sprint 9a extracted requireDb() which sends a
+  # consistent 503 response. Inline guards regress the fix.
+  - id: no-inline-db-guard
+    pattern-regex: "if \\(!isDbAvailable\\(\\)\\)"
+    message: >-
+      Use requireDb(res) from lib/utils/api-helpers instead of inline
+      isDbAvailable() checks in API routes. The helper sends a consistent
+      503 JSON response.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - pages/api
+
+  # WHY: .toISOString().split('T')[0] appeared in 16 files to extract a
+  # date string. Sprint 9a extracted toDateString() which is clearer,
+  # shorter, and gives a single place to change the format if needed.
+  - id: no-inline-date-string
+    pattern-regex: "\\.toISOString\\(\\)\\.split\\(['\"]T['\"]\\)\\[0\\]"
+    message: >-
+      Use toDateString(date) from lib/utils/date-utils instead of
+      .toISOString().split('T')[0]. The helper is clearer and keeps
+      date formatting consistent across the codebase.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      exclude:
+        - lib/utils/date-utils.ts
+        - '*.test.*'
+
+  # WHY: `err instanceof Error ? err.message : String(err)` appeared in
+  # 17 catch blocks with slight variations. Sprint 9a extracted
+  # formatError() for a consistent, tested error-to-string conversion.
+  - id: no-inline-error-format
+    pattern-regex: "\\binstanceof Error \\? \\w+\\.message : String\\("
+    message: >-
+      Use formatError(err) from lib/utils/api-helpers instead of inline
+      instanceof checks. The helper provides consistent error-to-string
+      conversion across the codebase.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      exclude:
+        - lib/utils/api-helpers.ts
+        - '*.test.*'

@@ -3,7 +3,9 @@ import { parseStringPromise } from 'xml2js';
 import { getAllowedHosts } from '@/lib/allowedHosts';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-const CACHE_TTL_S = Number(process.env.PROXY_CACHE_TTL) || 600;
+import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
+import { formatError } from '@/lib/utils/api-helpers';
+const CACHE_TTL_S = Number(process.env.PROXY_CACHE_TTL) || FEED_CACHE_TTL_S;
 
 function okHost(u: URL) {
   return getAllowedHosts().includes(u.hostname);
@@ -124,6 +126,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', `public, s-maxage=${CACHE_TTL_S}`);
     res.status(200).json({ cached: false, data: out });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

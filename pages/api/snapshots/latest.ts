@@ -1,15 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { isDbAvailable } from '@/lib/db';
 import { getLatestSnapshot, getLatestSnapshots } from '@/lib/services/snapshot-store';
+import { requireMethod, requireDb, formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not configured' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
+  if (!requireDb(res)) return;
 
   try {
     const { category } = req.query;
@@ -28,6 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(snapshots);
   } catch (err) {
     console.error('[api/snapshots/latest] Error:', err);
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: formatError(err) });
   }
 }

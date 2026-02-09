@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useDevMode } from '@/lib/hooks/useDevMode';
+import { toDateString } from '@/lib/utils/date-utils';
 
 interface DigestSummary {
   date: string;
@@ -23,7 +24,7 @@ export default function DigestArchive() {
       for (let i = 0; i < 7; i++) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = toDateString(date);
 
         try {
           const res = await fetch(`/api/digest/${dateStr}`);

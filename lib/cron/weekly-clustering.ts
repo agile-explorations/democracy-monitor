@@ -4,6 +4,7 @@ import { gte } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { clusterDocuments } from '@/lib/services/semantic-clustering-service';
+import { ONE_WEEK_MS } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -16,7 +17,7 @@ export async function runWeeklyClustering(): Promise<void> {
   }
 
   const db = getDb();
-  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const oneWeekAgo = new Date(Date.now() - ONE_WEEK_MS);
 
   // Fetch recent documents
   const recentDocs = await db.select().from(documents).where(gte(documents.fetchedAt, oneWeekAgo));

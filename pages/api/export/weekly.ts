@@ -1,16 +1,14 @@
 import { and, gte, lte, eq } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { isDbAvailable, getDb } from '@/lib/db';
+import { MAX_EXPORT_ROWS } from '@/lib/data/cache-config';
+import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
+import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { toCsv } from '@/lib/utils/csv';
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limit';
 
-const MAX_EXPORT_ROWS = 10_000;
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
 
   const ip = getClientIp(req);
   const { allowed, retryAfterMs } = checkRateLimit(ip, { windowMs: 1000, maxRequests: 1 });
@@ -19,9 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(429).json({ error: 'Too many requests', retryAfterMs });
   }
 
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not configured' });
-  }
+  if (!requireDb(res)) return;
 
   const { category, from, to, format = 'json' } = req.query;
 
@@ -59,6 +55,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json(rows);
   } catch (err) {
     console.error('[api/export/weekly] Error:', err);
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: formatError(err) });
   }
 }

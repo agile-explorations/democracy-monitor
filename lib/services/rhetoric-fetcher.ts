@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { toDateString } from '@/lib/utils/date-utils';
 
 /**
  * Fetch White House briefing-room archive pages for a date range.
@@ -71,7 +72,7 @@ export async function fetchWhiteHouseHistorical(options: {
       allItems.push({
         title,
         link: fullUrl,
-        pubDate: itemDate ? itemDate.toISOString().split('T')[0] : undefined,
+        pubDate: itemDate ? toDateString(itemDate) : undefined,
         agency: 'White House',
         type: 'rhetoric',
       });

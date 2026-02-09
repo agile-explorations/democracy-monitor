@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { isDbAvailable } from '@/lib/db';
 import { computeRhetoricActionLag, computeAllLags } from '@/lib/services/lag-analysis-service';
 import type { PolicyArea } from '@/lib/types/intent';
+import { requireMethod, requireDb, formatError } from '@/lib/utils/api-helpers';
 
 const VALID_AREAS: PolicyArea[] = [
   'rule_of_law',
@@ -12,13 +12,8 @@ const VALID_AREAS: PolicyArea[] = [
 ];
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
+  if (!requireDb(res)) return;
 
   const { area, maxLag, from, to } = req.query;
 
@@ -43,6 +38,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const results = await computeAllLags(options);
     return res.status(200).json({ results });
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: formatError(err) });
   }
 }

@@ -7,9 +7,11 @@ import {
 import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { DIGEST_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { digests } from '@/lib/db/schema';
 import type { DigestEntry, TrendAnomaly } from '@/lib/types/trends';
+import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 
 type DigestRow = typeof digests.$inferSelect;
 
@@ -51,7 +53,7 @@ export async function generateDailyDigest(
 
     if (existing.length > 0) {
       const digest = mapRowToDigestEntry(existing[0]);
-      await cacheSet(cacheKey, digest, 24 * 60 * 60);
+      await cacheSet(cacheKey, digest, DIGEST_CACHE_TTL_S);
       return digest;
     }
   }
@@ -60,6 +62,7 @@ export async function generateDailyDigest(
   if (providers.length === 0) return null;
 
   const provider = providers.find((p) => p.name === 'anthropic') || providers[0];
+  if (!provider) return null;
 
   const result = await provider.complete(buildDailyDigestPrompt(date, categoryData, anomalies), {
     systemPrompt: DIGEST_SYSTEM_PROMPT,
@@ -67,26 +70,21 @@ export async function generateDailyDigest(
     temperature: 0.3,
   });
 
-  let parsed: {
+  interface DigestParsed {
     summary: string;
     summaryExpert?: string;
     highlights: string[];
     categorySummaries: Record<string, string>;
     categorySummariesExpert?: Record<string, string>;
     overallAssessment: string;
-  };
-
-  try {
-    const jsonMatch = result.content.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(jsonMatch?.[0] || '{}');
-  } catch {
-    parsed = {
-      summary: result.content.slice(0, 500),
-      highlights: [],
-      categorySummaries: {},
-      overallAssessment: '',
-    };
   }
+
+  const parsed: DigestParsed = extractJsonFromLlm<DigestParsed>(result.content) || {
+    summary: result.content.slice(0, 500),
+    highlights: [],
+    categorySummaries: {},
+    overallAssessment: '',
+  };
 
   const digest: DigestEntry = {
     date,
@@ -118,7 +116,7 @@ export async function generateDailyDigest(
     });
   }
 
-  await cacheSet(cacheKey, digest, 24 * 60 * 60);
+  await cacheSet(cacheKey, digest, DIGEST_CACHE_TTL_S);
   return digest;
 }
 

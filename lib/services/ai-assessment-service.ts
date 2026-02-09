@@ -6,6 +6,7 @@ import { getAvailableProviders } from '@/lib/ai/provider';
 import { parseSkepticReviewResponse } from '@/lib/ai/schemas/assessment-response';
 import type { SkepticReviewResponse } from '@/lib/ai/schemas/assessment-response';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { AI_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
   StatusLevel,
@@ -25,8 +26,6 @@ import { resolveDowngrade, clampToCeiling } from './status-ordering';
 import type { DowngradeDecision } from './status-ordering';
 
 export type { EnhancedAssessment };
-
-const AI_CACHE_TTL_S = 6 * 60 * 60; // 6 hours
 
 interface SkepticReviewResult {
   aiResult: NonNullable<EnhancedAssessment['aiResult']>;

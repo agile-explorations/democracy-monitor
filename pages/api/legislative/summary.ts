@@ -1,15 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { isDbAvailable } from '@/lib/db';
 import { getLegislativeSummary } from '@/lib/services/legislative-dashboard-service';
+import { requireMethod, requireDb } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
+  if (!requireDb(res)) return;
 
   const { from, to, category } = req.query;
 

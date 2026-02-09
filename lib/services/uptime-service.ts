@@ -3,6 +3,7 @@ import { MONITORED_SITES } from '@/lib/data/monitored-sites';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { siteUptime } from '@/lib/db/schema';
 import type { UptimeResult, UptimeHistory, MonitoredSite } from '@/lib/types/resilience';
+import { ONE_WEEK_MS } from '@/lib/utils/date-utils';
 
 const CHECK_TIMEOUT_MS = 10000;
 
@@ -92,7 +93,7 @@ export async function getUptimeHistory(): Promise<UptimeHistory[]> {
   const db = getDb();
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - ONE_WEEK_MS);
 
   const histories: UptimeHistory[] = [];
 

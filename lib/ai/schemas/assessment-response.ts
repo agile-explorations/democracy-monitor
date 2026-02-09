@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 
 export const AIAssessmentResponseSchema = z.object({
   status: z.enum(['Stable', 'Warning', 'Drift', 'Capture']),
@@ -18,30 +19,17 @@ export const CounterEvidenceResponseSchema = z.object({
 export type CounterEvidenceResponse = z.infer<typeof CounterEvidenceResponseSchema>;
 
 export function parseAIAssessmentResponse(raw: string): AIAssessmentResponse | null {
-  try {
-    // Try to extract JSON from the response (AI might wrap it in markdown)
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const result = AIAssessmentResponseSchema.safeParse(parsed);
-    return result.success ? result.data : null;
-  } catch {
-    return null;
-  }
+  const parsed = extractJsonFromLlm(raw);
+  if (!parsed) return null;
+  const result = AIAssessmentResponseSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
 
 export function parseCounterEvidenceResponse(raw: string): CounterEvidenceResponse | null {
-  try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const result = CounterEvidenceResponseSchema.safeParse(parsed);
-    return result.success ? result.data : null;
-  } catch {
-    return null;
-  }
+  const parsed = extractJsonFromLlm(raw);
+  if (!parsed) return null;
+  const result = CounterEvidenceResponseSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
 
 export const SkepticReviewResponseSchema = z.object({
@@ -64,14 +52,8 @@ export const SkepticReviewResponseSchema = z.object({
 export type SkepticReviewResponse = z.infer<typeof SkepticReviewResponseSchema>;
 
 export function parseSkepticReviewResponse(raw: string): SkepticReviewResponse | null {
-  try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const result = SkepticReviewResponseSchema.safeParse(parsed);
-    return result.success ? result.data : null;
-  } catch {
-    return null;
-  }
+  const parsed = extractJsonFromLlm(raw);
+  if (!parsed) return null;
+  const result = SkepticReviewResponseSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }

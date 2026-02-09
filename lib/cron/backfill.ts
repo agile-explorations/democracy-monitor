@@ -19,7 +19,7 @@ import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/wee
 import type { ContentItem, EnhancedAssessment } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
-import { getWeekRanges } from '@/lib/utils/date-utils';
+import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
@@ -192,7 +192,7 @@ async function backfillRhetoric(
 
 export async function runBackfill(options: BackfillOptions = {}): Promise<void> {
   const from = options.from || INAUGURATION_DATE;
-  const to = options.to || new Date().toISOString().split('T')[0];
+  const to = options.to || toDateString(new Date());
   const dryRun = options.dryRun || false;
   const includeRhetoric = options.includeRhetoric !== false; // default true
 

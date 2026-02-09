@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 
 export const AIIntentResponseSchema = z.object({
   overall: z.enum([
@@ -29,14 +30,8 @@ export const AIIntentResponseSchema = z.object({
 export type AIIntentResponse = z.infer<typeof AIIntentResponseSchema>;
 
 export function parseAIIntentResponse(raw: string): AIIntentResponse | null {
-  try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const result = AIIntentResponseSchema.safeParse(parsed);
-    return result.success ? result.data : null;
-  } catch {
-    return null;
-  }
+  const parsed = extractJsonFromLlm(raw);
+  if (!parsed) return null;
+  const result = AIIntentResponseSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }

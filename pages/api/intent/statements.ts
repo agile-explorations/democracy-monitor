@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { fetchAllRhetoricSources } from '@/lib/services/intent-data-service';
+import { formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,6 +18,6 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       sources,
     });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

@@ -3,6 +3,7 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { intentStatements, intentWeekly } from '@/lib/db/schema';
 import { getWeekOfDate } from '@/lib/services/weekly-aggregator';
 import { POLICY_AREAS } from '@/lib/types/intent';
+import { toDateString } from '@/lib/utils/date-utils';
 
 export interface IntentWeeklyRow {
   policyArea: string;
@@ -30,7 +31,7 @@ export async function computeIntentWeekly(
   // weekOf is Monday; compute end of week (Sunday)
   const weekEnd = new Date(weekOf);
   weekEnd.setDate(weekEnd.getDate() + 6);
-  const weekEndStr = weekEnd.toISOString().split('T')[0];
+  const weekEndStr = toDateString(weekEnd);
 
   const [stats] = await db
     .select({

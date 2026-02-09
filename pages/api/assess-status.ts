@@ -3,6 +3,7 @@ import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeContent } from '@/lib/services/assessment-service';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { storeDocuments } from '@/lib/services/document-store';
+import { formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -35,6 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       assessedAt: new Date().toISOString(),
     });
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

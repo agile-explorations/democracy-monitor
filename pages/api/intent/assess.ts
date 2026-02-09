@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { INTENT_ASSESS_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { isDbAvailable } from '@/lib/db';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
@@ -11,8 +12,7 @@ import {
 } from '@/lib/services/intent-data-service';
 import { scoreStatements } from '@/lib/services/intent-service';
 import { getLatestIntentSnapshot } from '@/lib/services/intent-snapshot-store';
-
-const CACHE_TTL_S = 1800; // 30 minutes
+import { formatError } from '@/lib/utils/api-helpers';
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -64,10 +64,10 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
         ? await enhancedIntentAssessment(allStatements)
         : scoreStatements(allStatements);
 
-    await cacheSet(cacheKey, assessment, CACHE_TTL_S);
+    await cacheSet(cacheKey, assessment, INTENT_ASSESS_CACHE_TTL_S);
 
     res.status(200).json(assessment);
   } catch (err) {
-    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    res.status(500).json({ error: formatError(err) });
   }
 }

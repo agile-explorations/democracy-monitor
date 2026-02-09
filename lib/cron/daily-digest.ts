@@ -2,9 +2,10 @@ import { cacheGet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { CATEGORIES } from '@/lib/data/categories';
 import { generateDailyDigest } from '@/lib/services/daily-digest-service';
+import { toDateString } from '@/lib/utils/date-utils';
 
 export async function runDailyDigest(): Promise<void> {
-  const date = new Date().toISOString().split('T')[0];
+  const date = toDateString(new Date());
   console.log(`[daily-digest] Generating digest for ${date}...`);
 
   // Gather latest assessment data from cache

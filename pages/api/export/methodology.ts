@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getConfigSnapshot } from '@/lib/services/explanation-service';
+import { requireMethod } from '@/lib/utils/api-helpers';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
 
   const config = getConfigSnapshot();
 

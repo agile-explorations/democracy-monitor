@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documentScores, weeklyAggregates } from '@/lib/db/schema';
 import { TIER_WEIGHTS } from '@/lib/methodology/scoring-config';
+import { toDateString } from '@/lib/utils/date-utils';
 
 export interface WeeklyAggregate {
   category: string;
@@ -226,5 +227,5 @@ export function getWeekOfDate(dateStr?: string): string {
   const day = d.getUTCDay();
   const diff = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diff);
-  return d.toISOString().split('T')[0];
+  return toDateString(d);
 }

@@ -2,7 +2,7 @@ import { getAvailableProviders } from '@/lib/ai/provider';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { semanticClusters } from '@/lib/db/schema';
 import type { SemanticCluster } from '@/lib/types/trends';
-import { embedBatch, cosineSimilarity } from './embedding-service';
+import { computeCentroid, embedBatch, cosineSimilarity } from './embedding-service';
 
 interface DocumentForClustering {
   text: string;
@@ -51,14 +51,7 @@ function kMeans(
     // Recompute centroids
     centroids = centroids.map((_, c) => {
       const clusterVectors = vectors.filter((_, i) => assignments[i] === c);
-      if (clusterVectors.length === 0) return centroids[c];
-
-      const centroid = new Array(dim).fill(0);
-      for (const vec of clusterVectors) {
-        for (let d = 0; d < dim; d++) centroid[d] += vec[d];
-      }
-      for (let d = 0; d < dim; d++) centroid[d] /= clusterVectors.length;
-      return centroid;
+      return computeCentroid(clusterVectors) || centroids[c];
     });
   }
 

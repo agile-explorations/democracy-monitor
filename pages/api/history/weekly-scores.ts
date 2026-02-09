@@ -1,16 +1,12 @@
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { isDbAvailable, getDb } from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
+import { requireMethod, requireDb } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  if (!isDbAvailable()) {
-    return res.status(503).json({ error: 'Database not configured' });
-  }
+  if (!requireMethod(req, res, 'GET')) return;
+  if (!requireDb(res)) return;
 
   const category = req.query.category as string | undefined;
   const from = req.query.from as string | undefined;
