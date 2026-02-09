@@ -2,15 +2,7 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { intentStatements, intentWeekly } from '@/lib/db/schema';
 import { getWeekOfDate } from '@/lib/services/weekly-aggregator';
-import type { PolicyArea } from '@/lib/types/intent';
-
-const POLICY_AREAS: PolicyArea[] = [
-  'rule_of_law',
-  'civil_liberties',
-  'elections',
-  'media_freedom',
-  'institutional_independence',
-];
+import { POLICY_AREAS } from '@/lib/types/intent';
 
 export interface IntentWeeklyRow {
   policyArea: string;

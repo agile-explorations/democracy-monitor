@@ -1,10 +1,12 @@
 export const P2025_JUDGE_SYSTEM_PROMPT = `You are a nonpartisan policy analyst specializing in comparing policy proposals with government actions. You analyze documents objectively, focusing on factual alignment between stated proposals and observed actions. Respond only with valid JSON.`;
 
+const MAX_DOCUMENT_CONTENT_LENGTH = 2000;
+
 export function buildP2025JudgePrompt(
   proposal: { id: string; summary: string; text: string },
   document: { title: string; content: string | null },
 ): string {
-  const docContent = (document.content || '').slice(0, 2000);
+  const docContent = (document.content || '').slice(0, MAX_DOCUMENT_CONTENT_LENGTH);
 
   return `Compare the following Project 2025 policy proposal with a government document/action to determine if the document represents implementation of the proposal.
 

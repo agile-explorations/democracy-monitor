@@ -9,20 +9,13 @@ import type {
   IntentScore,
   GovernanceCategory,
 } from '@/lib/types';
+import { POLICY_AREAS } from '@/lib/types';
 import type { ScenarioName } from '../scenarios';
 import { DEMO_SCENARIOS } from '../scenarios';
 
 function daysAgo(n: number): string {
   return new Date(Date.now() - n * 86400000).toISOString().split('T')[0];
 }
-
-const POLICY_AREAS: PolicyArea[] = [
-  'rule_of_law',
-  'civil_liberties',
-  'elections',
-  'media_freedom',
-  'institutional_independence',
-];
 
 function makePolicyScores(rhetoric: number, action: number): Record<PolicyArea, IntentScore> {
   const result: Record<string, IntentScore> = {};

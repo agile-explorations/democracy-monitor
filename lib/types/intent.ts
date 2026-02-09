@@ -22,6 +22,14 @@ export type PolicyArea =
   | 'media_freedom'
   | 'institutional_independence';
 
+export const POLICY_AREAS: PolicyArea[] = [
+  'rule_of_law',
+  'civil_liberties',
+  'elections',
+  'media_freedom',
+  'institutional_independence',
+];
+
 export interface IntentScore {
   rhetoric: number; // -2 to +2 (-2 = strong democratic, +2 = strong authoritarian)
   action: number; // -2 to +2

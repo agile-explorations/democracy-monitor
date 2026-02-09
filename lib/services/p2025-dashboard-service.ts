@@ -3,6 +3,52 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { documents, p2025Matches, p2025Proposals } from '@/lib/db/schema';
 import type { P2025Classification, P2025Summary } from '@/lib/types/p2025';
 
+function buildClassificationBreakdown(
+  matches: Array<{ llmClassification: string | null }>,
+): Record<P2025Classification, number> {
+  const breakdown: Record<P2025Classification, number> = {
+    not_related: 0,
+    loosely_related: 0,
+    implements: 0,
+    exceeds: 0,
+  };
+
+  for (const m of matches) {
+    const c = m.llmClassification as P2025Classification;
+    if (c in breakdown) {
+      breakdown[c]++;
+    }
+  }
+
+  return breakdown;
+}
+
+function buildProposalStats(
+  proposals: Array<{
+    id: string;
+    dashboardCategory: string | null;
+    severity: string;
+    status: string;
+  }>,
+  matchedIds: Set<string>,
+) {
+  const byCategory: Record<string, { total: number; matched: number }> = {};
+  const bySeverity: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+
+  for (const p of proposals) {
+    const cat = p.dashboardCategory || 'unknown';
+    if (!byCategory[cat]) byCategory[cat] = { total: 0, matched: 0 };
+    byCategory[cat].total++;
+    if (matchedIds.has(p.id)) byCategory[cat].matched++;
+
+    bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
+    byStatus[p.status] = (byStatus[p.status] || 0) + 1;
+  }
+
+  return { byCategory, bySeverity, byStatus };
+}
+
 /**
  * Get aggregate summary of P2025 proposal tracking.
  */
@@ -13,7 +59,6 @@ export async function getP2025Summary(): Promise<P2025Summary> {
 
   const db = getDb();
 
-  // Total proposals and status breakdown
   const proposals = await db
     .select({
       id: p2025Proposals.id,
@@ -23,7 +68,6 @@ export async function getP2025Summary(): Promise<P2025Summary> {
     })
     .from(p2025Proposals);
 
-  // Matches with classifications
   const matches = await db
     .select({
       proposalId: p2025Matches.proposalId,
@@ -37,33 +81,8 @@ export async function getP2025Summary(): Promise<P2025Summary> {
       .map((m) => m.proposalId),
   );
 
-  const classificationBreakdown: Record<P2025Classification, number> = {
-    not_related: 0,
-    loosely_related: 0,
-    implements: 0,
-    exceeds: 0,
-  };
-
-  for (const m of matches) {
-    const c = m.llmClassification as P2025Classification;
-    if (c in classificationBreakdown) {
-      classificationBreakdown[c]++;
-    }
-  }
-
-  const byCategory: Record<string, { total: number; matched: number }> = {};
-  const bySeverity: Record<string, number> = {};
-  const byStatus: Record<string, number> = {};
-
-  for (const p of proposals) {
-    const cat = p.dashboardCategory || 'unknown';
-    if (!byCategory[cat]) byCategory[cat] = { total: 0, matched: 0 };
-    byCategory[cat].total++;
-    if (matchedProposalIds.has(p.id)) byCategory[cat].matched++;
-
-    bySeverity[p.severity] = (bySeverity[p.severity] || 0) + 1;
-    byStatus[p.status] = (byStatus[p.status] || 0) + 1;
-  }
+  const classificationBreakdown = buildClassificationBreakdown(matches);
+  const { byCategory, bySeverity, byStatus } = buildProposalStats(proposals, matchedProposalIds);
 
   return {
     totalProposals: proposals.length,

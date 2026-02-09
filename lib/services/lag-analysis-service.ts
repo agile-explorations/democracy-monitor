@@ -1,18 +1,12 @@
 import { asc, eq, gte, lte, and } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { intentWeekly } from '@/lib/db/schema';
-import type { PolicyArea, LagAnalysisResult } from '@/lib/types/intent';
-
-const POLICY_AREAS: PolicyArea[] = [
-  'rule_of_law',
-  'civil_liberties',
-  'elections',
-  'media_freedom',
-  'institutional_independence',
-];
+import type { LagAnalysisResult, PolicyArea } from '@/lib/types/intent';
+import { POLICY_AREAS } from '@/lib/types/intent';
 
 const DEFAULT_MAX_LAG = 12;
 const MIN_DATA_POINTS = 4;
+const CORRELATION_SIGNIFICANCE_THRESHOLD = 0.2;
 
 /**
  * Compute the Pearson correlation coefficient between two arrays.
@@ -149,7 +143,7 @@ export async function computeAllLags(
 }
 
 function interpretLag(lagWeeks: number, correlation: number): string {
-  if (correlation < 0.2) {
+  if (correlation < CORRELATION_SIGNIFICANCE_THRESHOLD) {
     return 'No significant correlation between rhetoric and action';
   }
   if (lagWeeks === 0) {

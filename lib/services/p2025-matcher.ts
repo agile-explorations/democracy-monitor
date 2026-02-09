@@ -8,6 +8,8 @@ import type { P2025Classification, P2025Match } from '@/lib/types/p2025';
 
 const SIMILARITY_THRESHOLD = 0.5;
 const DEFAULT_TOP_K = 10;
+const LLM_JUDGE_MAX_TOKENS = 500;
+const LLM_JUDGE_TEMPERATURE = 0.1;
 
 const VALID_CLASSIFICATIONS: P2025Classification[] = [
   'not_related',
@@ -122,8 +124,8 @@ export async function judgeMatch(
 
   const result = await provider.complete(prompt, {
     systemPrompt: P2025_JUDGE_SYSTEM_PROMPT,
-    maxTokens: 500,
-    temperature: 0.1,
+    maxTokens: LLM_JUDGE_MAX_TOKENS,
+    temperature: LLM_JUDGE_TEMPERATURE,
   });
 
   return parseJudgeResponse(result.content);
@@ -164,6 +166,43 @@ export function parseJudgeResponse(text: string): JudgeResult {
 }
 
 /**
+ * Judge a single proposal against a document, build the match record, and persist it.
+ */
+async function judgeAndStoreMatch(
+  proposal: SimilarProposal,
+  doc: { title: string; content: string | null },
+  documentId: number,
+): Promise<P2025Match> {
+  const judgeResult = await judgeMatch(
+    { id: proposal.proposalId, summary: proposal.summary, text: proposal.text },
+    { title: doc.title, content: doc.content },
+  );
+
+  const match: P2025Match = {
+    proposalId: proposal.proposalId,
+    documentId,
+    cosineSimilarity: proposal.similarity,
+    llmClassification: judgeResult.classification,
+    llmConfidence: judgeResult.confidence,
+    llmReasoning: judgeResult.reasoning,
+    humanReviewed: false,
+  };
+
+  const db = getDb();
+  await db.insert(p2025Matches).values({
+    proposalId: match.proposalId,
+    documentId: match.documentId,
+    cosineSimilarity: match.cosineSimilarity,
+    llmClassification: match.llmClassification,
+    llmConfidence: match.llmConfidence,
+    llmReasoning: match.llmReasoning,
+    humanReviewed: false,
+  });
+
+  return match;
+}
+
+/**
  * Full pipeline: find similar proposals for a document, judge each, store results.
  */
 export async function matchDocumentToProposals(
@@ -174,7 +213,6 @@ export async function matchDocumentToProposals(
 
   const db = getDb();
 
-  // Get document details for LLM judge
   const [doc] = await db
     .select({ id: documents.id, title: documents.title, content: documents.content })
     .from(documents)
@@ -186,32 +224,7 @@ export async function matchDocumentToProposals(
   const matches: P2025Match[] = [];
 
   for (const proposal of similar) {
-    const judgeResult = await judgeMatch(
-      { id: proposal.proposalId, summary: proposal.summary, text: proposal.text },
-      { title: doc.title, content: doc.content },
-    );
-
-    const match: P2025Match = {
-      proposalId: proposal.proposalId,
-      documentId,
-      cosineSimilarity: proposal.similarity,
-      llmClassification: judgeResult.classification,
-      llmConfidence: judgeResult.confidence,
-      llmReasoning: judgeResult.reasoning,
-      humanReviewed: false,
-    };
-
-    // Store in database
-    await db.insert(p2025Matches).values({
-      proposalId: match.proposalId,
-      documentId: match.documentId,
-      cosineSimilarity: match.cosineSimilarity,
-      llmClassification: match.llmClassification,
-      llmConfidence: match.llmConfidence,
-      llmReasoning: match.llmReasoning,
-      humanReviewed: false,
-    });
-
+    const match = await judgeAndStoreMatch(proposal, doc, documentId);
     matches.push(match);
   }
 

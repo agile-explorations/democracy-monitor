@@ -7,15 +7,8 @@ import type {
   GovernanceCategory,
   IntentStatement,
 } from '@/lib/types/intent';
+import { POLICY_AREAS } from '@/lib/types/intent';
 import { matchKeyword } from '@/lib/utils/keyword-match';
-
-const POLICY_AREAS: PolicyArea[] = [
-  'rule_of_law',
-  'civil_liberties',
-  'elections',
-  'media_freedom',
-  'institutional_independence',
-];
 
 function scoreText(
   text: string,
