@@ -94,6 +94,28 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 The assessment in `assessment-service.ts` uses keyword dictionaries organized by category and severity tier (capture/drift/warning). It normalizes text, searches for keyword matches, weights by source authority, detects pattern language ("systematic", "repeated"), and applies volume thresholds. Documented in `ASSESSMENT_METHODOLOGY.md`.
 
+## Post-sprint code review
+
+After completing and committing each sprint's implementation, **MUST** perform a code review of all files created or modified in that sprint **before** moving on to the next sprint. Report findings to the user before making changes.
+
+### What to check
+
+1. **Clean code** — functions are short, single-purpose, and readable at a glance
+2. **Naming** — constants, variables, functions, and types have clear, descriptive names; no magic numbers or unnamed thresholds
+3. **SOLID principles** — especially Single Responsibility (one reason to change per module) and Dependency Inversion (depend on abstractions, not concretions)
+4. **DRY** — no duplicated logic, constants, or type definitions across files; shared code lives in `lib/data/`, `lib/utils/`, or `lib/types/`
+5. **Testability** — pure functions extractable from I/O; business logic not buried inside API routes or components
+6. **OpenGrep rule candidates** — for any issue that represents a recurring anti-pattern, evaluate whether a new `.opengrep/security.yml` rule could prevent it. Write and test the rule before fixing the code.
+
+### Where shared code lives
+
+| What                           | Where                               |
+| ------------------------------ | ----------------------------------- |
+| Static data / config arrays    | `lib/data/`                         |
+| Pure utility functions         | `lib/utils/`                        |
+| Type definitions               | `lib/types/`                        |
+| Scoring constants / thresholds | `lib/methodology/scoring-config.ts` |
+
 ### Infrastructure
 
 Configured for **Render.com** deployment via `render.yaml`:
