@@ -1,15 +1,12 @@
-import { buildAssessmentPrompt, ASSESSMENT_SYSTEM_PROMPT } from '@/lib/ai/prompts/assessment';
 import {
-  buildCounterEvidencePrompt,
-  COUNTER_EVIDENCE_SYSTEM_PROMPT,
-} from '@/lib/ai/prompts/counter-evidence';
-import { getProvider, getAvailableProviders } from '@/lib/ai/provider';
-import {
-  parseAIAssessmentResponse,
-  parseCounterEvidenceResponse,
-} from '@/lib/ai/schemas/assessment-response';
-import type { AIAssessmentResponse } from '@/lib/ai/schemas/assessment-response';
+  buildSkepticReviewPrompt,
+  SKEPTIC_REVIEW_SYSTEM_PROMPT,
+} from '@/lib/ai/prompts/skeptic-review';
+import type { KeywordMatchContext } from '@/lib/ai/prompts/skeptic-review';
+import { getAvailableProviders } from '@/lib/ai/provider';
+import { parseSkepticReviewResponse } from '@/lib/ai/schemas/assessment-response';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { CATEGORIES } from '@/lib/data/categories';
 import type { StatusLevel, AssessmentResult, ContentItem } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
@@ -17,6 +14,8 @@ import { calculateDataCoverage } from './confidence-scoring';
 import { retrieveRelevantDocuments } from './document-retriever';
 import { categorizeEvidence } from './evidence-balance';
 import type { EvidenceItem } from './evidence-balance';
+import { flagForReview } from './review-queue';
+import { resolveDowngrade, clampToCeiling } from './status-ordering';
 
 const AI_CACHE_TTL_S = 6 * 60 * 60; // 6 hours
 
@@ -42,6 +41,12 @@ export interface EnhancedAssessment {
   };
   consensusNote?: string;
   assessedAt: string;
+  // Skeptic review fields
+  recommendedStatus?: StatusLevel;
+  downgradeApplied?: boolean;
+  flaggedForReview?: boolean;
+  keywordReview?: Array<{ keyword: string; assessment: string; reasoning: string }>;
+  whatWouldChangeMind?: string;
   // Deep analysis (populated by snapshot cron for Drift/Capture)
   debate?: import('@/lib/types/debate').DebateResult;
   legalAnalysis?: import('@/lib/types/legal').LegalAnalysisResult;
@@ -62,8 +67,13 @@ export async function enhancedAssessment(
   // Step 3: Try AI enhancement if providers are available
   let aiResult: EnhancedAssessment['aiResult'] | undefined;
   let howWeCouldBeWrong: string[] = [];
+  let downgradeApplied = false;
+  let flaggedForReviewResult = false;
+  let recommendedStatus: StatusLevel | undefined;
+  let keywordReview: EnhancedAssessment['keywordReview'] | undefined;
+  let whatWouldChangeMind: string | undefined;
 
-  const cacheKey = `ai-assess:${category}:${keywordResult.status}:${items.length}`;
+  const cacheKey = `ai-skeptic:${category}:${keywordResult.status}:${items.length}`;
 
   // Check cache first
   if (!options?.skipCache) {
@@ -115,91 +125,65 @@ export async function enhancedAssessment(
     }
 
     try {
-      const prompt = buildAssessmentPrompt(
+      // Build keyword match context for the skeptic reviewer
+      const matchContexts = buildKeywordMatchContexts(keywordResult.matches, category, items);
+
+      const prompt = buildSkepticReviewPrompt(
         category,
         categoryTitle,
         enrichedItems.slice(0, 20),
         keywordResult.status,
         keywordResult.reason,
+        matchContexts,
       );
 
       const completion = await providerToUse.complete(prompt, {
-        systemPrompt: ASSESSMENT_SYSTEM_PROMPT,
+        systemPrompt: SKEPTIC_REVIEW_SYSTEM_PROMPT,
         maxTokens: 1024,
         temperature: 0.3,
       });
 
-      const parsed = parseAIAssessmentResponse(completion.content);
+      const parsed = parseSkepticReviewResponse(completion.content);
 
       if (parsed) {
+        // Clamp AI's recommendation to keyword ceiling
+        const clampedStatus = clampToCeiling(keywordResult.status, parsed.recommendedStatus);
+
+        // Resolve downgrade decision
+        const decision = resolveDowngrade(keywordResult.status, clampedStatus, parsed.confidence);
+
         aiResult = {
           provider: providerToUse.name,
           model: completion.model,
-          status: parsed.status,
-          reasoning: parsed.reasoning,
+          status: clampedStatus,
+          reasoning:
+            parsed.downgradeReason || `Agrees with keyword assessment: ${keywordResult.status}`,
           confidence: parsed.confidence,
           tokensUsed: completion.tokensUsed,
           latencyMs: completion.latencyMs,
         };
 
+        downgradeApplied = decision.downgradeApplied;
+        flaggedForReviewResult = decision.flaggedForReview;
+        recommendedStatus = clampedStatus;
+        keywordReview = parsed.keywordReview;
+        whatWouldChangeMind = parsed.whatWouldChangeMind;
         howWeCouldBeWrong = parsed.howWeCouldBeWrong;
 
         // Merge AI evidence with keyword evidence
-        if (parsed.evidenceFor.length > 0) {
-          for (const e of parsed.evidenceFor) {
-            if (!evidenceFor.some((ef) => ef.text === e)) {
-              evidenceFor.push({ text: e, direction: 'concerning' });
-            }
+        for (const e of parsed.evidenceFor) {
+          if (!evidenceFor.some((ef) => ef.text === e)) {
+            evidenceFor.push({ text: e, direction: 'concerning' });
           }
         }
-        if (parsed.evidenceAgainst.length > 0) {
-          for (const e of parsed.evidenceAgainst) {
-            if (!evidenceAgainst.some((ea) => ea.text === e)) {
-              evidenceAgainst.push({ text: e, direction: 'reassuring' });
-            }
+        for (const e of parsed.evidenceAgainst) {
+          if (!evidenceAgainst.some((ea) => ea.text === e)) {
+            evidenceAgainst.push({ text: e, direction: 'reassuring' });
           }
         }
       }
     } catch (err) {
       console.error(`AI assessment failed for ${category}:`, err);
-    }
-
-    // Step 3b: Get counter-evidence for Drift/Capture if we don't have enough
-    if (
-      howWeCouldBeWrong.length < 2 &&
-      (keywordResult.status === 'Drift' || keywordResult.status === 'Capture')
-    ) {
-      try {
-        // Enrich evidence with retrieved document summaries
-        const enrichedMatches = [...keywordResult.matches];
-        const extraItems = enrichedItems.filter((i) => i.summary && !i.isError && !i.isWarning);
-        for (const item of extraItems.slice(0, 5)) {
-          const context = `${item.title}: ${item.summary!.slice(0, 200)}`;
-          if (!enrichedMatches.includes(context)) {
-            enrichedMatches.push(context);
-          }
-        }
-
-        const counterPrompt = buildCounterEvidencePrompt(
-          CATEGORIES.find((c) => c.key === category)?.title || category,
-          keywordResult.status,
-          keywordResult.reason,
-          enrichedMatches,
-        );
-
-        const counterCompletion = await providerToUse.complete(counterPrompt, {
-          systemPrompt: COUNTER_EVIDENCE_SYSTEM_PROMPT,
-          maxTokens: 512,
-          temperature: 0.5,
-        });
-
-        const counterParsed = parseCounterEvidenceResponse(counterCompletion.content);
-        if (counterParsed) {
-          howWeCouldBeWrong = counterParsed.counterPoints;
-        }
-      } catch (err) {
-        console.warn('Counter-evidence retrieval failed:', err);
-      }
     }
   }
 
@@ -218,15 +202,20 @@ export async function enhancedAssessment(
   // Step 5: Generate consensus note
   let consensusNote: string | undefined;
   if (aiResult) {
-    if (aiResult.status === keywordResult.status) {
-      consensusNote = `Both keyword analysis and AI (${aiResult.provider}) agree: ${keywordResult.status}`;
+    if (downgradeApplied) {
+      consensusNote = `AI (${aiResult.provider}) reviewed keyword alert and auto-downgraded from ${keywordResult.status} to ${recommendedStatus}`;
+    } else if (flaggedForReviewResult) {
+      consensusNote = `AI (${aiResult.provider}) disagrees with ${keywordResult.status} (recommends ${recommendedStatus}), flagged for human review`;
     } else {
-      consensusNote = `Keyword analysis says ${keywordResult.status}, AI (${aiResult.provider}) says ${aiResult.status}. Using keyword result as baseline.`;
+      consensusNote = `AI (${aiResult.provider}) agrees with keyword assessment: ${keywordResult.status}`;
     }
   }
 
-  // Step 6: Determine final status (keyword engine is authoritative)
-  const finalStatus = keywordResult.status;
+  // Step 6: Determine final status
+  let finalStatus = keywordResult.status;
+  if (downgradeApplied && recommendedStatus) {
+    finalStatus = recommendedStatus;
+  }
 
   const result: EnhancedAssessment = {
     category,
@@ -242,12 +231,77 @@ export async function enhancedAssessment(
     aiResult,
     consensusNote,
     assessedAt: new Date().toISOString(),
+    recommendedStatus,
+    downgradeApplied,
+    flaggedForReview: flaggedForReviewResult,
+    keywordReview,
+    whatWouldChangeMind,
   };
+
+  // Flag for human review if needed
+  if (result.flaggedForReview) {
+    flagForReview(result).catch((err) => console.error('Failed to flag for review:', err));
+  }
 
   // Cache the result
   await cacheSet(cacheKey, result, AI_CACHE_TTL_S);
 
   return result;
+}
+
+/**
+ * Build KeywordMatchContext[] from keyword result matches.
+ * Classifies each match into a tier and finds which item it appeared in.
+ */
+function buildKeywordMatchContexts(
+  matches: string[],
+  category: string,
+  items: ContentItem[],
+): KeywordMatchContext[] {
+  return matches.map((match) => ({
+    keyword: match,
+    tier: classifyMatchTier(match, category),
+    matchedIn: findMatchSource(match, items),
+  }));
+}
+
+/** Look up which tier a keyword belongs to in ASSESSMENT_RULES. */
+function classifyMatchTier(match: string, category: string): 'capture' | 'drift' | 'warning' {
+  const rules = ASSESSMENT_RULES[category];
+  if (!rules?.keywords) return 'warning';
+
+  // Strip annotations like "(authoritative source)" or "(systematic pattern)"
+  const cleanMatch = match
+    .replace(/\s*\(.*\)\s*$/, '')
+    .trim()
+    .toLowerCase();
+
+  if (rules.keywords.capture.some((k) => cleanMatch === k.toLowerCase())) return 'capture';
+  if (rules.keywords.drift.some((k) => cleanMatch === k.toLowerCase())) return 'drift';
+  if (rules.keywords.warning.some((k) => cleanMatch === k.toLowerCase())) return 'warning';
+
+  // Matches with annotations (e.g. "keyword (systematic pattern)") are elevated
+  if (match.includes('(systematic pattern)')) return 'capture';
+  if (match.includes('(authoritative source)')) return 'capture';
+
+  return 'warning';
+}
+
+/** Find which item title/summary contained a given keyword match. */
+function findMatchSource(match: string, items: ContentItem[]): string {
+  const cleanMatch = match
+    .replace(/\s*\(.*\)\s*$/, '')
+    .trim()
+    .toLowerCase();
+
+  for (const item of items) {
+    const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
+    if (text.includes(cleanMatch)) {
+      return item.title || '(untitled)';
+    }
+  }
+
+  return '(source not identified)';
 }
 
 function generateKeywordCounterEvidence(status: StatusLevel, _category: string): string[] {

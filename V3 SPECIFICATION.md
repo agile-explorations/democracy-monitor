@@ -265,7 +265,7 @@ Classification logic: Use Federal Register API's `type` field (executive_order, 
 
 **Depends on**: Phase 1 (per-document scores in `document_scores` table)
 
-### 2.1 Weekly Aggregation Engine
+### 2.1 Weekly Aggregation Engine **[DONE]**
 
 **Priority**: High
 **Estimated scope**: ~250 lines new
@@ -343,7 +343,7 @@ CREATE TABLE weekly_aggregates (
 - Modify: `lib/cron/snapshot.ts` (compute weekly aggregate after scoring)
 - Modify: `lib/cron/backfill.ts` (compute weekly aggregate after scoring each week)
 
-### 2.2 Four Cumulative Views
+### 2.2 Four Cumulative Views **[DONE]**
 
 **Priority**: High
 **Estimated scope**: ~150 lines new
@@ -397,7 +397,7 @@ All four views are computed in a single pass over the ordered `weekly_aggregates
 - Create: `lib/services/cumulative-scoring.ts`
 - Create: `pages/api/history/cumulative.ts`
 
-### 2.3 Baseline Service
+### 2.3 Baseline Service **[DONE]**
 
 **Priority**: High — **[V3]** moved from Phase 4 to Phase 2 so cumulative scores are never shown without calibration
 **Estimated scope**: ~200 lines new
@@ -501,7 +501,7 @@ CREATE TABLE baselines (
 - Modify: `package.json` (add `build-baseline` script)
 - Included in: `drizzle/0008_weekly_aggregates.sql` (baselines table in same migration)
 
-### 2.4 Semantic Drift with Noise Floor
+### 2.4 Semantic Drift with Noise Floor **[DONE]**
 
 **Priority**: Medium-high
 **Estimated scope**: ~150 lines new
@@ -1147,12 +1147,12 @@ Add `pages/api/export/` routes:
 
 **Deliverable**: Every document gets a numerical score with context-aware suppression. All scoring decisions are auditable. Tests prove false positives are suppressed and true positives are detected.
 
-### Sprint 2 (Aggregation + Baselines) — Phase 2
+### Sprint 2 (Aggregation + Baselines) — Phase 2 **[DONE]**
 
-7. **2.1** Weekly aggregation engine + schema
-8. **2.2** Four cumulative views
-9. **2.3** Baseline service + configs + backfill script
-10. **2.4** Semantic drift with noise floor
+7. **2.1** Weekly aggregation engine + schema **[DONE]**
+8. **2.2** Four cumulative views **[DONE]**
+9. **2.3** Baseline service + configs + backfill script **[DONE]**
+10. **2.4** Semantic drift with noise floor **[DONE]**
 
 **[V3]** Baselines are computed before cumulative scores are shown to users.
 

@@ -1,14 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { EnhancedAssessment } from '@/lib/services/ai-assessment-service';
-import { runDebate } from '@/lib/services/debate-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { runLegalAnalysis } from '@/lib/services/legal-analysis-service';
 
 // Mock the AI/IO services — these are external boundaries
-vi.mock('@/lib/services/debate-service', () => ({
-  runDebate: vi.fn(),
-}));
-
 vi.mock('@/lib/services/legal-analysis-service', () => ({
   runLegalAnalysis: vi.fn(),
 }));
@@ -43,13 +38,7 @@ function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAs
 
 describe('enrichWithDeepAnalysis', () => {
   describe('for Drift/Capture status', () => {
-    it('populates debate, legal, and trend fields', async () => {
-      const debateResult = {
-        topic: 'test',
-        rounds: [],
-        conclusion: 'Concluded',
-        status: 'Drift' as const,
-      };
+    it('populates legal and trend fields', async () => {
       const legalResult = {
         category: 'rule_of_law',
         status: 'Drift' as const,
@@ -57,67 +46,39 @@ describe('enrichWithDeepAnalysis', () => {
         summary: 'Legal summary',
       };
 
-      vi.mocked(runDebate).mockResolvedValueOnce(debateResult);
       vi.mocked(runLegalAnalysis).mockResolvedValueOnce(legalResult);
 
       const assessment = makeAssessment({ status: 'Drift' });
       await enrichWithDeepAnalysis(assessment, [{ title: 'Executive order signed' }]);
 
-      expect(assessment.debate).toEqual(debateResult);
       expect(assessment.legalAnalysis).toEqual(legalResult);
       expect(assessment.trendAnomalies).toBeDefined();
     });
 
-    it('populates legal even when debate fails', async () => {
-      vi.mocked(runDebate).mockRejectedValueOnce(new Error('AI unavailable'));
-      vi.mocked(runLegalAnalysis).mockResolvedValueOnce({
-        category: 'rule_of_law',
-        status: 'Capture' as const,
-        analyses: [],
-        summary: 'Summary',
-      });
-
-      const assessment = makeAssessment({ status: 'Capture' });
-      await enrichWithDeepAnalysis(assessment, [{ title: 'test' }]);
-
-      expect(assessment.debate).toBeUndefined();
-      expect(assessment.legalAnalysis).toBeDefined();
-      expect(assessment.legalAnalysis!.summary).toBe('Summary');
-    });
-
-    it('populates debate even when legal fails', async () => {
-      vi.mocked(runDebate).mockResolvedValueOnce({
-        topic: 'test',
-        rounds: [],
-        conclusion: 'Done',
-        status: 'Drift' as const,
-      });
+    it('populates trends even when legal fails', async () => {
       vi.mocked(runLegalAnalysis).mockRejectedValueOnce(new Error('API error'));
 
       const assessment = makeAssessment({ status: 'Drift' });
       await enrichWithDeepAnalysis(assessment, [{ title: 'test' }]);
 
-      expect(assessment.debate).toBeDefined();
-      expect(assessment.debate!.conclusion).toBe('Done');
       expect(assessment.legalAnalysis).toBeUndefined();
+      expect(assessment.trendAnomalies).toBeDefined();
     });
   });
 
   describe('for non-Drift/Capture status', () => {
-    it('does not populate debate or legal for Stable status', async () => {
+    it('does not populate legal for Stable status', async () => {
       const assessment = makeAssessment({ status: 'Stable' });
       await enrichWithDeepAnalysis(assessment, [{ title: 'Normal activity' }]);
 
-      expect(assessment.debate).toBeUndefined();
       expect(assessment.legalAnalysis).toBeUndefined();
       expect(assessment.trendAnomalies).toBeDefined();
     });
 
-    it('does not populate debate or legal for Warning status', async () => {
+    it('does not populate legal for Warning status', async () => {
       const assessment = makeAssessment({ status: 'Warning' });
       await enrichWithDeepAnalysis(assessment, [{ title: 'Some concern' }]);
 
-      expect(assessment.debate).toBeUndefined();
       expect(assessment.legalAnalysis).toBeUndefined();
     });
 
@@ -136,12 +97,6 @@ describe('enrichWithDeepAnalysis', () => {
   });
 
   it('ignores empty and missing titles in evidence', async () => {
-    vi.mocked(runDebate).mockResolvedValueOnce({
-      topic: 'test',
-      rounds: [],
-      conclusion: 'Done',
-      status: 'Drift' as const,
-    });
     vi.mocked(runLegalAnalysis).mockResolvedValueOnce({
       category: 'rule_of_law',
       status: 'Drift' as const,
@@ -161,7 +116,6 @@ describe('enrichWithDeepAnalysis', () => {
 
     // If empty titles weren't filtered, the AI services would receive
     // garbage input. The test verifies enrichment succeeds despite bad input.
-    expect(assessment.debate).toBeDefined();
     expect(assessment.legalAnalysis).toBeDefined();
   });
 });

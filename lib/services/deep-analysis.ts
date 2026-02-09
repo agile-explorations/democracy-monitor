@@ -1,5 +1,4 @@
 import type { EnhancedAssessment } from './ai-assessment-service';
-import { runDebate } from './debate-service';
 import { runLegalAnalysis } from './legal-analysis-service';
 import {
   countKeywordsInItems,
@@ -10,8 +9,8 @@ import {
 } from './trend-anomaly-service';
 
 /**
- * Enrich an EnhancedAssessment with deep analysis (debate, legal, trends).
- * Mutates the assessment in place. Debate and legal only run for Drift/Capture.
+ * Enrich an EnhancedAssessment with deep analysis (legal, trends).
+ * Mutates the assessment in place. Legal only runs for Drift/Capture.
  * Trend analysis runs for all statuses (cheap, no AI).
  */
 export async function enrichWithDeepAnalysis(
@@ -21,15 +20,11 @@ export async function enrichWithDeepAnalysis(
   const evidence = items.map((i) => i.title || '').filter(Boolean);
 
   if (assessment.status === 'Drift' || assessment.status === 'Capture') {
-    const [debateResult, legalResult, trendResult] = await Promise.allSettled([
-      runDebate(assessment.category, assessment.status, evidence),
+    const [legalResult, trendResult] = await Promise.allSettled([
       runLegalAnalysis(assessment.category, assessment.status, evidence),
       runTrendAnalysis(assessment.category, items),
     ]);
 
-    if (debateResult.status === 'fulfilled' && debateResult.value) {
-      assessment.debate = debateResult.value;
-    }
     if (legalResult.status === 'fulfilled' && legalResult.value) {
       assessment.legalAnalysis = legalResult.value;
     }

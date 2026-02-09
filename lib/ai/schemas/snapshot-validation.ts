@@ -17,6 +17,20 @@ export const EnhancedAssessmentSchema = z
       matches: z.array(z.string()),
     }),
     assessedAt: z.string(),
+    // Skeptic review fields (Sprint 3)
+    recommendedStatus: z.enum(['Stable', 'Warning', 'Drift', 'Capture']).optional(),
+    downgradeApplied: z.boolean().optional(),
+    flaggedForReview: z.boolean().optional(),
+    keywordReview: z
+      .array(
+        z.object({
+          keyword: z.string(),
+          assessment: z.string(),
+          reasoning: z.string(),
+        }),
+      )
+      .optional(),
+    whatWouldChangeMind: z.string().optional(),
   })
   .passthrough();
 

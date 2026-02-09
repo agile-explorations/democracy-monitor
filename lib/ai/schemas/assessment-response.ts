@@ -43,3 +43,35 @@ export function parseCounterEvidenceResponse(raw: string): CounterEvidenceRespon
     return null;
   }
 }
+
+export const SkepticReviewResponseSchema = z.object({
+  keywordReview: z.array(
+    z.object({
+      keyword: z.string(),
+      assessment: z.enum(['genuine_concern', 'false_positive', 'ambiguous']),
+      reasoning: z.string(),
+    }),
+  ),
+  recommendedStatus: z.enum(['Stable', 'Warning', 'Drift', 'Capture']),
+  downgradeReason: z.string(),
+  confidence: z.number().min(0).max(1),
+  evidenceFor: z.array(z.string()),
+  evidenceAgainst: z.array(z.string()).min(1),
+  howWeCouldBeWrong: z.array(z.string()).min(2),
+  whatWouldChangeMind: z.string(),
+});
+
+export type SkepticReviewResponse = z.infer<typeof SkepticReviewResponseSchema>;
+
+export function parseSkepticReviewResponse(raw: string): SkepticReviewResponse | null {
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const result = SkepticReviewResponseSchema.safeParse(parsed);
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
