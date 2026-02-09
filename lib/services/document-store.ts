@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
@@ -45,4 +45,84 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
   }
 
   return stored;
+}
+
+/**
+ * Get documents for a category within a date range.
+ */
+export async function getDocumentHistory(
+  category: string,
+  options?: { from?: string; to?: string; limit?: number },
+): Promise<
+  {
+    id: number;
+    title: string;
+    url: string | null;
+    publishedAt: Date | null;
+    sourceType: string;
+    category: string;
+  }[]
+> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const conditions = [eq(documents.category, category)];
+  if (options?.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
+  if (options?.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
+
+  return db
+    .select({
+      id: documents.id,
+      title: documents.title,
+      url: documents.url,
+      publishedAt: documents.publishedAt,
+      sourceType: documents.sourceType,
+      category: documents.category,
+    })
+    .from(documents)
+    .where(and(...conditions))
+    .orderBy(desc(documents.publishedAt))
+    .limit(options?.limit || 500);
+}
+
+export interface VolumePoint {
+  week: string;
+  count: number;
+}
+
+/**
+ * Get weekly document volume per category within a date range.
+ */
+export async function getDocumentVolume(options?: {
+  from?: string;
+  to?: string;
+}): Promise<Record<string, VolumePoint[]>> {
+  if (!isDbAvailable()) return {};
+  const db = getDb();
+
+  const fromClause = options?.from ? sql`AND published_at >= ${new Date(options.from)}` : sql``;
+  const toClause = options?.to ? sql`AND published_at <= ${new Date(options.to)}` : sql``;
+
+  const rows = await db.execute(sql`
+    SELECT
+      category,
+      date_trunc('week', published_at) AS week,
+      COUNT(*)::int AS count
+    FROM documents
+    WHERE published_at IS NOT NULL ${fromClause} ${toClause}
+    GROUP BY category, date_trunc('week', published_at)
+    ORDER BY category, week
+  `);
+
+  const result: Record<string, VolumePoint[]> = {};
+  for (const row of rows.rows) {
+    const r = row as Record<string, unknown>;
+    const cat = r.category as string;
+    if (!result[cat]) result[cat] = [];
+    result[cat].push({
+      week: new Date(r.week as string).toISOString().split('T')[0],
+      count: r.count as number,
+    });
+  }
+  return result;
 }

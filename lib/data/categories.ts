@@ -100,6 +100,18 @@ export const CATEGORIES: Category[] = [
         type: 'federal_register',
         note: 'Looking for reports about following (or not following) court orders',
       },
+      {
+        name: 'Judicial Nominations',
+        url: '/api/federal-register?term=judicial+nomination+appointment',
+        type: 'federal_register',
+        note: 'Tracking judicial nominations and appointments',
+      },
+      {
+        name: 'Court Structure Changes',
+        url: '/api/federal-register?term=court+jurisdiction+judicial+reform',
+        type: 'federal_register',
+        note: 'Changes to court jurisdiction or judicial reform proposals',
+      },
     ],
   },
   {
@@ -119,6 +131,12 @@ export const CATEGORIES: Category[] = [
         url: 'https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945',
         type: 'rss',
         note: 'What the military is buying (can show unusual activity)',
+      },
+      {
+        name: 'Emergency Powers',
+        url: '/api/federal-register?term=national+emergency+declaration+IEEPA',
+        type: 'federal_register',
+        note: 'National emergency declarations and IEEPA (economic emergency) actions',
       },
     ],
   },
@@ -144,9 +162,9 @@ export const CATEGORIES: Category[] = [
   },
   {
     key: 'indices',
-    title: 'Overall Democracy Health',
+    title: 'Executive Power Volume',
     description:
-      'Looking at the big picture: Are democratic institutions getting stronger or weaker? This tracks overall government activity.',
+      'Tracking the volume and pace of presidential actions and new regulations. High activity may indicate rapid expansion of executive authority.',
     signals: [
       {
         name: 'Presidential Actions',
@@ -179,6 +197,46 @@ export const CATEGORIES: Category[] = [
         url: 'https://www.gao.gov/rss/reports.xml',
         type: 'rss',
         note: 'Checking if GAO continues publishing oversight reports',
+      },
+    ],
+  },
+  {
+    key: 'elections',
+    title: 'Free and Fair Elections',
+    description:
+      'Are elections being administered fairly and without interference? Tracks changes to election infrastructure, voter access, and election administration independence.',
+    signals: [
+      {
+        name: 'Election Assistance Commission',
+        url: '/api/federal-register?agency=election-assistance-commission',
+        type: 'federal_register',
+        note: 'Federal agency that helps states run elections',
+      },
+      {
+        name: 'Election Administration Rules',
+        url: '/api/federal-register?term=voter+registration+election+administration',
+        type: 'federal_register',
+        note: 'Rules affecting voter registration and how elections are run',
+      },
+    ],
+  },
+  {
+    key: 'mediaFreedom',
+    title: 'Press Freedom',
+    description:
+      'Can journalists report freely without government interference? Tracks press access, FOIA compliance, and threats to independent media.',
+    signals: [
+      {
+        name: 'Press & FOIA Rules',
+        url: '/api/federal-register?term=freedom+of+information+press+credentials',
+        type: 'federal_register',
+        note: 'Rules about press access and freedom of information',
+      },
+      {
+        name: 'FOIA Compliance',
+        url: '/api/federal-register?term=FOIA+compliance+public+records',
+        type: 'federal_register',
+        note: 'Rules about government transparency and public records access',
       },
     ],
   },

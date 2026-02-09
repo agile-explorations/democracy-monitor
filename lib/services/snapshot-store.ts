@@ -1,5 +1,5 @@
 import type { InferInsertModel } from 'drizzle-orm';
-import { desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
@@ -129,4 +129,77 @@ export function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
         ? new Date((row.assessed_at || row.assessedAt) as unknown as string).toISOString()
         : null) || new Date().toISOString(),
   };
+}
+
+/**
+ * Get snapshot history for a single category within a date range.
+ */
+export async function getSnapshotHistory(
+  category: string,
+  options?: { from?: string; to?: string },
+): Promise<EnhancedAssessment[]> {
+  const db = getDb();
+
+  const conditions = [eq(assessments.category, category)];
+  if (options?.from) conditions.push(gte(assessments.assessedAt, new Date(options.from)));
+  if (options?.to) conditions.push(lte(assessments.assessedAt, new Date(options.to)));
+
+  const rows = await db
+    .select()
+    .from(assessments)
+    .where(and(...conditions))
+    .orderBy(assessments.assessedAt);
+
+  return rows
+    .map((row) => rowToAssessment(row as unknown as AssessmentRow))
+    .filter((a): a is EnhancedAssessment => a !== null);
+}
+
+export interface TrajectoryPoint {
+  week: string;
+  status: string;
+  reason: string;
+  matchCount: number;
+}
+
+/**
+ * Get weekly trajectory for all categories within a date range.
+ * Returns one assessment per category per week (the latest in each week).
+ */
+export async function getWeeklyTrajectory(options?: {
+  from?: string;
+  to?: string;
+}): Promise<Record<string, TrajectoryPoint[]>> {
+  const db = getDb();
+
+  // Use raw SQL for the date_trunc + DISTINCT ON combo
+  const fromClause = options?.from ? sql`AND assessed_at >= ${new Date(options.from)}` : sql``;
+  const toClause = options?.to ? sql`AND assessed_at <= ${new Date(options.to)}` : sql``;
+
+  const rows = await db.execute(sql`
+    SELECT DISTINCT ON (category, date_trunc('week', assessed_at))
+      category,
+      date_trunc('week', assessed_at) AS week,
+      status,
+      reason,
+      matches,
+      assessed_at
+    FROM assessments
+    WHERE 1=1 ${fromClause} ${toClause}
+    ORDER BY category, date_trunc('week', assessed_at), assessed_at DESC
+  `);
+
+  const result: Record<string, TrajectoryPoint[]> = {};
+  for (const row of rows.rows) {
+    const r = row as Record<string, unknown>;
+    const cat = r.category as string;
+    if (!result[cat]) result[cat] = [];
+    result[cat].push({
+      week: new Date(r.week as string).toISOString().split('T')[0],
+      status: r.status as string,
+      reason: r.reason as string,
+      matchCount: Array.isArray(r.matches) ? r.matches.length : 0,
+    });
+  }
+  return result;
 }

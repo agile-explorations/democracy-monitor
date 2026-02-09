@@ -3,6 +3,7 @@ import { CategoryCard } from '@/components/dashboard/CategoryCard';
 import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { StatusLegend } from '@/components/dashboard/StatusLegend';
+import { InfrastructureSection } from '@/components/infrastructure/InfrastructureSection';
 import { CrossSectionBanner } from '@/components/integration/CrossSectionBanner';
 import { SystemHealthOverview } from '@/components/integration/SystemHealthOverview';
 import { IntentSection } from '@/components/intent/IntentSection';
@@ -50,6 +51,9 @@ export default function ExecutivePowerDriftDashboard() {
 
         {/* Navigation */}
         <nav className="flex gap-4 text-xs text-slate-500">
+          <a href="/history" className="hover:text-blue-600 underline">
+            Historical Trajectory
+          </a>
           <a href="/methodology" className="hover:text-blue-600 underline">
             Methodology
           </a>
@@ -92,6 +96,12 @@ export default function ExecutivePowerDriftDashboard() {
             </div>
           ))}
         </div>
+
+        {/* Section 3: Authoritarian Infrastructure */}
+        <h2 className="text-lg font-bold text-slate-900 pt-2">
+          Section 3: Authoritarian Infrastructure
+        </h2>
+        <InfrastructureSection />
 
         <DashboardFooter lastTick={lastTick} />
       </div>

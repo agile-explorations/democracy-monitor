@@ -1,0 +1,177 @@
+import * as cheerio from 'cheerio';
+import type { ContentItem } from '@/lib/types';
+
+/**
+ * Fetch White House briefing-room archive pages for a date range.
+ * Scrapes the paginated archive at whitehouse.gov/briefing-room/.
+ */
+export async function fetchWhiteHouseHistorical(options: {
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string; // YYYY-MM-DD
+  delayMs?: number;
+}): Promise<ContentItem[]> {
+  const { dateFrom, dateTo, delayMs = 500 } = options;
+  const from = new Date(dateFrom);
+  const to = new Date(dateTo);
+  const allItems: ContentItem[] = [];
+  let page = 1;
+  const maxPages = 50; // safety limit
+
+  while (page <= maxPages) {
+    const url = `https://www.whitehouse.gov/briefing-room/page/${page}/`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; DemocracyMonitor/1.0)',
+        Accept: 'text/html',
+      },
+    });
+
+    if (!response.ok) {
+      // 404 means we've gone past the last page
+      if (response.status === 404) break;
+      console.error(`[wh-historical] HTTP ${response.status} for page ${page}`);
+      break;
+    }
+
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    let foundItemsInRange = false;
+    let pastRange = false;
+
+    $('article, .briefing-statement, .news-item, li').each((_, el) => {
+      const $el = $(el);
+      const linkEl = $el.find('a').first();
+      const href = linkEl.attr('href');
+      const title = linkEl.text().trim() || $el.find('h2, h3').first().text().trim();
+
+      // Try to extract date from time element or text
+      const timeEl = $el.find('time').first();
+      const dateStr =
+        timeEl.attr('datetime') || timeEl.text().trim() || $el.find('.date').first().text().trim();
+
+      if (!title || !href) return;
+
+      const fullUrl = href.startsWith('http')
+        ? href
+        : `https://www.whitehouse.gov${href.startsWith('/') ? '' : '/'}${href}`;
+
+      // Parse date and check range
+      const itemDate = dateStr ? new Date(dateStr) : null;
+      if (itemDate) {
+        if (itemDate < from) {
+          pastRange = true;
+          return;
+        }
+        if (itemDate > to) return;
+        foundItemsInRange = true;
+      }
+
+      allItems.push({
+        title,
+        link: fullUrl,
+        pubDate: itemDate ? itemDate.toISOString().split('T')[0] : undefined,
+        agency: 'White House',
+        type: 'rhetoric',
+      });
+    });
+
+    // Stop if we've gone past our date range (items are newest-first)
+    if (pastRange && !foundItemsInRange) break;
+
+    page++;
+    await sleep(delayMs);
+  }
+
+  return allItems;
+}
+
+/**
+ * Fetch GDELT data for a date range.
+ * Uses the GDELT DOC 2.0 API for full-text article search.
+ */
+export async function fetchGdeltHistorical(options: {
+  query: string;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string; // YYYY-MM-DD
+  maxRecords?: number;
+  delayMs?: number;
+}): Promise<ContentItem[]> {
+  const { query, dateFrom, dateTo, maxRecords = 250, delayMs = 300 } = options;
+
+  // GDELT DOC API uses YYYYMMDDHHMMSS format
+  const startDate = dateFrom.replace(/-/g, '') + '000000';
+  const endDate = dateTo.replace(/-/g, '') + '235959';
+
+  const params = new URLSearchParams({
+    query: query,
+    mode: 'ArtList',
+    maxrecords: String(maxRecords),
+    format: 'json',
+    startdatetime: startDate,
+    enddatetime: endDate,
+    sort: 'DateDesc',
+  });
+
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'DemocracyMonitor/1.0 (backfill)',
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[gdelt-historical] HTTP ${response.status}`);
+      return [];
+    }
+
+    const data = await response.json();
+    const articles: Array<{
+      url?: string;
+      title?: string;
+      seendate?: string;
+      domain?: string;
+      sourcecountry?: string;
+      tone?: number;
+    }> = data.articles || [];
+
+    await sleep(delayMs);
+
+    return articles.map((article) => ({
+      title: article.title || '(untitled)',
+      link: article.url,
+      pubDate: article.seendate ? formatGdeltDate(article.seendate) : dateFrom,
+      agency: article.domain || 'GDELT',
+      summary: article.tone !== undefined ? `Tone: ${article.tone.toFixed(1)}` : undefined,
+      type: 'rhetoric',
+    }));
+  } catch (err) {
+    console.error('[gdelt-historical] Fetch error:', err);
+    return [];
+  }
+}
+
+/** GDELT queries relevant to executive power monitoring. */
+export const GDELT_QUERIES = [
+  '"executive order" OR "presidential authority" OR "executive power"',
+  '"press freedom" OR "journalist arrested" OR "FOIA denied"',
+  '"election interference" OR "voter suppression" OR "election administration"',
+  '"national emergency" OR "IEEPA" OR "insurrection act"',
+  '"inspector general" OR "government oversight" OR "watchdog fired"',
+];
+
+function formatGdeltDate(gdeltDate: string): string {
+  // GDELT dates are like "20250120T120000Z" or "20250120123000"
+  const cleaned = gdeltDate.replace(/[TZ]/g, '');
+  if (cleaned.length >= 8) {
+    return `${cleaned.slice(0, 4)}-${cleaned.slice(4, 6)}-${cleaned.slice(6, 8)}`;
+  }
+  return gdeltDate;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
