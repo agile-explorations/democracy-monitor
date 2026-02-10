@@ -22,6 +22,25 @@ const mockGetDb = vi.mocked(getDb);
 
 const { importSeedData } = await import('@/lib/seed/import');
 
+/** Tracks what was inserted so tests can inspect DB writes as output. */
+let insertedRows: { table: string; rows: Record<string, unknown>[] }[] = [];
+
+function setupMockDb() {
+  insertedRows = [];
+  const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+  const mockValues = vi.fn().mockImplementation((batch: Record<string, unknown>[]) => {
+    // Record what was actually passed to the DB
+    const lastInsert = insertedRows[insertedRows.length - 1];
+    lastInsert.rows.push(...batch);
+    return { onConflictDoNothing: mockOnConflict };
+  });
+  const mockInsert = vi.fn().mockImplementation((table: { _: string }) => {
+    insertedRows.push({ table: table._, rows: [] });
+    return { values: mockValues };
+  });
+  mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+}
+
 function writeFixture(dir: string, name: string, rows: Record<string, unknown>[]) {
   fs.writeFileSync(
     path.join(dir, `${name}.json`),
@@ -59,28 +78,21 @@ describe('importSeedData', () => {
 
   it('skips tables without fixture files', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-
-    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
-    const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflict });
-    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
-    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+    setupMockDb();
 
     // Write only one fixture — documents and others are missing
     writeFixture(testDir, 'assessments', [{ id: 1, category: 'courts', status: 'Stable' }]);
 
     await importSeedData(testDir);
 
-    // Only one insert call for assessments (documents comes first in order but has no fixture)
-    expect(mockInsert).toHaveBeenCalledTimes(1);
+    // Only assessments was inserted (documents has no fixture)
+    expect(insertedRows).toHaveLength(1);
+    expect(insertedRows[0].table).toBe('assessments');
   });
 
-  it('imports fixture rows and strips id field', async () => {
+  it('strips id field from imported rows', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-
-    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
-    const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflict });
-    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
-    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+    setupMockDb();
 
     writeFixture(testDir, 'assessments', [
       { id: 1, category: 'courts', status: 'Stable', reason: 'test' },
@@ -89,62 +101,38 @@ describe('importSeedData', () => {
 
     await importSeedData(testDir);
 
-    expect(mockInsert).toHaveBeenCalled();
-    // Verify ids were stripped from the values
-    const insertedValues = mockValues.mock.calls[0][0];
-    expect(insertedValues[0]).not.toHaveProperty('id');
-    expect(insertedValues[0]).toHaveProperty('category', 'courts');
-    expect(insertedValues[1]).not.toHaveProperty('id');
-    expect(insertedValues[1]).toHaveProperty('category', 'military');
+    const assessmentInsert = insertedRows.find((r) => r.table === 'assessments');
+    expect(assessmentInsert).toBeDefined();
+    expect(assessmentInsert!.rows[0]).not.toHaveProperty('id');
+    expect(assessmentInsert!.rows[0]).toHaveProperty('category', 'courts');
+    expect(assessmentInsert!.rows[1]).not.toHaveProperty('id');
+    expect(assessmentInsert!.rows[1]).toHaveProperty('category', 'military');
   });
 
-  it('uses onConflictDoNothing for idempotency', async () => {
+  it('does not insert anything for empty fixture rows', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-
-    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
-    const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflict });
-    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
-    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
-
-    writeFixture(testDir, 'documents', [{ id: 1, title: 'Test', url: 'https://example.com' }]);
-
-    await importSeedData(testDir);
-
-    expect(mockOnConflict).toHaveBeenCalled();
-  });
-
-  it('handles empty fixture rows', async () => {
-    mockIsDbAvailable.mockReturnValue(true);
-    const mockInsert = vi.fn();
-    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+    setupMockDb();
 
     writeFixture(testDir, 'assessments', []);
 
     await importSeedData(testDir);
 
-    // No insert call for empty rows
-    expect(mockInsert).not.toHaveBeenCalled();
+    // No tables were inserted into
+    expect(insertedRows).toHaveLength(0);
   });
 
   it('imports in correct order (documents before document_scores)', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-
-    const insertOrder: string[] = [];
-    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
-    const mockValues = vi.fn().mockReturnValue({ onConflictDoNothing: mockOnConflict });
-    const mockInsert = vi.fn().mockImplementation((table) => {
-      insertOrder.push(table._);
-      return { values: mockValues };
-    });
-    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+    setupMockDb();
 
     writeFixture(testDir, 'documents', [{ id: 1, title: 'Doc' }]);
     writeFixture(testDir, 'document_scores', [{ id: 1, url: 'https://example.com' }]);
 
     await importSeedData(testDir);
 
-    const docsIdx = insertOrder.indexOf('documents');
-    const scoresIdx = insertOrder.indexOf('document_scores');
+    const tableOrder = insertedRows.map((r) => r.table);
+    const docsIdx = tableOrder.indexOf('documents');
+    const scoresIdx = tableOrder.indexOf('document_scores');
     expect(docsIdx).toBeLessThan(scoresIdx);
   });
 

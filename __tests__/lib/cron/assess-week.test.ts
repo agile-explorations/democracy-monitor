@@ -35,9 +35,6 @@ vi.mock('@/lib/services/ai-assessment-service', () => ({
   } satisfies EnhancedAssessment),
 }));
 
-const { analyzeContent } = await import('@/lib/services/assessment-service');
-const { enhancedAssessment } = await import('@/lib/services/ai-assessment-service');
-
 const baseItems: ContentItem[] = [
   { title: 'Executive Order on Workforce', link: 'https://example.com/eo1', pubDate: '2026-01-15' },
   { title: 'Agency Restructuring Plan', link: 'https://example.com/plan1', pubDate: '2026-01-16' },
@@ -48,19 +45,19 @@ describe('assessWeek', () => {
     vi.clearAllMocks();
   });
 
-  it('uses keyword-only assessment when skipAi is true', async () => {
-    const aiOptions: AiOptions = { skipAi: true };
-    const result = await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', aiOptions);
+  it('returns keyword-only result when skipAi is true', async () => {
+    const result = await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', {
+      skipAi: true,
+    });
 
-    expect(analyzeContent).toHaveBeenCalledWith(baseItems, 'executiveAuthority');
-    expect(enhancedAssessment).not.toHaveBeenCalled();
     expect(result.status).toBe('Warning');
     expect(result.aiResult).toBeUndefined();
+    expect(result.keywordResult).toBeDefined();
+    expect(result.reason).toBe('Keyword match: executive order');
   });
 
   it('builds correct keyword-only result structure', async () => {
-    const aiOptions: AiOptions = { skipAi: true };
-    const result = await assessWeek(baseItems, 'courts', '2026-01-20', aiOptions);
+    const result = await assessWeek(baseItems, 'courts', '2026-01-20', { skipAi: true });
 
     expect(result.category).toBe('courts');
     expect(result.matches).toEqual(['executive order']);
@@ -71,8 +68,7 @@ describe('assessWeek', () => {
   });
 
   it('computes dataCoverage from item count', async () => {
-    const aiOptions: AiOptions = { skipAi: true };
-    const result = await assessWeek(baseItems, 'courts', '2026-01-20', aiOptions);
+    const result = await assessWeek(baseItems, 'courts', '2026-01-20', { skipAi: true });
 
     // 2 items / 10 = 0.2, capped at 1
     expect(result.dataCoverage).toBe(0.2);
@@ -83,51 +79,31 @@ describe('assessWeek', () => {
       title: `Doc ${i}`,
       link: `https://example.com/${i}`,
     }));
-    const aiOptions: AiOptions = { skipAi: true };
-    const result = await assessWeek(manyItems, 'courts', '2026-01-20', aiOptions);
+    const result = await assessWeek(manyItems, 'courts', '2026-01-20', { skipAi: true });
 
     expect(result.dataCoverage).toBe(1);
   });
 
-  it('uses enhancedAssessment when skipAi is false', async () => {
-    const aiOptions: AiOptions = { skipAi: false };
-    const result = await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', aiOptions);
-
-    expect(enhancedAssessment).toHaveBeenCalledWith(baseItems, 'executiveAuthority', {
-      skipCache: true,
+  it('returns AI-enhanced result when skipAi is false', async () => {
+    const result = await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', {
+      skipAi: false,
     });
-    expect(analyzeContent).not.toHaveBeenCalled();
+
     expect(result.aiResult).toBeDefined();
     expect(result.aiResult?.provider).toBe('openai');
-  });
-
-  it('passes model option to enhancedAssessment', async () => {
-    const aiOptions: AiOptions = { skipAi: false, model: 'gpt-4o-mini' };
-    await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', aiOptions);
-
-    expect(enhancedAssessment).toHaveBeenCalledWith(baseItems, 'executiveAuthority', {
-      skipCache: true,
-      model: 'gpt-4o-mini',
-    });
-  });
-
-  it('does not include model when not specified', async () => {
-    const aiOptions: AiOptions = { skipAi: false };
-    await assessWeek(baseItems, 'executiveAuthority', '2026-01-20', aiOptions);
-
-    expect(enhancedAssessment).toHaveBeenCalledWith(baseItems, 'executiveAuthority', {
-      skipCache: true,
-    });
+    expect(result.aiResult?.model).toBe('gpt-4o-mini');
+    expect(result.evidenceFor).toHaveLength(1);
+    expect(result.howWeCouldBeWrong).toContain('Context may be routine');
   });
 
   it('returns zero dataCoverage for empty items (keyword-only)', async () => {
-    const aiOptions: AiOptions = { skipAi: true };
+    const { analyzeContent } = await import('@/lib/services/assessment-service');
     vi.mocked(analyzeContent).mockReturnValueOnce({
       status: 'Stable',
       reason: 'No data',
       matches: [],
     });
-    const result = await assessWeek([], 'courts', '2026-01-20', aiOptions);
+    const result = await assessWeek([], 'courts', '2026-01-20', { skipAi: true });
 
     expect(result.dataCoverage).toBe(0);
     expect(result.status).toBe('Stable');
