@@ -36,6 +36,32 @@ interface BackfillBaselineOptions {
   skipFetch?: boolean;
 }
 
+async function fetchWeekData(
+  frSignals: Array<{ url: string; type: string }>,
+  week: { start: string; end: string },
+  categoryKey: string,
+  dryRun: boolean,
+): Promise<ContentItem[]> {
+  const items: ContentItem[] = [];
+  for (const signal of frSignals) {
+    const params = parseSignalParams(signal.url);
+    if (dryRun) continue;
+    try {
+      const fetched = await fetchFederalRegisterHistorical({
+        ...params,
+        dateFrom: week.start,
+        dateTo: week.end,
+        perPage: 1000,
+        delayMs: 200,
+      });
+      items.push(...fetched);
+    } catch (err) {
+      console.error(`  [${categoryKey}] FR fetch error for ${week.start}:`, err);
+    }
+  }
+  return items;
+}
+
 async function backfillBaselineCategory(
   categoryKey: string,
   signals: Array<{ url: string; type: string }>,
@@ -54,27 +80,8 @@ async function backfillBaselineCategory(
   }
 
   for (const week of weeks) {
-    const weekItems: ContentItem[] = [];
-
-    for (const signal of frSignals) {
-      const params = parseSignalParams(signal.url);
-      apiCalls++;
-
-      if (dryRun) continue;
-
-      try {
-        const items = await fetchFederalRegisterHistorical({
-          ...params,
-          dateFrom: week.start,
-          dateTo: week.end,
-          perPage: 1000,
-          delayMs: 200,
-        });
-        weekItems.push(...items);
-      } catch (err) {
-        console.error(`  [${categoryKey}] FR fetch error for ${week.start}:`, err);
-      }
-    }
+    const weekItems = await fetchWeekData(frSignals, week, categoryKey, dryRun);
+    apiCalls += frSignals.length;
 
     if (dryRun) continue;
 
@@ -103,6 +110,43 @@ async function backfillBaselineCategory(
   if (weeksProcessed > 0) console.log('');
 
   return { docs: totalDocs, weeks: weeksProcessed, apiCalls };
+}
+
+async function processBaselineConfig(
+  config: (typeof BASELINE_CONFIGS)[number],
+  categoriesToProcess: typeof CATEGORIES,
+  dryRun: boolean,
+  skipFetch: boolean,
+): Promise<void> {
+  console.log(
+    `\n[baseline] === ${config.label} (${config.from} → ${config.to}) ===${dryRun ? ' (DRY RUN)' : ''}`,
+  );
+
+  if (!skipFetch) {
+    const weeks = getWeekRanges(config.from, config.to);
+    console.log(`[baseline] ${weeks.length} weeks to process`);
+
+    let totalDocs = 0;
+    let totalApiCalls = 0;
+
+    for (const cat of categoriesToProcess) {
+      console.log(`\n[baseline] ${cat.key} (${cat.signals.length} signals)`);
+      const result = await backfillBaselineCategory(cat.key, cat.signals, weeks, dryRun);
+      totalDocs += result.docs;
+      totalApiCalls += result.apiCalls;
+    }
+
+    console.log(`\n[baseline] Fetch complete: ${totalDocs} docs, ${totalApiCalls} API calls`);
+  } else {
+    console.log('[baseline] --skip-fetch: skipping API calls, recomputing from existing data');
+  }
+
+  if (!dryRun) {
+    console.log(`[baseline] Computing baseline statistics for ${config.id}...`);
+    const baselineResults = await computeBaseline(config);
+    await storeBaseline(baselineResults);
+    console.log(`[baseline] Stored baselines for ${baselineResults.length} categories`);
+  }
 }
 
 async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<void> {
@@ -138,36 +182,7 @@ async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<vo
   }
 
   for (const config of configsToProcess) {
-    console.log(
-      `\n[baseline] === ${config.label} (${config.from} → ${config.to}) ===${dryRun ? ' (DRY RUN)' : ''}`,
-    );
-
-    if (!skipFetch) {
-      const weeks = getWeekRanges(config.from, config.to);
-      console.log(`[baseline] ${weeks.length} weeks to process`);
-
-      let totalDocs = 0;
-      let totalApiCalls = 0;
-
-      for (const cat of categoriesToProcess) {
-        console.log(`\n[baseline] ${cat.key} (${cat.signals.length} signals)`);
-        const result = await backfillBaselineCategory(cat.key, cat.signals, weeks, dryRun);
-        totalDocs += result.docs;
-        totalApiCalls += result.apiCalls;
-      }
-
-      console.log(`\n[baseline] Fetch complete: ${totalDocs} docs, ${totalApiCalls} API calls`);
-    } else {
-      console.log('[baseline] --skip-fetch: skipping API calls, recomputing from existing data');
-    }
-
-    // Compute and store baseline statistics
-    if (!dryRun) {
-      console.log(`[baseline] Computing baseline statistics for ${config.id}...`);
-      const baselineResults = await computeBaseline(config);
-      await storeBaseline(baselineResults);
-      console.log(`[baseline] Stored baselines for ${baselineResults.length} categories`);
-    }
+    await processBaselineConfig(config, categoriesToProcess, dryRun, skipFetch);
   }
 
   console.log('\n[baseline] Done.');

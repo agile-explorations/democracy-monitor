@@ -22,6 +22,22 @@ export interface WeeklyAggregate {
   computedAt: string;
 }
 
+function computeProportions(
+  captureMatchCount: number,
+  driftMatchCount: number,
+  warningMatchCount: number,
+) {
+  const totalMatches = captureMatchCount + driftMatchCount + warningMatchCount;
+  const captureProportion = totalMatches > 0 ? captureMatchCount / totalMatches : 0;
+  const driftProportion = totalMatches > 0 ? driftMatchCount / totalMatches : 0;
+  const warningProportion = totalMatches > 0 ? warningMatchCount / totalMatches : 0;
+  const severityMix =
+    captureProportion * TIER_WEIGHTS.capture +
+    driftProportion * TIER_WEIGHTS.drift +
+    warningProportion * TIER_WEIGHTS.warning;
+  return { captureProportion, driftProportion, warningProportion, severityMix };
+}
+
 /**
  * Compute a weekly aggregate from document_scores for a given category and week.
  */
@@ -57,17 +73,7 @@ export async function computeWeeklyAggregate(
   const warningMatchCount = Number(stats.warningMatchCount);
   const suppressedMatchCount = Number(stats.suppressedMatchCount);
 
-  const totalMatches = captureMatchCount + driftMatchCount + warningMatchCount;
-  const captureProportion = totalMatches > 0 ? captureMatchCount / totalMatches : 0;
-  const driftProportion = totalMatches > 0 ? driftMatchCount / totalMatches : 0;
-  const warningProportion = totalMatches > 0 ? warningMatchCount / totalMatches : 0;
-
-  const severityMix =
-    captureProportion * TIER_WEIGHTS.capture +
-    driftProportion * TIER_WEIGHTS.drift +
-    warningProportion * TIER_WEIGHTS.warning;
-
-  // Extract top keywords from matches JSONB
+  const proportions = computeProportions(captureMatchCount, driftMatchCount, warningMatchCount);
   const topKeywords = await extractTopKeywords(db, category, weekOf);
 
   return {
@@ -76,10 +82,7 @@ export async function computeWeeklyAggregate(
     totalSeverity,
     documentCount,
     avgSeverityPerDoc,
-    captureProportion,
-    driftProportion,
-    warningProportion,
-    severityMix,
+    ...proportions,
     captureMatchCount,
     driftMatchCount,
     warningMatchCount,

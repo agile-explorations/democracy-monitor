@@ -113,20 +113,12 @@ function makeDetail(
   return { captureCount, driftCount, warningCount, itemsReviewed, hasAuthoritative };
 }
 
-function buildAssessmentResult(
+function assessByKeywordMatches(
   scan: KeywordScanResult,
-  itemCount: number,
-  rules: (typeof ASSESSMENT_RULES)[string],
-): AssessmentResult {
+  detail: AssessmentDetail,
+): AssessmentResult | null {
   const { captureMatches, driftMatches, warningMatches, highAuthorityKeywords } = scan;
   const hasAuth = highAuthorityKeywords.length > 0;
-  const detail = makeDetail(
-    captureMatches.length,
-    driftMatches.length,
-    warningMatches.length,
-    itemCount,
-    hasAuth,
-  );
 
   if (captureMatches.length >= CAPTURE_MATCH_THRESHOLD) {
     const reason = hasAuth
@@ -171,7 +163,25 @@ function buildAssessmentResult(
     );
   }
 
-  return assessByVolume(itemCount, rules);
+  return null;
+}
+
+function buildAssessmentResult(
+  scan: KeywordScanResult,
+  itemCount: number,
+  rules: (typeof ASSESSMENT_RULES)[string],
+): AssessmentResult {
+  const { captureMatches, driftMatches, warningMatches, highAuthorityKeywords } = scan;
+  const hasAuth = highAuthorityKeywords.length > 0;
+  const detail = makeDetail(
+    captureMatches.length,
+    driftMatches.length,
+    warningMatches.length,
+    itemCount,
+    hasAuth,
+  );
+
+  return assessByKeywordMatches(scan, detail) ?? assessByVolume(itemCount, rules);
 }
 
 function assessByVolume(

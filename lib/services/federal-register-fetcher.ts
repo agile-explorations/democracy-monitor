@@ -8,6 +8,29 @@ function truncate(text: string): string {
   return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '\u2026' : text;
 }
 
+function buildFrApiUrl(
+  params: {
+    agency?: string;
+    type?: string;
+    term?: string;
+  },
+  page: number,
+  dateFrom: string,
+  dateTo: string,
+  perPage: number,
+): string {
+  const qs = new URLSearchParams();
+  qs.set('per_page', String(perPage));
+  qs.set('page', String(page));
+  qs.set('order', 'oldest');
+  qs.set('conditions[publication_date][gte]', dateFrom);
+  qs.set('conditions[publication_date][lte]', dateTo);
+  if (params.agency) qs.set('conditions[agencies][]', params.agency);
+  if (params.type) qs.set('conditions[type][]', params.type);
+  if (params.term) qs.set('conditions[term]', params.term);
+  return `https://www.federalregister.gov/api/v1/documents.json?${qs.toString()}`;
+}
+
 /**
  * Fetch Federal Register documents for a date range with pagination.
  * Used by the backfill script — calls FR API directly (no caching).
@@ -26,17 +49,7 @@ export async function fetchFederalRegisterHistorical(options: {
   let page = 1;
 
   while (true) {
-    const params = new URLSearchParams();
-    params.set('per_page', String(perPage));
-    params.set('page', String(page));
-    params.set('order', 'oldest');
-    params.set('conditions[publication_date][gte]', dateFrom);
-    params.set('conditions[publication_date][lte]', dateTo);
-    if (agency) params.set('conditions[agencies][]', agency);
-    if (type) params.set('conditions[type][]', type);
-    if (term) params.set('conditions[term]', term);
-
-    const url = `https://www.federalregister.gov/api/v1/documents.json?${params.toString()}`;
+    const url = buildFrApiUrl({ agency, type, term }, page, dateFrom, dateTo, perPage);
 
     const response = await fetch(url, {
       headers: {

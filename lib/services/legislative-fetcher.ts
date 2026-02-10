@@ -94,6 +94,56 @@ function inferChamber(
   return 'joint';
 }
 
+async function processGovInfoPackage(
+  pkg: GovInfoPackage,
+  apiKey: string,
+  dateFromObj: Date,
+  dateToObj: Date,
+  dateFrom: string,
+  delayMs: number,
+): Promise<LegislativeItem | null> {
+  if (!pkg.packageId || !pkg.title) return null;
+
+  const pkgDate = pkg.dateIssued ? new Date(pkg.dateIssued) : null;
+  if (pkgDate && (pkgDate > dateToObj || pkgDate < dateFromObj)) return null;
+
+  const titleLower = pkg.title.toLowerCase();
+  const isRelevant = OVERSIGHT_SEARCH_TERMS.some((term) => titleLower.includes(term));
+  if (!isRelevant) return null;
+
+  await sleep(delayMs);
+
+  let summaryData: GovInfoSummary | undefined;
+  try {
+    const summaryUrl = `https://api.govinfo.gov/packages/${pkg.packageId}/summary?api_key=${apiKey}`;
+    const summaryRes = await fetch(summaryUrl, {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'DemocracyMonitor/1.0',
+      },
+    });
+    if (summaryRes.ok) {
+      summaryData = await summaryRes.json();
+    }
+  } catch {
+    // Non-critical; continue without summary
+  }
+
+  const relevantCategories = classifyLegislativeRelevance(pkg.title, summaryData?.title);
+
+  return {
+    id: pkg.packageId,
+    title: pkg.title,
+    type: inferItemType(pkg.title),
+    date: pkg.dateIssued || dateFrom,
+    url: summaryData?.download?.pdfLink || `https://www.govinfo.gov/app/details/${pkg.packageId}`,
+    chamber: inferChamber(pkg, summaryData),
+    committee: summaryData?.committees?.[0]?.committeeName,
+    relevantCategories,
+    summary: summaryData?.title !== pkg.title ? summaryData?.title : undefined,
+  };
+}
+
 /**
  * Fetch Congressional Record items from the GovInfo API for a date range.
  * Returns empty array if GOVINFO_API_KEY is not set (graceful degradation).
@@ -115,12 +165,8 @@ export async function fetchCongressionalRecord(options: {
 
   try {
     const collectionUrl = `https://api.govinfo.gov/collections/CREC/${dateFrom}?offset=0&pageSize=${maxRecords}&api_key=${apiKey}`;
-
     const collectionRes = await fetch(collectionUrl, {
-      headers: {
-        Accept: 'application/json',
-        'User-Agent': 'DemocracyMonitor/1.0',
-      },
+      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
     });
 
     if (!collectionRes.ok) {
@@ -130,57 +176,19 @@ export async function fetchCongressionalRecord(options: {
 
     const collectionData: GovInfoCollectionResponse = await collectionRes.json();
     const packages = collectionData.packages || [];
-
     const dateToObj = new Date(dateTo);
     const dateFromObj = new Date(dateFrom);
 
     for (const pkg of packages) {
-      if (!pkg.packageId || !pkg.title) continue;
-
-      // Filter by date range
-      const pkgDate = pkg.dateIssued ? new Date(pkg.dateIssued) : null;
-      if (pkgDate && (pkgDate > dateToObj || pkgDate < dateFromObj)) continue;
-
-      // Check if title matches any oversight search terms
-      const titleLower = pkg.title.toLowerCase();
-      const isRelevant = OVERSIGHT_SEARCH_TERMS.some((term) => titleLower.includes(term));
-      if (!isRelevant) continue;
-
-      await sleep(delayMs);
-
-      // Fetch summary for more detail
-      let summaryData: GovInfoSummary | undefined;
-      try {
-        const summaryUrl = `https://api.govinfo.gov/packages/${pkg.packageId}/summary?api_key=${apiKey}`;
-        const summaryRes = await fetch(summaryUrl, {
-          headers: {
-            Accept: 'application/json',
-            'User-Agent': 'DemocracyMonitor/1.0',
-          },
-        });
-        if (summaryRes.ok) {
-          summaryData = await summaryRes.json();
-        }
-      } catch {
-        // Non-critical; continue without summary
-      }
-
-      const relevantCategories = classifyLegislativeRelevance(pkg.title, summaryData?.title);
-
-      const item: LegislativeItem = {
-        id: pkg.packageId,
-        title: pkg.title,
-        type: inferItemType(pkg.title),
-        date: pkg.dateIssued || dateFrom,
-        url:
-          summaryData?.download?.pdfLink || `https://www.govinfo.gov/app/details/${pkg.packageId}`,
-        chamber: inferChamber(pkg, summaryData),
-        committee: summaryData?.committees?.[0]?.committeeName,
-        relevantCategories,
-        summary: summaryData?.title !== pkg.title ? summaryData?.title : undefined,
-      };
-
-      items.push(item);
+      const item = await processGovInfoPackage(
+        pkg,
+        apiKey,
+        dateFromObj,
+        dateToObj,
+        dateFrom,
+        delayMs,
+      );
+      if (item) items.push(item);
     }
   } catch (err) {
     console.error('[legislative] Fetch error:', err);

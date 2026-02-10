@@ -8,6 +8,55 @@ import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { toDateString } from '@/lib/utils/date-utils';
 import { matchKeyword } from '@/lib/utils/keyword-match';
 
+type WeekEntry = { category: string; reason: string; matches: string[] };
+type WeekMap = Map<string, WeekEntry[]>;
+
+interface ConvergencePoint {
+  week: string;
+  activeThemeCount: number;
+  convergence: ConvergenceLevel;
+  convergenceScore: number;
+}
+
+function computeConvergenceSeries(weekMap: WeekMap): ConvergencePoint[] {
+  return Array.from(weekMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([week, entries]) => {
+      let activeThemeCount = 0;
+      const themeIntensities: number[] = [];
+
+      for (const theme of INFRASTRUCTURE_THEMES) {
+        let matchCount = 0;
+        for (const entry of entries) {
+          const texts = [entry.reason, ...entry.matches];
+          for (const text of texts) {
+            for (const keyword of theme.keywords) {
+              if (matchKeyword(text, keyword)) {
+                matchCount++;
+              }
+            }
+          }
+        }
+        if (matchCount >= theme.activationThreshold) {
+          activeThemeCount++;
+        }
+        themeIntensities.push(matchCount);
+      }
+
+      const activeIntensities = themeIntensities.filter((i) => i > 0);
+      const convergenceScore =
+        activeIntensities.length < 2 ? 0 : activeIntensities.reduce((product, i) => product * i, 1);
+
+      let convergence: ConvergenceLevel = 'none';
+      if (activeThemeCount === 0) convergence = 'none';
+      else if (activeThemeCount === 1) convergence = 'emerging';
+      else if (convergenceScore >= CONVERGENCE_ENTRENCHED_THRESHOLD) convergence = 'entrenched';
+      else convergence = 'active';
+
+      return { week, activeThemeCount, convergence, convergenceScore };
+    });
+}
+
 /**
  * GET /api/history/convergence?from=2025-01-20&to=2026-02-08
  * Returns weekly infrastructure convergence data derived from assessment snapshots.
@@ -25,7 +74,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fromClause = sql`AND assessed_at >= ${new Date(from)}`;
     const toClause = to ? sql`AND assessed_at <= ${new Date(to)}` : sql``;
 
-    // Get one assessment per category per week
     const rows = await db.execute(sql`
       SELECT DISTINCT ON (category, date_trunc('week', assessed_at))
         category,
@@ -38,11 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ORDER BY category, date_trunc('week', assessed_at), assessed_at DESC
     `);
 
-    // Group by week
-    const weekMap = new Map<
-      string,
-      Array<{ category: string; reason: string; matches: string[] }>
-    >();
+    const weekMap: WeekMap = new Map();
     for (const row of rows.rows) {
       const r = row as Record<string, unknown>;
       const week = toDateString(new Date(r.week as string));
@@ -54,47 +98,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    // Analyze infrastructure per week
-    const result = Array.from(weekMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([week, entries]) => {
-        let activeThemeCount = 0;
-        const themeIntensities: number[] = [];
-
-        for (const theme of INFRASTRUCTURE_THEMES) {
-          let matchCount = 0;
-          for (const entry of entries) {
-            const texts = [entry.reason, ...entry.matches];
-            for (const text of texts) {
-              for (const keyword of theme.keywords) {
-                if (matchKeyword(text, keyword)) {
-                  matchCount++;
-                }
-              }
-            }
-          }
-          if (matchCount >= theme.activationThreshold) {
-            activeThemeCount++;
-          }
-          themeIntensities.push(matchCount);
-        }
-
-        const activeIntensities = themeIntensities.filter((i) => i > 0);
-        const convergenceScore =
-          activeIntensities.length < 2
-            ? 0
-            : activeIntensities.reduce((product, i) => product * i, 1);
-
-        let convergence: ConvergenceLevel = 'none';
-        if (activeThemeCount === 0) convergence = 'none';
-        else if (activeThemeCount === 1) convergence = 'emerging';
-        else if (convergenceScore >= CONVERGENCE_ENTRENCHED_THRESHOLD) convergence = 'entrenched';
-        else convergence = 'active';
-
-        return { week, activeThemeCount, convergence, convergenceScore };
-      });
-
-    return res.status(200).json(result);
+    return res.status(200).json(computeConvergenceSeries(weekMap));
   } catch (err) {
     console.error('[api/history/convergence] Error:', err);
     return res.status(500).json({ error: 'Failed to compute convergence' });

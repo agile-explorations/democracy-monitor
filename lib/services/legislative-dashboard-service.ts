@@ -3,6 +3,40 @@ import { isDbAvailable, getDb } from '@/lib/db';
 import { legislativeItems } from '@/lib/db/schema';
 import type { LegislativeItem, LegislativeTrackingSummary } from '@/lib/types/legislative';
 
+function mapLegislativeRow(row: typeof legislativeItems.$inferSelect): LegislativeItem {
+  return {
+    id: row.govInfoId,
+    title: row.title,
+    type: row.type as LegislativeItem['type'],
+    date: row.date,
+    url: row.url,
+    chamber: row.chamber as LegislativeItem['chamber'],
+    committee: row.committee || undefined,
+    relevantCategories: row.relevantCategories as string[],
+    summary: row.summary || undefined,
+  };
+}
+
+function countByFields(rows: (typeof legislativeItems.$inferSelect)[]): {
+  byType: Record<string, number>;
+  byChamber: Record<string, number>;
+  byCategory: Record<string, number>;
+} {
+  const byType: Record<string, number> = {};
+  const byChamber: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
+
+  for (const row of rows) {
+    byType[row.type] = (byType[row.type] || 0) + 1;
+    byChamber[row.chamber] = (byChamber[row.chamber] || 0) + 1;
+    for (const cat of row.relevantCategories as string[]) {
+      byCategory[cat] = (byCategory[cat] || 0) + 1;
+    }
+  }
+
+  return { byType, byChamber, byCategory };
+}
+
 /**
  * Get a summary of legislative tracking data with optional filters.
  */
@@ -45,29 +79,8 @@ export async function getLegislativeSummary(options?: {
     ? rows.filter((r) => (r.relevantCategories as string[]).includes(options.category!))
     : rows;
 
-  const byType: Record<string, number> = {};
-  const byChamber: Record<string, number> = {};
-  const byCategory: Record<string, number> = {};
-
-  for (const row of filtered) {
-    byType[row.type] = (byType[row.type] || 0) + 1;
-    byChamber[row.chamber] = (byChamber[row.chamber] || 0) + 1;
-    for (const cat of row.relevantCategories as string[]) {
-      byCategory[cat] = (byCategory[cat] || 0) + 1;
-    }
-  }
-
-  const recentItems: LegislativeItem[] = filtered.slice(0, 20).map((row) => ({
-    id: row.govInfoId,
-    title: row.title,
-    type: row.type as LegislativeItem['type'],
-    date: row.date,
-    url: row.url,
-    chamber: row.chamber as LegislativeItem['chamber'],
-    committee: row.committee || undefined,
-    relevantCategories: row.relevantCategories as string[],
-    summary: row.summary || undefined,
-  }));
+  const { byType, byChamber, byCategory } = countByFields(filtered);
+  const recentItems = filtered.slice(0, 20).map(mapLegislativeRow);
 
   return {
     totalItems: filtered.length,
@@ -153,17 +166,7 @@ export async function getLegislativeItems(options?: {
     ? rows.filter((r) => (r.relevantCategories as string[]).includes(options.category!))
     : rows;
 
-  const items: LegislativeItem[] = filtered.map((row) => ({
-    id: row.govInfoId,
-    title: row.title,
-    type: row.type as LegislativeItem['type'],
-    date: row.date,
-    url: row.url,
-    chamber: row.chamber as LegislativeItem['chamber'],
-    committee: row.committee || undefined,
-    relevantCategories: row.relevantCategories as string[],
-    summary: row.summary || undefined,
-  }));
+  const items = filtered.map(mapLegislativeRow);
 
   // When filtering by category post-query, total must reflect filtered count
   const total = options?.category ? filtered.length : countResult[0]?.count || 0;

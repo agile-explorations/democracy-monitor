@@ -98,6 +98,35 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
   return items;
 }
 
+interface RawRssItem {
+  title?: string | { _?: string };
+  link?: string | { href?: string; _?: string };
+  id?: string;
+  pubDate?: string;
+  published?: string;
+  updated?: string;
+  description?: string | { _?: string };
+  summary?: string;
+  'content:encoded'?: string;
+}
+
+function normalizeRssItem(it: RawRssItem): FeedItem {
+  const title = typeof it.title === 'string' ? it.title : it.title?._;
+  const link =
+    typeof it.link === 'string'
+      ? it.link
+      : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
+  const pubDate = it.pubDate || it.published || it.updated;
+  const rawSummary =
+    it['content:encoded'] ||
+    (typeof it.description === 'string' ? it.description : it.description?._) ||
+    (typeof it.summary === 'string' ? it.summary : undefined);
+  const summary =
+    rawSummary && typeof rawSummary === 'string' ? truncate(stripHtml(rawSummary)) : undefined;
+
+  return { title: title || '(item)', link, pubDate, summary };
+}
+
 async function fetchRss(signal: Signal): Promise<FeedItem[]> {
   const cacheKey = CacheKeys.proxy(signal.url);
   const cached = await cacheGet<FeedItem[]>(cacheKey);
@@ -119,38 +148,7 @@ async function fetchRss(signal: Signal): Promise<FeedItem[]> {
   const rawItems = parsed?.rss?.channel?.item || parsed?.feed?.entry || [];
   const arr = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  const items: FeedItem[] = arr
-    .slice(0, 8)
-    .map(
-      (it: {
-        title?: string | { _?: string };
-        link?: string | { href?: string; _?: string };
-        id?: string;
-        pubDate?: string;
-        published?: string;
-        updated?: string;
-        description?: string | { _?: string };
-        summary?: string;
-        'content:encoded'?: string;
-      }) => {
-        const title = typeof it.title === 'string' ? it.title : it.title?._;
-        const link =
-          typeof it.link === 'string'
-            ? it.link
-            : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
-        const pubDate = it.pubDate || it.published || it.updated;
-        const rawSummary =
-          it['content:encoded'] ||
-          (typeof it.description === 'string' ? it.description : it.description?._) ||
-          (typeof it.summary === 'string' ? it.summary : undefined);
-        const summary =
-          rawSummary && typeof rawSummary === 'string'
-            ? truncate(stripHtml(rawSummary))
-            : undefined;
-
-        return { title: title || '(item)', link, pubDate, summary };
-      },
-    );
+  const items: FeedItem[] = arr.slice(0, 8).map(normalizeRssItem);
 
   await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;

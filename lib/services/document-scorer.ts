@@ -212,6 +212,27 @@ export function scoreDocumentBatch(items: ContentItem[], category: string): Docu
     .map((item) => scoreDocument(item, category));
 }
 
+function buildScoreRow(score: DocumentScore) {
+  return {
+    documentId: score.documentId ?? null,
+    url: score.url,
+    category: score.category,
+    severityScore: score.severityScore,
+    finalScore: score.finalScore,
+    captureCount: score.captureCount,
+    driftCount: score.driftCount,
+    warningCount: score.warningCount,
+    suppressedCount: score.suppressedCount,
+    documentClass: score.documentClass,
+    classMultiplier: score.classMultiplier,
+    isHighAuthority: score.isHighAuthority,
+    matches: score.matches as unknown[],
+    suppressed: score.suppressed as unknown[],
+    scoredAt: new Date(score.scoredAt),
+    weekOf: score.weekOf,
+  };
+}
+
 /**
  * Upsert document scores into the database.
  * Uses URL for dedup since document IDs may not be available at scoring time.
@@ -231,24 +252,7 @@ export async function storeDocumentScores(scores: DocumentScore[]): Promise<numb
     try {
       await db
         .insert(documentScores)
-        .values({
-          documentId: score.documentId ?? null,
-          url: score.url,
-          category: score.category,
-          severityScore: score.severityScore,
-          finalScore: score.finalScore,
-          captureCount: score.captureCount,
-          driftCount: score.driftCount,
-          warningCount: score.warningCount,
-          suppressedCount: score.suppressedCount,
-          documentClass: score.documentClass,
-          classMultiplier: score.classMultiplier,
-          isHighAuthority: score.isHighAuthority,
-          matches: score.matches as unknown[],
-          suppressed: score.suppressed as unknown[],
-          scoredAt: new Date(score.scoredAt),
-          weekOf: score.weekOf,
-        })
+        .values(buildScoreRow(score))
         .onConflictDoUpdate({
           target: documentScores.url,
           set: {

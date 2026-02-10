@@ -33,6 +33,64 @@ interface BackfillOptions {
   includeRhetoric?: boolean;
 }
 
+async function processBackfillWeek(
+  week: { start: string; end: string },
+  frSignals: Array<{ url: string; type: string }>,
+  categoryKey: string,
+): Promise<{ docs: number; snapshots: number }> {
+  const weekItems: ContentItem[] = [];
+
+  for (const signal of frSignals) {
+    const params = parseSignalParams(signal.url);
+    try {
+      const items = await fetchFederalRegisterHistorical({
+        ...params,
+        dateFrom: week.start,
+        dateTo: week.end,
+        perPage: 1000,
+        delayMs: 200,
+      });
+      weekItems.push(...items);
+    } catch (err) {
+      console.error(`  [${categoryKey}] FR fetch error for ${week.start}:`, err);
+    }
+  }
+
+  const dedupedItems = deduplicateByUrl(weekItems);
+  if (dedupedItems.length === 0) return { docs: 0, snapshots: 0 };
+
+  const stored = await storeDocuments(dedupedItems, categoryKey);
+  const assessment = analyzeContent(dedupedItems, categoryKey);
+
+  const enhanced: EnhancedAssessment = {
+    category: categoryKey,
+    status: assessment.status,
+    reason: assessment.reason,
+    matches: assessment.matches,
+    dataCoverage: dedupedItems.length > 0 ? Math.min(dedupedItems.length / 10, 1) : 0,
+    evidenceFor: [],
+    evidenceAgainst: [],
+    howWeCouldBeWrong: [],
+    keywordResult: assessment,
+    assessedAt: new Date(week.end).toISOString(),
+  };
+
+  await saveSnapshot(enhanced, new Date(week.end));
+
+  const docScores = scoreDocumentBatch(dedupedItems, categoryKey);
+  await storeDocumentScores(docScores);
+
+  const agg = await computeWeeklyAggregate(categoryKey, week.start);
+  await storeWeeklyAggregate(agg);
+
+  console.log(
+    `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs, ${docScores.length} scored, status=${assessment.status}`,
+  );
+
+  await sleep(500);
+  return { docs: stored, snapshots: 1 };
+}
+
 async function backfillCategory(
   categoryKey: string,
   signals: Array<{ url: string; type: string }>,
@@ -43,7 +101,6 @@ async function backfillCategory(
   let totalSnapshots = 0;
   let apiCalls = 0;
 
-  // Only process federal_register signals (RSS/HTML are ephemeral)
   const frSignals = signals.filter((s) => s.type === 'federal_register');
 
   if (frSignals.length === 0) {
@@ -52,110 +109,23 @@ async function backfillCategory(
   }
 
   for (const week of weeks) {
-    const weekItems: ContentItem[] = [];
-
-    for (const signal of frSignals) {
-      const params = parseSignalParams(signal.url);
-      apiCalls++;
-
-      if (dryRun) continue;
-
-      try {
-        const items = await fetchFederalRegisterHistorical({
-          ...params,
-          dateFrom: week.start,
-          dateTo: week.end,
-          perPage: 1000,
-          delayMs: 200,
-        });
-        weekItems.push(...items);
-      } catch (err) {
-        console.error(`  [${categoryKey}] FR fetch error for ${week.start}:`, err);
-      }
-    }
-
+    apiCalls += frSignals.length;
     if (dryRun) continue;
 
-    const dedupedItems = deduplicateByUrl(weekItems);
-    if (dedupedItems.length === 0) continue;
-
-    // Store documents
-    const stored = await storeDocuments(dedupedItems, categoryKey);
-    totalDocs += stored;
-
-    // Run keyword assessment
-    const assessment = analyzeContent(dedupedItems, categoryKey);
-
-    // Build minimal EnhancedAssessment for snapshot storage
-    const enhanced: EnhancedAssessment = {
-      category: categoryKey,
-      status: assessment.status,
-      reason: assessment.reason,
-      matches: assessment.matches,
-      dataCoverage: dedupedItems.length > 0 ? Math.min(dedupedItems.length / 10, 1) : 0,
-      evidenceFor: [],
-      evidenceAgainst: [],
-      howWeCouldBeWrong: [],
-      keywordResult: assessment,
-      assessedAt: new Date(week.end).toISOString(),
-    };
-
-    // Save backdated snapshot
-    await saveSnapshot(enhanced, new Date(week.end));
-    totalSnapshots++;
-
-    // Per-document scoring
-    const docScores = scoreDocumentBatch(dedupedItems, categoryKey);
-    await storeDocumentScores(docScores);
-
-    // Weekly aggregate
-    const agg = await computeWeeklyAggregate(categoryKey, week.start);
-    await storeWeeklyAggregate(agg);
-
-    console.log(
-      `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs, ${docScores.length} scored, status=${assessment.status}`,
-    );
-
-    await sleep(500);
+    const result = await processBackfillWeek(week, frSignals, categoryKey);
+    totalDocs += result.docs;
+    totalSnapshots += result.snapshots;
   }
 
   return { docs: totalDocs, snapshots: totalSnapshots, apiCalls };
 }
 
-async function backfillRhetoric(
+async function backfillGdeltWeeks(
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
-): Promise<{ whDocs: number; gdeltDocs: number }> {
-  let whDocs = 0;
+): Promise<number> {
   let gdeltDocs = 0;
 
-  console.log('\n[backfill] === Rhetoric Sources ===');
-
-  // White House briefing room — fetch entire archive at once
-  // (paginated scrape, dates are filtered inside)
-  console.log('[backfill] Fetching White House briefing-room archive...');
-  if (!dryRun) {
-    try {
-      const whItems = await fetchWhiteHouseHistorical({
-        dateFrom: weeks[0].start,
-        dateTo: weeks[weeks.length - 1].end,
-        delayMs: 500,
-      });
-      if (whItems.length > 0) {
-        const stored = await storeDocuments(whItems, 'intent');
-        whDocs = stored;
-        console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
-      } else {
-        console.log('  White House: 0 items (site may be blocking)');
-      }
-    } catch (err) {
-      console.error('  White House fetch error:', err);
-    }
-  } else {
-    console.log('  White House: [dry run] would fetch archive pages');
-  }
-
-  // GDELT — fetch per week per query
   console.log('[backfill] Fetching GDELT article data...');
   for (const week of weeks) {
     for (const query of GDELT_QUERIES) {
@@ -186,6 +156,41 @@ async function backfillRhetoric(
     const calls = weeks.length * GDELT_QUERIES.length;
     console.log(`  GDELT: [dry run] would make ~${calls} API calls`);
   }
+
+  return gdeltDocs;
+}
+
+async function backfillRhetoric(
+  weeks: Array<{ start: string; end: string }>,
+  dryRun: boolean,
+): Promise<{ whDocs: number; gdeltDocs: number }> {
+  let whDocs = 0;
+
+  console.log('\n[backfill] === Rhetoric Sources ===');
+
+  console.log('[backfill] Fetching White House briefing-room archive...');
+  if (!dryRun) {
+    try {
+      const whItems = await fetchWhiteHouseHistorical({
+        dateFrom: weeks[0].start,
+        dateTo: weeks[weeks.length - 1].end,
+        delayMs: 500,
+      });
+      if (whItems.length > 0) {
+        const stored = await storeDocuments(whItems, 'intent');
+        whDocs = stored;
+        console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
+      } else {
+        console.log('  White House: 0 items (site may be blocking)');
+      }
+    } catch (err) {
+      console.error('  White House fetch error:', err);
+    }
+  } else {
+    console.log('  White House: [dry run] would fetch archive pages');
+  }
+
+  const gdeltDocs = await backfillGdeltWeeks(weeks, dryRun);
 
   return { whDocs, gdeltDocs };
 }

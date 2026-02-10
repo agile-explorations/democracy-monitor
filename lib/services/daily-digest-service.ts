@@ -31,6 +31,53 @@ function mapRowToDigestEntry(row: DigestRow): DigestEntry {
   };
 }
 
+interface DigestParsed {
+  summary: string;
+  summaryExpert?: string;
+  highlights: string[];
+  categorySummaries: Record<string, string>;
+  categorySummariesExpert?: Record<string, string>;
+  overallAssessment: string;
+}
+
+function buildDigestEntry(
+  parsed: DigestParsed,
+  date: string,
+  anomalies: TrendAnomaly[],
+  provider: string,
+  model: string,
+): DigestEntry {
+  return {
+    date,
+    summary: parsed.summary || '',
+    summaryExpert: parsed.summaryExpert || undefined,
+    highlights: parsed.highlights || [],
+    categorySummaries: parsed.categorySummaries || {},
+    categorySummariesExpert: parsed.categorySummariesExpert || undefined,
+    anomalies,
+    overallAssessment: parsed.overallAssessment || '',
+    provider,
+    model,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+async function storeDigestInDb(digest: DigestEntry): Promise<void> {
+  if (!isDbAvailable()) return;
+  const db = getDb();
+  await db.insert(digests).values({
+    date: digest.date,
+    summary: digest.summary,
+    summaryExpert: digest.summaryExpert,
+    highlights: digest.highlights,
+    categorySummaries: digest.categorySummaries,
+    categorySummariesExpert: digest.categorySummariesExpert,
+    overallAssessment: digest.overallAssessment,
+    provider: digest.provider,
+    model: digest.model,
+  });
+}
+
 export async function generateDailyDigest(
   date: string,
   categoryData: Array<{
@@ -46,11 +93,9 @@ export async function generateDailyDigest(
   const cached = await cacheGet<DigestEntry>(cacheKey);
   if (cached) return cached;
 
-  // Check DB for existing digest
   if (isDbAvailable()) {
     const db = getDb();
     const existing = await db.select().from(digests).where(eq(digests.date, date)).limit(1);
-
     if (existing.length > 0) {
       const digest = mapRowToDigestEntry(existing[0]);
       await cacheSet(cacheKey, digest, DIGEST_CACHE_TTL_S);
@@ -70,15 +115,6 @@ export async function generateDailyDigest(
     temperature: 0.3,
   });
 
-  interface DigestParsed {
-    summary: string;
-    summaryExpert?: string;
-    highlights: string[];
-    categorySummaries: Record<string, string>;
-    categorySummariesExpert?: Record<string, string>;
-    overallAssessment: string;
-  }
-
   const parsed: DigestParsed = extractJsonFromLlm<DigestParsed>(result.content) || {
     summary: result.content.slice(0, 500),
     highlights: [],
@@ -86,36 +122,8 @@ export async function generateDailyDigest(
     overallAssessment: '',
   };
 
-  const digest: DigestEntry = {
-    date,
-    summary: parsed.summary || '',
-    summaryExpert: parsed.summaryExpert || undefined,
-    highlights: parsed.highlights || [],
-    categorySummaries: parsed.categorySummaries || {},
-    categorySummariesExpert: parsed.categorySummariesExpert || undefined,
-    anomalies,
-    overallAssessment: parsed.overallAssessment || '',
-    provider: provider.name,
-    model: result.model,
-    createdAt: new Date().toISOString(),
-  };
-
-  // Store in DB
-  if (isDbAvailable()) {
-    const db = getDb();
-    await db.insert(digests).values({
-      date: digest.date,
-      summary: digest.summary,
-      summaryExpert: digest.summaryExpert,
-      highlights: digest.highlights,
-      categorySummaries: digest.categorySummaries,
-      categorySummariesExpert: digest.categorySummariesExpert,
-      overallAssessment: digest.overallAssessment,
-      provider: digest.provider,
-      model: digest.model,
-    });
-  }
-
+  const digest = buildDigestEntry(parsed, date, anomalies, provider.name, result.model);
+  await storeDigestInDb(digest);
   await cacheSet(cacheKey, digest, DIGEST_CACHE_TTL_S);
   return digest;
 }

@@ -26,6 +26,44 @@ import { toDateString } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
 
+async function snapshotCategory(cat: (typeof CATEGORIES)[number]): Promise<void> {
+  const catStart = Date.now();
+  console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
+  const items = await fetchCategoryFeeds(cat);
+  console.log(`[snapshot]   ${items.length} items fetched`);
+
+  storeDocuments(items, cat.key).catch((err) =>
+    console.error(`[snapshot] RAG store failed for ${cat.key}:`, err),
+  );
+
+  if (items.length === 0) {
+    console.log(`[snapshot]   Skipping assessment (no items)`);
+    return;
+  }
+
+  console.log(`[snapshot] Running assessment for ${cat.key}...`);
+  const assessment = await enhancedAssessment(items, cat.key, { skipCache: true });
+
+  console.log(`[snapshot] Running deep analysis for ${cat.key}...`);
+  await enrichWithDeepAnalysis(assessment, items);
+
+  console.log(`[snapshot] Saving snapshot for ${cat.key}: ${assessment.status}`);
+  await saveSnapshot(assessment);
+
+  const docScores = scoreDocumentBatch(items, cat.key);
+  storeDocumentScores(docScores).catch((err) =>
+    console.error(`[snapshot] Score storage failed for ${cat.key}:`, err),
+  );
+  console.log(`[snapshot]   Scored ${docScores.length} documents`);
+
+  const weekOf = getWeekOfDate();
+  computeWeeklyAggregate(cat.key, weekOf)
+    .then((agg) => storeWeeklyAggregate(agg))
+    .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
+
+  console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
+}
+
 export async function runSnapshots(): Promise<void> {
   const start = Date.now();
   console.log(`[snapshot] Starting snapshot run for ${CATEGORIES.length} categories...`);
@@ -34,45 +72,9 @@ export async function runSnapshots(): Promise<void> {
   let failed = 0;
 
   for (const cat of CATEGORIES) {
-    const catStart = Date.now();
     try {
-      console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
-      const items = await fetchCategoryFeeds(cat);
-      console.log(`[snapshot]   ${items.length} items fetched`);
-
-      storeDocuments(items, cat.key).catch((err) =>
-        console.error(`[snapshot] RAG store failed for ${cat.key}:`, err),
-      );
-
-      if (items.length === 0) {
-        console.log(`[snapshot]   Skipping assessment (no items)`);
-        continue;
-      }
-
-      console.log(`[snapshot] Running assessment for ${cat.key}...`);
-      const assessment = await enhancedAssessment(items, cat.key, { skipCache: true });
-
-      console.log(`[snapshot] Running deep analysis for ${cat.key}...`);
-      await enrichWithDeepAnalysis(assessment, items);
-
-      console.log(`[snapshot] Saving snapshot for ${cat.key}: ${assessment.status}`);
-      await saveSnapshot(assessment);
-
-      // Per-document scoring
-      const docScores = scoreDocumentBatch(items, cat.key);
-      storeDocumentScores(docScores).catch((err) =>
-        console.error(`[snapshot] Score storage failed for ${cat.key}:`, err),
-      );
-      console.log(`[snapshot]   Scored ${docScores.length} documents`);
-
-      // Weekly aggregate
-      const weekOf = getWeekOfDate();
-      computeWeeklyAggregate(cat.key, weekOf)
-        .then((agg) => storeWeeklyAggregate(agg))
-        .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
-
+      await snapshotCategory(cat);
       succeeded++;
-      console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
     } catch (err) {
       failed++;
       console.error(`[snapshot] Error processing ${cat.key}:`, err);

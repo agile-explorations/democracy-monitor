@@ -15,10 +15,104 @@ import {
 import { getAvailableProviders } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { AI_CACHE_BUCKET_MS, AI_CACHE_TTL_S } from '@/lib/data/cache-config';
-import type { DebateMessage, DebateResult, DebateVerdict } from '@/lib/types/debate';
+import type { AICompletionOptions, AIProvider } from '@/lib/types/ai';
+import type { DebateMessage, DebateResult, DebateRole, DebateVerdict } from '@/lib/types/debate';
 import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 
 const TOTAL_ROUNDS = 5; // opening, opening, rebuttal, rebuttal, verdict
+
+const FALLBACK_VERDICT: Omit<DebateVerdict, 'summary'> = {
+  agreementLevel: 5,
+  verdict: 'mixed',
+  keyPoints: [],
+};
+
+async function runDebateRound(
+  provider: AIProvider,
+  prompt: string,
+  options: AICompletionOptions,
+  role: DebateRole,
+  round: number,
+): Promise<DebateMessage> {
+  const result = await provider.complete(prompt, options);
+  return {
+    role,
+    provider: provider.name,
+    model: result.model,
+    content: result.content,
+    round,
+    latencyMs: result.latencyMs,
+  };
+}
+
+async function runArgumentRounds(
+  anthropic: AIProvider,
+  openai: AIProvider,
+  category: string,
+  status: string,
+  evidence: string[],
+): Promise<DebateMessage[]> {
+  const prosOpts: AICompletionOptions = {
+    systemPrompt: PROSECUTOR_SYSTEM_PROMPT,
+    maxTokens: 500,
+    temperature: 0.7,
+  };
+  const defOpts: AICompletionOptions = {
+    systemPrompt: DEFENSE_SYSTEM_PROMPT,
+    maxTokens: 500,
+    temperature: 0.7,
+  };
+
+  const r1 = await runDebateRound(
+    anthropic,
+    buildProsecutorOpeningPrompt(category, status, evidence),
+    prosOpts,
+    'prosecutor',
+    1,
+  );
+  const r2 = await runDebateRound(
+    openai,
+    buildDefenseOpeningPrompt(category, status, evidence, r1.content),
+    defOpts,
+    'defense',
+    2,
+  );
+  const r3 = await runDebateRound(
+    anthropic,
+    buildProsecutorRebuttalPrompt(r2.content),
+    { ...prosOpts, maxTokens: 400 },
+    'prosecutor',
+    3,
+  );
+  const r4 = await runDebateRound(
+    openai,
+    buildDefenseRebuttalPrompt(r3.content),
+    { ...defOpts, maxTokens: 400 },
+    'defense',
+    4,
+  );
+  return [r1, r2, r3, r4];
+}
+
+async function runArbitration(
+  provider: AIProvider,
+  category: string,
+  status: string,
+  messages: DebateMessage[],
+): Promise<DebateMessage> {
+  const arbPrompt = buildArbitratorPrompt(
+    category,
+    status,
+    messages.map((m) => ({ role: m.role, content: m.content })),
+  );
+  return runDebateRound(
+    provider,
+    arbPrompt,
+    { systemPrompt: ARBITRATOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.3 },
+    'arbitrator',
+    5,
+  );
+}
 
 export async function runDebate(
   category: string,
@@ -31,101 +125,18 @@ export async function runDebate(
 
   const providers = getAvailableProviders();
   if (providers.length < 2) return null;
-
-  // Assign: Claude = prosecutor, OpenAI = defense (or vice versa)
-  const anthropicProvider = providers.find((p) => p.name === 'anthropic');
-  const openaiProvider = providers.find((p) => p.name === 'openai');
-  if (!anthropicProvider || !openaiProvider) return null;
+  const anthropic = providers.find((p) => p.name === 'anthropic');
+  const openai = providers.find((p) => p.name === 'openai');
+  if (!anthropic || !openai) return null;
 
   const startedAt = new Date().toISOString();
-  const messages: DebateMessage[] = [];
-
-  // Round 1: Prosecutor opening (Claude)
-  const prosecutorOpening = await anthropicProvider.complete(
-    buildProsecutorOpeningPrompt(category, status, evidence),
-    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 },
-  );
-  messages.push({
-    role: 'prosecutor',
-    provider: anthropicProvider.name,
-    model: prosecutorOpening.model,
-    content: prosecutorOpening.content,
-    round: 1,
-    latencyMs: prosecutorOpening.latencyMs,
-  });
-
-  // Round 2: Defense opening (OpenAI)
-  const defenseOpening = await openaiProvider.complete(
-    buildDefenseOpeningPrompt(category, status, evidence, prosecutorOpening.content),
-    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.7 },
-  );
-  messages.push({
-    role: 'defense',
-    provider: openaiProvider.name,
-    model: defenseOpening.model,
-    content: defenseOpening.content,
-    round: 2,
-    latencyMs: defenseOpening.latencyMs,
-  });
-
-  // Round 3: Prosecutor rebuttal (Claude)
-  const prosecutorRebuttal = await anthropicProvider.complete(
-    buildProsecutorRebuttalPrompt(defenseOpening.content),
-    { systemPrompt: PROSECUTOR_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 },
-  );
-  messages.push({
-    role: 'prosecutor',
-    provider: anthropicProvider.name,
-    model: prosecutorRebuttal.model,
-    content: prosecutorRebuttal.content,
-    round: 3,
-    latencyMs: prosecutorRebuttal.latencyMs,
-  });
-
-  // Round 4: Defense rebuttal (OpenAI)
-  const defenseRebuttal = await openaiProvider.complete(
-    buildDefenseRebuttalPrompt(prosecutorRebuttal.content),
-    { systemPrompt: DEFENSE_SYSTEM_PROMPT, maxTokens: 400, temperature: 0.7 },
-  );
-  messages.push({
-    role: 'defense',
-    provider: openaiProvider.name,
-    model: defenseRebuttal.model,
-    content: defenseRebuttal.content,
-    round: 4,
-    latencyMs: defenseRebuttal.latencyMs,
-  });
-
-  // Round 5: Arbitrator verdict (alternating provider)
-  const arbitratorProvider = anthropicProvider; // Claude for nuanced judgment
-  const arbitratorResult = await arbitratorProvider.complete(
-    buildArbitratorPrompt(
-      category,
-      status,
-      messages.map((m) => ({ role: m.role, content: m.content })),
-    ),
-    { systemPrompt: ARBITRATOR_SYSTEM_PROMPT, maxTokens: 500, temperature: 0.3 },
-  );
-
-  const parsedVerdict = extractJsonFromLlm<DebateVerdict>(arbitratorResult.content);
-  const verdict: DebateVerdict = parsedVerdict || {
-    agreementLevel: 5,
-    verdict: 'mixed',
-    summary: arbitratorResult.content.slice(0, 300),
-    keyPoints: [],
+  const argMsgs = await runArgumentRounds(anthropic, openai, category, status, evidence);
+  const r5 = await runArbitration(anthropic, category, status, argMsgs);
+  const messages = [...argMsgs, r5];
+  const verdict: DebateVerdict = extractJsonFromLlm<DebateVerdict>(r5.content) || {
+    ...FALLBACK_VERDICT,
+    summary: r5.content.slice(0, 300),
   };
-
-  messages.push({
-    role: 'arbitrator',
-    provider: arbitratorProvider.name,
-    model: arbitratorResult.model,
-    content: arbitratorResult.content,
-    round: 5,
-    latencyMs: arbitratorResult.latencyMs,
-  });
-
-  const completedAt = new Date().toISOString();
-  const totalLatencyMs = messages.reduce((sum, m) => sum + m.latencyMs, 0);
 
   const result: DebateResult = {
     category,
@@ -134,8 +145,8 @@ export async function runDebate(
     verdict,
     totalRounds: TOTAL_ROUNDS,
     startedAt,
-    completedAt,
-    totalLatencyMs,
+    completedAt: new Date().toISOString(),
+    totalLatencyMs: messages.reduce((sum, m) => sum + m.latencyMs, 0),
   };
 
   await cacheSet(cacheKey, result, AI_CACHE_TTL_S);

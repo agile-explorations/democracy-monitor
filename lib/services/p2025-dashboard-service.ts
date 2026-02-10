@@ -129,6 +129,26 @@ export async function getProposalDetail(proposalId: string) {
     .leftJoin(documents, eq(p2025Matches.documentId, documents.id))
     .where(eq(p2025Matches.proposalId, proposalId));
 
+  return buildProposalResponse(proposal, matchRows);
+}
+
+function buildProposalResponse(
+  proposal: typeof p2025Proposals.$inferSelect,
+  matchRows: Array<{
+    id: number;
+    proposalId: string;
+    documentId: number | null;
+    cosineSimilarity: number | null;
+    llmClassification: string | null;
+    llmConfidence: number | null;
+    llmReasoning: string | null;
+    humanReviewed: boolean;
+    humanClassification: string | null;
+    matchedAt: Date;
+    documentTitle: string | null;
+    documentUrl: string | null;
+  }>,
+) {
   return {
     proposal: {
       id: proposal.id,

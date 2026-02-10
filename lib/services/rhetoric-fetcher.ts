@@ -3,6 +3,53 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
 
+function parseWhiteHouseArticles(
+  $: cheerio.CheerioAPI,
+  from: Date,
+  to: Date,
+): { items: ContentItem[]; pastRange: boolean; foundItemsInRange: boolean } {
+  const items: ContentItem[] = [];
+  let pastRange = false;
+  let foundItemsInRange = false;
+
+  $('article, .briefing-statement, .news-item, li').each((_, el) => {
+    const $el = $(el);
+    const linkEl = $el.find('a').first();
+    const href = linkEl.attr('href');
+    const title = linkEl.text().trim() || $el.find('h2, h3').first().text().trim();
+
+    const timeEl = $el.find('time').first();
+    const dateStr =
+      timeEl.attr('datetime') || timeEl.text().trim() || $el.find('.date').first().text().trim();
+
+    if (!title || !href) return;
+
+    const fullUrl = href.startsWith('http')
+      ? href
+      : `https://www.whitehouse.gov${href.startsWith('/') ? '' : '/'}${href}`;
+
+    const itemDate = dateStr ? new Date(dateStr) : null;
+    if (itemDate) {
+      if (itemDate < from) {
+        pastRange = true;
+        return;
+      }
+      if (itemDate > to) return;
+      foundItemsInRange = true;
+    }
+
+    items.push({
+      title,
+      link: fullUrl,
+      pubDate: itemDate ? toDateString(itemDate) : undefined,
+      agency: 'White House',
+      type: 'rhetoric',
+    });
+  });
+
+  return { items, pastRange, foundItemsInRange };
+}
+
 /**
  * Fetch White House briefing-room archive pages for a date range.
  * Scrapes the paginated archive at whitehouse.gov/briefing-room/.
@@ -30,7 +77,6 @@ export async function fetchWhiteHouseHistorical(options: {
     });
 
     if (!response.ok) {
-      // 404 means we've gone past the last page
       if (response.status === 404) break;
       console.error(`[wh-historical] HTTP ${response.status} for page ${page}`);
       break;
@@ -38,54 +84,36 @@ export async function fetchWhiteHouseHistorical(options: {
 
     const html = await response.text();
     const $ = cheerio.load(html);
-    let foundItemsInRange = false;
-    let pastRange = false;
+    const parsed = parseWhiteHouseArticles($, from, to);
+    allItems.push(...parsed.items);
 
-    $('article, .briefing-statement, .news-item, li').each((_, el) => {
-      const $el = $(el);
-      const linkEl = $el.find('a').first();
-      const href = linkEl.attr('href');
-      const title = linkEl.text().trim() || $el.find('h2, h3').first().text().trim();
-
-      // Try to extract date from time element or text
-      const timeEl = $el.find('time').first();
-      const dateStr =
-        timeEl.attr('datetime') || timeEl.text().trim() || $el.find('.date').first().text().trim();
-
-      if (!title || !href) return;
-
-      const fullUrl = href.startsWith('http')
-        ? href
-        : `https://www.whitehouse.gov${href.startsWith('/') ? '' : '/'}${href}`;
-
-      // Parse date and check range
-      const itemDate = dateStr ? new Date(dateStr) : null;
-      if (itemDate) {
-        if (itemDate < from) {
-          pastRange = true;
-          return;
-        }
-        if (itemDate > to) return;
-        foundItemsInRange = true;
-      }
-
-      allItems.push({
-        title,
-        link: fullUrl,
-        pubDate: itemDate ? toDateString(itemDate) : undefined,
-        agency: 'White House',
-        type: 'rhetoric',
-      });
-    });
-
-    // Stop if we've gone past our date range (items are newest-first)
-    if (pastRange && !foundItemsInRange) break;
+    if (parsed.pastRange && !parsed.foundItemsInRange) break;
 
     page++;
     await sleep(delayMs);
   }
 
   return allItems;
+}
+
+interface GdeltRawArticle {
+  url?: string;
+  title?: string;
+  seendate?: string;
+  domain?: string;
+  sourcecountry?: string;
+  tone?: number;
+}
+
+function parseGdeltArticles(articles: GdeltRawArticle[], dateFrom: string): ContentItem[] {
+  return articles.map((article) => ({
+    title: article.title || '(untitled)',
+    link: article.url,
+    pubDate: article.seendate ? formatGdeltDate(article.seendate) : dateFrom,
+    agency: article.domain || 'GDELT',
+    summary: article.tone !== undefined ? `Tone: ${article.tone.toFixed(1)}` : undefined,
+    type: 'rhetoric',
+  }));
 }
 
 /**
@@ -101,7 +129,6 @@ export async function fetchGdeltHistorical(options: {
 }): Promise<ContentItem[]> {
   const { query, dateFrom, dateTo, maxRecords = 250, delayMs = 300 } = options;
 
-  // GDELT DOC API uses YYYYMMDDHHMMSS format
   const startDate = dateFrom.replace(/-/g, '') + '000000';
   const endDate = dateTo.replace(/-/g, '') + '235959';
 
@@ -131,25 +158,11 @@ export async function fetchGdeltHistorical(options: {
     }
 
     const data = await response.json();
-    const articles: Array<{
-      url?: string;
-      title?: string;
-      seendate?: string;
-      domain?: string;
-      sourcecountry?: string;
-      tone?: number;
-    }> = data.articles || [];
+    const articles: GdeltRawArticle[] = data.articles || [];
 
     await sleep(delayMs);
 
-    return articles.map((article) => ({
-      title: article.title || '(untitled)',
-      link: article.url,
-      pubDate: article.seendate ? formatGdeltDate(article.seendate) : dateFrom,
-      agency: article.domain || 'GDELT',
-      summary: article.tone !== undefined ? `Tone: ${article.tone.toFixed(1)}` : undefined,
-      type: 'rhetoric',
-    }));
+    return parseGdeltArticles(articles, dateFrom);
   } catch (err) {
     console.error('[gdelt-historical] Fetch error:', err);
     return [];

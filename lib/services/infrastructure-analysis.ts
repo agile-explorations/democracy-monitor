@@ -28,6 +28,63 @@ function isSuppressedByRule(
   return false;
 }
 
+function analyzeTheme(
+  config: (typeof INFRASTRUCTURE_THEMES)[number],
+  snapshots: Record<string, EnhancedAssessment>,
+): { result: InfrastructureThemeResult; itemsScanned: number } {
+  const matches: InfrastructureKeywordMatch[] = [];
+  const categoriesInvolved = new Set<string>();
+  let suppressedCount = 0;
+  let itemsScanned = 0;
+  const allKeywords = getAllKeywords(config);
+  const contextDependent = new Set(config.contextDependentKeywords.map((k) => k.toLowerCase()));
+
+  for (const [cat, assessment] of Object.entries(snapshots)) {
+    const texts = [
+      assessment.reason,
+      ...assessment.matches,
+      ...assessment.evidenceFor.map((e) => e.text),
+      ...assessment.evidenceAgainst.map((e) => e.text),
+    ].filter(Boolean);
+
+    itemsScanned += texts.length;
+
+    for (const text of texts) {
+      for (const keyword of allKeywords) {
+        if (!matchKeyword(text, keyword)) continue;
+
+        const alreadyMatched = matches.some((m) => m.keyword === keyword && m.category === cat);
+        if (alreadyMatched) continue;
+
+        if (contextDependent.has(keyword.toLowerCase())) {
+          if (isSuppressedByRule(text, keyword, config.suppressionRules)) {
+            suppressedCount++;
+            continue;
+          }
+        }
+
+        matches.push({ keyword, source: text, category: cat });
+        categoriesInvolved.add(cat);
+      }
+    }
+  }
+
+  return {
+    result: {
+      theme: config.theme,
+      label: config.label,
+      description: config.description,
+      active: matches.length >= config.activationThreshold,
+      matchCount: matches.length,
+      intensity: matches.length,
+      matches,
+      categoriesInvolved: Array.from(categoriesInvolved),
+      suppressedCount,
+    },
+    itemsScanned,
+  };
+}
+
 /**
  * Analyze current snapshots for cross-cutting infrastructure patterns.
  * Scans assessment matches, reasons, and evidence for infrastructure keywords.
@@ -39,56 +96,9 @@ export function analyzeInfrastructure(
   let totalItemsScanned = 0;
 
   const themes: InfrastructureThemeResult[] = INFRASTRUCTURE_THEMES.map((config) => {
-    const matches: InfrastructureKeywordMatch[] = [];
-    const categoriesInvolved = new Set<string>();
-    let suppressedCount = 0;
-    const allKeywords = getAllKeywords(config);
-    const contextDependent = new Set(config.contextDependentKeywords.map((k) => k.toLowerCase()));
-
-    for (const [cat, assessment] of Object.entries(snapshots)) {
-      // Build text corpus from all available assessment data
-      const texts = [
-        assessment.reason,
-        ...assessment.matches,
-        ...assessment.evidenceFor.map((e) => e.text),
-        ...assessment.evidenceAgainst.map((e) => e.text),
-      ].filter(Boolean);
-
-      totalItemsScanned += texts.length;
-
-      for (const text of texts) {
-        for (const keyword of allKeywords) {
-          if (!matchKeyword(text, keyword)) continue;
-
-          // Deduplicate by keyword+category
-          const alreadyMatched = matches.some((m) => m.keyword === keyword && m.category === cat);
-          if (alreadyMatched) continue;
-
-          // Check suppression for context-dependent keywords
-          if (contextDependent.has(keyword.toLowerCase())) {
-            if (isSuppressedByRule(text, keyword, config.suppressionRules)) {
-              suppressedCount++;
-              continue;
-            }
-          }
-
-          matches.push({ keyword, source: text, category: cat });
-          categoriesInvolved.add(cat);
-        }
-      }
-    }
-
-    return {
-      theme: config.theme,
-      label: config.label,
-      description: config.description,
-      active: matches.length >= config.activationThreshold,
-      matchCount: matches.length,
-      intensity: matches.length,
-      matches,
-      categoriesInvolved: Array.from(categoriesInvolved),
-      suppressedCount,
-    };
+    const { result, itemsScanned } = analyzeTheme(config, snapshots);
+    totalItemsScanned += itemsScanned;
+    return result;
   });
 
   const activeThemeCount = themes.filter((t) => t.active).length;

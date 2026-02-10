@@ -7,16 +7,15 @@ import { formatError } from '@/lib/utils/api-helpers';
 
 type TrackerSource = 'brookings' | 'naacp' | 'democracywatch' | 'progressive';
 
-const TRACKER_CONFIGS: Record<
-  TrackerSource,
-  {
-    url: string;
-    selector: string;
-    titleSelector: string;
-    linkSelector: string;
-    dateSelector?: string;
-  }
-> = {
+interface TrackerConfig {
+  url: string;
+  selector: string;
+  titleSelector: string;
+  linkSelector: string;
+  dateSelector?: string;
+}
+
+const TRACKER_CONFIGS: Record<TrackerSource, TrackerConfig> = {
   brookings: {
     url: 'https://www.brookings.edu/articles/tracking-regulatory-changes-in-the-second-trump-administration/',
     selector: '.post-content table tr',
@@ -43,6 +42,47 @@ const TRACKER_CONFIGS: Record<
     linkSelector: 'a',
   },
 };
+
+function scrapeAndParse(
+  $: cheerio.CheerioAPI,
+  config: TrackerConfig,
+  source: string,
+): {
+  type: string;
+  source: string;
+  sourceUrl: string;
+  items: Array<{ title: string; link?: string; date?: string }>;
+  scrapedAt: string;
+} {
+  const items: Array<{ title: string; link?: string; date?: string }> = [];
+
+  $(config.selector).each((_, elem) => {
+    const $elem = $(elem);
+    const title = $elem.find(config.titleSelector).first().text().trim();
+    const link = $elem.find(config.linkSelector).first().attr('href');
+    const date = config.dateSelector ? $elem.find(config.dateSelector).text().trim() : undefined;
+
+    if (title && title.length > 3) {
+      items.push({
+        title,
+        link: link?.startsWith('http')
+          ? link
+          : link
+            ? new URL(link, config.url).toString()
+            : config.url,
+        date,
+      });
+    }
+  });
+
+  return {
+    type: 'tracker_scrape',
+    source,
+    sourceUrl: config.url,
+    items: items.slice(0, 15),
+    scrapedAt: new Date().toISOString(),
+  };
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -80,35 +120,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const html = await response.text();
     const $ = cheerio.load(html);
-
-    const items: Array<{ title: string; link?: string; date?: string }> = [];
-
-    $(config.selector).each((_, elem) => {
-      const $elem = $(elem);
-      const title = $elem.find(config.titleSelector).first().text().trim();
-      const link = $elem.find(config.linkSelector).first().attr('href');
-      const date = config.dateSelector ? $elem.find(config.dateSelector).text().trim() : undefined;
-
-      if (title && title.length > 3) {
-        items.push({
-          title,
-          link: link?.startsWith('http')
-            ? link
-            : link
-              ? new URL(link, config.url).toString()
-              : config.url,
-          date,
-        });
-      }
-    });
-
-    const result = {
-      type: 'tracker_scrape',
-      source,
-      sourceUrl: config.url,
-      items: items.slice(0, 15),
-      scrapedAt: new Date().toISOString(),
-    };
+    const result = scrapeAndParse($, config, source as string);
 
     await cacheSet(cacheKey, result, SCRAPE_CACHE_TTL_S);
 

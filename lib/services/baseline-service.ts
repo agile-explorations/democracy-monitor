@@ -118,22 +118,27 @@ async function computeEmbeddingBaseline(
       if (wc) weekCentroids.push({ weekOf, centroid: wc });
     }
 
-    // Noise floor: stddev of consecutive-week centroid distances
-    if (weekCentroids.length < 2) return { centroid, noiseFloor: null };
-
-    const distances: number[] = [];
-    for (let i = 1; i < weekCentroids.length; i++) {
-      const dist = 1 - cosineSimilarity(weekCentroids[i - 1].centroid, weekCentroids[i].centroid);
-      distances.push(dist);
-    }
-
-    const noiseFloor = mean(distances) + stddev(distances);
+    const noiseFloor = computeNoiseFloor(weekCentroids);
 
     return { centroid, noiseFloor };
   } catch (err) {
     console.warn(`Failed to compute embedding baseline for ${category}:`, err);
     return { centroid: null, noiseFloor: null };
   }
+}
+
+function computeNoiseFloor(
+  weekCentroids: Array<{ weekOf: string; centroid: number[] }>,
+): number | null {
+  if (weekCentroids.length < 2) return null;
+
+  const distances: number[] = [];
+  for (let i = 1; i < weekCentroids.length; i++) {
+    const dist = 1 - cosineSimilarity(weekCentroids[i - 1].centroid, weekCentroids[i].centroid);
+    distances.push(dist);
+  }
+
+  return mean(distances) + stddev(distances);
 }
 
 /**

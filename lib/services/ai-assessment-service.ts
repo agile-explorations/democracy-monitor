@@ -9,6 +9,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { AI_CACHE_TTL_S } from '@/lib/data/cache-config';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
+  AICompletionResult,
   StatusLevel,
   AssessmentResult,
   ContentItem,
@@ -214,6 +215,42 @@ async function enrichWithRAG(
   }
 }
 
+function buildSkepticResult(
+  parsed: SkepticReviewResponse,
+  provider: AIProvider,
+  completion: AICompletionResult,
+  keywordResult: AssessmentResult,
+): SkepticReviewResult {
+  const clampedStatus = clampToCeiling(keywordResult.status, parsed.recommendedStatus);
+  const decision = resolveDowngrade(keywordResult.status, clampedStatus, parsed.confidence);
+
+  return {
+    aiResult: {
+      provider: provider.name,
+      model: completion.model,
+      status: clampedStatus,
+      reasoning:
+        parsed.downgradeReason || `Agrees with keyword assessment: ${keywordResult.status}`,
+      confidence: parsed.confidence,
+      tokensUsed: completion.tokensUsed,
+      latencyMs: completion.latencyMs,
+    },
+    decision,
+    recommendedStatus: clampedStatus,
+    keywordReview: parsed.keywordReview,
+    whatWouldChangeMind: parsed.whatWouldChangeMind,
+    howWeCouldBeWrong: parsed.howWeCouldBeWrong,
+    additionalEvidenceFor: parsed.evidenceFor.map((text) => ({
+      text,
+      direction: 'concerning' as const,
+    })),
+    additionalEvidenceAgainst: parsed.evidenceAgainst.map((text) => ({
+      text,
+      direction: 'reassuring' as const,
+    })),
+  };
+}
+
 async function runSkepticReview(
   provider: AIProvider,
   category: string,
@@ -243,34 +280,7 @@ async function runSkepticReview(
     const parsed = parseSkepticReviewResponse(completion.content);
     if (!parsed) return null;
 
-    const clampedStatus = clampToCeiling(keywordResult.status, parsed.recommendedStatus);
-    const decision = resolveDowngrade(keywordResult.status, clampedStatus, parsed.confidence);
-
-    return {
-      aiResult: {
-        provider: provider.name,
-        model: completion.model,
-        status: clampedStatus,
-        reasoning:
-          parsed.downgradeReason || `Agrees with keyword assessment: ${keywordResult.status}`,
-        confidence: parsed.confidence,
-        tokensUsed: completion.tokensUsed,
-        latencyMs: completion.latencyMs,
-      },
-      decision,
-      recommendedStatus: clampedStatus,
-      keywordReview: parsed.keywordReview,
-      whatWouldChangeMind: parsed.whatWouldChangeMind,
-      howWeCouldBeWrong: parsed.howWeCouldBeWrong,
-      additionalEvidenceFor: parsed.evidenceFor.map((text) => ({
-        text,
-        direction: 'concerning' as const,
-      })),
-      additionalEvidenceAgainst: parsed.evidenceAgainst.map((text) => ({
-        text,
-        direction: 'reassuring' as const,
-      })),
-    };
+    return buildSkepticResult(parsed, provider, completion, keywordResult);
   } catch (err) {
     console.error(`AI assessment failed for ${category}:`, err);
     return null;

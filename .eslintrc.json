@@ -4,7 +4,7 @@
     "@next/next/no-html-link-for-pages": "off",
 
     "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
-    "max-lines-per-function": "off",
+    "max-lines-per-function": ["warn", { "max": 50, "skipBlankLines": true, "skipComments": true }],
 
     "react/function-component-definition": [
       "warn",
@@ -52,7 +52,14 @@
         "**/*.fixture.*"
       ],
       "rules": {
-        "max-lines": "off"
+        "max-lines": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
+      "files": ["components/**", "lib/hooks/**", "pages/**/*.tsx"],
+      "rules": {
+        "max-lines-per-function": "off"
       }
     }
   ]

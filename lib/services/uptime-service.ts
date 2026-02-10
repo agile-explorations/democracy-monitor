@@ -72,6 +72,79 @@ export async function recordResults(results: UptimeResult[]): Promise<void> {
   }
 }
 
+async function findDownSince(
+  db: ReturnType<typeof getDb>,
+  hostname: string,
+): Promise<string | null> {
+  const recentChecks = await db
+    .select()
+    .from(siteUptime)
+    .where(eq(siteUptime.hostname, hostname))
+    .orderBy(desc(siteUptime.checkedAt))
+    .limit(100);
+
+  let downSince: string | null = null;
+  for (const check of recentChecks) {
+    if (check.isUp) break;
+    downSince = check.checkedAt?.toISOString() ?? null;
+  }
+  return downSince;
+}
+
+function uptimePercent(checks: { isUp: boolean }[]): number {
+  if (checks.length === 0) return 100;
+  return (checks.filter((c) => c.isUp).length / checks.length) * 100;
+}
+
+async function buildSiteHistory(
+  db: ReturnType<typeof getDb>,
+  site: MonitoredSite,
+  oneDayAgo: Date,
+  sevenDaysAgo: Date,
+): Promise<UptimeHistory> {
+  const latest = await db
+    .select()
+    .from(siteUptime)
+    .where(eq(siteUptime.hostname, site.hostname))
+    .orderBy(desc(siteUptime.checkedAt))
+    .limit(1);
+
+  const checks24h = await db
+    .select()
+    .from(siteUptime)
+    .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, oneDayAgo)));
+
+  const checks7d = await db
+    .select()
+    .from(siteUptime)
+    .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, sevenDaysAgo)));
+
+  const downSince = latest[0] && !latest[0].isUp ? await findDownSince(db, site.hostname) : null;
+
+  return {
+    hostname: site.hostname,
+    name: site.name,
+    current: latest[0]
+      ? {
+          hostname: site.hostname,
+          status: latest[0].status,
+          responseTimeMs: latest[0].responseTimeMs,
+          isUp: latest[0].isUp,
+          checkedAt: latest[0].checkedAt?.toISOString() ?? new Date().toISOString(),
+        }
+      : {
+          hostname: site.hostname,
+          status: 0,
+          responseTimeMs: null,
+          isUp: true,
+          checkedAt: new Date().toISOString(),
+        },
+    uptime24h: uptimePercent(checks24h),
+    uptime7d: uptimePercent(checks7d),
+    downSince,
+  };
+}
+
 export async function getUptimeHistory(): Promise<UptimeHistory[]> {
   if (!isDbAvailable()) {
     return MONITORED_SITES.map((site) => ({
@@ -96,70 +169,8 @@ export async function getUptimeHistory(): Promise<UptimeHistory[]> {
   const sevenDaysAgo = new Date(now.getTime() - ONE_WEEK_MS);
 
   const histories: UptimeHistory[] = [];
-
   for (const site of MONITORED_SITES) {
-    // Get latest check
-    const latest = await db
-      .select()
-      .from(siteUptime)
-      .where(eq(siteUptime.hostname, site.hostname))
-      .orderBy(desc(siteUptime.checkedAt))
-      .limit(1);
-
-    // Get 24h checks
-    const checks24h = await db
-      .select()
-      .from(siteUptime)
-      .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, oneDayAgo)));
-
-    // Get 7d checks
-    const checks7d = await db
-      .select()
-      .from(siteUptime)
-      .where(and(eq(siteUptime.hostname, site.hostname), gte(siteUptime.checkedAt, sevenDaysAgo)));
-
-    const upCount24h = checks24h.filter((c) => c.isUp).length;
-    const upCount7d = checks7d.filter((c) => c.isUp).length;
-
-    // Find when downtime started (last consecutive downtime)
-    let downSince: string | null = null;
-    if (latest[0] && !latest[0].isUp) {
-      const recentChecks = await db
-        .select()
-        .from(siteUptime)
-        .where(eq(siteUptime.hostname, site.hostname))
-        .orderBy(desc(siteUptime.checkedAt))
-        .limit(100);
-
-      for (const check of recentChecks) {
-        if (check.isUp) break;
-        downSince = check.checkedAt?.toISOString() ?? null;
-      }
-    }
-
-    histories.push({
-      hostname: site.hostname,
-      name: site.name,
-      current: latest[0]
-        ? {
-            hostname: site.hostname,
-            status: latest[0].status,
-            responseTimeMs: latest[0].responseTimeMs,
-            isUp: latest[0].isUp,
-            checkedAt: latest[0].checkedAt?.toISOString() ?? new Date().toISOString(),
-          }
-        : {
-            hostname: site.hostname,
-            status: 0,
-            responseTimeMs: null,
-            isUp: true,
-            checkedAt: new Date().toISOString(),
-          },
-      uptime24h: checks24h.length > 0 ? (upCount24h / checks24h.length) * 100 : 100,
-      uptime7d: checks7d.length > 0 ? (upCount7d / checks7d.length) * 100 : 100,
-      downSince,
-    });
+    histories.push(await buildSiteHistory(db, site, oneDayAgo, sevenDaysAgo));
   }
-
   return histories;
 }

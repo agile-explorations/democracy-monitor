@@ -63,7 +63,13 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
     };
   }
 
-  // Calculate overall scores
+  return computeOverallScores(policyAreas, statements);
+}
+
+function computeOverallScores(
+  policyAreas: Record<PolicyArea, IntentScore>,
+  statements: IntentStatement[],
+): IntentAssessment {
   const allRhetoric = Object.values(policyAreas).map((p) => p.rhetoric);
   const allActions = Object.values(policyAreas).map((p) => p.action);
 
@@ -75,15 +81,11 @@ export function scoreStatements(statements: IntentStatement[]): IntentAssessment
   let overallScore = (avgRhetoric + avgAction) / 2;
   const overallGap = Math.abs(avgRhetoric - avgAction);
 
-  // Rhetoric alone should not push classification beyond "competitive_authoritarian".
-  // Require meaningful action-side signals (>= 0.3) to reach alarming tiers.
   if (avgAction < 0.3 && overallScore > 0.5) {
     overallScore = Math.min(overallScore, 0.5);
   }
 
   const governance = classifyGovernance(overallScore);
-
-  // Confidence based on data volume and diversity
   const confidence =
     Math.min(1, statements.length / 20) * 0.7 +
     (new Set(statements.map((s) => s.policyArea)).size / POLICY_AREAS.length) * 0.3;

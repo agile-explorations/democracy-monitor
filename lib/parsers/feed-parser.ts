@@ -64,23 +64,48 @@ function extractSummary(item: FeedPayloadItem): string | undefined {
   return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '…' : text;
 }
 
+function normalizeFederalRegisterItem(item: FeedPayloadItem): FeedItem {
+  return {
+    title: (typeof item.title === 'string' ? item.title : item.title?._) || '(document)',
+    summary: extractSummary(item),
+    link: typeof item.link === 'string' ? item.link : undefined,
+    pubDate: item.pubDate,
+    agency: item.agency,
+  };
+}
+
+function normalizeTrackerItem(item: FeedPayloadItem): FeedItem {
+  return {
+    title: (typeof item.title === 'string' ? item.title : item.title?._) || '(item)',
+    link: typeof item.link === 'string' ? item.link : undefined,
+    date: item.date,
+  };
+}
+
+function normalizeRssItem(item: FeedPayloadItem): FeedItem {
+  const title = typeof item.title === 'string' ? item.title : item.title?._;
+  const link =
+    typeof item.link === 'string'
+      ? item.link
+      : (item.link as { href?: string })?.href || (item.link as { _?: string })?._ || item.id;
+
+  return {
+    title: title || '(item)',
+    summary: extractSummary(item),
+    link: link,
+    pubDate: item.pubDate || item.published || item.updated,
+  };
+}
+
 export function parseResult(payload: FeedPayload, signalType: string, baseUrl: string): FeedItem[] {
-  // Handle Federal Register API responses
   if (signalType === 'federal_register' || payload?.type === 'federal_register') {
     const items = payload?.items || [];
     if (items.length === 0) {
       return [{ title: 'No recent documents found', link: baseUrl, isWarning: true }];
     }
-    return items.slice(0, 8).map((it) => ({
-      title: (typeof it.title === 'string' ? it.title : it.title?._) || '(document)',
-      summary: extractSummary(it),
-      link: typeof it.link === 'string' ? it.link : undefined,
-      pubDate: it.pubDate,
-      agency: it.agency,
-    }));
+    return items.slice(0, 8).map(normalizeFederalRegisterItem);
   }
 
-  // Handle tracker scrape responses
   if (signalType === 'tracker_scrape' || payload?.type === 'tracker_scrape') {
     const items = payload?.items || [];
     if (items.length === 0) {
@@ -92,11 +117,7 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
         },
       ];
     }
-    return items.slice(0, 10).map((it) => ({
-      title: (typeof it.title === 'string' ? it.title : it.title?._) || '(item)',
-      link: typeof it.link === 'string' ? it.link : undefined,
-      date: it.date,
-    }));
+    return items.slice(0, 10).map(normalizeTrackerItem);
   }
 
   const d = payload?.data || {};
@@ -106,22 +127,7 @@ export function parseResult(payload: FeedPayload, signalType: string, baseUrl: s
   }
 
   if (d.type === 'rss') {
-    const items = d.items || [];
-    return items.slice(0, 8).map((it) => {
-      const title = typeof it.title === 'string' ? it.title : it.title?._;
-      const link =
-        typeof it.link === 'string'
-          ? it.link
-          : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
-      const pubDate = it.pubDate || it.published || it.updated;
-
-      return {
-        title: title || '(item)',
-        summary: extractSummary(it),
-        link: link,
-        pubDate: pubDate,
-      };
-    });
+    return (d.items || []).slice(0, 8).map(normalizeRssItem);
   }
 
   if (d.type === 'html') {

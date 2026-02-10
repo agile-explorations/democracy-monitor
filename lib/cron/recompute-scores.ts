@@ -31,6 +31,90 @@ interface RecomputeOptions {
   aggregate?: boolean;
 }
 
+type DocumentRow = typeof documents.$inferSelect;
+type CategoryCounts = Record<string, { scored: number; nonZero: number }>;
+
+function processDocumentBatch(
+  rows: DocumentRow[],
+  categoryCounts: CategoryCounts,
+): DocumentScore[] {
+  const scores: DocumentScore[] = [];
+
+  for (const doc of rows) {
+    const item: ContentItem = {
+      title: doc.title,
+      summary: doc.content || undefined,
+      link: doc.url || undefined,
+      pubDate: doc.publishedAt?.toISOString(),
+      agency:
+        doc.metadata && typeof doc.metadata === 'object' && 'agency' in doc.metadata
+          ? (doc.metadata as { agency?: string }).agency
+          : undefined,
+      type: doc.sourceType,
+    };
+
+    const score = scoreDocument(item, doc.category);
+    score.documentId = doc.id;
+    scores.push(score);
+
+    if (!categoryCounts[doc.category]) {
+      categoryCounts[doc.category] = { scored: 0, nonZero: 0 };
+    }
+    categoryCounts[doc.category].scored++;
+    if (score.finalScore > 0) categoryCounts[doc.category].nonZero++;
+  }
+
+  return scores;
+}
+
+function logRecomputeSummary(
+  totalScored: number,
+  totalStored: number,
+  categoryCounts: CategoryCounts,
+  dryRun: boolean,
+): void {
+  console.log('');
+  console.log('[recompute] === Summary ===');
+  console.log(`  Total documents scored: ${totalScored}`);
+  if (!dryRun) console.log(`  Total scores stored: ${totalStored}`);
+
+  console.log('  Per category:');
+  for (const [cat, counts] of Object.entries(categoryCounts).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`    ${cat}: ${counts.scored} scored, ${counts.nonZero} with non-zero score`);
+  }
+}
+
+async function recomputeWeeklyAggregates(from?: string, to?: string): Promise<void> {
+  console.log('\n[recompute] Recomputing weekly aggregates...');
+  const allAggs = await computeAllWeeklyAggregates({ from, to });
+  let aggCount = 0;
+  for (const [cat, aggs] of Object.entries(allAggs)) {
+    for (const agg of aggs) {
+      await storeWeeklyAggregate(agg);
+      aggCount++;
+    }
+    console.log(`  ${cat}: ${aggs.length} weekly aggregates`);
+  }
+  console.log(`  Total weekly aggregates stored: ${aggCount}`);
+}
+
+function buildWhereClause(options: RecomputeOptions) {
+  const conditions = [];
+  if (options.category) conditions.push(eq(documents.category, options.category));
+  if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
+  if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+function logRecomputeStart(options: RecomputeOptions, dryRun: boolean): void {
+  console.log(`[recompute] ${dryRun ? '(DRY RUN) ' : ''}Starting score recomputation...`);
+  if (options.category) console.log(`[recompute] Category filter: ${options.category}`);
+  if (options.from) console.log(`[recompute] From: ${options.from}`);
+  if (options.to) console.log(`[recompute] To: ${options.to}`);
+}
+
 async function recomputeScores(options: RecomputeOptions): Promise<void> {
   if (!isDbAvailable()) {
     console.error('[recompute] DATABASE_URL not configured');
@@ -40,25 +124,13 @@ async function recomputeScores(options: RecomputeOptions): Promise<void> {
   const db = getDb();
   const dryRun = options.dryRun ?? false;
   const batchSize = options.batchSize ?? 500;
+  logRecomputeStart(options, dryRun);
 
-  console.log(`[recompute] ${dryRun ? '(DRY RUN) ' : ''}Starting score recomputation...`);
-  if (options.category) console.log(`[recompute] Category filter: ${options.category}`);
-  if (options.from) console.log(`[recompute] From: ${options.from}`);
-  if (options.to) console.log(`[recompute] To: ${options.to}`);
-
-  // Build query conditions
-  const conditions = [];
-  if (options.category) conditions.push(eq(documents.category, options.category));
-  if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
-  if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-  // Fetch documents in batches
+  const whereClause = buildWhereClause(options);
   let offset = 0;
   let totalScored = 0;
   let totalStored = 0;
-  const categoryCounts: Record<string, { scored: number; nonZero: number }> = {};
+  const categoryCounts: CategoryCounts = {};
 
   while (true) {
     const rows = await db
@@ -71,72 +143,18 @@ async function recomputeScores(options: RecomputeOptions): Promise<void> {
 
     if (rows.length === 0) break;
 
-    const scores: DocumentScore[] = [];
-
-    for (const doc of rows) {
-      const item: ContentItem = {
-        title: doc.title,
-        summary: doc.content || undefined,
-        link: doc.url || undefined,
-        pubDate: doc.publishedAt?.toISOString(),
-        agency:
-          doc.metadata && typeof doc.metadata === 'object' && 'agency' in doc.metadata
-            ? (doc.metadata as { agency?: string }).agency
-            : undefined,
-        type: doc.sourceType,
-      };
-
-      const score = scoreDocument(item, doc.category);
-      score.documentId = doc.id;
-      scores.push(score);
-
-      if (!categoryCounts[doc.category]) {
-        categoryCounts[doc.category] = { scored: 0, nonZero: 0 };
-      }
-      categoryCounts[doc.category].scored++;
-      if (score.finalScore > 0) categoryCounts[doc.category].nonZero++;
-    }
-
+    const scores = processDocumentBatch(rows, categoryCounts);
     totalScored += scores.length;
-
-    if (!dryRun) {
-      const stored = await storeDocumentScores(scores);
-      totalStored += stored;
-    }
+    if (!dryRun) totalStored += await storeDocumentScores(scores);
 
     process.stdout.write(
       `\r[recompute] Processed ${totalScored} documents${dryRun ? ' (dry run)' : `, stored ${totalStored}`}`,
     );
-
     offset += batchSize;
   }
 
-  console.log('');
-  console.log('[recompute] === Summary ===');
-  console.log(`  Total documents scored: ${totalScored}`);
-  if (!dryRun) console.log(`  Total scores stored: ${totalStored}`);
-
-  console.log('  Per category:');
-  for (const [cat, counts] of Object.entries(categoryCounts).sort(([a], [b]) =>
-    a.localeCompare(b),
-  )) {
-    console.log(`    ${cat}: ${counts.scored} scored, ${counts.nonZero} with non-zero score`);
-  }
-
-  // Recompute weekly aggregates if requested
-  if (options.aggregate && !dryRun) {
-    console.log('\n[recompute] Recomputing weekly aggregates...');
-    const allAggs = await computeAllWeeklyAggregates({ from: options.from, to: options.to });
-    let aggCount = 0;
-    for (const [cat, aggs] of Object.entries(allAggs)) {
-      for (const agg of aggs) {
-        await storeWeeklyAggregate(agg);
-        aggCount++;
-      }
-      console.log(`  ${cat}: ${aggs.length} weekly aggregates`);
-    }
-    console.log(`  Total weekly aggregates stored: ${aggCount}`);
-  }
+  logRecomputeSummary(totalScored, totalStored, categoryCounts, dryRun);
+  if (options.aggregate && !dryRun) await recomputeWeeklyAggregates(options.from, options.to);
 }
 
 if (require.main === module) {
