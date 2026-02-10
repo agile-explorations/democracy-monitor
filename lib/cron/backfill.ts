@@ -1,5 +1,3 @@
-// @ts-expect-error @next/env ships with Next.js but lacks type declarations
-import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
 import { analyzeContent } from '@/lib/services/assessment-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -20,8 +18,6 @@ import type { ContentItem, EnhancedAssessment } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
 import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
-
-loadEnvConfig(process.cwd());
 
 const INAUGURATION_DATE = '2025-01-20';
 
@@ -211,8 +207,7 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
     : CATEGORIES;
 
   if (categoriesToProcess.length === 0) {
-    console.error(`[backfill] Category "${options.category}" not found`);
-    process.exit(1);
+    throw new Error(`Category "${options.category}" not found`);
   }
 
   console.log(`[backfill] ${categoriesToProcess.length} categories to process`);
@@ -255,6 +250,8 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
 }
 
 if (require.main === module) {
+  const { loadEnvConfig } = require('@next/env');
+  loadEnvConfig(process.cwd());
   const args = process.argv.slice(2);
   const options: BackfillOptions = {};
 

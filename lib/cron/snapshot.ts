@@ -1,5 +1,3 @@
-// @ts-expect-error @next/env ships with Next.js but lacks type declarations
-import { loadEnvConfig } from '@next/env';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
@@ -23,8 +21,6 @@ import {
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
 import { toDateString } from '@/lib/utils/date-utils';
-
-loadEnvConfig(process.cwd());
 
 async function snapshotCategory(cat: (typeof CATEGORIES)[number]): Promise<void> {
   const catStart = Date.now();
@@ -124,6 +120,8 @@ export async function runSnapshots(): Promise<void> {
 }
 
 if (require.main === module) {
+  const { loadEnvConfig } = require('@next/env');
+  loadEnvConfig(process.cwd());
   runSnapshots()
     .then(() => process.exit(0))
     .catch((err) => {

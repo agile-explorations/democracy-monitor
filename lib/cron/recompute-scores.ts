@@ -10,8 +10,6 @@
  *   pnpm recompute-scores --aggregate            # Also recompute weekly aggregates
  */
 
-// @ts-expect-error @next/env ships with Next.js but lacks type declarations
-import { loadEnvConfig } from '@next/env';
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
@@ -19,8 +17,6 @@ import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scor
 import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import type { DocumentScore } from '@/lib/types/scoring';
-
-loadEnvConfig(process.cwd());
 
 interface RecomputeOptions {
   category?: string;
@@ -115,13 +111,12 @@ function logRecomputeStart(options: RecomputeOptions, dryRun: boolean): void {
   if (options.to) console.log(`[recompute] To: ${options.to}`);
 }
 
-async function recomputeScores(options: RecomputeOptions): Promise<void> {
+export async function recomputeScores(options: RecomputeOptions): Promise<void> {
   if (!isDbAvailable()) {
-    console.error('[recompute] DATABASE_URL not configured');
-    process.exit(1);
+    throw new Error('DATABASE_URL not configured');
   }
 
-  const db = getDb();
+  const db = getDb(); // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig moved to CLI entry block for testability
   const dryRun = options.dryRun ?? false;
   const batchSize = options.batchSize ?? 500;
   logRecomputeStart(options, dryRun);
@@ -158,6 +153,8 @@ async function recomputeScores(options: RecomputeOptions): Promise<void> {
 }
 
 if (require.main === module) {
+  const { loadEnvConfig } = require('@next/env');
+  loadEnvConfig(process.cwd());
   const args = process.argv.slice(2);
   const options: RecomputeOptions = {};
 

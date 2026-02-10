@@ -9,8 +9,6 @@
  *   pnpm build-baseline --skip-fetch                  # Skip API calls, just recompute baselines
  */
 
-// @ts-expect-error @next/env ships with Next.js but lacks type declarations
-import { loadEnvConfig } from '@next/env';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
@@ -26,8 +24,6 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
 import { getWeekRanges } from '@/lib/utils/date-utils';
-
-loadEnvConfig(process.cwd());
 
 interface BackfillBaselineOptions {
   baseline?: string;
@@ -149,10 +145,9 @@ async function processBaselineConfig(
   }
 }
 
-async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<void> {
+export async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<void> {
   if (!isDbAvailable()) {
-    console.error('[baseline] DATABASE_URL not configured');
-    process.exit(1);
+    throw new Error('DATABASE_URL not configured');
   }
 
   const dryRun = options.dryRun ?? false;
@@ -165,10 +160,9 @@ async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<vo
   if (configsToProcess.length === 0) {
     const config = getBaselineConfig(options.baseline!);
     if (!config) {
-      console.error(
-        `[baseline] Unknown baseline "${options.baseline}". Available: ${BASELINE_CONFIGS.map((c) => c.id).join(', ')}`,
+      throw new Error(
+        `Unknown baseline "${options.baseline}". Available: ${BASELINE_CONFIGS.map((c) => c.id).join(', ')}`,
       );
-      process.exit(1);
     }
   }
 
@@ -177,8 +171,7 @@ async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<vo
     : CATEGORIES;
 
   if (categoriesToProcess.length === 0) {
-    console.error(`[baseline] Category "${options.category}" not found`);
-    process.exit(1);
+    throw new Error(`Category "${options.category}" not found`);
   }
 
   for (const config of configsToProcess) {
@@ -189,6 +182,8 @@ async function runBackfillBaseline(options: BackfillBaselineOptions): Promise<vo
 }
 
 if (require.main === module) {
+  const { loadEnvConfig } = require('@next/env');
+  loadEnvConfig(process.cwd());
   const args = process.argv.slice(2);
   const options: BackfillBaselineOptions = {};
 
