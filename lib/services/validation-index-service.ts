@@ -69,7 +69,7 @@ export function computeAlignment(
 /**
  * Build comparisons between external validation points and internal assessments.
  */
-function buildComparisons(
+export function buildComparisons(
   latestBySourceDim: Map<
     string,
     { source: string; dimension: string; score: number; date: string }
@@ -114,7 +114,7 @@ function buildComparisons(
 /**
  * Compute overall alignment fraction from a list of comparisons.
  */
-function computeOverallAlignment(comparisons: ValidationComparison[]): number {
+export function computeOverallAlignment(comparisons: ValidationComparison[]): number {
   const scoreable = comparisons.filter((c) => c.alignment !== 'insufficient_data');
   const alignedCount = scoreable.filter((c) => c.alignment === 'aligned').length;
   return scoreable.length > 0 ? alignedCount / scoreable.length : 0;

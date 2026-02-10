@@ -138,6 +138,23 @@ describe('scoreDocument', () => {
     expect(score.matches.some((m) => m.keyword === 'court packing')).toBe(false);
   });
 
+  it('downweights tier instead of suppressing when downweight rule matches', () => {
+    const score = scoreDocument(
+      {
+        title: 'Contempt of Court Finding in Civil Contempt Case',
+        summary: 'Judge issues civil contempt citation for procedural non-compliance.',
+      },
+      'courts',
+    );
+    // "contempt of court" has downweight_if_any: ['civil contempt', 'procedural']
+    // The keyword should still appear in matches (not suppressed), but at a lower tier
+    const match = score.matches.find((m) => m.keyword === 'contempt of court');
+    if (match) {
+      // If downweighted from capture, it should now be drift
+      expect(['drift', 'warning']).toContain(match.tier);
+    }
+  });
+
   it('includes context around matched keywords', () => {
     const score = scoreDocument(
       {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cosineSimilarity } from '@/lib/services/embedding-service';
+import { cosineSimilarity, computeCentroid } from '@/lib/services/embedding-service';
 
 describe('cosineSimilarity', () => {
   it('returns 1 for identical vectors', () => {
@@ -57,5 +57,50 @@ describe('cosineSimilarity', () => {
     const a = [1, 2, 3];
     const b = [2, 4, 6]; // same direction, 2x magnitude
     expect(cosineSimilarity(a, b)).toBeCloseTo(1, 5);
+  });
+});
+
+describe('computeCentroid', () => {
+  it('returns null for empty array', () => {
+    expect(computeCentroid([])).toBeNull();
+  });
+
+  it('returns the same vector for a single embedding', () => {
+    const embedding = [1, 2, 3];
+    expect(computeCentroid([embedding])).toEqual([1, 2, 3]);
+  });
+
+  it('computes element-wise mean of two vectors', () => {
+    const a = [2, 4, 6];
+    const b = [4, 6, 8];
+    const centroid = computeCentroid([a, b])!;
+    expect(centroid).toEqual([3, 5, 7]);
+  });
+
+  it('computes element-wise mean of three vectors', () => {
+    const embeddings = [
+      [3, 0, 0],
+      [0, 3, 0],
+      [0, 0, 3],
+    ];
+    const centroid = computeCentroid(embeddings)!;
+    expect(centroid).toEqual([1, 1, 1]);
+  });
+
+  it('handles negative values', () => {
+    const a = [-1, 2, -3];
+    const b = [1, -2, 3];
+    const centroid = computeCentroid([a, b])!;
+    expect(centroid).toEqual([0, 0, 0]);
+  });
+
+  it('handles high-dimensional vectors', () => {
+    const dim = 1536; // OpenAI embedding dimension
+    const a = new Array(dim).fill(1);
+    const b = new Array(dim).fill(3);
+    const centroid = computeCentroid([a, b])!;
+    expect(centroid.length).toBe(dim);
+    expect(centroid[0]).toBe(2);
+    expect(centroid[dim - 1]).toBe(2);
   });
 });

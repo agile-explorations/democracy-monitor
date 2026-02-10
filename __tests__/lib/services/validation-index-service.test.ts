@@ -6,6 +6,8 @@ import {
   ALIGNMENT_THRESHOLD,
   STATUS_SCORE,
   computeAlignment,
+  buildComparisons,
+  computeOverallAlignment,
   storeValidationDataPoints,
   getValidationSummary,
   getValidationTimeSeries,
@@ -105,6 +107,201 @@ describe('STATUS_SCORE', () => {
   });
 });
 
+describe('buildComparisons', () => {
+  it('builds aligned comparison when external score matches internal status', () => {
+    const latestBySourceDim = new Map([
+      [
+        'v-dem:rule_of_law',
+        { source: 'v-dem', dimension: 'rule_of_law', score: 0.85, date: '2026-01-01' },
+      ],
+    ]);
+    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+
+    const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
+
+    expect(comparisons).toHaveLength(1);
+    expect(comparisons[0].alignment).toBe('aligned');
+    expect(comparisons[0].internalCategory).toBe('courts');
+    expect(comparisons[0].externalScore).toBe(0.85);
+  });
+
+  it('builds divergent comparison when scores disagree', () => {
+    const latestBySourceDim = new Map([
+      [
+        'v-dem:rule_of_law',
+        { source: 'v-dem', dimension: 'rule_of_law', score: 0.9, date: '2026-01-01' },
+      ],
+    ]);
+    const latestByCategory = new Map([['courts', { status: 'Capture' }]]);
+
+    const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
+
+    expect(comparisons).toHaveLength(1);
+    expect(comparisons[0].alignment).toBe('divergent');
+  });
+
+  it('marks insufficient_data when no internal assessment exists', () => {
+    const latestBySourceDim = new Map([
+      [
+        'v-dem:rule_of_law',
+        { source: 'v-dem', dimension: 'rule_of_law', score: 0.7, date: '2026-01-01' },
+      ],
+    ]);
+    const latestByCategory = new Map<string, { status: string }>();
+
+    const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
+
+    expect(comparisons).toHaveLength(1);
+    expect(comparisons[0].alignment).toBe('insufficient_data');
+    expect(comparisons[0].internalStatus).toBe('unknown');
+  });
+
+  it('skips dimensions not in DIMENSION_TO_CATEGORY', () => {
+    const latestBySourceDim = new Map([
+      [
+        'v-dem:nonexistent_dimension',
+        { source: 'v-dem', dimension: 'nonexistent_dimension', score: 0.5, date: '2026-01-01' },
+      ],
+    ]);
+    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+
+    const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
+
+    expect(comparisons).toHaveLength(0);
+  });
+
+  it('handles multiple source-dimension pairs', () => {
+    const latestBySourceDim = new Map([
+      [
+        'v-dem:rule_of_law',
+        { source: 'v-dem', dimension: 'rule_of_law', score: 0.85, date: '2026-01-01' },
+      ],
+      [
+        'freedom-house:rule_of_law',
+        { source: 'freedom-house', dimension: 'rule_of_law', score: 0.8, date: '2026-01-01' },
+      ],
+    ]);
+    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+
+    const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
+
+    expect(comparisons).toHaveLength(2);
+  });
+});
+
+describe('computeOverallAlignment', () => {
+  it('returns 1 when all comparisons are aligned', () => {
+    const comparisons = [
+      {
+        source: 'v-dem' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.85,
+        internalCategory: 'courts',
+        internalStatus: 'Stable',
+        alignment: 'aligned' as const,
+        lastUpdated: '2026-01-01',
+      },
+      {
+        source: 'freedom-house' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.8,
+        internalCategory: 'courts',
+        internalStatus: 'Stable',
+        alignment: 'aligned' as const,
+        lastUpdated: '2026-01-01',
+      },
+    ];
+
+    expect(computeOverallAlignment(comparisons)).toBe(1);
+  });
+
+  it('returns 0 when all comparisons are divergent', () => {
+    const comparisons = [
+      {
+        source: 'v-dem' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.9,
+        internalCategory: 'courts',
+        internalStatus: 'Capture',
+        alignment: 'divergent' as const,
+        lastUpdated: '2026-01-01',
+      },
+    ];
+
+    expect(computeOverallAlignment(comparisons)).toBe(0);
+  });
+
+  it('returns 0.5 when half aligned and half divergent', () => {
+    const comparisons = [
+      {
+        source: 'v-dem' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.85,
+        internalCategory: 'courts',
+        internalStatus: 'Stable',
+        alignment: 'aligned' as const,
+        lastUpdated: '2026-01-01',
+      },
+      {
+        source: 'v-dem' as const,
+        dimension: 'media_freedom',
+        externalScore: 0.9,
+        internalCategory: 'mediaFreedom',
+        internalStatus: 'Capture',
+        alignment: 'divergent' as const,
+        lastUpdated: '2026-01-01',
+      },
+    ];
+
+    expect(computeOverallAlignment(comparisons)).toBe(0.5);
+  });
+
+  it('excludes insufficient_data from alignment calculation', () => {
+    const comparisons = [
+      {
+        source: 'v-dem' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.85,
+        internalCategory: 'courts',
+        internalStatus: 'Stable',
+        alignment: 'aligned' as const,
+        lastUpdated: '2026-01-01',
+      },
+      {
+        source: 'v-dem' as const,
+        dimension: 'media_freedom',
+        externalScore: 0.7,
+        internalCategory: 'mediaFreedom',
+        internalStatus: 'unknown',
+        alignment: 'insufficient_data' as const,
+        lastUpdated: '2026-01-01',
+      },
+    ];
+
+    expect(computeOverallAlignment(comparisons)).toBe(1);
+  });
+
+  it('returns 0 for empty comparisons', () => {
+    expect(computeOverallAlignment([])).toBe(0);
+  });
+
+  it('returns 0 when all comparisons are insufficient_data', () => {
+    const comparisons = [
+      {
+        source: 'v-dem' as const,
+        dimension: 'rule_of_law',
+        externalScore: 0.7,
+        internalCategory: 'courts',
+        internalStatus: 'unknown',
+        alignment: 'insufficient_data' as const,
+        lastUpdated: '2026-01-01',
+      },
+    ];
+
+    expect(computeOverallAlignment(comparisons)).toBe(0);
+  });
+});
+
 describe('storeValidationDataPoints', () => {
   beforeEach(() => {
     vi.mocked(dbModule.isDbAvailable).mockReset();
@@ -114,7 +311,7 @@ describe('storeValidationDataPoints', () => {
     vi.mocked(dbModule.isDbAvailable).mockReturnValue(false);
     await expect(
       storeValidationDataPoints([
-        { source: 'v-dem', date: '2024-01-01', dimension: 'judicial_independence', score: 0.8 },
+        { source: 'v-dem', date: '2024-01-01', dimension: 'rule_of_law', score: 0.8 },
       ]),
     ).resolves.toBeUndefined();
   });
