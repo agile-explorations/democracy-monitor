@@ -7,8 +7,13 @@
  *   pnpm build-baseline --category courts             # Single category
  *   pnpm build-baseline --dry-run                     # Preview without writing
  *   pnpm build-baseline --skip-fetch                  # Skip API calls, just recompute baselines
+ *   pnpm build-baseline --no-rhetoric                 # Skip White House + GDELT rhetoric fetch
+ *   pnpm build-baseline --skip-ai                     # Keyword-only assessment (no AI Skeptic)
+ *   pnpm build-baseline --model gpt-4o-mini           # Use specific model for AI Skeptic
  */
 
+import { assessWeek } from '@/lib/cron/assess-week';
+import type { AiOptions } from '@/lib/cron/assess-week';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
@@ -19,6 +24,13 @@ import {
   fetchFederalRegisterHistorical,
   parseSignalParams,
 } from '@/lib/services/federal-register-fetcher';
+import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
+import {
+  fetchWhiteHouseHistorical,
+  fetchGdeltHistorical,
+  GDELT_QUERIES,
+} from '@/lib/services/rhetoric-fetcher';
+import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
@@ -30,6 +42,9 @@ interface BackfillBaselineOptions {
   category?: string;
   dryRun?: boolean;
   skipFetch?: boolean;
+  includeRhetoric?: boolean;
+  skipAi?: boolean;
+  model?: string;
 }
 
 async function fetchWeekData(
@@ -63,6 +78,7 @@ async function backfillBaselineCategory(
   signals: Array<{ url: string; type: string }>,
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
+  aiOptions: AiOptions,
 ): Promise<{ docs: number; weeks: number; apiCalls: number }> {
   let totalDocs = 0;
   let weeksProcessed = 0;
@@ -89,9 +105,11 @@ async function backfillBaselineCategory(
 
       const docScores = scoreDocumentBatch(dedupedItems, categoryKey);
       await storeDocumentScores(docScores);
+
+      const enhanced = await assessWeek(dedupedItems, categoryKey, week.end, aiOptions);
+      await saveSnapshot(enhanced, new Date(week.end));
     }
 
-    // Compute and store weekly aggregate
     const agg = await computeWeeklyAggregate(categoryKey, week.start);
     await storeWeeklyAggregate(agg);
     weeksProcessed++;
@@ -108,18 +126,92 @@ async function backfillBaselineCategory(
   return { docs: totalDocs, weeks: weeksProcessed, apiCalls };
 }
 
+async function backfillBaselineGdelt(
+  weeks: Array<{ start: string; end: string }>,
+  dryRun: boolean,
+): Promise<number> {
+  let gdeltDocs = 0;
+
+  console.log('[baseline] Fetching GDELT article data...');
+  for (const week of weeks) {
+    for (const query of GDELT_QUERIES) {
+      if (dryRun) continue;
+      try {
+        const items = await fetchGdeltHistorical({
+          query,
+          dateFrom: week.start,
+          dateTo: week.end,
+          maxRecords: 250,
+          delayMs: 300,
+        });
+        if (items.length > 0) {
+          const stored = await storeDocuments(items, 'intent');
+          gdeltDocs += stored;
+        }
+      } catch (err) {
+        console.error(`  GDELT error for ${week.start} query="${query.slice(0, 30)}...":`, err);
+      }
+    }
+  }
+
+  if (dryRun) {
+    console.log(`  GDELT: [dry run] ~${weeks.length * GDELT_QUERIES.length} API calls`);
+  } else {
+    console.log(`  GDELT: ${gdeltDocs} total documents stored`);
+  }
+  return gdeltDocs;
+}
+
+async function backfillBaselineRhetoric(
+  weeks: Array<{ start: string; end: string }>,
+  dryRun: boolean,
+): Promise<{ whDocs: number; gdeltDocs: number }> {
+  let whDocs = 0;
+
+  console.log('\n[baseline] === Rhetoric Sources ===');
+
+  console.log('[baseline] Fetching White House briefing-room archive...');
+  if (!dryRun) {
+    try {
+      const whItems = await fetchWhiteHouseHistorical({
+        dateFrom: weeks[0].start,
+        dateTo: weeks[weeks.length - 1].end,
+        delayMs: 500,
+      });
+      if (whItems.length > 0) {
+        const stored = await storeDocuments(whItems, 'intent');
+        whDocs = stored;
+        console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
+      } else {
+        console.log('  White House: 0 items (site may be blocking)');
+      }
+    } catch (err) {
+      console.error('  White House fetch error:', err);
+    }
+  } else {
+    console.log('  White House: [dry run] would fetch archive pages');
+  }
+
+  const gdeltDocs = await backfillBaselineGdelt(weeks, dryRun);
+
+  return { whDocs, gdeltDocs };
+}
+
 async function processBaselineConfig(
   config: (typeof BASELINE_CONFIGS)[number],
   categoriesToProcess: typeof CATEGORIES,
   dryRun: boolean,
   skipFetch: boolean,
+  includeRhetoric: boolean,
+  aiOptions: AiOptions,
 ): Promise<void> {
   console.log(
     `\n[baseline] === ${config.label} (${config.from} → ${config.to}) ===${dryRun ? ' (DRY RUN)' : ''}`,
   );
 
+  const weeks = getWeekRanges(config.from, config.to);
+
   if (!skipFetch) {
-    const weeks = getWeekRanges(config.from, config.to);
     console.log(`[baseline] ${weeks.length} weeks to process`);
 
     let totalDocs = 0;
@@ -127,9 +219,26 @@ async function processBaselineConfig(
 
     for (const cat of categoriesToProcess) {
       console.log(`\n[baseline] ${cat.key} (${cat.signals.length} signals)`);
-      const result = await backfillBaselineCategory(cat.key, cat.signals, weeks, dryRun);
+      const result = await backfillBaselineCategory(cat.key, cat.signals, weeks, dryRun, aiOptions);
       totalDocs += result.docs;
       totalApiCalls += result.apiCalls;
+    }
+
+    if (includeRhetoric) {
+      const rhetoric = await backfillBaselineRhetoric(weeks, dryRun);
+      totalDocs += rhetoric.whDocs + rhetoric.gdeltDocs;
+
+      if (!dryRun) {
+        console.log('\n[baseline] === Intent Weekly Aggregation ===');
+        for (const week of weeks) {
+          try {
+            await aggregateAllAreas(week.start);
+          } catch (err) {
+            console.error(`[baseline] Intent aggregation failed for ${week.start}:`, err);
+          }
+        }
+        console.log(`[baseline] Intent weekly aggregation complete for ${weeks.length} weeks`);
+      }
     }
 
     console.log(`\n[baseline] Fetch complete: ${totalDocs} docs, ${totalApiCalls} API calls`);
@@ -152,6 +261,12 @@ export async function runBackfillBaseline(options: BackfillBaselineOptions): Pro
 
   const dryRun = options.dryRun ?? false;
   const skipFetch = options.skipFetch ?? false;
+  const includeRhetoric = options.includeRhetoric !== false; // default true
+  const aiOptions: AiOptions = { skipAi: options.skipAi ?? false, model: options.model };
+
+  console.log(
+    `[baseline] AI: ${aiOptions.skipAi ? 'disabled' : `enabled (model: ${aiOptions.model || 'default'})`}`,
+  );
 
   const configsToProcess = options.baseline
     ? BASELINE_CONFIGS.filter((c) => c.id === options.baseline)
@@ -175,7 +290,14 @@ export async function runBackfillBaseline(options: BackfillBaselineOptions): Pro
   }
 
   for (const config of configsToProcess) {
-    await processBaselineConfig(config, categoriesToProcess, dryRun, skipFetch);
+    await processBaselineConfig(
+      config,
+      categoriesToProcess,
+      dryRun,
+      skipFetch,
+      includeRhetoric,
+      aiOptions,
+    );
   }
 
   console.log('\n[baseline] Done.');
@@ -200,6 +322,15 @@ if (require.main === module) {
         break;
       case '--skip-fetch':
         options.skipFetch = true;
+        break;
+      case '--no-rhetoric':
+        options.includeRhetoric = false;
+        break;
+      case '--skip-ai':
+        options.skipAi = true;
+        break;
+      case '--model':
+        options.model = args[++i];
         break;
     }
   }

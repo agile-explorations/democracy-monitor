@@ -40,6 +40,8 @@
     "recompute-scores": "tsx lib/cron/recompute-scores.ts",
     "backtest": "tsx lib/cron/run-backtest.ts",
     "build-baseline": "tsx lib/cron/backfill-baseline.ts",
+    "seed:export": "tsx lib/seed/export.ts",
+    "seed:import": "tsx lib/seed/import.ts",
     "prepare": "husky"
   },
   "dependencies": {

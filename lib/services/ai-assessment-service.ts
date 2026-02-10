@@ -110,7 +110,7 @@ function buildEnhancedResult(params: {
 export async function enhancedAssessment(
   items: ContentItem[],
   category: string,
-  options?: { providers?: string[]; skipCache?: boolean },
+  options?: { providers?: string[]; skipCache?: boolean; model?: string },
 ): Promise<EnhancedAssessment> {
   const keywordResult = analyzeContent(items, category);
   const { evidenceFor, evidenceAgainst } = categorizeEvidence(items, keywordResult.status);
@@ -121,7 +121,10 @@ export async function enhancedAssessment(
     if (cached) return cached;
   }
 
-  const skepticResult = await trySkepticReview(items, category, keywordResult, options);
+  const skepticResult = await trySkepticReview(items, category, keywordResult, {
+    providers: options?.providers,
+    model: options?.model,
+  });
 
   if (skepticResult) {
     mergeSkepticEvidence(evidenceFor, evidenceAgainst, skepticResult);
@@ -148,7 +151,7 @@ async function trySkepticReview(
   items: ContentItem[],
   category: string,
   keywordResult: AssessmentResult,
-  options?: { providers?: string[] },
+  options?: { providers?: string[]; model?: string },
 ): Promise<SkepticReviewResult | null> {
   const availableProviders = getAvailableProviders();
   const requestedProviders = options?.providers || ['anthropic', 'openai'];
@@ -166,6 +169,7 @@ async function trySkepticReview(
     enrichedItems,
     keywordResult,
     items,
+    options?.model,
   );
 }
 
@@ -258,6 +262,7 @@ async function runSkepticReview(
   enrichedItems: ContentItem[],
   keywordResult: AssessmentResult,
   originalItems: ContentItem[],
+  model?: string,
 ): Promise<SkepticReviewResult | null> {
   try {
     const matchContexts = buildKeywordMatchContexts(keywordResult.matches, category, originalItems);
@@ -275,6 +280,7 @@ async function runSkepticReview(
       systemPrompt: SKEPTIC_REVIEW_SYSTEM_PROMPT,
       maxTokens: 1024,
       temperature: 0.3,
+      ...(model ? { model } : {}),
     });
 
     const parsed = parseSkepticReviewResponse(completion.content);

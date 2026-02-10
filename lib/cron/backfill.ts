@@ -1,5 +1,6 @@
+import { assessWeek } from '@/lib/cron/assess-week';
+import type { AiOptions } from '@/lib/cron/assess-week';
 import { CATEGORIES } from '@/lib/data/categories';
-import { analyzeContent } from '@/lib/services/assessment-service';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
 import {
@@ -14,7 +15,7 @@ import {
 } from '@/lib/services/rhetoric-fetcher';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
-import type { ContentItem, EnhancedAssessment } from '@/lib/types';
+import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
 import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
@@ -27,13 +28,15 @@ interface BackfillOptions {
   category?: string;
   dryRun?: boolean;
   includeRhetoric?: boolean;
+  skipAi?: boolean;
+  model?: string;
 }
 
-async function processBackfillWeek(
-  week: { start: string; end: string },
+async function fetchWeekItems(
   frSignals: Array<{ url: string; type: string }>,
+  week: { start: string; end: string },
   categoryKey: string,
-): Promise<{ docs: number; snapshots: number }> {
+): Promise<ContentItem[]> {
   const weekItems: ContentItem[] = [];
 
   for (const signal of frSignals) {
@@ -52,24 +55,21 @@ async function processBackfillWeek(
     }
   }
 
+  return weekItems;
+}
+
+async function processBackfillWeek(
+  week: { start: string; end: string },
+  frSignals: Array<{ url: string; type: string }>,
+  categoryKey: string,
+  aiOptions: AiOptions,
+): Promise<{ docs: number; snapshots: number }> {
+  const weekItems = await fetchWeekItems(frSignals, week, categoryKey);
   const dedupedItems = deduplicateByUrl(weekItems);
   if (dedupedItems.length === 0) return { docs: 0, snapshots: 0 };
 
   const stored = await storeDocuments(dedupedItems, categoryKey);
-  const assessment = analyzeContent(dedupedItems, categoryKey);
-
-  const enhanced: EnhancedAssessment = {
-    category: categoryKey,
-    status: assessment.status,
-    reason: assessment.reason,
-    matches: assessment.matches,
-    dataCoverage: dedupedItems.length > 0 ? Math.min(dedupedItems.length / 10, 1) : 0,
-    evidenceFor: [],
-    evidenceAgainst: [],
-    howWeCouldBeWrong: [],
-    keywordResult: assessment,
-    assessedAt: new Date(week.end).toISOString(),
-  };
+  const enhanced = await assessWeek(dedupedItems, categoryKey, week.end, aiOptions);
 
   await saveSnapshot(enhanced, new Date(week.end));
 
@@ -80,7 +80,7 @@ async function processBackfillWeek(
   await storeWeeklyAggregate(agg);
 
   console.log(
-    `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs, ${docScores.length} scored, status=${assessment.status}`,
+    `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs, status=${enhanced.status}${enhanced.aiResult ? ' (AI)' : ''}`,
   );
 
   await sleep(500);
@@ -92,6 +92,7 @@ async function backfillCategory(
   signals: Array<{ url: string; type: string }>,
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
+  aiOptions: AiOptions,
 ): Promise<{ docs: number; snapshots: number; apiCalls: number }> {
   let totalDocs = 0;
   let totalSnapshots = 0;
@@ -108,7 +109,7 @@ async function backfillCategory(
     apiCalls += frSignals.length;
     if (dryRun) continue;
 
-    const result = await processBackfillWeek(week, frSignals, categoryKey);
+    const result = await processBackfillWeek(week, frSignals, categoryKey, aiOptions);
     totalDocs += result.docs;
     totalSnapshots += result.snapshots;
   }
@@ -196,8 +197,12 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   const to = options.to || toDateString(new Date());
   const dryRun = options.dryRun || false;
   const includeRhetoric = options.includeRhetoric !== false; // default true
+  const aiOptions: AiOptions = { skipAi: options.skipAi ?? false, model: options.model };
 
   console.log(`[backfill] ${dryRun ? '(DRY RUN) ' : ''}Range: ${from} → ${to}`);
+  console.log(
+    `[backfill] AI: ${aiOptions.skipAi ? 'disabled' : `enabled (model: ${aiOptions.model || 'default'})`}`,
+  );
 
   const weeks = getWeekRanges(from, to);
   console.log(`[backfill] ${weeks.length} weeks to process`);
@@ -218,7 +223,7 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
 
   for (const cat of categoriesToProcess) {
     console.log(`\n[backfill] === ${cat.key} (${cat.signals.length} signals) ===`);
-    const result = await backfillCategory(cat.key, cat.signals, weeks, dryRun);
+    const result = await backfillCategory(cat.key, cat.signals, weeks, dryRun, aiOptions);
     totalDocs += result.docs;
     totalSnapshots += result.snapshots;
     totalApiCalls += result.apiCalls;
@@ -271,6 +276,12 @@ if (require.main === module) {
         break;
       case '--no-rhetoric':
         options.includeRhetoric = false;
+        break;
+      case '--skip-ai':
+        options.skipAi = true;
+        break;
+      case '--model':
+        options.model = args[++i];
         break;
     }
   }
