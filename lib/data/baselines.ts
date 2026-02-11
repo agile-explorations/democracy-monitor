@@ -5,6 +5,8 @@ export interface BaselineConfig {
   to: string;
 }
 
+export const T2_START_DATE = '2025-01-20';
+
 export const BASELINE_CONFIGS: BaselineConfig[] = [
   { id: 'biden_2024', label: 'Biden 2024', from: '2024-01-01', to: '2025-01-19' },
   { id: 'biden_2021', label: 'Biden 2021–22', from: '2021-01-20', to: '2022-01-19' },
