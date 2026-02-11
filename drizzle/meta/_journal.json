@@ -50,6 +50,55 @@
       "when": 1738979100000,
       "tag": "0006_fix_documents_url_constraint",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1739051340000,
+      "tag": "0007_document_scores",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1739054340000,
+      "tag": "0008_weekly_aggregates",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1739071440000,
+      "tag": "0009_intent_weekly",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1739071440001,
+      "tag": "0010_p2025",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1739103780000,
+      "tag": "0011_dual_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1739103780001,
+      "tag": "0012_legislative_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1739103780002,
+      "tag": "0013_validation_data",
+      "breakpoints": true
     }
   ]
 }

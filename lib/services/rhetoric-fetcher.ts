@@ -120,62 +120,89 @@ function parseGdeltArticles(articles: GdeltRawArticle[], dateFrom: string): Cont
  * Fetch GDELT data for a date range.
  * Uses the GDELT DOC 2.0 API for full-text article search.
  */
-export async function fetchGdeltHistorical(options: {
-  query: string;
-  dateFrom: string; // YYYY-MM-DD
-  dateTo: string; // YYYY-MM-DD
-  maxRecords?: number;
-  delayMs?: number;
-}): Promise<ContentItem[]> {
-  const { query, dateFrom, dateTo, maxRecords = 250, delayMs = 300 } = options;
+async function fetchGdeltWithRetry(url: string, delayMs: number): Promise<GdeltRawArticle[]> {
+  const maxRetries = 3;
 
-  const startDate = dateFrom.replace(/-/g, '') + '000000';
-  const endDate = dateTo.replace(/-/g, '') + '235959';
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    await sleep(delayMs);
 
-  const params = new URLSearchParams({
-    query: query,
-    mode: 'ArtList',
-    maxrecords: String(maxRecords),
-    format: 'json',
-    startdatetime: startDate,
-    enddatetime: endDate,
-    sort: 'DateDesc',
-  });
-
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
-
-  try {
     const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'DemocracyMonitor/1.0 (backfill)',
-        Accept: 'application/json',
-      },
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (backfill)', Accept: 'application/json' },
     });
+
+    if (response.status === 429) {
+      const backoff = 10_000 * 2 ** attempt; // 10s, 20s, 40s
+      console.error(
+        `[gdelt-historical] HTTP 429 — backing off ${backoff}ms (attempt ${attempt + 1})`,
+      );
+      await sleep(backoff);
+      continue;
+    }
 
     if (!response.ok) {
       console.error(`[gdelt-historical] HTTP ${response.status}`);
       return [];
     }
 
-    const data = await response.json();
-    const articles: GdeltRawArticle[] = data.articles || [];
+    const text = await response.text();
+    if (!text.startsWith('{')) {
+      console.error(`[gdelt-historical] Non-JSON response (attempt ${attempt + 1})`);
+      await sleep(10_000);
+      continue;
+    }
 
-    await sleep(delayMs);
+    return (JSON.parse(text).articles as GdeltRawArticle[]) || [];
+  }
 
+  console.error('[gdelt-historical] Exhausted retries');
+  return [];
+}
+
+/**
+ * Fetch GDELT data for a date range with retry and rate-limit handling.
+ */
+export async function fetchGdeltHistorical(options: {
+  query: string;
+  dateFrom: string;
+  dateTo: string;
+  maxRecords?: number;
+  delayMs?: number;
+}): Promise<ContentItem[]> {
+  const { query, dateFrom, dateTo, maxRecords = 250, delayMs = 300 } = options;
+
+  const params = new URLSearchParams({
+    query,
+    mode: 'ArtList',
+    maxrecords: String(maxRecords),
+    format: 'json',
+    startdatetime: dateFrom.replace(/-/g, '') + '000000',
+    enddatetime: dateTo.replace(/-/g, '') + '235959',
+    sort: 'DateDesc',
+  });
+
+  try {
+    const articles = await fetchGdeltWithRetry(
+      `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`,
+      delayMs,
+    );
     return parseGdeltArticles(articles, dateFrom);
   } catch (err) {
-    console.error('[gdelt-historical] Fetch error:', err);
+    if (err instanceof SyntaxError) {
+      console.error('[gdelt-historical] Malformed JSON after retries');
+    } else {
+      console.error('[gdelt-historical] Fetch error:', err);
+    }
     return [];
   }
 }
 
-/** GDELT queries relevant to executive power monitoring. */
+/** GDELT queries relevant to executive power monitoring. Parentheses required for OR expressions. */
 export const GDELT_QUERIES = [
-  '"executive order" OR "presidential authority" OR "executive power"',
-  '"press freedom" OR "journalist arrested" OR "FOIA denied"',
-  '"election interference" OR "voter suppression" OR "election administration"',
-  '"national emergency" OR "IEEPA" OR "insurrection act"',
-  '"inspector general" OR "government oversight" OR "watchdog fired"',
+  '("executive order" OR "presidential authority" OR "executive power")',
+  '("press freedom" OR "journalist arrested" OR "FOIA denied")',
+  '("election interference" OR "voter suppression" OR "election administration")',
+  '("national emergency" OR "IEEPA" OR "insurrection act")',
+  '("inspector general" OR "government oversight" OR "watchdog fired")',
 ];
 
 function formatGdeltDate(gdeltDate: string): string {
