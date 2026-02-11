@@ -7,7 +7,7 @@ This document describes the planned sprint sequence for completing the Democracy
 - `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions (Sprints A-J)
 - `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5)
 
-**Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. See `MEMORY.md` sprint log for details.
+**Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
 
 ---
 
@@ -36,17 +36,26 @@ The UI redesign (UI Design Specification V3) changes three foundational layers t
 
 ## Seed Data Pipeline
 
-Before any UI work begins, we need realistic data in the database. Both the baseline period and the current (T2) period go through the **same** AI Skeptic + human review process. This is critical because false-positive keywords inflate baseline statistics just as they inflate current-period scores — a clean baseline requires the same keyword tuning as clean T2 data.
+Before any UI work begins, we need realistic data in the database. All baseline periods and the current (T2) period go through the **same** AI Skeptic + human review process. This is critical because false-positive keywords inflate baseline statistics just as they inflate current-period scores — a clean baseline requires the same keyword tuning as clean T2 data.
+
+**Baselines:**
+
+- **Biden 2022** (primary) — "Steady state normal governance." Year 2, post-transition, settled operations.
+- **Biden 2021** — First-year-in-term baseline. Normal but elevated transition activity.
+- **Obama 2013** — Second first-year-in-term baseline. Cross-president validation.
+- **Biden 2024** (legacy) — Election year with lame-duck dynamics. Kept for comparison but not primary.
 
 **Pipeline:**
 
-1. **Generate baseline + T2 backfill** — Run `backfill-baseline` for Biden 2024 and `backfill` for T2 (Jan 20 '25 – present), both with AI Skeptic enabled and both fetching FR + WH + GDELT. Both runs use the same keyword dictionaries and AI provider.
-2. **AI-assisted human review** — Generate one targeted review report covering both periods. The report shows only items where the AI Skeptic flagged disagreements: `false_positive` or `ambiguous` keywords, status downgrades, low-confidence assessments. Human reviews flagged items and records approve/override decisions.
-3. **Keyword tuning** — Apply approved changes to keyword dictionaries and suppression rules.
-4. **Re-score both periods** — Re-run scoring for both baseline and T2 with tuned keywords (skip fetch, skip AI — just re-score from stored documents). Recompute baseline statistics from the clean baseline data.
-5. **Commit seed data** — Final fixtures committed to `lib/seed/fixtures/`. New deployments run `pnpm seed:import` — no API keys required.
+1. **Generate baselines + T2 backfill** — Run `backfill-baseline` for each baseline period and `backfill` for T2 (Jan 20 '25 – present), all with AI Skeptic enabled, all fetching FR + WH + GDELT.
+2. **AI-assisted human review** — Interactive CLI review (`pnpm seed:review --interactive`) for items where AI Skeptic flagged disagreements. AI pre-populates `falsePositiveKeywords`, `suppressionSuggestions`, `tierChanges`; human approves/edits.
+3. **Post-session aggregate report** — Synthesizes reviewed feedback into specific keyword dictionary change recommendations. Each recommendation approved by human.
+4. **Keyword tuning** — `apply-decisions.ts` writes approved changes to `assessment-rules.ts` (in code, versioned).
+5. **Rhetoric-based gap analysis** — Surfaces terms frequent in WH/GDELT rhetoric but absent from keyword dictionaries. Feeds `missingKeywords` into aggregate report.
+6. **Re-score + validate** — Re-run scoring with tuned keywords. Cross-baseline validation confirms improvement across all periods.
+7. **Commit seed data** — Final fixtures committed to `lib/seed/fixtures/`. New deployments run `pnpm seed:import` — no API keys required.
 
-See V3 Addendum Risk Reminders #12-14 for design rationale.
+See V3 Addendum Risk Reminders #12-14 and `DECISIONS.md` "Forward-Looking Decisions" for design rationale.
 
 ### AI Cost Estimate
 
@@ -59,10 +68,12 @@ Both baseline and backfill scripts call `enhancedAssessment()` (the AI Skeptic) 
 | Biden 2024 baseline | ~55   | 11              | 605       | ~$0.61             |
 | T2 backfill         | ~55   | 11              | 605       | ~$0.61             |
 | **Sprint 11 total** |       |                 | **1,210** | **~$1.21**         |
-| Obama 2013 baseline | ~52   | 11              | 572       | ~$0.57             |
+| Biden 2022 baseline | ~52   | 11              | 572       | ~$0.57             |
+| **Sprint 14 total** |       |                 | **572**   | **~$0.57**         |
 | Biden 2021 baseline | ~52   | 11              | 572       | ~$0.57             |
-| **Sprint 23 total** |       |                 | **1,144** | **~$1.14**         |
-| **All 4 periods**   |       |                 | **2,354** | **~$2.35**         |
+| Obama 2013 baseline | ~52   | 11              | 572       | ~$0.57             |
+| **Sprint 15 total** |       |                 | **1,144** | **~$1.14**         |
+| **All 5 periods**   |       |                 | **2,926** | **~$2.93**         |
 
 gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same runs on Claude Sonnet 4.5 would cost ~$57 total ($3/1M input, $15/1M output) — 24x more for first-pass triage that gets human review anyway.
 
@@ -73,6 +84,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 ## Sprint Sequence
 
 ### Sprint 11: Seed Data Framework + Baseline & T2 Backfill
+
+> **Actual:** Delivered as planned. Added GDELT retry/backoff, military signal coverage fixes, migration journal. See `DECISIONS.md` for details.
 
 **Goal:** Build the import/export pipeline for repo-stored seed data. Run both the Biden 2024 baseline and T2 backfill against live APIs with AI Skeptic enabled. Validate that the existing pipeline code works against real external systems.
 
@@ -109,72 +122,128 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 12: AI-Assisted Review Report + Human Review
+### Sprint 12: AI-Assisted Review Report + Decisions Template
+
+> **Actual:** Delivered review report + Zod-validated decisions schema + JSON template. Extracted 706 items across 4 flag types. See `DECISIONS.md` for details.
 
 **Goal:** Generate a targeted review report from AI Skeptic output covering both baseline and T2 periods. Human reviews flagged items.
 
 **Code work (~250 lines new):**
 
-1. Create `lib/seed/review-report.ts` — generates targeted review report filtering to:
-   - Keywords the AI assessed as `false_positive` or `ambiguous`
-   - Assessments where AI recommended a status downgrade
-   - Assessments where AI confidence < 0.7
-   - Groups by category, sorted by severity of disagreement
-   - Covers BOTH baseline and T2 periods in a single report
-   - For each flagged item: keyword, AI assessment, document context, AI reasoning, suggested action
-2. Create `lib/seed/review-decisions.ts` — TypeScript schema for the decisions file (`lib/seed/review-decisions.json`) where the human records approve/override for each flagged item
+1. Create `lib/seed/review-report.ts` — generates targeted review report
+2. Create `lib/seed/review-decisions.ts` — TypeScript schema for the decisions file
 3. Add CLI entries: `seed:review` (generate report), `seed:apply` (apply decisions — Sprint 13)
 
-**Run work:**
-
-- Run `pnpm seed:review` to generate the targeted report from Sprint 11 data
-
-**E2E test:**
-
-- Review report correctly filters to AI-flagged items only (not every keyword match)
-- Report covers both baseline and T2 periods
-- Report includes document context, AI reasoning, and suggested action for each flag
-- Decisions schema validates correctly
-
-**Review gate:** Sprint 12 output goes to human review. Sprint 13 cannot start until the reviewer has completed `review-decisions.json`.
+**Review gate:** Sprint 12 output goes to human review. Sprint 13 cannot start until review is complete.
 
 ---
 
-### Sprint 13: Keyword Tuning + Regression Fixtures
+### Sprint 12.1: Review Flow Alignment + Baseline Coverage
 
-**Goal:** Apply human review decisions to keyword dictionaries. Re-score both periods. Recompute baseline statistics from clean data. Create regression test fixtures that lock in the reviewed behavior.
+> **Actual:** Delivered all work items. DB-centric review flow, interactive CLI, FR signals for igs/infoAvailability. 253 review items from fresh baseline. See `DECISIONS.md` for full retrospective.
 
-**Depends on:** Sprint 12 review gate (human must complete `review-decisions.json`)
+**Goal:** Align review-report flagging with UI spec (per-assessment items, not per-keyword), build interactive CLI review flow, add missing category signals.
+
+**Code work:**
+
+1. Rewrite `review-report.ts` — `ReviewItem` model (one per flagged assessment where `flaggedForReview === true`)
+2. Update `review-decisions.ts` — `ReviewFeedbackSchema` with 4 feedback types for Sprint 13 consumption
+3. Extend `review-queue.ts` — `ResolveDecision` with feedback, `getResolvedReviews()`, `resetResolvedReviews()`
+4. New `interactive-review.ts` — pure functions + readline wrappers for CLI review
+5. Add FR signals for `igs` (inspector general, oversight) and `infoAvailability` (FOIA, public records)
+6. Add `reviewedDocuments` field to `EnhancedAssessment` — stores source documents reviewed by AI
+
+**Key deviation:** DB-centric review flow (alerts table) instead of JSON-as-primary-store. See `DECISIONS.md` §Sprint 12.1.
+
+---
+
+### Sprint 13: AI Skeptic Structured Feedback + Keyword Tuning Pipeline
+
+**Goal:** Extend AI Skeptic to generate structured keyword feedback, pre-populate in interactive review, build aggregate report, create `apply-decisions.ts` that writes changes to `assessment-rules.ts`. First keyword refinement cycle.
+
+**Depends on:** Sprint 12.1 (DB-centric review flow, `ReviewFeedbackSchema`)
+
+**Code work (~350 lines new/modified):**
+
+1. Update AI Skeptic prompt (`lib/ai/prompts/skeptic-review.ts`) to generate structured feedback: `falsePositiveKeywords`, `suppressionSuggestions`, `tierChanges` in the response schema
+2. Update `parseSkepticReviewResponse()` to extract feedback fields and store in assessment metadata
+3. Update interactive review to pre-populate feedback from AI verdicts — after reviewer makes status decision, show "AI flagged these as false positives: [X, Y]. Accept as feedback? [Y/n]"
+4. Create post-session aggregate report generator — after completing all reviews, synthesize feedback patterns: keywords that were false_positive in >70% of reviews for a category, systematic tier mismatches, suppression candidates
+5. Create `lib/seed/apply-decisions.ts` — reads resolved reviews from alerts table, applies approved changes:
+   - Updates `assessment-rules.ts` (keyword removals, tier changes)
+   - Adds suppression rules for confirmed false positives
+   - Generates patch summary for human verification before applying
+6. Create regression test fixtures: `known-true-positives.ts` and `known-false-positives.ts`
+7. Re-score with updated rules (`build-baseline --skip-fetch --skip-ai`), recompute baseline statistics
+
+**E2E test:**
+
+- AI Skeptic response includes structured feedback fields
+- Interactive review pre-populates false positive keywords from AI verdicts
+- Aggregate report shows keyword patterns across reviews
+- `apply-decisions.ts` modifies `assessment-rules.ts` with correct changes
+- All known true positives score at or above expected tier
+- All known false positives are suppressed
+
+**Iterative:** May repeat the review → aggregate → apply → re-run cycle. Exit criterion: human reviewer signs off on scoring distribution.
+
+---
+
+### Sprint 14: Biden 2022 Baseline + Rhetoric-Based Keyword Gaps
+
+**Goal:** Switch to Biden 2022 as primary "steady state normal governance" baseline. Build rhetoric-to-keyword gap analysis for `missingKeywords`. First full keyword refinement cycle with new baseline.
+
+**Depends on:** Sprint 13 (keyword tuning pipeline)
 
 **Code work (~300 lines new/modified):**
 
-1. Create `lib/seed/apply-decisions.ts` — reads `review-decisions.json`, applies changes:
-   - Updates `assessment-rules.ts` (keyword additions, removals, tier changes)
-   - Adds suppression rules for confirmed false positives
-   - Generates patch summary for human verification before applying
-2. Create `__tests__/fixtures/scoring/known-true-positives.ts` — documents that MUST score at expected tier (from review decisions where human confirmed AI's `genuine_concern`)
-3. Create `__tests__/fixtures/scoring/known-false-positives.ts` — documents that MUST be suppressed (from review decisions where human approved AI's `false_positive`)
-4. Re-score both baseline AND T2 documents with updated rules (`backfill --skip-fetch --skip-ai` and `build-baseline --skip-fetch --skip-ai`)
-5. Recompute baseline statistics from clean, re-scored baseline data (`build-baseline --skip-fetch --recompute-stats`)
-6. Re-export updated seed fixtures (including new baseline statistics)
-7. Commit final seed data to `lib/seed/fixtures/`
+1. Run `build-baseline --baseline biden_2022 --model gpt-4o-mini` for Jan 2022 – Dec 2022
+2. Create rhetoric-to-keyword gap analysis (`lib/seed/rhetoric-keyword-gaps.ts`): frequency analysis of terms in documents table (source: whitehouse, gdelt) mapped to categories, compared against `assessment-rules.ts` keyword dictionaries. Surfaces terms appearing in N+ rhetoric documents for a category but absent from the keyword dictionary.
+3. Integrate `missingKeywords` suggestions into post-session aggregate report
+4. Run first full refinement cycle against Biden 2022 baseline: backfill → review → aggregate → apply → re-run → validate
+5. Export Biden 2022 as fixture set alongside Biden 2024
 
 **E2E test:**
 
-- All known true positives score at or above expected tier
-- All known false positives are suppressed
-- No category has zero scored documents in any week
-- Re-scored weekly aggregates differ from pre-tuning fixtures (proving tuning had effect)
+- Biden 2022 baseline produces data for all 11 categories
+- Rhetoric gap analysis surfaces candidate keywords not in current dictionaries
+- Aggregate report includes both false-positive removals and rhetoric-sourced additions
+- Re-scored Biden 2022 baseline shows improvement after keyword tuning
 
-**Iterative:** If the first tuning round reveals more issues, this sprint may repeat. Exit criterion: human reviewer signs off that the scoring distribution is reasonable.
+**Risk:** Biden 2022 is the target "clean" baseline, so keyword tuning should reduce false positives to near zero for this period.
 
 ---
 
-### Sprint 14: UI Design System + Landing Page
+### Sprint 15: First-Year-in-Term Baselines + Cross-Baseline Validation
+
+**Goal:** Add Biden 2021 and Obama 2013 as first-year-in-term baselines. Build cross-baseline comparison to validate that keyword dictionaries perform well across different normal governance periods.
+
+**Depends on:** Sprint 14 (Biden 2022 baseline + tuned keywords)
+
+**Code work (~250 lines + live API runs):**
+
+1. Run `build-baseline --baseline biden_2021 --model gpt-4o-mini` for Jan 2021 – Dec 2021
+2. Run `build-baseline --baseline obama_2013 --model gpt-4o-mini` for Jan 2013 – Dec 2013 (verify FR + GDELT data availability; WH archive URL structure differs for Obama era)
+3. Create cross-baseline validation report (`lib/seed/baseline-validation.ts`): compare flagging rates across baselines by category. Keywords that trigger at Warning+ in all baselines are likely false positives in normal governance. Keywords that only trigger in first-year baselines may capture legitimate transition activity.
+4. Run review cycle on new baselines with tuned keywords — should produce significantly fewer flags than Biden 2024 did pre-tuning
+5. Export all baselines as fixture sets, documenting source coverage per period
+
+**E2E test:**
+
+- Three baselines available: biden_2022, biden_2021, obama_2013
+- Cross-baseline report shows category-level flagging rate comparison
+- Tuned keywords produce fewer false positives across all baselines
+- First-year baselines show higher activity but lower false-positive rates than pre-tuning Biden 2024
+
+**Risk:** Obama 2013 data availability — WH archive structure differs, GDELT coverage for 2013 may be limited. Verify before committing.
+
+---
+
+### Sprint 16: UI Design System + Landing Page
 
 **Goal:** Build the new UI foundation and a working landing page rendering real seed data.
 
-**Depends on:** Sprint 13 (committed seed fixtures)
+**Depends on:** Sprint 15 (committed seed fixtures with validated baselines)
 
 **Code work (~350 lines new):**
 
@@ -196,11 +265,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Dark mode toggle switches all colors correctly
 - Reading level toggle shows/hides technical keys on cards
 
-**Parallel opportunity:** Can start CSS/component work during Sprint 12-13 review cycle using placeholder data, then wire to real seed data when available.
+**Parallel opportunity:** Can start CSS/component work during Sprint 13-14 review cycles using placeholder data, then wire to real seed data when available.
 
 ---
 
-### Sprint 15: Source Health Backend + Landing Banners
+### Sprint 17: Source Health Backend + Landing Banners
 
 **Goal:** Source health tracking, confidence degradation, and landing page integration of data integrity banner and source health summary bar.
 
@@ -224,7 +293,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 16: Category Detail Page + Trend Chart
+### Sprint 18: Category Detail Page + Trend Chart
 
 **Goal:** Full category detail page with trend chart, evidence panel, and assessment summary.
 
@@ -248,7 +317,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 17: Week Detail + Document Table + Export
+### Sprint 19: Week Detail + Document Table + Export
 
 **Goal:** Week drill-down pages, sortable document table, and CSV/JSON export.
 
@@ -274,7 +343,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 18: Methodology + Supporting Pages (Summary Mode)
+### Sprint 20: Methodology + Supporting Pages (Summary Mode)
 
 **Goal:** Methodology page plus Infrastructure, Rhetoric, P2025, and Source Health pages — all in Summary mode.
 
@@ -298,7 +367,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 19: Admin Auth + Review Queue
+### Sprint 21: Admin Auth + Review Queue
 
 **Goal:** Admin authentication and human review queue with feedback fields.
 
@@ -324,7 +393,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 20: Detailed Mode + Chart Toggles
+### Sprint 22: Detailed Mode + Chart Toggles
 
 **Goal:** Detailed mode features across all existing pages.
 
@@ -334,7 +403,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 2. AI reviewer notes display (UI spec section 5.4) with ceiling constraint label
 3. Suppression audit panel — "What was suppressed" column with rule explanations
 4. Baseline overlay selector — multi-select pills for up to 2 baselines (UI spec section 13.2)
-5. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 22")
+5. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 24")
 6. Document class breakdown, full keyword lists, technical details in Detailed mode
 7. Detailed mode content on supporting pages (Rhetoric, P2025, Infrastructure)
 
@@ -348,11 +417,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 21: Suppression Learning + Proposals Page
+### Sprint 23: Suppression Learning + Proposals Page
 
 **Goal:** Feedback learning pipeline and admin proposal review interface.
 
-**Depends on:** Sprint 19 (feedback store must exist)
+**Depends on:** Sprint 21 (feedback store must exist)
 
 **Code work (~300 lines new):**
 
@@ -374,11 +443,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 22: Novel Threats + Expert Submissions
+### Sprint 24: Novel Threats + Expert Submissions
 
 **Goal:** Semantic novelty detection and expert keyword contribution system.
 
-**Depends on:** Sprint 21 (proposal pipeline must exist for novelty/expert proposals to flow through)
+**Depends on:** Sprint 23 (proposal pipeline must exist for novelty/expert proposals to flow through)
 
 **Code work (~300 lines new):**
 
@@ -389,7 +458,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 5. Backtest engine for submitted keywords (best-effort)
 6. Expert submission form (`pages/admin/submissions.tsx`, UI spec section 10C)
 7. Rhetoric-to-keyword pipeline — `rhetoric-keyword-pipeline.ts` (V3 Addendum Sprint G section 13.6)
-8. Enable semantic drift visualization on category detail (was placeholder in Sprint 20)
+8. Enable semantic drift visualization on category detail (was placeholder in Sprint 22)
 
 **E2E test:**
 
@@ -400,30 +469,27 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 23: Remaining Baselines + Responsive Polish
+### Sprint 25: Onboarding + Responsive Polish + Performance
 
-**Goal:** Additional baselines (Obama 2013, Biden 2021), first-time onboarding, mobile layouts, performance.
+**Goal:** First-time onboarding, mobile layouts, performance optimizations.
 
-**Code/Run work (~250 lines + live API runs):**
+**Code/Run work (~250 lines):**
 
-1. Run `build-baseline` for Obama 2013 and Biden 2021 (live FR + GDELT; WH archive availability varies)
-2. Export as additional fixture sets, noting source coverage per baseline period
-3. First-time visitor onboarding overlay (UI spec section 4.5)
-4. Card ordering toggle — "By concern level" / "By category group" (UI spec section 4.6)
-5. Mobile layout refinements per feature visibility table (UI spec section 10.2)
-6. Performance: lazy loading for charts, virtual scrolling for large document tables
-7. Data integrity banner condensed mode for non-landing pages (UI spec section 4.7)
+1. First-time visitor onboarding overlay (UI spec section 4.5)
+2. Card ordering toggle — "By concern level" / "By category group" (UI spec section 4.6)
+3. Mobile layout refinements per feature visibility table (UI spec section 10.2)
+4. Performance: lazy loading for charts, virtual scrolling for large document tables
+5. Data integrity banner condensed mode for non-landing pages (UI spec section 4.7)
 
 **E2E test:**
 
-- Three baselines available in overlay selector, all render correctly on trend charts
 - Onboarding overlay shows on first visit, dismissed, never shows again
 - Card ordering toggle reorders grid correctly
 - Mobile viewport (< 768px) renders 1-column layout with collapsed sections
 
 ---
 
-### Sprint 24: Alternative Sources
+### Sprint 26: Alternative Sources
 
 **Goal:** Research and implement alternative data sources for resilience when government sources degrade.
 
@@ -450,11 +516,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 Not everything is strictly sequential. Where human review or API runs create wait time:
 
-| While waiting for...                             | Can parallelize...                                                            |
-| ------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Sprint 12 human review of AI Skeptic report      | Sprint 14 UI design system work (CSS vars, components with placeholder data)  |
-| Sprint 13 keyword tuning iterations              | Sprint 15 source health backend (starts fresh, no historical data dependency) |
-| Sprint 23 live API runs for additional baselines | Sprint 22 novel threat / expert submission code work                          |
+| While waiting for...                            | Can parallelize...                                                            |
+| ----------------------------------------------- | ----------------------------------------------------------------------------- |
+| Sprint 13-14 keyword tuning + review iterations | Sprint 16 UI design system work (CSS vars, components with placeholder data)  |
+| Sprint 15 baseline API runs + validation        | Sprint 17 source health backend (starts fresh, no historical data dependency) |
+| Sprint 25 onboarding + responsive work          | Sprint 24 novel threat / expert submission code work                          |
 
 ---
 
