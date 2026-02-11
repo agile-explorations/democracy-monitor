@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (req.method === 'POST') {
-      const { alertId, finalStatus, reason, reviewer } = req.body;
+      const { alertId, finalStatus, reason, reviewer, decision, feedback } = req.body;
 
       if (!alertId || !finalStatus || !reason || !reviewer) {
         return res.status(400).json({
@@ -27,7 +27,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         });
       }
 
-      await resolveReview(Number(alertId), { finalStatus, reason, reviewer });
+      await resolveReview(Number(alertId), {
+        finalStatus,
+        reason,
+        reviewer,
+        decision: decision ?? 'approve',
+        feedback,
+      });
       return res.status(200).json({ success: true });
     }
 

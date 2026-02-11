@@ -34,3 +34,6 @@ Thumbs.db
 # Logs
 dev.log
 *.log
+
+# Generated review reports
+lib/seed/reports/

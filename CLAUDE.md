@@ -37,6 +37,10 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `OPENAI_API_KEY` — OpenAI API key (optional; enables AI-enhanced assessment)
 - `ANTHROPIC_API_KEY` — Anthropic API key (optional; enables AI-enhanced assessment)
 
+### Local development
+
+Local PostgreSQL is available at `localhost:5432/democracy_monitor` (configured in `.env.local`). The database contains backfilled baseline data and assessment snapshots. CLI scripts like `pnpm seed:review`, `pnpm backfill`, and `pnpm snapshot` can be run directly against it.
+
 ## Architecture
 
 Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, Tailwind CSS.

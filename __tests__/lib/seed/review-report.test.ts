@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildFlagId,
-  extractFlaggedItems,
-  sortFlaggedItems,
-  formatReportMarkdown,
-  buildDecisionsTemplate,
+  buildReviewId,
+  extractReviewItem,
+  sortReviewItems,
   formatSummaryTable,
-  formatFlaggedItem,
+  formatReviewItem,
+  formatReportMarkdown,
+  buildGapExplanation,
 } from '@/lib/seed/review-report';
 import type { EnhancedAssessment } from '@/lib/types';
 
@@ -26,219 +26,157 @@ function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAs
   };
 }
 
-describe('buildFlagId', () => {
-  it('produces deterministic composite IDs', () => {
-    expect(buildFlagId('courts', '2024-06-15', 'downgrade', 0)).toBe(
-      'courts--2024-06-15--downgrade--0',
-    );
-    expect(buildFlagId('military', '2024-01-01', 'false-positive', 2)).toBe(
-      'military--2024-01-01--false-positive--2',
-    );
+describe('buildReviewId', () => {
+  it('produces category--date format', () => {
+    expect(buildReviewId('courts', '2024-06-15')).toBe('courts--2024-06-15');
+    expect(buildReviewId('military', '2024-01-01')).toBe('military--2024-01-01');
   });
 });
 
-describe('extractFlaggedItems', () => {
-  it('flags downgrade when downgradeApplied is true', () => {
-    const items = extractFlaggedItems(
+describe('extractReviewItem', () => {
+  it('returns item when flaggedForReview is true', () => {
+    const item = extractReviewItem(
       makeAssessment({
-        downgradeApplied: true,
+        flaggedForReview: true,
         recommendedStatus: 'Stable',
         aiResult: {
           provider: 'openai',
           model: 'gpt-4o-mini',
           status: 'Stable',
           reasoning: 'Looks fine',
-          confidence: 0.9,
-          tokensUsed: { input: 10, output: 20 },
-          latencyMs: 100,
-        },
-      }),
-    );
-    expect(items).toHaveLength(1);
-    expect(items[0].flagType).toBe('downgrade');
-    expect(items[0].recommendedStatus).toBe('Stable');
-  });
-
-  it('flags downgrade when flaggedForReview is true', () => {
-    const items = extractFlaggedItems(makeAssessment({ flaggedForReview: true }));
-    expect(items.some((i) => i.flagType === 'downgrade')).toBe(true);
-  });
-
-  it('flags false_positive keywords', () => {
-    const items = extractFlaggedItems(
-      makeAssessment({
-        keywordReview: [
-          { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine use' },
-          { keyword: 'deploy', assessment: 'genuine_concern', reasoning: 'Actual concern' },
-        ],
-      }),
-    );
-    expect(items).toHaveLength(1);
-    expect(items[0].flagType).toBe('false-positive');
-    expect(items[0].keyword).toBe('emergency');
-  });
-
-  it('flags ambiguous keywords', () => {
-    const items = extractFlaggedItems(
-      makeAssessment({
-        keywordReview: [
-          { keyword: 'reform', assessment: 'ambiguous', reasoning: 'Could go either way' },
-        ],
-      }),
-    );
-    expect(items).toHaveLength(1);
-    expect(items[0].flagType).toBe('ambiguous');
-  });
-
-  it('flags low confidence when no downgrade', () => {
-    const items = extractFlaggedItems(
-      makeAssessment({
-        aiResult: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
-          status: 'Warning',
-          reasoning: 'Uncertain',
           confidence: 0.5,
           tokensUsed: { input: 10, output: 20 },
           latencyMs: 100,
         },
       }),
     );
-    expect(items).toHaveLength(1);
-    expect(items[0].flagType).toBe('low-confidence');
+    expect(item).not.toBeNull();
+    expect(item!.category).toBe('courts');
+    expect(item!.keywordStatus).toBe('Warning');
+    expect(item!.aiRecommendedStatus).toBe('Stable');
+    expect(item!.confidence).toBe(0.5);
   });
 
-  it('skips low-confidence when downgrade is present', () => {
-    const items = extractFlaggedItems(
-      makeAssessment({
-        downgradeApplied: true,
-        aiResult: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
-          status: 'Stable',
-          reasoning: 'Hmm',
-          confidence: 0.3,
-          tokensUsed: { input: 10, output: 20 },
-          latencyMs: 100,
-        },
-      }),
-    );
-    const flagTypes = items.map((i) => i.flagType);
-    expect(flagTypes).toContain('downgrade');
-    expect(flagTypes).not.toContain('low-confidence');
+  it('returns null when flaggedForReview is false', () => {
+    const item = extractReviewItem(makeAssessment({ flaggedForReview: false }));
+    expect(item).toBeNull();
   });
 
-  it('returns empty for clean assessment', () => {
-    const items = extractFlaggedItems(
+  it('returns null when flaggedForReview is undefined', () => {
+    const item = extractReviewItem(makeAssessment());
+    expect(item).toBeNull();
+  });
+
+  it('includes keyword verdicts as nested context', () => {
+    const item = extractReviewItem(
       makeAssessment({
-        aiResult: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
-          status: 'Warning',
-          reasoning: 'OK',
-          confidence: 0.9,
-          tokensUsed: { input: 10, output: 20 },
-          latencyMs: 100,
-        },
-        keywordReview: [{ keyword: 'test', assessment: 'genuine_concern', reasoning: 'Real' }],
+        flaggedForReview: true,
+        keywordReview: [
+          { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine use' },
+          { keyword: 'deploy', assessment: 'genuine_concern', reasoning: 'Real concern' },
+        ],
       }),
     );
-    expect(items).toHaveLength(0);
+    expect(item).not.toBeNull();
+    expect(item!.topMatches).toHaveLength(2);
+    expect(item!.topMatches[0].keyword).toBe('emergency');
+    expect(item!.topMatches[0].assessment).toBe('false_positive');
   });
 });
 
-describe('sortFlaggedItems', () => {
-  it('sorts by category, then flag type severity, then date descending', () => {
+describe('buildGapExplanation', () => {
+  it('explains large gap (2+ levels)', () => {
+    const explanation = buildGapExplanation('Capture', 'Stable', 0.9);
+    expect(explanation).toContain('3 levels');
+    expect(explanation).toContain('large gap');
+  });
+
+  it('explains low confidence', () => {
+    const explanation = buildGapExplanation('Warning', 'Stable', 0.5);
+    expect(explanation).toContain('50%');
+    expect(explanation).toContain('below 70%');
+  });
+
+  it('explains missing AI recommendation', () => {
+    const explanation = buildGapExplanation('Warning', undefined, undefined);
+    expect(explanation).toContain('no recommendation');
+  });
+
+  it('provides generic explanation for 1-level gap with low confidence', () => {
+    const explanation = buildGapExplanation('Warning', 'Stable', 0.6);
+    expect(explanation).toContain('below 70%');
+  });
+});
+
+describe('sortReviewItems', () => {
+  it('sorts by category, then date descending', () => {
     const items = [
-      {
-        id: 'b',
-        category: 'military',
-        date: '2024-01-01',
-        flagType: 'downgrade' as const,
-        status: 'Warning',
-        detail: '',
-      },
-      {
-        id: 'a',
-        category: 'courts',
-        date: '2024-06-01',
-        flagType: 'ambiguous' as const,
-        status: 'Warning',
-        detail: '',
-      },
-      {
-        id: 'c',
-        category: 'courts',
-        date: '2024-06-01',
-        flagType: 'downgrade' as const,
-        status: 'Warning',
-        detail: '',
-      },
-      {
-        id: 'd',
-        category: 'courts',
-        date: '2024-07-01',
-        flagType: 'downgrade' as const,
-        status: 'Warning',
-        detail: '',
-      },
-    ];
-    const sorted = sortFlaggedItems(items);
-    expect(sorted.map((i) => i.id)).toEqual(['d', 'c', 'a', 'b']);
+      { id: 'military--2024-01-01', category: 'military', date: '2024-01-01' },
+      { id: 'courts--2024-06-01', category: 'courts', date: '2024-06-01' },
+      { id: 'courts--2024-07-01', category: 'courts', date: '2024-07-01' },
+    ].map((base) => ({
+      ...base,
+      keywordStatus: 'Warning',
+      finalStatus: 'Warning',
+      gapExplanation: '',
+      keywordMatches: [],
+      topMatches: [],
+    }));
+
+    const sorted = sortReviewItems(items);
+    expect(sorted.map((i) => i.id)).toEqual([
+      'courts--2024-07-01',
+      'courts--2024-06-01',
+      'military--2024-01-01',
+    ]);
   });
 });
 
 describe('formatSummaryTable', () => {
-  it('produces a markdown table with counts', () => {
+  it('counts by category', () => {
     const items = [
-      {
-        id: 'a',
-        category: 'c',
-        date: 'd',
-        flagType: 'downgrade' as const,
-        status: 's',
-        detail: '',
-      },
-      {
-        id: 'b',
-        category: 'c',
-        date: 'd',
-        flagType: 'downgrade' as const,
-        status: 's',
-        detail: '',
-      },
-      {
-        id: 'c',
-        category: 'c',
-        date: 'd',
-        flagType: 'false-positive' as const,
-        status: 's',
-        detail: '',
-      },
-    ];
+      { id: 'a', category: 'courts', date: 'd' },
+      { id: 'b', category: 'courts', date: 'd' },
+      { id: 'c', category: 'military', date: 'd' },
+    ].map((base) => ({
+      ...base,
+      keywordStatus: 'Warning',
+      finalStatus: 'Warning',
+      gapExplanation: '',
+      keywordMatches: [],
+      topMatches: [],
+    }));
+
     const table = formatSummaryTable(items);
-    expect(table).toContain('| downgrade | 2 |');
-    expect(table).toContain('| false-positive | 1 |');
+    expect(table).toContain('| courts | 2 |');
+    expect(table).toContain('| military | 1 |');
     expect(table).toContain('| **Total** | **3** |');
   });
 });
 
-describe('formatFlaggedItem', () => {
-  it('includes all relevant fields', () => {
-    const md = formatFlaggedItem({
-      id: 'courts--2024-06-01--downgrade--0',
+describe('formatReviewItem', () => {
+  it('shows keyword vs AI status, confidence, reasoning', () => {
+    const md = formatReviewItem({
+      id: 'courts--2024-06-01',
       category: 'courts',
       date: '2024-06-01',
-      flagType: 'downgrade',
-      status: 'Warning',
-      recommendedStatus: 'Stable',
-      detail: 'AI thinks this is fine',
+      keywordStatus: 'Warning',
+      aiRecommendedStatus: 'Stable',
+      finalStatus: 'Warning',
       confidence: 0.85,
+      aiReasoning: 'AI thinks this is fine',
+      gapExplanation: 'AI recommends Stable vs keyword Warning',
+      keywordMatches: ['emergency'],
+      topMatches: [
+        { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine use' },
+      ],
     });
-    expect(md).toContain('### courts--2024-06-01--downgrade--0');
-    expect(md).toContain('**Recommended:** Stable');
+    expect(md).toContain('### courts--2024-06-01');
+    expect(md).toContain('**Keyword Status:** Warning');
+    expect(md).toContain('**AI Recommended:** Stable');
     expect(md).toContain('**Confidence:** 85%');
     expect(md).toContain('AI thinks this is fine');
+    expect(md).toContain('`emergency`');
   });
 });
 
@@ -246,45 +184,20 @@ describe('formatReportMarkdown', () => {
   it('produces a complete report with header, summary, and items', () => {
     const items = [
       {
-        id: 'a',
+        id: 'courts--2024-06-01',
         category: 'courts',
         date: '2024-06-01',
-        flagType: 'downgrade' as const,
-        status: 'Warning',
-        detail: 'Detail A',
+        keywordStatus: 'Warning',
+        finalStatus: 'Warning',
+        gapExplanation: 'Test gap',
+        keywordMatches: [],
+        topMatches: [],
       },
     ];
     const report = formatReportMarkdown(items);
     expect(report).toContain('# AI Skeptic Review Report');
     expect(report).toContain('## Summary');
-    expect(report).toContain('## Flagged Items');
-    expect(report).toContain('### a');
-  });
-});
-
-describe('buildDecisionsTemplate', () => {
-  it('creates a template with all items as pending', () => {
-    const items = [
-      {
-        id: 'a',
-        category: 'c',
-        date: 'd',
-        flagType: 'downgrade' as const,
-        status: 's',
-        detail: '',
-      },
-      {
-        id: 'b',
-        category: 'c',
-        date: 'd',
-        flagType: 'ambiguous' as const,
-        status: 's',
-        detail: '',
-      },
-    ];
-    const template = buildDecisionsTemplate(items);
-    expect(template.metadata.totalItems).toBe(2);
-    expect(template.decisions).toHaveLength(2);
-    expect(template.decisions.every((d) => d.decision === 'pending')).toBe(true);
+    expect(report).toContain('## Review Items');
+    expect(report).toContain('### courts--2024-06-01');
   });
 });

@@ -60,6 +60,18 @@ export const CATEGORIES: Category[] = [
         type: 'rss',
         note: 'Reports from the Social Security Inspector General (still working)',
       },
+      {
+        name: 'Inspector General Activity',
+        url: '/api/federal-register?term=inspector+general',
+        type: 'federal_register',
+        note: 'Federal Register documents mentioning Inspector General activities',
+      },
+      {
+        name: 'Oversight & Accountability',
+        url: '/api/federal-register?term=oversight+accountability+watchdog',
+        type: 'federal_register',
+        note: 'Broader oversight and accountability documents',
+      },
     ],
   },
   {
@@ -209,6 +221,18 @@ export const CATEGORIES: Category[] = [
         url: 'https://www.gao.gov/rss/reports.xml',
         type: 'rss',
         note: 'Checking if GAO continues publishing oversight reports',
+      },
+      {
+        name: 'FOIA & Transparency Rules',
+        url: '/api/federal-register?term=freedom+of+information+transparency',
+        type: 'federal_register',
+        note: 'FOIA-related Federal Register documents',
+      },
+      {
+        name: 'Public Records & Data Access',
+        url: '/api/federal-register?term=public+records+data+availability',
+        type: 'federal_register',
+        note: 'Open government and data access documents',
       },
     ],
   },

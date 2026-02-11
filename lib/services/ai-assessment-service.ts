@@ -104,6 +104,10 @@ function buildEnhancedResult(params: {
     flaggedForReview: skepticResult?.decision.flaggedForReview,
     keywordReview: skepticResult?.keywordReview,
     whatWouldChangeMind: skepticResult?.whatWouldChangeMind,
+    reviewedDocuments: items
+      .filter((i) => !i.isError && !i.isWarning && i.title)
+      .slice(0, 10)
+      .map((i) => ({ title: i.title!, url: i.link, date: i.pubDate })),
   };
 }
 

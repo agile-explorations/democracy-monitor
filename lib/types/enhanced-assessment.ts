@@ -44,6 +44,8 @@ export interface EnhancedAssessment {
   flaggedForReview?: boolean;
   keywordReview?: Array<{ keyword: string; assessment: string; reasoning: string }>;
   whatWouldChangeMind?: string;
+  // Source documents reviewed during assessment
+  reviewedDocuments?: Array<{ title: string; url?: string; date?: string }>;
   // Deep analysis (populated by snapshot cron for Drift/Capture)
   debate?: DebateResult;
   legalAnalysis?: LegalAnalysisResult;
