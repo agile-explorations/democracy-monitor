@@ -117,11 +117,12 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 1. **Analysis** — Research the problem space, read relevant code, identify what needs to change
 2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
 3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
-4. **Sprint number** — Update the sprint log in `MEMORY.md` with the new sprint number and summary
-5. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
-6. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes.
-7. **Commit** — Stage, format, and commit only after the review is clean
-8. **Close issues** — Close completed GitHub Issues and update the milestone
+4. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
+5. **Sprint number** — Update the sprint log in `MEMORY.md` with the new sprint number and summary
+6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
+7. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes.
+8. **Commit** — Stage, format, and commit only after the review is clean
+9. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
 ### What to check
 
