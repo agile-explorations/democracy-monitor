@@ -42,7 +42,13 @@ export interface EnhancedAssessment {
   recommendedStatus?: StatusLevel;
   downgradeApplied?: boolean;
   flaggedForReview?: boolean;
-  keywordReview?: Array<{ keyword: string; assessment: string; reasoning: string }>;
+  keywordReview?: Array<{
+    keyword: string;
+    assessment: string;
+    reasoning: string;
+    suggestedAction?: string;
+    suppressionContext?: string;
+  }>;
   whatWouldChangeMind?: string;
   // Source documents reviewed during assessment
   reviewedDocuments?: Array<{ title: string; url?: string; date?: string }>;

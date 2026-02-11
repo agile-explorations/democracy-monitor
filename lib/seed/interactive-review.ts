@@ -6,6 +6,7 @@
  */
 
 import readline from 'readline';
+import type { ReviewFeedback } from '@/lib/seed/review-decisions';
 import type { ResolveDecision } from '@/lib/services/review-queue';
 import type { StatusLevel } from '@/lib/types';
 
@@ -21,12 +22,27 @@ interface AlertRow {
   createdAt: Date | null;
 }
 
+interface KeywordVerdict {
+  keyword: string;
+  assessment: string;
+  reasoning: string;
+  suggestedAction?: string;
+  suppressionContext?: string;
+}
+
 export interface ReviewPromptResult {
   decision: 'approve' | 'override' | 'skip';
   finalStatus?: StatusLevel;
   reasoning?: string;
   falsePositiveKeywords?: string[];
   missingKeywords?: string[];
+  suppressionSuggestions?: string[];
+  tierChanges?: Array<{
+    keyword: string;
+    currentTier: string;
+    suggestedTier: string;
+    reason?: string;
+  }>;
 }
 
 // --- Pure functions ---
@@ -35,6 +51,71 @@ const STATUS_LEVELS: StatusLevel[] = ['Stable', 'Warning', 'Drift', 'Capture'];
 
 function getAlertMeta(alert: AlertRow): Record<string, unknown> {
   return (alert.metadata ?? {}) as Record<string, unknown>;
+}
+
+const ACTION_TO_TIER: Record<string, string> = {
+  move_to_warning: 'warning',
+  move_to_drift: 'drift',
+  move_to_capture: 'capture',
+};
+
+/** Extract structured feedback from AI keyword verdicts in alert metadata. */
+export function extractAiFeedback(alert: AlertRow): ReviewFeedback | undefined {
+  const meta = getAlertMeta(alert);
+  const verdicts = meta.keywordReview as KeywordVerdict[] | undefined;
+  if (!verdicts || verdicts.length === 0) return undefined;
+
+  const falsePositiveKeywords: string[] = [];
+  const suppressionSuggestions: string[] = [];
+  const tierChanges: ReviewFeedback['tierChanges'] = [];
+
+  for (const v of verdicts) {
+    if (v.assessment === 'false_positive') {
+      falsePositiveKeywords.push(v.keyword);
+    }
+    if (v.suppressionContext) {
+      suppressionSuggestions.push(`${v.keyword}: ${v.suppressionContext}`);
+    }
+    const targetTier = v.suggestedAction ? ACTION_TO_TIER[v.suggestedAction] : undefined;
+    if (targetTier) {
+      tierChanges.push({
+        keyword: v.keyword,
+        currentTier: 'unknown',
+        suggestedTier: targetTier,
+        reason: v.reasoning,
+      });
+    }
+  }
+
+  const hasContent =
+    falsePositiveKeywords.length > 0 || suppressionSuggestions.length > 0 || tierChanges.length > 0;
+  if (!hasContent) return undefined;
+
+  return {
+    ...(falsePositiveKeywords.length > 0 ? { falsePositiveKeywords } : {}),
+    ...(suppressionSuggestions.length > 0 ? { suppressionSuggestions } : {}),
+    ...(tierChanges.length > 0 ? { tierChanges } : {}),
+  };
+}
+
+export function formatAiFeedbackLines(feedback: ReviewFeedback | undefined): string[] {
+  if (!feedback) return [];
+
+  const lines: string[] = ['  AI Keyword Suggestions:'];
+  if (feedback.falsePositiveKeywords?.length) {
+    lines.push(`    False positives: ${feedback.falsePositiveKeywords.join(', ')}`);
+  }
+  if (feedback.suppressionSuggestions?.length) {
+    lines.push('    Suppression patterns:');
+    for (const s of feedback.suppressionSuggestions) lines.push(`      - ${s}`);
+  }
+  if (feedback.tierChanges?.length) {
+    lines.push('    Tier changes:');
+    for (const tc of feedback.tierChanges) {
+      lines.push(`      - ${tc.keyword}: → ${tc.suggestedTier}`);
+    }
+  }
+  return lines;
 }
 
 export function formatItemForDisplay(alert: AlertRow, index: number, total: number): string {
@@ -62,18 +143,22 @@ export function formatItemForDisplay(alert: AlertRow, index: number, total: numb
   const evidence = formatEvidenceLines(meta);
   if (evidence.length > 0) lines.push(...evidence);
 
-  const keywordReview = meta.keywordReview as
-    | Array<{ keyword: string; assessment: string; reasoning: string }>
-    | undefined;
+  const keywordReview = meta.keywordReview as KeywordVerdict[] | undefined;
   if (keywordReview && keywordReview.length > 0) {
     lines.push('  Keyword Verdicts:');
     for (const kr of keywordReview.slice(0, 5)) {
-      lines.push(`    - ${kr.keyword}: ${kr.assessment} — ${kr.reasoning}`);
+      const action =
+        kr.suggestedAction && kr.suggestedAction !== 'keep' ? ` [→${kr.suggestedAction}]` : '';
+      lines.push(`    - ${kr.keyword}: ${kr.assessment}${action} — ${kr.reasoning}`);
     }
     if (keywordReview.length > 5) {
       lines.push(`    ... and ${keywordReview.length - 5} more`);
     }
   }
+
+  const aiFeedback = extractAiFeedback(alert);
+  const feedbackLines = formatAiFeedbackLines(aiFeedback);
+  if (feedbackLines.length > 0) lines.push(...feedbackLines);
 
   lines.push('');
   return lines.join('\n');
@@ -157,13 +242,24 @@ export function buildResolveArgs(
         ? ((meta.aiRecommendedStatus as StatusLevel) ?? (alert.severity as StatusLevel))
         : (alert.severity as StatusLevel);
 
-  const feedback =
-    prompt.falsePositiveKeywords?.length || prompt.missingKeywords?.length
-      ? {
-          falsePositiveKeywords: prompt.falsePositiveKeywords,
-          missingKeywords: prompt.missingKeywords,
-        }
-      : undefined;
+  const hasFeedback =
+    prompt.falsePositiveKeywords?.length ||
+    prompt.missingKeywords?.length ||
+    prompt.suppressionSuggestions?.length ||
+    prompt.tierChanges?.length;
+
+  const feedback: ResolveDecision['feedback'] = hasFeedback
+    ? {
+        ...(prompt.falsePositiveKeywords?.length
+          ? { falsePositiveKeywords: prompt.falsePositiveKeywords }
+          : {}),
+        ...(prompt.missingKeywords?.length ? { missingKeywords: prompt.missingKeywords } : {}),
+        ...(prompt.suppressionSuggestions?.length
+          ? { suppressionSuggestions: prompt.suppressionSuggestions }
+          : {}),
+        ...(prompt.tierChanges?.length ? { tierChanges: prompt.tierChanges } : {}),
+      }
+    : undefined;
 
   return {
     alertId: alert.id,
@@ -191,7 +287,19 @@ export function bulkApproveAi(
   alerts: AlertRow[],
   reviewer: string,
 ): Array<{ alertId: number; decision: ResolveDecision }> {
-  return alerts.map((alert) => buildResolveArgs({ decision: 'approve' }, alert, reviewer));
+  return alerts.map((alert) => {
+    const aiFeedback = extractAiFeedback(alert);
+    return buildResolveArgs(
+      {
+        decision: 'approve',
+        falsePositiveKeywords: aiFeedback?.falsePositiveKeywords,
+        suppressionSuggestions: aiFeedback?.suppressionSuggestions,
+        tierChanges: aiFeedback?.tierChanges,
+      },
+      alert,
+      reviewer,
+    );
+  });
 }
 
 // --- Readline wrappers ---
@@ -209,12 +317,57 @@ function parseCommaSeparated(input: string): string[] | undefined {
     .filter(Boolean);
 }
 
+async function promptFeedback(
+  rl: readline.Interface,
+  aiFeedback: ReviewFeedback | undefined,
+): Promise<
+  Pick<
+    ReviewPromptResult,
+    'falsePositiveKeywords' | 'missingKeywords' | 'suppressionSuggestions' | 'tierChanges'
+  >
+> {
+  if (aiFeedback) {
+    const summary: string[] = [];
+    if (aiFeedback.falsePositiveKeywords?.length) {
+      summary.push(`FP: ${aiFeedback.falsePositiveKeywords.join(', ')}`);
+    }
+    if (aiFeedback.suppressionSuggestions?.length) {
+      summary.push(`Suppress: ${aiFeedback.suppressionSuggestions.length} pattern(s)`);
+    }
+    if (aiFeedback.tierChanges?.length) {
+      summary.push(
+        `Tier: ${aiFeedback.tierChanges.map((tc) => `${tc.keyword}→${tc.suggestedTier}`).join(', ')}`,
+      );
+    }
+    console.log(`  AI feedback: ${summary.join(' | ')}`);
+    const accept = (await ask(rl, '  Accept AI keyword feedback? [Y]es / [n]o, enter manually: '))
+      .trim()
+      .toLowerCase();
+
+    if (accept !== 'n' && accept !== 'no') {
+      return {
+        falsePositiveKeywords: aiFeedback.falsePositiveKeywords,
+        suppressionSuggestions: aiFeedback.suppressionSuggestions,
+        tierChanges: aiFeedback.tierChanges,
+      };
+    }
+  }
+
+  const fpInput = await ask(rl, 'False-positive keywords (comma-separated, enter to skip): ');
+  const missingInput = await ask(rl, 'Missing keywords (comma-separated, enter to skip): ');
+  return {
+    falsePositiveKeywords: parseCommaSeparated(fpInput),
+    missingKeywords: parseCommaSeparated(missingInput),
+  };
+}
+
 export async function promptForDecision(
   rl: readline.Interface,
   alert: AlertRow,
 ): Promise<ReviewPromptResult> {
   const meta = getAlertMeta(alert);
   const aiStatus = meta.aiRecommendedStatus as string | undefined;
+  const aiFeedback = extractAiFeedback(alert);
 
   const prompt = aiStatus
     ? `Accept AI recommendation (${aiStatus})? [Y]es / [n]o, override / [s]kip: `
@@ -238,29 +391,16 @@ export async function promptForDecision(
     }
 
     const reasoning = (await ask(rl, 'Reasoning (enter to skip): ')).trim() || undefined;
-    const fpInput = await ask(rl, 'False-positive keywords (comma-separated, enter to skip): ');
-    const missingInput = await ask(rl, 'Missing keywords (comma-separated, enter to skip): ');
+    const feedback = await promptFeedback(rl, aiFeedback);
 
-    return {
-      decision: 'override',
-      finalStatus: status,
-      reasoning,
-      falsePositiveKeywords: parseCommaSeparated(fpInput),
-      missingKeywords: parseCommaSeparated(missingInput),
-    };
+    return { decision: 'override', finalStatus: status, reasoning, ...feedback };
   }
 
   // Default: approve
   const reasoning = (await ask(rl, 'Reasoning (enter to skip): ')).trim() || undefined;
-  const fpInput = await ask(rl, 'False-positive keywords (comma-separated, enter to skip): ');
-  const missingInput = await ask(rl, 'Missing keywords (comma-separated, enter to skip): ');
+  const feedback = await promptFeedback(rl, aiFeedback);
 
-  return {
-    decision: 'approve',
-    reasoning,
-    falsePositiveKeywords: parseCommaSeparated(fpInput),
-    missingKeywords: parseCommaSeparated(missingInput),
-  };
+  return { decision: 'approve', reasoning, ...feedback };
 }
 
 export async function runInteractiveReview(options?: { reviewer?: string }): Promise<void> {

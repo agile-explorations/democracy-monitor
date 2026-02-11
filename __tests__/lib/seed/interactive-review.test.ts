@@ -3,6 +3,8 @@ import {
   formatItemForDisplay,
   formatDocumentLines,
   formatEvidenceLines,
+  formatAiFeedbackLines,
+  extractAiFeedback,
   parseStatusInput,
   buildResolveArgs,
   formatProgressSummary,
@@ -27,6 +29,113 @@ function makeAlert(overrides: Record<string, unknown> = {}) {
   };
 }
 
+describe('extractAiFeedback', () => {
+  it('extracts false positive keywords from AI verdicts', () => {
+    const feedback = extractAiFeedback(makeAlert());
+    expect(feedback).toBeDefined();
+    expect(feedback!.falsePositiveKeywords).toEqual(['emergency']);
+  });
+
+  it('extracts suppression suggestions from suppressionContext', () => {
+    const feedback = extractAiFeedback(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            {
+              keyword: 'reorganization',
+              assessment: 'false_positive',
+              reasoning: 'Routine admin',
+              suppressionContext: 'routine administrative context',
+            },
+          ],
+        },
+      }),
+    );
+    expect(feedback!.suppressionSuggestions).toEqual([
+      'reorganization: routine administrative context',
+    ]);
+  });
+
+  it('extracts tier changes from suggestedAction', () => {
+    const feedback = extractAiFeedback(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            {
+              keyword: 'restructuring',
+              assessment: 'ambiguous',
+              reasoning: 'Too broad',
+              suggestedAction: 'move_to_warning',
+            },
+          ],
+        },
+      }),
+    );
+    expect(feedback!.tierChanges).toEqual([
+      {
+        keyword: 'restructuring',
+        currentTier: 'unknown',
+        suggestedTier: 'warning',
+        reason: 'Too broad',
+      },
+    ]);
+  });
+
+  it('returns undefined when no feedback-worthy verdicts exist', () => {
+    const feedback = extractAiFeedback(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            { keyword: 'schedule f', assessment: 'genuine_concern', reasoning: 'Real concern' },
+          ],
+        },
+      }),
+    );
+    expect(feedback).toBeUndefined();
+  });
+
+  it('returns undefined when keywordReview is empty', () => {
+    expect(extractAiFeedback(makeAlert({ metadata: {} }))).toBeUndefined();
+    expect(extractAiFeedback(makeAlert({ metadata: { keywordReview: [] } }))).toBeUndefined();
+  });
+
+  it('ignores suggestedAction=keep', () => {
+    const feedback = extractAiFeedback(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            {
+              keyword: 'schedule f',
+              assessment: 'genuine_concern',
+              reasoning: 'Real',
+              suggestedAction: 'keep',
+            },
+          ],
+        },
+      }),
+    );
+    expect(feedback).toBeUndefined();
+  });
+});
+
+describe('formatAiFeedbackLines', () => {
+  it('formats all feedback types', () => {
+    const lines = formatAiFeedbackLines({
+      falsePositiveKeywords: ['emergency', 'routine'],
+      suppressionSuggestions: ['emergency: admin context'],
+      tierChanges: [{ keyword: 'restructuring', currentTier: 'drift', suggestedTier: 'warning' }],
+    });
+    expect(lines[0]).toBe('  AI Keyword Suggestions:');
+    expect(lines).toContainEqual(expect.stringContaining('emergency, routine'));
+    expect(lines).toContainEqual(expect.stringContaining('emergency: admin context'));
+    expect(lines).toContainEqual(expect.stringContaining('restructuring'));
+  });
+
+  it('returns empty for undefined feedback', () => {
+    expect(formatAiFeedbackLines(undefined)).toEqual([]);
+  });
+});
+
 describe('formatItemForDisplay', () => {
   it('produces expected terminal output with progress', () => {
     const output = formatItemForDisplay(makeAlert(), 0, 10);
@@ -42,6 +151,32 @@ describe('formatItemForDisplay', () => {
     const output = formatItemForDisplay(makeAlert(), 0, 1);
     expect(output).toContain('emergency');
     expect(output).toContain('false_positive');
+  });
+
+  it('shows AI keyword suggestions section', () => {
+    const output = formatItemForDisplay(makeAlert(), 0, 1);
+    expect(output).toContain('AI Keyword Suggestions');
+    expect(output).toContain('False positives: emergency');
+  });
+
+  it('shows suggestedAction in keyword verdicts', () => {
+    const output = formatItemForDisplay(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            {
+              keyword: 'restructuring',
+              assessment: 'ambiguous',
+              reasoning: 'Broad',
+              suggestedAction: 'move_to_warning',
+            },
+          ],
+        },
+      }),
+      0,
+      1,
+    );
+    expect(output).toContain('[→move_to_warning]');
   });
 
   it('handles missing metadata gracefully', () => {
@@ -165,12 +300,14 @@ describe('buildResolveArgs', () => {
     expect(args.decision.decision).toBe('skip');
   });
 
-  it('includes feedback when provided', () => {
+  it('includes all feedback types when provided', () => {
     const args = buildResolveArgs(
       {
         decision: 'approve',
         falsePositiveKeywords: ['emergency'],
         missingKeywords: ['tribunal'],
+        suppressionSuggestions: ['emergency: admin context'],
+        tierChanges: [{ keyword: 'restructuring', currentTier: 'drift', suggestedTier: 'warning' }],
       },
       makeAlert(),
       'reviewer',
@@ -178,6 +315,8 @@ describe('buildResolveArgs', () => {
     expect(args.decision.feedback).toEqual({
       falsePositiveKeywords: ['emergency'],
       missingKeywords: ['tribunal'],
+      suppressionSuggestions: ['emergency: admin context'],
+      tierChanges: [{ keyword: 'restructuring', currentTier: 'drift', suggestedTier: 'warning' }],
     });
   });
 
@@ -205,6 +344,22 @@ describe('bulkApproveAi', () => {
     expect(result[0].decision.decision).toBe('approve');
     expect(result[0].decision.reviewer).toBe('bulk-reviewer');
     expect(result[1].alertId).toBe(2);
+  });
+
+  it('includes AI feedback in bulk approve', () => {
+    const alerts = [
+      makeAlert({
+        id: 1,
+        metadata: {
+          aiRecommendedStatus: 'Stable',
+          keywordReview: [
+            { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine' },
+          ],
+        },
+      }),
+    ];
+    const result = bulkApproveAi(alerts, 'reviewer');
+    expect(result[0].decision.feedback?.falsePositiveKeywords).toEqual(['emergency']);
   });
 
   it('uses AI recommended status for each alert', () => {

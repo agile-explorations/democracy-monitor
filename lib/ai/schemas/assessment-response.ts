@@ -32,14 +32,28 @@ export function parseCounterEvidenceResponse(raw: string): CounterEvidenceRespon
   return result.success ? result.data : null;
 }
 
+const SuggestedActionSchema = z.enum([
+  'keep',
+  'remove',
+  'move_to_warning',
+  'move_to_drift',
+  'move_to_capture',
+]);
+
+export type SuggestedAction = z.infer<typeof SuggestedActionSchema>;
+
+export const KeywordVerdictSchema = z.object({
+  keyword: z.string(),
+  assessment: z.enum(['genuine_concern', 'false_positive', 'ambiguous']),
+  reasoning: z.string(),
+  suggestedAction: SuggestedActionSchema.optional(),
+  suppressionContext: z.string().optional(),
+});
+
+export type KeywordVerdict = z.infer<typeof KeywordVerdictSchema>;
+
 export const SkepticReviewResponseSchema = z.object({
-  keywordReview: z.array(
-    z.object({
-      keyword: z.string(),
-      assessment: z.enum(['genuine_concern', 'false_positive', 'ambiguous']),
-      reasoning: z.string(),
-    }),
-  ),
+  keywordReview: z.array(KeywordVerdictSchema),
   recommendedStatus: z.enum(['Stable', 'Warning', 'Drift', 'Capture']),
   downgradeReason: z.string(),
   confidence: z.number().min(0).max(1),

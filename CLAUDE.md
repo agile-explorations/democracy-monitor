@@ -126,7 +126,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
 7. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes.
 8. **Commit** — Stage, format, and commit only after the review is clean
-9. **Retrospective** — Update `DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Annotate `ROADMAP.md` for the completed sprint. Update `MEMORY.md` if new persistent patterns were discovered.
+9. **Retrospective** — Update `DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Then review the full document and condense or remove entries that are superseded, obsolete, or codified elsewhere (e.g., lessons already in MEMORY.md, decisions overridden by later ones). Keep `DECISIONS.md` lean. Annotate `ROADMAP.md` for the completed sprint. Update `MEMORY.md` if new persistent patterns were discovered.
 10. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
 ### What to check

@@ -43,6 +43,7 @@
     "seed:export": "tsx lib/seed/export.ts",
     "seed:import": "tsx lib/seed/import.ts",
     "seed:review": "tsx lib/seed/review-report.ts",
+    "seed:apply": "tsx lib/seed/apply-decisions.ts",
     "prepare": "husky"
   },
   "dependencies": {

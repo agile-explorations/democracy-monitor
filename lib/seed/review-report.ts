@@ -223,6 +223,7 @@ interface CliOptions {
   status?: boolean;
   exportJson?: boolean;
   reset?: boolean;
+  aggregate?: boolean;
 }
 
 function parseCliArgs(args: string[]): CliOptions {
@@ -249,6 +250,9 @@ function parseCliArgs(args: string[]): CliOptions {
         break;
       case '--reset':
         opts.reset = true;
+        break;
+      case '--aggregate':
+        opts.aggregate = true;
         break;
     }
   }
@@ -304,6 +308,11 @@ async function runCli(opts: CliOptions): Promise<void> {
     return;
   }
 
+  if (opts.aggregate) {
+    const { generateAggregateReport } = await import('./aggregate-feedback');
+    await generateAggregateReport(opts.outDir);
+    return;
+  }
   if (opts.exportJson) return exportDecisions(opts.outDir);
   if (opts.interactive) {
     const { runInteractiveReview } = await import('./interactive-review');

@@ -45,6 +45,7 @@
       "files": [
         "lib/data/**",
         "lib/demo/**",
+        "lib/seed/**",
         "lib/db/schema.ts",
         "__tests__/**",
         "**/*.test.ts",

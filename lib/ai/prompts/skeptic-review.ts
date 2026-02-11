@@ -31,6 +31,8 @@ ${itemSummaries}
 
 Your job is to review the keyword matches above and determine whether they represent genuine concerns or false positives. The keyword engine tends to over-alert — many matches are coincidental, taken out of context, or from routine government documents.
 
+For each keyword, also recommend whether it belongs in its current severity tier. If a keyword is a false positive in this context, suggest whether it should be removed from the dictionary entirely or just moved to a lower tier. If it only triggers falsely in certain contexts (e.g., "routine administrative" documents), describe that context as a suppression pattern.
+
 IMPORTANT CONSTRAINTS:
 - You may recommend the SAME status or a LOWER status than "${keywordStatus}". You CANNOT recommend a higher status.
 - You must find at least one piece of evidence that the situation may not be as bad as the keyword alert suggests.
@@ -39,7 +41,13 @@ IMPORTANT CONSTRAINTS:
 Respond in JSON format:
 {
   "keywordReview": [
-    { "keyword": "matched keyword", "assessment": "genuine_concern|false_positive|ambiguous", "reasoning": "why this match is or isn't meaningful" }
+    {
+      "keyword": "matched keyword",
+      "assessment": "genuine_concern|false_positive|ambiguous",
+      "reasoning": "why this match is or isn't meaningful",
+      "suggestedAction": "keep|remove|move_to_warning|move_to_drift|move_to_capture",
+      "suppressionContext": "context where this keyword is a false positive (omit if not applicable)"
+    }
   ],
   "recommendedStatus": "Stable|Warning|Drift|Capture",
   "downgradeReason": "why matches are misleading (empty string if no downgrade)",
