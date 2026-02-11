@@ -159,6 +159,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 13: AI Skeptic Structured Feedback + Keyword Tuning Pipeline
 
+> **Actual:** Delivered as planned. All 7 work items shipped. Extended AI Skeptic prompt with `suggestedAction`/`suppressionContext`, pre-populated feedback in interactive review, aggregate report generator, `apply-decisions.ts`, regression test fixtures. 63 new tests (772 total). See `DECISIONS.md` for details.
+
 **Goal:** Extend AI Skeptic to generate structured keyword feedback, pre-populate in interactive review, build aggregate report, create `apply-decisions.ts` that writes changes to `assessment-rules.ts`. First keyword refinement cycle.
 
 **Depends on:** Sprint 12.1 (DB-centric review flow, `ReviewFeedbackSchema`)
