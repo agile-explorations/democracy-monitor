@@ -29,7 +29,7 @@ interface FeedbackEntry {
 export interface KeywordRecommendation {
   keyword: string;
   category: string;
-  action: 'remove' | 'move';
+  action: 'remove' | 'move' | 'add';
   currentTier?: string;
   suggestedTier?: string;
   reason: string;

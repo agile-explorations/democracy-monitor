@@ -38,7 +38,7 @@ vi.mock('@/lib/services/embedding-service', () => ({
 vi.mock('@/lib/services/baseline-service', () => ({
   getBaseline: vi.fn(),
   BASELINE_CONFIGS: [
-    { id: 'biden_2024', label: 'Biden 2024', from: '2024-01-01', to: '2025-01-19' },
+    { id: 'biden_2022', label: 'Biden 2022–23', from: '2022-01-20', to: '2023-01-19' },
   ],
 }));
 
@@ -137,7 +137,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -162,7 +162,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -190,7 +190,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -221,7 +221,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -249,7 +249,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -266,7 +266,7 @@ describe('computeSemanticDrift', () => {
     expect(result!.interpretation).toContain('Noise floor not available');
   });
 
-  it('defaults to biden_2024 baseline when no baselineId provided', async () => {
+  it('defaults to first baseline config when no baselineId provided', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     mockGetDb.mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -276,7 +276,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
@@ -290,7 +290,7 @@ describe('computeSemanticDrift', () => {
     const result = await computeSemanticDrift('courts', '2025-02-03');
 
     expect(result).not.toBeNull();
-    expect(result!.baselineId).toBe('biden_2024');
+    expect(result!.baselineId).toBe('biden_2022');
   });
 
   it('interpretation reflects elevated level (1-2x noise floor)', async () => {
@@ -306,7 +306,7 @@ describe('computeSemanticDrift', () => {
       }),
     } as never);
     mockGetBaseline.mockResolvedValue({
-      baselineId: 'biden_2024',
+      baselineId: 'biden_2022',
       category: 'courts',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,

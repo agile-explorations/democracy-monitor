@@ -94,8 +94,8 @@ describe('BASELINE_CONFIGS', () => {
     expect(BASELINE_CONFIGS).toHaveLength(3);
   });
 
-  it('biden_2024 is the first (default) config', () => {
-    expect(BASELINE_CONFIGS[0].id).toBe('biden_2024');
+  it('biden_2022 is the first (default) config', () => {
+    expect(BASELINE_CONFIGS[0].id).toBe('biden_2022');
   });
 
   it('all configs have required fields', () => {
@@ -111,10 +111,10 @@ describe('BASELINE_CONFIGS', () => {
 
 describe('getBaselineConfig', () => {
   it('finds a config by ID', () => {
-    const config = getBaselineConfig('biden_2024');
+    const config = getBaselineConfig('biden_2022');
     expect(config).toBeDefined();
-    expect(config!.id).toBe('biden_2024');
-    expect(config!.from).toBe('2024-01-01');
+    expect(config!.id).toBe('biden_2022');
+    expect(config!.from).toBe('2022-01-20');
   });
 
   it('returns undefined for unknown ID', () => {
@@ -123,7 +123,7 @@ describe('getBaselineConfig', () => {
   });
 
   it('finds all configs', () => {
-    expect(getBaselineConfig('biden_2024')).toBeDefined();
+    expect(getBaselineConfig('biden_2022')).toBeDefined();
     expect(getBaselineConfig('biden_2021')).toBeDefined();
     expect(getBaselineConfig('obama_2013')).toBeDefined();
   });
@@ -186,7 +186,7 @@ describe('computeBaseline', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].category).toBe('courts');
-    expect(result[0].baselineId).toBe('biden_2024');
+    expect(result[0].baselineId).toBe('biden_2022');
     expect(result[0].avgWeeklySeverity).toBe(15);
     expect(result[0].stddevWeeklySeverity).toBe(5);
     expect(result[0].avgWeeklyDocCount).toBeCloseTo(6.333, 2);
@@ -306,7 +306,7 @@ describe('computeBaseline', () => {
 describe('getBaseline', () => {
   it('returns null when DB is unavailable', async () => {
     mockIsDbAvailable.mockReturnValue(false);
-    const result = await getBaseline('biden_2024', 'courts');
+    const result = await getBaseline('biden_2022', 'courts');
     expect(result).toBeNull();
   });
 
@@ -322,7 +322,7 @@ describe('getBaseline', () => {
       }),
     } as never);
 
-    const result = await getBaseline('biden_2024', 'courts');
+    const result = await getBaseline('biden_2022', 'courts');
     expect(result).toBeNull();
   });
 
@@ -334,7 +334,7 @@ describe('getBaseline', () => {
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([
               {
-                baselineId: 'biden_2024',
+                baselineId: 'biden_2022',
                 category: 'courts',
                 avgWeeklySeverity: 15,
                 stddevWeeklySeverity: 5,
@@ -350,7 +350,7 @@ describe('getBaseline', () => {
       }),
     } as never);
 
-    const result = await getBaseline('biden_2024', 'courts');
+    const result = await getBaseline('biden_2022', 'courts');
     expect(result).not.toBeNull();
     expect(result!.computedAt).toBe('2025-02-08T00:00:00.000Z');
     expect(typeof result!.computedAt).toBe('string');

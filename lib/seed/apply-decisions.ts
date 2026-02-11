@@ -20,7 +20,7 @@ type Tier = 'capture' | 'drift' | 'warning';
 export interface AppliedChange {
   keyword: string;
   category: string;
-  action: 'removed' | 'moved';
+  action: 'removed' | 'moved' | 'added';
   fromTier?: Tier;
   toTier?: Tier;
 }
@@ -106,6 +106,28 @@ export function applyRecommendation(
     }
   }
 
+  // For 'add' actions — insert keyword into specified tier
+  if (rec.action === 'add' && rec.suggestedTier && isTier(rec.suggestedTier)) {
+    const targetTier = rec.suggestedTier;
+
+    for (const cat of categories) {
+      const rule = rules[cat];
+      if (!rule) continue;
+
+      // Skip if keyword already exists in any tier
+      if (findKeywordTier(rule, rec.keyword)) continue;
+
+      rule.keywords[targetTier].push(rec.keyword.toLowerCase());
+
+      return {
+        keyword: rec.keyword,
+        category: cat,
+        action: 'added',
+        toTier: targetTier,
+      };
+    }
+  }
+
   return null;
 }
 
@@ -182,6 +204,8 @@ export function formatChangePreview(changes: AppliedChange[]): string {
   for (const c of changes) {
     if (c.action === 'removed') {
       lines.push(`  - REMOVE "${c.keyword}" from ${c.category}.${c.fromTier}`);
+    } else if (c.action === 'added') {
+      lines.push(`  - ADD "${c.keyword}" to ${c.category}.${c.toTier}`);
     } else {
       lines.push(`  - MOVE "${c.keyword}" in ${c.category}: ${c.fromTier} → ${c.toTier}`);
     }

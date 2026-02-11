@@ -112,6 +112,54 @@ describe('applyRecommendation', () => {
     });
     expect(change).toBeNull();
   });
+
+  it('adds a new keyword to specified category and tier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'judicial independence',
+      category: 'courts',
+      action: 'add',
+      suggestedTier: 'warning',
+      reason: 'Missing from dictionary',
+      occurrences: 5,
+      fpRate: 0,
+    });
+    expect(change).toEqual({
+      keyword: 'judicial independence',
+      category: 'courts',
+      action: 'added',
+      toTier: 'warning',
+    });
+    expect(rules.courts.keywords.warning).toContain('judicial independence');
+  });
+
+  it('skips add when keyword already exists in any tier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'contempt of court',
+      category: 'courts',
+      action: 'add',
+      suggestedTier: 'warning',
+      reason: 'Already exists',
+      occurrences: 3,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('skips add when category does not exist', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'new keyword',
+      category: 'nonexistent',
+      action: 'add',
+      suggestedTier: 'warning',
+      reason: 'Bad category',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
 });
 
 describe('applyAllRecommendations', () => {
@@ -213,6 +261,14 @@ describe('formatChangePreview', () => {
     ]);
     expect(preview).toContain('MOVE "delayed compliance"');
     expect(preview).toContain('drift → warning');
+  });
+
+  it('formats add changes', () => {
+    const preview = formatChangePreview([
+      { keyword: 'judicial independence', category: 'courts', action: 'added', toTier: 'warning' },
+    ]);
+    expect(preview).toContain('ADD "judicial independence"');
+    expect(preview).toContain('courts.warning');
   });
 
   it('shows no-changes message for empty array', () => {
