@@ -9,7 +9,7 @@ export const CATEGORY_MATURITY: Record<string, MaturityBadge> = {
   courts: 'Experimental',
   military: 'Experimental',
   rulemaking: 'Experimental',
-  indices: 'Experimental',
+  executiveActions: 'Experimental',
   infoAvailability: 'Experimental',
   elections: 'Experimental',
   mediaFreedom: 'Experimental',

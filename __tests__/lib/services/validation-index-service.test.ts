@@ -35,7 +35,7 @@ describe('DIMENSION_TO_CATEGORY', () => {
       'courts',
       'military',
       'rulemaking',
-      'indices',
+      'executiveActions',
       'infoAvailability',
       'elections',
       'mediaFreedom',

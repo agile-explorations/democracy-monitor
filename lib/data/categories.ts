@@ -185,8 +185,8 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    key: 'indices',
-    title: 'Executive Power Volume',
+    key: 'executiveActions',
+    title: 'Executive Action Volume',
     description:
       'Tracking the volume and pace of presidential actions and new regulations. High activity may indicate rapid expansion of executive authority.',
     signals: [

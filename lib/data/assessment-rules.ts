@@ -281,7 +281,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
     },
     volumeThreshold: { warning: 50, drift: 100, capture: 200 },
   },
-  indices: {
+  executiveActions: {
     keywords: {
       capture: [
         'democracy downgrade',

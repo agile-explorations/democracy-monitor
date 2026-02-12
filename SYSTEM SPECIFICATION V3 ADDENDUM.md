@@ -1,11 +1,11 @@
-# Democracy Monitor â€” Specification Addendum (V3)
+# Democracy Monitor Ã¢â‚¬â€ Specification Addendum (V3)
 
 ## Document Purpose
 
 This addendum extends the V3 specification (all phases now complete) with two new capabilities:
 
-1. **Data resilience and source health monitoring** â€” addressing the systemic risk that authoritarian consolidation degrades the very government data sources this system depends on, making data disappearance itself a critical signal.
-2. **Feedback learning loops** â€” enabling the system to learn from human review decisions and AI disagreements, proposing methodology improvements that humans approve and version-control.
+1. **Data resilience and source health monitoring** Ã¢â‚¬â€ addressing the systemic risk that authoritarian consolidation degrades the very government data sources this system depends on, making data disappearance itself a critical signal.
+2. **Feedback learning loops** Ã¢â‚¬â€ enabling the system to learn from human review decisions and AI disagreements, proposing methodology improvements that humans approve and version-control.
 
 This addendum is sequenced for implementation with Claude Code.
 
@@ -19,11 +19,11 @@ The entire Democracy Monitor architecture assumes the availability of government
 
 1. Government sources publish less data, or less reliably
 2. APIs change schemas, degrade response quality, or go offline
-3. RSS feeds go silent â€” not temporarily, but permanently
+3. RSS feeds go silent Ã¢â‚¬â€ not temporarily, but permanently
 4. Government websites block scrapers or remove content
 5. FOIA compliance declines, reducing the public record
 
-**Missing data is itself a signal â€” possibly the most important one the system can report.** A week where the pipeline ingests 15 documents instead of the usual 60â€“80 is more alarming than any single keyword match, because it's a meta-signal about the integrity of every other assessment.
+**Missing data is itself a signal Ã¢â‚¬â€ possibly the most important one the system can report.** A week where the pipeline ingests 15 documents instead of the usual 60Ã¢â‚¬â€œ80 is more alarming than any single keyword match, because it's a meta-signal about the integrity of every other assessment.
 
 This addendum specifies three layers of response:
 
@@ -42,7 +42,7 @@ This addendum specifies three layers of response:
 
 ### 10.1 Source Health Tracker
 
-**Priority**: High â€” should ship before public launch
+**Priority**: High Ã¢â‚¬â€ should ship before public launch
 **Estimated scope**: ~250 lines new, ~80 lines modified
 
 **What exists**: `uptime-service.ts` and `site_uptime` table track government website availability (site reachability: is the URL up?). `feed-fetcher.ts` fetches category feeds but doesn't record success/failure metadata. `snapshot.ts` logs errors to console but doesn't persist source health.
@@ -116,7 +116,7 @@ export async function getSourceHealthHistory(
 ): Promise<SourceHealthCheck[]>;
 ```
 
-**Prerequisite â€” sourceId on signals**: Each signal in `lib/data/categories.ts` currently lacks a stable identifier. Add an `id` field to the signal type (e.g., `'federal_register_api'`, `'gao_rss'`, `'scotus_opinions'`). This ID is the `sourceId` used throughout source health tracking. Add IDs to all existing signals before implementing source health.
+**Prerequisite Ã¢â‚¬â€ sourceId on signals**: Each signal in `lib/data/categories.ts` currently lacks a stable identifier. Add an `id` field to the signal type (e.g., `'federal_register_api'`, `'gao_rss'`, `'scotus_opinions'`). This ID is the `sourceId` used throughout source health tracking. Add IDs to all existing signals before implementing source health.
 
 **Source status definitions**:
 
@@ -125,11 +125,11 @@ export async function getSourceHealthHistory(
 - `unavailable`: Failed to respond (HTTP error, timeout, DNS failure)
 - `silent`: Responded successfully but returned zero new documents for 2+ consecutive checks when documents are expected
 
-**"Silent" is the most insidious state** â€” the API returns 200 OK but nothing new is being published. This requires comparing against historical volume baselines.
+**"Silent" is the most insidious state** Ã¢â‚¬â€ the API returns 200 OK but nothing new is being published. This requires comparing against historical volume baselines.
 
 **Cold-start strategy**: The `expectedDocCount` field requires historical data that won't exist on first deploy. Use `expectedMinWeeklyDocs` from canary config (see Configuration Defaults) as the initial baseline. After 4 weeks of data collection, switch to the rolling average. During the cold-start period, only `unavailable` status (HTTP failures) should generate alerts; `silent` and `degraded` require baseline data and should be suppressed until week 5.
 
-**Schema change** â€” add `source_health` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
+**Schema change** Ã¢â‚¬â€ add `source_health` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
 
 ```sql
 CREATE TABLE source_health (
@@ -243,7 +243,7 @@ export function calculateDataCoverage(
 
 **UI impact**: When confidence drops due to source degradation, assessments should display a prominent notice:
 
-> "Data availability reduced â€” 3 of 8 sources are unavailable this week. This assessment is based on incomplete data and may not reflect the full picture."
+> "Data availability reduced Ã¢â‚¬â€ 3 of 8 sources are unavailable this week. This assessment is based on incomplete data and may not reflect the full picture."
 >
 > _(Rendered with a warning-level status indicator; see UI specification for treatment.)_
 
@@ -270,8 +270,8 @@ This panel should be **more prominent than keyword-based assessments** when sour
 
 **Backend support** (this spec):
 
-- Create: `pages/api/health/sources.ts` â€” returns `SourceHealthSummary` + per-source history
-- Create: `pages/api/health/sources/[sourceId].ts` â€” returns history for a single source
+- Create: `pages/api/health/sources.ts` Ã¢â‚¬â€ returns `SourceHealthSummary` + per-source history
+- Create: `pages/api/health/sources/[sourceId].ts` Ã¢â‚¬â€ returns history for a single source
 
 ---
 
@@ -281,7 +281,7 @@ This panel should be **more prominent than keyword-based assessments** when sour
 
 ### 11.1 Source Priority Framework
 
-**Priority**: Medium â€” design now, implement incrementally
+**Priority**: Medium Ã¢â‚¬â€ design now, implement incrementally
 **Estimated scope**: ~50 lines (configuration)
 
 Define a tiered source priority model:
@@ -335,8 +335,8 @@ export const SOURCE_TIERS: SourceTier[] = [
 **When to escalate**: If Tier 1 source health drops below 70% availability for 2+ consecutive weeks, the system should:
 
 1. Alert: "Primary government data sources are degraded. Expanding monitoring to alternative sources."
-2. Increase polling frequency for Tier 2â€“3 sources
-3. Display Tier 2â€“3 data alongside (not replacing) Tier 1 data, clearly labeled by source tier
+2. Increase polling frequency for Tier 2Ã¢â‚¬â€œ3 sources
+3. Display Tier 2Ã¢â‚¬â€œ3 data alongside (not replacing) Tier 1 data, clearly labeled by source tier
 
 **Files touched**:
 
@@ -420,7 +420,7 @@ export interface StateAGAction {
 **Priority**: Medium-low
 **Estimated scope**: ~100 lines new
 
-**Rationale**: FOIA denial rates and FOIA lawsuits are themselves public records (filed in federal court). A spike in FOIA litigation is a measurable proxy for declining transparency â€” and it's data the executive branch cannot suppress because it's generated by plaintiffs.
+**Rationale**: FOIA denial rates and FOIA lawsuits are themselves public records (filed in federal court). A spike in FOIA litigation is a measurable proxy for declining transparency Ã¢â‚¬â€ and it's data the executive branch cannot suppress because it's generated by plaintiffs.
 
 **What to build**:
 
@@ -479,7 +479,7 @@ export interface MetaAssessment {
 export async function computeMetaAssessment(): Promise<MetaAssessment>;
 ```
 
-**UI needed** (see separate UI specification): The meta-assessment should appear at the **top** of the dashboard, above all category assessments. The UI spec should define banner treatments for each `dataIntegrity` level (`high`, `moderate`, `low`, `critical`), with the critical state being the most visually prominent element on the page. Key principle: when data disappears, the system shouldn't quietly show "Stable" â€” it should loudly announce that it can't see.
+**UI needed** (see separate UI specification): The meta-assessment should appear at the **top** of the dashboard, above all category assessments. The UI spec should define banner treatments for each `dataIntegrity` level (`high`, `moderate`, `low`, `critical`), with the critical state being the most visually prominent element on the page. Key principle: when data disappears, the system shouldn't quietly show "Stable" Ã¢â‚¬â€ it should loudly announce that it can't see.
 
 **Files touched**:
 
@@ -503,8 +503,8 @@ reason: 'Not enough information to make an assessment'
 
 This is too quiet. Modify to distinguish between:
 
-1. **Insufficient data (routine)**: Few items fetched, sources are healthy â†’ current behavior is fine
-2. **Insufficient data (suspicious)**: Few items fetched AND sources are degraded/silent â†’ escalate
+1. **Insufficient data (routine)**: Few items fetched, sources are healthy Ã¢â€ â€™ current behavior is fine
+2. **Insufficient data (suspicious)**: Few items fetched AND sources are degraded/silent Ã¢â€ â€™ escalate
 
 ```typescript
 // In analyzeContent() or enhancedAssessment():
@@ -538,14 +538,14 @@ if (itemCount < 3 && sourceHealth?.overallHealth !== 'normal') {
 
 **Goal**: Enable the system to learn from human review decisions and AI disagreements, proposing methodology improvements that humans approve and version-control.
 
-**Design constraint**: The system must never silently change its own methodology. Every recommendation is explicit, reviewable, and reversible. The loop is: **system proposes â†’ human approves â†’ code changes â†’ tests run â†’ version bumps.**
+**Design constraint**: The system must never silently change its own methodology. Every recommendation is explicit, reviewable, and reversible. The loop is: **system proposes Ã¢â€ â€™ human approves Ã¢â€ â€™ code changes Ã¢â€ â€™ tests run Ã¢â€ â€™ version bumps.**
 
 ### 13.1 Feedback Store
 
 **Priority**: High
 **Estimated scope**: ~150 lines new
 
-**What exists**: The V3 review queue (`review-queue.ts`) stores human decisions when AI and keywords disagree. The `alerts` table records flagged assessments. But these are write-only â€” nothing reads them back to improve the system.
+**What exists**: The V3 review queue (`review-queue.ts`) stores human decisions when AI and keywords disagree. The `alerts` table records flagged assessments. But these are write-only Ã¢â‚¬â€ nothing reads them back to improve the system.
 
 **What to build**:
 
@@ -594,7 +594,7 @@ export async function getUnprocessedFeedback(): Promise<FeedbackRecord[]>;
 export async function markProcessed(ids: number[]): Promise<void>;
 ```
 
-**Schema change** â€” add `feedback` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
+**Schema change** Ã¢â‚¬â€ add `feedback` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
 
 ```sql
 CREATE TABLE feedback (
@@ -653,7 +653,7 @@ export async function resolveReview(
 
 ### 13.2 Suppression Rule Learning
 
-**Priority**: High â€” highest-ROI form of learning
+**Priority**: High Ã¢â‚¬â€ highest-ROI form of learning
 **Estimated scope**: ~200 lines new
 
 **Rationale**: When a human reviewer downgrades an assessment because a keyword match was a false positive, that decision contains a concrete, extractable lesson. The system should propose a suppression rule that would have prevented the false positive.
@@ -688,7 +688,7 @@ export interface SuppressionProposal {
     wouldHaveSuppressed: boolean;
   }>;
 
-  // Origin — which subsystem generated this proposal
+  // Origin â€” which subsystem generated this proposal
   proposalSource:
     | 'suppression_learning'
     | 'novelty_detection'
@@ -717,7 +717,7 @@ export async function reviewProposal(
 **How `generateSuppressionProposals()` works**:
 
 1. Read unprocessed feedback where `falsePositiveKeywords` is non-empty
-2. For each false-positive keyword, look up the source documents via `feedback.documentIds` â†’ `documents` table (joined by ID). If `documentIds` is empty, fall back to querying documents by `category + weekOf` from the `documents` table.
+2. For each false-positive keyword, look up the source documents via `feedback.documentIds` Ã¢â€ â€™ `documents` table (joined by ID). If `documentIds` is empty, fall back to querying documents by `category + weekOf` from the `documents` table.
 3. Extract co-occurring terms from those documents (title + summary text)
 4. Identify terms that appear in the false-positive documents but are unlikely to appear in genuine threat documents
 5. Propose a suppression rule: `suppress_if_any: [co-occurring terms]`
@@ -751,7 +751,7 @@ be used as suppression rules.
 }
 ```
 
-This closes the loop: false positive â†’ feedback â†’ proposal â†’ approval â†’ suppression rule â†’ regression test. The existing `document-scorer.test.ts` iterates `FALSE_POSITIVE_CASES` dynamically, so new entries are automatically tested.
+This closes the loop: false positive Ã¢â€ â€™ feedback Ã¢â€ â€™ proposal Ã¢â€ â€™ approval Ã¢â€ â€™ suppression rule Ã¢â€ â€™ regression test. The existing `document-scorer.test.ts` iterates `FALSE_POSITIVE_CASES` dynamically, so new entries are automatically tested.
 
 **Files touched**:
 
@@ -822,7 +822,7 @@ export async function generateKeywordHealthReport(options?: {
 }): Promise<KeywordHealthReport>;
 ```
 
-**API endpoint**: `GET /api/methodology/keyword-health` â€” returns the report. Useful for OSS contributors evaluating dictionary quality.
+**API endpoint**: `GET /api/methodology/keyword-health` Ã¢â‚¬â€ returns the report. Useful for OSS contributors evaluating dictionary quality.
 
 **UI needed** (see separate UI specification): A methodology health page showing noisy keywords, dormant keywords, and tier change recommendations. This is an internal/contributor-facing tool, not a public dashboard element.
 
@@ -836,7 +836,7 @@ export async function generateKeywordHealthReport(options?: {
 **Priority**: Medium-low
 **Estimated scope**: ~80 lines new
 
-**Rationale**: When a human reviewer disagrees with _both_ the keyword engine and the AI, that's the most valuable signal â€” neither automated layer got it right. Accumulating these cases creates a corpus for periodic AI prompt refinement.
+**Rationale**: When a human reviewer disagrees with _both_ the keyword engine and the AI, that's the most valuable signal Ã¢â‚¬â€ neither automated layer got it right. Accumulating these cases creates a corpus for periodic AI prompt refinement.
 
 **What to build**:
 
@@ -876,7 +876,7 @@ export async function extractLearningCases(options?: {
 export async function generatePromptImprovementReport(cases: PromptLearningCase[]): Promise<string>; // AI-generated analysis of what the prompt misses
 ```
 
-**Usage pattern**: This is not automated â€” it's a quarterly review tool. Run `generatePromptImprovementReport()` with accumulated cases, review the AI's analysis of its own failures, and manually update the assessment prompt in `lib/ai/prompts/assessment.ts`.
+**Usage pattern**: This is not automated Ã¢â‚¬â€ it's a quarterly review tool. Run `generatePromptImprovementReport()` with accumulated cases, review the AI's analysis of its own failures, and manually update the assessment prompt in `lib/ai/prompts/assessment.ts`.
 
 **Files touched**:
 
@@ -888,15 +888,15 @@ export async function generatePromptImprovementReport(cases: PromptLearningCase[
 **Priority**: Medium
 **Estimated scope**: ~200 lines new
 
-**Rationale**: Sections 13.1–13.4 address known-unknown problems: the system fired on something it shouldn't have, or a human corrected an assessment. But the deepest blind spot is unknown-unknowns — threats the keyword dictionaries were never designed to detect. If the administration adopts a novel strategy (e.g., "nationalizing federal elections"), no existing keyword will catch it, no false positive will flag it, and no human reviewer will see it — because there's nothing to review.
+**Rationale**: Sections 13.1â€“13.4 address known-unknown problems: the system fired on something it shouldn't have, or a human corrected an assessment. But the deepest blind spot is unknown-unknowns â€” threats the keyword dictionaries were never designed to detect. If the administration adopts a novel strategy (e.g., "nationalizing federal elections"), no existing keyword will catch it, no false positive will flag it, and no human reviewer will see it â€” because there's nothing to review.
 
 Two mechanisms address this, working in concert.
 
-**Prerequisite — Baseline centroids**: `embedding-service.ts` has `computeCentroid()` and `cosineSimilarity()`, but no baseline centroids are persisted per category. Before novelty detection can work, implement: (a) a `category_baselines` table (or column in existing schema) storing centroid vectors and noise floors per category per baseline period, and (b) a one-time baseline computation job that processes existing document embeddings to establish centroids. This is a prerequisite item within the novelty detection sprint.
+**Prerequisite â€” Baseline centroids**: `embedding-service.ts` has `computeCentroid()` and `cosineSimilarity()`, but no baseline centroids are persisted per category. Before novelty detection can work, implement: (a) a `category_baselines` table (or column in existing schema) storing centroid vectors and noise floors per category per baseline period, and (b) a one-time baseline computation job that processes existing document embeddings to establish centroids. This is a prerequisite item within the novelty detection sprint.
 
-**Mechanism A — Semantic Novelty Detection**:
+**Mechanism A â€” Semantic Novelty Detection**:
 
-The system computes per-category embedding centroids via `computeCentroid()` in `embedding-service.ts`. Extend this to persist baseline centroids and identify _which specific documents_ are driving drift — the documents farthest from the baseline centroid that also scored zero on keywords.
+The system computes per-category embedding centroids via `computeCentroid()` in `embedding-service.ts`. Extend this to persist baseline centroids and identify _which specific documents_ are driving drift â€” the documents farthest from the baseline centroid that also scored zero on keywords.
 
 Create `lib/services/novelty-detector.ts`:
 
@@ -911,7 +911,7 @@ export interface NoveltyCandidate {
   // Why this was flagged
   distanceFromCentroid: number; // cosine distance from baseline centroid
   normalizedNovelty: number; // distance / noise floor (in units of normal variation)
-  keywordScore: number; // should be 0 or very low — that's the point
+  keywordScore: number; // should be 0 or very low â€” that's the point
 
   // AI-suggested keywords (populated by Mechanism B)
   suggestedKeywords?: string[];
@@ -943,10 +943,10 @@ export async function detectNovelDocumentsAllCategories(
 1. For each category, retrieve all documents from the current week that scored 0 (or below a low threshold) on keyword matching
 2. Compute each document's cosine distance from the baseline centroid for that category
 3. Normalize by the noise floor (from baseline computation)
-4. Surface documents where `normalizedNovelty >= MIN_NOVELTY_MULTIPLE` (default 2.0 — more than 2× normal variation from baseline, yet invisible to keywords). Store `MIN_NOVELTY_MULTIPLE` in `lib/methodology/scoring-config.ts` alongside other thresholds.
+4. Surface documents where `normalizedNovelty >= MIN_NOVELTY_MULTIPLE` (default 2.0 â€” more than 2Ã— normal variation from baseline, yet invisible to keywords). Store `MIN_NOVELTY_MULTIPLE` in `lib/methodology/scoring-config.ts` alongside other thresholds.
 5. These are the documents most likely to represent novel threat patterns
 
-**Mechanism B — AI Document Triage**:
+**Mechanism B â€” AI Document Triage**:
 
 Take the novelty candidates from Mechanism A and ask an AI to evaluate them for institutional relevance and propose keywords:
 
@@ -977,7 +977,7 @@ Respond in JSON format.
 
 **Output**: Keyword proposals fed into the existing proposal queue (13.2). Each proposal is tagged with `proposalSource: 'novelty_detection'` to distinguish it from suppression-learning proposals.
 
-**Integration with snapshot.ts**: Run novelty detection weekly as part of the snapshot cycle, after document scoring and embedding. Only runs for categories where semantic drift exceeds `NOVELTY_DRIFT_TRIGGER` (default 1.5× noise floor, stored in `scoring-config.ts`) — no point scanning for novel documents when the language hasn't changed.
+**Integration with snapshot.ts**: Run novelty detection weekly as part of the snapshot cycle, after document scoring and embedding. Only runs for categories where semantic drift exceeds `NOVELTY_DRIFT_TRIGGER` (default 1.5Ã— noise floor, stored in `scoring-config.ts`) â€” no point scanning for novel documents when the language hasn't changed.
 
 **Files touched**:
 
@@ -991,7 +991,7 @@ Respond in JSON format.
 **Priority**: Medium
 **Estimated scope**: ~150 lines new
 
-**Rationale**: The rhetoric tracking system (V3 Phase 6) already detects emerging language patterns in White House briefings, GDELT media coverage, and other rhetoric sources. When a new phrase appears frequently in rhetoric but has no corresponding action keyword, that's a gap the system can identify proactively — before any government action documents appear.
+**Rationale**: The rhetoric tracking system (V3 Phase 6) already detects emerging language patterns in White House briefings, GDELT media coverage, and other rhetoric sources. When a new phrase appears frequently in rhetoric but has no corresponding action keyword, that's a gap the system can identify proactively â€” before any government action documents appear.
 
 This turns rhetoric tracking from a parallel analytical layer into an early-warning system for keyword dictionary gaps.
 
@@ -1031,10 +1031,10 @@ export async function detectRhetoricKeywordGaps(options?: {
 
 **How it works**:
 
-1. Scan the `intentStatements` table for rhetoric-type statements from the past 4–8 weeks
+1. Scan the `intentStatements` table for rhetoric-type statements from the past 4â€“8 weeks
 2. Extract high-frequency phrases and check against two dictionaries:
-   - `ACTION_KEYWORDS` in `lib/data/intent-keywords.ts` (keyed by PolicyArea — 5 areas)
-   - Category keywords in `lib/data/assessment-rules.ts` (keyed by dashboard category — 11 categories)
+   - `ACTION_KEYWORDS` in `lib/data/intent-keywords.ts` (keyed by PolicyArea â€” 5 areas)
+   - Category keywords in `lib/data/assessment-rules.ts` (keyed by dashboard category â€” 11 categories)
 3. The `gapType` field records which dictionary is missing coverage: `'no_action_keyword'` (missing from intent-keywords), `'no_category_keyword'` (missing from assessment-rules), or `'both'`
 4. Filter to phrases that have been active for >= 2 weeks (not just a one-time mention)
 5. For each gap, propose corresponding keywords for the relevant dashboard categories
@@ -1058,7 +1058,7 @@ monitoring system. Suggest 2-4 keyword phrases that would detect government
 whether it belongs in the capture, drift, or warning tier.
 ```
 
-**Cadence**: Run weekly alongside the snapshot cycle, or monthly as a separate cron job. The pipeline should be lightweight — it's primarily string matching and frequency counting against existing data.
+**Cadence**: Run weekly alongside the snapshot cycle, or monthly as a separate cron job. The pipeline should be lightweight â€” it's primarily string matching and frequency counting against existing data.
 
 **Files touched**:
 
@@ -1068,10 +1068,10 @@ whether it belongs in the capture, drift, or warning tier.
 
 ### 13.7 Expert Keyword Contribution API
 
-**Priority**: Medium — should ship before broader public launch
+**Priority**: Medium â€” should ship before broader public launch
 **Estimated scope**: ~200 lines new
 
-**Rationale**: The feedback loop now has four automated proposal sources: suppression learning (13.2), novelty detection (13.5), rhetoric pipeline (13.6), and keyword health recommendations (13.3). But the people most likely to spot keyword deficiencies — constitutional lawyers, political scientists, journalists covering democratic erosion — are the least likely to engage through a code contribution workflow. There is no structured way for a domain expert to say "you should be tracking X" without submitting a GitHub pull request.
+**Rationale**: The feedback loop now has four automated proposal sources: suppression learning (13.2), novelty detection (13.5), rhetoric pipeline (13.6), and keyword health recommendations (13.3). But the people most likely to spot keyword deficiencies â€” constitutional lawyers, political scientists, journalists covering democratic erosion â€” are the least likely to engage through a code contribution workflow. There is no structured way for a domain expert to say "you should be tracking X" without submitting a GitHub pull request.
 
 This section adds a lightweight submission path that routes expert input through the same proposal review pipeline as automated proposals.
 
@@ -1103,15 +1103,15 @@ export interface ExpertKeywordSubmission {
   }>;
 
   // Why
-  reasoning: string; // required — minimum 50 characters
+  reasoning: string; // required â€” minimum 50 characters
   evidenceUrls?: string[]; // links to documents, articles, court filings
   relatedDocumentIds?: number[]; // if referencing documents already in the system
 
   // Batch context
-  batchLabel?: string; // e.g., "Election federalization keywords" — groups related submissions
+  batchLabel?: string; // e.g., "Election federalization keywords" â€” groups related submissions
   batchSize: number; // number of keywords in this submission
 
-  // Status — derived from linked SuppressionProposal records, not independently managed
+  // Status â€” derived from linked SuppressionProposal records, not independently managed
   // Computed: all proposals approved = 'accepted', some = 'partially_accepted', all rejected = 'rejected'
   // 'submitted' = proposals created but not yet reviewed, 'under_review' = at least one proposal under review
   status: 'submitted' | 'under_review' | 'accepted' | 'partially_accepted' | 'rejected';
@@ -1137,10 +1137,10 @@ export async function getSubmissions(options?: {
 2. Each keyword in the submission is validated:
    - Does the keyword already exist in the target category? (reject duplicates)
    - Does it conflict with an existing suppression rule? (flag for reviewer)
-   - Would it have fired on any documents in the past 4 weeks? (backtest and include results with the proposal). **Note**: Backtesting is best-effort — if the `documents` table has <4 weeks of data, return `backtestCoverage: 'N of 4 weeks available'` rather than silently returning zero matches.
+   - Would it have fired on any documents in the past 4 weeks? (backtest and include results with the proposal). **Note**: Backtesting is best-effort â€” if the `documents` table has <4 weeks of data, return `backtestCoverage: 'N of 4 weeks available'` rather than silently returning zero matches.
 3. Each keyword creates a `SuppressionProposal` record (from 13.2) tagged with `proposalSource: 'expert_submission'` and linked back to the submission ID via `sourceSubmissionId`
 4. If the submission contains multiple keywords with a `batchLabel`, the review queue displays them as a coherent set rather than isolated proposals
-5. Human reviewer approves/rejects through the same pipeline — approved keywords get regression tests auto-generated
+5. Human reviewer approves/rejects through the same pipeline â€” approved keywords get regression tests auto-generated
 6. The `expert_submissions` table tracks submission-level metadata (who, credentials, batch context); individual keyword review status is derived from the linked `SuppressionProposal` records. The submission status is computed: all proposals approved = `'accepted'`, some approved = `'partially_accepted'`, all rejected = `'rejected'`.
 
 **API endpoint**: `POST /api/methodology/submit-keywords`
@@ -1194,10 +1194,10 @@ export async function getSubmissions(options?: {
 
 - Rate limiting: 10 submissions per IP per day, 50 keywords per submission. **Implementation note**: The existing `lib/utils/rate-limit.ts` is designed for outbound API call throttling. Inbound rate limiting for this public endpoint requires either adapting it for inbound use or adding Next.js API middleware. Use IP-based in-memory tracking initially; Redis-backed if available.
 - Required fields: `reasoning` (minimum 50 characters), at least one keyword with rationale
-- Optional but tracked: `submitterIdentity` is an honor-system text field initially. **Future enhancement**: GitHub OAuth for identity verification (the project has no authentication layer yet — adding OAuth is a separate effort). Authenticated submissions would be prioritized in the review queue.
+- Optional but tracked: `submitterIdentity` is an honor-system text field initially. **Future enhancement**: GitHub OAuth for identity verification (the project has no authentication layer yet â€” adding OAuth is a separate effort). Authenticated submissions would be prioritized in the review queue.
 - Bulk pattern detection: if a single submitter or IP submits 100+ keywords in a week, flag for review before processing
 
-**Schema change** — add `expert_submissions` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
+**Schema change** â€” add `expert_submissions` table (SQL shown for documentation; implementation uses Drizzle ORM in `lib/db/schema.ts`):
 
 ```sql
 CREATE TABLE expert_submissions (
@@ -1232,24 +1232,204 @@ CREATE INDEX idx_expert_submissions_submitter ON expert_submissions (submitter_i
 
 ---
 
+## Phase 14: `indices` Category Rename and External Indices Cross-Reference
+
+**Goal**: Resolve the naming confusion around the `indices` category, preserve its legitimate executive power volume tracking under a proper key, and build the external democracy indices cross-reference that the key name originally implied but was never implemented.
+
+### 14.1 Problem Statement
+
+The codebase has a category with key `indices`, title "Executive Power Volume," that tracks the pace and volume of presidential actions and regulations through Federal Register keyword scanning. Despite its key name suggesting external democracy measurement indices (V-Dem, Freedom House, Bright Line Watch), the category has nothing to do with external indices — it monitors executive action volume, which is a legitimate and distinct concern.
+
+This creates three problems:
+
+1. **The key is misleading.** Anyone reading the code or spec assumes `indices` refers to external democracy indices. It doesn't.
+2. **External indices integration was never built.** V3 Sprint 6+ item 25 ("External validation index integration") was marked DONE, but what was built was executive power volume tracking under a confusing name — not actual integration of V-Dem, Freedom House, or Bright Line Watch data.
+3. **Executive power volume overlaps with but is distinct from `rulemaking`.** The `rulemaking` category (key: `rulemaking`, title: "Independent Agency Rules") tracks whether the president can control independent agency rulemaking. Executive power volume tracks the overall pace of presidential actions. These are related but measure different things — agency capture vs. action tempo.
+
+### 14.2 Rename `indices` to `executiveActions`
+
+**Priority**: High — should happen before or during baseline calibration
+**Estimated scope**: ~50 lines modified (rename across codebase)
+
+Rename the category throughout the codebase:
+
+- **Key**: `indices` → `executiveActions`
+- **Title**: "Executive Power Volume" → "Executive Action Volume" (minor clarification)
+- **Description**: Review and update to clearly describe what this category measures: pace and volume of executive orders, presidential memoranda, proclamations, and other unilateral executive actions
+
+**Files to modify**:
+
+- `lib/data/categories.ts` (category key and metadata)
+- `lib/data/assessment-rules.ts` (keyword dictionary key)
+- `lib/db/schema.ts` (any hardcoded category references)
+- Database migration: update existing `category` column values in `document_scores`, `weekly_aggregates`, `source_health`, and any other tables that store category as a string
+- `lib/data/suppression-rules.ts` (if any rules reference `indices`)
+- Any test fixtures referencing `indices`
+- UI components referencing `indices`
+
+**Migration**:
+
+```sql
+-- Rename category in all tables that store it
+UPDATE document_scores SET category = 'executiveActions' WHERE category = 'indices';
+UPDATE weekly_aggregates SET category = 'executiveActions' WHERE category = 'indices';
+UPDATE source_health SET category = 'executiveActions' WHERE category = 'indices';
+UPDATE feedback SET category = 'executiveActions' WHERE category = 'indices';
+-- ... repeat for any other tables with category columns
+```
+
+### 14.3 Clarify Category Boundaries
+
+After the rename, the "Executive Power" group in the UI has two clearly distinct categories:
+
+| Category                 | Key                | What It Measures                                        | Example Signals                                                      |
+| ------------------------ | ------------------ | ------------------------------------------------------- | -------------------------------------------------------------------- |
+| Executive Action Volume  | `executiveActions` | Pace and volume of presidential actions                 | Executive order frequency, midnight regulations, proclamation surges |
+| Independent Agency Rules | `rulemaking`       | Presidential control over independent agency rulemaking | Agency rule reversals, deference changes, regulatory capture         |
+
+These should remain separate. A president can issue many executive orders (high `executiveActions` scores) without interfering with independent agencies (low `rulemaking` scores), and vice versa. Collapsing them would lose signal.
+
+### 14.4 Baseline Review Implications
+
+The Biden 2022 baseline review items previously flagged under `indices` (e.g., Colombia NATO ally designation, Uvalde proclamation) should be **re-evaluated** with the corrected understanding. These are presidential actions — they may be exactly what the `executiveActions` category is designed to detect. A proclamation is a presidential action regardless of its content. The question is whether the keyword dictionaries for this category are well-calibrated to distinguish between routine presidential actions (proclamations, designations) and actions that signal executive power consolidation (emergency declarations used to bypass Congress, mass executive orders reversing prior policy).
+
+During baseline calibration:
+
+- Routine presidential actions (designations, commemorations, proclamations) should be **warning** tier at most, with suppression rules for purely ceremonial actions
+- Executive power consolidation signals (executive order volume spikes, emergency authority invocations, unilateral policy changes) should be **drift** or **capture** tier
+
+### 14.5 External Democracy Indices as Cross-Reference Layer
+
+**Priority**: Medium — valuable for credibility but not blocking for launch
+**Estimated scope**: ~200 lines new
+
+**Rationale**: External democracy indices (V-Dem, Freedom House, Bright Line Watch, Economist Democracy Index) provide methodologically independent assessments of democratic health through expert surveys. Displaying them alongside the system's automated documentary analysis serves as corroboration when they agree and transparent disclosure when they diverge.
+
+This is a new capability, not a replacement for anything that currently exists. It should function as an independent validation layer, similar in concept to the infrastructure convergence overlay — a cross-cutting view that enriches the primary analysis.
+
+**Data sources and cadence**:
+
+| Index                              | Publisher                   | Cadence                 | Data Availability                            |
+| ---------------------------------- | --------------------------- | ----------------------- | -------------------------------------------- |
+| V-Dem                              | University of Gothenburg    | Annual (March/April)    | Free dataset download, country-level scores  |
+| Freedom House                      | Freedom House               | Annual (February/March) | Free, "Freedom in the World" country scores  |
+| Bright Line Watch                  | Academic consortium         | Quarterly               | Survey results published on website          |
+| Economist Democracy Index          | Economist Intelligence Unit | Annual (February)       | Summary scores public, full report paywalled |
+| Century Foundation Democracy Meter | Century Foundation          | Infrequent              | 23 subquestion scores                        |
+
+**What to build**:
+
+Create `lib/services/external-indices-service.ts`:
+
+```typescript
+export interface ExternalIndexScore {
+  indexId: string; // 'vdem', 'freedom_house', 'bright_line', 'eiu', 'century'
+  indexName: string;
+  publisher: string;
+  reportYear: number; // the year the report covers (not publication date)
+  publishedAt: string; // when the report was published
+
+  // Scores
+  overallScore?: number; // normalized 0-100 where available
+  categoryScores?: Array<{
+    category: string; // the index's own category name
+    score: number;
+    mappedCategory?: string; // our category this maps to, if applicable
+  }>;
+
+  // Context
+  yearOverYearChange?: number; // delta from prior year
+  direction: 'improving' | 'stable' | 'declining' | 'unknown';
+  narrative?: string; // summary of key findings for the US
+  sourceUrl: string;
+
+  importedAt: string;
+}
+
+export async function getLatestScores(): Promise<ExternalIndexScore[]>;
+
+export async function getScoreHistory(
+  indexId: string,
+  options?: { from?: number; to?: number }, // report years
+): Promise<ExternalIndexScore[]>;
+
+export async function importIndexScore(
+  score: Omit<ExternalIndexScore, 'importedAt'>,
+): Promise<void>;
+```
+
+**Schema change** — add `external_indices` table:
+
+```sql
+CREATE TABLE external_indices (
+  id SERIAL PRIMARY KEY,
+  index_id VARCHAR(50) NOT NULL,
+  index_name VARCHAR(255) NOT NULL,
+  publisher VARCHAR(255) NOT NULL,
+  report_year INTEGER NOT NULL,
+  published_at DATE,
+  overall_score REAL,
+  category_scores JSONB,
+  year_over_year_change REAL,
+  direction VARCHAR(20),
+  narrative TEXT,
+  source_url TEXT NOT NULL,
+  imported_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  UNIQUE(index_id, report_year)
+);
+```
+
+**Data import**: External index scores are imported manually via CLI when new reports are published. This is a low-frequency operation (a few times per year):
+
+```
+pnpm import-index --index=vdem --year=2025 --score=72.3 --direction=declining --url=https://...
+```
+
+**Category mapping**: Where possible, map external index subcategories to the system's categories:
+
+| External Subcategory       | Source Index      | Maps To        |
+| -------------------------- | ----------------- | -------------- |
+| Judicial independence      | V-Dem             | `courts`       |
+| Freedom of expression      | Freedom House     | `mediaFreedom` |
+| Checks on executive power  | Bright Line Watch | `rulemaking`   |
+| Civil service independence | V-Dem             | `civilService` |
+| Electoral integrity        | Freedom House     | `elections`    |
+
+These mappings are approximate and should be labeled as such. They enable per-category corroboration: "Our `courts` category shows elevated risk. V-Dem's judicial independence indicator also declined in their most recent report."
+
+**Baseline data**: Import relevant scores for the 2022 reporting period from each index. This provides the cross-reference baseline: "During the Biden 2022 baseline period, V-Dem scored the US at X, Freedom House at Y."
+
+**UI needed** (see separate UI specification): External indices comparison panel, distinct from standard category cards. Displays sparse periodic data (annual/quarterly) alongside continuous weekly system data, with narrative context and per-category corroboration. The framing: "Democracy Monitor analyzes the documentary record. These independent indices assess democratic health through expert surveys. Here's how they compare."
+
+**Files touched**:
+
+- Create: `lib/services/external-indices-service.ts`
+- Create: `lib/data/index-category-mappings.ts`
+- Modify: `lib/db/schema.ts` (add `externalIndices` table)
+- Create: `drizzle/NNNN_external_indices.sql`
+- Create: `scripts/import-index.ts` (CLI import tool)
+- Create: `pages/api/indices.ts` (read-only API for external index scores)
+
+---
+
 ## Implementation Sequence
 
 Each sprint targets 250-350 lines of new/modified code, following the project's established sprint process (analysis -> propose -> approve -> implement -> review -> commit).
 
-### Sprint A (Source Health — Schema & Tracker)
+### Sprint A (Source Health â€” Schema & Tracker)
 
 1. Add `id` field to Signal type and all signals in `lib/data/categories.ts`
 2. Add `health` config (canary flags, expected frequency, min weekly docs) to key signals
-3. **10.1** Source health service — `checkSourceHealth()`, status classification logic
+3. **10.1** Source health service â€” `checkSourceHealth()`, status classification logic
 4. `source_health` Drizzle schema + migration
 5. `fetchCategoryFeedsWithMetadata()` wrapper in `lib/services/feed-fetcher-metadata.ts`
 
 **Deliverable**: Source health checks run and persist. Each signal has a stable ID and optional health config. Feed fetching captures metadata without breaking existing callers.
 
-### Sprint B (Source Health — Integration & Confidence)
+### Sprint B (Source Health â€” Integration & Confidence)
 
 1. Integrate source health into `snapshot.ts` (call wrapper, store health checks)
-2. **10.2** Confidence degradation — extend `calculateDataCoverage()` with source health factor
+2. **10.2** Confidence degradation â€” extend `calculateDataCoverage()` with source health factor
 3. Add `CRITICAL_CONFIDENCE_CAP` to `lib/methodology/scoring-config.ts`
 4. Pass source health into `ai-assessment-service.ts`
 5. Cold-start logic: suppress silent/degraded alerts during first 4 weeks
@@ -1258,7 +1438,7 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 ### Sprint C (Meta-Assessment & Absence-Aware Logic)
 
-1. **12.1** Meta-assessment service — `computeMetaAssessment()`, transparency trend computation
+1. **12.1** Meta-assessment service â€” `computeMetaAssessment()`, transparency trend computation
 2. **12.2** Absence-aware assessment logic in `assessment-service.ts`
 3. Store meta-assessment in snapshot cycle
 4. **10.3** Source health API endpoints (`/api/health/sources`, `/api/health/sources/[sourceId]`)
@@ -1270,8 +1450,8 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 ### Sprint D (Feedback Store & Review Integration)
 
-1. **13.1** Feedback store — `feedback` Drizzle schema + migration
-2. `feedback-store.ts` — `recordFeedback()`, `getUnprocessedFeedback()`, `markProcessed()`
+1. **13.1** Feedback store â€” `feedback` Drizzle schema + migration
+2. `feedback-store.ts` â€” `recordFeedback()`, `getUnprocessedFeedback()`, `markProcessed()`
 3. Extend `resolveReview()` signature to accept optional feedback fields
 4. Update `pages/api/reviews.ts` to accept feedback in request body
 5. Auto-create `FeedbackRecord` from review decisions
@@ -1282,19 +1462,19 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 ### Sprint E (Suppression Learning & Keyword Health)
 
-1. **13.2** Suppression rule learner — `generateSuppressionProposals()`
+1. **13.2** Suppression rule learner â€” `generateSuppressionProposals()`
 2. Proposal validation against true-positive test fixtures
 3. Auto-append approved proposals to `__tests__/fixtures/scoring/false-positives.ts`
 4. `suppression_proposals` Drizzle schema + migration (include `proposal_source` and `source_submission_id` columns)
-5. **13.3** Keyword health report service — `generateKeywordHealthReport()`
+5. **13.3** Keyword health report service â€” `generateKeywordHealthReport()`
 
 **Deliverable**: System generates suppression rule proposals from feedback. Approved proposals auto-generate regression tests. Keyword health reports identify noisy/dormant keywords.
 
 ### Sprint F (Novel Threat Detection)
 
-1. **13.5** Baseline centroid computation and storage — `category_baselines` table, one-time computation job
-2. Novelty detector — `detectNovelDocuments()`, `detectNovelDocumentsAllCategories()`
-3. AI triage prompt — `lib/ai/prompts/novelty-triage.ts`
+1. **13.5** Baseline centroid computation and storage â€” `category_baselines` table, one-time computation job
+2. Novelty detector â€” `detectNovelDocuments()`, `detectNovelDocumentsAllCategories()`
+3. AI triage prompt â€” `lib/ai/prompts/novelty-triage.ts`
 4. Add `MIN_NOVELTY_MULTIPLE` and `NOVELTY_DRIFT_TRIGGER` to `scoring-config.ts`
 5. Integration with `snapshot.ts` (run novelty detection when drift is elevated)
 
@@ -1302,12 +1482,12 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 ### Sprint G (Feedback APIs, Prompt Learning & Rhetoric Pipeline)
 
-1. **13.4** AI prompt learning corpus — `extractLearningCases()`, `generatePromptImprovementReport()`
-2. Proposal review API (`/api/proposals`) — list, approve, reject
+1. **13.4** AI prompt learning corpus â€” `extractLearningCases()`, `generatePromptImprovementReport()`
+2. Proposal review API (`/api/proposals`) â€” list, approve, reject
 3. Keyword health API (`/api/methodology/keyword-health`)
 4. Prompt learning API (`/api/methodology/prompt-learning`)
 5. Cron job: `generate-proposals.ts` (weekly/monthly)
-6. **13.6** Rhetoric-to-keyword pipeline — `rhetoric-keyword-pipeline.ts`
+6. **13.6** Rhetoric-to-keyword pipeline â€” `rhetoric-keyword-pipeline.ts`
 
 **UI needed** (see separate UI specification): Proposal review interface, keyword health dashboard.
 
@@ -1315,7 +1495,7 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 ### Sprint H (Expert Keyword Contribution)
 
-1. **13.7** Expert submission service — `expert-submission-service.ts`
+1. **13.7** Expert submission service â€” `expert-submission-service.ts`
 2. `expert_submissions` Drizzle schema + migration
 3. Backtest engine for submitted keywords (best-effort, reports coverage gaps)
 4. Inbound rate limiting middleware for public endpoint
@@ -1325,27 +1505,43 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 **Deliverable**: Domain experts can submit keyword proposals through a structured API. Submissions are backtested, rate-limited, and routed through the same proposal review pipeline as automated proposals.
 
-### Sprint I (Alternative Sources — Research & Framework)
+### Sprint I (Alternative Sources â€” Research & Framework)
 
 **Note**: This is a research spike. Phase 11 depends on external APIs (CourtListener, state AG feeds) whose availability, rate limits, and data quality must be validated before committing to implementation.
 
-1. **Research**: Evaluate CourtListener API — authentication, rate limits, data coverage, response format
-2. **Research**: Survey state AG RSS feeds — availability, update frequency, content quality
+1. **Research**: Evaluate CourtListener API â€” authentication, rate limits, data coverage, response format
+2. **Research**: Survey state AG RSS feeds â€” availability, update frequency, content quality
 3. **Research**: Assess FOIA litigation data availability via CourtListener
-4. **11.1** Source priority framework — `lib/data/source-tiers.ts` (configuration only)
+4. **11.1** Source priority framework â€” `lib/data/source-tiers.ts` (configuration only)
 5. Write parsers/service stubs based on research findings
 
 **Deliverable**: Documented assessment of external API feasibility. Source tier configuration defined. Stubs ready for implementation.
 
-### Sprint J (Alternative Sources — Implementation)
+### Sprint J (Alternative Sources â€” Implementation)
 
-1. **11.2** Court filing integration (CourtListener) — `court-filing-service.ts` + parser
+1. **11.2** Court filing integration (CourtListener) â€” `court-filing-service.ts` + parser
 2. **11.4** FOIA litigation tracking (filtered CourtListener query)
 3. **11.3** State AG tracker (if research validates feasibility)
 4. Add alternative source signals to relevant categories in `categories.ts`
 5. Expand GDELT integration for international press coverage (if not complete)
 
 **Deliverable**: System has fallback data sources outside government control. Court filings and FOIA litigation supplement government publications.
+
+### Sprint K (Category Rename & External Indices)
+
+1. **14.2** Rename `indices` to `executiveActions` — category key, assessment rules, database migration, test fixtures, UI references
+2. **14.4** Re-evaluate baseline review items for `executiveActions` with corrected understanding
+3. **14.5** External indices service — `external-indices-service.ts`, `index-category-mappings.ts`
+4. `external_indices` Drizzle schema + migration
+5. CLI import tool — `scripts/import-index.ts`
+6. Import baseline data: V-Dem 2022, Freedom House 2023 (covers 2022), Bright Line Watch 2022 surveys, EIU 2022
+7. Read-only API endpoint: `GET /api/indices`
+
+**Note**: Step 1 (rename) should happen early, ideally before or during baseline calibration, so that all baseline data is stored under the correct category key. Steps 3–7 can follow later.
+
+**UI needed** (see separate UI specification): External indices comparison panel, distinct from standard category cards. Displays sparse periodic data alongside continuous weekly system data, with narrative context and per-category corroboration where index subcategories map to system categories.
+
+**Deliverable**: `indices` renamed to `executiveActions` throughout the codebase and database. External democracy indices imported as periodic cross-reference data. System has 11 keyword-scored categories (with a correctly named executive actions category) plus external indices as a separate validation layer.
 
 ---
 
@@ -1359,7 +1555,7 @@ Canary source configuration lives inline on signals in `lib/data/categories.ts` 
 | GAO Reports RSS      | 14                | 2                       | Weekly publication cadence   |
 | SCOTUS Opinions RSS  | 14                | 0                       | Varies by term schedule      |
 
-Health thresholds and confidence caps live in `lib/methodology/scoring-config.ts` (per project convention â€” all scoring constants in one place):
+Health thresholds and confidence caps live in `lib/methodology/scoring-config.ts` (per project convention Ã¢â‚¬â€ all scoring constants in one place):
 
 ```typescript
 // In lib/methodology/scoring-config.ts
@@ -1383,15 +1579,15 @@ export const NOVELTY_DRIFT_TRIGGER = 1.5; // category drift must exceed 1.5x noi
 
 ### Data Resilience
 
-1. **Missing data â‰  "Stable".** The system must never show "Stable" simply because it received no documents and therefore had no keyword matches. Absence of data in a context of source degradation is a warning, not a reassurance.
+1. **Missing data Ã¢â€°Â  "Stable".** The system must never show "Stable" simply because it received no documents and therefore had no keyword matches. Absence of data in a context of source degradation is a warning, not a reassurance.
 
-2. **Alternative sources have different biases.** Court filings skew toward contested actions (no one sues over routine governance). Media sources skew toward newsworthy events. When relying on Tier 2â€“4 sources, the system should note that the evidence base has shifted and interpret accordingly.
+2. **Alternative sources have different biases.** Court filings skew toward contested actions (no one sues over routine governance). Media sources skew toward newsworthy events. When relying on Tier 2Ã¢â‚¬â€œ4 sources, the system should note that the evidence base has shifted and interpret accordingly.
 
 3. **Source health is the most honest thing you can show.** When the system cannot see clearly, saying so is more valuable than any assessment it could produce. Epistemic humility under uncertainty is a credibility asset, not a weakness.
 
-4. **Data degradation may be gradual.** The most dangerous scenario isn't a sudden blackout â€” it's a slow decline where each week has 5% fewer documents than the last, and no single week triggers an alert. The trend line on source health is as important as any individual check. The `transparencyTrend` field in the meta-assessment is designed to catch this.
+4. **Data degradation may be gradual.** The most dangerous scenario isn't a sudden blackout Ã¢â‚¬â€ it's a slow decline where each week has 5% fewer documents than the last, and no single week triggers an alert. The trend line on source health is as important as any individual check. The `transparencyTrend` field in the meta-assessment is designed to catch this.
 
-5. **Minimize the source asymmetry.** Baselines should use the same source mix as the current-period backfill to ensure apples-to-apples comparison. The `backfill-baseline.ts` script must fetch Federal Register documents, White House briefing room archive, and GDELT historical data — not Federal Register alone. RSS feeds (GAO, SCOTUS, DoD) genuinely lack historical archives; those remain FR-only for baseline periods. For older baselines (Obama 2013), the White House archive may use a different URL structure (obama.whitehouse.archives.gov) and should be marked unavailable rather than silently omitted — the seed data should record which sources contributed to each baseline period. When a source is unavailable for a baseline period, the baseline statistics should note the reduced source coverage so the UI can display "Baseline computed from Federal Register + GDELT only (White House archive unavailable for this period)."
+5. **Minimize the source asymmetry.** Baselines should use the same source mix as the current-period backfill to ensure apples-to-apples comparison. The `backfill-baseline.ts` script must fetch Federal Register documents, White House briefing room archive, and GDELT historical data â€” not Federal Register alone. RSS feeds (GAO, SCOTUS, DoD) genuinely lack historical archives; those remain FR-only for baseline periods. For older baselines (Obama 2013), the White House archive may use a different URL structure (obama.whitehouse.archives.gov) and should be marked unavailable rather than silently omitted â€” the seed data should record which sources contributed to each baseline period. When a source is unavailable for a baseline period, the baseline statistics should note the reduced source coverage so the UI can display "Baseline computed from Federal Register + GDELT only (White House archive unavailable for this period)."
 
 ### Feedback Learning
 
@@ -1413,4 +1609,16 @@ export const NOVELTY_DRIFT_TRIGGER = 1.5; // category drift must exceed 1.5x noi
 
 13. **Human review of backfill data should be AI-assisted, not exhaustive.** Rather than requiring a human to eyeball every keyword match in thousands of documents, the review pipeline should generate a targeted report showing only items where the AI Skeptic flagged disagreements: keywords it assessed as `false_positive` or `ambiguous`, assessments where it recommended a status downgrade, and assessments where its confidence was below 0.7. The human reviews these flagged items and records approve/override decisions. This mirrors the eventual admin review queue workflow but operates via CLI tooling during the initial seed data generation phase.
 
-14. **Seed data is deterministic and version-controlled.** The JSON fixtures in `lib/seed/fixtures/` are committed to the repository. New deployments run `pnpm seed:import` to load them — no API keys or external calls required. This means the fixture data must be curated (reviewed and keyword-tuned) before committing, and any keyword dictionary changes that affect scoring require re-generating and re-committing the fixtures.
+14. **Seed data is deterministic and version-controlled.** The JSON fixtures in `lib/seed/fixtures/` are committed to the repository. New deployments run `pnpm seed:import` to load them â€” no API keys or external calls required. This means the fixture data must be curated (reviewed and keyword-tuned) before committing, and any keyword dictionary changes that affect scoring require re-generating and re-committing the fixtures.
+
+### Category Architecture
+
+15. **Not every data type fits the keyword scoring pipeline.** When a data source's fundamental nature doesn't match the methodology, the correct response is to reclassify it, not to force it through an ill-fitting pipeline. External democracy indices cannot be detected by scanning government documents for keywords. Categories should be periodically evaluated for this kind of architectural mismatch.
+
+16. **Category keys must accurately describe what they measure.** The `indices` naming confusion demonstrates that misleading keys propagate misunderstandings across the team and into specifications. When renaming categories, update every reference (code, database, tests, specs, UI) in a single atomic change to prevent partial renames.
+
+17. **Related categories should remain distinct when they measure different things.** `executiveActions` (presidential action volume/tempo) and `rulemaking` (independent agency capture) are related but measure different phenomena. A president can issue many executive orders without interfering with independent agencies. Collapsing related-but-distinct categories loses signal.
+
+18. **External indices are corroboration, not ground truth.** External democracy indices are valuable precisely because they are methodologically independent — expert surveys vs. automated document analysis. Agreement strengthens both. Disagreement is informative, not a defect. The UI should present them as "here's what independent experts found" alongside "here's what the documentary record shows," never as a score to be averaged with the system's own assessments.
+
+19. **Sparse data requires different presentation.** External indices publish annually or quarterly. Displaying them alongside weekly keyword scores requires a UI that handles mixed cadences gracefully — showing the most recent external score as a reference point, not interpolating between annual data points to create a false impression of weekly resolution.

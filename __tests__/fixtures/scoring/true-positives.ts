@@ -122,7 +122,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
       summary:
         'Freedom House downgraded the US in its annual report, citing erosion of judicial independence and press freedom as factors in the democracy downgrade.',
     },
-    category: 'indices',
+    category: 'executiveActions',
     expectedKeyword: 'democracy downgrade',
     expectedTier: 'capture',
   },

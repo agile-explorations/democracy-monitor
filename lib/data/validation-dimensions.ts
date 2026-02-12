@@ -4,7 +4,7 @@ import type { ValidationSource } from '@/lib/types/validation';
  * Maps external index dimensions to internal dashboard categories.
  */
 export const DIMENSION_TO_CATEGORY: Record<string, string> = {
-  liberal_democracy: 'indices',
+  liberal_democracy: 'executiveActions',
   rule_of_law: 'courts',
   civil_liberties: 'elections',
   media_freedom: 'mediaFreedom',

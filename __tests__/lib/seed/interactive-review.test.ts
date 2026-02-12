@@ -179,6 +179,40 @@ describe('formatItemForDisplay', () => {
     expect(output).toContain('[→move_to_warning]');
   });
 
+  it('shows <none> when no keywords matched', () => {
+    const output = formatItemForDisplay(makeAlert({ metadata: { keywordMatches: [] } }), 0, 1);
+    expect(output).toContain('Matched Keywords: <none>');
+  });
+
+  it('shows document count and insufficient data flag', () => {
+    const output = formatItemForDisplay(
+      makeAlert({
+        metadata: {
+          keywordStatus: 'Warning',
+          documentCount: 2,
+          insufficientData: true,
+          keywordMatches: [],
+        },
+      }),
+      0,
+      1,
+    );
+    expect(output).toContain('Documents:      2 (below minimum of 3)');
+  });
+
+  it('shows document count without flag when sufficient', () => {
+    const output = formatItemForDisplay(
+      makeAlert({
+        metadata: { keywordStatus: 'Warning', documentCount: 15, keywordMatches: ['emergency'] },
+      }),
+      0,
+      1,
+    );
+    expect(output).toContain('Documents:      15');
+    expect(output).not.toContain('below minimum');
+    expect(output).toContain('Matched Keywords: emergency');
+  });
+
   it('handles missing metadata gracefully', () => {
     const output = formatItemForDisplay(makeAlert({ metadata: {} }), 0, 1);
     expect(output).toContain('N/A');

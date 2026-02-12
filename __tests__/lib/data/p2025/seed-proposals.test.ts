@@ -37,7 +37,7 @@ describe('SEED_PROPOSALS', () => {
 
   it('all IDs follow naming convention', () => {
     for (const p of SEED_PROPOSALS) {
-      expect(p.id).toMatch(/^p2025-[a-z]+-\d{3}$/);
+      expect(p.id).toMatch(/^p2025-[a-zA-Z]+-\d{3}$/);
     }
   });
 

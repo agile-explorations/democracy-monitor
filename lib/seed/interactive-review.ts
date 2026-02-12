@@ -130,6 +130,17 @@ export function formatItemForDisplay(alert: AlertRow, index: number, total: numb
     `  Confidence:     ${meta.aiConfidence !== undefined ? `${(Number(meta.aiConfidence) * 100).toFixed(0)}%` : 'N/A'}`,
   ];
 
+  const docCount = meta.documentCount as number | undefined;
+  const insufficient = meta.insufficientData as boolean | undefined;
+  if (docCount !== undefined) {
+    const volLabel = insufficient ? `${docCount} (below minimum of 3)` : String(docCount);
+    lines.push(`  Documents:      ${volLabel}`);
+  }
+
+  const kwMatches = meta.keywordMatches as string[] | undefined;
+  lines.push(
+    `  Matched Keywords: ${kwMatches && kwMatches.length > 0 ? kwMatches.join(', ') : '<none>'}`,
+  );
   if (meta.keywordReason) {
     lines.push(`  Keyword Reason: ${meta.keywordReason}`);
   }

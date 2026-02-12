@@ -150,10 +150,10 @@ export const SEED_PROPOSALS: P2025Proposal[] = [
     status: 'not_started',
   },
   {
-    id: 'p2025-indices-001',
+    id: 'p2025-executiveActions-001',
     chapter: 'Department of State',
     targetAgency: 'State',
-    dashboardCategory: 'indices',
+    dashboardCategory: 'executiveActions',
     policyArea: 'institutional_independence',
     severity: 'medium',
     text: 'Withdraw from or reduce participation in international organizations and treaties that impose external standards on U.S. governance, including human rights monitoring bodies.',

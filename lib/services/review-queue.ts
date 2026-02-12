@@ -19,6 +19,9 @@ export async function flagForReview(assessment: EnhancedAssessment): Promise<voi
     metadata: {
       keywordStatus: assessment.keywordResult.status,
       keywordReason: assessment.keywordResult.reason,
+      keywordMatches: assessment.keywordResult.matches,
+      documentCount: assessment.keywordResult.detail?.itemsReviewed,
+      insufficientData: assessment.keywordResult.detail?.insufficientData,
       aiRecommendedStatus: assessment.recommendedStatus,
       aiConfidence: assessment.aiResult?.confidence,
       aiReasoning: assessment.aiResult?.reasoning,

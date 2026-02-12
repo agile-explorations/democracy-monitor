@@ -55,17 +55,12 @@ This specification defines the user interface design for Democracy Monitor, info
 /rhetoric                   Rhetoric → Action tracking — "Words Into Policy"
 /p2025                      Project 2025 comparison — "Blueprint vs. Reality"
 /health                     Source health & data integrity — "Can We See?"
+/indices                    External democracy indices — "What Do the Experts Say?"
 /admin/login                Admin authentication (shared-secret token)
 /admin/reviews              Human review queue (behind admin token)
 /admin/proposals            Methodology proposals from all sources (behind admin token)
 /admin/submissions          Expert keyword submission form (behind admin token)
 ```
-
-**Dropped routes from current codebase:**
-
-- `/history` (all-category trajectory chart) — subsumed by per-category trend charts on `/category/[key]` detail pages and the convergence-over-time chart on `/infrastructure`. No dedicated multi-category overlay page in this design.
-- `/digest/[date]` (daily digest archive) — dropped. Weekly cadence is the primary rhythm; daily digests added noise without analytical value.
-- `/sources` (data source documentation) — replaced by `/health`, which shows live operational status instead of static documentation.
 
 Note: API/export documentation lives in the GitHub repository, not on the public site. Developers will find it there.
 
@@ -74,7 +69,7 @@ Note: API/export documentation lives in the GitHub repository, not on the public
 **Top bar** (persistent across all pages):
 
 - Logo + "Democracy Monitor" wordmark (left)
-- Nav links: Overview | Methodology | Infrastructure | Rhetoric | P2025 | Health (center)
+- Nav links: Overview | Methodology | Infrastructure | Rhetoric | P2025 | Health | Indices (center)
 - Reading level toggle: "Summary" / "Detailed" (right) — see §2.4
 - Dark/light mode toggle (right, next to reading level) — respects system preference by default
 - "Experimental" badge (always visible) — see §6.1
@@ -96,14 +91,15 @@ Layers 1-2 appear on the landing page. Layers 3-4 appear on detail pages via Det
 
 **This model applies consistently across all pages:**
 
-| Page                  | Layer 1-2 (Summary mode)                                   | Layer 3-4 (Detailed mode)                                                                                                                     |
-| --------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Landing page**      | Category cards with sparklines, status, summary            | Card shows baseline comparison, severity breakdown                                                                                            |
-| **Category detail**   | Assessment summary, trend chart, top evidence              | Document table, suppression audit, all chart views, semantic drift, methodology links                                                         |
-| **Week detail**       | Week summary cards, top keyword matches, AI notes          | Full document table with per-doc scores, suppression audit, methodology links for keywords that fired                                         |
-| **Infrastructure**    | Convergence status, theme intensity bars, summary sentence | Full keyword match lists per theme, suppression details, convergence score formula, methodology links                                         |
-| **Rhetoric → Action** | Summary table (what's said → what's done, lag weeks)       | Dual sparklines, correlation charts, full keyword lists, matched pairs with doc links, confidence statistics, rhetoric-to-keyword gaps (§8.4) |
-| **P2025**             | Headline percentage, progress bar, top 3-5 recent matches  | Full proposal table, escalation alerts with LLM reasoning, per-match confidence, human review status                                          |
+| Page                  | Layer 1-2 (Summary mode)                                                  | Layer 3-4 (Detailed mode)                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Landing page**      | Category cards with sparklines, status, summary                           | Card shows baseline comparison, severity breakdown                                                                                            |
+| **Category detail**   | Assessment summary, trend chart, top evidence                             | Document table, suppression audit, all chart views, semantic drift, methodology links                                                         |
+| **Week detail**       | Week summary cards, top keyword matches, AI notes                         | Full document table with per-doc scores, suppression audit, methodology links for keywords that fired                                         |
+| **Infrastructure**    | Convergence status, theme intensity bars, summary sentence                | Full keyword match lists per theme, suppression details, convergence score formula, methodology links                                         |
+| **Rhetoric → Action** | Summary table (what's said → what's done, lag weeks)                      | Dual sparklines, correlation charts, full keyword lists, matched pairs with doc links, confidence statistics, rhetoric-to-keyword gaps (§8.4) |
+| **P2025**             | Headline percentage, progress bar, top 3-5 recent matches                 | Full proposal table, escalation alerts with LLM reasoning, per-match confidence, human review status                                          |
+| **External Indices**  | Index summary cards with scores and direction, per-category corroboration | Historical scores chart (point markers, not interpolated), about section with methodology descriptions                                        |
 
 ### 2.4 Reading Level Toggle
 
@@ -182,14 +178,6 @@ Rationale:
 - Baseline band: `#1E293B` with `#334155` border
 
 **Dark mode implementation**: Use CSS custom properties (variables) for all colors. Toggle via `prefers-color-scheme` media query (system default) with a manual override toggle in the header. Store preference in localStorage. The single-hue indigo intensity scale works naturally in both modes — lighter tints for Stable/Warning in dark mode, darker fills for Drift/Capture.
-
-**Dark mode additional specifics:**
-
-- **Chart colors**: Lines and fills need higher contrast on dark backgrounds. Use indigo-400 (not indigo-600) for the primary line, and increase baseline band opacity from 5% to 10%.
-- **Experimental badge**: Use indigo-900 background with indigo-200 text (dark) vs. indigo-50 background with indigo-700 text (light).
-- **Admin interface**: Admin pages use the same dark mode system — no separate admin theme.
-- **Export buttons**: Use `--color-text-secondary` for export button text in both modes, ensuring they remain unobtrusive.
-- **Status icons**: The Unicode icons (—, △, ▲, ◆) should use `--color-text-primary` in both modes — they get their semantic meaning from the adjacent color fill, not from their own color.
 
 **Accessibility requirements:**
 
@@ -282,6 +270,13 @@ The landing page answers: "What is this, and should I care?"
 │  │ Card     │ │ Card     │ │ Card     │                    │
 │  └──────────┘ └──────────┘ └──────────┘                    │
 │  ... (11 total, last row has 2 cards)                       │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  EXTERNAL INDICES PANEL                                     │
+│  See §4.10 — compact summary of independent expert          │
+│  assessments. Always visible when data exists.              │
+│  Links to /indices for full detail.                         │
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
@@ -424,12 +419,12 @@ Sort by: [● Concern level] [○ Category group]
 
 **"Category group":** Cards in a fixed order, grouped by institutional domain:
 
-| Group                      | Categories                                | Rationale                                    |
-| -------------------------- | ----------------------------------------- | -------------------------------------------- |
-| Executive Power            | civilService, indices, rulemaking         | Direct measures of executive branch activity |
-| Oversight & Accountability | igs, fiscal, hatch                        | Watchdog and accountability mechanisms       |
-| Rule of Law                | courts, military                          | Legal compliance and use of force            |
-| Public Sphere              | elections, mediaFreedom, infoAvailability | Democratic participation and transparency    |
+| Group                      | Categories                                 | Rationale                                    |
+| -------------------------- | ------------------------------------------ | -------------------------------------------- |
+| Executive Power            | civilService, executiveActions, rulemaking | Direct measures of executive branch activity |
+| Oversight & Accountability | igs, fiscal, hatch                         | Watchdog and accountability mechanisms       |
+| Rule of Law                | courts, military                           | Legal compliance and use of force            |
+| Public Sphere              | elections, mediaFreedom, infoAvailability  | Democratic participation and transparency    |
 
 Each group gets a subtle label above its cards (e.g., "Executive Power" in small caps, slate-400). The grouping helps users understand the institutional structure without needing to read 11 individual descriptions.
 
@@ -442,8 +437,6 @@ The data integrity banner appears on **every page** (landing, category detail, w
 **Design principle**: When the system can't see clearly, it says so before saying anything else.
 
 **Four levels, from least to most prominent:**
-
-**Implementation note:** The threshold boundaries between these four levels are defined as named constants in `lib/methodology/scoring-config.ts` (e.g., `DATA_INTEGRITY_MODERATE_THRESHOLD`, `DATA_INTEGRITY_LOW_THRESHOLD`, `DATA_INTEGRITY_CRITICAL_THRESHOLD`). The UI reads the `dataIntegrity` field from the meta-assessment API response — it does not compute the level client-side.
 
 **`high` — not displayed.** The system is operating normally. No banner.
 
@@ -553,8 +546,6 @@ Always visible on the landing page, positioned between the positioning statement
 
 Note: This is one of the few places traffic-light-adjacent colors (green/amber) are used. The rationale is that source health is purely operational status ("is this API responding?"), not a risk judgment about institutional health. The indigo scale is reserved for institutional risk signals.
 
-**Implementation note:** These operational status colors (green-500, amber-500, slate-400) are hardcoded constants, not derived from the indigo design tokens. They should be defined as named constants (e.g., `SOURCE_STATUS_HEALTHY_COLOR`, `SOURCE_STATUS_DEGRADED_COLOR`, `SOURCE_STATUS_UNAVAILABLE_COLOR`) to prevent a future refactor from accidentally "fixing" them into the indigo scale.
-
 ### 4.9 Confidence Degradation on Category Cards
 
 When a category's assessment confidence is degraded due to source health issues, the category card shows a subtle indicator _above_ the status tier label. This communicates "we're less certain than usual about this assessment" without overwhelming the card layout.
@@ -594,6 +585,42 @@ When a category's assessment confidence is degraded due to source health issues,
 ```
 
 This notice appears _above_ the status, consistent with the V3 addendum's requirement that reduced data reliability takes visual priority over the assessment itself.
+
+### 4.10 External Indices Panel (Landing Page)
+
+A compact panel below the category grid showing the latest scores from independent democracy indices. Always visible when at least one external index score has been imported. Links to `/indices` for full detail.
+
+**Design principle**: These are methodologically independent assessments — expert surveys, not document analysis. The panel frames them as corroboration ("do the experts agree?"), never as scores to be averaged with the system's own assessments.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  What Do Independent Experts Say?                           │
+│                                                             │
+│  These indices assess democratic health through expert      │
+│  surveys — a different methodology from our automated       │
+│  document analysis.                                         │
+│                                                             │
+│  V-Dem (2025)           72.3  ↓ declining                   │
+│  Freedom House (2025)   83    ↓ declining                   │
+│  Bright Line Watch (Q4) 3.7   → stable                     │
+│  EIU Democracy (2025)   7.85  ↓ declining                   │
+│                                                             │
+│  [View full comparison →]                                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Each row shows:
+
+- Index name with report year or quarter
+- Overall score (normalized where available)
+- Direction arrow: ↑ improving, → stable, ↓ declining
+- Direction label in text
+
+**Visual treatment**: Muted styling — this panel should not compete with the category grid for attention. Slate border, smaller font than category cards. The scores are reference context, not primary signals.
+
+**When indices agree with the system**: If the system shows elevated risk in a category that maps to an external index subcategory, and that index also shows decline, the panel highlights the agreement: "3 of 4 indices also show declining scores" in a subtle callout above the rows.
+
+**When no data exists**: If no external index scores have been imported, the panel is not displayed (not an empty state — just absent).
 
 ---
 
@@ -666,21 +693,6 @@ This page answers: "What exactly is happening in this category, and why should I
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.1A Required API Endpoints
-
-The category detail page and week detail page require API endpoints that do not yet exist. The current API only serves raw feed data (`/api/proxy`) and assessments (`/api/assess-status`). New endpoints needed:
-
-| Endpoint                                      | Returns                                                                                                             | Used By                                    |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `GET /api/category/[key]/summary`             | Current status, decay-weighted score, baseline comparison, AI assessment summary, document counts, confidence level | Category detail header, landing page cards |
-| `GET /api/category/[key]/weekly`              | Array of weekly aggregates (score, doc count, severity mix, top keywords)                                           | Trend chart, sparklines                    |
-| `GET /api/category/[key]/week/[date]`         | Single week: all documents with scores, keyword matches, suppressed matches, AI assessment                          | Week detail page                           |
-| `GET /api/category/[key]/documents?from=&to=` | Paginated document list with scores and match details                                                               | Document table                             |
-| `GET /api/meta-assessment`                    | Data integrity level, source counts, volume normality, coverage breadth                                             | Data integrity banner, source health bar   |
-| `GET /api/baselines`                          | Available baselines with mean/stddev per category                                                                   | Baseline selector, sparkline bands         |
-
-These endpoints should be defined in the backend specification and built before or in parallel with the UI phases that consume them.
-
 ### 5.2 Trend Chart Design
 
 The primary chart shows decay-weighted score over time. It is the centerpiece of the detail page.
@@ -707,15 +719,6 @@ The primary chart shows decay-weighted score over time. It is the centerpiece of
 
 In Summary mode, only show the decay-weighted chart with simpler axis labels. In Detailed mode, show the toggle tabs.
 
-**Backend dependencies:** Several chart views require backend features that are built in later sprints:
-
-- "Semantic drift visualization" requires baseline embedding centroids (V3 Addendum Sprint F — Novel Threat Detection).
-- "High-water mark" requires persisted historical maximum scores per category (computed during weekly aggregation).
-- "Severity mix" requires per-tier weekly aggregates to already be stored (V3 Addendum Sprint A — Source Health schema, which adds weekly_aggregates table).
-- Baseline overlay selector requires baseline period statistics to be pre-computed and stored.
-
-Chart toggles that depend on unavailable data should be disabled with a tooltip: "Requires [feature] — coming soon."
-
 ### 5.3 Evidence Panel
 
 Two-column layout on desktop, stacked on mobile.
@@ -738,7 +741,6 @@ Displays the skeptical AI assessment. In Summary mode, show a collapsed summary 
 
 - **Keyword review**: For each matched keyword, the AI's assessment of whether it's a genuine concern or false positive
 - **Recommended status**: Same or lower than keyword engine result. **The AI can never raise the severity — the keyword engine is the ceiling.** The UI should display this constraint explicitly: "The AI reviewer can confirm or recommend lowering the automated assessment, but cannot raise it."
-  - **Implementation note:** This ceiling constraint is enforced backend-side (in the AI assessment service, not just in the UI). The UI label is a transparency feature, not a client-side enforcement mechanism. The backend should return the ceiling level as part of the AI assessment response so the UI can display: "AI assessment capped at [level] (keyword engine ceiling)."
 - **Downgrade reasoning**: If AI recommends lower status, why
 - **Evidence for**: What supports the concerning assessment
 - **Evidence against**: What suggests things aren't as bad (REQUIRED — this always appears)
@@ -778,8 +780,6 @@ This page answers: "What exactly happened in this category during this specific 
 3. **Content volume**: The keyword matches, document table, and AI notes are substantial — a modal would feel cramped
 
 The back-link ("← Back to Following Court Orders") keeps the category context one click away.
-
-**URL stability requirement:** Since these pages are designed for sharing and deep-linking, they must be independently loadable — navigating directly to `/category/courts/week/2025-02-03` must work without any prior navigation state. The page fetches all needed data on mount via the `GET /api/category/[key]/week/[date]` endpoint (see §5.1A). No client-side state from the parent category page is required.
 
 ### 5A.1 Page Structure
 
@@ -1007,13 +1007,6 @@ Route: `/rhetoric`
 
 This page answers: "Are officials following through on what they say?"
 
-**Data dependencies:**
-
-- The `intent_weekly` table and rhetoric-fetcher service already exist and can power the Summary-mode table (policy area, top rhetoric keyword, top action keyword, lag in weeks).
-- The Detailed-mode "matched pairs" visualization (§8.3) — linking specific rhetoric statements to specific government actions with document references — requires a statement-to-action matching engine that does not yet exist. This is new backend work, not covered by the current V3 Addendum sprints.
-- The rhetoric-to-keyword gaps section (§8.4) depends on V3 Addendum Sprint G (Rhetoric Pipeline).
-- **Recommendation:** Build Summary mode first with existing data; defer Detailed mode matched-pairs to a later sprint that adds the matching engine.
-
 ### 8.1 Page Structure
 
 ```
@@ -1143,13 +1136,6 @@ Each gap card shows:
 Route: `/p2025`
 
 This page answers: "How much of the plan has been implemented?"
-
-**Data dependencies:**
-
-- 14 seed proposals exist in `lib/data/p2025/seed-proposals.ts` with a keyword matcher and LLM judge in `p2025-matcher.ts`.
-- However, no persisted implementation-tracking status exists — the "% implemented" headline stat, per-proposal status (Not Started / In Progress / Implemented / Exceeded / Abandoned), and match counts all require a `p2025_tracking` table or equivalent that stores matcher results across weekly runs.
-- The "Exceeded" detection requires LLM reasoning about whether government actions go beyond what the proposal called for — this is currently a single-run assessment, not a persisted status.
-- **Recommendation:** The P2025 page needs a backend sprint to add persistent tracking before the UI can render meaningful progress data. The seed proposals and matcher exist, but the aggregation and status persistence layer does not.
 
 ### 9.1 Page Structure
 
@@ -1380,6 +1366,170 @@ The trend is computed from `weekOverWeekVolumeChange` and consecutive weeks of d
 
 ---
 
+## 9B. External Indices Page — "What Do the Experts Say?"
+
+Route: `/indices`
+
+This page answers: "How do independent expert assessments compare with what the documentary record shows?"
+
+### 9B.1 Context
+
+External democracy indices (V-Dem, Freedom House, Bright Line Watch, EIU, Century Foundation) provide methodologically independent assessments through expert surveys. They publish annually or quarterly — a fundamentally different cadence from the system's weekly document analysis. This page displays them as a validation layer, not as scores to be combined with the system's own assessments.
+
+The V3 addendum (§14.5, Risk Reminder #18) is explicit: "Agreement between the system and external indices strengthens both. Disagreement is informative, not a defect." And Risk Reminder #19: sparse data must not be interpolated to create a false impression of weekly resolution.
+
+### 9B.2 Page Structure
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  What Do Independent Experts Say?                           │
+│                                                             │
+│  Democracy Monitor analyzes the government documentary      │
+│  record. These independent indices assess democratic health │
+│  through expert surveys. Here's how they compare.           │
+│  [Experimental]                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  INDEX SUMMARY CARDS (one per index)                        │
+│                                                             │
+│  ┌─────────────────────┐ ┌─────────────────────┐           │
+│  │ V-Dem               │ │ Freedom House       │           │
+│  │ 2025 · Annual       │ │ 2025 · Annual       │           │
+│  │ Score: 72.3 (↓ -1.2)│ │ Score: 83 (↓ -2)   │           │
+│  │ Direction: declining │ │ Direction: declining │           │
+│  │ Published: Mar 2025  │ │ Published: Feb 2025  │           │
+│  └─────────────────────┘ └─────────────────────┘           │
+│  ┌─────────────────────┐ ┌─────────────────────┐           │
+│  │ Bright Line Watch   │ │ EIU Democracy Index │           │
+│  │ Q4 2025 · Quarterly │ │ 2025 · Annual       │           │
+│  │ Score: 3.7 (→ 0.0) │ │ Score: 7.85 (↓ -.08)│           │
+│  │ Direction: stable   │ │ Direction: declining │           │
+│  │ Published: Jan 2026  │ │ Published: Feb 2026  │           │
+│  └─────────────────────┘ └─────────────────────┘           │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  PER-CATEGORY CORROBORATION                                 │
+│                                                             │
+│  Where external index subcategories map to our categories,  │
+│  we can compare findings:                                   │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ courts — Following Court Orders                        ││
+│  │ Our assessment: Drift                                  ││
+│  │ V-Dem "Judicial independence": declined (↓)            ││
+│  │ ✓ Independent experts and documentary record agree     ││
+│  ├─────────────────────────────────────────────────────────┤│
+│  │ mediaFreedom — Press & Information Freedom             ││
+│  │ Our assessment: Warning                                ││
+│  │ Freedom House "Freedom of expression": declined (↓)    ││
+│  │ ✓ Independent experts and documentary record agree     ││
+│  ├─────────────────────────────────────────────────────────┤│
+│  │ civilService — Government Worker Protections           ││
+│  │ Our assessment: Capture                                ││
+│  │ V-Dem "Civil service independence": no change (→)      ││
+│  │ ⚠ Our assessment is more concerning than the external  ││
+│  │   index — this may reflect our system detecting early  ││
+│  │   signals not yet visible in annual expert surveys     ││
+│  ├─────────────────────────────────────────────────────────┤│
+│  │ elections — Election Integrity                         ││
+│  │ Our assessment: Stable                                 ││
+│  │ Freedom House "Electoral integrity": no change (→)     ││
+│  │ ✓ Independent experts and documentary record agree     ││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                             │
+│  Note: These mappings are approximate. External indices use │
+│  different definitions and methodologies than our category  │
+│  system. Agreement and disagreement are both informative.   │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  HISTORICAL SCORES (Detailed mode)                          │
+│  Per-index score history going back to 2020 or earlier      │
+│  Displayed as point markers (not interpolated lines) on a   │
+│  timeline — one marker per report year/quarter              │
+│  Baseline reference: Biden 2022 scores shown for context    │
+│                                                             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ABOUT THESE INDICES                                        │
+│  Brief description of each index: who publishes it, what    │
+│  methodology they use, how to access the full report.       │
+│  Links to source URLs.                                      │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 9B.3 Index Summary Cards
+
+Each card shows:
+
+- Index name and publisher
+- Report period (year or quarter) and cadence label (Annual / Quarterly / Infrequent)
+- Overall score with year-over-year change in parentheses
+- Direction with arrow icon (↑ improving, → stable, ↓ declining)
+- Publication date
+- Link to the source report
+
+Cards are arranged in a 2-column grid (desktop), stacking to 1 column on mobile.
+
+**Stale data indicator**: If the most recent report is >18 months old, the card shows a muted "Last updated [date]" notice. Annual indices are expected to be 6–12 months behind; that's normal and shouldn't alarm users.
+
+### 9B.4 Per-Category Corroboration
+
+The most valuable part of this page. For each system category that has a mapped external index subcategory, show a side-by-side comparison:
+
+- The system's current assessment (status tier)
+- The external index's most recent score and direction for the mapped subcategory
+- An agreement/divergence label:
+  - **✓ Agreement**: Both show the same direction (both declining, or both stable)
+  - **⚠ Our assessment is more concerning**: System shows elevated risk, external index doesn't (yet). Frame as: "This may reflect our system detecting early signals not yet visible in annual expert surveys"
+  - **⚠ External index is more concerning**: External index shows decline, system doesn't. Frame as: "The expert assessment may reflect factors outside the documentary record we analyze"
+
+**Important framing**: Divergence is always presented as "both perspectives are informative" — never as "one of us is wrong." The methodologies are fundamentally different (automated document scanning vs. expert survey), so disagreement is expected and valuable.
+
+**Categories without mappings**: Not shown in this section. Only categories with at least one mapped external subcategory appear.
+
+### 9B.5 Historical Scores Chart (Detailed Mode)
+
+A timeline visualization showing each index's scores over time. **Critical design constraint from V3 addendum Risk Reminder #19**: do not interpolate between data points. Annual indices produce one point per year. Quarterly indices produce four points per year.
+
+**Display as point markers on a timeline**, not as connected lines:
+
+```
+Score
+ 100 ┤
+  90 ┤                                    ● FH
+  80 ┤              ● FH    ● FH    ● FH
+  75 ┤  ● V-Dem     ● V-Dem                 ● V-Dem
+  70 ┤                       ● V-Dem
+     ┤
+   0 ┼───────────────────────────────────────────
+     2020    2021    2022    2023    2024    2025
+                      ↑
+                 Biden 2022 baseline
+```
+
+- Each index uses a distinct marker shape and color
+- Points are not connected — no lines between annual data points
+- Biden 2022 baseline marked as a vertical reference
+- Hover on any point shows: index name, score, year-over-year change, direction
+- Bright Line Watch quarterly data appears as more frequent points on the same timeline
+
+### 9B.6 About These Indices
+
+A brief reference section (collapsed in Summary mode, visible in Detailed mode) describing each index:
+
+| Index              | Method                                 | What It Measures                                                    | Access                       |
+| ------------------ | -------------------------------------- | ------------------------------------------------------------------- | ---------------------------- |
+| V-Dem              | 400+ indicators, expert-coded          | Liberal democracy, electoral democracy, judicial independence, etc. | Free dataset                 |
+| Freedom House      | Expert scoring, 25 indicators          | Political rights, civil liberties                                   | Free report                  |
+| Bright Line Watch  | Expert + public surveys, 31 principles | Democratic norms and practices                                      | Survey results on website    |
+| EIU                | Expert survey, 60 indicators           | Electoral process, civil liberties, government function             | Summary free, full paywalled |
+| Century Foundation | Expert panel, 23 subquestions          | Democratic institutions health                                      | Report on website            |
+
+---
+
 ## 10. Responsive Design
 
 ### 10.1 Breakpoints
@@ -1397,20 +1547,6 @@ The trend is computed from `weekOverWeekVolumeChange` and consecutive weeks of d
 - **Charts**: Full-width, with simpler axis labels. Hover interactions replaced by tap-to-reveal.
 - **Methodology**: Sidebar nav becomes a dropdown/accordion at top of page.
 - **Reading level toggle**: Always visible in header. Defaults to Summary on mobile.
-
-**Feature visibility by breakpoint:**
-
-| Feature                | Desktop (≥1024)        | Tablet (768-1023)      | Mobile (<768)          |
-| ---------------------- | ---------------------- | ---------------------- | ---------------------- |
-| Category grid columns  | 3                      | 2                      | 1                      |
-| Sparkline position     | Inline in card         | Inline in card         | Full-width below title |
-| Evidence panel         | 2 columns side-by-side | 2 columns side-by-side | Stacked, collapsed     |
-| Chart toggle tabs      | Horizontal tabs        | Dropdown selector      | Dropdown selector      |
-| Document table         | Full table             | Full table             | Card list              |
-| Baseline selector      | Multi-select pills     | Multi-select pills     | Hidden (desktop only)  |
-| Semantic drift section | Visible (Detailed)     | Visible (Detailed)     | Hidden                 |
-| Methodology sidebar    | Sidebar                | Sidebar                | Top dropdown           |
-| Admin nav              | Horizontal             | Horizontal             | Hamburger              |
 
 ### 10.3 Progressive Disclosure on Mobile
 
@@ -1485,8 +1621,6 @@ POST /api/admin/logout
 - Secure flag ensures cookie only sent over HTTPS (in production)
 - Rate limiting on the auth endpoint prevents brute force
 - Token is rotatable: change the env var, all existing cookies become invalid, reviewers re-authenticate
-- **Single-admin limitation:** This mechanism shares one token across all reviewers, so audit trails track the `reviewer` name field (self-reported), not an authenticated identity. This is acceptable for a small maintainer team but is not suitable for multi-organization admin scenarios. See §10A.6 for future multi-reviewer considerations.
-- **Existing API gap:** The current `pages/api/reviews.ts` has no auth middleware — it must be updated to require the admin cookie before the review queue ships.
 
 **UI specification:**
 
@@ -2001,8 +2135,6 @@ Every export file includes a preamble header:
 # License: [TBD — consider CC BY 4.0 for data, AGPL for code]
 ```
 
-**Action required:** Resolve the license decision before implementing the export feature. The preamble template should use a placeholder that is easy to update globally (a named constant in `lib/data/export-config.ts`, not a hardcoded string in each export function).
-
 ### 12.5 UI Integration
 
 Export is contextual, not a dedicated page:
@@ -2036,7 +2168,7 @@ Baseline: [✓ Biden 2024] [✓ Obama 2013] [  Biden 2021]
 
 - Multi-select pills (not checkboxes — pills are more compact and visually distinct)
 - Each selected baseline adds its own reference band to the chart in a different shade
-- Maximum 2 baselines displayed simultaneously (3 bands = visual clutter). This is a UI constraint enforced client-side — the chart component should accept an arbitrary number of baseline bands (future-proof), with the selection UI limiting to 2.
+- Maximum 2 baselines displayed simultaneously (3 bands = visual clutter)
 - Default: Biden 2024 only (the primary reference)
 - Each band is labeled on the chart: "Biden 2024 avg ± 1σ" in small text
 - The "×baseline" number on category cards always uses the default baseline (Biden 2024)
@@ -2126,33 +2258,6 @@ The component architecture makes this straightforward — the embed page/script 
 
 Sequenced for a public launch within one month. Summary mode (general public) is the primary deliverable; Detailed mode layered on top.
 
-**Seed data prerequisite:** All UI phases depend on having realistic data to render. Before any UI phase begins, the seed data pipeline must produce version-controlled JSON fixtures containing baseline statistics, Trump T2 weekly aggregates, document scores, and keyword-tuned assessments with AI Skeptic review. The pipeline is:
-
-1. **Generate baseline** — Run `backfill-baseline` for Biden 2024 (FR + WH + GDELT), compute baseline statistics, export fixtures
-2. **Generate T2 backfill** — Run `backfill` with AI Skeptic enabled from 2025-01-20 to present (FR + WH + GDELT), export fixtures
-3. **AI-assisted human review** — Generate targeted review report from AI Skeptic disagreements (false positives, ambiguous keywords, low-confidence assessments). Human reviews flagged items, approves or overrides AI suggestions.
-4. **Keyword tuning** — Apply approved changes to keyword dictionaries and suppression rules. Re-score, re-export fixtures. Create regression test fixtures from review decisions.
-5. **Commit seed data** — Final fixtures committed to `lib/seed/fixtures/`. New deployments run `pnpm seed:import` — no API keys required.
-
-See V3 Addendum Risk Reminders #12-14 for details on the backfill and seed data pipeline.
-
-**Backend sprint dependencies (V3 Addendum):** Several UI phases require backend sprints to complete first. These must be coordinated in the unified sprint sequence:
-
-| UI Phase                                         | Backend Dependency                                                             | V3 Addendum Sprint |
-| ------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------ |
-| Phase 1 (Landing page sparklines)                | Decay-weighted scores persisted in weekly_aggregates                           | Seed data pipeline |
-| Phase 1 (Data integrity banner)                  | Meta-assessment API                                                            | Sprint C           |
-| Phase 1 (Source health summary bar)              | Source health tracker                                                          | Sprint A-B         |
-| Phase 2 (Category detail charts)                 | Weekly aggregates + baseline statistics                                        | Seed data pipeline |
-| Phase 2 (Semantic drift)                         | Baseline embedding centroids                                                   | Sprint F           |
-| Phase 3 (Keyword health on methodology page)     | Keyword health analysis                                                        | Sprint E           |
-| Phase 3 (Rhetoric → Action, Detailed mode)       | Statement-to-action matching engine                                            | Not yet scheduled  |
-| Phase 3 (Rhetoric-to-keyword gaps)               | Rhetoric pipeline                                                              | Sprint G           |
-| Phase 3 (P2025 progress tracking)                | P2025 tracking persistence                                                     | Not yet scheduled  |
-| Phase 4 (Feedback fields in review queue)        | Feedback store                                                                 | Sprint D           |
-| Phase 4 (Methodology proposals from all sources) | Suppression learning, novelty detection, rhetoric pipeline, expert submissions | Sprints E-H        |
-| Phase 4 (Admin auth)                             | No backend dependency (new code)                                               | —                  |
-
 ### Phase 1: Core Landing Page (public-ready)
 
 1. Implement CSS custom properties color system with light/dark mode support
@@ -2191,22 +2296,23 @@ See V3 Addendum Risk Reminders #12-14 for details on the backfill and seed data 
 28. Add rhetoric-to-keyword gaps section (Detailed mode, §8.4)
 29. Build P2025 comparison page (embed-ready scoreboard component per §14, Summary + Detailed per §9.2, §9.3)
 30. Build source health page at `/health` (§9A)
+31. Build external indices page at `/indices` (§9B) and landing page panel (§4.10)
 
 ### Phase 4: Admin Interface
 
-31. Build admin authentication flow — login page, middleware, cookie management (§10A.1)
-32. Build human review queue at `/admin/reviews` (§10A.3)
-33. Build extended review decision form with feedback fields (§10A.4)
-34. Build methodology proposals page at `/admin/proposals` with source filtering and multi-source card types (§10B)
-35. Build expert keyword submission form at `/admin/submissions` (§10C)
-36. Build admin navigation bar with pending count badges (§10B.2)
+32. Build admin authentication flow — login page, middleware, cookie management (§10A.1)
+33. Build human review queue at `/admin/reviews` (§10A.3)
+34. Build extended review decision form with feedback fields (§10A.4)
+35. Build methodology proposals page at `/admin/proposals` with source filtering and multi-source card types (§10B)
+36. Build expert keyword submission form at `/admin/submissions` (§10C)
+37. Build admin navigation bar with pending count badges (§10B.2)
 
 ### Phase 5: Responsive Polish
 
-35. Mobile layout testing and refinement
-36. Progressive disclosure implementation for mobile
-37. Performance optimization (lazy loading for charts, virtual scrolling for tables)
-38. Data integrity banner condensed mode for non-landing pages (§4.7)
+38. Mobile layout testing and refinement
+39. Progressive disclosure implementation for mobile
+40. Performance optimization (lazy loading for charts, virtual scrolling for tables)
+41. Data integrity banner condensed mode for non-landing pages (§4.7)
 
 ---
 
@@ -2220,7 +2326,7 @@ See V3 Addendum Risk Reminders #12-14 for details on the backfill and seed data 
 
 4. ~~**Notification/alert system?**~~ **Decision: Not now.** Out of scope for initial launch.
 
-5. ~~**Embeddable widgets?**~~ **Decision: Design for it, don't build it yet.** Component architecture requires self-contained, props-driven components (see §14). This makes future embeds straightforward without any refactoring.
+5. ~~**Embeddable widgets?**~~ **Decision: Design for it, don't build it yet.** Component architecture requires self-contained, props-driven components (see §12). This makes future embeds straightforward without any refactoring.
 
 ### Remaining Open Questions
 

@@ -37,7 +37,7 @@ describe('CATEGORIES', () => {
     expect(keys).toContain('courts');
     expect(keys).toContain('military');
     expect(keys).toContain('rulemaking');
-    expect(keys).toContain('indices');
+    expect(keys).toContain('executiveActions');
     expect(keys).toContain('infoAvailability');
     expect(keys).toContain('elections');
     expect(keys).toContain('mediaFreedom');
