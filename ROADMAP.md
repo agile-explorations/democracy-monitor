@@ -193,17 +193,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 14: Biden 2022 Baseline + Rhetoric-Based Keyword Gaps
 
+> **Status: In progress.** Baseline generated. Category rename `indices` → `executiveActions` completed (V3 Addendum §14.2). Review display improved. Interactive review + keyword refinement remaining.
+
 **Goal:** Switch to Biden 2022 as primary "steady state normal governance" baseline. Build rhetoric-to-keyword gap analysis for `missingKeywords`. First full keyword refinement cycle with new baseline.
 
 **Depends on:** Sprint 13 (keyword tuning pipeline)
 
 **Code work (~300 lines new/modified):**
 
-1. Run `build-baseline --baseline biden_2022 --model gpt-4o-mini` for Jan 2022 – Dec 2022
+1. ~~Run `build-baseline --baseline biden_2022 --model gpt-4o-mini` for Jan 2022 – Dec 2022~~ — **Done**
 2. Create rhetoric-to-keyword gap analysis (`lib/seed/rhetoric-keyword-gaps.ts`): frequency analysis of terms in documents table (source: whitehouse, gdelt) mapped to categories, compared against `assessment-rules.ts` keyword dictionaries. Surfaces terms appearing in N+ rhetoric documents for a category but absent from the keyword dictionary.
 3. Integrate `missingKeywords` suggestions into post-session aggregate report
 4. Run first full refinement cycle against Biden 2022 baseline: backfill → review → aggregate → apply → re-run → validate
 5. Export Biden 2022 as fixture set alongside Biden 2024
+6. ~~Rename `indices` → `executiveActions`~~ — **Done** (added mid-sprint per V3 Addendum §14.2)
 
 **E2E test:**
 

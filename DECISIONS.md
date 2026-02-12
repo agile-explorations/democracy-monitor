@@ -37,7 +37,34 @@ Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, 
 
 ---
 
-## Forward-Looking Decisions
+## Sprint 14 (in progress): Biden 2022 Baseline + Category Rename
+
+**Planned:** Biden 2022 baseline generation, rhetoric-based keyword gaps, first keyword refinement cycle.
+
+**Actual so far:** Biden 2022 baseline generated (11 categories, ~55 review items flagged). Category rename `indices` → `executiveActions` added mid-sprint after spec review identified naming confusion. Interactive review display improved. Baseline review not yet started.
+
+**Key decisions:**
+
+- **`indices` → `executiveActions` rename** (V3 Addendum §14.2): The `indices` key was misleading — it implied external democracy indices, but the category actually tracks executive action volume/tempo. Renamed to `executiveActions` with title "Executive Action Volume". DB migration applied to 9 tables. Done during baseline calibration as spec recommends, before review decisions reference the old key.
+- **`executiveActions` vs `rulemaking` kept distinct** (V3 Addendum §14.3): Related but different signals. `executiveActions` = presidential action pace/volume. `rulemaking` = independent agency capture. A president can issue many EOs without interfering with agencies. Collapsing would lose signal.
+- **Review display: always show matched keywords**: Changed from hiding "Matched Keywords" line when empty to showing `<none>`. Reviewers need to see explicitly that no keywords matched (e.g., when Warning comes from volume threshold, not keyword hits).
+- **Review display: document count + threshold**: Added `Documents: N (below minimum of 3)` line. Shows reviewers why an item got Warning status despite no keyword matches — the volume threshold (`MIN_ITEMS_FOR_STABLE = 3`) was the trigger.
+- **Alert metadata extended**: Added `documentCount` and `insufficientData` fields to `flagForReview()` metadata. Also added `keywordMatches` (done in prior session). All three fields stored at flag time so they're available during review without re-querying assessments.
+- **External Indices as separate capability** (V3 Addendum §14.5, UI Spec §9B): V-Dem, Freedom House, etc. will be a cross-reference validation layer at `/indices`, not part of the 11-category keyword pipeline. Spec updated with full page spec (§9B) and landing panel (§4.10). Implementation deferred to Sprint K (~Sprint 20+).
+
+**Spec updates shipped:**
+
+- V3 Addendum: Added §14.1-14.5 (indices problem + rename + external indices), Sprint K, Risk Reminders 16-19
+- UI Spec: §4.6 updated (`executiveActions`), §4.10 (External Indices Panel), §9B.1-9B.6 (External Indices Page), nav + implementation items
+
+**Remaining (Sprint 14):**
+
+- Re-run baseline to regenerate alerts with `executiveActions` category
+- Interactive review of ~55 flagged items
+- Rhetoric-based keyword gap analysis (`missingKeywords`)
+- First refinement cycle: review → aggregate → apply → re-run → validate
+
+---
 
 ### Keyword refinement workflow (remaining steps)
 
