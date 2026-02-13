@@ -4,6 +4,7 @@ import {
   aggregateFalsePositives,
   aggregateTierChanges,
   aggregateSuppressions,
+  detectCategoryFindings,
   buildAggregateReport,
   formatAggregateMarkdown,
 } from '@/lib/seed/aggregate-feedback';
@@ -118,6 +119,48 @@ describe('aggregateSuppressions', () => {
   });
 });
 
+describe('detectCategoryFindings', () => {
+  it('detects volume-only triggers when 2+ alerts have no keyword matches', () => {
+    const alerts = [
+      { id: 1, category: 'infoAvailability', metadata: { keywordMatches: [] } },
+      { id: 2, category: 'infoAvailability', metadata: { keywordMatches: [] } },
+      { id: 3, category: 'infoAvailability', metadata: { keywordMatches: ['foia denied'] } },
+    ];
+    const findings = detectCategoryFindings(alerts);
+    const volumeFinding = findings.find((f) => f.finding === 'volume-only-triggers');
+    expect(volumeFinding).toBeDefined();
+    expect(volumeFinding!.category).toBe('infoAvailability');
+    expect(volumeFinding!.alertCount).toBe(2);
+  });
+
+  it('detects AI consistently overriding keyword status', () => {
+    const alerts = Array.from({ length: 4 }, (_, i) => ({
+      id: i + 1,
+      category: 'courts',
+      metadata: {
+        keywordStatus: 'Drift',
+        aiRecommendedStatus: 'Warning',
+        resolution: { decision: 'approve' },
+      },
+    }));
+    const findings = detectCategoryFindings(alerts);
+    const aiOverride = findings.find((f) => f.finding === 'ai-consistently-overrides');
+    expect(aiOverride).toBeDefined();
+    expect(aiOverride!.alertCount).toBe(4);
+  });
+
+  it('returns empty for categories with no systemic issues', () => {
+    const alerts = [
+      {
+        id: 1,
+        category: 'courts',
+        metadata: { keywordMatches: ['injunction issued'], keywordStatus: 'Warning' },
+      },
+    ];
+    expect(detectCategoryFindings(alerts)).toHaveLength(0);
+  });
+});
+
 describe('buildAggregateReport', () => {
   it('builds report with keyword removal recommendations above threshold', () => {
     // 3 out of 4 reviews flag "injunction issued" as FP (75% > 50%)
@@ -169,6 +212,7 @@ describe('buildAggregateReport', () => {
     expect(report.totalResolved).toBe(0);
     expect(report.keywordRecommendations).toHaveLength(0);
     expect(report.suppressionRecommendations).toHaveLength(0);
+    expect(report.categoryFindings).toHaveLength(0);
   });
 });
 

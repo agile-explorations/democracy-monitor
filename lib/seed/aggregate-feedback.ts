@@ -43,12 +43,20 @@ export interface SuppressionRecommendation {
   occurrences: number;
 }
 
+export interface CategoryFinding {
+  category: string;
+  finding: 'volume-only-triggers' | 'ai-consistently-overrides';
+  detail: string;
+  alertCount: number;
+}
+
 export interface AggregateReport {
   generatedAt: string;
   totalResolved: number;
   totalWithFeedback: number;
   keywordRecommendations: KeywordRecommendation[];
   suppressionRecommendations: SuppressionRecommendation[];
+  categoryFindings: CategoryFinding[];
 }
 
 // --- Pure functions ---
@@ -166,6 +174,52 @@ export function aggregateSuppressions(
   return suppressions;
 }
 
+/** Detect category-level systemic issues from resolved alerts. */
+export function detectCategoryFindings(alerts: ResolvedAlert[]): CategoryFinding[] {
+  const findings: CategoryFinding[] = [];
+  const byCategory = new Map<string, ResolvedAlert[]>();
+
+  for (const alert of alerts) {
+    const list = byCategory.get(alert.category) ?? [];
+    list.push(alert);
+    byCategory.set(alert.category, list);
+  }
+
+  for (const [category, catAlerts] of byCategory) {
+    const noKeywordMatches = catAlerts.filter((a) => {
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const matches = meta.keywordMatches as string[] | undefined;
+      return !matches || matches.length === 0;
+    });
+
+    if (noKeywordMatches.length >= 2) {
+      findings.push({
+        category,
+        finding: 'volume-only-triggers',
+        detail: `${noKeywordMatches.length}/${catAlerts.length} alerts triggered by volume threshold with no keyword matches. Signal queries may be too broad or volume thresholds too low.`,
+        alertCount: noKeywordMatches.length,
+      });
+    }
+
+    const aiOverrides = catAlerts.filter((a) => {
+      const meta = (a.metadata ?? {}) as Record<string, unknown>;
+      const resolution = meta.resolution as Record<string, unknown> | undefined;
+      return resolution?.decision === 'approve' && meta.keywordStatus !== meta.aiRecommendedStatus;
+    });
+
+    if (aiOverrides.length >= 3) {
+      findings.push({
+        category,
+        finding: 'ai-consistently-overrides',
+        detail: `AI recommendation accepted over keyword status in ${aiOverrides.length}/${catAlerts.length} alerts. Keyword dictionary may need tuning for this category.`,
+        alertCount: aiOverrides.length,
+      });
+    }
+  }
+
+  return findings.sort((a, b) => b.alertCount - a.alertCount);
+}
+
 /** Build final aggregate report from resolved alerts. */
 export function buildAggregateReport(alerts: ResolvedAlert[]): AggregateReport {
   const entries = extractFeedbackEntries(alerts);
@@ -226,6 +280,7 @@ export function buildAggregateReport(alerts: ResolvedAlert[]): AggregateReport {
     totalWithFeedback: entries.length,
     keywordRecommendations,
     suppressionRecommendations,
+    categoryFindings: detectCategoryFindings(alerts),
   };
 }
 
@@ -240,10 +295,12 @@ export function formatAggregateMarkdown(report: AggregateReport): string {
     '',
   ];
 
-  if (
-    report.keywordRecommendations.length === 0 &&
-    report.suppressionRecommendations.length === 0
-  ) {
+  const hasRecommendations =
+    report.keywordRecommendations.length > 0 ||
+    report.suppressionRecommendations.length > 0 ||
+    report.categoryFindings.length > 0;
+
+  if (!hasRecommendations) {
     lines.push('No actionable recommendations. All keywords performing as expected.');
     return lines.join('\n');
   }
@@ -270,6 +327,19 @@ export function formatAggregateMarkdown(report: AggregateReport): string {
     lines.push('|---------|----------|-------------|');
     for (const rec of report.suppressionRecommendations) {
       lines.push(`| ${rec.pattern} | ${rec.category} | ${rec.occurrences} |`);
+    }
+    lines.push('');
+  }
+
+  if (report.categoryFindings.length > 0) {
+    lines.push('## Category-Level Findings', '');
+    lines.push(
+      'These findings indicate systemic issues beyond individual keywords.',
+      'They may require changes to signal queries or volume thresholds.',
+      '',
+    );
+    for (const f of report.categoryFindings) {
+      lines.push(`- **${f.category}** (${f.finding}): ${f.detail}`);
     }
     lines.push('');
   }

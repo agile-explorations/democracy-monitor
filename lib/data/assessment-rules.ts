@@ -335,7 +335,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'data migration',
       ],
     },
-    volumeThreshold: { warning: 1, drift: 3, capture: 5 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   elections: {
     keywords: {

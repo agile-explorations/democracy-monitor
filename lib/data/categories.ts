@@ -224,13 +224,13 @@ export const CATEGORIES: Category[] = [
       },
       {
         name: 'FOIA & Transparency Rules',
-        url: '/api/federal-register?term=freedom+of+information+transparency',
+        url: '/api/federal-register?term=freedom+of+information+act+transparency+disclosure',
         type: 'federal_register',
         note: 'FOIA-related Federal Register documents',
       },
       {
         name: 'Public Records & Data Access',
-        url: '/api/federal-register?term=public+records+data+availability',
+        url: '/api/federal-register?term=open+government+data+access+public+records+request',
         type: 'federal_register',
         note: 'Open government and data access documents',
       },
