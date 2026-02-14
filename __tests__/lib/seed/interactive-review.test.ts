@@ -5,6 +5,7 @@ import {
   formatEvidenceLines,
   formatAiFeedbackLines,
   extractAiFeedback,
+  getCategoryKeywords,
   parseStatusInput,
   buildResolveArgs,
   formatProgressSummary,
@@ -22,7 +23,9 @@ function makeAlert(overrides: Record<string, unknown> = {}) {
       aiRecommendedStatus: 'Stable',
       aiConfidence: 0.5,
       aiReasoning: 'Looks normal',
-      keywordReview: [{ keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine' }],
+      keywordReview: [
+        { keyword: 'injunction issued', assessment: 'false_positive', reasoning: 'Routine' },
+      ],
     },
     createdAt: new Date('2024-06-15'),
     ...overrides,
@@ -33,7 +36,7 @@ describe('extractAiFeedback', () => {
   it('extracts false positive keywords from AI verdicts', () => {
     const feedback = extractAiFeedback(makeAlert());
     expect(feedback).toBeDefined();
-    expect(feedback!.falsePositiveKeywords).toEqual(['emergency']);
+    expect(feedback!.falsePositiveKeywords).toEqual(['injunction issued']);
   });
 
   it('extracts suppression suggestions from suppressionContext', () => {
@@ -42,7 +45,7 @@ describe('extractAiFeedback', () => {
         metadata: {
           keywordReview: [
             {
-              keyword: 'reorganization',
+              keyword: 'court ordered',
               assessment: 'false_positive',
               reasoning: 'Routine admin',
               suppressionContext: 'routine administrative context',
@@ -52,7 +55,7 @@ describe('extractAiFeedback', () => {
       }),
     );
     expect(feedback!.suppressionSuggestions).toEqual([
-      'reorganization: routine administrative context',
+      'court ordered: routine administrative context',
     ]);
   });
 
@@ -62,7 +65,7 @@ describe('extractAiFeedback', () => {
         metadata: {
           keywordReview: [
             {
-              keyword: 'restructuring',
+              keyword: 'delayed compliance',
               assessment: 'ambiguous',
               reasoning: 'Too broad',
               suggestedAction: 'move_to_warning',
@@ -73,7 +76,7 @@ describe('extractAiFeedback', () => {
     );
     expect(feedback!.tierChanges).toEqual([
       {
-        keyword: 'restructuring',
+        keyword: 'delayed compliance',
         currentTier: 'unknown',
         suggestedTier: 'warning',
         reason: 'Too broad',
@@ -97,6 +100,21 @@ describe('extractAiFeedback', () => {
   it('returns undefined when keywordReview is empty', () => {
     expect(extractAiFeedback(makeAlert({ metadata: {} }))).toBeUndefined();
     expect(extractAiFeedback(makeAlert({ metadata: { keywordReview: [] } }))).toBeUndefined();
+  });
+
+  it('filters out AI-hallucinated keywords not in the category dictionary', () => {
+    const feedback = extractAiFeedback(
+      makeAlert({
+        metadata: {
+          keywordReview: [
+            { keyword: 'injunction issued', assessment: 'false_positive', reasoning: 'Routine' },
+            { keyword: 'drift', assessment: 'false_positive', reasoning: 'Not a real keyword' },
+            { keyword: 'courts', assessment: 'false_positive', reasoning: 'Category name' },
+          ],
+        },
+      }),
+    );
+    expect(feedback!.falsePositiveKeywords).toEqual(['injunction issued']);
   });
 
   it('ignores suggestedAction=keep', () => {
@@ -149,14 +167,14 @@ describe('formatItemForDisplay', () => {
 
   it('shows keyword verdicts', () => {
     const output = formatItemForDisplay(makeAlert(), 0, 1);
-    expect(output).toContain('emergency');
+    expect(output).toContain('injunction issued');
     expect(output).toContain('false_positive');
   });
 
   it('shows AI keyword suggestions section', () => {
     const output = formatItemForDisplay(makeAlert(), 0, 1);
     expect(output).toContain('AI Keyword Suggestions');
-    expect(output).toContain('False positives: emergency');
+    expect(output).toContain('False positives: injunction issued');
   });
 
   it('shows suggestedAction in keyword verdicts', () => {
@@ -165,7 +183,7 @@ describe('formatItemForDisplay', () => {
         metadata: {
           keywordReview: [
             {
-              keyword: 'restructuring',
+              keyword: 'delayed compliance',
               assessment: 'ambiguous',
               reasoning: 'Broad',
               suggestedAction: 'move_to_warning',
@@ -387,13 +405,13 @@ describe('bulkApproveAi', () => {
         metadata: {
           aiRecommendedStatus: 'Stable',
           keywordReview: [
-            { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine' },
+            { keyword: 'injunction issued', assessment: 'false_positive', reasoning: 'Routine' },
           ],
         },
       }),
     ];
     const result = bulkApproveAi(alerts, 'reviewer');
-    expect(result[0].decision.feedback?.falsePositiveKeywords).toEqual(['emergency']);
+    expect(result[0].decision.feedback?.falsePositiveKeywords).toEqual(['injunction issued']);
   });
 
   it('uses AI recommended status for each alert', () => {

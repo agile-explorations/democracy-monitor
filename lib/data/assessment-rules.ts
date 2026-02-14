@@ -47,7 +47,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'buyout offer',
       ],
     },
-    volumeThreshold: { warning: 5, drift: 10, capture: 20 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   fiscal: {
     keywords: {
@@ -90,7 +90,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'debt ceiling',
       ],
     },
-    volumeThreshold: { warning: 2, drift: 5, capture: 10 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   igs: {
     keywords: {
@@ -130,7 +130,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'ig hiring freeze',
       ],
     },
-    volumeThreshold: { warning: 2, drift: 4, capture: 8 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
     oversightGovDown: 'drift',
   },
   hatch: {
@@ -159,7 +159,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'partisan communication',
       ],
     },
-    volumeThreshold: { warning: 3, drift: 6, capture: 12 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   courts: {
     keywords: {
@@ -209,7 +209,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'mootness argument',
       ],
     },
-    volumeThreshold: { warning: 5, drift: 10, capture: 15 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   military: {
     keywords: {
@@ -252,7 +252,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'civil-military tension reported',
       ],
     },
-    volumeThreshold: { warning: 3, drift: 6, capture: 10 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   rulemaking: {
     keywords: {
@@ -374,7 +374,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'preclearance',
       ],
     },
-    volumeThreshold: { warning: 3, drift: 6, capture: 12 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
   mediaFreedom: {
     keywords: {
@@ -410,6 +410,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'reporter pool reduced',
       ],
     },
-    volumeThreshold: { warning: 2, drift: 5, capture: 10 },
+    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
   },
 };

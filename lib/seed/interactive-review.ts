@@ -6,6 +6,7 @@
  */
 
 import readline from 'readline';
+import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import type { ReviewFeedback } from '@/lib/seed/review-decisions';
 import type { ResolveDecision } from '@/lib/services/review-queue';
 import type { StatusLevel } from '@/lib/types';
@@ -59,25 +60,35 @@ const ACTION_TO_TIER: Record<string, string> = {
   move_to_capture: 'capture',
 };
 
+/** Get the set of all keywords for a category (lowercased). */
+export function getCategoryKeywords(category: string): Set<string> {
+  const rule = ASSESSMENT_RULES[category];
+  if (!rule) return new Set();
+  const all = [...rule.keywords.capture, ...rule.keywords.drift, ...rule.keywords.warning];
+  return new Set(all.map((k) => k.toLowerCase()));
+}
+
 /** Extract structured feedback from AI keyword verdicts in alert metadata. */
 export function extractAiFeedback(alert: AlertRow): ReviewFeedback | undefined {
   const meta = getAlertMeta(alert);
   const verdicts = meta.keywordReview as KeywordVerdict[] | undefined;
   if (!verdicts || verdicts.length === 0) return undefined;
 
+  const validKeywords = getCategoryKeywords(alert.category);
   const falsePositiveKeywords: string[] = [];
   const suppressionSuggestions: string[] = [];
   const tierChanges: ReviewFeedback['tierChanges'] = [];
 
   for (const v of verdicts) {
-    if (v.assessment === 'false_positive') {
+    const isValidKeyword = validKeywords.has(v.keyword.toLowerCase());
+    if (v.assessment === 'false_positive' && isValidKeyword) {
       falsePositiveKeywords.push(v.keyword);
     }
-    if (v.suppressionContext) {
+    if (v.suppressionContext && isValidKeyword) {
       suppressionSuggestions.push(`${v.keyword}: ${v.suppressionContext}`);
     }
     const targetTier = v.suggestedAction ? ACTION_TO_TIER[v.suggestedAction] : undefined;
-    if (targetTier) {
+    if (targetTier && isValidKeyword) {
       tierChanges.push({
         keyword: v.keyword,
         currentTier: 'unknown',

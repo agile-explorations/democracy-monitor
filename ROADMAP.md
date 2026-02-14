@@ -4,7 +4,7 @@ This document describes the planned sprint sequence for completing the Democracy
 
 **Specification documents:**
 
-- `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions (Sprints A-J)
+- `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15)
 - `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5)
 
 **Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
@@ -73,6 +73,7 @@ Both baseline and backfill scripts call `enhancedAssessment()` (the AI Skeptic) 
 | Biden 2021 baseline | ~52   | 11              | 572       | ~$0.57             |
 | Obama 2013 baseline | ~52   | 11              | 572       | ~$0.57             |
 | **Sprint 15 total** |       |                 | **1,144** | **~$1.14**         |
+| Sprint 15.1 cycle   | —     | —               | 0         | $0.00              |
 | **All 5 periods**   |       |                 | **2,926** | **~$2.93**         |
 
 gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same runs on Claude Sonnet 4.5 would cost ~$57 total ($3/1M input, $15/1M output) — 24x more for first-pass triage that gets human review anyway.
@@ -225,13 +226,15 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint 14 (Biden 2022 baseline + tuned keywords)
 
-**Code work (~250 lines + live API runs):**
+**Code work (~280 lines + live API runs):**
 
-1. Run `build-baseline --baseline biden_2021 --model gpt-4o-mini` for Jan 2021 – Dec 2021
-2. Run `build-baseline --baseline obama_2013 --model gpt-4o-mini` for Jan 2013 – Dec 2013 (verify FR + GDELT data availability; WH archive URL structure differs for Obama era)
-3. Create cross-baseline validation report (`lib/seed/baseline-validation.ts`): compare flagging rates across baselines by category. Keywords that trigger at Warning+ in all baselines are likely false positives in normal governance. Keywords that only trigger in first-year baselines may capture legitimate transition activity.
-4. Run review cycle on new baselines with tuned keywords — should produce significantly fewer flags than Biden 2024 did pre-tuning
-5. Export all baselines as fixture sets, documenting source coverage per period
+1. Schema migration: add `cycle_year`, `administration`, `calendar_year` columns to `baselines` table (V3 Addendum §15.3 — baseline metadata only, not `cycle_adjustment_factors` table yet)
+2. Backfill existing Biden 2022 baseline with `cycle_year=2, administration='biden', calendar_year=2022`
+3. Run `build-baseline --baseline biden_2021 --model gpt-4o-mini` for Jan 2021 – Dec 2021 (with `cycle_year=1, administration='biden', calendar_year=2021`)
+4. Run `build-baseline --baseline obama_2013 --model gpt-4o-mini` for Jan 2013 – Dec 2013 (with `cycle_year=1, administration='obama', calendar_year=2013`; verify FR + GDELT data availability; WH archive URL structure differs for Obama era)
+5. Create cross-baseline validation report (`lib/seed/baseline-validation.ts`): compare flagging rates across baselines by category. Keywords that trigger at Warning+ in all baselines are likely false positives in normal governance. Keywords that only trigger in first-year baselines may capture legitimate transition activity.
+6. Run review cycle on new baselines with tuned keywords — should produce significantly fewer flags than Biden 2024 did pre-tuning
+7. Export all baselines as fixture sets, documenting source coverage per period
 
 **E2E test:**
 
@@ -241,6 +244,34 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - First-year baselines show higher activity but lower false-positive rates than pre-tuning Biden 2024
 
 **Risk:** Obama 2013 data availability — WH archive structure differs, GDELT coverage for 2013 may be limited. Verify before committing.
+
+---
+
+### Sprint 15.1: Cycle-Aware Baselines
+
+**Goal:** Compute cycle-position adjustment factors from empirical baseline data and integrate cycle-aware volume thresholds into the assessment pipeline. Prevents false signals from predictable presidential cycle dynamics (e.g., Year 1 transition surges).
+
+**Depends on:** Sprint 15 (Biden 2021 + Obama 2013 baselines with cycle-position metadata)
+
+**Code work (~200 lines new):**
+
+1. Schema migration: create `cycle_adjustment_factors` table (V3 Addendum §15.3)
+2. Create `lib/services/cycle-adjustment-service.ts` — `computeCycleAdjustmentFactors()`, `getCycleAdjustment()` (V3 Addendum §15.4)
+3. Compute initial adjustment factors from Biden 2021 / Biden 2022 per-category ratios (severity, volume, stddev). If Obama 2013 data is available, average Year 1 factors across both administrations.
+4. Integrate cycle-aware volume thresholds into `assessByVolume()` in `assessment-service.ts` (V3 Addendum §15.5)
+5. Add `getCurrentCycleYear()` to `scoring-config.ts` — computed from current date and inauguration cycle
+6. Tests for cycle-adjustment-service pure functions (ratio computation, confidence classification, threshold adjustment)
+
+**E2E test:**
+
+- Adjustment factors computed and stored for all 11 categories (Year 1 vs Year 2)
+- Year 1 volume thresholds are higher than Year 2 (proportional to empirical volume ratio)
+- Re-scoring Biden 2021 with cycle-aware thresholds reduces volume-only false flags
+- Factors include sample size and confidence level (`low` for N=1, `moderate` for N=2)
+
+**Cost:** No API calls — computation from existing baseline data only.
+
+**Note:** UI cycle annotations (V3 Addendum §15.6) land in Sprint 18 (trend chart annotation) and Sprint 22 (Detailed mode cycle-adjusted ratios on category cards).
 
 ---
 
@@ -310,7 +341,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 4. Assessment summary section (AI-generated or template, with "How we could be wrong")
 5. Evidence panel — matched keywords grouped by tier, with document links
 6. Confidence degradation indicator on page header (UI spec section 4.9)
-7. Back navigation to landing page
+7. Cycle-position annotation on trend chart when current cycle year ≠ baseline cycle year (V3 Addendum §15.6)
+8. Back navigation to landing page
 
 **E2E test:**
 
@@ -408,9 +440,10 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 2. AI reviewer notes display (UI spec section 5.4) with ceiling constraint label
 3. Suppression audit panel — "What was suppressed" column with rule explanations
 4. Baseline overlay selector — multi-select pills for up to 2 baselines (UI spec section 13.2)
-5. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 24")
-6. Document class breakdown, full keyword lists, technical details in Detailed mode
-7. Detailed mode content on supporting pages (Rhetoric, P2025, Infrastructure)
+5. Cycle-adjusted ratio display on category cards in Detailed mode — raw and adjusted comparisons shown side by side (V3 Addendum §15.6)
+6. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 24")
+7. Document class breakdown, full keyword lists, technical details in Detailed mode
+8. Detailed mode content on supporting pages (Rhetoric, P2025, Infrastructure)
 
 **E2E test:**
 
@@ -521,11 +554,12 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 Not everything is strictly sequential. Where human review or API runs create wait time:
 
-| While waiting for...                            | Can parallelize...                                                            |
-| ----------------------------------------------- | ----------------------------------------------------------------------------- |
-| Sprint 13-14 keyword tuning + review iterations | Sprint 16 UI design system work (CSS vars, components with placeholder data)  |
-| Sprint 15 baseline API runs + validation        | Sprint 17 source health backend (starts fresh, no historical data dependency) |
-| Sprint 25 onboarding + responsive work          | Sprint 24 novel threat / expert submission code work                          |
+| While waiting for...                            | Can parallelize...                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Sprint 13-14 keyword tuning + review iterations | Sprint 16 UI design system work (CSS vars, components with placeholder data)          |
+| Sprint 15 baseline API runs + validation        | Sprint 15.1 cycle adjustment computation (as categories complete, not all-or-nothing) |
+| Sprint 15 baseline API runs + validation        | Sprint 17 source health backend (starts fresh, no historical data dependency)         |
+| Sprint 25 onboarding + responsive work          | Sprint 24 novel threat / expert submission code work                                  |
 
 ---
 

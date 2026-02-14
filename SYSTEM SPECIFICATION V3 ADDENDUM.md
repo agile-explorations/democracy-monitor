@@ -1412,6 +1412,220 @@ These mappings are approximate and should be labeled as such. They enable per-ca
 
 ---
 
+## Phase 15: Presidential Cycle-Aware Baselines
+
+**Goal**: Account for systematic document volume and severity patterns that vary by year-in-presidential-cycle (Year 1 transition surge, Year 2 steady state, Year 3 peak regulatory, Year 4 lame duck/midnight regulations), so the system doesn't generate false signals from predictable cyclical dynamics.
+
+### 15.1 Problem Statement
+
+Presidential terms produce systematically different document patterns depending on the year within the cycle:
+
+- **Year 1**: Executive order surges, agency leadership turnover, day-one policy reversals. Categories most affected: `executiveActions`, `civilService`, `rulemaking`.
+- **Year 2 (midterm)**: Agencies settled in, steady-state regulatory output, some election-related activity. The most representative "normal governance" year.
+- **Year 3**: Peak regulatory activity — agencies at full operational capacity.
+- **Year 4**: "Midnight regulations" if lame duck, reduced activity during reelection campaign, possible pardon surges.
+
+The primary baseline is Biden 2022 (Year 2, midterm). Comparing Trump 2025 (Year 1) against a Year 2 baseline will overstate deviations in categories where Year 1 is inherently noisier. This is not a false positive in the keyword sense (the documents are scored correctly), but a false signal in the comparison — the deviation reflects cycle position, not democratic erosion.
+
+### 15.2 Design Approach: Cycle-Position Annotations, Not Separate Baselines
+
+Building four separate year-position baselines per administration would require 12+ baseline periods with only 52 weeks of data each, resulting in statistically thin reference points. Instead, the system keeps Biden 2022 as the primary baseline and computes **cycle-position adjustment factors** from empirical data.
+
+**What this means in practice**:
+
+1. The `baselines` table stores metadata about each baseline's cycle position
+2. The system computes per-category ratios between same-administration years at different cycle positions (Biden 2021 / Biden 2022, Biden 2023 / Biden 2022, etc.)
+3. When comparing the current period against the primary baseline, and the cycle positions don't match, the UI displays a cycle-position annotation
+4. Volume thresholds in `assessByVolume()` are adjusted by the cycle-position ratio rather than using fixed constants
+
+**What this does NOT do**: The system does not automatically correct or normalize scores. It annotates the comparison and adjusts volume thresholds. The raw severity comparison against the primary baseline is always displayed — the cycle annotation provides context, not a correction. The user sees both.
+
+### 15.3 Schema Changes
+
+Extend the `baselines` table to include cycle-position metadata:
+
+```sql
+-- Add cycle-position metadata to baselines table
+ALTER TABLE baselines ADD COLUMN IF NOT EXISTS cycle_year INTEGER;
+  -- 1, 2, 3, or 4 (year within presidential term)
+ALTER TABLE baselines ADD COLUMN IF NOT EXISTS administration VARCHAR(50);
+  -- e.g., 'biden', 'obama', 'trump_2'
+ALTER TABLE baselines ADD COLUMN IF NOT EXISTS calendar_year INTEGER;
+  -- e.g., 2022
+```
+
+Create a `cycle_adjustment_factors` table:
+
+```sql
+CREATE TABLE IF NOT EXISTS cycle_adjustment_factors (
+  id SERIAL PRIMARY KEY,
+  category VARCHAR(50) NOT NULL,
+  cycle_year INTEGER NOT NULL,           -- 1, 2, 3, or 4
+  reference_cycle_year INTEGER NOT NULL, -- the primary baseline's cycle year (2 for Biden 2022)
+
+  -- Ratios: cycle_year metrics / reference_cycle_year metrics
+  severity_ratio REAL NOT NULL,          -- avg severity in Year N / avg severity in Year 2
+  volume_ratio REAL NOT NULL,            -- avg doc count in Year N / avg doc count in Year 2
+  severity_stddev_ratio REAL,            -- stddev in Year N / stddev in Year 2
+
+  -- Source data
+  source_baselines JSONB NOT NULL,       -- which baseline_ids contributed to this ratio
+  sample_size INTEGER NOT NULL,          -- how many administrations contributed (1 or 2)
+  confidence VARCHAR(20) NOT NULL,       -- 'low' (N=1), 'moderate' (N=2), 'high' (N=3+)
+
+  computed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+  CONSTRAINT uq_cycle_adj_category_years UNIQUE (category, cycle_year, reference_cycle_year)
+);
+```
+
+### 15.4 Cycle Adjustment Factor Computation
+
+Create `lib/services/cycle-adjustment-service.ts`:
+
+```typescript
+export interface CycleAdjustmentFactor {
+  category: string;
+  cycleYear: number; // the year being adjusted for
+  referenceCycleYear: number; // the primary baseline's cycle year
+
+  severityRatio: number; // e.g., 2.1 means Year 1 has 2.1× the severity of Year 2
+  volumeRatio: number; // e.g., 1.8 means Year 1 has 1.8× the document volume
+  severityStddevRatio: number | null;
+
+  sourceBaselines: string[]; // e.g., ['biden_2021', 'obama_2013']
+  sampleSize: number;
+  confidence: 'low' | 'moderate' | 'high';
+}
+
+export async function computeCycleAdjustmentFactors(
+  primaryBaselineId: string, // e.g., 'biden_2022'
+  primaryCycleYear: number, // e.g., 2
+  comparisonBaselines: Array<{
+    baselineId: string; // e.g., 'biden_2021'
+    cycleYear: number; // e.g., 1
+  }>,
+): Promise<CycleAdjustmentFactor[]>;
+
+export async function getCycleAdjustment(
+  category: string,
+  currentCycleYear: number,
+  primaryBaselineCycleYear: number,
+): Promise<CycleAdjustmentFactor | null>;
+
+// Pre-load all factors for a given cycle year pair — used by snapshot.ts
+// to avoid per-category DB calls during assessment runs
+export async function loadCycleAdjustmentFactors(
+  currentCycleYear: number,
+  primaryBaselineCycleYear: number,
+): Promise<Map<string, CycleAdjustmentFactor>>;
+```
+
+**How `computeCycleAdjustmentFactors()` works**:
+
+1. Load weekly aggregates for the primary baseline period (Biden 2022) and each comparison baseline (Biden 2021, Obama 2013, etc.)
+2. For each category, compute the ratio: comparison baseline avg severity / primary baseline avg severity
+3. Do the same for document volume and severity standard deviation
+4. If multiple baselines share the same cycle year (e.g., Biden 2021 and Obama 2013 are both Year 1), average their ratios and set `sampleSize = 2`, `confidence = 'moderate'`
+5. Store the factors in `cycle_adjustment_factors`
+
+**Example output** for `executiveActions`, Year 1 vs. Year 2:
+
+```
+{
+  category: 'executiveActions',
+  cycleYear: 1,
+  referenceCycleYear: 2,
+  severityRatio: 2.1,        // Year 1 has 2.1× the severity of Year 2
+  volumeRatio: 1.8,          // Year 1 has 1.8× the document volume
+  sourceBaselines: ['biden_2021', 'obama_2013'],
+  sampleSize: 2,
+  confidence: 'moderate'
+}
+```
+
+### 15.5 Integration with Volume Assessment
+
+The current `assessByVolume()` uses hardcoded volume thresholds to determine when document count alone triggers a status change. These thresholds should become cycle-relative.
+
+**Current behavior** (simplified):
+
+```typescript
+// Hardcoded: if doc count exceeds threshold, flag as elevated
+if (documentCount > VOLUME_THRESHOLD) {
+  status = 'Drift';
+}
+```
+
+**Cycle-aware behavior**:
+
+```typescript
+// Pre-load all adjustment factors once per assessment run (not per category)
+const cycleFactors = await loadCycleAdjustmentFactors(currentCycleYear, primaryBaselineCycleYear);
+// Returns Map<category, CycleAdjustmentFactor>
+
+// Then in assessByVolume() — no async call, just a map lookup
+const adjustment = cycleFactors.get(category);
+const adjustedThreshold = adjustment ? VOLUME_THRESHOLD * adjustment.volumeRatio : VOLUME_THRESHOLD;
+
+if (documentCount > adjustedThreshold) {
+  status = 'Drift';
+}
+```
+
+**Implementation note**: `assessByVolume()` is currently synchronous. Rather than making it async (which would ripple through all callers), pre-load all cycle adjustment factors at the start of each assessment run in `snapshot.ts` and pass them as a `Map<string, CycleAdjustmentFactor>` parameter. This avoids N database calls per snapshot (one per category) and keeps the assessment function signatures clean.
+
+This means: if Year 1 typically has 1.8× the document volume of Year 2, the volume threshold for triggering Drift during Year 1 is 1.8× higher. The system expects more documents during a transition year and doesn't flag the volume increase itself as concerning.
+
+**Important**: This adjustment applies only to volume-based assessment, not to keyword severity scoring. If a document matches capture-tier keywords, it scores the same regardless of cycle year. The cycle adjustment prevents _volume alone_ from generating false signals — it doesn't suppress keyword-driven severity.
+
+### 15.6 UI Annotations
+
+When the current period's cycle year doesn't match the primary baseline's cycle year, the UI displays an annotation on category detail pages and comparison panels.
+
+**On the trend chart (category detail page)**:
+
+```
+⊘ Cycle context: Comparing Year 1 (transition) against a Year 2 (midterm)
+  baseline. First years typically show 1.8× document volume and 2.1× severity
+  in this category. Based on Biden 2021 and Obama 2013 data (N=2).
+```
+
+**On the category card (landing page)**, in Detailed mode only:
+
+```
+  Current: 12.4    Baseline avg: 3.2
+  (3.9× baseline · cycle-adjusted: 1.9×)
+```
+
+The raw comparison (3.9×) is always shown. The cycle-adjusted comparison (1.9×) is shown alongside it in parentheses as additional context, not as a replacement. The adjustment is transparent: the user can see both numbers and the basis for the adjustment.
+
+**When adjustment confidence is low** (N=1, only one comparison administration available):
+
+```
+⊘ Cycle context: Comparing Year 1 against a Year 2 baseline. Limited data
+  (Biden 2021 only) suggests first years show ~2.1× severity in this category.
+  Treat this adjustment with caution.
+```
+
+### 15.7 What the System Does NOT Do
+
+1. **Does not automatically select a year-matched baseline as primary.** The primary baseline remains Biden 2022 (steady-state governance). Year-matched baselines (Biden 2021, Obama 2013) are comparison references, not replacements.
+2. **Does not normalize or correct displayed scores.** The cycle-adjusted ratio is shown alongside the raw ratio, not instead of it. Users see the unadjusted comparison and the cycle context together.
+3. **Does not apply cycle adjustments to keyword severity scoring.** A capture-tier keyword match produces the same severity score in Year 1 and Year 2. Only volume thresholds are adjusted.
+4. **Does not require all four cycle years to function.** If only Year 1 and Year 2 data are available (Biden 2021 and Biden 2022), the system computes adjustment factors for Year 1 only. Year 3 and Year 4 comparisons display: "No cycle adjustment data available for Year 3."
+
+**Files touched**:
+
+- Modify: `lib/db/schema.ts` (extend `baselines` table, add `cycleAdjustmentFactors` table)
+- Create: `drizzle/NNNN_cycle_adjustment.sql`
+- Create: `lib/services/cycle-adjustment-service.ts`
+- Modify: `lib/services/assessment-service.ts` (cycle-aware volume thresholds in `assessByVolume()`)
+- Modify: `lib/methodology/scoring-config.ts` (cycle year computation function, inauguration date constant)
+
+**Note on cycle year computation**: The current cycle year must be computed from the current date and the inauguration cycle (January 20 every four years), not stored as a manually-edited constant. Add a `getCurrentCycleYear(date?: Date): number` function to `scoring-config.ts` that calculates the year-in-term (1–4) from the inauguration schedule. Example: any date from Jan 20 2025 to Jan 19 2026 returns `1`; Jan 20 2026 to Jan 19 2027 returns `2`.
+
+---
+
 ## Implementation Sequence
 
 Each sprint targets 250-350 lines of new/modified code, following the project's established sprint process (analysis -> propose -> approve -> implement -> review -> commit).
@@ -1543,6 +1757,31 @@ Each sprint targets 250-350 lines of new/modified code, following the project's 
 
 **Deliverable**: `indices` renamed to `executiveActions` throughout the codebase and database. External democracy indices imported as periodic cross-reference data. System has 11 keyword-scored categories (with a correctly named executive actions category) plus external indices as a separate validation layer.
 
+### Sprint L (Cycle-Aware Baselines)
+
+**Prerequisite**: At least two baselines at different cycle positions must be computed (e.g., Biden 2022 as Year 2 primary, Biden 2021 as Year 1 comparison).
+
+**Migration timing**: The schema changes in step 1 (adding `cycle_year`, `administration`, `calendar_year` to `baselines`) should ideally land in the sprint that creates the Biden 2021 and Obama 2013 baselines, so those baselines are created with cycle metadata from the start. If that sprint has already completed without the columns, Sprint L must include a backfill UPDATE for all existing baseline rows:
+
+```sql
+UPDATE baselines SET cycle_year = 2, administration = 'biden', calendar_year = 2022
+  WHERE baseline_id = 'biden_2022';
+UPDATE baselines SET cycle_year = 1, administration = 'biden', calendar_year = 2021
+  WHERE baseline_id = 'biden_2021';
+UPDATE baselines SET cycle_year = 1, administration = 'obama', calendar_year = 2013
+  WHERE baseline_id = 'obama_2013';
+```
+
+1. **15.3** Schema changes — extend `baselines` table with `cycle_year`, `administration`, `calendar_year` columns; create `cycle_adjustment_factors` table; backfill existing baselines
+2. **15.4** Cycle adjustment service — `cycle-adjustment-service.ts`, `computeCycleAdjustmentFactors()`, `loadCycleAdjustmentFactors()`
+3. Compute initial adjustment factors from Biden 2021 / Biden 2022 ratios per category
+4. **15.5** Integrate cycle-aware volume thresholds into `assessByVolume()` in `assessment-service.ts` (pre-loaded factors passed as parameter, no async signature change)
+5. Add `getCurrentCycleYear()` to `scoring-config.ts` (computed from inauguration dates)
+
+**Note**: This sprint does not touch the UI — cycle annotations (§15.6) should be implemented in the UI specification's Phase 2, item 14 (trend chart with baseline band) for the category detail annotation, and Phase 1, item 2 (CategoryCard component) for the cycle-adjusted ratio on landing page cards in Detailed mode.
+
+**Deliverable**: Volume thresholds are cycle-relative. Year 1 periods are not falsely flagged for volume increases that are predictable transition dynamics. Adjustment factors are stored with sample size and confidence, making the basis for the adjustment transparent and auditable.
+
 ---
 
 ## Configuration Defaults
@@ -1622,3 +1861,13 @@ export const NOVELTY_DRIFT_TRIGGER = 1.5; // category drift must exceed 1.5x noi
 18. **External indices are corroboration, not ground truth.** External democracy indices are valuable precisely because they are methodologically independent — expert surveys vs. automated document analysis. Agreement strengthens both. Disagreement is informative, not a defect. The UI should present them as "here's what independent experts found" alongside "here's what the documentary record shows," never as a score to be averaged with the system's own assessments.
 
 19. **Sparse data requires different presentation.** External indices publish annually or quarterly. Displaying them alongside weekly keyword scores requires a UI that handles mixed cadences gracefully — showing the most recent external score as a reference point, not interpolating between annual data points to create a false impression of weekly resolution.
+
+### Presidential Cycle
+
+20. **Cycle-position adjustment is context, not correction.** The raw comparison against the primary baseline is always displayed. The cycle-adjusted ratio is shown alongside it as additional context. Users see both numbers and the basis for the adjustment. The system never silently normalizes away a deviation — it explains why the deviation might be expected.
+
+21. **Volume adjustment does not apply to keyword severity.** A capture-tier keyword match produces the same severity score regardless of cycle year. Only volume-based thresholds (document count triggers) are adjusted. If an executive order matches "mass IG removal" in Year 1 or Year 3, the severity is identical. The cycle adjustment prevents _volume alone_ from generating false signals during predictable surges.
+
+22. **Low-confidence adjustments must be labeled as such.** With N=1 for most cycle-year comparisons (only one prior administration at that cycle position), the adjustment factors are estimates, not robust statistics. The UI must display the sample size and confidence level. "Based on Biden 2021 only (N=1)" is an honest statement that helps users calibrate their trust in the adjustment.
+
+23. **Cycle-position data improves over time.** Each new administration adds another data point to the cycle-position ratios. After two full presidential terms of data collection, the system will have N=2 or N=3 for each cycle year, producing more reliable adjustment factors. The architecture should accommodate growing sample sizes gracefully — the `cycle_adjustment_factors` table stores provenance so factors can be recomputed as new baselines are added.

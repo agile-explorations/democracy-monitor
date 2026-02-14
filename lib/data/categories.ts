@@ -171,16 +171,16 @@ export const CATEGORIES: Category[] = [
       'Some government agencies (like the FDA or EPA) are supposed to make decisions based on science and law, not politics. Can the President control what rules they write?',
     signals: [
       {
-        name: 'New Government Rules',
-        url: '/api/federal-register?type=RULE',
+        name: 'Executive Regulatory Control',
+        url: '/api/federal-register?term=executive+order+regulatory+review+independent+agency',
         type: 'federal_register',
-        note: 'Rules that agencies just published',
+        note: 'Executive interventions in independent agency rulemaking',
       },
       {
-        name: 'Proposed Government Rules',
-        url: '/api/federal-register?type=PRORULE',
+        name: 'OIRA Regulatory Review',
+        url: '/api/federal-register?term=oira+regulatory+review+clearance+executive+oversight',
         type: 'federal_register',
-        note: 'Rules that agencies want to create',
+        note: 'White House regulatory review and centralized control',
       },
     ],
   },
