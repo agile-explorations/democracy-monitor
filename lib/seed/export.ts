@@ -1,6 +1,11 @@
 /**
  * Export seed data from the database to JSON fixtures.
  *
+ * Exports "light fixtures" — calibrated outputs (assessments, baselines, scores,
+ * aggregates) plus a document manifest. Raw documents are excluded because they
+ * are reproducible API responses (~35MB per baseline) that can be re-fetched
+ * via `pnpm backfill`.
+ *
  * Usage:
  *   pnpm seed:export                     # Export all tables to lib/seed/fixtures/
  *   pnpm seed:export --out ./my-dir      # Custom output directory
@@ -8,11 +13,11 @@
 
 import fs from 'fs';
 import path from 'path';
+import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import {
   assessments,
   baselines,
-  documents,
   documentScores,
   weeklyAggregates,
   intentWeekly,
@@ -21,7 +26,6 @@ import {
 const SEED_TABLES = [
   { name: 'assessments', table: assessments },
   { name: 'baselines', table: baselines },
-  { name: 'documents', table: documents },
   { name: 'document_scores', table: documentScores },
   { name: 'weekly_aggregates', table: weeklyAggregates },
   { name: 'intent_weekly', table: intentWeekly },
@@ -61,6 +65,21 @@ function writeFixture(outDir: string, tableName: string, fixture: SeedFixture): 
   console.log(`  ${tableName}: ${fixture.metadata.rowCount} rows → ${filePath}`);
 }
 
+async function exportDocumentManifest(db: ReturnType<typeof getDb>): Promise<SeedFixture> {
+  const rows = await db.execute(
+    sql`SELECT id, url, title, category, source_type, published_at FROM documents ORDER BY id`,
+  );
+
+  return {
+    metadata: {
+      exportedAt: new Date().toISOString(),
+      table: 'document_manifest',
+      rowCount: rows.rows.length,
+    },
+    rows: rows.rows as Record<string, unknown>[],
+  };
+}
+
 export async function exportSeedData(outDir?: string): Promise<void> {
   if (!isDbAvailable()) {
     throw new Error('DATABASE_URL not configured');
@@ -76,6 +95,9 @@ export async function exportSeedData(outDir?: string): Promise<void> {
     const fixture = await exportTable(db, name, table);
     writeFixture(outputDir, name, fixture);
   }
+
+  const manifest = await exportDocumentManifest(db);
+  writeFixture(outputDir, 'document_manifest', manifest);
 
   console.log('[seed:export] Done.');
 }

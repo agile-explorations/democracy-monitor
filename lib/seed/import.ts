@@ -12,18 +12,17 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import {
   assessments,
   baselines,
-  documents,
   documentScores,
   weeklyAggregates,
   intentWeekly,
 } from '@/lib/db/schema';
 
 /**
- * Import order matters for foreign key constraints.
- * Documents must be imported before document_scores (which references documentId).
+ * Import order for light fixtures (calibrated outputs only).
+ * Raw documents are excluded — they can be re-fetched via `pnpm backfill`.
+ * document_scores.documentId is nullable, so scores import without documents.
  */
 const IMPORT_ORDER = [
-  { name: 'documents', table: documents },
   { name: 'assessments', table: assessments },
   { name: 'baselines', table: baselines },
   { name: 'document_scores', table: documentScores },

@@ -10,7 +10,6 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/db/schema', () => ({
   assessments: { _: 'assessments' },
   baselines: { _: 'baselines' },
-  documents: { _: 'documents' },
   documentScores: { _: 'document_scores' },
   weeklyAggregates: { _: 'weekly_aggregates' },
   intentWeekly: { _: 'intent_weekly' },
@@ -80,12 +79,12 @@ describe('importSeedData', () => {
     mockIsDbAvailable.mockReturnValue(true);
     setupMockDb();
 
-    // Write only one fixture — documents and others are missing
+    // Write only one fixture — others are missing
     writeFixture(testDir, 'assessments', [{ id: 1, category: 'courts', status: 'Stable' }]);
 
     await importSeedData(testDir);
 
-    // Only assessments was inserted (documents has no fixture)
+    // Only assessments was inserted
     expect(insertedRows).toHaveLength(1);
     expect(insertedRows[0].table).toBe('assessments');
   });
@@ -121,19 +120,19 @@ describe('importSeedData', () => {
     expect(insertedRows).toHaveLength(0);
   });
 
-  it('imports in correct order (documents before document_scores)', async () => {
+  it('imports assessments before document_scores', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     setupMockDb();
 
-    writeFixture(testDir, 'documents', [{ id: 1, title: 'Doc' }]);
+    writeFixture(testDir, 'assessments', [{ id: 1, category: 'courts', status: 'Stable' }]);
     writeFixture(testDir, 'document_scores', [{ id: 1, url: 'https://example.com' }]);
 
     await importSeedData(testDir);
 
     const tableOrder = insertedRows.map((r) => r.table);
-    const docsIdx = tableOrder.indexOf('documents');
+    const assessIdx = tableOrder.indexOf('assessments');
     const scoresIdx = tableOrder.indexOf('document_scores');
-    expect(docsIdx).toBeLessThan(scoresIdx);
+    expect(assessIdx).toBeLessThan(scoresIdx);
   });
 
   afterAll(() => {

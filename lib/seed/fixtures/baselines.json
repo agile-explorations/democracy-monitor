@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "exportedAt": "2026-02-15T14:16:27.261Z",
+    "table": "baselines",
+    "rowCount": 11
+  },
+  "rows": [
+    {
+      "id": 1,
+      "baselineId": "biden_2022",
+      "category": "civilService",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.850Z"
+    },
+    {
+      "id": 2,
+      "baselineId": "biden_2022",
+      "category": "courts",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.851Z"
+    },
+    {
+      "id": 3,
+      "baselineId": "biden_2022",
+      "category": "elections",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.851Z"
+    },
+    {
+      "id": 4,
+      "baselineId": "biden_2022",
+      "category": "executiveActions",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.852Z"
+    },
+    {
+      "id": 5,
+      "baselineId": "biden_2022",
+      "category": "fiscal",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.852Z"
+    },
+    {
+      "id": 6,
+      "baselineId": "biden_2022",
+      "category": "hatch",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.852Z"
+    },
+    {
+      "id": 7,
+      "baselineId": "biden_2022",
+      "category": "igs",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.853Z"
+    },
+    {
+      "id": 8,
+      "baselineId": "biden_2022",
+      "category": "infoAvailability",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.853Z"
+    },
+    {
+      "id": 9,
+      "baselineId": "biden_2022",
+      "category": "mediaFreedom",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.853Z"
+    },
+    {
+      "id": 10,
+      "baselineId": "biden_2022",
+      "category": "military",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.854Z"
+    },
+    {
+      "id": 11,
+      "baselineId": "biden_2022",
+      "category": "rulemaking",
+      "avgWeeklySeverity": 0,
+      "stddevWeeklySeverity": 0,
+      "avgWeeklyDocCount": 0,
+      "avgSeverityMix": 0,
+      "driftNoiseFloor": null,
+      "embeddingCentroid": null,
+      "computedAt": "2026-02-15T07:11:17.854Z"
+    }
+  ]
+}

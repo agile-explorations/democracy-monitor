@@ -10,7 +10,6 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/db/schema', () => ({
   assessments: { _: 'assessments' },
   baselines: { _: 'baselines' },
-  documents: { _: 'documents' },
   documentScores: { _: 'document_scores' },
   weeklyAggregates: { _: 'weekly_aggregates' },
   intentWeekly: { _: 'intent_weekly' },
@@ -25,9 +24,17 @@ const { exportSeedData } = await import('@/lib/seed/export');
 describe('exportSeedData', () => {
   const testDir = path.join(__dirname, 'test-fixtures-export');
 
+  function mockDb(rows: Record<string, unknown>[] = []) {
+    const mockSelect = vi.fn().mockReturnValue({
+      from: vi.fn().mockResolvedValue(rows),
+    });
+    const mockExecute = vi.fn().mockResolvedValue({ rows });
+    mockGetDb.mockReturnValue({ select: mockSelect, execute: mockExecute } as never);
+    return { mockSelect, mockExecute };
+  }
+
   beforeEach(() => {
     vi.clearAllMocks();
-    // Clean up test directory
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true });
     }
@@ -41,32 +48,28 @@ describe('exportSeedData', () => {
 
   it('creates output directory if it does not exist', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-    const mockSelect = vi.fn().mockReturnValue({ from: vi.fn().mockResolvedValue([]) });
-    mockGetDb.mockReturnValue({ select: mockSelect } as never);
+    mockDb();
 
     await exportSeedData(testDir);
 
     expect(fs.existsSync(testDir)).toBe(true);
   });
 
-  it('exports each table as a JSON fixture file', async () => {
+  it('exports each table and manifest as JSON fixture files', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
     const mockRows = [{ id: 1, category: 'courts', status: 'Stable' }];
-    const mockSelect = vi.fn().mockReturnValue({
-      from: vi.fn().mockResolvedValue(mockRows),
-    });
-    mockGetDb.mockReturnValue({ select: mockSelect } as never);
+    mockDb(mockRows);
 
     await exportSeedData(testDir);
 
     const expectedFiles = [
       'assessments.json',
       'baselines.json',
-      'documents.json',
       'document_scores.json',
       'weekly_aggregates.json',
       'intent_weekly.json',
+      'document_manifest.json',
     ];
 
     for (const file of expectedFiles) {
@@ -86,10 +89,7 @@ describe('exportSeedData', () => {
     mockIsDbAvailable.mockReturnValue(true);
 
     const testRow = { id: 42, category: 'military', status: 'Warning', reason: 'Test' };
-    const mockSelect = vi.fn().mockReturnValue({
-      from: vi.fn().mockResolvedValue([testRow]),
-    });
-    mockGetDb.mockReturnValue({ select: mockSelect } as never);
+    mockDb([testRow]);
 
     await exportSeedData(testDir);
 
@@ -100,10 +100,7 @@ describe('exportSeedData', () => {
 
   it('handles empty tables gracefully', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-    const mockSelect = vi.fn().mockReturnValue({
-      from: vi.fn().mockResolvedValue([]),
-    });
-    mockGetDb.mockReturnValue({ select: mockSelect } as never);
+    mockDb([]);
 
     await exportSeedData(testDir);
 
@@ -112,7 +109,6 @@ describe('exportSeedData', () => {
     expect(content.rows).toEqual([]);
   });
 
-  // Cleanup
   afterAll(() => {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true });

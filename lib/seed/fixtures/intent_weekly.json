@@ -1,0 +1,2659 @@
+{
+  "metadata": {
+    "exportedAt": "2026-02-15T14:16:27.299Z",
+    "table": "intent_weekly",
+    "rowCount": 265
+  },
+  "rows": [
+    {
+      "id": 1,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-01-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.677Z"
+    },
+    {
+      "id": 2,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-01-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.684Z"
+    },
+    {
+      "id": 3,
+      "policyArea": "elections",
+      "weekOf": "2022-01-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.686Z"
+    },
+    {
+      "id": 4,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-01-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.687Z"
+    },
+    {
+      "id": 5,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-01-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.689Z"
+    },
+    {
+      "id": 6,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-01-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.690Z"
+    },
+    {
+      "id": 7,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-01-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.691Z"
+    },
+    {
+      "id": 8,
+      "policyArea": "elections",
+      "weekOf": "2022-01-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.692Z"
+    },
+    {
+      "id": 9,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-01-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.693Z"
+    },
+    {
+      "id": 10,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-01-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.694Z"
+    },
+    {
+      "id": 11,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-02-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.695Z"
+    },
+    {
+      "id": 12,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-02-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.696Z"
+    },
+    {
+      "id": 13,
+      "policyArea": "elections",
+      "weekOf": "2022-02-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.697Z"
+    },
+    {
+      "id": 14,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-02-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.698Z"
+    },
+    {
+      "id": 15,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-02-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.699Z"
+    },
+    {
+      "id": 16,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-02-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.700Z"
+    },
+    {
+      "id": 17,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-02-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.701Z"
+    },
+    {
+      "id": 18,
+      "policyArea": "elections",
+      "weekOf": "2022-02-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.702Z"
+    },
+    {
+      "id": 19,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-02-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.703Z"
+    },
+    {
+      "id": 20,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-02-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.704Z"
+    },
+    {
+      "id": 21,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-02-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.704Z"
+    },
+    {
+      "id": 22,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-02-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.705Z"
+    },
+    {
+      "id": 23,
+      "policyArea": "elections",
+      "weekOf": "2022-02-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.706Z"
+    },
+    {
+      "id": 24,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-02-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.707Z"
+    },
+    {
+      "id": 25,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-02-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.707Z"
+    },
+    {
+      "id": 26,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-02-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.709Z"
+    },
+    {
+      "id": 27,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-02-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.710Z"
+    },
+    {
+      "id": 28,
+      "policyArea": "elections",
+      "weekOf": "2022-02-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.711Z"
+    },
+    {
+      "id": 29,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-02-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.712Z"
+    },
+    {
+      "id": 30,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-02-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.713Z"
+    },
+    {
+      "id": 31,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-03-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.714Z"
+    },
+    {
+      "id": 32,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-03-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.715Z"
+    },
+    {
+      "id": 33,
+      "policyArea": "elections",
+      "weekOf": "2022-03-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.716Z"
+    },
+    {
+      "id": 34,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-03-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.716Z"
+    },
+    {
+      "id": 35,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-03-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.717Z"
+    },
+    {
+      "id": 36,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-03-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.718Z"
+    },
+    {
+      "id": 37,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-03-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.719Z"
+    },
+    {
+      "id": 38,
+      "policyArea": "elections",
+      "weekOf": "2022-03-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.720Z"
+    },
+    {
+      "id": 39,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-03-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.721Z"
+    },
+    {
+      "id": 40,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-03-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.722Z"
+    },
+    {
+      "id": 41,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-03-16",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.723Z"
+    },
+    {
+      "id": 42,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-03-16",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.724Z"
+    },
+    {
+      "id": 43,
+      "policyArea": "elections",
+      "weekOf": "2022-03-16",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.725Z"
+    },
+    {
+      "id": 44,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-03-16",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.726Z"
+    },
+    {
+      "id": 45,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-03-16",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.727Z"
+    },
+    {
+      "id": 46,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-03-23",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.728Z"
+    },
+    {
+      "id": 47,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-03-23",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.729Z"
+    },
+    {
+      "id": 48,
+      "policyArea": "elections",
+      "weekOf": "2022-03-23",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.730Z"
+    },
+    {
+      "id": 49,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-03-23",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.731Z"
+    },
+    {
+      "id": 50,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-03-23",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.733Z"
+    },
+    {
+      "id": 51,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-03-30",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.734Z"
+    },
+    {
+      "id": 52,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-03-30",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.735Z"
+    },
+    {
+      "id": 53,
+      "policyArea": "elections",
+      "weekOf": "2022-03-30",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.736Z"
+    },
+    {
+      "id": 54,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-03-30",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.737Z"
+    },
+    {
+      "id": 55,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-03-30",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.738Z"
+    },
+    {
+      "id": 56,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-04-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.739Z"
+    },
+    {
+      "id": 57,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-04-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.740Z"
+    },
+    {
+      "id": 58,
+      "policyArea": "elections",
+      "weekOf": "2022-04-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.741Z"
+    },
+    {
+      "id": 59,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-04-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.742Z"
+    },
+    {
+      "id": 60,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-04-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.743Z"
+    },
+    {
+      "id": 61,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-04-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.744Z"
+    },
+    {
+      "id": 62,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-04-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.745Z"
+    },
+    {
+      "id": 63,
+      "policyArea": "elections",
+      "weekOf": "2022-04-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.746Z"
+    },
+    {
+      "id": 64,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-04-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.747Z"
+    },
+    {
+      "id": 65,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-04-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.748Z"
+    },
+    {
+      "id": 66,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-04-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.748Z"
+    },
+    {
+      "id": 67,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-04-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.749Z"
+    },
+    {
+      "id": 68,
+      "policyArea": "elections",
+      "weekOf": "2022-04-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.750Z"
+    },
+    {
+      "id": 69,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-04-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.751Z"
+    },
+    {
+      "id": 70,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-04-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.752Z"
+    },
+    {
+      "id": 71,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-04-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.753Z"
+    },
+    {
+      "id": 72,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-04-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.753Z"
+    },
+    {
+      "id": 73,
+      "policyArea": "elections",
+      "weekOf": "2022-04-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.754Z"
+    },
+    {
+      "id": 74,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-04-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.755Z"
+    },
+    {
+      "id": 75,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-04-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.756Z"
+    },
+    {
+      "id": 76,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-05-04",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.757Z"
+    },
+    {
+      "id": 77,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-05-04",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.757Z"
+    },
+    {
+      "id": 78,
+      "policyArea": "elections",
+      "weekOf": "2022-05-04",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.758Z"
+    },
+    {
+      "id": 79,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-05-04",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.759Z"
+    },
+    {
+      "id": 80,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-05-04",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.760Z"
+    },
+    {
+      "id": 81,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-05-11",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.762Z"
+    },
+    {
+      "id": 82,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-05-11",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.763Z"
+    },
+    {
+      "id": 83,
+      "policyArea": "elections",
+      "weekOf": "2022-05-11",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.764Z"
+    },
+    {
+      "id": 84,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-05-11",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.764Z"
+    },
+    {
+      "id": 85,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-05-11",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.765Z"
+    },
+    {
+      "id": 86,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-05-18",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.766Z"
+    },
+    {
+      "id": 87,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-05-18",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.767Z"
+    },
+    {
+      "id": 88,
+      "policyArea": "elections",
+      "weekOf": "2022-05-18",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.767Z"
+    },
+    {
+      "id": 89,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-05-18",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.768Z"
+    },
+    {
+      "id": 90,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-05-18",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.769Z"
+    },
+    {
+      "id": 91,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-05-25",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.770Z"
+    },
+    {
+      "id": 92,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-05-25",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.771Z"
+    },
+    {
+      "id": 93,
+      "policyArea": "elections",
+      "weekOf": "2022-05-25",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.771Z"
+    },
+    {
+      "id": 94,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-05-25",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.772Z"
+    },
+    {
+      "id": 95,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-05-25",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.772Z"
+    },
+    {
+      "id": 96,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-06-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.773Z"
+    },
+    {
+      "id": 97,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-06-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.774Z"
+    },
+    {
+      "id": 98,
+      "policyArea": "elections",
+      "weekOf": "2022-06-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.775Z"
+    },
+    {
+      "id": 99,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-06-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.776Z"
+    },
+    {
+      "id": 100,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-06-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.776Z"
+    },
+    {
+      "id": 101,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-06-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.777Z"
+    },
+    {
+      "id": 102,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-06-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.777Z"
+    },
+    {
+      "id": 103,
+      "policyArea": "elections",
+      "weekOf": "2022-06-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.778Z"
+    },
+    {
+      "id": 104,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-06-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.779Z"
+    },
+    {
+      "id": 105,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-06-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.780Z"
+    },
+    {
+      "id": 106,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-06-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.780Z"
+    },
+    {
+      "id": 107,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-06-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.781Z"
+    },
+    {
+      "id": 108,
+      "policyArea": "elections",
+      "weekOf": "2022-06-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.781Z"
+    },
+    {
+      "id": 109,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-06-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.782Z"
+    },
+    {
+      "id": 110,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-06-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.782Z"
+    },
+    {
+      "id": 111,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-06-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.783Z"
+    },
+    {
+      "id": 112,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-06-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.783Z"
+    },
+    {
+      "id": 113,
+      "policyArea": "elections",
+      "weekOf": "2022-06-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.784Z"
+    },
+    {
+      "id": 114,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-06-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.784Z"
+    },
+    {
+      "id": 115,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-06-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.785Z"
+    },
+    {
+      "id": 116,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-06-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.786Z"
+    },
+    {
+      "id": 117,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-06-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.786Z"
+    },
+    {
+      "id": 118,
+      "policyArea": "elections",
+      "weekOf": "2022-06-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.787Z"
+    },
+    {
+      "id": 119,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-06-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.787Z"
+    },
+    {
+      "id": 120,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-06-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.788Z"
+    },
+    {
+      "id": 121,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-07-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.788Z"
+    },
+    {
+      "id": 122,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-07-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.789Z"
+    },
+    {
+      "id": 123,
+      "policyArea": "elections",
+      "weekOf": "2022-07-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.789Z"
+    },
+    {
+      "id": 124,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-07-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.790Z"
+    },
+    {
+      "id": 125,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-07-06",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.790Z"
+    },
+    {
+      "id": 126,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-07-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.791Z"
+    },
+    {
+      "id": 127,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-07-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.792Z"
+    },
+    {
+      "id": 128,
+      "policyArea": "elections",
+      "weekOf": "2022-07-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.792Z"
+    },
+    {
+      "id": 129,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-07-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.793Z"
+    },
+    {
+      "id": 130,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-07-13",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.794Z"
+    },
+    {
+      "id": 131,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-07-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.794Z"
+    },
+    {
+      "id": 132,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-07-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.795Z"
+    },
+    {
+      "id": 133,
+      "policyArea": "elections",
+      "weekOf": "2022-07-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.795Z"
+    },
+    {
+      "id": 134,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-07-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.795Z"
+    },
+    {
+      "id": 135,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-07-20",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.796Z"
+    },
+    {
+      "id": 136,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-07-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.796Z"
+    },
+    {
+      "id": 137,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-07-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.797Z"
+    },
+    {
+      "id": 138,
+      "policyArea": "elections",
+      "weekOf": "2022-07-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.797Z"
+    },
+    {
+      "id": 139,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-07-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.798Z"
+    },
+    {
+      "id": 140,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-07-27",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.798Z"
+    },
+    {
+      "id": 141,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-08-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.799Z"
+    },
+    {
+      "id": 142,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-08-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.799Z"
+    },
+    {
+      "id": 143,
+      "policyArea": "elections",
+      "weekOf": "2022-08-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.799Z"
+    },
+    {
+      "id": 144,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-08-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.800Z"
+    },
+    {
+      "id": 145,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-08-03",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.800Z"
+    },
+    {
+      "id": 146,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-08-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.801Z"
+    },
+    {
+      "id": 147,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-08-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.801Z"
+    },
+    {
+      "id": 148,
+      "policyArea": "elections",
+      "weekOf": "2022-08-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.802Z"
+    },
+    {
+      "id": 149,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-08-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.802Z"
+    },
+    {
+      "id": 150,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-08-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.803Z"
+    },
+    {
+      "id": 151,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-08-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.803Z"
+    },
+    {
+      "id": 152,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-08-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.804Z"
+    },
+    {
+      "id": 153,
+      "policyArea": "elections",
+      "weekOf": "2022-08-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.804Z"
+    },
+    {
+      "id": 154,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-08-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.805Z"
+    },
+    {
+      "id": 155,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-08-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.805Z"
+    },
+    {
+      "id": 156,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-08-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.805Z"
+    },
+    {
+      "id": 157,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-08-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.806Z"
+    },
+    {
+      "id": 158,
+      "policyArea": "elections",
+      "weekOf": "2022-08-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.806Z"
+    },
+    {
+      "id": 159,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-08-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.807Z"
+    },
+    {
+      "id": 160,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-08-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.807Z"
+    },
+    {
+      "id": 161,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-08-31",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.807Z"
+    },
+    {
+      "id": 162,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-08-31",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.808Z"
+    },
+    {
+      "id": 163,
+      "policyArea": "elections",
+      "weekOf": "2022-08-31",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.809Z"
+    },
+    {
+      "id": 164,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-08-31",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.809Z"
+    },
+    {
+      "id": 165,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-08-31",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.810Z"
+    },
+    {
+      "id": 166,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-09-07",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.810Z"
+    },
+    {
+      "id": 167,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-09-07",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.810Z"
+    },
+    {
+      "id": 168,
+      "policyArea": "elections",
+      "weekOf": "2022-09-07",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.811Z"
+    },
+    {
+      "id": 169,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-09-07",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.811Z"
+    },
+    {
+      "id": 170,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-09-07",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.812Z"
+    },
+    {
+      "id": 171,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-09-14",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.812Z"
+    },
+    {
+      "id": 172,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-09-14",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.812Z"
+    },
+    {
+      "id": 173,
+      "policyArea": "elections",
+      "weekOf": "2022-09-14",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.813Z"
+    },
+    {
+      "id": 174,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-09-14",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.813Z"
+    },
+    {
+      "id": 175,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-09-14",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.814Z"
+    },
+    {
+      "id": 176,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-09-21",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.814Z"
+    },
+    {
+      "id": 177,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-09-21",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.814Z"
+    },
+    {
+      "id": 178,
+      "policyArea": "elections",
+      "weekOf": "2022-09-21",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.815Z"
+    },
+    {
+      "id": 179,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-09-21",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.815Z"
+    },
+    {
+      "id": 180,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-09-21",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.816Z"
+    },
+    {
+      "id": 181,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-09-28",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.816Z"
+    },
+    {
+      "id": 182,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-09-28",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.816Z"
+    },
+    {
+      "id": 183,
+      "policyArea": "elections",
+      "weekOf": "2022-09-28",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.817Z"
+    },
+    {
+      "id": 184,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-09-28",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.817Z"
+    },
+    {
+      "id": 185,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-09-28",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.818Z"
+    },
+    {
+      "id": 186,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-10-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.818Z"
+    },
+    {
+      "id": 187,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-10-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.818Z"
+    },
+    {
+      "id": 188,
+      "policyArea": "elections",
+      "weekOf": "2022-10-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.819Z"
+    },
+    {
+      "id": 189,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-10-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.819Z"
+    },
+    {
+      "id": 190,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-10-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.819Z"
+    },
+    {
+      "id": 191,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-10-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.820Z"
+    },
+    {
+      "id": 192,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-10-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.820Z"
+    },
+    {
+      "id": 193,
+      "policyArea": "elections",
+      "weekOf": "2022-10-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.821Z"
+    },
+    {
+      "id": 194,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-10-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.821Z"
+    },
+    {
+      "id": 195,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-10-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.821Z"
+    },
+    {
+      "id": 196,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-10-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.822Z"
+    },
+    {
+      "id": 197,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-10-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.822Z"
+    },
+    {
+      "id": 198,
+      "policyArea": "elections",
+      "weekOf": "2022-10-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.823Z"
+    },
+    {
+      "id": 199,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-10-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.823Z"
+    },
+    {
+      "id": 200,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-10-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.823Z"
+    },
+    {
+      "id": 201,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-10-26",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.824Z"
+    },
+    {
+      "id": 202,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-10-26",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.824Z"
+    },
+    {
+      "id": 203,
+      "policyArea": "elections",
+      "weekOf": "2022-10-26",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.824Z"
+    },
+    {
+      "id": 204,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-10-26",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.824Z"
+    },
+    {
+      "id": 205,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-10-26",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.825Z"
+    },
+    {
+      "id": 206,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-11-02",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.825Z"
+    },
+    {
+      "id": 207,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-11-02",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.825Z"
+    },
+    {
+      "id": 208,
+      "policyArea": "elections",
+      "weekOf": "2022-11-02",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.826Z"
+    },
+    {
+      "id": 209,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-11-02",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.826Z"
+    },
+    {
+      "id": 210,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-11-02",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.826Z"
+    },
+    {
+      "id": 211,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-11-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.827Z"
+    },
+    {
+      "id": 212,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-11-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.827Z"
+    },
+    {
+      "id": 213,
+      "policyArea": "elections",
+      "weekOf": "2022-11-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.827Z"
+    },
+    {
+      "id": 214,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-11-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.828Z"
+    },
+    {
+      "id": 215,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-11-10",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.828Z"
+    },
+    {
+      "id": 216,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-11-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.828Z"
+    },
+    {
+      "id": 217,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-11-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.828Z"
+    },
+    {
+      "id": 218,
+      "policyArea": "elections",
+      "weekOf": "2022-11-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.829Z"
+    },
+    {
+      "id": 219,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-11-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.829Z"
+    },
+    {
+      "id": 220,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-11-17",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.829Z"
+    },
+    {
+      "id": 221,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-11-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.830Z"
+    },
+    {
+      "id": 222,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-11-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.830Z"
+    },
+    {
+      "id": 223,
+      "policyArea": "elections",
+      "weekOf": "2022-11-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.830Z"
+    },
+    {
+      "id": 224,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-11-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.830Z"
+    },
+    {
+      "id": 225,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-11-24",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.831Z"
+    },
+    {
+      "id": 226,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-12-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.831Z"
+    },
+    {
+      "id": 227,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-12-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.831Z"
+    },
+    {
+      "id": 228,
+      "policyArea": "elections",
+      "weekOf": "2022-12-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.832Z"
+    },
+    {
+      "id": 229,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-12-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.832Z"
+    },
+    {
+      "id": 230,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-12-01",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.832Z"
+    },
+    {
+      "id": 231,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-12-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.832Z"
+    },
+    {
+      "id": 232,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-12-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.833Z"
+    },
+    {
+      "id": 233,
+      "policyArea": "elections",
+      "weekOf": "2022-12-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.833Z"
+    },
+    {
+      "id": 234,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-12-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.833Z"
+    },
+    {
+      "id": 235,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-12-08",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.834Z"
+    },
+    {
+      "id": 236,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-12-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.834Z"
+    },
+    {
+      "id": 237,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-12-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.834Z"
+    },
+    {
+      "id": 238,
+      "policyArea": "elections",
+      "weekOf": "2022-12-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.835Z"
+    },
+    {
+      "id": 239,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-12-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.835Z"
+    },
+    {
+      "id": 240,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-12-15",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.835Z"
+    },
+    {
+      "id": 241,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-12-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.835Z"
+    },
+    {
+      "id": 242,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-12-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.836Z"
+    },
+    {
+      "id": 243,
+      "policyArea": "elections",
+      "weekOf": "2022-12-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.836Z"
+    },
+    {
+      "id": 244,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-12-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.836Z"
+    },
+    {
+      "id": 245,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-12-22",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.837Z"
+    },
+    {
+      "id": 246,
+      "policyArea": "rule_of_law",
+      "weekOf": "2022-12-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.837Z"
+    },
+    {
+      "id": 247,
+      "policyArea": "civil_liberties",
+      "weekOf": "2022-12-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.837Z"
+    },
+    {
+      "id": 248,
+      "policyArea": "elections",
+      "weekOf": "2022-12-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.837Z"
+    },
+    {
+      "id": 249,
+      "policyArea": "media_freedom",
+      "weekOf": "2022-12-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.838Z"
+    },
+    {
+      "id": 250,
+      "policyArea": "institutional_independence",
+      "weekOf": "2022-12-29",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.838Z"
+    },
+    {
+      "id": 251,
+      "policyArea": "rule_of_law",
+      "weekOf": "2023-01-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.838Z"
+    },
+    {
+      "id": 252,
+      "policyArea": "civil_liberties",
+      "weekOf": "2023-01-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.839Z"
+    },
+    {
+      "id": 253,
+      "policyArea": "elections",
+      "weekOf": "2023-01-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.839Z"
+    },
+    {
+      "id": 254,
+      "policyArea": "media_freedom",
+      "weekOf": "2023-01-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.839Z"
+    },
+    {
+      "id": 255,
+      "policyArea": "institutional_independence",
+      "weekOf": "2023-01-05",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.840Z"
+    },
+    {
+      "id": 256,
+      "policyArea": "rule_of_law",
+      "weekOf": "2023-01-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.840Z"
+    },
+    {
+      "id": 257,
+      "policyArea": "civil_liberties",
+      "weekOf": "2023-01-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.840Z"
+    },
+    {
+      "id": 258,
+      "policyArea": "elections",
+      "weekOf": "2023-01-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.840Z"
+    },
+    {
+      "id": 259,
+      "policyArea": "media_freedom",
+      "weekOf": "2023-01-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.841Z"
+    },
+    {
+      "id": 260,
+      "policyArea": "institutional_independence",
+      "weekOf": "2023-01-12",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.841Z"
+    },
+    {
+      "id": 261,
+      "policyArea": "rule_of_law",
+      "weekOf": "2023-01-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.841Z"
+    },
+    {
+      "id": 262,
+      "policyArea": "civil_liberties",
+      "weekOf": "2023-01-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.842Z"
+    },
+    {
+      "id": 263,
+      "policyArea": "elections",
+      "weekOf": "2023-01-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.842Z"
+    },
+    {
+      "id": 264,
+      "policyArea": "media_freedom",
+      "weekOf": "2023-01-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.842Z"
+    },
+    {
+      "id": 265,
+      "policyArea": "institutional_independence",
+      "weekOf": "2023-01-19",
+      "rhetoricScore": 0,
+      "actionScore": 0,
+      "gap": 0,
+      "statementCount": 0,
+      "computedAt": "2026-02-15T07:11:17.843Z"
+    }
+  ]
+}

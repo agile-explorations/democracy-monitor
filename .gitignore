@@ -37,3 +37,6 @@ dev.log
 
 # Generated review reports
 lib/seed/reports/
+
+# Raw document fixtures (reproducible via pnpm backfill; ~35MB per baseline)
+lib/seed/fixtures/documents.json
