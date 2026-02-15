@@ -194,29 +194,45 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 14: Biden 2022 Baseline + Rhetoric-Based Keyword Gaps
 
-> **Status: In progress.** Baseline generated. Category rename `indices` → `executiveActions` completed (V3 Addendum §14.2). Review display improved. Interactive review + keyword refinement remaining.
+> **Status: Done.** Actual: 3 calibration iterations (42→8 alerts). Signal tightening for fiscal/elections/rulemaking. Volume thresholds raised (drift 3→5, capture 2→3). Keyword hallucination filter added. Light fixture export (~29MB) with document manifest. Category rename `indices` → `executiveActions`. 16 coverage tests added. Rhetoric gap analysis + refinement cycle deferred to Sprint 14.1.
 
-**Goal:** Switch to Biden 2022 as primary "steady state normal governance" baseline. Build rhetoric-to-keyword gap analysis for `missingKeywords`. First full keyword refinement cycle with new baseline.
+**Goal:** Switch to Biden 2022 as primary "steady state normal governance" baseline. Calibrate signals and thresholds to minimize false positives. Export as deterministic fixture set.
 
 **Depends on:** Sprint 13 (keyword tuning pipeline)
 
-**Code work (~300 lines new/modified):**
+**Actual code work:**
 
-1. ~~Run `build-baseline --baseline biden_2022 --model gpt-4o-mini` for Jan 2022 – Dec 2022~~ — **Done**
-2. Create rhetoric-to-keyword gap analysis (`lib/seed/rhetoric-keyword-gaps.ts`): frequency analysis of terms in documents table (source: whitehouse, gdelt) mapped to categories, compared against `assessment-rules.ts` keyword dictionaries. Surfaces terms appearing in N+ rhetoric documents for a category but absent from the keyword dictionary.
-3. Integrate `missingKeywords` suggestions into post-session aggregate report
-4. Run first full refinement cycle against Biden 2022 baseline: backfill → review → aggregate → apply → re-run → validate
-5. Export Biden 2022 as fixture set alongside Biden 2024
-6. ~~Rename `indices` → `executiveActions`~~ — **Done** (added mid-sprint per V3 Addendum §14.2)
+1. ~~Run `build-baseline --baseline biden_2022 --model gpt-4o-mini` for Jan 2022 – Dec 2022~~ — **Done** (58,713 docs, 1,272 API calls)
+2. ~~Signal tightening~~ — **Done** (fiscal: budget→executive overreach terms, elections: voter→suppression terms, rulemaking: narrowed)
+3. ~~Volume threshold calibration~~ — **Done** (drift 3→5, capture 2→3, keyword hallucination filter)
+4. ~~Export Biden 2022 as light fixtures with document manifest~~ — **Done** (~29MB committed, raw docs gitignored)
+5. ~~Rename `indices` → `executiveActions`~~ — **Done** (V3 Addendum §14.2)
+6. ~~Coverage tests for parseCliArgs + computeProportions~~ — **Done** (16 tests, 799 total)
+
+---
+
+### Sprint 14.1: Rhetoric-Based Keyword Gaps + First Refinement Cycle
+
+> **Status: Not started.**
+
+**Goal:** Build rhetoric-to-keyword gap analysis. Run first full keyword refinement cycle using the calibrated Biden 2022 baseline as reference.
+
+**Depends on:** Sprint 14 (calibrated Biden 2022 baseline + fixtures)
+
+**Code work (~200 lines new/modified):**
+
+1. Create rhetoric-to-keyword gap analysis (`lib/seed/rhetoric-keyword-gaps.ts`): frequency analysis of terms in documents table (source: whitehouse, gdelt) mapped to categories, compared against `assessment-rules.ts` keyword dictionaries. Surfaces terms appearing in N+ rhetoric documents for a category but absent from the keyword dictionary.
+2. Integrate `missingKeywords` suggestions into post-session aggregate report
+3. Run first full refinement cycle against Biden 2022 baseline: backfill → review → aggregate → apply → re-run → validate
+4. Re-export Biden 2022 fixtures after keyword changes
 
 **E2E test:**
 
-- Biden 2022 baseline produces data for all 11 categories
 - Rhetoric gap analysis surfaces candidate keywords not in current dictionaries
 - Aggregate report includes both false-positive removals and rhetoric-sourced additions
 - Re-scored Biden 2022 baseline shows improvement after keyword tuning
 
-**Risk:** Biden 2022 is the target "clean" baseline, so keyword tuning should reduce false positives to near zero for this period.
+**Risk:** Keyword additions from rhetoric analysis are additive — they go through the review queue, not applied blindly. Re-run should produce ≤8 alerts (same or fewer than calibrated baseline).
 
 ---
 
@@ -547,6 +563,14 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Source health tracker monitors alternative sources alongside primary sources
 - Category assessments incorporate Tier 2+ source data when available
 - Rhetoric page shows keyword gap cards in Detailed mode
+
+---
+
+## Known Prerequisites for Future Sprints
+
+| Issue | Blocker for                      | Description                                                                                                                                                                                                                              |
+| ----- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #28   | Sprint L (Search Infrastructure) | Normalize `source_type` values in documents table. Three specs disagree on semantics; actual DB has FR document types mixed with content classifications. Search Specification §4.1 filters by origin-based values that don't exist yet. |
 
 ---
 

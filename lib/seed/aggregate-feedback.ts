@@ -75,6 +75,7 @@ export function extractFeedbackEntries(alerts: ResolvedAlert[]): FeedbackEntry[]
     const feedback = resolution.feedback as ReviewFeedback;
     const hasContent =
       feedback.falsePositiveKeywords?.length ||
+      feedback.missingKeywords?.length ||
       feedback.suppressionSuggestions?.length ||
       feedback.tierChanges?.length;
     if (!hasContent) continue;
@@ -174,6 +175,25 @@ export function aggregateSuppressions(
   return suppressions;
 }
 
+/** Aggregate missing keyword suggestions across reviews. */
+export function aggregateMissingKeywords(
+  entries: FeedbackEntry[],
+): Map<string, { count: number; categories: Set<string> }> {
+  const missing = new Map<string, { count: number; categories: Set<string> }>();
+
+  for (const { category, feedback } of entries) {
+    for (const kw of feedback.missingKeywords ?? []) {
+      const key = kw.toLowerCase();
+      const existing = missing.get(key) ?? { count: 0, categories: new Set<string>() };
+      existing.count += 1;
+      existing.categories.add(category);
+      missing.set(key, existing);
+    }
+  }
+
+  return missing;
+}
+
 /** Detect category-level systemic issues from resolved alerts. */
 export function detectCategoryFindings(alerts: ResolvedAlert[]): CategoryFinding[] {
   const findings: CategoryFinding[] = [];
@@ -226,6 +246,7 @@ export function buildAggregateReport(alerts: ResolvedAlert[]): AggregateReport {
   const fpMap = aggregateFalsePositives(entries);
   const tierMap = aggregateTierChanges(entries);
   const suppressionMap = aggregateSuppressions(entries);
+  const missingMap = aggregateMissingKeywords(entries);
 
   const keywordRecommendations: KeywordRecommendation[] = [];
 
@@ -254,6 +275,21 @@ export function buildAggregateReport(alerts: ResolvedAlert[]): AggregateReport {
         currentTier: data.currentTier,
         suggestedTier: data.suggestedTier,
         reason: `Suggested ${data.count} time(s): ${data.reasons[0] ?? 'no reason given'}`,
+        occurrences: data.count,
+        fpRate: 0,
+      });
+    }
+  }
+
+  // Missing keyword additions
+  for (const [keyword, data] of missingMap) {
+    if (data.count >= 2) {
+      keywordRecommendations.push({
+        keyword,
+        category: [...data.categories].join(', '),
+        action: 'add',
+        suggestedTier: 'warning',
+        reason: `Suggested as missing in ${data.count} review(s)`,
         occurrences: data.count,
         fpRate: 0,
       });
@@ -310,10 +346,14 @@ export function formatAggregateMarkdown(report: AggregateReport): string {
     lines.push('| Action | Keyword | Category | Detail | Occurrences |');
     lines.push('|--------|---------|----------|--------|-------------|');
     for (const rec of report.keywordRecommendations) {
-      const detail =
-        rec.action === 'remove'
-          ? `FP rate: ${(rec.fpRate * 100).toFixed(0)}%`
-          : `${rec.currentTier} → ${rec.suggestedTier}`;
+      let detail: string;
+      if (rec.action === 'remove') {
+        detail = `FP rate: ${(rec.fpRate * 100).toFixed(0)}%`;
+      } else if (rec.action === 'add') {
+        detail = `→ ${rec.suggestedTier}`;
+      } else {
+        detail = `${rec.currentTier} → ${rec.suggestedTier}`;
+      }
       lines.push(
         `| ${rec.action} | ${rec.keyword} | ${rec.category} | ${detail} | ${rec.occurrences} |`,
       );

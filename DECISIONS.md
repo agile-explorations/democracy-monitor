@@ -37,59 +37,73 @@ Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, 
 
 ---
 
-## Sprint 14 (in progress): Biden 2022 Baseline + Category Rename
+## Sprint 14: Biden 2022 Baseline Calibration
 
 **Planned:** Biden 2022 baseline generation, rhetoric-based keyword gaps, first keyword refinement cycle.
 
-**Actual so far:** Biden 2022 baseline generated (11 categories, ~55 review items flagged). Category rename `indices` → `executiveActions` added mid-sprint after spec review identified naming confusion. Interactive review display improved. Baseline review not yet started.
+**Actual:** Baseline calibration required 3 iterations (42→8 alerts). Signal tightening, volume threshold tuning, and keyword hallucination filter consumed the sprint. Rhetoric gap analysis and refinement cycle deferred to Sprint 14.1.
 
 **Key decisions:**
 
-- **`indices` → `executiveActions` rename** (V3 Addendum §14.2): The `indices` key was misleading — it implied external democracy indices, but the category actually tracks executive action volume/tempo. Renamed to `executiveActions` with title "Executive Action Volume". DB migration applied to 9 tables. Done during baseline calibration as spec recommends, before review decisions reference the old key.
-- **`executiveActions` vs `rulemaking` kept distinct** (V3 Addendum §14.3): Related but different signals. `executiveActions` = presidential action pace/volume. `rulemaking` = independent agency capture. A president can issue many EOs without interfering with agencies. Collapsing would lose signal.
-- **Review display: always show matched keywords**: Changed from hiding "Matched Keywords" line when empty to showing `<none>`. Reviewers need to see explicitly that no keywords matched (e.g., when Warning comes from volume threshold, not keyword hits).
-- **Review display: document count + threshold**: Added `Documents: N (below minimum of 3)` line. Shows reviewers why an item got Warning status despite no keyword matches — the volume threshold (`MIN_ITEMS_FOR_STABLE = 3`) was the trigger.
-- **Alert metadata extended**: Added `documentCount` and `insufficientData` fields to `flagForReview()` metadata. Also added `keywordMatches` (done in prior session). All three fields stored at flag time so they're available during review without re-querying assessments.
-- **External Indices as separate capability** (V3 Addendum §14.5, UI Spec §9B): V-Dem, Freedom House, etc. will be a cross-reference validation layer at `/indices`, not part of the 11-category keyword pipeline. Spec updated with full page spec (§9B) and landing panel (§4.10). Implementation deferred to Sprint K (~Sprint 20+).
-
-**Spec updates shipped:**
-
-- V3 Addendum: Added §14.1-14.5 (indices problem + rename + external indices), Sprint K, Risk Reminders 16-19
-- UI Spec: §4.6 updated (`executiveActions`), §4.10 (External Indices Panel), §9B.1-9B.6 (External Indices Page), nav + implementation items
-
-**Remaining (Sprint 14):**
-
-- Re-run baseline to regenerate alerts with `executiveActions` category
-- Interactive review of ~55 flagged items
-- Rhetoric-based keyword gap analysis (`missingKeywords`)
-- First refinement cycle: review → aggregate → apply → re-run → validate
+- **`indices` → `executiveActions` rename** (V3 Addendum §14.2): The `indices` key was misleading — it implied external democracy indices, but the category actually tracks executive action volume/tempo. Renamed to `executiveActions` with title "Executive Action Volume". DB migration applied to 9 tables.
+- **Signal tightening over keyword removal**: fiscal and elections had broad FR signal queries generating too many irrelevant documents. Fixed at the signal level (narrower FR queries) rather than adding suppressions. fiscal: 20→0 alerts, elections: 13→1 alert.
+- **Volume thresholds raised**: drift 3→5, capture 2→3. The original thresholds were too sensitive for Biden 2022's document volumes.
+- **Keyword hallucination filter**: AI assessment sometimes returned keywords not in the dictionary. Added validation in `resolveDowngrade()` to filter these before flagging.
+- **Light fixtures strategy**: Export calibrated outputs (~29MB) + document manifest, not raw documents (~35MB). Raw docs are reproducible via `pnpm backfill`. Titles kept in manifest for future search support (SEARCH SPECIFICATION §4.1).
+- **External Indices as separate capability** (V3 Addendum §14.5, UI Spec §9B): V-Dem, Freedom House, etc. will be a cross-reference validation layer at `/indices`, not part of the 11-category keyword pipeline. Deferred to Sprint K (~Sprint 20+).
 
 ---
 
-### Keyword refinement workflow (remaining steps)
+## Sprint 14.1 (in progress): Rhetoric Gap Analysis + Refinement Cycle
 
-Sprint 13 built the tooling (items 1, 3, 5 below). Remaining steps for Sprint 14+:
+**Planned:** Rhetoric-to-keyword gap analysis, missingKeywords in aggregate report, first refinement cycle.
+
+**Actual so far:** Gap analysis module built (`rhetoric-keyword-gaps.ts`), aggregate report extended with `aggregateMissingKeywords()`. Refinement cycle not yet run.
+
+**Key decisions:**
+
+- **Bigram-only analysis**: Current rhetoric gap analysis extracts bigrams from document titles. Many keyword dictionary entries are multi-word phrases, making bigrams a good match. Unigrams would be too noisy; trigrams could be added later.
+- **Title-only, not content**: GDELT content is often null; titles are the reliable field across all rhetoric sources.
+
+**Spec deviation — `source_type` inconsistency (#28):**
+
+Three specs define `source_type` differently:
+
+| Spec                           | `source_type` means                                                       |
+| ------------------------------ | ------------------------------------------------------------------------- |
+| V3 Addendum (line 60)          | Fetch method (`api`, `rss`, `html`, `json`)                               |
+| Search Specification (§8, §10) | Origin/provider (`federal_register`, `whitehouse`, `gdelt`)               |
+| Actual DB                      | FR document classification (`Notice`, `Rule`) + content type (`rhetoric`) |
+
+Root cause: `federal-register-fetcher.ts` stores FR API document types (`Notice`, `Rule`); `rhetoric-fetcher.ts` hardcodes `'rhetoric'` for both WH and GDELT. Neither matches either spec. The Search Specification assumed origin-based values that don't exist.
+
+**Resolution:** Tracked as #28. Must be fixed before Sprint L (Search Infrastructure). `rhetoric-keyword-gaps.ts` works around it with `WHERE source_type = 'rhetoric'` and a `TODO(#28)` comment. No other current code is affected.
+
+---
+
+### Keyword refinement workflow
+
+Sprint 13 built the tooling (items 1, 3, 5). Sprint 14.1 completes the remaining steps:
 
 1. ~~AI Skeptic pre-populates feedback~~ — **Done** (Sprint 13)
-2. **missingKeywords from rhetoric analysis** — Sprint 14. Not from AI — from WH/GDELT frequency analysis. Preserves keyword layer independence.
-3. ~~Post-session aggregate report~~ — **Done** (Sprint 13, `--aggregate` flag)
-4. **Double human review** — Sprint 14. Human reviews per-item, then approves aggregate recommendations.
+2. ~~missingKeywords from rhetoric analysis~~ — **Done** (Sprint 14.1). Bigram frequency on WH/GDELT titles, compared against keyword dictionaries. Preserves keyword layer independence.
+3. ~~Post-session aggregate report~~ — **Done** (Sprint 13, extended in Sprint 14.1 with `aggregateMissingKeywords()`)
+4. **Double human review** — Sprint 14.1. Human reviews per-item, then approves aggregate recommendations.
 5. ~~Changes in code via apply-decisions.ts~~ — **Done** (Sprint 13, `pnpm seed:apply`)
-6. **Validate with re-run** — Sprint 14. Re-run baseline with `--skip-fetch --skip-ai` after applying changes.
-
-**Rationale** (unchanged): Two-layer assessment independence. AI feedback routed through human approval at two levels. Missing keywords from rhetoric, not AI.
+6. **Validate with re-run** — Sprint 14.1. Re-run baseline after applying changes, verify alerts ≤ 8.
 
 ### Baseline strategy (Sprint 14-15)
 
-- **Biden 2022** (primary) — Steady state normal governance
-- **Biden 2021** — First-year-in-term baseline
-- **Obama 2013** — Cross-president validation (risk: WH archive URL structure differs)
-- **Biden 2024** (legacy) — Kept for comparison, not primary
+- **Biden 2022** (primary) — Steady state normal governance. 58,713 docs, 8 alerts after calibration.
+- **Biden 2021** — First-year-in-term baseline (Sprint 15)
+- **Obama 2013** — Cross-president validation (Sprint 15; risk: WH archive URL structure differs)
 
 ### Updated sprint sequence
 
 - ~~Sprint 13:~~ **Done** — AI Skeptic structured feedback + keyword tuning pipeline
-- **Sprint 14:** Biden 2022 baseline + rhetoric-based `missingKeywords` + first keyword refinement cycle
-- **Sprint 15:** Biden 2021 + Obama 2013 baselines + cross-baseline validation framework
+- ~~Sprint 14:~~ **Done** — Biden 2022 baseline calibration (3 iterations, signal tightening, fixtures)
+- **Sprint 14.1:** Rhetoric gap analysis + first refinement cycle
+- **Sprint 15:** Biden 2021 + Obama 2013 baselines + cross-baseline validation
+- **Pre-Sprint L:** Normalize `source_type` values (#28)
 
 See ROADMAP.md for full sequence.

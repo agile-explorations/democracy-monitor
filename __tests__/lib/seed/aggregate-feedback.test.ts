@@ -4,6 +4,7 @@ import {
   aggregateFalsePositives,
   aggregateTierChanges,
   aggregateSuppressions,
+  aggregateMissingKeywords,
   detectCategoryFindings,
   buildAggregateReport,
   formatAggregateMarkdown,
@@ -116,6 +117,114 @@ describe('aggregateSuppressions', () => {
     ];
     const supMap = aggregateSuppressions(entries);
     expect(supMap.get('emergency: routine admin')!.count).toBe(2);
+  });
+});
+
+describe('extractFeedbackEntries — missingKeywords', () => {
+  it('includes entries with only missingKeywords feedback', () => {
+    const entries = extractFeedbackEntries([
+      makeResolved({
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['executive overreach'] } },
+        },
+      }),
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].feedback.missingKeywords).toEqual(['executive overreach']);
+  });
+});
+
+describe('aggregateMissingKeywords', () => {
+  it('counts missing keyword occurrences across reviews', () => {
+    const entries = [
+      { category: 'courts', feedback: { missingKeywords: ['judicial crisis'] } },
+      { category: 'courts', feedback: { missingKeywords: ['judicial crisis', 'bench warrant'] } },
+      { category: 'military', feedback: { missingKeywords: ['judicial crisis'] } },
+    ];
+    const mkMap = aggregateMissingKeywords(entries);
+    expect(mkMap.get('judicial crisis')!.count).toBe(3);
+    expect(mkMap.get('judicial crisis')!.categories.size).toBe(2);
+    expect(mkMap.get('bench warrant')!.count).toBe(1);
+  });
+
+  it('lowercases keywords for consistent aggregation', () => {
+    const entries = [
+      { category: 'courts', feedback: { missingKeywords: ['Executive Order'] } },
+      { category: 'courts', feedback: { missingKeywords: ['executive order'] } },
+    ];
+    const mkMap = aggregateMissingKeywords(entries);
+    expect(mkMap.get('executive order')!.count).toBe(2);
+  });
+
+  it('returns empty map when no missing keywords', () => {
+    const entries = [
+      { category: 'courts', feedback: { falsePositiveKeywords: ['injunction issued'] } },
+    ];
+    expect(aggregateMissingKeywords(entries).size).toBe(0);
+  });
+});
+
+describe('buildAggregateReport — missing keyword additions', () => {
+  it('includes add recommendations for keywords suggested 2+ times', () => {
+    const alerts = [
+      makeResolved({
+        id: 1,
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['executive overreach'] } },
+        },
+      }),
+      makeResolved({
+        id: 2,
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['executive overreach'] } },
+        },
+      }),
+    ];
+    const report = buildAggregateReport(alerts);
+    const addRec = report.keywordRecommendations.find(
+      (r) => r.action === 'add' && r.keyword === 'executive overreach',
+    );
+    expect(addRec).toBeDefined();
+    expect(addRec!.suggestedTier).toBe('warning');
+    expect(addRec!.occurrences).toBe(2);
+  });
+
+  it('excludes add recommendations below 2 occurrences', () => {
+    const alerts = [
+      makeResolved({
+        id: 1,
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['rare keyword'] } },
+        },
+      }),
+    ];
+    const report = buildAggregateReport(alerts);
+    const addRecs = report.keywordRecommendations.filter((r) => r.action === 'add');
+    expect(addRecs).toHaveLength(0);
+  });
+});
+
+describe('formatAggregateMarkdown — add actions', () => {
+  it('renders add action with suggested tier', () => {
+    const alerts = [
+      makeResolved({
+        id: 1,
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['executive overreach'] } },
+        },
+      }),
+      makeResolved({
+        id: 2,
+        metadata: {
+          resolution: { feedback: { missingKeywords: ['executive overreach'] } },
+        },
+      }),
+    ];
+    const report = buildAggregateReport(alerts);
+    const md = formatAggregateMarkdown(report);
+    expect(md).toContain('| add |');
+    expect(md).toContain('executive overreach');
+    expect(md).toContain('→ warning');
   });
 });
 
