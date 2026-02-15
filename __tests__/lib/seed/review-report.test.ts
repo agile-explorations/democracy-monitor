@@ -7,6 +7,7 @@ import {
   formatReviewItem,
   formatReportMarkdown,
   buildGapExplanation,
+  parseCliArgs,
 } from '@/lib/seed/review-report';
 import type { EnhancedAssessment } from '@/lib/types';
 
@@ -177,6 +178,60 @@ describe('formatReviewItem', () => {
     expect(md).toContain('**Confidence:** 85%');
     expect(md).toContain('AI thinks this is fine');
     expect(md).toContain('`emergency`');
+  });
+});
+
+describe('parseCliArgs', () => {
+  it('parses --out flag with value', () => {
+    const opts = parseCliArgs(['--out', './my-dir']);
+    expect(opts.outDir).toBe('./my-dir');
+  });
+
+  it('parses --interactive flag', () => {
+    const opts = parseCliArgs(['--interactive']);
+    expect(opts.interactive).toBe(true);
+  });
+
+  it('parses --approve-ai flag', () => {
+    const opts = parseCliArgs(['--approve-ai']);
+    expect(opts.approveAi).toBe(true);
+  });
+
+  it('parses --reviewer flag with value', () => {
+    const opts = parseCliArgs(['--reviewer', 'Alice']);
+    expect(opts.reviewer).toBe('Alice');
+  });
+
+  it('parses --status flag', () => {
+    const opts = parseCliArgs(['--status']);
+    expect(opts.status).toBe(true);
+  });
+
+  it('parses --export flag', () => {
+    const opts = parseCliArgs(['--export']);
+    expect(opts.exportJson).toBe(true);
+  });
+
+  it('parses --reset flag', () => {
+    const opts = parseCliArgs(['--reset']);
+    expect(opts.reset).toBe(true);
+  });
+
+  it('parses --aggregate flag', () => {
+    const opts = parseCliArgs(['--aggregate']);
+    expect(opts.aggregate).toBe(true);
+  });
+
+  it('parses multiple flags together', () => {
+    const opts = parseCliArgs(['--approve-ai', '--reviewer', 'Bob', '--out', '/tmp']);
+    expect(opts.approveAi).toBe(true);
+    expect(opts.reviewer).toBe('Bob');
+    expect(opts.outDir).toBe('/tmp');
+  });
+
+  it('returns empty options for no args', () => {
+    const opts = parseCliArgs([]);
+    expect(opts).toEqual({});
   });
 });
 

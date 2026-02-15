@@ -226,7 +226,7 @@ interface CliOptions {
   aggregate?: boolean;
 }
 
-function parseCliArgs(args: string[]): CliOptions {
+export function parseCliArgs(args: string[]): CliOptions {
   const opts: CliOptions = {};
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {

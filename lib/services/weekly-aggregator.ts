@@ -22,7 +22,7 @@ export interface WeeklyAggregate {
   computedAt: string;
 }
 
-function computeProportions(
+export function computeProportions(
   captureMatchCount: number,
   driftMatchCount: number,
   warningMatchCount: number,

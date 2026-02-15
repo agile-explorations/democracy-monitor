@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isDbAvailable, getDb } from '@/lib/db';
 import {
+  computeProportions,
   computeWeeklyAggregate,
   computeAllWeeklyAggregates,
   getWeekOfDate,
@@ -33,6 +34,47 @@ function mockDbForCompute(
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+describe('computeProportions', () => {
+  it('computes proportions from match counts', () => {
+    const result = computeProportions(5, 10, 5);
+    expect(result.captureProportion).toBe(0.25);
+    expect(result.driftProportion).toBe(0.5);
+    expect(result.warningProportion).toBe(0.25);
+  });
+
+  it('computes severity mix using tier weights (capture=4, drift=2, warning=1)', () => {
+    // 0.25*4 + 0.5*2 + 0.25*1 = 1 + 1 + 0.25 = 2.25
+    const result = computeProportions(5, 10, 5);
+    expect(result.severityMix).toBe(2.25);
+  });
+
+  it('returns all zeros when no matches', () => {
+    const result = computeProportions(0, 0, 0);
+    expect(result.captureProportion).toBe(0);
+    expect(result.driftProportion).toBe(0);
+    expect(result.warningProportion).toBe(0);
+    expect(result.severityMix).toBe(0);
+  });
+
+  it('returns max severity mix (4.0) when all capture', () => {
+    const result = computeProportions(10, 0, 0);
+    expect(result.captureProportion).toBe(1);
+    expect(result.severityMix).toBe(4);
+  });
+
+  it('returns min severity mix (1.0) when all warning', () => {
+    const result = computeProportions(0, 0, 10);
+    expect(result.warningProportion).toBe(1);
+    expect(result.severityMix).toBe(1);
+  });
+
+  it('returns severity mix 2.0 when all drift', () => {
+    const result = computeProportions(0, 10, 0);
+    expect(result.driftProportion).toBe(1);
+    expect(result.severityMix).toBe(2);
+  });
 });
 
 describe('getWeekOfDate', () => {
