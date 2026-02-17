@@ -184,7 +184,7 @@ export function statementsToContentItems(statements: IntentStatement[]): Content
     }));
 }
 
-function classifyPolicyArea(text: string): PolicyArea {
+export function classifyPolicyAreaWithScore(text: string): { area: PolicyArea; score: number } {
   const areas: PolicyArea[] = [
     'rule_of_law',
     'civil_liberties',
@@ -216,7 +216,11 @@ function classifyPolicyArea(text: string): PolicyArea {
     }
   }
 
-  return bestArea;
+  return { area: bestArea, score: bestScore };
+}
+
+export function classifyPolicyArea(text: string): PolicyArea {
+  return classifyPolicyAreaWithScore(text).area;
 }
 
 function classifyType(_docType: string, text: string): 'rhetoric' | 'action' {

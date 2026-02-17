@@ -1,9 +1,9 @@
 /**
  * Rhetoric-to-keyword gap analysis.
  *
- * Queries documents from rhetoric sources (whitehouse, gdelt) and surfaces
- * high-frequency terms that appear in N+ documents for a category but are
- * absent from the keyword dictionaries in assessment-rules.ts.
+ * Queries rhetoric documents, classifies them by PolicyArea using the same
+ * keyword matching as the live intent path, maps to assessment categories,
+ * and surfaces high-frequency bigrams absent from keyword dictionaries.
  *
  * Pure functions are exported for testing. DB access is isolated in
  * analyzeRhetoricGaps().
@@ -18,6 +18,7 @@
 import fs from 'fs';
 import path from 'path';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { mapPolicyAreaToCategories } from '@/lib/data/category-topics';
 import type { AssessmentRules } from '@/lib/types';
 
 // --- Types ---
@@ -138,9 +139,9 @@ export function formatGapMarkdown(report: RhetoricGapReport): string {
 
   for (const cat of report.categories) {
     if (cat.gaps.length === 0) continue;
-    lines.push(`## ${cat.category} (${cat.totalDocuments} documents)`, '');
-    lines.push('| Term | Document Count |');
-    lines.push('|------|---------------|');
+    lines.push(`## ${cat.category} (${cat.totalDocuments} statements)`, '');
+    lines.push('| Term | Statement Count |');
+    lines.push('|------|----------------|');
     for (const gap of cat.gaps) {
       lines.push(`| ${gap.term} | ${gap.count} |`);
     }
@@ -150,14 +151,7 @@ export function formatGapMarkdown(report: RhetoricGapReport): string {
   return lines.join('\n');
 }
 
-// --- DB query types ---
-
-export interface DocumentTitle {
-  category: string;
-  title: string;
-}
-
-/** Build gap report from document titles (pure — no DB dependency). */
+/** Build gap report from statement texts grouped by category (pure). */
 export function buildGapReport(
   titlesByCategory: Map<string, string[]>,
   rules: AssessmentRules,
@@ -188,28 +182,47 @@ export function buildGapReport(
 
 // --- DB + I/O ---
 
-async function fetchRhetoricTitles(category?: string): Promise<Map<string, string[]>> {
+async function fetchRhetoricTexts(category?: string): Promise<Map<string, string[]>> {
   const { sql } = await import('drizzle-orm');
   const { getDb } = await import('@/lib/db');
+  const { classifyPolicyAreaWithScore } = await import('@/lib/services/intent-data-service');
 
   const db = getDb();
-  const titlesByCategory = new Map<string, string[]>();
-
-  const categoryFilter = category ? sql`AND category = ${category}` : sql``;
 
   const rows = await db.execute(sql`
-    SELECT category, title
+    SELECT title
     FROM documents
-    WHERE source_type = 'rhetoric' -- TODO(#28): normalize source_type to origin values
+    WHERE source_type = 'rhetoric' -- TODO(#28): normalize source_type
       AND title IS NOT NULL
-      ${categoryFilter}
-    ORDER BY category
   `);
 
-  for (const row of rows.rows as DocumentTitle[]) {
-    const titles = titlesByCategory.get(row.category) ?? [];
-    titles.push(row.title);
-    titlesByCategory.set(row.category, titles);
+  // Classify each title into a PolicyArea, then map to assessment categories.
+  // Skip docs with score 0 (no keyword matches — unclassifiable).
+  let skipped = 0;
+  const textsByPolicyArea = new Map<string, string[]>();
+  for (const row of rows.rows as { title: string }[]) {
+    const { area, score } = classifyPolicyAreaWithScore(row.title);
+    if (score === 0) {
+      skipped++;
+      continue;
+    }
+    const texts = textsByPolicyArea.get(area) ?? [];
+    texts.push(row.title);
+    textsByPolicyArea.set(area, texts);
+  }
+
+  console.log(
+    `[rhetoric-gaps] Classified ${rows.rows.length - skipped}/${rows.rows.length} docs (${skipped} unclassifiable)`,
+  );
+
+  const titlesByCategory = mapPolicyAreaToCategories(textsByPolicyArea);
+
+  // Apply --category filter after mapping
+  if (category) {
+    const filtered = new Map<string, string[]>();
+    const texts = titlesByCategory.get(category);
+    if (texts) filtered.set(category, texts);
+    return filtered;
   }
 
   return titlesByCategory;
@@ -227,9 +240,12 @@ export async function analyzeRhetoricGaps(options?: {
   }
 
   const minDocs = options?.minDocs ?? DEFAULT_MIN_DOCS;
-  const titlesByCategory = await fetchRhetoricTitles(options?.category);
+  const titlesByCategory = await fetchRhetoricTexts(options?.category);
 
-  console.log(`[rhetoric-gaps] Fetched titles for ${titlesByCategory.size} categories`);
+  console.log(`[rhetoric-gaps] Mapped statements to ${titlesByCategory.size} categories`);
+  for (const [cat, texts] of titlesByCategory) {
+    console.log(`[rhetoric-gaps]   ${cat}: ${texts.length} statements`);
+  }
 
   const report = buildGapReport(titlesByCategory, ASSESSMENT_RULES, minDocs);
 

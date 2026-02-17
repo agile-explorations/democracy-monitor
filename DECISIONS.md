@@ -58,12 +58,16 @@ Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, 
 
 **Planned:** Rhetoric-to-keyword gap analysis, missingKeywords in aggregate report, first refinement cycle.
 
-**Actual so far:** Gap analysis module built (`rhetoric-keyword-gaps.ts`), aggregate report extended with `aggregateMissingKeywords()`. Refinement cycle not yet run.
+**Actual:** Gap analysis built and run. All 6 mapped category dictionaries reviewed against rhetoric corpus. Result: **zero keyword additions needed** — dictionaries are well-calibrated. Rhetoric→document vocabulary gap is a translation gap (e.g., "fake news" → "press credentials revoked"), and existing keywords already cover the action side.
 
 **Key decisions:**
 
-- **Bigram-only analysis**: Current rhetoric gap analysis extracts bigrams from document titles. Many keyword dictionary entries are multi-word phrases, making bigrams a good match. Unigrams would be too noisy; trigrams could be added later.
+- **PolicyArea-based classification**: Rhetoric docs are stored as `category = 'intent'` (undifferentiated). Gap analysis reuses `classifyPolicyAreaWithScore()` from the live intent path to classify each doc title into one of 5 policy areas, then maps to assessment categories via `POLICY_AREA_CATEGORIES` (many-to-many). Docs with score 0 (no keyword matches) are skipped — 49,685 of 50,651 are unclassifiable generic government content.
+- **Many-to-many PolicyArea → category mapping**: `rule_of_law` → courts, igs; `civil_liberties` → courts, executiveActions; `elections` → elections; `media_freedom` → mediaFreedom; `institutional_independence` → rulemaking, executiveActions, igs. Five categories intentionally unmapped (civilService, fiscal, military, hatch, infoAvailability) — they get keyword proposals from other feedback loops.
+- **Bigram-only analysis**: Extracts bigrams from document titles. Many keyword dictionary entries are multi-word phrases, making bigrams a good match. Unigrams would be too noisy; trigrams could be added later.
 - **Title-only, not content**: GDELT content is often null; titles are the reliable field across all rhetoric sources.
+- **GDELT international noise**: ~50% of gaps are artifacts of GDELT's global coverage (Ethiopia, Hong Kong, Pakistan, Philippines press freedom stories). Future improvement: filter by GDELT country codes to US-only rhetoric. Not built now — noted for rhetoric pipeline (§13.6).
+- **Refinement cycle outcome**: No keywords added → no `apply-decisions.ts` run needed → no re-validation run needed. Sprint 14.1 refinement cycle completes as "dictionaries confirmed well-calibrated."
 
 **Spec deviation — `source_type` inconsistency (#28):**
 
@@ -88,9 +92,9 @@ Sprint 13 built the tooling (items 1, 3, 5). Sprint 14.1 completes the remaining
 1. ~~AI Skeptic pre-populates feedback~~ — **Done** (Sprint 13)
 2. ~~missingKeywords from rhetoric analysis~~ — **Done** (Sprint 14.1). Bigram frequency on WH/GDELT titles, compared against keyword dictionaries. Preserves keyword layer independence.
 3. ~~Post-session aggregate report~~ — **Done** (Sprint 13, extended in Sprint 14.1 with `aggregateMissingKeywords()`)
-4. **Double human review** — Sprint 14.1. Human reviews per-item, then approves aggregate recommendations.
-5. ~~Changes in code via apply-decisions.ts~~ — **Done** (Sprint 13, `pnpm seed:apply`)
-6. **Validate with re-run** — Sprint 14.1. Re-run baseline after applying changes, verify alerts ≤ 8.
+4. ~~Double human review~~ — **Done** (Sprint 14.1). Human reviewed all 6 mapped categories. Result: zero additions — dictionaries well-calibrated, rhetoric→document vocabulary gap is a translation gap already covered by existing keywords.
+5. ~~Changes in code via apply-decisions.ts~~ — **Done** (Sprint 13, `pnpm seed:apply`). Not needed this cycle (zero additions).
+6. ~~Validate with re-run~~ — **N/A** this cycle (no keyword changes → baseline unchanged at 8 alerts).
 
 ### Baseline strategy (Sprint 14-15)
 

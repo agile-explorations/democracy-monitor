@@ -236,7 +236,7 @@ describe('formatGapMarkdown', () => {
     const md = formatGapMarkdown(report);
     expect(md).toContain('# Rhetoric-to-Keyword Gap Analysis');
     expect(md).toContain('Total gaps found: 1');
-    expect(md).toContain('## courts (100 documents)');
+    expect(md).toContain('## courts (100 statements)');
     expect(md).toContain('| judicial crisis | 15 |');
   });
 
