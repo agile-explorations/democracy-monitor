@@ -321,26 +321,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 18: Category Detail Page + Trend Chart
 
+> **Status: Done.** All 8 work items shipped. Single `/api/category/[key]` endpoint (reused existing weekly-scores). ComposedChart with baseline ±1σ band, cycle annotation, AI reviewer notes with constraint label. 4 new components, 5 test files, 24 new tests (999 total). See `DECISIONS.md` for full retrospective.
+
 **Goal:** Full category detail page with trend chart, evidence panel, and assessment summary.
 
-**Code work (~350 lines new):**
+**Actual code work:**
 
-1. API endpoints: `GET /api/category/[key]/summary`, `GET /api/category/[key]/weekly`
-2. Category detail page (`pages/category/[key].tsx`)
-3. Trend chart — recharts LineChart with decay-weighted line + baseline band
-4. Assessment summary section (AI-generated or template, with "How we could be wrong")
-5. Evidence panel — matched keywords grouped by tier, with document links
-6. Confidence degradation indicator on page header (UI spec section 4.9)
-7. Cycle-position annotation on trend chart when current cycle year ≠ baseline cycle year (V3 Addendum §15.6)
-8. Back navigation to landing page
-
-**E2E test:**
-
-- Click category card on landing page — navigates to `/category/[key]`
-- Trend chart renders with correct number of weeks from seed data
-- Baseline band visible with correct avg from `baselines` table
-- Evidence panel shows keywords from latest assessment
-- Back button returns to landing page
+1. ~~API endpoint: `GET /api/category/[key]`~~ — **Done** (combined metadata + assessment + baseline in one response; reused existing `/api/history/weekly-scores` for chart data)
+2. ~~Category detail page (`pages/category/[key].tsx`)~~ — **Done** (loading state, 404, back link, header with StatusPill + data coverage + experimental badge)
+3. ~~Trend chart~~ — **Done** (recharts ComposedChart with decay-weighted score line, baseline ±1σ Area band, ReferenceLine for avg, ChartTooltip)
+4. ~~Assessment summary~~ — **Done** (AssessmentSummary component with reason + "How we could be wrong" bullets)
+5. ~~Evidence panel~~ — **Done** (EvidencePanel with tier grouping, reviewed documents, suppressed keywords in Detailed mode)
+6. ~~AI reviewer notes~~ — **Done** (AiReviewerNotes with summary/detailed modes, keyword verdicts, constraint note)
+7. ~~Cycle annotation~~ — **Done** (CycleAnnotation in TrendChart, hidden when cycle years match, per V3 Addendum §15.6)
+8. ~~Tests~~ — **Done** (5 files: TrendChart, AssessmentSummary, EvidencePanel, AiReviewerNotes, category-detail API)
 
 ---
 

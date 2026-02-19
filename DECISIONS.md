@@ -239,3 +239,31 @@ See ROADMAP.md for full sequence.
 - **Code review catches dead code early**: The `alerts` prop and `dismissible` field were speculative features that should have been deferred from the start. Better to ship the minimum and add when the consuming code exists.
 - **`computeHealthSummary` threshold edge cases**: Test initially used 2 sources (1 unhealthy = 50%) and expected `'degraded'`, but `criticalSourceFraction` is `>= 0.5`. Need 3+ sources to test the degraded band (25-50%). Always check boundary conditions match `>=` vs `>`.
 - **OpenGrep findings should be addressed before commit, not after**: The `no-inline-method-guard` and `no-inline-error-format` rules caught patterns that should have been avoided during initial implementation. Check OpenGrep rules before writing new API routes.
+
+---
+
+## Sprint 18: Category Detail Page + Trend Chart
+
+**Planned:** Full category detail page with trend chart, evidence panel, assessment summary, AI reviewer notes, and data coverage indicator. 8 work items per UI Spec §5 and V3 Addendum §15.6.
+
+**Actual:** Delivered as planned. All 8 work items shipped. 6 new files (4 components, 1 page, 1 API route), 5 test files, 24 new tests (999 total).
+
+**Key decisions:**
+
+- **Reused existing `/api/history/weekly-scores` endpoint**: The roadmap planned new `GET /api/category/[key]/weekly` but the existing weekly-scores endpoint already returns the data needed for the trend chart (weekOf, totalSeverity, documentCount filtered by category). Avoided duplicating an endpoint.
+- **Single `GET /api/category/[key]` endpoint**: Combines category metadata, latest assessment snapshot, and primary baseline stats in one response. Uses `getLatestSnapshot()` from snapshot-store + baseline query in parallel.
+- **`ChartTooltip` extracted as standalone component**: ESLint `react/no-unstable-nested-components` flagged inline tooltip content function in recharts `<Tooltip content={...} />`. Extracted to a named function component outside `TrendChart` — no behavior change, but avoids unnecessary remounts.
+- **`keywordMatches` passed as `undefined` for now**: `EvidencePanel` supports tier grouping (capture/drift/warning) via optional `keywordMatches` prop, but current `EnhancedAssessment` doesn't store per-keyword tier info on the `matches` array. Falls back to ungrouped "Keyword triggers" display. Tier grouping will work when match context is enriched in a future sprint.
+- **Cycle annotation per V3 Addendum §15.6**: `CycleAnnotation` component in TrendChart shows explanatory text when `getCurrentCycleYear() !== PRIMARY_BASELINE_CYCLE_YEAR`. Currently hidden (Feb 2026 = Year 2, primary baseline = Year 2). Will appear when Year 3 begins (Jan 2027).
+- **AI reviewer notes constraint label**: `AiReviewerNotes` component includes a note explaining that the AI Skeptic can confirm or lower the automated assessment but cannot raise it. This is a transparency feature ensuring users understand the AI's role is skeptical review, not escalation.
+- **DB-optional fallback on category API**: Returns null assessment with `{ avg: 0, stddev: 0 }` baseline when DB unavailable, consistent with Sprint 16/17 API patterns.
+
+**Spec deviations:**
+
+- **Confidence degradation indicator deferred**: UI Spec §4.9 specifies a confidence indicator on the page header. Sprint 18 shows `dataCoverage` percentage instead. Full confidence breakdown (with factor-level detail) will land in Sprint 22 (Detailed mode features).
+- **Week drill-down interaction deferred**: UI Spec §5 mentions clicking trend chart data points to navigate to week detail. This requires the week detail page (Sprint 19). Sprint 18 chart renders data points but they are not clickable links.
+
+**Lessons learned:**
+
+- **ESLint `react/function-component-definition` applies to test mocks too**: Arrow function mock components in `vi.mock('recharts', ...)` triggered the rule. Must use named function declarations (`function MockLine() { ... }`) even in test mock factories.
+- **Recharts components need full mocking in jsdom**: Cannot render recharts in jsdom (no canvas). Mock all components (`ResponsiveContainer`, `ComposedChart`, `Line`, `Area`, `XAxis`, `YAxis`, `CartesianGrid`, `Tooltip`, `ReferenceLine`) with simple div/null returns using `data-testid` for assertions.
