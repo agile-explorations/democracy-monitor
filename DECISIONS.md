@@ -180,3 +180,32 @@ See ROADMAP.md for full sequence.
 **Lessons learned:**
 
 - **ESLint import ordering is strict**: Type-only imports from `@/lib/services/cycle-adjustment-service` must still respect alphabetical ordering relative to other `@/lib/services/*` imports. The `import/order` rule treats type imports the same as value imports for ordering purposes.
+
+---
+
+## Sprint 16: UI Design System + Landing Page
+
+**Planned:** CSS design tokens, Tailwind config, StatusPill/Sparkline/CategoryCard components, reading level + dark mode contexts, landing page rewrite, `/api/categories/summary` endpoint. 9 work items.
+
+**Actual:** Delivered as planned. All 9 work items shipped. First UI sprint — replaces traffic-light color system with indigo-scale design, builds props-driven landing page backed by real DB data. 38 new tests (920 total).
+
+**Key decisions:**
+
+- **Indigo-scale replaces traffic-light**: Status colors use `slate-400` (Stable) → `indigo-400` (Warning) → `indigo-500` (Drift) → `indigo-700` (Capture). Icons reinforce severity: em dash, open triangle, filled triangle, diamond. WCAG AA accessible on both light and dark backgrounds.
+- **CSS custom properties + Tailwind tokens**: Design tokens defined as CSS vars in `styles/globals.css` (`:root` for light, `.dark` for dark mode). Tailwind config references vars via `var(--color-*)`. This allows runtime dark mode switching without Tailwind rebuild.
+- **Props-driven, embed-ready components (UI Spec §14)**: CategoryCard receives all data via props — no internal fetch calls. Enables future embedding (Notion, external dashboards) and straightforward testing. Sparkline and StatusPill are pure presentation components.
+- **`DISTINCT ON` for latest assessments**: `fetchLatestAssessments()` uses PostgreSQL `DISTINCT ON (category) ... ORDER BY category, assessed_at DESC` for efficient latest-per-category lookup. Window function `ROW_NUMBER() OVER (PARTITION BY category ORDER BY week_of DESC)` for sparkline data (last 8 weeks).
+- **DB-optional API fallback**: `/api/categories/summary` returns static metadata with zero scores when DB is unavailable (HTTP 200, not 503). Allows the landing page to render in development without a running database. Marked with `nosemgrep: opengrep.no-inline-db-guard` since the inline guard is intentional.
+- **ThemeContext tracks system preference in state**: Initial implementation computed `resolvedMode` from `getSystemPreference()` on each render. This caused stale mode when OS theme changed. Fixed by tracking `systemPref` in `useState` with a `matchMedia('prefers-color-scheme: dark')` change listener.
+- **`PRIMARY_BASELINE_ID` constant**: Extracted `'biden_2022'` from category-summary-service into `scoring-config.ts` to centralize the primary baseline identifier. Other files already referenced scoring-config for baseline constants.
+- **`@testing-library/react` added**: First component tests in the project required testing-library. Added alongside `@testing-library/jest-dom` as devDependencies.
+
+**Spec deviations:**
+
+- None material. All 9 items align with UI Spec §4 (Landing Page) and §14 (Embeddable Pattern). The spec's "confidence" label is already tracked as "Data Coverage" (Sprint 8 decision).
+
+**Lessons learned:**
+
+- **ESLint import order applies to all files equally**: Test files with `vitest` imports must still sort them alphabetically relative to external packages (`@testing-library/react` comes before `vitest`). The `import/order` rule has no test-file exemption.
+- **jsdom SVG attribute casing**: React uses camelCase for SVG attributes (`strokeDasharray`), but jsdom renders them in kebab-case (`stroke-dasharray`). Use `getAttribute('stroke-dasharray')` in tests, not the React prop name.
+- **Prettier reformats after `npx prettier --write`**: Always run prettier on modified files before committing. The pre-commit hook (`lint-staged`) checks but doesn't auto-fix.

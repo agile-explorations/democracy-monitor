@@ -273,31 +273,23 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 16: UI Design System + Landing Page
 
+> **Status: Done.** All 9 work items shipped. Indigo-scale design tokens, dark mode + reading level contexts, props-driven CategoryCard/Sparkline/StatusPill, landing page rewrite with `/api/categories/summary` endpoint. 38 new tests (920 total). See `DECISIONS.md` for full retrospective.
+
 **Goal:** Build the new UI foundation and a working landing page rendering real seed data.
 
 **Depends on:** Sprint 15 (committed seed fixtures with validated baselines)
 
-**Code work (~350 lines new):**
+**Actual code work:**
 
-1. CSS custom properties in `styles/globals.css` — full indigo scale, dark/light mode tokens, status colors
-2. Extend `tailwind.config.ts` with custom color tokens referencing CSS vars
-3. New `components/ui/StatusPill.tsx` — icons (dash/triangle/filled-triangle/diamond) + indigo scale + text label
-4. New `components/ui/Sparkline.tsx` — SVG sparkline (200x40) with baseline band
-5. New `components/landing/CategoryCard.tsx` — props-driven, embed-ready (per UI spec section 14 pattern)
-6. Reading level context provider (`lib/contexts/ReadingLevelContext.tsx`) + toggle component
-7. Dark/light mode context + toggle (localStorage + `prefers-color-scheme`)
-8. Landing page layout (`pages/index.tsx` rewrite) — positioning statement, card grid, methodology footer
-9. API endpoint: `GET /api/categories/summary` — returns 11 categories with current status, score, sparkline data from `weekly_aggregates` + `baselines`
-
-**E2E test:**
-
-- Import seed data, start dev server
-- `GET /api/categories/summary` returns 11 categories with sparkline arrays
-- Navigate to `/` — 11 cards render with correct statuses from seed DB
-- Dark mode toggle switches all colors correctly
-- Reading level toggle shows/hides technical keys on cards
-
-**Parallel opportunity:** Can start CSS/component work during Sprint 13-14 review cycles using placeholder data, then wire to real seed data when available.
+1. ~~CSS custom properties in `styles/globals.css`~~ — **Done** (indigo scale, light/dark mode tokens)
+2. ~~Extend `tailwind.config.ts` with custom color tokens~~ — **Done** (dm-_ and status-_ colors)
+3. ~~New `components/ui/StatusPill.tsx`~~ — **Done** (Unicode icons + indigo scale + WCAG AA)
+4. ~~New `components/ui/Sparkline.tsx`~~ — **Done** (SVG 200x40, baseline ±1σ band)
+5. ~~New `components/landing/CategoryCard.tsx`~~ — **Done** (props-driven, embed-ready)
+6. ~~Reading level context + toggle~~ — **Done** (`ReadingLevelContext` + `ReadingLevelToggle`)
+7. ~~Dark/light mode context + toggle~~ — **Done** (`ThemeContext` + `ThemeToggle`, `prefers-color-scheme` listener)
+8. ~~Landing page rewrite~~ — **Done** (header, card grid, methodology footer)
+9. ~~`GET /api/categories/summary`~~ — **Done** (DISTINCT ON + window functions, DB-optional fallback)
 
 ---
 
