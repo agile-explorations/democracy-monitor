@@ -8,7 +8,7 @@ import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import { fetchCategoryFeeds } from '@/lib/services/feed-fetcher';
+import { fetchCategoryFeedsWithMetadata } from '@/lib/services/feed-fetcher';
 import {
   fetchAllRhetoricSources,
   statementsToContentItems,
@@ -17,7 +17,13 @@ import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
+import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
+import type { SourceHealthCheck } from '@/lib/services/source-health-service';
+import {
+  computeHealthSummary,
+  recordSourceHealthChecks,
+} from '@/lib/services/source-health-service';
 import {
   computeWeeklyAggregate,
   getWeekOfDate,
@@ -27,12 +33,16 @@ import { toDateString } from '@/lib/utils/date-utils';
 
 async function snapshotCategory(
   cat: (typeof CATEGORIES)[number],
+  allHealthChecks: SourceHealthCheck[],
   cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): Promise<void> {
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
-  const items = await fetchCategoryFeeds(cat);
-  console.log(`[snapshot]   ${items.length} items fetched`);
+  const { items, signalResults } = await fetchCategoryFeedsWithMetadata(cat);
+  console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
+
+  const checks = await recordSourceHealthChecks(cat.key, signalResults);
+  allHealthChecks.push(...checks);
 
   storeDocuments(items, cat.key).catch((err) =>
     console.error(`[snapshot] RAG store failed for ${cat.key}:`, err),
@@ -118,15 +128,24 @@ export async function runSnapshots(): Promise<void> {
 
   let succeeded = 0;
   let failed = 0;
+  const allHealthChecks: SourceHealthCheck[] = [];
 
   for (const cat of CATEGORIES) {
     try {
-      await snapshotCategory(cat, cycleFactors);
+      await snapshotCategory(cat, allHealthChecks, cycleFactors);
       succeeded++;
     } catch (err) {
       failed++;
       console.error(`[snapshot] Error processing ${cat.key}:`, err);
     }
+  }
+
+  if (allHealthChecks.length > 0) {
+    const summary = computeHealthSummary(allHealthChecks);
+    const meta = computeMetaAssessment(summary, allHealthChecks);
+    console.log(
+      `[snapshot] Source health: ${meta.dataIntegrity} (${summary.healthySources}/${summary.totalSources} healthy)`,
+    );
   }
 
   await snapshotRhetoric();

@@ -27,6 +27,11 @@ const config: Config = {
           drift: 'var(--color-status-drift)',
           capture: 'var(--color-status-capture)',
         },
+        source: {
+          healthy: 'var(--color-source-healthy)',
+          degraded: 'var(--color-source-degraded)',
+          unavailable: 'var(--color-source-unavailable)',
+        },
       },
       maxWidth: {
         content: '1200px',

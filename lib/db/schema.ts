@@ -112,6 +112,20 @@ export const siteUptime = pgTable('site_uptime', {
   isUp: boolean('is_up').notNull(),
 });
 
+export const sourceHealth = pgTable('source_health', {
+  id: serial('id').primaryKey(),
+  sourceId: varchar('source_id', { length: 100 }).notNull(),
+  sourceName: varchar('source_name', { length: 255 }).notNull(),
+  sourceType: varchar('source_type', { length: 20 }).notNull(),
+  category: varchar('category', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  documentCount: integer('document_count'),
+  expectedDocCount: integer('expected_doc_count'),
+  errorMessage: text('error_message'),
+  lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+  checkedAt: timestamp('checked_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const alerts = pgTable('alerts', {
   id: serial('id').primaryKey(),
   type: varchar('type', { length: 50 }).notNull(),

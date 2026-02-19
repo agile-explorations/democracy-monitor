@@ -9,12 +9,20 @@ export const CATEGORIES: Category[] = [
       "Are career government workers protected from being fired for political reasons? 'Schedule F' is a rule that could let the President fire thousands of workers who aren't loyal to him.",
     signals: [
       {
+        id: 'fr_opm',
         name: 'Office of Personnel Management (OPM)',
         url: '/api/federal-register?agency=personnel-management-office',
         type: 'federal_register',
         note: 'The office that makes rules about government jobs',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'daily',
+          maxSilentDays: 3,
+          expectedMinWeeklyDocs: 20,
+        },
       },
       {
+        id: 'fr_schedule_f',
         name: 'Schedule F Rules Search',
         url: '/api/federal-register?term=schedule+f+civil+service',
         type: 'federal_register',
@@ -29,12 +37,14 @@ export const CATEGORIES: Category[] = [
       'Can the President refuse to spend money that Congress already approved? This is called "impoundment" and it\'s usually illegal.',
     signals: [
       {
+        id: 'fr_impoundment',
         name: 'Impoundment & Rescission',
         url: '/api/federal-register?term=impoundment+rescission+deferral+withholding+appropriation',
         type: 'federal_register',
         note: 'Executive actions to delay or block congressionally approved spending',
       },
       {
+        id: 'fr_anti_deficiency',
         name: 'Anti-Deficiency & Spending Authority',
         url: '/api/federal-register?term=anti-deficiency+apportionment+obligation+sequestration+impound',
         type: 'federal_register',
@@ -49,24 +59,34 @@ export const CATEGORIES: Category[] = [
       'Inspectors General (IGs) are like detectives who check if government agencies are doing their jobs correctly. Can they do their work without being fired or blocked?',
     signals: [
       {
+        id: 'html_oversight_gov',
         name: '⚠️ Oversight.gov - CURRENTLY DOWN',
         url: 'https://www.oversight.gov/',
         type: 'html',
         note: 'IMPORTANT: The main website for all government watchdog reports shut down in October 2025 because its funding was blocked.',
       },
       {
+        id: 'rss_ssa_oig',
         name: 'Social Security Watchdog',
         url: 'https://oig.ssa.gov/feed.xml',
         type: 'rss',
         note: 'Reports from the Social Security Inspector General (still working)',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          maxSilentDays: 14,
+          expectedMinWeeklyDocs: 2,
+        },
       },
       {
+        id: 'fr_inspector_general',
         name: 'Inspector General Activity',
         url: '/api/federal-register?term=inspector+general',
         type: 'federal_register',
         note: 'Federal Register documents mentioning Inspector General activities',
       },
       {
+        id: 'fr_oversight',
         name: 'Oversight & Accountability',
         url: '/api/federal-register?term=oversight+accountability+watchdog',
         type: 'federal_register',
@@ -81,12 +101,14 @@ export const CATEGORIES: Category[] = [
       'Government workers should serve all Americans, not just one political party. The Hatch Act is a law that stops them from campaigning while at work.',
     signals: [
       {
+        id: 'fr_hatch_act',
         name: 'Hatch Act News',
         url: '/api/federal-register?term=hatch+act',
         type: 'federal_register',
         note: 'Reports about government workers breaking the rule against campaigning',
       },
       {
+        id: 'fr_special_counsel',
         name: 'Special Counsel Office',
         url: '/api/federal-register?agency=special-counsel-office',
         type: 'federal_register',
@@ -101,24 +123,34 @@ export const CATEGORIES: Category[] = [
       'When a judge orders the government to do something (or stop doing something), does the President follow those orders? This is a key part of our system of checks and balances.',
     signals: [
       {
+        id: 'rss_scotus',
         name: 'Supreme Court Opinions',
         url: `https://www.supremecourt.gov/rss/slipopinion_rss.aspx?TYear=${scotusTermYear()}`,
         type: 'rss',
         note: 'Opinions from the highest court in America',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly_during_term',
+          maxSilentDays: 14,
+          expectedMinWeeklyDocs: 0,
+        },
       },
       {
+        id: 'fr_court_compliance',
         name: 'Court Compliance Reports',
         url: '/api/federal-register?term=injunction+compliance',
         type: 'federal_register',
         note: 'Looking for reports about following (or not following) court orders',
       },
       {
+        id: 'fr_judicial_nominations',
         name: 'Judicial Nominations',
         url: '/api/federal-register?term=judicial+nomination+appointment',
         type: 'federal_register',
         note: 'Tracking judicial nominations and appointments',
       },
       {
+        id: 'fr_court_structure',
         name: 'Court Structure Changes',
         url: '/api/federal-register?term=court+jurisdiction+judicial+reform',
         type: 'federal_register',
@@ -133,34 +165,51 @@ export const CATEGORIES: Category[] = [
       'The military is supposed to fight foreign enemies, not police American citizens. There are strict laws about when troops can be used inside the U.S.',
     signals: [
       {
+        id: 'rss_dod_news',
         name: 'Department of Defense News',
         url: 'https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=945',
         type: 'rss',
         note: 'Official news from the Pentagon (aka "Department of War" per current admin branding)',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'daily',
+          maxSilentDays: 3,
+          expectedMinWeeklyDocs: 5,
+        },
       },
       {
+        id: 'rss_dod_contracts',
         name: 'Military Contracts',
         url: 'https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945',
         type: 'rss',
         note: 'What the military is buying (can show unusual activity)',
       },
       {
+        id: 'fr_national_emergency',
         name: 'National Emergency Declarations',
         url: '/api/federal-register?term=national+emergency',
         type: 'federal_register',
         note: 'National emergency declarations, IEEPA, and related executive emergency actions',
       },
       {
+        id: 'fr_national_guard',
         name: 'National Guard & Domestic Deployment',
         url: '/api/federal-register?term=national+guard+deployment',
         type: 'federal_register',
         note: 'National Guard mobilizations and domestic military deployment orders',
       },
       {
+        id: 'fr_dod',
         name: 'DoD / Dept of War Federal Register',
         url: '/api/federal-register?agency=defense-department',
         type: 'federal_register',
         note: 'All Federal Register activity from DoD (legally still "Department of Defense")',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'daily',
+          maxSilentDays: 3,
+          expectedMinWeeklyDocs: 20,
+        },
       },
     ],
   },
@@ -171,12 +220,14 @@ export const CATEGORIES: Category[] = [
       'Some government agencies (like the FDA or EPA) are supposed to make decisions based on science and law, not politics. Can the President control what rules they write?',
     signals: [
       {
+        id: 'fr_exec_regulatory',
         name: 'Executive Regulatory Control',
         url: '/api/federal-register?term=executive+order+regulatory+review+independent+agency',
         type: 'federal_register',
         note: 'Executive interventions in independent agency rulemaking',
       },
       {
+        id: 'fr_oira',
         name: 'OIRA Regulatory Review',
         url: '/api/federal-register?term=oira+regulatory+review+clearance+executive+oversight',
         type: 'federal_register',
@@ -191,16 +242,30 @@ export const CATEGORIES: Category[] = [
       'Tracking the volume and pace of presidential actions and new regulations. High activity may indicate rapid expansion of executive authority.',
     signals: [
       {
+        id: 'fr_presidential_actions',
         name: 'Presidential Actions',
         url: '/api/federal-register?type=PRESDOCU',
         type: 'federal_register',
         note: 'Executive orders and other actions by the President',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'daily',
+          maxSilentDays: 3,
+          expectedMinWeeklyDocs: 10,
+        },
       },
       {
+        id: 'fr_all_rules',
         name: 'All New Regulations',
         url: '/api/federal-register?type=RULE',
         type: 'federal_register',
         note: 'All new rules from government agencies',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'daily',
+          maxSilentDays: 3,
+          expectedMinWeeklyDocs: 20,
+        },
       },
     ],
   },
@@ -211,24 +276,34 @@ export const CATEGORIES: Category[] = [
       'Are government websites, reports, and data still publicly accessible? Tracks whether critical transparency infrastructure is online and whether expected reports are being published.',
     signals: [
       {
+        id: 'json_uptime',
         name: 'Government Site Uptime',
         url: '/api/uptime/status',
         type: 'json',
         note: 'Monitoring whether key government websites are accessible',
       },
       {
+        id: 'rss_gao',
         name: 'GAO Reports (Availability)',
         url: 'https://www.gao.gov/rss/reports.xml',
         type: 'rss',
         note: 'Checking if GAO continues publishing oversight reports',
+        health: {
+          isCanary: true,
+          expectedFrequency: 'weekly',
+          maxSilentDays: 14,
+          expectedMinWeeklyDocs: 2,
+        },
       },
       {
+        id: 'fr_foia',
         name: 'FOIA & Transparency Rules',
         url: '/api/federal-register?term=freedom+of+information+act+transparency+disclosure',
         type: 'federal_register',
         note: 'FOIA-related Federal Register documents',
       },
       {
+        id: 'fr_open_data',
         name: 'Public Records & Data Access',
         url: '/api/federal-register?term=open+government+data+access+public+records+request',
         type: 'federal_register',
@@ -243,12 +318,14 @@ export const CATEGORIES: Category[] = [
       'Are elections being administered fairly and without interference? Tracks changes to election infrastructure, voter access, and election administration independence.',
     signals: [
       {
+        id: 'fr_election_integrity',
         name: 'Election Integrity & Interference',
         url: '/api/federal-register?term=election+integrity+interference+voting+rights+ballot+access',
         type: 'federal_register',
         note: 'Federal actions affecting election integrity and voter access',
       },
       {
+        id: 'fr_election_admin',
         name: 'Election Administration Changes',
         url: '/api/federal-register?term=election+commission+certification+recount+polling+place',
         type: 'federal_register',
@@ -263,12 +340,14 @@ export const CATEGORIES: Category[] = [
       'Can journalists report freely without government interference? Tracks press access, FOIA compliance, and threats to independent media.',
     signals: [
       {
+        id: 'fr_press_foia',
         name: 'Press & FOIA Rules',
         url: '/api/federal-register?term=freedom+of+information+press+credentials',
         type: 'federal_register',
         note: 'Rules about press access and freedom of information',
       },
       {
+        id: 'fr_foia_compliance',
         name: 'FOIA Compliance',
         url: '/api/federal-register?term=FOIA+compliance+public+records',
         type: 'federal_register',

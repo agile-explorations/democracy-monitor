@@ -1,4 +1,12 @@
-export type { SignalType, StatusLevel, Signal, Category } from './categories';
+export type {
+  SignalType,
+  StatusLevel,
+  SourceStatus,
+  ExpectedFrequency,
+  SignalHealthConfig,
+  Signal,
+  Category,
+} from './categories';
 export type {
   ContentItem,
   AssessmentDetail,

@@ -2,11 +2,24 @@ export type SignalType = 'json' | 'rss' | 'html' | 'federal_register' | 'tracker
 
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 
+export type SourceStatus = 'healthy' | 'degraded' | 'unavailable' | 'silent';
+
+export type ExpectedFrequency = 'daily' | 'weekly' | 'weekly_during_term';
+
+export interface SignalHealthConfig {
+  isCanary: boolean;
+  expectedFrequency: ExpectedFrequency;
+  maxSilentDays: number;
+  expectedMinWeeklyDocs: number;
+}
+
 export interface Signal {
+  id: string;
   name: string;
   url: string;
   type: SignalType;
   note?: string;
+  health?: SignalHealthConfig;
 }
 
 export interface Category {

@@ -58,12 +58,41 @@ export const CONVERGENCE_ENTRENCHED_THRESHOLD = 50;
 
 /** Data coverage factor weights (must sum to 1.0). */
 export const DATA_COVERAGE_WEIGHTS = {
-  sourceDiversity: 0.15,
-  authorityWeight: 0.25,
-  evidenceCoverage: 0.2,
-  keywordDensity: 0.15,
-  aiAgreement: 0.25,
+  sourceDiversity: 0.13,
+  authorityWeight: 0.22,
+  evidenceCoverage: 0.17,
+  keywordDensity: 0.13,
+  aiAgreement: 0.2,
+  sourceAvailability: 0.15,
 } as const;
+
+/** Source health classification thresholds. */
+export const HEALTH_THRESHOLDS = {
+  /** <50% of expected volume = degraded. */
+  degradedVolumeRatio: 0.5,
+  /** 2 consecutive zero-document checks = silent. */
+  silentCheckCount: 2,
+  /** >50% of sources unavailable = critical overall health. */
+  criticalSourceFraction: 0.5,
+  /** >25% of sources unavailable or degraded = degraded overall health. */
+  degradedSourceFraction: 0.25,
+} as const;
+
+/** Max confidence when source health is critical. */
+export const CRITICAL_CONFIDENCE_CAP = 0.3;
+
+/** Data integrity classification thresholds. */
+export const INTEGRITY_THRESHOLDS = {
+  /** Integrity score >= this → high. */
+  high: 0.8,
+  /** Integrity score >= this → moderate. */
+  moderate: 0.5,
+  /** Integrity score >= this → low (below = critical). */
+  low: 0.25,
+} as const;
+
+/** Fraction of canary sources that must be down to trigger critical_silent. */
+export const CANARY_CRITICAL_FRACTION = 0.5;
 
 /** Maximum distinct sources before diversity score saturates at 1.0. */
 export const SOURCE_DIVERSITY_MAX = 6;

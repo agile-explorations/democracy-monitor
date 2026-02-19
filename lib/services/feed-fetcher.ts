@@ -5,42 +5,96 @@ import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { Category, Signal } from '@/lib/types';
+import { formatError } from '@/lib/utils/api-helpers';
+
 const MAX_SUMMARY_LENGTH = 800;
+
+/** Per-signal fetch result with metadata for source health tracking. */
+export interface SignalFetchResult {
+  signalId: string;
+  signalName: string;
+  signalType: string;
+  success: boolean;
+  documentCount: number;
+  durationMs: number;
+  errorMessage?: string;
+  items: FeedItem[];
+}
+
+/** Combined result from fetching all signals in a category. */
+export interface CategoryFetchResult {
+  items: FeedItem[];
+  signalResults: SignalFetchResult[];
+}
 
 /**
  * Fetch all feeds for a single category, returning FeedItem[].
  * Runs server-side — calls external APIs directly (no localhost HTTP).
  */
 export async function fetchCategoryFeeds(category: Category): Promise<FeedItem[]> {
-  const results = await Promise.allSettled(category.signals.map((s) => fetchSignal(s)));
-  const items: FeedItem[] = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled') {
-      items.push(...r.value);
-    }
-  }
+  const { items } = await fetchCategoryFeedsWithMetadata(category);
   return items;
 }
 
-async function fetchSignal(signal: Signal): Promise<FeedItem[]> {
-  try {
-    if (signal.type === 'federal_register') {
-      return await fetchFederalRegister(signal);
+/** Fetch all feeds with per-signal metadata for source health tracking. */
+export async function fetchCategoryFeedsWithMetadata(
+  category: Category,
+): Promise<CategoryFetchResult> {
+  const settled = await Promise.allSettled(category.signals.map((s) => fetchSignalWithMetadata(s)));
+  const items: FeedItem[] = [];
+  const signalResults: SignalFetchResult[] = [];
+  for (const r of settled) {
+    if (r.status === 'fulfilled') {
+      signalResults.push(r.value);
+      items.push(...r.value.items);
     }
-    if (signal.type === 'rss') {
-      return await fetchRss(signal);
-    }
-    if (signal.type === 'json') {
-      return await fetchJson(signal);
-    }
-    if (signal.type === 'html') {
-      return await fetchHtml(signal);
-    }
-    return [];
-  } catch (err) {
-    console.error(`[feed-fetcher] Error fetching ${signal.name}:`, err);
-    return [{ title: `Error loading ${signal.name}`, isError: true }];
   }
+  return { items, signalResults };
+}
+
+async function fetchSignalWithMetadata(signal: Signal): Promise<SignalFetchResult> {
+  const start = Date.now();
+  try {
+    const items = await fetchSignalInner(signal);
+    const validItems = items.filter((i) => !i.isError && !i.isWarning);
+    return {
+      signalId: signal.id,
+      signalName: signal.name,
+      signalType: signal.type,
+      success: true,
+      documentCount: validItems.length,
+      durationMs: Date.now() - start,
+      items,
+    };
+  } catch (err) {
+    const msg = formatError(err);
+    return {
+      signalId: signal.id,
+      signalName: signal.name,
+      signalType: signal.type,
+      success: false,
+      documentCount: 0,
+      durationMs: Date.now() - start,
+      errorMessage: msg,
+      items: [{ title: `Error loading ${signal.name}`, isError: true }],
+    };
+  }
+}
+
+async function fetchSignalInner(signal: Signal): Promise<FeedItem[]> {
+  if (signal.type === 'federal_register') {
+    return await fetchFederalRegister(signal);
+  }
+  if (signal.type === 'rss') {
+    return await fetchRss(signal);
+  }
+  if (signal.type === 'json') {
+    return await fetchJson(signal);
+  }
+  if (signal.type === 'html') {
+    return await fetchHtml(signal);
+  }
+  return [];
 }
 
 async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
