@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Area,
   CartesianGrid,
@@ -9,7 +10,22 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useTheme } from '@/lib/contexts/ThemeContext';
 import { getCurrentCycleYear, PRIMARY_BASELINE_CYCLE_YEAR } from '@/lib/methodology/scoring-config';
+
+/** Resolved chart colors per mode — recharts SVG attrs don't support CSS var() */
+const CHART_COLORS = {
+  light: {
+    accent: '#4f46e5',
+    border: '#e2e8f0',
+    textSecondary: '#64748b',
+  },
+  dark: {
+    accent: '#818cf8',
+    border: '#334155',
+    textSecondary: '#94a3b8',
+  },
+} as const;
 
 export interface TrendDataPoint {
   week: string;
@@ -69,6 +85,9 @@ function ChartTooltip({
 }
 
 export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: TrendChartProps) {
+  const { resolvedMode } = useTheme();
+  const colors = useMemo(() => CHART_COLORS[resolvedMode], [resolvedMode]);
+
   if (data.length === 0) {
     return (
       <p className="text-sm text-dm-text-secondary py-8 text-center">No trend data available.</p>
@@ -106,16 +125,16 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
 
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-dm-border)" opacity={0.5} />
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.border} opacity={0.5} />
           <XAxis
             dataKey="week"
             tickFormatter={formatWeekLabel}
-            tick={{ fontSize: 11, fill: 'var(--color-dm-text-secondary)' }}
+            tick={{ fontSize: 11, fill: colors.textSecondary }}
             tickLine={false}
-            axisLine={{ stroke: 'var(--color-dm-border)' }}
+            axisLine={{ stroke: colors.border }}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: 'var(--color-dm-text-secondary)' }}
+            tick={{ fontSize: 11, fill: colors.textSecondary }}
             tickLine={false}
             axisLine={false}
             width={40}
@@ -125,7 +144,7 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
           {/* Baseline ±1σ band */}
           <Area
             dataKey="baselineBand"
-            fill="var(--color-dm-border)"
+            fill={colors.border}
             stroke="none"
             opacity={0.3}
             isAnimationActive={false}
@@ -134,7 +153,7 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
           {/* Baseline average line */}
           <ReferenceLine
             y={baselineAvg}
-            stroke="var(--color-dm-text-secondary)"
+            stroke={colors.textSecondary}
             strokeDasharray="4 4"
             strokeWidth={1}
           />
@@ -143,9 +162,9 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
           <Line
             type="monotone"
             dataKey="score"
-            stroke="var(--color-dm-accent)"
+            stroke={colors.accent}
             strokeWidth={2}
-            dot={{ r: 3, fill: 'var(--color-dm-accent)' }}
+            dot={{ r: 3, fill: colors.accent }}
             activeDot={{ r: 5 }}
           />
         </ComposedChart>
