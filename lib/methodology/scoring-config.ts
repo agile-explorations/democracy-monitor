@@ -80,6 +80,9 @@ export const KEYWORD_DENSITY_RATIO = 0.3;
 /** Start of the current presidential term (Trump 2025). */
 export const CURRENT_TERM_START = '2025-01-20';
 
+/** Baseline ID for the primary "normal governance" reference period. */
+export const PRIMARY_BASELINE_ID = 'biden_2022';
+
 /** The cycle year of the primary baseline (Biden 2022 = Year 2). */
 export const PRIMARY_BASELINE_CYCLE_YEAR = 2;
 

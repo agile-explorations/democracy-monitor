@@ -1,25 +1,35 @@
 import type { StatusLevel } from '@/lib/types';
 
-const COLORS: Record<StatusLevel, string> = {
-  Stable: 'bg-green-100 text-green-800 border-green-200',
-  Warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  Drift: 'bg-orange-100 text-orange-800 border-orange-200',
-  Capture: 'bg-red-100 text-red-800 border-red-200',
+const ICONS: Record<StatusLevel, string> = {
+  Stable: '\u2014', // em dash —
+  Warning: '\u25B3', // open triangle △
+  Drift: '\u25B2', // filled triangle ▲
+  Capture: '\u25C6', // filled diamond ◆
+};
+
+const STYLE: Record<StatusLevel, string> = {
+  Stable: 'bg-status-stable/15 text-status-stable border-status-stable/30',
+  Warning: 'bg-status-warning/15 text-status-warning border-status-warning/30',
+  Drift: 'bg-status-drift/15 text-status-drift border-status-drift/30',
+  Capture: 'bg-status-capture/15 text-status-capture border-status-capture/30',
 };
 
 const TOOLTIPS: Record<StatusLevel, string> = {
-  Stable: 'No warning signs detected — institutions are functioning normally',
-  Warning: 'Some concerns found, but checks and balances appear intact',
-  Drift: 'Multiple warning signs — power is becoming more centralized',
-  Capture: 'Serious violations — laws or court orders are being ignored',
+  Stable: 'Within baseline range — no unusual signals detected',
+  Warning: 'Mildly elevated — isolated signals worth watching',
+  Drift: 'Structurally concerning — a pattern is emerging',
+  Capture: 'Severe — institutional integrity may be at risk',
 };
 
 export function StatusPill({ level }: { level: StatusLevel }) {
   return (
     <span
+      role="status"
+      aria-label={`Status: ${level}. ${TOOLTIPS[level]}`}
       title={TOOLTIPS[level]}
-      className={`px-2 py-1 rounded-full border text-xs font-medium ${COLORS[level]} cursor-help`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${STYLE[level]}`}
     >
+      <span aria-hidden="true">{ICONS[level]}</span>
       {level}
     </span>
   );

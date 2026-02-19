@@ -2,11 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Status scale — slate to indigo progression */
+    --color-status-stable: #94a3b8;
+    --color-status-warning: #818cf8;
+    --color-status-drift: #6366f1;
+    --color-status-capture: #4338ca;
+
+    /* Light mode supporting colors */
+    --color-bg: #fafbfc;
+    --color-card: #ffffff;
+    --color-text-primary: #1e293b;
+    --color-text-secondary: #64748b;
+    --color-border: #e2e8f0;
+    --color-accent: #4f46e5;
+    --color-muted: #cbd5e1;
+    --color-baseline-fill: #f1f5f9;
+    --color-baseline-border: #e2e8f0;
+
+    /* Source health dots (operational, not risk) */
+    --color-source-healthy: #22c55e;
+    --color-source-degraded: #f59e0b;
+    --color-source-unavailable: #94a3b8;
+  }
+
+  .dark {
+    --color-bg: #0f172a;
+    --color-card: #1e293b;
+    --color-text-primary: #f1f5f9;
+    --color-text-secondary: #94a3b8;
+    --color-border: #334155;
+    --color-accent: #818cf8;
+    --color-muted: #475569;
+    --color-baseline-fill: #1e293b;
+    --color-baseline-border: #334155;
+
+    --color-source-healthy: #4ade80;
+    --color-source-degraded: #fbbf24;
+    --color-source-unavailable: #64748b;
+  }
+}
+
 html,
 body,
 #__next {
   height: 100%;
 }
+
 body {
-  @apply bg-slate-50;
+  background-color: var(--color-bg);
+  color: var(--color-text-primary);
 }
