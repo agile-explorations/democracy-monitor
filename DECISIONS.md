@@ -209,3 +209,33 @@ See ROADMAP.md for full sequence.
 - **ESLint import order applies to all files equally**: Test files with `vitest` imports must still sort them alphabetically relative to external packages (`@testing-library/react` comes before `vitest`). The `import/order` rule has no test-file exemption.
 - **jsdom SVG attribute casing**: React uses camelCase for SVG attributes (`strokeDasharray`), but jsdom renders them in kebab-case (`stroke-dasharray`). Use `getAttribute('stroke-dasharray')` in tests, not the React prop name.
 - **Prettier reformats after `npx prettier --write`**: Always run prettier on modified files before committing. The pre-commit hook (`lint-staged`) checks but doesn't auto-fix.
+
+---
+
+## Sprint 17: Source Health Backend + Landing Banners
+
+**Planned:** Source health monitoring infrastructure — signal IDs, health checks, meta-assessment, confidence degradation, feed fetcher metadata, DB schema, API endpoints, landing page banners. 12 work items per V3 Addendum §A–C and UI Spec §4.7–4.8.
+
+**Actual:** Delivered as planned. All 12 work items shipped. 24 files changed, 5 new test files, 55 new tests (975 total).
+
+**Key decisions:**
+
+- **Stable signal IDs on Signal type**: Added `id: string` to `Signal` interface (31 signals). IDs follow `{type}_{short_name}` convention (e.g., `fr_opm`, `rss_scotus`, `html_oversight_gov`). Required for health tracking — can't use `name` (spaces, unstable) or `url` (verbose, could change).
+- **Canary sources via `health.isCanary`**: 6 signals marked as canaries: `fr_opm`, `rss_dod_news`, `fr_dod`, `fr_presidential_actions`, `fr_all_rules`, `rss_gao`. These are high-reliability signals — if they go silent, it may indicate deliberate information restriction. Meta-assessment downgrades from `high` to `moderate` when ≥50% canary sources are critical.
+- **`sourceAvailability` as 6th confidence factor**: Added to `ConfidenceFactors` with weight 0.15. Reweighted existing 5 factors proportionally (sum still 1.0). When no health data available, defaults to 1.0 (no penalty).
+- **`CRITICAL_CONFIDENCE_CAP = 0.3`**: Hard cap on data coverage confidence when source health is `critical`. Even if keyword/AI factors are high, unreliable data limits confidence.
+- **Named constants for all thresholds**: Code review caught magic numbers in `meta-assessment-service.ts`. Extracted to `INTEGRITY_THRESHOLDS` and `CANARY_CRITICAL_FRACTION` in `scoring-config.ts`. Consistent with existing `HEALTH_THRESHOLDS` pattern.
+- **`fetchCategoryFeedsWithMetadata()` wraps existing fetcher**: Returns `{ items, signalResults }` where `signalResults` captures per-signal success/failure, document count, and timing. Original `fetchCategoryFeeds()` now delegates to this wrapper. Zero behavior change for existing callers.
+- **4-level data integrity model**: `high` (hidden, ≥80%), `moderate` (info, ≥50%), `low` (warning, ≥25%), `critical` (alarm, <25%). Maps to `DataIntegrityBanner` component with progressive visual severity.
+- **`alerts` prop removed from `DataIntegrityBanner`**: Code review flagged unused prop. Removed — alert rendering will be added in Sprint 18 (Source Health Detail Page) where individual source alerts are displayed.
+- **DB-optional API endpoints**: Both `/api/health/meta` and `/api/health/sources` return sensible defaults (high integrity, empty sources) when DB unavailable. Consistent with Sprint 16's `/api/categories/summary` pattern.
+
+**Spec deviations:**
+
+- **`dismissible` behavior deferred**: UI Spec §4.7 specifies moderate-level banner should be dismissible. Removed `dismissible` field from component config per code review (dead code). Will implement with `useLocalStorage`-backed dismiss state when the detail page exists.
+
+**Lessons learned:**
+
+- **Code review catches dead code early**: The `alerts` prop and `dismissible` field were speculative features that should have been deferred from the start. Better to ship the minimum and add when the consuming code exists.
+- **`computeHealthSummary` threshold edge cases**: Test initially used 2 sources (1 unhealthy = 50%) and expected `'degraded'`, but `criticalSourceFraction` is `>= 0.5`. Need 3+ sources to test the degraded band (25-50%). Always check boundary conditions match `>=` vs `>`.
+- **OpenGrep findings should be addressed before commit, not after**: The `no-inline-method-guard` and `no-inline-error-format` rules caught patterns that should have been avoided during initial implementation. Check OpenGrep rules before writing new API routes.
