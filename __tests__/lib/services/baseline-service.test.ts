@@ -90,8 +90,8 @@ describe('stddev (pure function)', () => {
 });
 
 describe('BASELINE_CONFIGS', () => {
-  it('has three baseline configurations', () => {
-    expect(BASELINE_CONFIGS).toHaveLength(3);
+  it('has four baseline configurations', () => {
+    expect(BASELINE_CONFIGS).toHaveLength(4);
   });
 
   it('biden_2022 is the first (default) config', () => {
@@ -105,7 +105,21 @@ describe('BASELINE_CONFIGS', () => {
       expect(config.from).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(config.to).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(new Date(config.from).getTime()).toBeLessThan(new Date(config.to).getTime());
+      expect(config.cycleYear).toBeGreaterThanOrEqual(1);
+      expect(config.cycleYear).toBeLessThanOrEqual(4);
+      expect(config.administration).toBeTruthy();
+      expect(config.calendarYear).toBeGreaterThanOrEqual(2000);
+      expect(config.availableSources).toContain('federal_register');
     }
+  });
+
+  it('trump baselines have whArchive config', () => {
+    const trump2017 = BASELINE_CONFIGS.find((c) => c.id === 'trump_2017')!;
+    expect(trump2017.whArchive).toBeDefined();
+    expect(trump2017.whArchive!.baseUrl).toContain('trumpwhitehouse.archives.gov');
+    expect(trump2017.whArchive!.sections).toHaveLength(2);
+    const trump2018 = BASELINE_CONFIGS.find((c) => c.id === 'trump_2018')!;
+    expect(trump2018.whArchive).toBeDefined();
   });
 });
 
@@ -125,7 +139,8 @@ describe('getBaselineConfig', () => {
   it('finds all configs', () => {
     expect(getBaselineConfig('biden_2022')).toBeDefined();
     expect(getBaselineConfig('biden_2021')).toBeDefined();
-    expect(getBaselineConfig('obama_2013')).toBeDefined();
+    expect(getBaselineConfig('trump_2017')).toBeDefined();
+    expect(getBaselineConfig('trump_2018')).toBeDefined();
   });
 });
 
@@ -193,6 +208,9 @@ describe('computeBaseline', () => {
     expect(result[0].avgSeverityMix).toBe(2.5);
     expect(result[0].embeddingCentroid).toBeNull();
     expect(result[0].driftNoiseFloor).toBeNull();
+    expect(result[0].cycleYear).toBe(2);
+    expect(result[0].administration).toBe('biden');
+    expect(result[0].calendarYear).toBe(2022);
   });
 
   it('computes embedding centroid and noise floor when embeddings exist', async () => {
@@ -342,6 +360,9 @@ describe('getBaseline', () => {
                 avgSeverityMix: 2.5,
                 driftNoiseFloor: 0.05,
                 embeddingCentroid: [0.1, 0.2],
+                cycleYear: 2,
+                administration: 'biden',
+                calendarYear: 2022,
                 computedAt: new Date('2025-02-08T00:00:00.000Z'),
               },
             ]),
@@ -354,5 +375,8 @@ describe('getBaseline', () => {
     expect(result).not.toBeNull();
     expect(result!.computedAt).toBe('2025-02-08T00:00:00.000Z');
     expect(typeof result!.computedAt).toBe('string');
+    expect(result!.cycleYear).toBe(2);
+    expect(result!.administration).toBe('biden');
+    expect(result!.calendarYear).toBe(2022);
   });
 });

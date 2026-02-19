@@ -256,6 +256,9 @@ export const baselines = pgTable(
     avgSeverityMix: real('avg_severity_mix').notNull(),
     driftNoiseFloor: real('drift_noise_floor'),
     embeddingCentroid: vector('embedding_centroid'),
+    cycleYear: integer('cycle_year'),
+    administration: varchar('administration', { length: 50 }),
+    calendarYear: integer('calendar_year'),
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

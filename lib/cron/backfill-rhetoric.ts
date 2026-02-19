@@ -1,11 +1,14 @@
 /** Rhetoric backfill helpers for White House + GDELT data. */
 
+import type { BaselineSource, WhArchiveConfig } from '@/lib/data/baselines';
 import { storeDocuments } from '@/lib/services/document-store';
 import {
   fetchWhiteHouseHistorical,
+  fetchWhArchiveHistorical,
   fetchGdeltHistorical,
   GDELT_QUERIES,
 } from '@/lib/services/rhetoric-fetcher';
+import type { ContentItem } from '@/lib/types';
 
 export async function backfillGdelt(
   weeks: Array<{ start: string; end: string }>,
@@ -49,36 +52,63 @@ export async function backfillGdelt(
   return gdeltDocs;
 }
 
+async function fetchWhDocs(
+  weeks: Array<{ start: string; end: string }>,
+  whArchive?: WhArchiveConfig,
+): Promise<ContentItem[]> {
+  const dateFrom = weeks[0].start;
+  const dateTo = weeks[weeks.length - 1].end;
+
+  if (whArchive) {
+    console.log(`[baseline] Fetching WH archive: ${whArchive.baseUrl}...`);
+    return fetchWhArchiveHistorical({ archiveConfig: whArchive, dateFrom, dateTo, delayMs: 500 });
+  }
+
+  console.log('[baseline] Fetching White House briefing-room archive...');
+  return fetchWhiteHouseHistorical({ dateFrom, dateTo, delayMs: 500 });
+}
+
 export async function backfillRhetoric(
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
+  availableSources?: BaselineSource[],
+  whArchive?: WhArchiveConfig,
 ): Promise<{ whDocs: number; gdeltDocs: number }> {
   let whDocs = 0;
+  let gdeltDocs = 0;
+
+  const includeWh = !availableSources || availableSources.includes('whitehouse');
+  const includeGdelt = !availableSources || availableSources.includes('gdelt');
 
   console.log('\n[baseline] === Rhetoric Sources ===');
-  console.log('[baseline] Fetching White House briefing-room archive...');
 
-  if (!dryRun) {
-    try {
-      const whItems = await fetchWhiteHouseHistorical({
-        dateFrom: weeks[0].start,
-        dateTo: weeks[weeks.length - 1].end,
-        delayMs: 500,
-      });
-      if (whItems.length > 0) {
-        const stored = await storeDocuments(whItems, 'intent');
-        whDocs = stored;
-        console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
-      } else {
-        console.log('  White House: 0 items (site may be blocking)');
+  if (includeWh) {
+    if (!dryRun) {
+      try {
+        const whItems = await fetchWhDocs(weeks, whArchive);
+        if (whItems.length > 0) {
+          const stored = await storeDocuments(whItems, 'intent');
+          whDocs = stored;
+          console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
+        } else {
+          console.log('  White House: 0 items (site may be blocking)');
+        }
+      } catch (err) {
+        console.error('  White House fetch error:', err);
       }
-    } catch (err) {
-      console.error('  White House fetch error:', err);
+    } else {
+      const label = whArchive ? `archive ${whArchive.baseUrl}` : 'briefing-room';
+      console.log(`  White House: [dry run] would fetch ${label} pages`);
     }
   } else {
-    console.log('  White House: [dry run] would fetch archive pages');
+    console.log('[baseline] Skipping White House (unavailable for this period)');
   }
 
-  const gdeltDocs = await backfillGdelt(weeks, dryRun);
+  if (includeGdelt) {
+    gdeltDocs = await backfillGdelt(weeks, dryRun);
+  } else {
+    console.log('[baseline] Skipping GDELT (unavailable for this period)');
+  }
+
   return { whDocs, gdeltDocs };
 }

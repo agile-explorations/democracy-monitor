@@ -54,7 +54,7 @@ Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, 
 
 ---
 
-## Sprint 14.1 (in progress): Rhetoric Gap Analysis + Refinement Cycle
+## Sprint 14.1: Rhetoric Gap Analysis + Refinement Cycle
 
 **Planned:** Rhetoric-to-keyword gap analysis, missingKeywords in aggregate report, first refinement cycle.
 
@@ -99,15 +99,51 @@ Sprint 13 built the tooling (items 1, 3, 5). Sprint 14.1 completes the remaining
 ### Baseline strategy (Sprint 14-15)
 
 - **Biden 2022** (primary) — Steady state normal governance. 58,713 docs, 8 alerts after calibration.
-- **Biden 2021** — First-year-in-term baseline (Sprint 15)
-- **Obama 2013** — Cross-president validation (Sprint 15; risk: WH archive URL structure differs)
+- **Biden 2021** — First-year-in-term baseline. 76,946 docs (keyword-only).
+- **Trump 2017** — Same-president cross-term baseline (Year 1). 76,749 docs (keyword-only).
+- **Trump 2018** — Same-president cross-term baseline (Year 2). 75,063 docs (keyword-only).
+- ~~**Obama 2013**~~ — Dropped. FR-only source coverage (no WH archive, limited GDELT). Source asymmetry would confound comparisons.
 
 ### Updated sprint sequence
 
 - ~~Sprint 13:~~ **Done** — AI Skeptic structured feedback + keyword tuning pipeline
 - ~~Sprint 14:~~ **Done** — Biden 2022 baseline calibration (3 iterations, signal tightening, fixtures)
-- **Sprint 14.1:** Rhetoric gap analysis + first refinement cycle
-- **Sprint 15:** Biden 2021 + Obama 2013 baselines + cross-baseline validation
+- ~~Sprint 14.1:~~ **Done** — Rhetoric gap analysis + first refinement cycle (zero additions, dictionaries well-calibrated)
+- ~~Sprint 15:~~ **Done** — First-year-in-term baselines + cross-baseline validation
 - **Pre-Sprint L:** Normalize `source_type` values (#28)
 
 See ROADMAP.md for full sequence.
+
+---
+
+## Sprint 15: First-Year-in-Term Baselines + Cross-Baseline Validation
+
+**Planned:** Biden 2021 + Obama 2013 baselines with cycle metadata. Cross-baseline validation report.
+
+**Actual:** Scope changed mid-sprint. Obama 2013 dropped (FR-only source coverage). Replaced with Trump 2017 (Year 1) and Trump 2018 (Year 2) baselines — same president, enabling cross-term comparison that neutralizes party/philosophy differences. All 4 baselines have uniform FR + GDELT + WH coverage.
+
+**Key decisions:**
+
+- **Obama 2013 dropped for Trump 2017/2018**: Obama era lacks WH archive scraper and has limited GDELT coverage for 2013. Source asymmetry (FR-only vs FR+GDELT+WH) would confound cross-baseline severity/volume comparisons. Trump WH archive at `trumpwhitehouse.archives.gov` is a WordPress site with reliable pagination, making scraping feasible. The Trump pair also enables same-president Year 1 vs Year 2 comparison.
+- **Trump WH archive scraper**: Separate parser (`parseWhArchiveArticles`) due to different HTML structure (WordPress `article.briefing-statement` vs modern WH `article` tags). Archive-specific selectors: `h2.briefing-statement__title a` for links, `p.meta__date time` for dates. Two sections scraped: `/remarks/` (~200 pages) and `/briefings-statements/` (~670 pages).
+- **`WhArchiveConfig` interface**: Added to `BaselineConfig` for baselines requiring archive-era WH scrapers. Contains `baseUrl` and `sections` array. Only Trump 2017/2018 use it; Biden baselines use the live WH briefing-room scraper.
+- **Keyword-only baselines (--skip-ai)**: All 4 baselines ran without AI assessment. Claude Online review confirmed this is sufficient for cross-baseline validation (volume patterns, source coverage, zero-vs-nonzero severity). Biden 2022 + Biden 2021 will be re-run with `--model gpt-4o-mini` as prerequisite step 0 in Sprint 15.1 (cycle-aware baselines). Trump baselines stay keyword-only — AI budget reserved for Trump 2025 current-period assessments.
+- **Weekly aggregator date mismatch bug**: `computeWeeklyAggregate()` used exact-match `eq(weekOf)` but document scores compute Monday-based weeks while `getWeekRanges()` generates weeks from config start date (Friday for inauguration-based periods). Changed to range query `gte/lt` with 7-day window. This bug caused ALL baseline severity/volume to be zero since Sprint 11. Pre-existing bug, not introduced by Sprint 15.
+
+**Spec deviations:**
+
+- **Obama 2013 → Trump 2017/2018** (V3 Addendum §15): Spec called for Biden 2021 + Obama 2013. Replaced Obama with Trump pair for source uniformity and same-president comparison. Sprint 15.1 cycle adjustment factors will use 2 Year 1 baselines (Biden 2021, Trump 2017) averaged against 2 Year 2 baselines (Biden 2022, Trump 2018) — better sample size than planned.
+
+**Lessons learned:**
+
+- **Document scorer and weekly aggregator must agree on week boundaries**: `getWeekOf()` (Monday-based) vs `getWeekRanges()` (config-date-based) is a systemic mismatch. The range-query fix in the aggregator is robust, but the root cause (two different week-alignment strategies) should be unified eventually.
+- **Background baseline runs need monitoring**: GDELT rate limiting (HTTP 429) extends 265-call runs significantly. Exponential backoff (10s/20s/40s) handles it gracefully but runs take 30+ minutes. One "Malformed JSON after retries" error per ~265 calls is normal — lost ~250 docs out of 65,000+.
+- **Cross-baseline validation is only meaningful with non-zero data**: The weekly aggregator bug meant Sprint 11-14 baselines stored zeros. Always verify a sample of stored values before building reports on top of them.
+
+**Validation findings:**
+
+- military: 2.5x Year 1/Year 2 severity ratio (but tiny absolute values — 0.04 vs 0.01; within noise range)
+- civilService: Highest absolute severity across both admins (0.05–0.11); driven by routine OPM keywords
+- rulemaking: Most structurally coherent pattern — Year 1 > Year 2, Trump > Biden Year 2 (consistent with transition regulatory activity)
+- elections, fiscal: Zero severity across all baselines (correct — concern keywords shouldn't fire during normal governance)
+- No source asymmetry across any baseline pair

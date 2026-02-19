@@ -15,6 +15,9 @@ export interface CategoryBaseline {
   avgSeverityMix: number;
   driftNoiseFloor: number | null;
   embeddingCentroid: number[] | null;
+  cycleYear: number | null;
+  administration: string | null;
+  calendarYear: number | null;
   computedAt: string;
 }
 
@@ -59,6 +62,9 @@ export async function computeBaseline(config: BaselineConfig): Promise<CategoryB
       avgSeverityMix: mean(weeks.map((w) => w.severityMix)),
       driftNoiseFloor: noiseFloor,
       embeddingCentroid: centroid,
+      cycleYear: config.cycleYear,
+      administration: config.administration,
+      calendarYear: config.calendarYear,
       computedAt: new Date().toISOString(),
     });
   }
@@ -161,6 +167,9 @@ export async function storeBaseline(baselineResults: CategoryBaseline[]): Promis
         avgSeverityMix: b.avgSeverityMix,
         driftNoiseFloor: b.driftNoiseFloor,
         embeddingCentroid: b.embeddingCentroid,
+        cycleYear: b.cycleYear,
+        administration: b.administration,
+        calendarYear: b.calendarYear,
         computedAt: new Date(b.computedAt),
       })
       .onConflictDoUpdate({
@@ -172,6 +181,9 @@ export async function storeBaseline(baselineResults: CategoryBaseline[]): Promis
           avgSeverityMix: sql`excluded.avg_severity_mix`,
           driftNoiseFloor: sql`excluded.drift_noise_floor`,
           embeddingCentroid: sql`excluded.embedding_centroid`,
+          cycleYear: sql`excluded.cycle_year`,
+          administration: sql`excluded.administration`,
+          calendarYear: sql`excluded.calendar_year`,
           computedAt: sql`excluded.computed_at`,
         },
       });
@@ -206,6 +218,9 @@ export async function getBaseline(
     avgSeverityMix: row.avgSeverityMix,
     driftNoiseFloor: row.driftNoiseFloor,
     embeddingCentroid: row.embeddingCentroid,
+    cycleYear: row.cycleYear,
+    administration: row.administration,
+    calendarYear: row.calendarYear,
     computedAt: row.computedAt.toISOString(),
   };
 }

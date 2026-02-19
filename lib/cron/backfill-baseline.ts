@@ -3,6 +3,7 @@
 import { assessWeek } from '@/lib/cron/assess-week';
 import type { AiOptions } from '@/lib/cron/assess-week';
 import { backfillRhetoric } from '@/lib/cron/backfill-rhetoric';
+import type { BaselineSource, WhArchiveConfig } from '@/lib/data/baselines';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
@@ -118,6 +119,8 @@ async function fetchBaselineData(
   includeRhetoric: boolean,
   rhetoricOnly: boolean,
   aiOptions: AiOptions,
+  availableSources?: BaselineSource[],
+  whArchive?: WhArchiveConfig,
 ): Promise<void> {
   console.log(`[baseline] ${weeks.length} weeks to process`);
 
@@ -134,7 +137,7 @@ async function fetchBaselineData(
   }
 
   if (includeRhetoric || rhetoricOnly) {
-    const rhetoric = await backfillRhetoric(weeks, dryRun);
+    const rhetoric = await backfillRhetoric(weeks, dryRun, availableSources, whArchive);
     totalDocs += rhetoric.whDocs + rhetoric.gdeltDocs;
 
     if (!dryRun) {
@@ -197,6 +200,10 @@ async function processBaselineConfig(
   console.log(
     `\n[baseline] === ${config.label} (${config.from} → ${config.to}) ===${dryRun ? ' (DRY RUN)' : ''}`,
   );
+  console.log(`[baseline] Sources: ${config.availableSources.join(', ')}`);
+  if (config.sourceNotes) {
+    console.log(`[baseline] Note: ${config.sourceNotes}`);
+  }
 
   const weeks = getWeekRanges(config.from, config.to);
 
@@ -208,6 +215,8 @@ async function processBaselineConfig(
       includeRhetoric,
       rhetoricOnly,
       aiOptions,
+      config.availableSources,
+      config.whArchive,
     );
   } else if (!dryRun) {
     await reassessFromDb(categoriesToProcess, weeks, aiOptions);

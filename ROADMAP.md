@@ -213,67 +213,62 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 14.1: Rhetoric-Based Keyword Gaps + First Refinement Cycle
 
-> **Status: Not started.**
+> **Actual:** Delivered rhetoric gap analysis with PolicyArea→category mapping. 412 gaps across 6 categories (966/50,651 docs classifiable). Human review result: zero keyword additions needed — dictionaries well-calibrated, rhetoric→document vocabulary gap is a translation gap. See `DECISIONS.md` for full findings.
 
 **Goal:** Build rhetoric-to-keyword gap analysis. Run first full keyword refinement cycle using the calibrated Biden 2022 baseline as reference.
 
 **Depends on:** Sprint 14 (calibrated Biden 2022 baseline + fixtures)
 
-**Code work (~200 lines new/modified):**
+**Actual code work:**
 
-1. Create rhetoric-to-keyword gap analysis (`lib/seed/rhetoric-keyword-gaps.ts`): frequency analysis of terms in documents table (source: whitehouse, gdelt) mapped to categories, compared against `assessment-rules.ts` keyword dictionaries. Surfaces terms appearing in N+ rhetoric documents for a category but absent from the keyword dictionary.
-2. Integrate `missingKeywords` suggestions into post-session aggregate report
-3. Run first full refinement cycle against Biden 2022 baseline: backfill → review → aggregate → apply → re-run → validate
-4. Re-export Biden 2022 fixtures after keyword changes
-
-**E2E test:**
-
-- Rhetoric gap analysis surfaces candidate keywords not in current dictionaries
-- Aggregate report includes both false-positive removals and rhetoric-sourced additions
-- Re-scored Biden 2022 baseline shows improvement after keyword tuning
-
-**Risk:** Keyword additions from rhetoric analysis are additive — they go through the review queue, not applied blindly. Re-run should produce ≤8 alerts (same or fewer than calibrated baseline).
+1. ~~Rhetoric-to-keyword gap analysis~~ — **Done** (`lib/seed/rhetoric-keyword-gaps.ts`, `lib/data/category-topics.ts`). PolicyArea-based classification using `classifyPolicyAreaWithScore()`, bigram frequency analysis, gaps compared against keyword dictionaries.
+2. ~~Integrate missingKeywords into aggregate report~~ — **Done** (Sprint 14.1, via `aggregateMissingKeywords()`)
+3. ~~First refinement cycle~~ — **Done**. Result: zero additions needed → no re-score required → baseline unchanged at 8 alerts.
+4. ~~Re-export Biden 2022 fixtures~~ — **N/A** (no keyword changes).
 
 ---
 
 ### Sprint 15: First-Year-in-Term Baselines + Cross-Baseline Validation
 
-**Goal:** Add Biden 2021 and Obama 2013 as first-year-in-term baselines. Build cross-baseline comparison to validate that keyword dictionaries perform well across different normal governance periods.
+> **Status: Done.** Scope changed: dropped Obama 2013 (FR-only source coverage), added Trump 2017 (Year 1) + Trump 2018 (Year 2) with uniform FR+GDELT+WH coverage. Built Trump WH archive scraper. Fixed weekly aggregator date mismatch bug. Cross-baseline validation: military 2.5x Y1 severity, civilService highest absolute, rulemaking most coherent cycle pattern. All keyword-only (`--skip-ai`). See `DECISIONS.md` for full retrospective.
+
+**Goal:** Add first-year-in-term baselines. Build cross-baseline comparison to validate keyword dictionaries across different normal governance periods.
 
 **Depends on:** Sprint 14 (Biden 2022 baseline + tuned keywords)
 
-**Code work (~280 lines + live API runs):**
+**Actual code work:**
 
-1. Schema migration: add `cycle_year`, `administration`, `calendar_year` columns to `baselines` table (V3 Addendum §15.3 — baseline metadata only, not `cycle_adjustment_factors` table yet)
-2. Backfill existing Biden 2022 baseline with `cycle_year=2, administration='biden', calendar_year=2022`
-3. Run `build-baseline --baseline biden_2021 --model gpt-4o-mini` for Jan 2021 – Dec 2021 (with `cycle_year=1, administration='biden', calendar_year=2021`)
-4. Run `build-baseline --baseline obama_2013 --model gpt-4o-mini` for Jan 2013 – Dec 2013 (with `cycle_year=1, administration='obama', calendar_year=2013`; verify FR + GDELT data availability; WH archive URL structure differs for Obama era)
-5. Create cross-baseline validation report (`lib/seed/baseline-validation.ts`): compare flagging rates across baselines by category. Keywords that trigger at Warning+ in all baselines are likely false positives in normal governance. Keywords that only trigger in first-year baselines may capture legitimate transition activity.
-6. Run review cycle on new baselines with tuned keywords — should produce significantly fewer flags than Biden 2024 did pre-tuning
-7. Export all baselines as fixture sets, documenting source coverage per period
-
-**E2E test:**
-
-- Three baselines available: biden_2022, biden_2021, obama_2013
-- Cross-baseline report shows category-level flagging rate comparison
-- Tuned keywords produce fewer false positives across all baselines
-- First-year baselines show higher activity but lower false-positive rates than pre-tuning Biden 2024
-
-**Risk:** Obama 2013 data availability — WH archive structure differs, GDELT coverage for 2013 may be limited. Verify before committing.
+1. ~~Schema migration: cycle metadata on baselines table~~ — **Done** (`cycle_year`, `administration`, `calendar_year`)
+2. ~~Extend BaselineConfig with cycle metadata + source availability~~ — **Done** (`WhArchiveConfig` for archive-era WH scrapers)
+3. ~~Drop Obama 2013, add Trump 2017/2018 baselines~~ — **Done** (source uniformity over cross-president diversity)
+4. ~~Trump WH archive scraper~~ — **Done** (`parseWhArchiveArticles` + `fetchWhArchiveHistorical`)
+5. ~~Cross-baseline validation report~~ — **Done** (`lib/seed/baseline-validation.ts`, `pnpm seed:validate`)
+6. ~~Tests for validation + cycle metadata~~ — **Done** (baseline-validation.test.ts, baseline-service.test.ts updates)
+7. ~~Run all 4 baselines~~ — **Done** (Biden 2021: 76,946 docs; Biden 2022: 58,713; Trump 2017: 76,749; Trump 2018: 75,063)
+8. ~~Fix weekly aggregator date mismatch~~ — **Done** (range query instead of exact match)
+9. ~~Fix migration workflow~~ — **Done** (schema-first rule documented)
 
 ---
 
 ### Sprint 15.1: Cycle-Aware Baselines
 
-**Goal:** Compute cycle-position adjustment factors from empirical baseline data and integrate cycle-aware volume thresholds into the assessment pipeline. Prevents false signals from predictable presidential cycle dynamics (e.g., Year 1 transition surges).
+**Goal:** Re-run primary baselines with AI assessment for better severity data, then compute cycle-position adjustment factors and integrate cycle-aware volume thresholds into the assessment pipeline. Prevents false signals from predictable presidential cycle dynamics (e.g., Year 1 transition surges).
 
-**Depends on:** Sprint 15 (Biden 2021 + Obama 2013 baselines with cycle-position metadata)
+**Depends on:** Sprint 15 (4 baselines with cycle-position metadata and cross-baseline validation)
+
+**Prerequisite — AI baseline re-runs (~$1.14):**
+
+Re-run Biden 2022 (Year 2) and Biden 2021 (Year 1) with `--model gpt-4o-mini` to get AI-assessed severity data. Sprint 15 ran all 4 baselines keyword-only (`--skip-ai`). Per Claude Online review of the validation report, AI assessment on these two is needed for meaningful cycle adjustment factors. Trump 2017/2018 stay keyword-only — save AI budget for Trump 2025 current-period assessments.
+
+0. Re-run `pnpm build-baseline --baseline biden_2022 --model gpt-4o-mini` (~572 AI calls, ~$0.57)
+1. Re-run `pnpm build-baseline --baseline biden_2021 --model gpt-4o-mini` (~572 AI calls, ~$0.57)
+2. Re-run `pnpm seed:validate` to regenerate cross-baseline report with AI-assessed severity data
 
 **Code work (~200 lines new):**
 
 1. Schema migration: create `cycle_adjustment_factors` table (V3 Addendum §15.3)
 2. Create `lib/services/cycle-adjustment-service.ts` — `computeCycleAdjustmentFactors()`, `getCycleAdjustment()` (V3 Addendum §15.4)
-3. Compute initial adjustment factors from Biden 2021 / Biden 2022 per-category ratios (severity, volume, stddev). If Obama 2013 data is available, average Year 1 factors across both administrations.
+3. Compute initial adjustment factors from Biden 2021 / Biden 2022 per-category ratios (severity, volume, stddev). Average Year 1 factors across Biden 2021 + Trump 2017, Year 2 factors across Biden 2022 + Trump 2018.
 4. Integrate cycle-aware volume thresholds into `assessByVolume()` in `assessment-service.ts` (V3 Addendum §15.5)
 5. Add `getCurrentCycleYear()` to `scoring-config.ts` — computed from current date and inauguration cycle
 6. Tests for cycle-adjustment-service pure functions (ratio computation, confidence classification, threshold adjustment)
@@ -285,7 +280,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Re-scoring Biden 2021 with cycle-aware thresholds reduces volume-only false flags
 - Factors include sample size and confidence level (`low` for N=1, `moderate` for N=2)
 
-**Cost:** No API calls — computation from existing baseline data only.
+**Cost:** ~$1.14 for AI re-runs + no additional cost for cycle computation.
 
 **Note:** UI cycle annotations (V3 Addendum §15.6) land in Sprint 18 (trend chart annotation) and Sprint 22 (Detailed mode cycle-adjusted ratios on category cards).
 

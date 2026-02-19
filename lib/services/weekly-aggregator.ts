@@ -1,8 +1,17 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documentScores, weeklyAggregates } from '@/lib/db/schema';
 import { TIER_WEIGHTS } from '@/lib/methodology/scoring-config';
 import { toDateString } from '@/lib/utils/date-utils';
+
+const WEEK_DAYS = 7;
+
+/** Given a week start date, return the start of the next week (exclusive upper bound). */
+function weekEndDate(weekOf: string): string {
+  const d = new Date(weekOf);
+  d.setDate(d.getDate() + WEEK_DAYS);
+  return toDateString(d);
+}
 
 export interface WeeklyAggregate {
   category: string;
@@ -50,8 +59,9 @@ export async function computeWeeklyAggregate(
   }
 
   const db = getDb();
+  const weekEnd = weekEndDate(weekOf);
 
-  // Fetch aggregate stats in a single query
+  // Fetch aggregate stats — use range query to handle Monday vs non-Monday week starts
   const [stats] = await db
     .select({
       totalSeverity: sql<number>`coalesce(sum(${documentScores.finalScore}), 0)`,
@@ -62,33 +72,43 @@ export async function computeWeeklyAggregate(
       suppressedMatchCount: sql<number>`coalesce(sum(${documentScores.suppressedCount}), 0)::int`,
     })
     .from(documentScores)
-    .where(and(eq(documentScores.category, category), eq(documentScores.weekOf, weekOf)));
+    .where(
+      and(
+        eq(documentScores.category, category),
+        gte(documentScores.weekOf, weekOf),
+        lt(documentScores.weekOf, weekEnd),
+      ),
+    );
 
-  const totalSeverity = Number(stats.totalSeverity);
-  const documentCount = Number(stats.documentCount);
-  const avgSeverityPerDoc = documentCount > 0 ? totalSeverity / documentCount : 0;
-
-  const captureMatchCount = Number(stats.captureMatchCount);
-  const driftMatchCount = Number(stats.driftMatchCount);
-  const warningMatchCount = Number(stats.warningMatchCount);
-  const suppressedMatchCount = Number(stats.suppressedMatchCount);
-
-  const proportions = computeProportions(captureMatchCount, driftMatchCount, warningMatchCount);
+  const parsed = parseAggregateStats(stats);
+  const proportions = computeProportions(
+    parsed.captureMatchCount,
+    parsed.driftMatchCount,
+    parsed.warningMatchCount,
+  );
   const topKeywords = await extractTopKeywords(db, category, weekOf);
 
   return {
     category,
     weekOf,
-    totalSeverity,
-    documentCount,
-    avgSeverityPerDoc,
+    ...parsed,
     ...proportions,
-    captureMatchCount,
-    driftMatchCount,
-    warningMatchCount,
-    suppressedMatchCount,
     topKeywords,
     computedAt: new Date().toISOString(),
+  };
+}
+
+function parseAggregateStats(stats: Record<string, number>) {
+  const totalSeverity = Number(stats.totalSeverity);
+  const documentCount = Number(stats.documentCount);
+  return {
+    totalSeverity,
+    documentCount,
+    avgSeverityPerDoc: documentCount > 0 ? totalSeverity / documentCount : 0,
+    captureMatchCount: Number(stats.captureMatchCount),
+    driftMatchCount: Number(stats.driftMatchCount),
+    warningMatchCount: Number(stats.warningMatchCount),
+    suppressedMatchCount: Number(stats.suppressedMatchCount),
   };
 }
 
@@ -101,13 +121,15 @@ async function extractTopKeywords(
   weekOf: string,
   limit: number = 10,
 ): Promise<string[]> {
+  const weekEnd = weekEndDate(weekOf);
   try {
     const rows = await db.execute(sql`
       SELECT m->>'keyword' AS keyword, COUNT(*) AS cnt
       FROM ${documentScores},
            jsonb_array_elements(${documentScores.matches}) AS m
       WHERE ${documentScores.category} = ${category}
-        AND ${documentScores.weekOf} = ${weekOf}
+        AND ${documentScores.weekOf} >= ${weekOf}
+        AND ${documentScores.weekOf} < ${weekEnd}
       GROUP BY m->>'keyword'
       ORDER BY cnt DESC
       LIMIT ${limit}

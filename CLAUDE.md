@@ -41,6 +41,16 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 
 Local PostgreSQL is available at `localhost:5432/democracy_monitor` (configured in `.env.local`). The database contains backfilled baseline data and assessment snapshots. CLI scripts like `pnpm seed:review`, `pnpm backfill`, and `pnpm snapshot` can be run directly against it.
 
+## Database migrations
+
+**Schema-first workflow** — NEVER manually create SQL files in `drizzle/`. Always follow this process:
+
+1. Modify the schema in `lib/db/schema.ts`
+2. Run `pnpm db:generate` — this creates the SQL migration file, snapshot, AND journal entry in `drizzle/meta/_journal.json`
+3. Run `pnpm db:migrate` — this applies the migration to the database
+
+Why: Manually created SQL files won't be registered in the Drizzle journal, causing `pnpm db:migrate` to silently skip them. This has caused production failures where columns appeared to exist in the SQL file but were never actually added to the database.
+
 ## Architecture
 
 Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, Tailwind CSS.

@@ -45,6 +45,7 @@
     "seed:review": "tsx lib/seed/review-report.ts",
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
     "seed:rhetoric-gaps": "tsx lib/seed/rhetoric-keyword-gaps.ts",
+    "seed:validate": "tsx lib/seed/baseline-validation.ts",
     "prepare": "husky"
   },
   "dependencies": {
