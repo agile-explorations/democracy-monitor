@@ -5,19 +5,22 @@
 
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { analyzeContent } from '@/lib/services/assessment-service';
+import type { CycleAdjustmentFactor } from '@/lib/services/cycle-adjustment-service';
 import type { ContentItem, EnhancedAssessment } from '@/lib/types';
 
 export interface AiOptions {
   skipAi: boolean;
   model?: string;
+  cycleFactors?: Map<string, CycleAdjustmentFactor>;
 }
 
 function buildKeywordOnlyResult(
   items: ContentItem[],
   categoryKey: string,
   weekEnd: string,
+  cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): EnhancedAssessment {
-  const assessment = analyzeContent(items, categoryKey);
+  const assessment = analyzeContent(items, categoryKey, cycleFactors);
   return {
     category: categoryKey,
     status: assessment.status,
@@ -39,11 +42,12 @@ export async function assessWeek(
   aiOptions: AiOptions,
 ): Promise<EnhancedAssessment> {
   if (aiOptions.skipAi) {
-    return buildKeywordOnlyResult(items, categoryKey, weekEnd);
+    return buildKeywordOnlyResult(items, categoryKey, weekEnd, aiOptions.cycleFactors);
   }
 
   return enhancedAssessment(items, categoryKey, {
     skipCache: true,
     ...(aiOptions.model ? { model: aiOptions.model } : {}),
+    cycleFactors: aiOptions.cycleFactors,
   });
 }

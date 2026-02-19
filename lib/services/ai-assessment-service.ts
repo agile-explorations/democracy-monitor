@@ -19,6 +19,7 @@ import type {
 } from '@/lib/types';
 import { analyzeContent } from './assessment-service';
 import { calculateDataCoverage } from './confidence-scoring';
+import type { CycleAdjustmentFactor } from './cycle-adjustment-service';
 import { retrieveRelevantDocuments } from './document-retriever';
 import { categorizeEvidence } from './evidence-balance';
 import { buildKeywordMatchContexts, generateKeywordCounterEvidence } from './keyword-match-context';
@@ -114,9 +115,14 @@ function buildEnhancedResult(params: {
 export async function enhancedAssessment(
   items: ContentItem[],
   category: string,
-  options?: { providers?: string[]; skipCache?: boolean; model?: string },
+  options?: {
+    providers?: string[];
+    skipCache?: boolean;
+    model?: string;
+    cycleFactors?: Map<string, CycleAdjustmentFactor>;
+  },
 ): Promise<EnhancedAssessment> {
-  const keywordResult = analyzeContent(items, category);
+  const keywordResult = analyzeContent(items, category, options?.cycleFactors);
   const { evidenceFor, evidenceAgainst } = categorizeEvidence(items, keywordResult.status);
   const cacheKey = `ai-skeptic:${category}:${keywordResult.status}:${items.length}`;
 

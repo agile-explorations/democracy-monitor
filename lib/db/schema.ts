@@ -267,6 +267,31 @@ export const baselines = pgTable(
   ],
 );
 
+export const cycleAdjustmentFactors = pgTable(
+  'cycle_adjustment_factors',
+  {
+    id: serial('id').primaryKey(),
+    category: varchar('category', { length: 50 }).notNull(),
+    cycleYear: integer('cycle_year').notNull(),
+    referenceCycleYear: integer('reference_cycle_year').notNull(),
+    severityRatio: real('severity_ratio').notNull(),
+    volumeRatio: real('volume_ratio').notNull(),
+    severityStddevRatio: real('severity_stddev_ratio').notNull(),
+    sourceBaselines: jsonb('source_baselines').$type<string[]>().notNull(),
+    sampleSize: integer('sample_size').notNull(),
+    confidence: varchar('confidence', { length: 20 }).notNull(),
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_cycle_adj_category_years').on(
+      table.category,
+      table.cycleYear,
+      table.referenceCycleYear,
+    ),
+    index('idx_cycle_adj_category').on(table.category),
+  ],
+);
+
 export const intentWeekly = pgTable(
   'intent_weekly',
   {

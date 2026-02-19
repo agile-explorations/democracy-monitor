@@ -46,6 +46,7 @@
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
     "seed:rhetoric-gaps": "tsx lib/seed/rhetoric-keyword-gaps.ts",
     "seed:validate": "tsx lib/seed/baseline-validation.ts",
+    "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
     "prepare": "husky"
   },
   "dependencies": {

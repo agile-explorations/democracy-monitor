@@ -113,6 +113,13 @@
       "when": 1739750400000,
       "tag": "0015_baseline_cycle_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1771506207623,
+      "tag": "0016_cycle_adjustment_factors",
+      "breakpoints": true
     }
   ]
 }

@@ -77,6 +77,34 @@ export const EVIDENCE_COUNT_MAX = 10;
 /** Keyword density ratio: matches / (items × ratio) caps the density score. */
 export const KEYWORD_DENSITY_RATIO = 0.3;
 
+/** Start of the current presidential term (Trump 2025). */
+export const CURRENT_TERM_START = '2025-01-20';
+
+/** The cycle year of the primary baseline (Biden 2022 = Year 2). */
+export const PRIMARY_BASELINE_CYCLE_YEAR = 2;
+
+/** Month (0-indexed) and day of the term start anniversary. */
+const TERM_START_MONTH = 0; // January
+const TERM_START_DAY = 20;
+const TERM_START_YEAR = 2025;
+
+/**
+ * Determine which year (1–4) of the presidential term a given date falls in.
+ * Jan 20 2025 = Year 1, Jan 20 2026 = Year 2, etc. Clamped to 1–4.
+ * Uses UTC to avoid timezone edge cases when dates are parsed from ISO strings.
+ */
+export function getCurrentCycleYear(date?: Date): number {
+  const d = date ?? new Date();
+  let year = d.getUTCFullYear() - TERM_START_YEAR + 1;
+  if (
+    d.getUTCMonth() < TERM_START_MONTH ||
+    (d.getUTCMonth() === TERM_START_MONTH && d.getUTCDate() < TERM_START_DAY)
+  ) {
+    year--;
+  }
+  return Math.max(1, Math.min(4, year));
+}
+
 /** Characters before a keyword to scan for negation patterns. */
 export const NEGATION_WINDOW_BEFORE = 200;
 

@@ -2,6 +2,7 @@ import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { matchKeyword } from '@/lib/utils/keyword-match';
+import type { CycleAdjustmentFactor } from './cycle-adjustment-service';
 
 /** Minimum capture-keyword matches to escalate to Capture status. */
 const CAPTURE_MATCH_THRESHOLD = 2;
@@ -170,6 +171,8 @@ function buildAssessmentResult(
   scan: KeywordScanResult,
   itemCount: number,
   rules: (typeof ASSESSMENT_RULES)[string],
+  category?: string,
+  cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): AssessmentResult {
   const { captureMatches, driftMatches, warningMatches, highAuthorityKeywords } = scan;
   const hasAuth = highAuthorityKeywords.length > 0;
@@ -181,12 +184,16 @@ function buildAssessmentResult(
     hasAuth,
   );
 
-  return assessByKeywordMatches(scan, detail) ?? assessByVolume(itemCount, rules);
+  return (
+    assessByKeywordMatches(scan, detail) ?? assessByVolume(itemCount, rules, category, cycleFactors)
+  );
 }
 
 function assessByVolume(
   itemCount: number,
   rules: (typeof ASSESSMENT_RULES)[string],
+  category?: string,
+  cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): AssessmentResult {
   const base = {
     captureCount: 0,
@@ -197,7 +204,8 @@ function assessByVolume(
   };
 
   if (rules.volumeThreshold) {
-    if (itemCount >= rules.volumeThreshold.capture) {
+    const multiplier = (category && cycleFactors?.get(category)?.volumeRatio) || 1;
+    if (itemCount >= rules.volumeThreshold.capture * multiplier) {
       return makeResult(
         'Drift',
         `Very high activity level (${itemCount} documents) - may show increased government control`,
@@ -205,7 +213,7 @@ function assessByVolume(
         base,
       );
     }
-    if (itemCount >= rules.volumeThreshold.drift) {
+    if (itemCount >= rules.volumeThreshold.drift * multiplier) {
       return makeResult(
         'Warning',
         `Higher than normal activity (${itemCount} documents)`,
@@ -229,7 +237,11 @@ function assessByVolume(
   );
 }
 
-export function analyzeContent(items: ContentItem[], category: string): AssessmentResult {
+export function analyzeContent(
+  items: ContentItem[],
+  category: string,
+  cycleFactors?: Map<string, CycleAdjustmentFactor>,
+): AssessmentResult {
   const rules = ASSESSMENT_RULES[category];
   if (!rules) {
     return { status: 'Warning', reason: 'No assessment rules configured', matches: [] };
@@ -242,5 +254,5 @@ export function analyzeContent(items: ContentItem[], category: string): Assessme
 
   const scan = scanKeywords(items, rules);
   const itemCount = items.filter((i) => !i.isError && !i.isWarning).length;
-  return buildAssessmentResult(scan, itemCount, rules);
+  return buildAssessmentResult(scan, itemCount, rules, category, cycleFactors);
 }
