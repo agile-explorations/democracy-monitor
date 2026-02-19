@@ -252,35 +252,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint 15.1: Cycle-Aware Baselines
 
+> **Status: Done.** All 4 baselines re-run with AI (gpt-4o-mini). 11 cycle adjustment factors computed (military 2.5x, rulemaking 1.36x severity Year 1 vs Year 2). Factors integrated into volume thresholds via optional `cycleFactors` parameter. snapshot.ts refactored (extracted snapshotRhetoric/snapshotLegislative). 26 new tests (882 total). See `DECISIONS.md` for full retrospective.
+
 **Goal:** Re-run primary baselines with AI assessment for better severity data, then compute cycle-position adjustment factors and integrate cycle-aware volume thresholds into the assessment pipeline. Prevents false signals from predictable presidential cycle dynamics (e.g., Year 1 transition surges).
 
 **Depends on:** Sprint 15 (4 baselines with cycle-position metadata and cross-baseline validation)
 
-**Prerequisite — AI baseline re-runs (~$1.14):**
+**Actual code work:**
 
-Re-run Biden 2022 (Year 2) and Biden 2021 (Year 1) with `--model gpt-4o-mini` to get AI-assessed severity data. Sprint 15 ran all 4 baselines keyword-only (`--skip-ai`). Per Claude Online review of the validation report, AI assessment on these two is needed for meaningful cycle adjustment factors. Trump 2017/2018 stay keyword-only — save AI budget for Trump 2025 current-period assessments.
-
-0. Re-run `pnpm build-baseline --baseline biden_2022 --model gpt-4o-mini` (~572 AI calls, ~$0.57)
-1. Re-run `pnpm build-baseline --baseline biden_2021 --model gpt-4o-mini` (~572 AI calls, ~$0.57)
-2. Re-run `pnpm seed:validate` to regenerate cross-baseline report with AI-assessed severity data
-
-**Code work (~200 lines new):**
-
-1. Schema migration: create `cycle_adjustment_factors` table (V3 Addendum §15.3)
-2. Create `lib/services/cycle-adjustment-service.ts` — `computeCycleAdjustmentFactors()`, `getCycleAdjustment()` (V3 Addendum §15.4)
-3. Compute initial adjustment factors from Biden 2021 / Biden 2022 per-category ratios (severity, volume, stddev). Average Year 1 factors across Biden 2021 + Trump 2017, Year 2 factors across Biden 2022 + Trump 2018.
-4. Integrate cycle-aware volume thresholds into `assessByVolume()` in `assessment-service.ts` (V3 Addendum §15.5)
-5. Add `getCurrentCycleYear()` to `scoring-config.ts` — computed from current date and inauguration cycle
-6. Tests for cycle-adjustment-service pure functions (ratio computation, confidence classification, threshold adjustment)
-
-**E2E test:**
-
-- Adjustment factors computed and stored for all 11 categories (Year 1 vs Year 2)
-- Year 1 volume thresholds are higher than Year 2 (proportional to empirical volume ratio)
-- Re-scoring Biden 2021 with cycle-aware thresholds reduces volume-only false flags
-- Factors include sample size and confidence level (`low` for N=1, `moderate` for N=2)
-
-**Cost:** ~$1.14 for AI re-runs + no additional cost for cycle computation.
+1. ~~AI baseline re-runs~~ — **Done** (all 4 baselines with gpt-4o-mini, ~$2.28)
+2. ~~Schema migration: `cycle_adjustment_factors` table~~ — **Done** (migration 0016)
+3. ~~`getCurrentCycleYear()` + constants~~ — **Done** (UTC-safe date math in scoring-config.ts)
+4. ~~Cycle adjustment service~~ — **Done** (compute, load, store + CLI `pnpm seed:cycle-factors`)
+5. ~~Integrate into assessment pipeline~~ — **Done** (assessment-service, ai-assessment-service, assess-week, snapshot)
+6. ~~Tests~~ — **Done** (26 new tests: classifyConfidence, computeRatios, getCurrentCycleYear, analyzeContent+factors, loadCycleAdjustmentFactors)
 
 **Note:** UI cycle annotations (V3 Addendum §15.6) land in Sprint 18 (trend chart annotation) and Sprint 22 (Detailed mode cycle-adjusted ratios on category cards).
 

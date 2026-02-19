@@ -147,3 +147,36 @@ See ROADMAP.md for full sequence.
 - rulemaking: Most structurally coherent pattern — Year 1 > Year 2, Trump > Biden Year 2 (consistent with transition regulatory activity)
 - elections, fiscal: Zero severity across all baselines (correct — concern keywords shouldn't fire during normal governance)
 - No source asymmetry across any baseline pair
+
+---
+
+## Sprint 15.1: Cycle-Aware Baselines
+
+**Planned:** Re-run all 4 baselines with AI assessment (gpt-4o-mini), compute cycle adjustment factors (V3 Addendum §15.3–15.5), integrate into volume thresholds. UI annotations deferred.
+
+**Actual:** Delivered as planned. All 6 work items shipped. All 4 baselines re-run with AI. 11 cycle adjustment factors computed and stored.
+
+**Key decisions:**
+
+- **All 4 baselines re-run with AI** (not just Biden pair): Sprint 15 note said "Trump baselines stay keyword-only." Changed to re-run all 4 with gpt-4o-mini to get AI-assessed severity ratios for cycle factors. Cost ~$2.28 total. The richer data improves factor quality.
+- **UTC date math for `getCurrentCycleYear()`**: Initial implementation used `365.25 * ms` which failed on Jan 20 boundaries (365 days < 365.25 days). Switched to `getUTCFullYear()/getUTCMonth()/getUTCDate()` to avoid both the fractional-year and timezone issues. UTC is necessary because `new Date('2028-01-20')` parses as UTC midnight, which is Jan 19 in local US timezones.
+- **Volume-only adjustment (not keyword)**: Cycle factors multiply volume thresholds only (`assessByVolume`). Keyword match thresholds (`CAPTURE_MATCH_THRESHOLD`, `DRIFT_MATCH_THRESHOLD`) are not scaled — if specific concern keywords match, that's a genuine signal regardless of cycle year.
+- **Safe defaults everywhere**: `cycleFactors` is optional throughout the pipeline. Missing factors, missing category in map, or same cycle year as primary baseline all resolve to multiplier 1.0 (no adjustment).
+- **snapshot.ts refactored**: `runSnapshots` exceeded 50-line limit after adding cycle factor loading. Extracted `snapshotRhetoric()` and `snapshotLegislative()` as private helpers.
+
+**Cycle factor results (Year 1 vs Year 2):**
+
+| Category                | Severity | Volume    | Stddev | Notes                                       |
+| ----------------------- | -------- | --------- | ------ | ------------------------------------------- |
+| military                | 2.5x     | 0.98x     | 2.71x  | Highest Year 1 surge — tiny absolute values |
+| rulemaking              | 1.36x    | 0.83x     | 1.24x  | Transition regulatory activity              |
+| civilService            | 0.84x    | 0.95x     | 0.99x  | Slightly lower Year 1                       |
+| courts                  | 0.25x    | 1.02x     | 0.31x  | Much lower Year 1 severity                  |
+| igs                     | 0.30x    | 1.05x     | 0.37x  | Much lower Year 1 severity                  |
+| executiveActions        | 0x       | 1.04x     | 0x     | No severity in Year 1 baselines             |
+| fiscal, elections       | 1x       | 1x        | 1x     | Zero severity → safe default                |
+| hatch, infoAvail, media | 1x       | ~0.8-0.9x | 1x     | Minimal severity                            |
+
+**Lessons learned:**
+
+- **ESLint import ordering is strict**: Type-only imports from `@/lib/services/cycle-adjustment-service` must still respect alphabetical ordering relative to other `@/lib/services/*` imports. The `import/order` rule treats type imports the same as value imports for ordering purposes.
