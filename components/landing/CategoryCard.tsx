@@ -25,8 +25,6 @@ function formatRatio(score: number, baseline: number): string {
   return `(${ratio.toFixed(1)}\u00d7 baseline)`;
 }
 
-const QUIET_STATUSES = new Set<StatusLevel>(['Stable']);
-
 export function CategoryCard({
   category,
   title,
@@ -42,14 +40,10 @@ export function CategoryCard({
   showExperimentalBadge = true,
   linkBase = '/category',
 }: CategoryCardProps) {
-  const isQuiet = QUIET_STATUSES.has(status);
-
   return (
     <Link
       href={`${linkBase}/${category}`}
-      className={`block rounded-lg border p-6 transition-all hover:shadow-lg hover:border-dm-accent/50 hover:-translate-y-0.5 cursor-pointer ${
-        isQuiet ? 'border-dm-border/50 bg-dm-card/80' : 'border-dm-border bg-dm-card'
-      }`}
+      className="block rounded-lg border border-dm-border bg-dm-card p-6 transition-all hover:shadow-lg hover:border-dm-accent/50 hover:-translate-y-0.5 cursor-pointer"
     >
       {/* Header: name + status pill */}
       <div className="flex items-start justify-between gap-2 mb-1">

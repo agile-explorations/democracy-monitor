@@ -78,10 +78,10 @@ describe('CategoryCard', () => {
     expect(getByText('civilService')).toBeTruthy();
   });
 
-  it('uses quieter style for Stable status', () => {
+  it('uses same style for all statuses', () => {
     const { container } = render(<CategoryCard {...defaultProps} status="Stable" />);
     const card = container.querySelector('a');
-    expect(card?.className).toContain('bg-dm-card/80');
+    expect(card?.className).toContain('bg-dm-card');
   });
 
   it('hides ratio when baseline is zero', () => {
