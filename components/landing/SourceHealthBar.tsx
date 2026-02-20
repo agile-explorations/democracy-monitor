@@ -6,6 +6,17 @@ export interface SourceHealthBarProps {
   unavailableSources: number;
   silentSources: number;
   totalSources: number;
+  lastCheckedAt?: string | null;
+}
+
+function formatCheckedAt(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 export function SourceHealthBar({
@@ -14,6 +25,7 @@ export function SourceHealthBar({
   unavailableSources,
   silentSources,
   totalSources,
+  lastCheckedAt,
 }: SourceHealthBarProps) {
   if (totalSources === 0) return null;
 
@@ -28,7 +40,7 @@ export function SourceHealthBar({
           : 'bg-slate-50 dark:bg-slate-800/50 border border-dm-border'
       }`}
     >
-      <span className="text-dm-text-secondary font-medium">Sources:</span>
+      <span className="text-dm-text-secondary font-medium shrink-0">Sources:</span>
       <span
         className="flex gap-0.5"
         aria-label={`${healthySources} healthy, ${impaired} impaired, ${unavailableSources} unavailable`}
@@ -51,13 +63,16 @@ export function SourceHealthBar({
       </span>
       <span className="text-dm-text-secondary">
         {allHealthy ? (
-          `${totalSources}/${totalSources} healthy`
+          `${totalSources}/${totalSources} data sources responding`
         ) : (
           <>
-            {healthySources} healthy
+            {healthySources}/{totalSources} responding
             {impaired > 0 && <> &middot; {impaired} impaired</>}
             {unavailableSources > 0 && <> &middot; {unavailableSources} unavailable</>}
           </>
+        )}
+        {lastCheckedAt && (
+          <span className="text-dm-muted"> &middot; checked {formatCheckedAt(lastCheckedAt)}</span>
         )}
       </span>
       <Link href="/health" className="ml-auto text-dm-accent hover:underline shrink-0">

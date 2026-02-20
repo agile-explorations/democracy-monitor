@@ -45,12 +45,13 @@ export function CategoryCard({
   const isQuiet = QUIET_STATUSES.has(status);
 
   return (
-    <article
-      className={`rounded-lg border p-6 transition-shadow hover:shadow-md ${
+    <Link
+      href={`${linkBase}/${category}`}
+      className={`block rounded-lg border p-6 transition-all hover:shadow-lg hover:border-dm-accent/50 hover:-translate-y-0.5 cursor-pointer ${
         isQuiet ? 'border-dm-border/50 bg-dm-card/80' : 'border-dm-border bg-dm-card'
       }`}
     >
-      {/* Header: icon + name + status pill */}
+      {/* Header: name + status pill */}
       <div className="flex items-start justify-between gap-2 mb-1">
         <h3 className="text-sm font-semibold text-dm-text-primary leading-tight">{title}</h3>
         <StatusPill level={status} />
@@ -88,25 +89,14 @@ export function CategoryCard({
         {flaggedCount > 0 && <> &middot; {flaggedCount} flagged</>}
       </p>
 
-      {/* View details link */}
-      <Link
-        href={`${linkBase}/${category}`}
-        className="mt-3 inline-block text-xs font-medium text-dm-accent hover:underline"
-      >
-        View details &rarr;
-      </Link>
-
       {/* Experimental badge */}
       {showExperimentalBadge && (
         <div className="mt-3 pt-3 border-t border-dm-border/50 flex items-center gap-2 text-[10px] text-dm-muted">
           <span className="px-1.5 py-0.5 rounded border border-dm-border text-dm-text-secondary">
             Experimental
           </span>
-          <Link href="/methodology" className="hover:underline">
-            How this works &rarr;
-          </Link>
         </div>
       )}
-    </article>
+    </Link>
   );
 }

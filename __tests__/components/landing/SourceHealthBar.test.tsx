@@ -21,8 +21,8 @@ describe('SourceHealthBar', () => {
   });
 
   it('shows all-healthy summary', () => {
-    render(<SourceHealthBar {...makeProps()} />);
-    expect(screen.getByText('8/8 healthy')).toBeDefined();
+    const { container } = render(<SourceHealthBar {...makeProps()} />);
+    expect(container.textContent).toContain('8/8 data sources responding');
   });
 
   it('renders correct dot counts', () => {
@@ -55,7 +55,7 @@ describe('SourceHealthBar', () => {
       />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('6 healthy');
+    expect(text).toContain('6/8 responding');
     expect(text).toContain('2 impaired');
   });
 

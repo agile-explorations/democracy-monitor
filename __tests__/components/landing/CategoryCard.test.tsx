@@ -50,10 +50,10 @@ describe('CategoryCard', () => {
     expect(container.textContent).toContain('4 flagged');
   });
 
-  it('renders view details link', () => {
-    const { getByText } = render(<CategoryCard {...defaultProps} />);
-    const link = getByText(/View details/);
-    expect(link.closest('a')?.getAttribute('href')).toBe('/category/civilService');
+  it('links to category detail page', () => {
+    const { container } = render(<CategoryCard {...defaultProps} />);
+    const link = container.querySelector('a');
+    expect(link?.getAttribute('href')).toBe('/category/civilService');
   });
 
   it('renders experimental badge by default', () => {
@@ -80,8 +80,8 @@ describe('CategoryCard', () => {
 
   it('uses quieter style for Stable status', () => {
     const { container } = render(<CategoryCard {...defaultProps} status="Stable" />);
-    const article = container.querySelector('article');
-    expect(article?.className).toContain('bg-dm-card/80');
+    const card = container.querySelector('a');
+    expect(card?.className).toContain('bg-dm-card/80');
   });
 
   it('hides ratio when baseline is zero', () => {
