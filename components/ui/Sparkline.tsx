@@ -11,6 +11,8 @@ export interface SparklineProps {
   height?: number;
   /** Line color CSS value (defaults to indigo-500) */
   lineColor?: string;
+  /** Week date string to highlight with a dot (e.g., '2025-02-03') */
+  highlightWeek?: string;
 }
 
 const PADDING_X = 4;
@@ -35,6 +37,7 @@ export function Sparkline({
   width = 200,
   height = 40,
   lineColor = '#6366f1',
+  highlightWeek,
 }: SparklineProps) {
   if (data.length === 0) {
     return (
@@ -103,6 +106,17 @@ export function Sparkline({
 
       {/* Data line */}
       <path d={toPath(points)} fill="none" stroke={lineColor} strokeWidth={2} />
+
+      {/* Highlighted week dot */}
+      {highlightWeek &&
+        (() => {
+          const idx = data.findIndex((d) => d.week === highlightWeek);
+          if (idx < 0) return null;
+          const p = points[idx];
+          return (
+            <circle cx={p.x} cy={p.y} r={4} fill={lineColor} stroke="white" strokeWidth={1.5} />
+          );
+        })()}
     </svg>
   );
 }

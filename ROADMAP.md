@@ -376,8 +376,9 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 4. P2025 page (`pages/p2025.tsx`) — headline percentage bar, by-area breakdown, recent matches
 5. Source health page (`pages/health.tsx`) — meta-assessment summary, historical availability chart, per-source detail table
 6. Infrastructure convergence banner on landing page (UI spec section 4.3)
+7. Document table on category detail page (reuses `DocumentTable` component from Sprint 19)
 
-7. Playwright e2e test setup + core user journey tests
+8. Playwright e2e test setup + core user journey tests
 
 **E2E test (Playwright):**
 
@@ -424,7 +425,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 **Code work (~300 lines new):**
 
 1. Chart toggle tabs on category detail (decay-weighted, running avg, running sum, high-water, severity mix)
-2. AI reviewer notes display (UI spec section 5.4) with ceiling constraint label
+2. AI reviewer notes display (UI spec section 5.4) with ceiling constraint label — includes per-week AI assessment on week detail page (requires storing AI results per-week in snapshot pipeline)
 3. Suppression audit panel — "What was suppressed" column with rule explanations
 4. Baseline overlay selector — multi-select pills for up to 2 baselines (UI spec section 13.2)
 5. Cycle-adjusted ratio display on category cards in Detailed mode — raw and adjusted comparisons shown side by side (V3 Addendum §15.6)

@@ -38,6 +38,7 @@ export interface TrendChartProps {
   baselineAvg: number;
   baselineStdDev: number;
   readingLevel: 'summary' | 'detailed';
+  onWeekClick?: (week: string) => void;
 }
 
 function formatWeekLabel(week: string): string {
@@ -84,7 +85,13 @@ function ChartTooltip({
   );
 }
 
-export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: TrendChartProps) {
+export function TrendChart({
+  data,
+  baselineAvg,
+  baselineStdDev,
+  readingLevel,
+  onWeekClick,
+}: TrendChartProps) {
   const { resolvedMode } = useTheme();
   const colors = useMemo(() => CHART_COLORS[resolvedMode], [resolvedMode]);
 
@@ -124,7 +131,19 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
       )}
 
       <ResponsiveContainer width="100%" height={280}>
-        <ComposedChart data={chartData} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 8, right: 8, bottom: 4, left: 0 }}
+          onClick={
+            onWeekClick
+              ? (state) => {
+                  const week = state?.activeLabel;
+                  if (typeof week === 'string' && week) onWeekClick(week);
+                }
+              : undefined
+          }
+          style={onWeekClick ? { cursor: 'pointer' } : undefined}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={colors.border} opacity={0.5} />
           <XAxis
             dataKey="week"
@@ -165,7 +184,7 @@ export function TrendChart({ data, baselineAvg, baselineStdDev, readingLevel }: 
             stroke={colors.accent}
             strokeWidth={2}
             dot={{ r: 3, fill: colors.accent }}
-            activeDot={{ r: 5 }}
+            activeDot={{ r: 5, cursor: onWeekClick ? 'pointer' : 'default' }}
           />
         </ComposedChart>
       </ResponsiveContainer>
