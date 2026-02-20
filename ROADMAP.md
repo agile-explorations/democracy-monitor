@@ -377,14 +377,17 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 5. Source health page (`pages/health.tsx`) — meta-assessment summary, historical availability chart, per-source detail table
 6. Infrastructure convergence banner on landing page (UI spec section 4.3)
 
-**E2E test:**
+7. Playwright e2e test setup + core user journey tests
 
-- Navigate to each page from nav bar — all render with correct data from seed DB
-- Infrastructure page shows convergence level computed from seeded weekly data
-- Rhetoric table shows 5 policy areas with lag data from `intent_weekly`
-- P2025 page shows proposal progress from seeded `p2025_proposals` + matches
-- Source health page shows per-source detail from `source_health`
-- Methodology keyword explorer shows all categories and tiers
+**E2E test (Playwright):**
+
+- Playwright config, dev server startup, DB seed in `globalSetup`
+- Landing page → click category card → category detail loads with trend chart
+- Category detail → toggle reading level → AI reviewer notes expand
+- Category detail → back to overview → landing page
+- Navigate to each supporting page from nav — all render with correct data
+- Dark mode toggle persists across navigation
+- Visual regression screenshots for landing + category detail (light + dark)
 
 ---
 
