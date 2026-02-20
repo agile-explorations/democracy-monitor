@@ -342,10 +342,12 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Goal:** Week drill-down pages, sortable document table, and CSV/JSON export.
 
+**Actual:** Delivered. Reused existing `/api/explain/week` endpoint (no new week/documents API needed). Items 1-2 from spec unnecessary — existing endpoints sufficient. 5 new files, 3 test files, 22 new tests (1021 total). Deferred: DocumentTable on category detail → Sprint 20, per-week AI notes → Sprint 22.
+
 **Code work (~300 lines new):**
 
-1. API endpoint: `GET /api/category/[key]/week/[date]`
-2. API endpoint: `GET /api/category/[key]/documents?from=&to=` (paginated)
+1. ~~API endpoint: `GET /api/category/[key]/week/[date]`~~ — used existing `/api/explain/week`
+2. ~~API endpoint: `GET /api/category/[key]/documents?from=&to=` (paginated)~~ — used existing endpoint with `top=200`
 3. Week detail page (`pages/category/[key]/week/[date].tsx`) — independently loadable via URL
 4. Week summary cards (total score, doc count, severity mix, vs. baseline)
 5. Top keyword matches section (grouped by tier with document links)

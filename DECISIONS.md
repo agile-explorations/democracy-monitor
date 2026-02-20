@@ -267,3 +267,31 @@ See ROADMAP.md for full sequence.
 
 - **ESLint `react/function-component-definition` applies to test mocks too**: Arrow function mock components in `vi.mock('recharts', ...)` triggered the rule. Must use named function declarations (`function MockLine() { ... }`) even in test mock factories.
 - **Recharts components need full mocking in jsdom**: Cannot render recharts in jsdom (no canvas). Mock all components (`ResponsiveContainer`, `ComposedChart`, `Line`, `Area`, `XAxis`, `YAxis`, `CartesianGrid`, `Tooltip`, `ReferenceLine`) with simple div/null returns using `data-testid` for assertions.
+
+---
+
+## Sprint 19: Week Detail + Document Table + Export
+
+**Planned:** Week drill-down page, sortable document table, CSV export, methodology JSON export. 6 work items: TrendChart click-to-navigate, week detail page + routing, week summary cards, DocumentTable with CSV, keyword matches section, methodology endpoint.
+
+**Actual:** Delivered as planned. All 6 work items shipped. 5 new files (3 components, 1 page, 1 API route), 3 test files, 22 new tests (1021 total).
+
+**Key decisions:**
+
+- **`ComposedChart.onClick` for click-to-navigate**: Recharts `Line.onClick` uses `CurveMouseEventHandler` which doesn't expose payload data. `ComposedChart.onClick` provides `activeLabel` (the week string from XAxis `dataKey`), which is the correct way to get the clicked data point's identity. Also sets `style={{ cursor: 'pointer' }}` on the chart when `onWeekClick` prop is provided.
+- **`[key].tsx` → `[key]/index.tsx`**: Next.js Pages Router can have both `pages/category/[key].tsx` and `pages/category/[key]/week/[date].tsx`, but moving to `[key]/index.tsx` is the canonical form for directories with nested routes. Same behavior, cleaner structure.
+- **`top=200` for week detail fetching**: The existing `/api/explain/week` endpoint already accepts a `top` query param (default 5). Week detail page passes `top=200` to get all documents for a week. No new endpoint needed — typically <100 docs per category per week.
+- **Client-side CSV export**: DocumentTable generates CSV in the browser from already-loaded `DocumentExplanation[]` data using `escapeCell()` from `lib/utils/csv.ts`. No server round-trip needed since all data is already on the page. Downloads as `{category}-{weekOf}.csv`.
+- **Sparkline `highlightWeek` prop**: Added to the existing Sparkline component to show a highlighted dot on the position-in-context mini chart. Renders a filled circle with white stroke at the data point matching the current week. IIFE pattern inside JSX to avoid creating an intermediate component for a simple conditional render.
+- **`computeTierCounts` aggregates from document tier breakdowns**: Weekly aggregate table stores tier proportions but not raw counts. Rather than adding a new API call, the tier counts for summary cards are computed client-side from `WeekExplanation.topDocuments[].tierBreakdown`. This is exact when all docs are fetched (top=200).
+- **Deferred items tracked in ROADMAP**: DocumentTable on category detail page → Sprint 20, item 7. Per-week AI reviewer notes → Sprint 22, item 2.
+
+**Spec deviations:**
+
+- **AI reviewer notes for specific week (UI Spec §5A.1)**: Deferred to Sprint 22. Per-week AI assessment requires storing AI results per-week in the snapshot pipeline (currently stores per-category-per-snapshot). Placeholder not shown — section simply absent until the data exists.
+- **Document table on category detail page (ROADMAP Sprint 19 item 6)**: Deferred to Sprint 20. The `DocumentTable` component is built reusable — wiring it into category detail just needs a data source for "all weeks" documents.
+
+**Lessons learned:**
+
+- **Recharts `MouseHandlerDataParam` has `activeLabel` not `activePayload`**: The recharts v3 type system changed from v2. `activeLabel` is the XAxis value (string), `activeIndex` is the data index. Use `activeLabel` to identify the clicked data point.
+- **Reuse existing `escapeCell()` from `lib/utils/csv.ts`**: Initial DocumentTable had a local `escape` function duplicating the utility. Code review caught the DRY violation. Always check existing utils before writing inline helpers.
