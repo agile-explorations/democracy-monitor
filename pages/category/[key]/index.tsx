@@ -84,7 +84,7 @@ export default function CategoryDetailPage() {
 
   const assessment = detail.assessment;
   const status: StatusLevel = assessment?.status ?? 'Stable';
-  const insufficientData = assessment?.detail?.insufficientData === true;
+  const insufficientData = assessment?.keywordResult?.detail?.insufficientData === true;
   const docCount = weeklyData[weeklyData.length - 1]?.documentCount ?? 0;
   const assessedAt = assessment?.assessedAt
     ? new Date(assessment.assessedAt).toLocaleDateString('en-US', {
