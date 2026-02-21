@@ -4,11 +4,6 @@ import type { ContentItem } from '@/lib/types';
 
 describe('classifyDocument', () => {
   describe('Federal Register type mapping', () => {
-    it('classifies Presidential Document as executive_order', () => {
-      const item: ContentItem = { type: 'Presidential Document', title: 'EO 14000' };
-      expect(classifyDocument(item)).toBe('executive_order');
-    });
-
     it('classifies Rule as final_rule', () => {
       const item: ContentItem = { type: 'Rule', title: 'Final Rule on XYZ' };
       expect(classifyDocument(item)).toBe('final_rule');
@@ -25,6 +20,58 @@ describe('classifyDocument', () => {
     });
   });
 
+  describe('Presidential Document subtype mapping', () => {
+    it('classifies Executive Order subtype as executive_order', () => {
+      const item: ContentItem = {
+        type: 'Presidential Document',
+        subtype: 'Executive Order',
+        title: 'EO 14000',
+      };
+      expect(classifyDocument(item)).toBe('executive_order');
+    });
+
+    it('classifies Presidential Memorandum subtype as presidential_memorandum', () => {
+      const item: ContentItem = {
+        type: 'Presidential Document',
+        subtype: 'Presidential Memorandum',
+        title: 'Memo on Security',
+      };
+      expect(classifyDocument(item)).toBe('presidential_memorandum');
+    });
+
+    it('classifies Proclamation subtype as proclamation', () => {
+      const item: ContentItem = {
+        type: 'Presidential Document',
+        subtype: 'Proclamation',
+        title: 'National Day',
+      };
+      expect(classifyDocument(item)).toBe('proclamation');
+    });
+
+    it('classifies Presidential Notice subtype as presidential_notice', () => {
+      const item: ContentItem = {
+        type: 'Presidential Document',
+        subtype: 'Presidential Notice',
+        title: 'Notice on Sanctions',
+      };
+      expect(classifyDocument(item)).toBe('presidential_notice');
+    });
+
+    it('falls back to executive_order for unknown presidential subtype', () => {
+      const item: ContentItem = {
+        type: 'Presidential Document',
+        subtype: 'Unknown Subtype',
+        title: 'Some Document',
+      };
+      expect(classifyDocument(item)).toBe('executive_order');
+    });
+
+    it('falls back to executive_order when presidential document has no subtype', () => {
+      const item: ContentItem = { type: 'Presidential Document', title: 'EO 14000' };
+      expect(classifyDocument(item)).toBe('executive_order');
+    });
+  });
+
   describe('title heuristics', () => {
     it('classifies title containing "executive order" as executive_order', () => {
       const item: ContentItem = { title: 'Executive Order on Immigration' };
@@ -34,6 +81,11 @@ describe('classifyDocument', () => {
     it('classifies title containing "presidential memorandum" as presidential_memorandum', () => {
       const item: ContentItem = { title: 'Presidential Memorandum on National Security' };
       expect(classifyDocument(item)).toBe('presidential_memorandum');
+    });
+
+    it('classifies title containing "proclamation" as proclamation', () => {
+      const item: ContentItem = { title: 'Proclamation on National Day of Prayer' };
+      expect(classifyDocument(item)).toBe('proclamation');
     });
 
     it('prefers FR type over title heuristic', () => {

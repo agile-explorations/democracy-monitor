@@ -10,6 +10,7 @@ export interface ContentItem {
   date?: string;
   note?: string;
   type?: string;
+  subtype?: string;
   isError?: boolean;
   isWarning?: boolean;
 }
@@ -41,7 +42,6 @@ export interface AssessmentRule {
     drift: number;
     capture: number;
   };
-  oversightGovDown?: string;
 }
 
 export type AssessmentRules = Record<string, AssessmentRule>;

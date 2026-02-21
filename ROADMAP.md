@@ -6,6 +6,7 @@ This document describes the planned sprint sequence for completing the Democracy
 
 - `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15)
 - `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5)
+- `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22)
 
 **Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
 
@@ -42,8 +43,8 @@ Before any UI work begins, we need realistic data in the database. All baseline 
 
 - **Biden 2022** (primary) — "Steady state normal governance." Year 2, post-transition, settled operations.
 - **Biden 2021** — First-year-in-term baseline. Normal but elevated transition activity.
-- **Obama 2013** — Second first-year-in-term baseline. Cross-president validation.
-- **Biden 2024** (legacy) — Election year with lame-duck dynamics. Kept for comparison but not primary.
+- **Trump 2017** — Cross-president first-year-in-term baseline. Validates keyword dictionaries across administrations.
+- **Trump 2018** — Cross-president Year 2 baseline. Paired with Biden 2022 for cycle-adjusted comparison.
 
 **Pipeline:**
 
@@ -63,18 +64,21 @@ Both baseline and backfill scripts call `enhancedAssessment()` (the AI Skeptic) 
 
 **Token estimates per call:** ~4,000 input (system prompt + keyword matches + document summaries + RAG docs) and ~800 output (structured JSON with per-keyword verdicts).
 
-| Period              | Weeks | x 11 Categories | AI Calls  | Cost (gpt-4o-mini) |
-| ------------------- | ----- | --------------- | --------- | ------------------ |
-| Biden 2024 baseline | ~55   | 11              | 605       | ~$0.61             |
-| T2 backfill         | ~55   | 11              | 605       | ~$0.61             |
-| **Sprint 11 total** |       |                 | **1,210** | **~$1.21**         |
-| Biden 2022 baseline | ~52   | 11              | 572       | ~$0.57             |
-| **Sprint 14 total** |       |                 | **572**   | **~$0.57**         |
-| Biden 2021 baseline | ~52   | 11              | 572       | ~$0.57             |
-| Obama 2013 baseline | ~52   | 11              | 572       | ~$0.57             |
-| **Sprint 15 total** |       |                 | **1,144** | **~$1.14**         |
-| Sprint 15.1 cycle   | —     | —               | 0         | $0.00              |
-| **All 5 periods**   |       |                 | **2,926** | **~$2.93**         |
+| Period                    | Weeks | x 11 Categories | AI Calls  | Cost (gpt-4o-mini) |
+| ------------------------- | ----- | --------------- | --------- | ------------------ |
+| Biden 2024 baseline       | ~55   | 11              | 605       | ~$0.61             |
+| T2 backfill               | ~55   | 11              | 605       | ~$0.61             |
+| **Sprint 11 total**       |       |                 | **1,210** | **~$1.21**         |
+| Biden 2022 baseline       | ~52   | 11              | 572       | ~$0.57             |
+| **Sprint 14 total**       |       |                 | **572**   | **~$0.57**         |
+| Biden 2021 baseline       | ~52   | 11              | 572       | ~$0.57             |
+| Trump 2017 baseline       | ~52   | 11              | 572       | ~$0.57             |
+| Trump 2018 baseline       | ~52   | 11              | 572       | ~$0.57             |
+| **Sprint 15 total**       |       |                 | **1,716** | **~$1.71**         |
+| Sprint 15.1 AI re-runs    | —     | —               | ~2,288    | ~$2.28             |
+| **All baselines**         |       |                 | **5,786** | **~$5.77**         |
+| Sprint 21 regen (est.)    | —     | —               | ~2,500+   | ~$8–24             |
+| Sprint 22 rhetoric (est.) | —     | —               | ~1,150    | ~$1–2              |
 
 gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same runs on Claude Sonnet 4.5 would cost ~$57 total ($3/1M input, $15/1M output) — 24x more for first-pass triage that gets human review anyway.
 
@@ -366,9 +370,106 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 20: Methodology + Supporting Pages (Summary Mode)
+### Sprint 20: Signal Gap Remediation — Display Fix + Signal Queries + Presidential Documents
 
-**Goal:** Methodology page plus Infrastructure, Rhetoric, P2025, and Source Health pages — all in Summary mode.
+**Goal:** Fix the most visible dashboard problems: misleading Warning badges for insufficient data, pre-existing AND-instead-of-OR bug in FR signal queries, missing presidential documents, noisy GDELT queries, and broken document linkage.
+
+**Depends on:** Sprint 19 (week detail page complete)
+
+**Reference:** `SIGNAL_GAP_REMEDIATION.md` Phases 16, 17, 20.2, 20.5, and §19.4 prerequisite fix.
+
+**Code work (~200 lines new/modified):**
+
+1. Check `detail.insufficientData` in UI status badge components, render "No Data" badge instead of Warning (Phase 16.2)
+2. Update Sparkline component to render gaps for insufficient-data weeks (Phase 16.2)
+3. Fix `document_scores.document_id` NULL values in backfill script; backfill NULLs for existing records (Phase 19.4 prerequisite)
+4. Audit all existing signal queries in `categories.ts` — convert AND-intended-as-OR to pipe-OR syntax, add phrase quoting (Phase 20.2)
+5. Add `sourcecountry:US` to all GDELT queries in `rhetoric-fetcher.ts` (Phase 20.5)
+6. Add presidential document signal queries to `categories.ts` (Phase 17.2)
+7. Add new presidential document class multipliers to `scoring-config.ts` — existing values unchanged (Phase 17.3)
+8. Map FR `type`/`subtype` to document classes during ingestion (Phase 17.2)
+9. Verify oversight.gov status and `oversightGovDown` rule in `assessment-rules.ts`
+
+**Tests:**
+
+- Component tests: `insufficientData: true` renders "No Data" badge
+- Unit tests: new document class multipliers applied correctly; existing multipliers unchanged
+- Integration test: presidential documents flow through keyword matching
+- Verify corrected signal queries return expected document volumes
+- Verify GDELT queries include `sourcecountry:US`
+
+---
+
+### Sprint 21: Signal Gap Remediation — Keyword Expansion + Baseline Regeneration
+
+**Goal:** Add operational-language keywords for Type B erosion detection, create administration-specific keyword overlay, expand FR signal queries, and regenerate all baselines from scratch against the finalized methodology.
+
+**Depends on:** Sprint 20 (signal queries fixed, presidential documents in pipeline, data integrity fixed)
+
+**Reference:** `SIGNAL_GAP_REMEDIATION.md` Phases 18, 20.3, 20.4.
+
+**Code work (~250 lines new/modified):**
+
+1. Add structural operational keywords to `assessment-rules.ts` per category (Phase 18.2 — civilService, fiscal, military, igs, courts)
+2. Create `lib/data/admin-specific-keywords.ts` overlay with date-filtered merge logic (Phase 18.3)
+3. Add `getEffectiveKeywords()` merge function to `assessment-service.ts` (~20 lines) (Phase 18.3)
+4. Create initial suppression rules for anticipated false positives (Phase 18.4)
+5. Add new expanded FR signal queries to `categories.ts` (Phase 20.3)
+6. Calibrate all new signal queries against Biden 2022 date range (Phase 20.4)
+
+**Run work (external APIs, ~$8–24 AI cost):**
+
+7. Archive existing baseline fixtures as pre-remediation reference
+8. Regenerate all four baselines from scratch: fresh FR API fetches with new signals + keywords, AI assessment
+9. Run cross-baseline validation, review cycle, tune if needed (same iterative pattern as Sprint 14)
+10. Export new baseline fixtures
+11. Run Trump 2025 backfill against finalized methodology
+
+**Tests:**
+
+- Unit tests: `getEffectiveKeywords()` merge logic, date filtering at boundaries
+- Verify admin-specific keywords produce zero matches for pre-2025 documents
+- Verify `assessment-rules.ts` remains `string[]` per tier (no structural changes)
+- Cross-baseline validation: regenerated baselines produce comparable or lower alert counts
+
+---
+
+### Sprint 22: Signal Gap Remediation — Rhetoric Cross-Feed
+
+**Goal:** Route rhetoric documents through category keyword assessment with evidence source weighting and news-only status ceilings. Events covered by news but absent from the Federal Register produce Warning-level signals with clear annotation.
+
+**Depends on:** Sprint 21 (keywords and baselines finalized with new methodology)
+
+**Reference:** `SIGNAL_GAP_REMEDIATION.md` Phase 19.
+
+**Code work (~300 lines new/modified):**
+
+1. Add `EvidenceSource` type and `EVIDENCE_WEIGHTS` to type definitions (Phase 19.2)
+2. Implement news-only status ceiling in assessment logic (Phase 19.3)
+3. Create `lib/services/rhetoric-topic-classifier.ts` — signal-term-based classifier covering all 11 categories (Phase 19.4)
+4. Modify backfill/snapshot pipeline to route rhetoric documents through category keyword matching (Phase 19.4)
+5. Re-process Trump 2025 rhetoric documents through category assessment (Phase 19.5)
+6. Review cycle: verify news-coverage-driven signals are genuine, tune evidence weights if needed
+7. Update UI to render `newsOnly` warnings distinctly (Phase 19.3)
+
+**Run work (~$1–2 AI cost):**
+
+- Re-process ~11.5K topic-matched rhetoric documents through keyword matching + AI review
+
+**Tests:**
+
+- Pure function tests: evidence weight application (0.3× for news, 1.0× for FR)
+- Unit tests: news-only ceiling enforcement (cannot produce Drift or Capture)
+- Unit tests: `classifyRhetoricToCategories()` routes to correct categories, all 11 reachable
+- Integration test: rhetoric document → topic classification → keyword match → weighted score → `document_scores` record
+
+---
+
+### Sprint 23: Methodology + Supporting Pages (Summary Mode)
+
+**Goal:** Methodology page plus Infrastructure, Rhetoric, P2025, and Source Health pages — all in Summary mode. Built on the now-stable detection methodology from Sprints 20–22.
+
+**Depends on:** Sprint 22 (detection methodology finalized — methodology page content is stable)
 
 **Code work (~350 lines new):**
 
@@ -379,8 +480,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 5. Source health page (`pages/health.tsx`) — meta-assessment summary, historical availability chart, per-source detail table
 6. Infrastructure convergence banner on landing page (UI spec section 4.3)
 7. Document table on category detail page (reuses `DocumentTable` component from Sprint 19)
-
-8. Playwright e2e test setup + core user journey tests
+8. Detection scope statement on methodology page (`SIGNAL_GAP_REMEDIATION.md` §Detection Scope Statement)
+9. Playwright e2e test setup + core user journey tests
 
 **E2E test (Playwright):**
 
@@ -394,7 +495,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 21: Admin Auth + Review Queue
+### Sprint 24: Admin Auth + Review Queue
 
 **Goal:** Admin authentication and human review queue with feedback fields.
 
@@ -420,7 +521,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 22: Detailed Mode + Chart Toggles
+### Sprint 25: Detailed Mode + Chart Toggles
 
 **Goal:** Detailed mode features across all existing pages.
 
@@ -431,7 +532,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 3. Suppression audit panel — "What was suppressed" column with rule explanations
 4. Baseline overlay selector — multi-select pills for up to 2 baselines (UI spec section 13.2)
 5. Cycle-adjusted ratio display on category cards in Detailed mode — raw and adjusted comparisons shown side by side (V3 Addendum §15.6)
-6. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 24")
+6. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 27")
 7. Document class breakdown, full keyword lists, technical details in Detailed mode
 8. Detailed mode content on supporting pages (Rhetoric, P2025, Infrastructure)
 
@@ -445,11 +546,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 23: Suppression Learning + Proposals Page
+### Sprint 26: Suppression Learning + Proposals Page
 
 **Goal:** Feedback learning pipeline and admin proposal review interface.
 
-**Depends on:** Sprint 21 (feedback store must exist)
+**Depends on:** Sprint 24 (feedback store must exist)
 
 **Code work (~300 lines new):**
 
@@ -471,11 +572,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 24: Novel Threats + Expert Submissions
+### Sprint 27: Novel Threats + Expert Submissions
 
 **Goal:** Semantic novelty detection and expert keyword contribution system.
 
-**Depends on:** Sprint 23 (proposal pipeline must exist for novelty/expert proposals to flow through)
+**Depends on:** Sprint 26 (proposal pipeline must exist for novelty/expert proposals to flow through)
 
 **Code work (~300 lines new):**
 
@@ -486,7 +587,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 5. Backtest engine for submitted keywords (best-effort)
 6. Expert submission form (`pages/admin/submissions.tsx`, UI spec section 10C)
 7. Rhetoric-to-keyword pipeline — `rhetoric-keyword-pipeline.ts` (V3 Addendum Sprint G section 13.6)
-8. Enable semantic drift visualization on category detail (was placeholder in Sprint 22)
+8. Enable semantic drift visualization on category detail (was placeholder in Sprint 25)
 
 **E2E test:**
 
@@ -497,7 +598,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 25: Onboarding + Responsive Polish + Performance
+### Sprint 28: Onboarding + Responsive Polish + Performance
 
 **Goal:** First-time onboarding, mobile layouts, performance optimizations.
 
@@ -517,7 +618,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint 26: Alternative Sources
+### Sprint 29: Alternative Sources
 
 **Goal:** Research and implement alternative data sources for resilience when government sources degrade.
 
@@ -540,6 +641,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
+### Future: Immigration Category (R4)
+
+After the remediation pipeline is complete (Sprint 22), a new immigration category can be added following established patterns. This is deferred because the detection pipeline must be correct before adding new categories.
+
+1. Define immigration signal queries for `categories.ts`
+2. Build keyword dictionary for `assessment-rules.ts` (capture, drift, warning tiers)
+3. Calibrate against all four regenerated baselines
+4. Backfill Trump 2025 immigration data
+5. Review and tune
+
+Can slot in after Sprint 22 when scheduling allows.
+
+---
+
 ## Known Prerequisites for Future Sprints
 
 | Issue | Blocker for                      | Description                                                                                                                                                                                                                              |
@@ -557,7 +672,10 @@ Not everything is strictly sequential. Where human review or API runs create wai
 | Sprint 13-14 keyword tuning + review iterations | Sprint 16 UI design system work (CSS vars, components with placeholder data)          |
 | Sprint 15 baseline API runs + validation        | Sprint 15.1 cycle adjustment computation (as categories complete, not all-or-nothing) |
 | Sprint 15 baseline API runs + validation        | Sprint 17 source health backend (starts fresh, no historical data dependency)         |
-| Sprint 25 onboarding + responsive work          | Sprint 24 novel threat / expert submission code work                                  |
+| Sprint 20 signal query audit + testing          | Sprint 20 UI display fix (InsufficientData badge) — no dependency between them        |
+| Sprint 21 baseline regeneration runs            | Sprint 22 rhetoric-topic-classifier code (pure functions, no data dependency)         |
+| Sprint 21 baseline regeneration runs            | Sprint 23 methodology page layout + static content                                    |
+| Sprint 28 onboarding + responsive work          | Sprint 27 novel threat / expert submission code work                                  |
 
 ---
 
@@ -576,3 +694,5 @@ Not everything is strictly sequential. Where human review or API runs create wai
 | Embeddings               | No                    | Too large (~30 MB)     | Computed on-demand post-seed                              |
 
 Total fixture size: ~4-5 MB (reasonable for git).
+
+**Note:** Baseline fixtures will be regenerated in Sprint 21. Post-remediation fixtures will be larger due to expanded signal queries pulling more documents. Pre-remediation fixtures are archived for methodology comparison.

@@ -84,6 +84,7 @@ export default function CategoryDetailPage() {
 
   const assessment = detail.assessment;
   const status: StatusLevel = assessment?.status ?? 'Stable';
+  const insufficientData = assessment?.detail?.insufficientData === true;
   const docCount = weeklyData[weeklyData.length - 1]?.documentCount ?? 0;
   const assessedAt = assessment?.assessedAt
     ? new Date(assessment.assessedAt).toLocaleDateString('en-US', {
@@ -125,7 +126,18 @@ export default function CategoryDetailPage() {
               {docCount > 0 && <> &middot; {docCount} docs this week</>}
             </p>
           </div>
-          <StatusPill level={status} />
+          {insufficientData ? (
+            <span
+              role="status"
+              aria-label="Status: No Data. Insufficient evidence to assess this category."
+              title="Insufficient evidence to assess this category"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-dm-border/20 text-dm-muted border-dm-border"
+            >
+              No Data
+            </span>
+          ) : (
+            <StatusPill level={status} />
+          )}
         </div>
 
         {/* Data coverage */}

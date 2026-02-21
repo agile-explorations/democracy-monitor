@@ -5,6 +5,8 @@ export type SeverityTier = 'capture' | 'drift' | 'warning';
 export type DocumentClass =
   | 'executive_order'
   | 'presidential_memorandum'
+  | 'proclamation'
+  | 'presidential_notice'
   | 'final_rule'
   | 'proposed_rule'
   | 'notice'

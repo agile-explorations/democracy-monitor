@@ -31,6 +31,28 @@ function buildFrApiUrl(
   return `https://www.federalregister.gov/api/v1/documents.json?${qs.toString()}`;
 }
 
+interface FrApiDocument {
+  title?: string;
+  html_url?: string;
+  publication_date?: string;
+  agencies?: { name: string }[];
+  type?: string;
+  subtype?: string;
+  abstract?: string;
+}
+
+function toContentItem(doc: FrApiDocument): ContentItem {
+  return {
+    title: doc.title || '(document)',
+    link: doc.html_url,
+    pubDate: doc.publication_date,
+    agency: doc.agencies?.map((a) => a.name).join(', '),
+    summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
+    type: doc.type,
+    subtype: doc.subtype,
+  };
+}
+
 /**
  * Fetch Federal Register documents for a date range with pagination.
  * Used by the backfill script — calls FR API directly (no caching).
@@ -64,25 +86,8 @@ export async function fetchFederalRegisterHistorical(options: {
     }
 
     const data = await response.json();
-    const results: Array<{
-      title?: string;
-      html_url?: string;
-      publication_date?: string;
-      agencies?: { name: string }[];
-      type?: string;
-      abstract?: string;
-    }> = data.results || [];
-
-    for (const doc of results) {
-      allItems.push({
-        title: doc.title || '(document)',
-        link: doc.html_url,
-        pubDate: doc.publication_date,
-        agency: doc.agencies?.map((a) => a.name).join(', '),
-        summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
-        type: doc.type,
-      });
-    }
+    const results: FrApiDocument[] = data.results || [];
+    allItems.push(...results.map(toContentItem));
 
     if (results.length < perPage) break;
     page++;

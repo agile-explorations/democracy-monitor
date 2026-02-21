@@ -131,7 +131,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
       ],
     },
     volumeThreshold: { warning: 10, drift: 25, capture: 50 },
-    oversightGovDown: 'drift',
   },
   hatch: {
     keywords: {

@@ -126,6 +126,7 @@ export default function Home() {
                 category={cat.category}
                 title={cat.title}
                 status={cat.status}
+                insufficientData={cat.insufficientData}
                 decayWeightedScore={cat.decayWeightedScore}
                 baselineAvg={cat.baselineAvg}
                 baselineStdDev={cat.baselineStdDev}

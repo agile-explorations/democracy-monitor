@@ -11,6 +11,7 @@ export interface CategorySummary {
   category: string;
   title: string;
   status: StatusLevel;
+  insufficientData: boolean;
   decayWeightedScore: number;
   baselineAvg: number;
   baselineStdDev: number;
@@ -22,26 +23,43 @@ export interface CategorySummary {
 }
 
 /** Fetch latest assessment status per category via DISTINCT ON. */
-async function fetchLatestAssessments(
-  db: ReturnType<typeof getDb>,
-): Promise<Record<string, { status: string; reason: string; assessedAt: Date; matches: unknown }>> {
+async function fetchLatestAssessments(db: ReturnType<typeof getDb>): Promise<
+  Record<
+    string,
+    {
+      status: string;
+      reason: string;
+      assessedAt: Date;
+      matches: unknown;
+      insufficientData: boolean;
+    }
+  >
+> {
   const rows = await db.execute(sql`
-    SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches
+    SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
     FROM assessments
     ORDER BY category, assessed_at DESC
   `);
 
   const result: Record<
     string,
-    { status: string; reason: string; assessedAt: Date; matches: unknown }
+    {
+      status: string;
+      reason: string;
+      assessedAt: Date;
+      matches: unknown;
+      insufficientData: boolean;
+    }
   > = {};
   for (const row of rows.rows) {
     const r = row as Record<string, unknown>;
+    const detail = r.detail as Record<string, unknown> | null;
     result[r.category as string] = {
       status: r.status as string,
       reason: r.reason as string,
       assessedAt: new Date(r.assessed_at as string),
       matches: r.matches,
+      insufficientData: detail?.insufficientData === true,
     };
   }
   return result;
@@ -123,6 +141,7 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
       category: cat.key,
       title: cat.title,
       status: (assessment?.status ?? 'Stable') as StatusLevel,
+      insufficientData: assessment?.insufficientData ?? false,
       decayWeightedScore: latestWeek?.score ?? 0,
       baselineAvg: baseline.avg,
       baselineStdDev: baseline.stddev,

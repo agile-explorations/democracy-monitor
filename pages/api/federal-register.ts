@@ -10,6 +10,7 @@ interface FrDocument {
   publication_date?: string;
   agencies?: { name: string }[];
   type?: string;
+  subtype?: string;
   abstract?: string;
 }
 
@@ -45,6 +46,7 @@ function transformDoc(doc: FrDocument) {
     pubDate: doc.publication_date,
     agency: doc.agencies?.map((a) => a.name).join(', '),
     type: doc.type,
+    subtype: doc.subtype,
     summary: doc.abstract,
   };
 }

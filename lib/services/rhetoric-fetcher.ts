@@ -291,13 +291,13 @@ export async function fetchGdeltHistorical(options: {
   }
 }
 
-/** GDELT queries relevant to executive power monitoring. Parentheses required for OR expressions. */
+/** GDELT queries relevant to executive power monitoring. Parentheses required for OR expressions. sourcecountry:US filters to US-sourced articles only. */
 export const GDELT_QUERIES = [
-  '("executive order" OR "presidential authority" OR "executive power")',
-  '("press freedom" OR "journalist arrested" OR "FOIA denied")',
-  '("election interference" OR "voter suppression" OR "election administration")',
-  '("national emergency" OR "IEEPA" OR "insurrection act")',
-  '("inspector general" OR "government oversight" OR "watchdog fired")',
+  '("executive order" OR "presidential authority" OR "executive power") sourcecountry:US',
+  '("press freedom" OR "journalist arrested" OR "FOIA denied") sourcecountry:US',
+  '("election interference" OR "voter suppression" OR "election administration") sourcecountry:US',
+  '("national emergency" OR "IEEPA" OR "insurrection act") sourcecountry:US',
+  '("inspector general" OR "government oversight" OR "watchdog fired") sourcecountry:US',
 ];
 
 function formatGdeltDate(gdeltDate: string): string {

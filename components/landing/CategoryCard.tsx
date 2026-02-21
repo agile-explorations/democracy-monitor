@@ -7,6 +7,7 @@ export interface CategoryCardProps {
   category: string;
   title: string;
   status: StatusLevel;
+  insufficientData?: boolean;
   decayWeightedScore: number;
   baselineAvg: number;
   baselineStdDev: number;
@@ -29,6 +30,7 @@ export function CategoryCard({
   category,
   title,
   status,
+  insufficientData,
   decayWeightedScore,
   baselineAvg,
   baselineStdDev,
@@ -48,7 +50,18 @@ export function CategoryCard({
       {/* Header: name + status pill */}
       <div className="flex items-start justify-between gap-2 mb-1">
         <h3 className="text-sm font-semibold text-dm-text-primary leading-tight">{title}</h3>
-        <StatusPill level={status} />
+        {insufficientData ? (
+          <span
+            role="status"
+            aria-label="Status: No Data. Insufficient evidence to assess this category."
+            title="Insufficient evidence to assess this category"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-dm-border/20 text-dm-muted border-dm-border"
+          >
+            No Data
+          </span>
+        ) : (
+          <StatusPill level={status} />
+        )}
       </div>
 
       {/* Technical key (Detailed mode only) */}

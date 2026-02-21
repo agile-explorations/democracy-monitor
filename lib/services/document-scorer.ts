@@ -236,6 +236,7 @@ function buildScoreRow(score: DocumentScore) {
 /**
  * Upsert document scores into the database.
  * Uses URL for dedup since document IDs may not be available at scoring time.
+ * After storing, resolves document_id from the documents table via URL join.
  * No-op when DATABASE_URL is not configured.
  */
 export async function storeDocumentScores(scores: DocumentScore[]): Promise<number> {
@@ -277,5 +278,22 @@ export async function storeDocumentScores(scores: DocumentScore[]): Promise<numb
     }
   }
 
+  // Resolve document_id for scores that have a matching document by URL
+  await resolveDocumentIds(db);
+
   return stored;
+}
+
+/** Backfill document_id on scores by joining against the documents table on URL. */
+async function resolveDocumentIds(db: ReturnType<typeof getDb>): Promise<void> {
+  try {
+    await db.execute(sql`
+      UPDATE document_scores ds
+      SET document_id = d.id
+      FROM documents d
+      WHERE ds.url = d.url AND ds.document_id IS NULL
+    `);
+  } catch (err) {
+    console.error('Failed to resolve document IDs:', err);
+  }
 }

@@ -3,10 +3,17 @@ import type { DocumentClass } from '@/lib/types/scoring';
 
 /** Federal Register document type -> DocumentClass mapping. */
 const FR_TYPE_MAP: Record<string, DocumentClass> = {
-  'Presidential Document': 'executive_order',
   Rule: 'final_rule',
   'Proposed Rule': 'proposed_rule',
   Notice: 'notice',
+};
+
+/** FR Presidential Document subtype -> DocumentClass mapping. */
+const PRESIDENTIAL_SUBTYPE_MAP: Record<string, DocumentClass> = {
+  'Executive Order': 'executive_order',
+  'Presidential Memorandum': 'presidential_memorandum',
+  Proclamation: 'proclamation',
+  'Presidential Notice': 'presidential_notice',
 };
 
 /** Source-based classification heuristics (matched against agency or URL). */
@@ -24,6 +31,14 @@ const SOURCE_CLASS_PATTERNS: Array<{ pattern: string; cls: DocumentClass }> = [
 ];
 
 export function classifyDocument(item: ContentItem): DocumentClass {
+  // Presidential Documents: use subtype for precise classification
+  if (item.type === 'Presidential Document') {
+    if (item.subtype && PRESIDENTIAL_SUBTYPE_MAP[item.subtype]) {
+      return PRESIDENTIAL_SUBTYPE_MAP[item.subtype];
+    }
+    return 'executive_order'; // fallback for unknown presidential subtypes
+  }
+
   if (item.type && FR_TYPE_MAP[item.type]) {
     return FR_TYPE_MAP[item.type];
   }
@@ -31,6 +46,7 @@ export function classifyDocument(item: ContentItem): DocumentClass {
   const title = (item.title || '').toLowerCase();
   if (title.includes('executive order')) return 'executive_order';
   if (title.includes('presidential memorandum')) return 'presidential_memorandum';
+  if (title.includes('proclamation')) return 'proclamation';
 
   const agency = (item.agency || '').toLowerCase();
   const link = (item.link || '').toLowerCase();

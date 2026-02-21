@@ -183,10 +183,6 @@ export function serializeRules(rules: AssessmentRules): string {
       );
     }
 
-    if (rule.oversightGovDown) {
-      lines.push(`    oversightGovDown: '${rule.oversightGovDown}',`);
-    }
-
     lines.push(`  },`);
   }
 

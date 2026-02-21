@@ -14,6 +14,8 @@ export const TIER_WEIGHTS: Record<SeverityTier, number> = {
 export const CLASS_MULTIPLIERS: Record<DocumentClass, number> = {
   executive_order: 1.5,
   presidential_memorandum: 1.4,
+  proclamation: 1.3,
+  presidential_notice: 1.5,
   final_rule: 1.3,
   proposed_rule: 1.0,
   notice: 0.5,
