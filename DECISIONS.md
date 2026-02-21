@@ -325,3 +325,33 @@ See ROADMAP.md for full sequence.
 - **FR API AND-vs-OR is silent**: Wrong boolean logic doesn't error — it just returns fewer results. The fiscal query working "correctly" for 14 sprints with 15 instead of ~10K results is a reminder to spot-check signal query result counts.
 - **`subtype` is the correct FR API field**: FR API v1 documents have `type` (e.g., "Presidential Document", "Rule") and `subtype` (e.g., "Executive Order", "Proclamation"). Both are strings. The `subtype` field is only populated for Presidential Documents.
 - **Dead config detection**: `oversightGovDown` existed across 3 files for ~7 sprints without any service consuming it. Grep for field names in services/cron before adding configuration.
+
+---
+
+## Sprint 21: Signal Gap Remediation — Keyword Expansion + Baseline Regeneration (Code Work)
+
+**Planned:** Add 56 operational-language keywords (Type B erosion), create admin-specific keyword overlay with date-filtered merge, add 4 new FR signal queries, add suppression rules, integrate overlay merge into assessment pipeline. Baseline regeneration deferred to run work phase.
+
+**Actual:** Code work items WI1–WI6 delivered as planned. 6 files changed (4 modified, 2 new), 17 new tests (1044 total). Run work (WI7–11: baseline regeneration, validation, export) deferred to subsequent session.
+
+**Key decisions:**
+
+- **56 keywords across 5 categories**: civilService +17, fiscal +14, igs +10, military +8, courts +7. All at warning/drift tier — operational language is inherently ambiguous, so enters at lower tier and relies on AI Skeptic for disambiguation per Phase 18.1 design principle.
+- **`getEffectiveKeywords()` in separate file**: Merge function lives in `admin-specific-keywords.ts` (not assessment-service.ts). Keeps overlay data + merge logic co-located. Assessment service imports and calls it — single line to build effective rules per category.
+- **`deriveDocumentDate()` returns first available date**: Items in a weekly batch are from the same period, so first non-null date is representative. No need to scan all items for max date.
+- **Admin overlay date comparison uses ISO string ordering**: `documentDate >= o.applicableFrom` works because ISO date strings (`YYYY-MM-DD`) sort lexicographically in date order. No `Date` object construction needed.
+- **No admin overlay when `documentDate` is undefined**: Baseline assessments don't pass document dates → only core keywords used. This ensures admin-specific terms (DOGE, "fork in the road") never affect baseline scores.
+- **4 suppression rules preemptive**: Rules for "reduction in force" (OPM guidance), "hiring freeze" (budget justification), "agency restructuring" (OMB A-11), "spending freeze" (CR notices). These anticipate false positives from expanded operational keywords in routine government documents. Will be validated during baseline regeneration.
+- **4 new FR signal queries**: `fr_workforce`, `fr_restructuring` (civilService), `fr_spending` (fiscal), `fr_ig_personnel` (igs). All use pipe-OR syntax with quoted phrases. `fr_ig_personnel` uses grouping syntax: `"inspector general" (removal | vacancy | acting | appointment)`.
+
+**Spec deviations:**
+
+- None. SIGNAL_GAP_REMEDIATION.md Phases 18 and 20.3 are the authoritative spec. All code work items delivered per spec.
+
+**What remains (run work, WI7–11):**
+
+- Archive pre-remediation baseline fixtures
+- Calibrate new signal queries against Biden 2022
+- Regenerate all 4 baselines from scratch with expanded keywords + signals + AI
+- Cross-baseline validation + review cycle
+- Export new baseline fixtures

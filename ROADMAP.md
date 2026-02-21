@@ -414,6 +414,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Verify `assessment-rules.ts` remains `string[]` per tier (no structural changes)
 - Cross-baseline validation: regenerated baselines produce comparable or lower alert counts
 
+**Actual:** Code work (WI1–WI6) delivered as planned. 56 keywords added across 5 categories, admin overlay with date-filtered merge, 4 new FR signals, 4 suppression rules, pipeline integration. 6 files changed (4 modified, 2 new), 17 new tests (1044 total). Run work (WI7–11: baseline regeneration, validation, export) pending.
+
 ---
 
 ### Sprint 22: Signal Gap Remediation — Rhetoric Cross-Feed
