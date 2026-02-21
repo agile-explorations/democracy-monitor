@@ -295,3 +295,33 @@ See ROADMAP.md for full sequence.
 
 - **Recharts `MouseHandlerDataParam` has `activeLabel` not `activePayload`**: The recharts v3 type system changed from v2. `activeLabel` is the XAxis value (string), `activeIndex` is the data index. Use `activeLabel` to identify the clicked data point.
 - **Reuse existing `escapeCell()` from `lib/utils/csv.ts`**: Initial DocumentTable had a local `escape` function duplicating the utility. Code review caught the DRY violation. Always check existing utils before writing inline helpers.
+
+---
+
+## Sprint 20: Signal Gap Remediation (R1)
+
+**Planned:** 8 work items: InsufficientData display fix, document_id NULL fix, signal query audit (AND→OR), GDELT sourcecountry:US filter, presidential document signals, document class multipliers + FR type/subtype mapping, oversightGovDown cleanup, tests.
+
+**Actual:** Delivered as planned. All 8 work items shipped. 17 files modified, 3 spec documents added, 8 new tests (1027 total from existing + 8 new document-classifier tests netting against restructured test).
+
+**Key decisions:**
+
+- **FR API boolean syntax confirmed via testing**: Pipe `|` for OR, space for AND, `""` for phrases. All 18 multi-term FR signal queries were using space-separated terms (AND logic), severely limiting result counts. Confirmed by comparing FR API results for AND vs OR queries (e.g., fiscal impoundment query: 15 docs with AND, ~10K with OR).
+- **`fr_court_compliance` kept as AND**: The only query where AND is intentional — documents must match both "injunction" AND "compliance" to be relevant. All other queries use OR/phrase syntax.
+- **7 PRESDOCU signals (one per category)**: Added type=PRESDOCU signals to civilService, fiscal, igs, courts, military, rulemaking. executiveActions already had `fr_presidential_actions`. elections, mediaFreedom, hatch, infoAvailability don't need dedicated PRESDOCU signals — their existing queries already capture relevant presidential documents.
+- **`subtype` threaded through ingestion pipeline**: Added `subtype?: string` to `ContentItem`, `FrDocument`, `FrApiDocument`. FR API provides `subtype` on Presidential Documents (Executive Order, Presidential Memorandum, Proclamation, Presidential Notice). Both `federal-register-fetcher.ts` (backfill) and `pages/api/federal-register.ts` (live) now pass it through.
+- **Presidential Document classification priority**: Subtype → fallback to `executive_order`. Non-presidential FR types use `FR_TYPE_MAP`. Title heuristics only fire when `item.type` is unset (non-FR sources). Added `proclamation` title heuristic alongside existing `executive_order` and `presidential_memorandum`.
+- **`resolveDocumentIds()` post-store UPDATE**: Rather than threading document IDs through the ingestion pipeline (would require `storeDocuments()` to return IDs), added a single `UPDATE document_scores SET document_id = d.id FROM documents d WHERE ds.url = d.url AND ds.document_id IS NULL` after each `storeDocumentScores()` call. Clean, idempotent, no pipeline changes.
+- **InsufficientData at display layer only**: `StatusLevel` type unchanged. `CategorySummary.insufficientData` boolean extracted from `detail` JSONB column. UI renders "No Data" badge inline (not a new StatusPill variant) when `insufficientData === true`.
+- **`oversightGovDown` removed entirely**: Dead config — `assessment-rules.ts` defined it, `AssessmentRule` typed it, `apply-decisions.ts` serialized it, but no service code ever read it. Signal name updated from "CURRENTLY DOWN" to "Oversight.gov (IG Reports)".
+- **`toContentItem()` extraction**: `fetchFederalRegisterHistorical` exceeded 50-line ESLint limit after adding `subtype`. Extracted inline type + mapping into `FrApiDocument` interface + `toContentItem()` helper.
+
+**Spec deviations:**
+
+- None material. SIGNAL_GAP_REMEDIATION.md is the authoritative spec for this sprint. All R1 items delivered.
+
+**Lessons learned:**
+
+- **FR API AND-vs-OR is silent**: Wrong boolean logic doesn't error — it just returns fewer results. The fiscal query working "correctly" for 14 sprints with 15 instead of ~10K results is a reminder to spot-check signal query result counts.
+- **`subtype` is the correct FR API field**: FR API v1 documents have `type` (e.g., "Presidential Document", "Rule") and `subtype` (e.g., "Executive Order", "Proclamation"). Both are strings. The `subtype` field is only populated for Presidential Documents.
+- **Dead config detection**: `oversightGovDown` existed across 3 files for ~7 sprints without any service consuming it. Grep for field names in services/cron before adding configuration.

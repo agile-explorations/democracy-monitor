@@ -378,25 +378,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Reference:** `SIGNAL_GAP_REMEDIATION.md` Phases 16, 17, 20.2, 20.5, and §19.4 prerequisite fix.
 
-**Code work (~200 lines new/modified):**
-
-1. Check `detail.insufficientData` in UI status badge components, render "No Data" badge instead of Warning (Phase 16.2)
-2. Update Sparkline component to render gaps for insufficient-data weeks (Phase 16.2)
-3. Fix `document_scores.document_id` NULL values in backfill script; backfill NULLs for existing records (Phase 19.4 prerequisite)
-4. Audit all existing signal queries in `categories.ts` — convert AND-intended-as-OR to pipe-OR syntax, add phrase quoting (Phase 20.2)
-5. Add `sourcecountry:US` to all GDELT queries in `rhetoric-fetcher.ts` (Phase 20.5)
-6. Add presidential document signal queries to `categories.ts` (Phase 17.2)
-7. Add new presidential document class multipliers to `scoring-config.ts` — existing values unchanged (Phase 17.3)
-8. Map FR `type`/`subtype` to document classes during ingestion (Phase 17.2)
-9. Verify oversight.gov status and `oversightGovDown` rule in `assessment-rules.ts`
-
-**Tests:**
-
-- Component tests: `insufficientData: true` renders "No Data" badge
-- Unit tests: new document class multipliers applied correctly; existing multipliers unchanged
-- Integration test: presidential documents flow through keyword matching
-- Verify corrected signal queries return expected document volumes
-- Verify GDELT queries include `sourcecountry:US`
+**Actual:** Delivered as planned. All 8 work items shipped. 18 FR queries fixed (AND→OR), 5 GDELT queries filtered (sourcecountry:US), 7 PRESDOCU signals added, FR subtype→DocumentClass mapping, InsufficientData "No Data" badge, document_id NULL resolution, oversightGovDown removed. 17 files modified, 1027 tests.
 
 ---
 
