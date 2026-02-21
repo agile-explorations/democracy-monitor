@@ -1,3 +1,4 @@
+import { getEffectiveKeywords } from '@/lib/data/admin-specific-keywords';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
@@ -237,6 +238,15 @@ function assessByVolume(
   );
 }
 
+/** Derive a representative publication date from a batch of items. */
+function deriveDocumentDate(items: ContentItem[]): string | undefined {
+  for (const item of items) {
+    const d = item.pubDate || item.date;
+    if (d) return d;
+  }
+  return undefined;
+}
+
 export function analyzeContent(
   items: ContentItem[],
   category: string,
@@ -252,7 +262,17 @@ export function analyzeContent(
     if (override) return override;
   }
 
-  const scan = scanKeywords(items, rules);
+  const docDate = deriveDocumentDate(items);
+  const effectiveRules = {
+    ...rules,
+    keywords: {
+      capture: getEffectiveKeywords(category, 'capture', docDate),
+      drift: getEffectiveKeywords(category, 'drift', docDate),
+      warning: getEffectiveKeywords(category, 'warning', docDate),
+    },
+  };
+
+  const scan = scanKeywords(items, effectiveRules);
   const itemCount = items.filter((i) => !i.isError && !i.isWarning).length;
-  return buildAssessmentResult(scan, itemCount, rules, category, cycleFactors);
+  return buildAssessmentResult(scan, itemCount, effectiveRules, category, cycleFactors);
 }

@@ -28,6 +28,18 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
       keyword: 'voluntary separation incentive',
       suppress_if_any: ['routine', 'annual', 'standard offer'],
     },
+    {
+      keyword: 'reduction in force',
+      suppress_if_any: ['opm guidance', 'opm handbook', '5 cfr 351', 'routine rif procedures'],
+    },
+    {
+      keyword: 'hiring freeze',
+      suppress_if_any: ['budget justification', 'annual budget', 'fiscal year request'],
+    },
+    {
+      keyword: 'agency restructuring',
+      suppress_if_any: ['omb circular a-11', 'a-11 submission', 'budget formulation'],
+    },
   ],
   courts: [
     {
@@ -108,6 +120,10 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
     {
       keyword: 'debt ceiling',
       suppress_if_any: ['bipartisan', 'passed', 'resolved', 'signed into law', 'raised'],
+    },
+    {
+      keyword: 'spending freeze',
+      suppress_if_any: ['continuing resolution', 'cr mechanics', 'standard cr provision'],
     },
   ],
   infoAvailability: [
