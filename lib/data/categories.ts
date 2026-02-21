@@ -45,7 +45,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_restructuring',
         name: 'Agency Restructuring',
-        url: '/api/federal-register?term=%22agency+restructuring%22+|+%22government+reorganization%22+|+%22workforce+reshaping%22',
+        url: '/api/federal-register?term=restructuring+|+reorganization+|+%22workforce+reshaping%22+|+%22agency+realignment%22',
         type: 'federal_register',
         note: 'Structural changes to federal agencies and workforce',
       },
