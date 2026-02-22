@@ -1,7 +1,14 @@
 import { CATEGORIES } from '@/lib/data/categories';
-import { getCurrentCycleYear, PRIMARY_BASELINE_CYCLE_YEAR } from '@/lib/methodology/scoring-config';
+import {
+  PRIMARY_BASELINE_ID,
+  getCurrentCycleYear,
+  PRIMARY_BASELINE_CYCLE_YEAR,
+} from '@/lib/methodology/scoring-config';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
+import { extractWeekMetadata } from '@/lib/services/baseline-distributions';
+import { getBaseline } from '@/lib/services/baseline-service';
+import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
 import type { CycleAdjustmentFactor } from '@/lib/services/cycle-adjustment-service';
 import { loadCycleAdjustmentFactors } from '@/lib/services/cycle-adjustment-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
@@ -18,6 +25,7 @@ import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
+import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
@@ -29,6 +37,7 @@ import {
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
+import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { toDateString } from '@/lib/utils/date-utils';
 
 async function snapshotCategory(
@@ -70,10 +79,60 @@ async function snapshotCategory(
 
   const weekOf = getWeekOfDate();
   computeWeeklyAggregate(cat.key, weekOf)
+    .then((agg) => enrichWithLayerScores(agg))
     .then((agg) => storeWeeklyAggregate(agg))
     .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
 
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
+}
+
+/**
+ * Enrich a weekly aggregate with Layer 1 (structural) and Layer 3 (thematic) scores,
+ * plus the partial convergence synthesis.
+ */
+async function enrichWithLayerScores(agg: WeeklyAggregate): Promise<WeeklyAggregate> {
+  try {
+    const [structural, thematic] = await Promise.all([
+      computeStructuralLayer(agg.category, agg.weekOf),
+      computeRollingThematicDrift(agg.category, agg.weekOf),
+    ]);
+
+    const convergence = synthesizeConvergence(structural, thematic);
+
+    return {
+      ...agg,
+      structuralScore: structural?.composite ?? undefined,
+      structuralDetail: structural ?? undefined,
+      thematicScore: thematic?.zScore ?? undefined,
+      thematicDetail: thematic ?? undefined,
+      convergenceScore: convergence.layersElevated,
+      convergenceDetail: convergence,
+    };
+  } catch (err) {
+    console.warn(`[snapshot] Layer scoring failed for ${agg.category}/${agg.weekOf}:`, err);
+    return agg;
+  }
+}
+
+async function computeStructuralLayer(
+  category: string,
+  weekOf: string,
+): Promise<import('@/lib/types/structural').StructuralScore | null> {
+  const { computeStructuralScore } = await import('@/lib/services/structural-anomaly-service');
+  const { computeBaselineStructuralDistribution } =
+    await import('@/lib/services/baseline-distributions');
+  const { BASELINE_CONFIGS } = await import('@/lib/data/baselines');
+
+  const weekMetadata = await extractWeekMetadata(category, weekOf);
+  if (!weekMetadata) return null;
+
+  const primaryConfig = BASELINE_CONFIGS.find((c) => c.id === PRIMARY_BASELINE_ID);
+  if (!primaryConfig) return null;
+
+  const baselineDistribution = await computeBaselineStructuralDistribution(primaryConfig, category);
+  if (!baselineDistribution) return null;
+
+  return computeStructuralScore(weekMetadata, baselineDistribution);
 }
 
 async function snapshotRhetoric(): Promise<void> {

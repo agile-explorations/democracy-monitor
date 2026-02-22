@@ -58,6 +58,18 @@ export type {
   SuppressedMatch,
   DocumentScore,
 } from './scoring';
+export type {
+  FunctionalBucket,
+  DimensionScore,
+  FunctionalShift,
+  StructuralScore,
+  ClusterShift,
+  ThematicDriftScore,
+  ConvergenceStatus,
+  ConvergenceSynthesis,
+  WeekMetadata,
+  BaselineDistribution,
+} from './structural';
 export type { EvidenceItem, KeywordMatchContext, EnhancedAssessment } from './enhanced-assessment';
 export type {
   TierBreakdown,

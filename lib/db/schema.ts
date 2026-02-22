@@ -249,6 +249,12 @@ export const weeklyAggregates = pgTable(
     warningMatchCount: integer('warning_match_count').notNull().default(0),
     suppressedMatchCount: integer('suppressed_match_count').notNull().default(0),
     topKeywords: jsonb('top_keywords').$type<string[]>(),
+    structuralScore: real('structural_score'),
+    structuralDetail: jsonb('structural_detail'),
+    thematicScore: real('thematic_score'),
+    thematicDetail: jsonb('thematic_detail'),
+    convergenceScore: real('convergence_score'),
+    convergenceDetail: jsonb('convergence_detail'),
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

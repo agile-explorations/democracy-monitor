@@ -19,6 +19,22 @@ export function scotusTermYear(): string {
   return String(year % 100);
 }
 
+/** Get the Monday of the week for a given Date. Returns YYYY-MM-DD. */
+export function getMonday(date: Date): string {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1;
+  d.setUTCDate(d.getUTCDate() - diff);
+  return toDateString(d);
+}
+
+/** Add days to a date string. Returns YYYY-MM-DD. */
+export function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return toDateString(d);
+}
+
 /** Split a date range into week-sized chunks (Monday-aligned). */
 export function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = [];

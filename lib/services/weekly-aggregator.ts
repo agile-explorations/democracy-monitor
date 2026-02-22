@@ -28,6 +28,12 @@ export interface WeeklyAggregate {
   warningMatchCount: number;
   suppressedMatchCount: number;
   topKeywords: string[];
+  structuralScore?: number;
+  structuralDetail?: unknown;
+  thematicScore?: number;
+  thematicDetail?: unknown;
+  convergenceScore?: number;
+  convergenceDetail?: unknown;
   computedAt: string;
 }
 
@@ -141,6 +147,54 @@ async function extractTopKeywords(
   }
 }
 
+function buildAggregateValues(agg: WeeklyAggregate) {
+  return {
+    category: agg.category,
+    weekOf: agg.weekOf,
+    totalSeverity: agg.totalSeverity,
+    documentCount: agg.documentCount,
+    avgSeverityPerDoc: agg.avgSeverityPerDoc,
+    captureProportion: agg.captureProportion,
+    driftProportion: agg.driftProportion,
+    warningProportion: agg.warningProportion,
+    severityMix: agg.severityMix,
+    captureMatchCount: agg.captureMatchCount,
+    driftMatchCount: agg.driftMatchCount,
+    warningMatchCount: agg.warningMatchCount,
+    suppressedMatchCount: agg.suppressedMatchCount,
+    topKeywords: agg.topKeywords,
+    structuralScore: agg.structuralScore ?? null,
+    structuralDetail: agg.structuralDetail ?? null,
+    thematicScore: agg.thematicScore ?? null,
+    thematicDetail: agg.thematicDetail ?? null,
+    convergenceScore: agg.convergenceScore ?? null,
+    convergenceDetail: agg.convergenceDetail ?? null,
+    computedAt: new Date(agg.computedAt),
+  };
+}
+
+const UPSERT_SET = {
+  totalSeverity: sql`excluded.total_severity`,
+  documentCount: sql`excluded.document_count`,
+  avgSeverityPerDoc: sql`excluded.avg_severity_per_doc`,
+  captureProportion: sql`excluded.capture_proportion`,
+  driftProportion: sql`excluded.drift_proportion`,
+  warningProportion: sql`excluded.warning_proportion`,
+  severityMix: sql`excluded.severity_mix`,
+  captureMatchCount: sql`excluded.capture_match_count`,
+  driftMatchCount: sql`excluded.drift_match_count`,
+  warningMatchCount: sql`excluded.warning_match_count`,
+  suppressedMatchCount: sql`excluded.suppressed_match_count`,
+  topKeywords: sql`excluded.top_keywords`,
+  structuralScore: sql`excluded.structural_score`,
+  structuralDetail: sql`excluded.structural_detail`,
+  thematicScore: sql`excluded.thematic_score`,
+  thematicDetail: sql`excluded.thematic_detail`,
+  convergenceScore: sql`excluded.convergence_score`,
+  convergenceDetail: sql`excluded.convergence_detail`,
+  computedAt: sql`excluded.computed_at`,
+};
+
 /**
  * Upsert a weekly aggregate into the database.
  */
@@ -151,40 +205,10 @@ export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> 
 
   await db
     .insert(weeklyAggregates)
-    .values({
-      category: agg.category,
-      weekOf: agg.weekOf,
-      totalSeverity: agg.totalSeverity,
-      documentCount: agg.documentCount,
-      avgSeverityPerDoc: agg.avgSeverityPerDoc,
-      captureProportion: agg.captureProportion,
-      driftProportion: agg.driftProportion,
-      warningProportion: agg.warningProportion,
-      severityMix: agg.severityMix,
-      captureMatchCount: agg.captureMatchCount,
-      driftMatchCount: agg.driftMatchCount,
-      warningMatchCount: agg.warningMatchCount,
-      suppressedMatchCount: agg.suppressedMatchCount,
-      topKeywords: agg.topKeywords,
-      computedAt: new Date(agg.computedAt),
-    })
+    .values(buildAggregateValues(agg))
     .onConflictDoUpdate({
       target: [weeklyAggregates.category, weeklyAggregates.weekOf],
-      set: {
-        totalSeverity: sql`excluded.total_severity`,
-        documentCount: sql`excluded.document_count`,
-        avgSeverityPerDoc: sql`excluded.avg_severity_per_doc`,
-        captureProportion: sql`excluded.capture_proportion`,
-        driftProportion: sql`excluded.drift_proportion`,
-        warningProportion: sql`excluded.warning_proportion`,
-        severityMix: sql`excluded.severity_mix`,
-        captureMatchCount: sql`excluded.capture_match_count`,
-        driftMatchCount: sql`excluded.drift_match_count`,
-        warningMatchCount: sql`excluded.warning_match_count`,
-        suppressedMatchCount: sql`excluded.suppressed_match_count`,
-        topKeywords: sql`excluded.top_keywords`,
-        computedAt: sql`excluded.computed_at`,
-      },
+      set: UPSERT_SET,
     });
 }
 

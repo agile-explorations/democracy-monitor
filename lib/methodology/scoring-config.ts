@@ -139,6 +139,60 @@ export function getCurrentCycleYear(date?: Date): number {
   return Math.max(1, Math.min(4, year));
 }
 
+// --- Structural anomaly (Layer 1) ---
+
+/** Dimension weights for the composite structural score. Must sum to 1.0. */
+export const STRUCTURAL_DIMENSION_WEIGHTS = {
+  volume: 0.25,
+  typeComposition: 0.2,
+  functionalDistribution: 0.25,
+  agencyActivity: 0.15,
+  publicationTempo: 0.15,
+} as const;
+
+/** Composite structural score above this threshold is considered anomalous. */
+export const STRUCTURAL_ANOMALY_THRESHOLD = 2.0;
+
+/** Expected JSD baseline mean (identical distributions produce JSD = 0). */
+export const JSD_BASELINE_MEAN = 0;
+
+/** Expected JSD baseline standard deviation for normal week-to-week variation. */
+export const JSD_BASELINE_STDDEV = 0.05;
+
+/** Z-score above this for any individual dimension is considered elevated. */
+export const STRUCTURAL_DIMENSION_ELEVATED = 1.5;
+
+/** Number of trailing weeks for long-horizon cumulative deviation. */
+export const LONG_HORIZON_WINDOW_WEEKS = 12;
+
+/** Minimum half-difference between first/second half of window to classify drift trend. */
+export const DRIFT_TREND_THRESHOLD = 0.3;
+
+/** Minimum functional distribution shift (percentage points) to report. */
+export const FUNCTIONAL_SHIFT_THRESHOLD = 0.03;
+
+// --- Thematic drift (Layer 3) ---
+
+/** Number of weeks in the rolling window for intra-admin comparison. */
+export const THEMATIC_ROLLING_WINDOW_WEEKS = 8;
+
+/** Z-score above this for thematic drift is considered elevated. */
+export const THEMATIC_DRIFT_ELEVATED = 1.5;
+
+/** Confidence multiplier during bootstrap period (first N weeks). */
+export const BOOTSTRAP_CONFIDENCE = 0.5;
+
+/** Novel document rate above this fraction is considered significant. */
+export const NOVEL_DOCUMENT_RATE_THRESHOLD = 0.15;
+
+// --- Convergence synthesis ---
+
+/** Convergence score thresholds for mapping to status. */
+export const CONVERGENCE_THRESHOLDS = {
+  elevated: 1,
+  divergent: 2,
+} as const;
+
 /** Characters before a keyword to scan for negation patterns. */
 export const NEGATION_WINDOW_BEFORE = 200;
 

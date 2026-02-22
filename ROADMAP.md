@@ -451,6 +451,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Estimated scope:** ~250–370 new/modified lines of code. Layer 3 is adaptation of existing semantic drift and clustering services, not greenfield.
 
+**Actual:** Code work delivered. ~580 LOC production, ~716 LOC tests. 19 files changed, 79 new tests (1174 total). Ships 5 of 6 structural dimensions (source convergence deferred), rolling thematic drift with bootstrap awareness, partial convergence synthesis (L1+L3). Run work (embedding backfill, baseline distributions, threshold calibration) deferred to separate session. Key decisions in DECISIONS.md.
+
 **Code work:**
 
 1. **Functional classifier** — Deterministic tiered approach: `source_type` (Tier 1, ~63%) → title prefix heuristics (Tier 2, ~17%) → `action` field (Tier 3, ~20% when available). Priority-ordered `ClassificationRule[]` pattern. Pure function, zero dependencies, trivially testable. (~80–120 LOC)
@@ -503,8 +505,9 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 4. **Baseline AI flag rates** — Run Pass 1 against all 4 baselines (~60K docs, ~$6–12). Record flag rate per category per week.
 5. **Pass 2 baseline assessments** — Run on flagged baseline docs (~3K–6K docs, ~$28–60). Establish baseline concern rate.
 6. **Update convergence synthesis** — Add Layer 2 signals (flag rate z-score, concern rate) to status determination.
-7. **AI reproducibility strategy** — Pin model versions, record in assessments, structured output enforcement.
-8. **Full three-layer validation** — Run complete system against Trump 2025 data.
+7. **Source convergence dimension (deferred from R2)** — 6th structural dimension: ratio of FR/PRESDOCU to GDELT to WH per category. Requires per-category rhetoric volume aggregation. Wire into `computeStructuralScore()` and update baseline distributions.
+8. **AI reproducibility strategy** — Pin model versions, record in assessments, structured output enforcement.
+9. **Full three-layer validation** — Run complete system against Trump 2025 data.
 
 **Implementation note:** Pass 2 is greenfield code, NOT an adaptation of existing AI Skeptic. The current AI Skeptic was designed to "confirm or lower" keyword assessments. Pass 2 independently assesses documents that Pass 1 flagged, with no reference to keyword results. The existing `enhancedAssessment()` function, prompts, and output schema do not carry over.
 

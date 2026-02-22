@@ -127,6 +127,13 @@
       "when": 1771531801785,
       "tag": "0017_clumsy_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1771801029142,
+      "tag": "0018_slim_toxin",
+      "breakpoints": true
     }
   ]
 }
