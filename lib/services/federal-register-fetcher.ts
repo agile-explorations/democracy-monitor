@@ -8,7 +8,7 @@ function truncate(text: string): string {
   return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '\u2026' : text;
 }
 
-function buildFrApiUrl(
+export function buildFrApiUrl(
   params: {
     agency?: string;
     type?: string;
@@ -38,10 +38,11 @@ interface FrApiDocument {
   agencies?: { name: string }[];
   type?: string;
   subtype?: string;
+  action?: string;
   abstract?: string;
 }
 
-function toContentItem(doc: FrApiDocument): ContentItem {
+export function toContentItem(doc: FrApiDocument): ContentItem {
   return {
     title: doc.title || '(document)',
     link: doc.html_url,
@@ -50,6 +51,7 @@ function toContentItem(doc: FrApiDocument): ContentItem {
     summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
     type: doc.type,
     subtype: doc.subtype,
+    action: doc.action,
   };
 }
 

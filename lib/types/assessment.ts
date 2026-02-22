@@ -11,6 +11,7 @@ export interface ContentItem {
   note?: string;
   type?: string;
   subtype?: string;
+  action?: string;
   isError?: boolean;
   isWarning?: boolean;
 }

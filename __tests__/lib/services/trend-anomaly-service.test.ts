@@ -177,4 +177,22 @@ describe('countKeywordsInItems', () => {
     const counts = countKeywordsInItems([], 'civilService');
     expect(Object.keys(counts)).toHaveLength(0);
   });
+
+  it('returns empty counts for items with no matching keywords in summary', () => {
+    const items = [{ summary: 'Completely unrelated technology news' }];
+    const counts = countKeywordsInItems(items, 'civilService');
+    expect(Object.keys(counts)).toHaveLength(0);
+  });
+
+  it('includes admin overlay keywords when documentDate is provided', () => {
+    const items = [{ title: 'DOGE spending review targets agency budgets' }];
+    const counts = countKeywordsInItems(items, 'civilService', '2025-02-15');
+    expect(counts['doge']).toBe(1);
+  });
+
+  it('excludes admin overlay keywords when no documentDate is provided', () => {
+    const items = [{ title: 'DOGE spending review targets agency budgets' }];
+    const counts = countKeywordsInItems(items, 'civilService');
+    expect(counts['doge']).toBeUndefined();
+  });
 });

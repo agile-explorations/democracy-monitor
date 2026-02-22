@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import { getEffectiveKeywords } from '@/lib/data/admin-specific-keywords';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { isHighAuthoritySource } from '@/lib/data/authority-sources';
 import { NEGATION_PATTERNS, SUPPRESSION_RULES } from '@/lib/data/suppression-rules';
@@ -170,11 +171,23 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
   const isHighAuthority = isHighAuthoritySource(item.agency);
   const docClass = classifyDocument(item);
   const classMultiplier = CLASS_MULTIPLIERS[docClass];
+  const docDate = item.pubDate || item.date || undefined;
+
+  const effectiveRules = rules
+    ? {
+        ...rules,
+        keywords: {
+          capture: getEffectiveKeywords(category, 'capture', docDate),
+          drift: getEffectiveKeywords(category, 'drift', docDate),
+          warning: getEffectiveKeywords(category, 'warning', docDate),
+        },
+      }
+    : rules;
 
   const { keywordMatches, suppressedMatches } = matchKeywordsWithSuppression(
     contentText,
     category,
-    rules,
+    effectiveRules,
   );
 
   const captureCount = keywordMatches.filter((m) => m.tier === 'capture').length;

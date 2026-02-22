@@ -11,6 +11,7 @@ interface FrDocument {
   agencies?: { name: string }[];
   type?: string;
   subtype?: string;
+  action?: string;
   abstract?: string;
 }
 
@@ -47,6 +48,7 @@ function transformDoc(doc: FrDocument) {
     agency: doc.agencies?.map((a) => a.name).join(', '),
     type: doc.type,
     subtype: doc.subtype,
+    action: doc.action,
     summary: doc.abstract,
   };
 }

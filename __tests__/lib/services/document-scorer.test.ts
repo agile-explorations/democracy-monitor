@@ -230,6 +230,58 @@ describe('logarithmic diminishing returns', () => {
   });
 });
 
+describe('admin overlay keyword matching', () => {
+  it('matches admin overlay keywords for post-2025 documents', () => {
+    const score = scoreDocument(
+      {
+        title: 'DOGE spending review targets agency budgets',
+        pubDate: '2025-02-15',
+      },
+      'civilService',
+    );
+    expect(score.matches.some((m) => m.keyword === 'doge')).toBe(true);
+  });
+
+  it('does not match admin overlay keywords for pre-2025 documents', () => {
+    const score = scoreDocument(
+      {
+        title: 'DOGE coin mentioned in financial report',
+        pubDate: '2024-06-15',
+      },
+      'civilService',
+    );
+    expect(score.matches.some((m) => m.keyword === 'doge')).toBe(false);
+  });
+
+  it('matches admin overlay keywords when no date provided (uses core only)', () => {
+    // "doge" is admin-only, not in core rules — should NOT match without a date
+    const score = scoreDocument({ title: 'DOGE review announced' }, 'civilService');
+    expect(score.matches.some((m) => m.keyword === 'doge')).toBe(false);
+  });
+
+  it('matches schedule_f_era overlay for documents after 2020-10-21', () => {
+    const score = scoreDocument(
+      {
+        title: 'Schedule F reclassification of career positions',
+        pubDate: '2020-11-01',
+      },
+      'civilService',
+    );
+    expect(score.matches.some((m) => m.keyword === 'schedule f')).toBe(true);
+  });
+
+  it('does not match schedule_f_era overlay for documents before 2020-10-21', () => {
+    const score = scoreDocument(
+      {
+        title: 'Schedule F discussed in policy brief',
+        pubDate: '2020-01-01',
+      },
+      'civilService',
+    );
+    expect(score.matches.some((m) => m.keyword === 'schedule f')).toBe(false);
+  });
+});
+
 describe('scoreDocumentBatch', () => {
   it('filters out error and warning items', () => {
     const items = [

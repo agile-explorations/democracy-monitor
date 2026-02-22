@@ -4,6 +4,14 @@ import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
 import { toDateString } from '@/lib/utils/date-utils';
 
+export function buildMetadata(item: ContentItem): Record<string, string> | null {
+  const meta: Record<string, string> = {};
+  if (item.agency) meta.agency = item.agency;
+  if (item.action) meta.action = item.action;
+  if (item.subtype) meta.subtype = item.subtype;
+  return Object.keys(meta).length > 0 ? meta : null;
+}
+
 /**
  * Upsert documents from feed items into the database for RAG retrieval.
  * No-op when DATABASE_URL is not configured.
@@ -28,7 +36,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           url: item.link!,
           publishedAt: item.pubDate ? new Date(item.pubDate) : null,
           fetchedAt: new Date(),
-          metadata: item.agency ? { agency: item.agency } : null,
+          metadata: buildMetadata(item),
         })
         .onConflictDoUpdate({
           target: documents.url,

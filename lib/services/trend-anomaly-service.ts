@@ -1,4 +1,5 @@
 import { eq, gte, and } from 'drizzle-orm';
+import { getEffectiveKeywords } from '@/lib/data/admin-specific-keywords';
 import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { keywordTrends } from '@/lib/db/schema';
@@ -58,14 +59,15 @@ export function calculateTrends(
 export function countKeywordsInItems(
   items: Array<{ title?: string; summary?: string }>,
   category: string,
+  documentDate?: string,
 ): Record<string, number> {
   const rules = ASSESSMENT_RULES[category];
   if (!rules?.keywords) return {};
 
   const allKeywords = [
-    ...(rules.keywords.capture || []),
-    ...(rules.keywords.drift || []),
-    ...(rules.keywords.warning || []),
+    ...getEffectiveKeywords(category, 'capture', documentDate),
+    ...getEffectiveKeywords(category, 'drift', documentDate),
+    ...getEffectiveKeywords(category, 'warning', documentDate),
   ];
 
   const counts: Record<string, number> = {};
