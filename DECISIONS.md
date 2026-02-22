@@ -85,68 +85,19 @@ Root cause: `federal-register-fetcher.ts` stores FR API document types (`Notice`
 
 ---
 
-### Keyword refinement workflow
+### Baseline strategy (Sprints 14-15.1, completed)
 
-Sprint 13 built the tooling (items 1, 3, 5). Sprint 14.1 completes the remaining steps:
-
-1. ~~AI Skeptic pre-populates feedback~~ — **Done** (Sprint 13)
-2. ~~missingKeywords from rhetoric analysis~~ — **Done** (Sprint 14.1). Bigram frequency on WH/GDELT titles, compared against keyword dictionaries. Preserves keyword layer independence.
-3. ~~Post-session aggregate report~~ — **Done** (Sprint 13, extended in Sprint 14.1 with `aggregateMissingKeywords()`)
-4. ~~Double human review~~ — **Done** (Sprint 14.1). Human reviewed all 6 mapped categories. Result: zero additions — dictionaries well-calibrated, rhetoric→document vocabulary gap is a translation gap already covered by existing keywords.
-5. ~~Changes in code via apply-decisions.ts~~ — **Done** (Sprint 13, `pnpm seed:apply`). Not needed this cycle (zero additions).
-6. ~~Validate with re-run~~ — **N/A** this cycle (no keyword changes → baseline unchanged at 8 alerts).
-
-### Baseline strategy (Sprint 14-15)
-
-- **Biden 2022** (primary) — Steady state normal governance. 58,713 docs, 8 alerts after calibration.
-- **Biden 2021** — First-year-in-term baseline. 76,946 docs (keyword-only).
-- **Trump 2017** — Same-president cross-term baseline (Year 1). 76,749 docs (keyword-only).
-- **Trump 2018** — Same-president cross-term baseline (Year 2). 75,063 docs (keyword-only).
-- ~~**Obama 2013**~~ — Dropped. FR-only source coverage (no WH archive, limited GDELT). Source asymmetry would confound comparisons.
-
-### Updated sprint sequence
-
-- ~~Sprint 13:~~ **Done** — AI Skeptic structured feedback + keyword tuning pipeline
-- ~~Sprint 14:~~ **Done** — Biden 2022 baseline calibration (3 iterations, signal tightening, fixtures)
-- ~~Sprint 14.1:~~ **Done** — Rhetoric gap analysis + first refinement cycle (zero additions, dictionaries well-calibrated)
-- ~~Sprint 15:~~ **Done** — First-year-in-term baselines + cross-baseline validation
+- 4 baselines: Biden 2022 (primary, Year 2), Biden 2021 (Year 1), Trump 2017 (Year 1), Trump 2018 (Year 2). All have uniform FR + GDELT + WH coverage. All re-run with AI (gpt-4o-mini) in Sprint 15.1.
+- Obama 2013 dropped (FR-only source coverage would confound comparisons).
+- Keyword refinement cycle complete: zero additions needed — dictionaries well-calibrated.
 - **Pre-Sprint L:** Normalize `source_type` values (#28)
 
-See ROADMAP.md for full sequence.
+### Sprint 15 (condensed)
 
----
+Key decisions that remain relevant:
 
-## Sprint 15: First-Year-in-Term Baselines + Cross-Baseline Validation
-
-**Planned:** Biden 2021 + Obama 2013 baselines with cycle metadata. Cross-baseline validation report.
-
-**Actual:** Scope changed mid-sprint. Obama 2013 dropped (FR-only source coverage). Replaced with Trump 2017 (Year 1) and Trump 2018 (Year 2) baselines — same president, enabling cross-term comparison that neutralizes party/philosophy differences. All 4 baselines have uniform FR + GDELT + WH coverage.
-
-**Key decisions:**
-
-- **Obama 2013 dropped for Trump 2017/2018**: Obama era lacks WH archive scraper and has limited GDELT coverage for 2013. Source asymmetry (FR-only vs FR+GDELT+WH) would confound cross-baseline severity/volume comparisons. Trump WH archive at `trumpwhitehouse.archives.gov` is a WordPress site with reliable pagination, making scraping feasible. The Trump pair also enables same-president Year 1 vs Year 2 comparison.
-- **Trump WH archive scraper**: Separate parser (`parseWhArchiveArticles`) due to different HTML structure (WordPress `article.briefing-statement` vs modern WH `article` tags). Archive-specific selectors: `h2.briefing-statement__title a` for links, `p.meta__date time` for dates. Two sections scraped: `/remarks/` (~200 pages) and `/briefings-statements/` (~670 pages).
-- **`WhArchiveConfig` interface**: Added to `BaselineConfig` for baselines requiring archive-era WH scrapers. Contains `baseUrl` and `sections` array. Only Trump 2017/2018 use it; Biden baselines use the live WH briefing-room scraper.
-- **Keyword-only baselines (--skip-ai)**: All 4 baselines ran without AI assessment. Claude Online review confirmed this is sufficient for cross-baseline validation (volume patterns, source coverage, zero-vs-nonzero severity). Biden 2022 + Biden 2021 will be re-run with `--model gpt-4o-mini` as prerequisite step 0 in Sprint 15.1 (cycle-aware baselines). Trump baselines stay keyword-only — AI budget reserved for Trump 2025 current-period assessments.
-- **Weekly aggregator date mismatch bug**: `computeWeeklyAggregate()` used exact-match `eq(weekOf)` but document scores compute Monday-based weeks while `getWeekRanges()` generates weeks from config start date (Friday for inauguration-based periods). Changed to range query `gte/lt` with 7-day window. This bug caused ALL baseline severity/volume to be zero since Sprint 11. Pre-existing bug, not introduced by Sprint 15.
-
-**Spec deviations:**
-
-- **Obama 2013 → Trump 2017/2018** (V3 Addendum §15): Spec called for Biden 2021 + Obama 2013. Replaced Obama with Trump pair for source uniformity and same-president comparison. Sprint 15.1 cycle adjustment factors will use 2 Year 1 baselines (Biden 2021, Trump 2017) averaged against 2 Year 2 baselines (Biden 2022, Trump 2018) — better sample size than planned.
-
-**Lessons learned:**
-
-- **Document scorer and weekly aggregator must agree on week boundaries**: `getWeekOf()` (Monday-based) vs `getWeekRanges()` (config-date-based) is a systemic mismatch. The range-query fix in the aggregator is robust, but the root cause (two different week-alignment strategies) should be unified eventually.
-- **Background baseline runs need monitoring**: GDELT rate limiting (HTTP 429) extends 265-call runs significantly. Exponential backoff (10s/20s/40s) handles it gracefully but runs take 30+ minutes. One "Malformed JSON after retries" error per ~265 calls is normal — lost ~250 docs out of 65,000+.
-- **Cross-baseline validation is only meaningful with non-zero data**: The weekly aggregator bug meant Sprint 11-14 baselines stored zeros. Always verify a sample of stored values before building reports on top of them.
-
-**Validation findings:**
-
-- military: 2.5x Year 1/Year 2 severity ratio (but tiny absolute values — 0.04 vs 0.01; within noise range)
-- civilService: Highest absolute severity across both admins (0.05–0.11); driven by routine OPM keywords
-- rulemaking: Most structurally coherent pattern — Year 1 > Year 2, Trump > Biden Year 2 (consistent with transition regulatory activity)
-- elections, fiscal: Zero severity across all baselines (correct — concern keywords shouldn't fire during normal governance)
-- No source asymmetry across any baseline pair
+- **Trump WH archive scraper**: `parseWhArchiveArticles` with WordPress-specific selectors. `WhArchiveConfig` interface on `BaselineConfig`. Only Trump 2017/2018 use it.
+- **Weekly aggregator date mismatch bug** (fixed): `eq(weekOf)` → range query `gte/lt` with 7-day window. Root cause: `getWeekOf()` (Monday-based) vs `getWeekRanges()` (config-date-based) — systemic mismatch, range query is a workaround.
 
 ---
 
@@ -204,11 +155,7 @@ See ROADMAP.md for full sequence.
 
 - None material. All 9 items align with UI Spec §4 (Landing Page) and §14 (Embeddable Pattern). The spec's "confidence" label is already tracked as "Data Coverage" (Sprint 8 decision).
 
-**Lessons learned:**
-
-- **ESLint import order applies to all files equally**: Test files with `vitest` imports must still sort them alphabetically relative to external packages (`@testing-library/react` comes before `vitest`). The `import/order` rule has no test-file exemption.
-- **jsdom SVG attribute casing**: React uses camelCase for SVG attributes (`strokeDasharray`), but jsdom renders them in kebab-case (`stroke-dasharray`). Use `getAttribute('stroke-dasharray')` in tests, not the React prop name.
-- **Prettier reformats after `npx prettier --write`**: Always run prettier on modified files before committing. The pre-commit hook (`lint-staged`) checks but doesn't auto-fix.
+**Lessons learned:** ESLint import order has no test-file exemption. jsdom SVG attributes use kebab-case (`stroke-dasharray`), not React camelCase. Run `npx prettier --write` before committing — lint-staged checks but doesn't auto-fix. (All codified in MEMORY.md.)
 
 ---
 
@@ -234,11 +181,7 @@ See ROADMAP.md for full sequence.
 
 - **`dismissible` behavior deferred**: UI Spec §4.7 specifies moderate-level banner should be dismissible. Removed `dismissible` field from component config per code review (dead code). Will implement with `useLocalStorage`-backed dismiss state when the detail page exists.
 
-**Lessons learned:**
-
-- **Code review catches dead code early**: The `alerts` prop and `dismissible` field were speculative features that should have been deferred from the start. Better to ship the minimum and add when the consuming code exists.
-- **`computeHealthSummary` threshold edge cases**: Test initially used 2 sources (1 unhealthy = 50%) and expected `'degraded'`, but `criticalSourceFraction` is `>= 0.5`. Need 3+ sources to test the degraded band (25-50%). Always check boundary conditions match `>=` vs `>`.
-- **OpenGrep findings should be addressed before commit, not after**: The `no-inline-method-guard` and `no-inline-error-format` rules caught patterns that should have been avoided during initial implementation. Check OpenGrep rules before writing new API routes.
+**Lessons learned:** Don't add speculative props/fields — ship the minimum, add when consumed. Check boundary conditions match `>=` vs `>`. Check OpenGrep rules before writing new API routes, not after.
 
 ---
 
@@ -263,10 +206,7 @@ See ROADMAP.md for full sequence.
 - **Confidence degradation indicator deferred**: UI Spec §4.9 specifies a confidence indicator on the page header. Sprint 18 shows `dataCoverage` percentage instead. Full confidence breakdown (with factor-level detail) will land in Sprint 22 (Detailed mode features).
 - **Week drill-down interaction deferred**: UI Spec §5 mentions clicking trend chart data points to navigate to week detail. This requires the week detail page (Sprint 19). Sprint 18 chart renders data points but they are not clickable links.
 
-**Lessons learned:**
-
-- **ESLint `react/function-component-definition` applies to test mocks too**: Arrow function mock components in `vi.mock('recharts', ...)` triggered the rule. Must use named function declarations (`function MockLine() { ... }`) even in test mock factories.
-- **Recharts components need full mocking in jsdom**: Cannot render recharts in jsdom (no canvas). Mock all components (`ResponsiveContainer`, `ComposedChart`, `Line`, `Area`, `XAxis`, `YAxis`, `CartesianGrid`, `Tooltip`, `ReferenceLine`) with simple div/null returns using `data-testid` for assertions.
+**Lessons learned:** ESLint `react/function-component-definition` applies to test mocks — use named function declarations. Recharts components need full mocking in jsdom (no canvas) — use `data-testid` for assertions. (Codified in MEMORY.md.)
 
 ---
 
@@ -291,40 +231,18 @@ See ROADMAP.md for full sequence.
 - **AI reviewer notes for specific week (UI Spec §5A.1)**: Deferred to Sprint 22. Per-week AI assessment requires storing AI results per-week in the snapshot pipeline (currently stores per-category-per-snapshot). Placeholder not shown — section simply absent until the data exists.
 - **Document table on category detail page (ROADMAP Sprint 19 item 6)**: Deferred to Sprint 20. The `DocumentTable` component is built reusable — wiring it into category detail just needs a data source for "all weeks" documents.
 
-**Lessons learned:**
-
-- **Recharts `MouseHandlerDataParam` has `activeLabel` not `activePayload`**: The recharts v3 type system changed from v2. `activeLabel` is the XAxis value (string), `activeIndex` is the data index. Use `activeLabel` to identify the clicked data point.
-- **Reuse existing `escapeCell()` from `lib/utils/csv.ts`**: Initial DocumentTable had a local `escape` function duplicating the utility. Code review caught the DRY violation. Always check existing utils before writing inline helpers.
+**Lessons learned:** Recharts v3 `ComposedChart.onClick` provides `activeLabel` (not `activePayload`). Always check existing utils before writing inline helpers (DRY). (Codified in MEMORY.md.)
 
 ---
 
-## Sprint 20: Signal Gap Remediation (R1)
+## Sprint 20 (condensed)
 
-**Planned:** 8 work items: InsufficientData display fix, document_id NULL fix, signal query audit (AND→OR), GDELT sourcecountry:US filter, presidential document signals, document class multipliers + FR type/subtype mapping, oversightGovDown cleanup, tests.
+Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US, 7 PRESDOCU signals, FR subtype threading, InsufficientData badge, document_id NULL fix, oversightGovDown removed. Key decisions that remain relevant:
 
-**Actual:** Delivered as planned. All 8 work items shipped. 17 files modified, 3 spec documents added, 8 new tests (1027 total from existing + 8 new document-classifier tests netting against restructured test).
-
-**Key decisions:**
-
-- **FR API boolean syntax confirmed via testing**: Pipe `|` for OR, space for AND, `""` for phrases. All 18 multi-term FR signal queries were using space-separated terms (AND logic), severely limiting result counts. Confirmed by comparing FR API results for AND vs OR queries (e.g., fiscal impoundment query: 15 docs with AND, ~10K with OR).
-- **`fr_court_compliance` kept as AND**: The only query where AND is intentional — documents must match both "injunction" AND "compliance" to be relevant. All other queries use OR/phrase syntax.
-- **7 PRESDOCU signals (one per category)**: Added type=PRESDOCU signals to civilService, fiscal, igs, courts, military, rulemaking. executiveActions already had `fr_presidential_actions`. elections, mediaFreedom, hatch, infoAvailability don't need dedicated PRESDOCU signals — their existing queries already capture relevant presidential documents.
-- **`subtype` threaded through ingestion pipeline**: Added `subtype?: string` to `ContentItem`, `FrDocument`, `FrApiDocument`. FR API provides `subtype` on Presidential Documents (Executive Order, Presidential Memorandum, Proclamation, Presidential Notice). Both `federal-register-fetcher.ts` (backfill) and `pages/api/federal-register.ts` (live) now pass it through.
-- **Presidential Document classification priority**: Subtype → fallback to `executive_order`. Non-presidential FR types use `FR_TYPE_MAP`. Title heuristics only fire when `item.type` is unset (non-FR sources). Added `proclamation` title heuristic alongside existing `executive_order` and `presidential_memorandum`.
-- **`resolveDocumentIds()` post-store UPDATE**: Rather than threading document IDs through the ingestion pipeline (would require `storeDocuments()` to return IDs), added a single `UPDATE document_scores SET document_id = d.id FROM documents d WHERE ds.url = d.url AND ds.document_id IS NULL` after each `storeDocumentScores()` call. Clean, idempotent, no pipeline changes.
-- **InsufficientData at display layer only**: `StatusLevel` type unchanged. `CategorySummary.insufficientData` boolean extracted from `detail` JSONB column. UI renders "No Data" badge inline (not a new StatusPill variant) when `insufficientData === true`.
-- **`oversightGovDown` removed entirely**: Dead config — `assessment-rules.ts` defined it, `AssessmentRule` typed it, `apply-decisions.ts` serialized it, but no service code ever read it. Signal name updated from "CURRENTLY DOWN" to "Oversight.gov (IG Reports)".
-- **`toContentItem()` extraction**: `fetchFederalRegisterHistorical` exceeded 50-line ESLint limit after adding `subtype`. Extracted inline type + mapping into `FrApiDocument` interface + `toContentItem()` helper.
-
-**Spec deviations:**
-
-- None material. SIGNAL_GAP_REMEDIATION.md is the authoritative spec for this sprint. All R1 items delivered.
-
-**Lessons learned:**
-
-- **FR API AND-vs-OR is silent**: Wrong boolean logic doesn't error — it just returns fewer results. The fiscal query working "correctly" for 14 sprints with 15 instead of ~10K results is a reminder to spot-check signal query result counts.
-- **`subtype` is the correct FR API field**: FR API v1 documents have `type` (e.g., "Presidential Document", "Rule") and `subtype` (e.g., "Executive Order", "Proclamation"). Both are strings. The `subtype` field is only populated for Presidential Documents.
-- **Dead config detection**: `oversightGovDown` existed across 3 files for ~7 sprints without any service consuming it. Grep for field names in services/cron before adding configuration.
+- **FR API boolean syntax**: Pipe `|` for OR, space for AND, `""` for phrases. `fr_court_compliance` is the only intentional AND query.
+- **Presidential Document classification priority**: Subtype → fallback to `executive_order` → `FR_TYPE_MAP` → title heuristics (only when `item.type` is unset).
+- **`resolveDocumentIds()` post-store UPDATE**: Joins `document_scores` to `documents` on URL. Idempotent, no pipeline changes.
+- **FR API AND-vs-OR is silent**: Wrong boolean logic returns fewer results without errors. Spot-check signal query result counts.
 
 ---
 
