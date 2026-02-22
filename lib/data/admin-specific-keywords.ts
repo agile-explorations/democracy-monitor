@@ -22,6 +22,15 @@ export interface AdminKeywordOverlay {
 
 export const ADMIN_OVERLAYS: AdminKeywordOverlay[] = [
   {
+    administration: 'schedule_f_era',
+    applicableFrom: '2020-10-21',
+    keywords: {
+      civilService: {
+        capture: ['schedule f', 'excepted schedule f', 'mass reclassification to schedule f'],
+      },
+    },
+  },
+  {
     administration: 'trump_2',
     applicableFrom: '2025-01-20',
     keywords: {

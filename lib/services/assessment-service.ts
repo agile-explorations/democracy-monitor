@@ -12,7 +12,7 @@ const DRIFT_MATCH_THRESHOLD = 2;
 /** Maximum keyword matches shown in reason text. */
 const MAX_REASON_MATCHES = 3;
 /** Minimum valid items needed to assess as Stable (below this → insufficient data). */
-const MIN_ITEMS_FOR_STABLE = 3;
+const MIN_ITEMS_FOR_STABLE = 1;
 
 interface AssessmentDetail {
   captureCount: number;

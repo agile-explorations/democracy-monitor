@@ -19,12 +19,18 @@ describe('analyzeContent', () => {
     expect(result.matches).toHaveLength(0);
   });
 
-  it('returns insufficient data Warning when fewer than 3 items with no keywords', () => {
+  it('returns Stable for 1 item with no keyword matches', () => {
     const items = [{ title: 'Routine quarterly report on agency operations' }];
     const result = analyzeContent(items, 'civilService');
+    expect(result.status).toBe('Stable');
+    expect(result.matches).toHaveLength(0);
+  });
+
+  it('returns insufficient data Warning for 0 items', () => {
+    const result = analyzeContent([], 'civilService');
     expect(result.status).toBe('Warning');
     expect(result.detail?.insufficientData).toBe(true);
-    expect(result.reason).toContain('insufficient');
+    expect(result.reason).toContain('Not enough information');
   });
 
   it('returns Warning for a single drift keyword match', () => {
@@ -37,7 +43,7 @@ describe('analyzeContent', () => {
   it('returns Drift for multiple drift keyword matches', () => {
     const items = [
       { title: 'Reclassification of career staff positions' },
-      { title: 'Excepted service expanded significantly' },
+      { title: 'Career staff removed from senior roles' },
     ];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Drift');
@@ -45,16 +51,16 @@ describe('analyzeContent', () => {
   });
 
   it('returns Drift for a single capture keyword (requires corroboration for Capture)', () => {
-    const items = [{ title: 'Schedule F executive order reinstated' }];
+    const items = [{ title: 'Mass termination of career staff announced' }];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Drift');
     expect(result.reason).toContain('needs corroboration');
-    expect(result.matches.some((m) => m.includes('schedule f'))).toBe(true);
+    expect(result.matches.some((m) => m.includes('mass termination'))).toBe(true);
   });
 
   it('returns Capture when 2+ capture keywords are found', () => {
     const items = [
-      { title: 'Schedule F executive order reinstated with mass termination of career staff' },
+      { title: 'Political loyalty test imposed with mass termination of career staff' },
     ];
     const result = analyzeContent(items, 'civilService');
     expect(result.status).toBe('Capture');

@@ -66,16 +66,19 @@ describe('scoreDocument', () => {
   });
 
   it('returns non-zero score for capture keyword', () => {
-    const score = scoreDocument({ title: 'Schedule F executive order reinstated' }, 'civilService');
+    const score = scoreDocument(
+      { title: 'Mass termination of career staff announced' },
+      'civilService',
+    );
     expect(score.finalScore).toBeGreaterThan(0);
     expect(score.captureCount).toBeGreaterThanOrEqual(1);
-    expect(score.matches.some((m) => m.keyword === 'schedule f')).toBe(true);
+    expect(score.matches.some((m) => m.keyword === 'mass termination')).toBe(true);
   });
 
   it('applies document class multiplier for executive orders', () => {
     const score = scoreDocument(
       {
-        title: 'Schedule F executive order reinstated',
+        title: 'Mass termination executive order signed',
         type: 'Presidential Document',
       },
       'civilService',
@@ -203,7 +206,7 @@ describe('logarithmic diminishing returns', () => {
     // This item has 2 capture keywords
     const score = scoreDocument(
       {
-        title: 'Schedule F executive order with mass termination of career staff',
+        title: 'Political loyalty test with mass termination of career staff',
       },
       'civilService',
     );
@@ -216,7 +219,7 @@ describe('logarithmic diminishing returns', () => {
   it('3 captures ≈ 8.0', () => {
     const score = scoreDocument(
       {
-        title: 'Schedule F mass termination political loyalty test for all career staff',
+        title: 'Systematic purge mass termination political loyalty test for all career staff',
       },
       'civilService',
     );
@@ -230,7 +233,7 @@ describe('logarithmic diminishing returns', () => {
 describe('scoreDocumentBatch', () => {
   it('filters out error and warning items', () => {
     const items = [
-      { title: 'Schedule F order signed', isError: true },
+      { title: 'Mass termination order signed', isError: true },
       { title: 'Connection failed', isWarning: true },
       { title: 'Routine report on workforce' },
     ];
@@ -241,7 +244,7 @@ describe('scoreDocumentBatch', () => {
 
   it('scores all valid items', () => {
     const items = [
-      { title: 'Schedule F reinstated' },
+      { title: 'Mass termination announced' },
       { title: 'Routine report on workforce' },
       { title: 'Reclassification announced' },
     ];

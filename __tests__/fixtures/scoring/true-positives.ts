@@ -38,14 +38,14 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     expectedTier: 'capture',
   },
   {
-    name: 'Schedule F executive order',
+    name: 'Mass termination of career staff',
     item: {
-      title: 'Schedule F Executive Order Signed, Reclassifying Thousands of Federal Workers',
+      title: 'President Orders Mass Termination of Career Federal Workers',
       summary:
-        'The President signed an executive order reinstating Schedule F, which would convert career civil servants to at-will employees.',
+        'The administration ordered mass termination of thousands of career civil servants across multiple agencies.',
     },
     category: 'civilService',
-    expectedKeyword: 'schedule f',
+    expectedKeyword: 'mass termination',
     expectedTier: 'capture',
   },
   {

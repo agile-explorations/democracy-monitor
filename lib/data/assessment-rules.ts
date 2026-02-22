@@ -4,8 +4,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
   civilService: {
     keywords: {
       capture: [
-        'schedule f',
-        'excepted schedule f',
         'mass termination',
         'mass removal',
         'political appointee conversion',
@@ -17,13 +15,11 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'political loyalty test',
         'removed for political reasons',
         'political loyalty oath',
-        'mass reclassification to schedule f',
         'political commissar',
         'ideological screening',
       ],
       drift: [
         'reclassification',
-        'excepted service',
         'policy-influencing position',
         'career staff removed',
         'reduced career positions',
@@ -44,10 +40,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
       ],
       warning: [
         'workforce reduction',
-        'reorganization',
-        'senior executive service',
         'position eliminated',
-        'restructuring',
         'voluntary separation incentive',
         'buyout offer',
         'reduction in force',
@@ -64,7 +57,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'involuntary reassignment',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 50, drift: 50, capture: 100 },
   },
   fiscal: {
     keywords: {
@@ -83,9 +76,9 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'unconstitutional spending',
       ],
       drift: [
-        'deferral',
+        'unauthorized deferral',
         'apportionment withheld',
-        'rescission',
+        'presidential rescission proposal',
         'budget authority withheld',
         'refused to obligate',
         'selective implementation',
@@ -105,7 +98,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
       warning: [
         'funding delay',
         'obligation rate',
-        'apportionment',
         'spend plan',
         'sequestration risk',
         'debt ceiling debate',
@@ -121,7 +113,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'contract suspension',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 200, drift: 200, capture: 400 },
   },
   igs: {
     keywords: {
@@ -171,7 +163,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'ig access restricted',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 100, drift: 100, capture: 200 },
   },
   hatch: {
     keywords: {
@@ -199,7 +191,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'partisan communication',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 5, drift: 5, capture: 15 },
   },
   courts: {
     keywords: {
@@ -245,7 +237,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'preliminary injunction',
         'temporary restraining order',
         'court ordered',
-        'judicial review',
         'judicial nomination',
         'circuit court vacancy',
         'appointment pace',
@@ -256,7 +247,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'motion to stay pending appeal',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 30, drift: 30, capture: 75 },
   },
   military: {
     keywords: {
@@ -307,7 +298,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'title 10 activation',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 75, drift: 75, capture: 150 },
   },
   rulemaking: {
     keywords: {
@@ -327,14 +318,9 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'centralized regulatory control',
         'political clearance required',
       ],
-      warning: [
-        'significant increase in rules',
-        'review backlog',
-        'regulatory agenda',
-        'notice and comment',
-      ],
+      warning: ['significant increase in rules', 'review backlog'],
     },
-    volumeThreshold: { warning: 50, drift: 100, capture: 200 },
+    volumeThreshold: { warning: 200, drift: 200, capture: 400 },
   },
   executiveActions: {
     keywords: {
@@ -354,6 +340,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
       ],
       warning: ['concern raised', 'watchlist', 'monitoring situation', 'potential risk'],
     },
+    volumeThreshold: { warning: 150, drift: 150, capture: 300 },
   },
   infoAvailability: {
     keywords: {
@@ -390,7 +377,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'data migration',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 300, drift: 300, capture: 600 },
   },
   elections: {
     keywords: {
@@ -429,7 +416,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'preclearance',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 10, drift: 10, capture: 25 },
   },
   mediaFreedom: {
     keywords: {
@@ -465,6 +452,6 @@ export const ASSESSMENT_RULES: AssessmentRules = {
         'reporter pool reduced',
       ],
     },
-    volumeThreshold: { warning: 10, drift: 25, capture: 50 },
+    volumeThreshold: { warning: 100, drift: 100, capture: 200 },
   },
 };

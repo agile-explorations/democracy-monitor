@@ -131,21 +131,21 @@ describe('detectAnomalies', () => {
 describe('countKeywordsInItems', () => {
   it('counts matching keywords in item titles', () => {
     const items = [
-      { title: 'Schedule F reclassification announced' },
-      { title: 'More about Schedule F implementation' },
+      { title: 'Mass termination reclassification announced' },
+      { title: 'More about mass termination of staff' },
       { title: 'Workforce reduction in progress' },
     ];
     const counts = countKeywordsInItems(items, 'civilService');
 
-    expect(counts['schedule f']).toBe(2);
+    expect(counts['mass termination']).toBe(2);
     expect(counts['reclassification']).toBe(1);
     expect(counts['workforce reduction']).toBe(1);
   });
 
   it('is case insensitive', () => {
-    const items = [{ title: 'SCHEDULE F ANNOUNCED TODAY' }];
+    const items = [{ title: 'MASS TERMINATION ANNOUNCED TODAY' }];
     const counts = countKeywordsInItems(items, 'civilService');
-    expect(counts['schedule f']).toBe(1);
+    expect(counts['mass termination']).toBe(1);
   });
 
   it('only returns keywords with count > 0', () => {
@@ -163,13 +163,13 @@ describe('countKeywordsInItems', () => {
   it('counts across multiple severity tiers', () => {
     const items = [
       { title: 'Illegal impoundment by the executive branch' }, // capture keyword
-      { title: 'New rescission proposal under review' }, // drift keyword
+      { title: 'Budget authority withheld from agency' }, // drift keyword
       { title: 'Funding delay reported for the quarter' }, // warning keyword
     ];
     const counts = countKeywordsInItems(items, 'fiscal');
 
     expect(counts['illegal impoundment']).toBe(1);
-    expect(counts['rescission']).toBe(1);
+    expect(counts['budget authority withheld']).toBe(1);
     expect(counts['funding delay']).toBe(1);
   });
 

@@ -50,8 +50,8 @@ describe('getEffectiveKeywords', () => {
     });
 
     it('does not add overlay keywords to unaffected tiers', () => {
-      const result = getEffectiveKeywords('civilService', 'capture', '2025-06-01');
-      expect(result).toEqual(ASSESSMENT_RULES.civilService.keywords.capture);
+      const result = getEffectiveKeywords('civilService', 'drift', '2025-06-01');
+      expect(result).toEqual(ASSESSMENT_RULES.civilService.keywords.drift);
       expect(result).not.toContain('doge');
     });
   });
@@ -87,7 +87,7 @@ describe('getEffectiveKeywords', () => {
       // Temporarily we don't have overlays with applicableTo set,
       // but verify the logic handles it correctly by checking the filter
       const overlay = ADMIN_OVERLAYS[0];
-      expect(overlay.applicableTo).toBeUndefined(); // current trump_2 has no end date
+      expect(overlay.applicableTo).toBeUndefined(); // schedule_f_era has no end date
     });
   });
 });
