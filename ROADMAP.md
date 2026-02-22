@@ -4,11 +4,12 @@ This document describes the planned sprint sequence for completing the Democracy
 
 **Specification documents:**
 
-- `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15)
-- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5)
-- `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22)
+- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5.** Three-layer triangulated detection: structural anomaly (Layer 1), AI two-pass assessment (Layer 2), thematic drift (Layer 3). Convergence synthesis replaces keyword-severity scoring. Keywords become annotations only.
+- `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15). Partially superseded by architecture proposal — source health (Sprint 17) and cycle-aware baselines (Sprint 15.1) remain; feedback learning and novel threat detection restructured under Layers 2 and 3.
+- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). Dashboard visualization restructured around three-layer display in Sprint R4.
+- `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22). Sprints 20-21 code work completed; Sprint 22 rhetoric cross-feed absorbed into Sprint R1.
 
-**Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
+**Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. Sprints 13-21 built keyword tuning pipeline, 4 baselines (Biden 2021/2022, Trump 2017/2018), cycle-aware adjustments, UI rebuild (landing page, category detail, week detail), source health monitoring, and signal gap remediation. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
 
 ---
 
@@ -414,228 +415,191 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Verify `assessment-rules.ts` remains `string[]` per tier (no structural changes)
 - Cross-baseline validation: regenerated baselines produce comparable or lower alert counts
 
-**Actual:** Code work (WI1–WI6) delivered as planned. 56 keywords added across 5 categories, admin overlay with date-filtered merge, 4 new FR signals, 4 suppression rules, pipeline integration. 6 files changed (4 modified, 2 new), 17 new tests (1044 total). Run work (WI7–11: baseline regeneration, validation, export) pending.
+**Actual:** Code work (WI1–WI6) delivered as planned. 56 keywords added across 5 categories, admin overlay with date-filtered merge, 4 new FR signals, 4 suppression rules, pipeline integration. 6 files changed (4 modified, 2 new), 17 new tests (1044 total). ~~Run work (WI7–11: baseline regeneration, validation, export) pending.~~ **Superseded by architecture redesign** — Sprint 21 run work (keyword-based baseline regeneration) is no longer needed. Under the new three-layer architecture, keywords are annotations only and don't affect detection or baselines. Baselines are regenerated differently in Sprints R2 (structural distributions + embeddings) and R3 (AI flag rates). The Sprint 21 code work (keywords, admin overlay, `getEffectiveKeywords()`) remains valuable as annotation metadata.
 
 ---
 
-### Sprint 22: Signal Gap Remediation — Rhetoric Cross-Feed
+## Architecture Redesign: Sprints R1–R5
 
-**Goal:** Route rhetoric documents through category keyword assessment with evidence source weighting and news-only status ceilings. Events covered by news but absent from the Federal Register produce Warning-level signals with clear annotation.
+> **Decision (2026-02-22):** Replace keyword-driven detection with three-layer triangulated architecture. See `ARCHITECTURE_PROPOSAL.md` for full design. This supersedes the old Sprint 22–29 sequence and Sprint 21 run work. Old sprint plans archived below for reference.
 
-**Depends on:** Sprint 21 (keywords and baselines finalized with new methodology)
+### Sprint R1: Document Corpus Fixes
 
-**Reference:** `SIGNAL_GAP_REMEDIATION.md` Phase 19.
+> **Status: Done.** All 3 work items shipped. Fixed `getEffectiveKeywords()` bug in document-scorer and trend-anomaly-service, captured FR API action/subtype in metadata JSONB via `buildMetadata()`, built rhetoric cross-feed classifier reusing FR signal search terms. 13 files changed, 51 new tests (1095 total). Coverage thresholds lowered to match newly-instrumented files. See `DECISIONS.md` for full retrospective.
 
-**Code work (~300 lines new/modified):**
+**Goal:** Fix the document corpus so all three detection layers have correct, complete input data. These are source infrastructure fixes that any architecture needs.
 
-1. Add `EvidenceSource` type and `EVIDENCE_WEIGHTS` to type definitions (Phase 19.2)
-2. Implement news-only status ceiling in assessment logic (Phase 19.3)
-3. Create `lib/services/rhetoric-topic-classifier.ts` — signal-term-based classifier covering all 11 categories (Phase 19.4)
-4. Modify backfill/snapshot pipeline to route rhetoric documents through category keyword matching (Phase 19.4)
-5. Re-process Trump 2025 rhetoric documents through category assessment (Phase 19.5)
-6. Review cycle: verify news-coverage-driven signals are genuine, tune evidence weights if needed
-7. Update UI to render `newsOnly` warnings distinctly (Phase 19.3)
+**Depends on:** Sprint 21 code work (completed) + Sprint 20 (signal queries fixed)
 
-**Run work (~$1–2 AI cost):**
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Sprint R1
 
-- Re-process ~11.5K topic-matched rhetoric documents through keyword matching + AI review
+**Actual code work:**
+
+1. ~~**`document-scorer.ts` bug fix**~~ — **Done.** Fixed both `document-scorer.ts` and `trend-anomaly-service.ts` to use `getEffectiveKeywords()` instead of raw `ASSESSMENT_RULES`. Also fixed `countKeywordsInItems` which had the same bug.
+2. ~~**Capture FR API `action` and `subtype` fields**~~ — **Done.** Extracted `buildMetadata()` helper in `document-store.ts`. Added `action` to `ContentItem`, `FrApiDocument`, `FrDocument` types. Threaded through `toContentItem()` and `transformDoc()`.
+3. ~~**Rhetoric cross-feed**~~ — **Done.** `rhetoric-crossfeed.ts` parses FR signal URLs from `categories.ts` to extract per-category search terms. `SUPPLEMENTAL_TERMS` added for `executiveActions` (type-based signals). Module-level cache. All 11 categories reachable.
+
+---
+
+### Sprint R2: Layer 1 (Structural Anomaly) + Layer 3 (Thematic Drift)
+
+**Goal:** Build the two deterministic/quasi-deterministic detection layers. Start with layers that don't require AI (except for cluster labeling), allowing validation of structural and thematic detection before adding AI in R3.
+
+**Depends on:** Sprint R1 (correct document corpus with `action` field and rhetoric cross-feed)
+
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Layer 1, §Layer 3
+
+**Estimated scope:** ~250–370 new/modified lines of code. Layer 3 is adaptation of existing semantic drift and clustering services, not greenfield.
+
+**Code work:**
+
+1. **Functional classifier** — Deterministic tiered approach: `source_type` (Tier 1, ~63%) → title prefix heuristics (Tier 2, ~17%) → `action` field (Tier 3, ~20% when available). Priority-ordered `ClassificationRule[]` pattern. Pure function, zero dependencies, trivially testable. (~80–120 LOC)
+2. **Structural anomaly scoring** — Pure functions computing deviation scores per dimension from baseline metadata distributions. Ships with 5 dimensions: volume, type composition, functional distribution, agency activity, publication tempo. Source convergence activates when rhetoric cross-feed is complete — if still in progress, composite score redistributes weight across the other 5 dimensions. (~50–70 LOC)
+3. **Baseline structural distributions** — Compute from existing 4 baselines. SQL queries against existing metadata: volume mean/stddev, type composition distribution, functional distribution, agency activity patterns. (~40–60 LOC)
+4. **Long-horizon drift** — Fixed-baseline comparison + cumulative deviation (trailing 12-week window). Stored in `structural_detail` JSONB column.
+5. **FR document embedding backfill** — Extend `embedUnprocessedDocuments()` to cover FR documents (currently only rhetoric docs embedded). One-time batch: ~75K docs × text-embedding-3-small = ~$1.50, ~10–15 min.
+6. **Adapt semantic drift service** — Switch `semantic-drift-service.ts` from cross-administration baseline comparison to intra-administration rolling window (4–8 weeks). Core centroid computation and cosine similarity functions already exist.
+7. **Novel document detection** — Documents far from all established cluster centroids. Rolling variance tracking.
+8. **Initial cluster labeling** — Run existing `semantic-clustering-service.ts` k-means + AI labeling on baseline embeddings. Monthly cadence, not weekly. (~$2–5)
+9. **Convergence synthesis (partial)** — Status determination combining Layer 1 + Layer 3 only. Layer 2 added in R3. (~40–60 LOC)
+10. **Schema extension** — Add nullable columns to `weekly_aggregates`: `structural_score`, `structural_detail` (jsonb), `thematic_score`, `thematic_detail` (jsonb), `convergence_score`, `convergence_detail` (jsonb). Preserves existing data.
+11. **Threshold calibration** — Run against all 4 baselines. Set thresholds so baselines produce >95% Stable, never Confirmed Concern.
+
+**Run work (~$4–7 total):**
+
+- Compute baseline structural distributions (SQL, free)
+- Embed FR documents (~$1.50, ~15 min)
+- Run clustering + AI labels (~$2–5, ~30 min)
+- Run against Trump 2025 data and compare to current keyword-based results
+
+**Validation:**
+
+- Confirm Layer 1 detects spike findings: Presidential Document surge in civilService (3.5% → 10.4%), Excepted Service notice disappearance (18 → 0), Proposed Rule decline in fiscal (11.6% → 8.5%)
+- Layer 3 rolling window produces meaningful centroid distances for Trump 2025 data
 
 **Tests:**
 
-- Pure function tests: evidence weight application (0.3× for news, 1.0× for FR)
-- Unit tests: news-only ceiling enforcement (cannot produce Drift or Capture)
-- Unit tests: `classifyRhetoricToCategories()` routes to correct categories, all 11 reachable
-- Integration test: rhetoric document → topic classification → keyword match → weighted score → `document_scores` record
+- Unit: functional classifier covers all tiers, edge cases (SES `includes()`, "Submission for OMB Review" specificity)
+- Unit: structural anomaly scoring as pure functions (given distributions → deviation scores)
+- Unit: convergence synthesis status determination logic
+- Unit: long-horizon drift cumulative deviation computation
+- Integration: weekly aggregator stores structural/thematic/convergence scores
 
 ---
 
-### Sprint 23: Methodology + Supporting Pages (Summary Mode)
+### Sprint R3: Layer 2 (AI Two-Pass Assessment)
 
-**Goal:** Methodology page plus Infrastructure, Rhetoric, P2025, and Source Health pages — all in Summary mode. Built on the now-stable detection methodology from Sprints 20–22.
+**Goal:** Implement AI-based assessment that runs on every document, independently of keywords and structural signals. Establish baseline AI flag rates.
 
-**Depends on:** Sprint 22 (detection methodology finalized — methodology page content is stable)
+**Depends on:** Sprint R2 (Layers 1 and 3 operational — convergence synthesis needs all three layers)
 
-**Code work (~350 lines new):**
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Layer 2
 
-1. Methodology page (`pages/methodology.tsx`) — sidebar nav, scoring formula with worked example, interactive keyword explorer
-2. Infrastructure convergence page (`pages/infrastructure.tsx`) — convergence status, three theme panels, intensity bars
-3. Rhetoric-to-Action page (`pages/rhetoric.tsx`) — Summary table (policy area, what's said, what's done, lag weeks)
-4. P2025 page (`pages/p2025.tsx`) — headline percentage bar, by-area breakdown, recent matches
-5. Source health page (`pages/health.tsx`) — meta-assessment summary, historical availability chart, per-source detail table
-6. Infrastructure convergence banner on landing page (UI spec section 4.3)
-7. Document table on category detail page (reuses `DocumentTable` component from Sprint 19)
-8. Detection scope statement on methodology page (`SIGNAL_GAP_REMEDIATION.md` §Detection Scope Statement)
-9. Playwright e2e test setup + core user journey tests
+**Code work (~300–400 lines new):**
 
-**E2E test (Playwright):**
+1. **Pass 1 — Signal Finder** — Structured prompt, gpt-4o-mini/Haiku, runs on every document. Returns `{relevant, confidence, signals, erosionType}`. Temperature 0, no keyword references in prompt. (~100 LOC)
+2. **Pass 2 — Skeptical Analyst** — Structured prompt, Claude Sonnet/gpt-4o, runs only on Pass 1 flags + 2–5% audit sample. Different model than Pass 1 for epistemic independence. Returns `{assessment, confidence, reasoning, comparativeContext, citedPassages, erosionType, counterArguments}`. (~100 LOC)
+3. **Pass 1 False-Negative Audit** — Weekly 2–5% sample of unflagged docs through Pass 2. Track `pass1_false_negative_estimate` per week.
+4. **Baseline AI flag rates** — Run Pass 1 against all 4 baselines (~60K docs, ~$6–12). Record flag rate per category per week.
+5. **Pass 2 baseline assessments** — Run on flagged baseline docs (~3K–6K docs, ~$28–60). Establish baseline concern rate.
+6. **Update convergence synthesis** — Add Layer 2 signals (flag rate z-score, concern rate) to status determination.
+7. **AI reproducibility strategy** — Pin model versions, record in assessments, structured output enforcement.
+8. **Full three-layer validation** — Run complete system against Trump 2025 data.
 
-- Playwright config, dev server startup, DB seed in `globalSetup`
-- Landing page → click category card → category detail loads with trend chart
-- Category detail → toggle reading level → AI reviewer notes expand
-- Category detail → back to overview → landing page
-- Navigate to each supporting page from nav — all render with correct data
-- Dark mode toggle persists across navigation
-- Visual regression screenshots for landing + category detail (light + dark)
+**Implementation note:** Pass 2 is greenfield code, NOT an adaptation of existing AI Skeptic. The current AI Skeptic was designed to "confirm or lower" keyword assessments. Pass 2 independently assesses documents that Pass 1 flagged, with no reference to keyword results. The existing `enhancedAssessment()` function, prompts, and output schema do not carry over.
 
----
+**Run work (~$47–97 total for baseline regeneration):**
 
-### Sprint 24: Admin Auth + Review Queue
+- Pass 1 on 4 baselines (~$6–12)
+- Pass 2 on flagged baseline docs (~$28–60)
+- Full system on Trump 2025 (~$9–18)
 
-**Goal:** Admin authentication and human review queue with feedback fields.
+**Validation:**
 
-**Depends on:** V3 Addendum Sprint D (Feedback Store)
+- Does the system detect DOGE, USAID closure, IG firings, court order defiance?
+- Compare three-layer results vs. current keyword-based results — document what new system catches that old missed, and vice versa
 
-**Code work (~300 lines new):**
+**Tests:**
 
-1. Admin auth: login page (`pages/admin/login.tsx`), `POST /api/admin/auth`, admin middleware, cookie management (UI spec section 10A.1)
-2. `feedback` Drizzle schema + migration (V3 Addendum Sprint D)
-3. `feedback-store.ts` — `recordFeedback()`, `getUnprocessedFeedback()`, `markProcessed()`
-4. Review queue page (`pages/admin/reviews.tsx`) — pending reviews list, decision form with feedback fields
-5. Extended `resolveReview()` accepting feedback (false positive keywords, missing keywords, tier change suggestions)
-6. Admin nav bar with pending count badges (UI spec section 10B.2)
-7. Add auth middleware to existing `pages/api/reviews.ts`
-
-**E2E test:**
-
-- `/admin/reviews` without token — redirects to `/admin/login`
-- Login with correct `ADMIN_SECRET_TOKEN` — review queue renders
-- Submit review decision with feedback fields — `feedback` record created in DB
-- Pending count badge updates after resolution
-- Logout — cookie cleared, redirect to login
+- Unit: Pass 1 structured output parsing
+- Unit: Pass 2 structured output parsing
+- Unit: flag rate z-score computation
+- Unit: false-negative audit sampling logic
+- Integration: full convergence synthesis with all 3 layers
 
 ---
 
-### Sprint 25: Detailed Mode + Chart Toggles
+### Sprint R4: Narrative Generation + Dashboard Redesign
 
-**Goal:** Detailed mode features across all existing pages.
+**Goal:** AI-generated weekly narratives for elevated categories + dashboard visualization for three-layer architecture. Keywords demoted to annotation role.
 
-**Code work (~300 lines new):**
+**Depends on:** Sprint R3 (all three layers operational + validated)
 
-1. Chart toggle tabs on category detail (decay-weighted, running avg, running sum, high-water, severity mix)
-2. AI reviewer notes display (UI spec section 5.4) with ceiling constraint label — includes per-week AI assessment on week detail page (requires storing AI results per-week in snapshot pipeline)
-3. Suppression audit panel — "What was suppressed" column with rule explanations
-4. Baseline overlay selector — multi-select pills for up to 2 baselines (UI spec section 13.2)
-5. Cycle-adjusted ratio display on category cards in Detailed mode — raw and adjusted comparisons shown side by side (V3 Addendum §15.6)
-6. Semantic drift placeholder (disabled with tooltip "Requires baseline centroids — coming in Sprint 27")
-7. Document class breakdown, full keyword lists, technical details in Detailed mode
-8. Detailed mode content on supporting pages (Rhetoric, P2025, Infrastructure)
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §AI Narrative Generation, §Dashboard Visualization, §Role of Keywords
 
-**E2E test:**
+**Code work (~400–500 lines new/modified):**
 
-- Switch to Detailed mode — chart toggles appear, suppression panel visible, technical details shown
-- Select second baseline — overlay band renders with different color
-- AI reviewer notes show ceiling constraint label
-- Switch back to Summary — all Detailed content hidden
-- Disabled chart toggles show informative tooltip
+1. **Narrative generation** — Opus 4.6 Extended Thinking for Elevated+ categories. Expert version (~800–1500 words) + public version (~300–500 words). Input: all 3 layer outputs + driving documents + labeled cluster shifts.
+2. **Dashboard redesign — category card** — Status pill (Stable/Elevated/Divergent/Confirmed Concern/No Data), convergence indicator (3 dots for layer status), sparkline (composite structural deviation), brief summary.
+3. **Category detail — three-panel visualization**:
+   - Panel 1: Structural signature (volume + type composition + functional distribution + source convergence)
+   - Panel 2: AI assessment distribution (stacked bar per week: routine/novel/concerning/clearly concerning)
+   - Panel 3: Thematic drift (rolling centroid distance + cluster annotations)
+4. **Convergence matrix** — 3-column indicator showing Layer 1/2/3 status + pattern label.
+5. **Keywords → annotation role** — Remove keywords from status determination. Keep for UI display (highlighted terms in evidence panel). Update EvidencePanel to show Pass 1/Pass 2 results alongside keyword annotations.
+6. **Methodology page** — Updated for three-layer architecture. Detection scope statement.
+7. **Reading level toggle** — Expert vs. public narrative versions.
+8. **Playwright e2e tests** — Core user journeys through new dashboard.
 
----
+**Run work (~$1–5/week ongoing for narrative generation):**
 
-### Sprint 26: Suppression Learning + Proposals Page
-
-**Goal:** Feedback learning pipeline and admin proposal review interface.
-
-**Depends on:** Sprint 24 (feedback store must exist)
-
-**Code work (~300 lines new):**
-
-1. `generateSuppressionProposals()` — learn from accumulated feedback records (V3 Addendum Sprint E)
-2. `suppression_proposals` Drizzle schema + migration (with `proposal_source` and `source_submission_id`)
-3. Proposal validation against true-positive test fixtures (auto-block proposals that would suppress genuine detections)
-4. `generateKeywordHealthReport()` (V3 Addendum Sprint E)
-5. Proposal review API: `GET/POST /api/admin/proposals`
-6. Keyword health API: `GET /api/methodology/keyword-health`
-7. Admin proposals page (`pages/admin/proposals.tsx`) — source filtering, proposal cards with approve/reject (UI spec section 10B)
-8. Keyword health section on methodology page (Detailed mode, UI spec section 6.3)
-
-**E2E test:**
-
-- Submit review with false positive feedback — run proposal generation — proposal appears in `/admin/proposals`
-- Approve proposal — suppression rule created + regression test fixture appended
-- Proposal that would suppress a true positive — approve button disabled with warning
-- Keyword health report shows noisy/dormant keywords with recommendations
+- Opus 4.6 Extended on ~1–3 elevated categories per week
 
 ---
 
-### Sprint 27: Novel Threats + Expert Submissions
+### Sprint R5: Immigration Category + Cross-Architecture Validation
 
-**Goal:** Semantic novelty detection and expert keyword contribution system.
+**Goal:** Add immigration category using the new architecture. Validate by running both old and new systems in parallel.
 
-**Depends on:** Sprint 26 (proposal pipeline must exist for novelty/expert proposals to flow through)
+**Depends on:** Sprint R4 (dashboard shows three-layer results)
 
-**Code work (~300 lines new):**
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Sprint R5
 
-1. Baseline centroid computation + storage in `category_baselines` table (V3 Addendum Sprint F)
-2. `detectNovelDocuments()` + `detectNovelDocumentsAllCategories()` with AI triage prompt
-3. `MIN_NOVELTY_MULTIPLE` and `NOVELTY_DRIFT_TRIGGER` constants in `scoring-config.ts`
-4. Expert submission service + `expert_submissions` Drizzle schema (V3 Addendum Sprint H)
-5. Backtest engine for submitted keywords (best-effort)
-6. Expert submission form (`pages/admin/submissions.tsx`, UI spec section 10C)
-7. Rhetoric-to-keyword pipeline — `rhetoric-keyword-pipeline.ts` (V3 Addendum Sprint G section 13.6)
-8. Enable semantic drift visualization on category detail (was placeholder in Sprint 25)
+**Code work (~200 lines new):**
 
-**E2E test:**
-
-- Novel document detection flags semantically unusual documents invisible to keywords
-- Submit expert keyword — backtest results shown — proposal created with `proposalSource: 'expert_submission'`
-- Rhetoric gap detected — keyword proposal generated with `proposalSource: 'rhetoric_pipeline'`
-- Semantic drift chart renders on category detail in Detailed mode
+1. **Immigration category** — Define signal queries for `categories.ts`, compute baselines across all 4 baseline periods, calibrate Layer 1 thresholds.
+2. **Cross-architecture validation** — Run both old (keyword) and new (three-layer) systems in parallel for 4 weeks.
+3. **Publish comparison report** — Document detection differences between architectures.
+4. **Decommission keyword-based status determination** — After validation period confirms three-layer system catches everything keywords caught plus more.
+5. **Methodology documentation** — Updated public methodology docs for three-layer architecture.
 
 ---
 
-### Sprint 28: Onboarding + Responsive Polish + Performance
+## Post-R5: Remaining Features
 
-**Goal:** First-time onboarding, mobile layouts, performance optimizations.
+These items from the original Sprint 23–29 plan survive but are restructured for the three-layer architecture. They can be scheduled after the architecture is validated and operational.
 
-**Code/Run work (~250 lines):**
+### Admin Auth + Review Queue (was Sprint 24)
 
-1. First-time visitor onboarding overlay (UI spec section 4.5)
-2. Card ordering toggle — "By concern level" / "By category group" (UI spec section 4.6)
-3. Mobile layout refinements per feature visibility table (UI spec section 10.2)
-4. Performance: lazy loading for charts, virtual scrolling for large document tables
-5. Data integrity banner condensed mode for non-landing pages (UI spec section 4.7)
+- Admin auth, feedback store, review queue page, feedback fields
+- Review queue now reviews Pass 2 assessments instead of keyword-based alerts
+- See original Sprint 24 plan and V3 Addendum Sprint D
 
-**E2E test:**
+### Suppression Learning + Proposals (was Sprint 26)
 
-- Onboarding overlay shows on first visit, dismissed, never shows again
-- Card ordering toggle reorders grid correctly
-- Mobile viewport (< 768px) renders 1-column layout with collapsed sections
+- Feedback learning pipeline using Pass 2 assessment patterns
+- Admin proposal review for prompt adjustments and threshold changes
+- See original Sprint 26 plan and V3 Addendum Sprint E
 
----
+### Onboarding + Responsive Polish + Performance (was Sprint 28)
 
-### Sprint 29: Alternative Sources
+- First-time visitor onboarding, mobile layouts, performance optimization
+- See original Sprint 28 plan and UI spec section 4.5, 4.6, 10.2
 
-**Goal:** Research and implement alternative data sources for resilience when government sources degrade.
+### Alternative Sources (was Sprint 29)
 
-**Code work (~300 lines new):**
-
-1. Research spike: CourtListener API authentication, rate limits, data coverage (V3 Addendum Sprint I)
-2. Research spike: State AG RSS feed availability and quality
-3. Source priority framework — `lib/data/source-tiers.ts` (V3 Addendum Sprint I)
-4. Court filing integration — `court-filing-service.ts` + parser (V3 Addendum Sprint J)
-5. FOIA litigation tracking via filtered CourtListener query (V3 Addendum Sprint J)
-6. Add alternative source signals to relevant categories in `categories.ts`
-7. Rhetoric-to-keyword gaps section on `/rhetoric` page (Detailed mode, UI spec section 8.4)
-
-**E2E test:**
-
-- Alternative sources produce data that flows through scoring pipeline
-- Source health tracker monitors alternative sources alongside primary sources
-- Category assessments incorporate Tier 2+ source data when available
-- Rhetoric page shows keyword gap cards in Detailed mode
-
----
-
-### Future: Immigration Category (R4)
-
-After the remediation pipeline is complete (Sprint 22), a new immigration category can be added following established patterns. This is deferred because the detection pipeline must be correct before adding new categories.
-
-1. Define immigration signal queries for `categories.ts`
-2. Build keyword dictionary for `assessment-rules.ts` (capture, drift, warning tiers)
-3. Calibrate against all four regenerated baselines
-4. Backfill Trump 2025 immigration data
-5. Review and tune
-
-Can slot in after Sprint 22 when scheduling allows.
+- CourtListener, State AG feeds, source priority framework
+- See original Sprint 29 plan and V3 Addendum Sprints I, J
 
 ---
 
@@ -649,34 +613,73 @@ Can slot in after Sprint 22 when scheduling allows.
 
 ## Parallel Track Opportunities
 
-Not everything is strictly sequential. Where human review or API runs create wait time:
-
-| While waiting for...                            | Can parallelize...                                                                    |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Sprint 13-14 keyword tuning + review iterations | Sprint 16 UI design system work (CSS vars, components with placeholder data)          |
-| Sprint 15 baseline API runs + validation        | Sprint 15.1 cycle adjustment computation (as categories complete, not all-or-nothing) |
-| Sprint 15 baseline API runs + validation        | Sprint 17 source health backend (starts fresh, no historical data dependency)         |
-| Sprint 20 signal query audit + testing          | Sprint 20 UI display fix (InsufficientData badge) — no dependency between them        |
-| Sprint 21 baseline regeneration runs            | Sprint 22 rhetoric-topic-classifier code (pure functions, no data dependency)         |
-| Sprint 21 baseline regeneration runs            | Sprint 23 methodology page layout + static content                                    |
-| Sprint 28 onboarding + responsive work          | Sprint 27 novel threat / expert submission code work                                  |
+| While waiting for...                              | Can parallelize...                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------------------- |
+| Sprint R1 rhetoric cross-feed implementation      | Sprint R2 functional classifier code (pure functions, no data dependency) |
+| Sprint R2 embedding backfill (~15 min)            | Sprint R2 structural anomaly scoring code (pure functions)                |
+| Sprint R2 baseline structural distributions (SQL) | Sprint R2 Layer 3 semantic drift adaptation                               |
+| Sprint R3 baseline AI runs (~$47–97, ~8–11 hours) | Sprint R4 dashboard component scaffolding                                 |
 
 ---
 
-## Estimated Seed Data Sizes
+## Archived Sprint Plans (Sprints 22–29)
 
-| Table                    | Included in fixtures? | Size Estimate          | Notes                                                     |
-| ------------------------ | --------------------- | ---------------------- | --------------------------------------------------------- |
-| `documents`              | Yes (metadata only)   | ~2.5 MB                | Title, URL, category, dates. Omit content and embeddings. |
-| `document_scores`        | Yes                   | ~1.5 MB                | Per-document keyword scores                               |
-| `weekly_aggregates`      | Yes                   | ~120 KB                | Primary data source for charts                            |
-| `baselines`              | Yes                   | ~7 KB                  | Mean, stddev, doc count per category per baseline         |
-| `assessments`            | Yes                   | ~300 KB                | AI Skeptic + keyword snapshots                            |
-| `intent_weekly`          | Yes                   | ~55 KB                 | Rhetoric/action scores per policy area per week           |
-| `p2025_proposals`        | Already exists        | In `seed-proposals.ts` | 14 proposals                                              |
-| `validation_data_points` | Already exists        | In `seed-data.ts`      | 150 external index data points                            |
-| Embeddings               | No                    | Too large (~30 MB)     | Computed on-demand post-seed                              |
+The following sprint plans were replaced by the architecture redesign (Sprints R1–R5). Preserved for reference.
 
-Total fixture size: ~4-5 MB (reasonable for git).
+<details>
+<summary>Click to expand archived plans</summary>
 
-**Note:** Baseline fixtures will be regenerated in Sprint 21. Post-remediation fixtures will be larger due to expanded signal queries pulling more documents. Pre-remediation fixtures are archived for methodology comparison.
+### Sprint 22: Signal Gap Remediation — Rhetoric Cross-Feed (absorbed into Sprint R1)
+
+**Goal:** Route rhetoric documents through category keyword assessment with evidence source weighting and news-only status ceilings.
+
+**Reference:** `SIGNAL_GAP_REMEDIATION.md` Phase 19.
+
+1. Add `EvidenceSource` type and `EVIDENCE_WEIGHTS` to type definitions
+2. Implement news-only status ceiling in assessment logic
+3. Create `lib/services/rhetoric-topic-classifier.ts`
+4. Modify backfill/snapshot pipeline to route rhetoric documents through category keyword matching
+5. Re-process Trump 2025 rhetoric documents through category assessment
+6. Review cycle: verify news-coverage-driven signals are genuine
+7. Update UI to render `newsOnly` warnings distinctly
+
+### Sprints 23–29 (restructured into R4 + Post-R5)
+
+Original plans for: methodology pages, admin auth, detailed mode, suppression learning, novel threats, onboarding, alternative sources. The detection methodology changed fundamentally — keyword-severity scoring replaced by three-layer convergence. Dashboard visualization, admin review, and supporting pages all depend on the new architecture's output format. Core features preserved in Post-R5 section above.
+
+</details>
+
+---
+
+## Cost Summary
+
+### One-Time Setup (Sprints R1–R3)
+
+| Task                                         | Cost        | Duration   |
+| -------------------------------------------- | ----------- | ---------- |
+| Sprint R1: Re-fetch with corrected queries   | $0          | ~2–4 hours |
+| Sprint R2: Embed FR documents (~75K)         | ~$1.50      | ~15 min    |
+| Sprint R2: Cluster labeling                  | ~$2–5       | ~30 min    |
+| Sprint R3: Pass 1 on 4 baselines (~60K docs) | ~$6–12      | ~2–3 hours |
+| Sprint R3: Pass 2 on flagged baseline docs   | ~$28–60     | ~3–5 hours |
+| Sprint R3: Full system on Trump 2025         | ~$9–18      | ~2–3 hours |
+| **Total setup**                              | **~$47–97** |            |
+
+### Ongoing Costs
+
+| Component            | Weekly        | Notes                          |
+| -------------------- | ------------- | ------------------------------ |
+| Layer 1 (Structural) | ~$0           | CPU computation                |
+| Layer 2 Pass 1       | ~$0.10–0.30   | mini/Haiku on all docs         |
+| Layer 2 Pass 2       | ~$0.50–3.00   | Sonnet/4o on flagged docs      |
+| Layer 2 Audit        | ~$0.50–2.00   | 2–5% unflagged sample          |
+| Layer 3 (Thematic)   | ~$0.02        | Embeddings + CPU               |
+| Narrative Generation | ~$1–5         | Opus 4.6 Extended on Elevated+ |
+| **Weekly total**     | **~$2.50–10** |                                |
+
+### What Does NOT Require Re-Running
+
+- Keyword additions/removals: $0 (annotations only)
+- Convergence/structural threshold adjustments: $0 (change constants)
+- Narrative prompt changes: $0 (future-only)
+- Dashboard/UI changes: $0 (display-only)
