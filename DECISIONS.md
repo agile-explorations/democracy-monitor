@@ -338,3 +338,96 @@ Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US
 - **Coverage thresholds can legitimately drop when extracting pure functions from mixed files**: Exporting a pure helper from a file that's mostly DB/network code causes v8 to instrument the entire file. The correct response is lowering the threshold, not writing low-value tests for the DB functions just to hit a number.
 - **FR signal URL parsing requires stripping all quotes, not just wrapping quotes**: Signal URLs contain patterns like `"inspector general" (removal | vacancy)`. After splitting on `|`, terms like `"inspector general" removal` have embedded quotes that `replace(/^"(.*)"$/, '$1')` won't strip because the quotes don't wrap the entire string. `replace(/"/g, '')` handles all cases.
 - **`countKeywordsInItems` had the same `ASSESSMENT_RULES` bug as `document-scorer`**: Any code that builds keyword lists from `ASSESSMENT_RULES` directly bypasses admin overlay. Grep for `ASSESSMENT_RULES[` when adding overlay-dependent features.
+
+---
+
+## Sprint R2: Layer 1 (Structural Anomaly) + Layer 3 (Thematic Drift)
+
+**Planned:** 10 work items: schema extension + types, functional classifier, structural anomaly scoring, baseline distributions I/O, semantic drift rolling window adaptation, convergence synthesis (L1+L3), pipeline integration, 4 test files. Run work (embedding backfill, baseline distributions, threshold calibration) deferred to separate session.
+
+**Actual:** All code work items delivered. 19 files changed (11 modified, 8 new), 79 new tests across 4 files (1174 total). Run work items (#8-#10 from plan) deferred — requires API keys and ~15 min of embedding compute.
+
+**Key decisions:**
+
+- **Jensen-Shannon divergence for distribution comparison**: Used JSD (not chi-squared or KL divergence) for type/functional/agency distribution dimensions. JSD is symmetric, bounded, and handles zero probabilities gracefully — KL divergence is undefined when baseline has zero in a bucket the current week has non-zero.
+- **`JSD_BASELINE_STDDEV = 0.05` as initial calibration point**: Normal week-to-week JSD variation is small (~0.01–0.05). Initial stddev of 0.05 means JSD values >0.1 register as 2+ z-score. Will be refined during threshold calibration against baselines (run work item #10).
+- **Intra-admin rolling window (8 weeks) as primary thematic metric**: Cross-admin comparison (vs Biden 2022 centroid) is computed but stored as secondary context only — does not contribute to convergence status. This is per architecture proposal: different administrations have legitimately different policy priorities.
+- **Bootstrap-aware convergence**: During Layer 3's bootstrap period (first 8 weeks of rolling data), thematic drift alone cannot trigger Elevated status. Thematic can reinforce structural (Elevated → Divergent) but cannot independently escalate. This prevents noisy early-admin thematic signals from causing false positives.
+- **Source convergence dimension deferred**: The 5th structural dimension (source convergence — ratio of FR/PRESDOCU to GDELT to WH per category) requires per-category rhetoric document counts. The rhetoric cross-feed (Sprint R1) routes docs to categories but doesn't yet aggregate per-category rhetoric volume in a queryable way. Added as 6th dimension in future sprint. Current composite score redistributes weight across 5 available dimensions.
+- **Dynamic imports in `computeStructuralLayer()`**: Used `await import()` for structural-anomaly-service and baseline-distributions in snapshot.ts to avoid circular dependency issues and keep the import graph clean for the existing snapshot pipeline.
+- **`buildAggregateValues()` and `UPSERT_SET` extracted from `storeWeeklyAggregate()`**: Adding 6 new columns pushed the upsert function over the 50-line ESLint limit. Extracted the values construction and upsert set to module-level helpers.
+- **Shared `getMonday()` and `addDays()` in date-utils.ts**: Code review caught duplicate implementations in `baseline-distributions.ts` and `weekly-aggregator.ts`. Consolidated to `lib/utils/date-utils.ts` using `toDateString()` for consistent formatting.
+- **`ClusterShift` type retained as forward declaration**: Unused in Sprint R2 code but needed for Sprint R3 cluster labeling integration. Keeping it avoids re-touching the type file next sprint.
+
+**What remains (run work):**
+
+- **#8: FR embedding backfill** — Run `embedUnprocessedDocuments()` for ~75K FR docs. Cost ~$1.50, ~15 min. Requires `OPENAI_API_KEY`.
+- **#9: Baseline structural distributions** — Compute and store distributions for all 4 baselines × 11 categories. SQL queries (free) + cluster labeling (~$2-5).
+- **#10: Threshold calibration** — Run structural + thematic scoring against all 4 baselines. Adjust thresholds so baselines produce >95% Stable, never Divergent. Validate known spike findings in Trump 2025 data.
+
+**Spec deviations:**
+
+- **Source convergence dimension omitted from initial release** (ARCHITECTURE_PROPOSAL.md §Layer 1): The proposal lists 6 structural dimensions; Sprint R2 ships 5. Source convergence requires per-category rhetoric aggregation that doesn't yet exist. Weight redistributed across available dimensions. No functional impact — source convergence adds fidelity but isn't required for basic structural anomaly detection.
+- **Cluster shift tracking not connected to weekly scoring**: `ClusterShift` type defined but cluster analysis runs monthly (not weekly). Weekly snapshot computes centroid distance and novel doc rate; cluster-level analysis is for deeper investigation in Sprint R3/R4.
+
+**Lessons learned:**
+
+- **JSD on identical distributions returns exactly 0**: Unlike z-scores where matching the mean still varies due to other dimension noise, JSD is a perfect distance measure. Test assertions for "baseline-matching week" must account for dimensions that don't use JSD (like publication tempo variance).
+- **Named constants prevent silent tuning drift**: Code review caught three hardcoded JSD parameters (0, 0.05) and a drift trend threshold (0.3). Extracting to `scoring-config.ts` makes all tunable parameters visible in one place and forces annotation when they change.
+
+---
+
+## Sprint R3: Layer 2 (AI Two-Pass Assessment) + Source Convergence + Reproducibility
+
+**Planned:** 12 work items: Zod schemas + types, prompt templates, schema migration, assessment service (pure functions), storage service, orchestrator, convergence synthesis update (3-layer + ConfirmedConcern), source convergence dimension (deferred from R2), pipeline integration, reproducibility audit script, backfill CLI, 4 test files.
+
+**Actual:** All 12 work items delivered. 27 files changed (14 modified, 13 new), 47 new tests across 4 files (1221 total). Completes the three-layer triangulated detection system. Run work (baseline AI runs, ~$47-97) deferred to separate session.
+
+**Key decisions:**
+
+- **Different providers for epistemic independence**: Pass 1 uses OpenAI gpt-4o-mini (cheap, high recall), Pass 2 uses Anthropic Claude Sonnet 4.5 (reasoning model, high precision). Different providers ensure the two passes don't share correlated failure modes. Configurable via `Layer2Options`.
+- **Pure function design for `computeAIAssessmentSummary()`**: The core aggregation function takes Pass 1/Pass 2 results as arrays and returns the full `AIAssessmentSummary`. No I/O, no DB access — fully testable with synthetic data. All z-score, concern rate, and false-negative rate computations are deterministic.
+- **Deterministic audit sampling**: `selectAuditSample()` sorts URLs alphabetically before taking the first N. This ensures reproducible audit samples — running the same sample rate on the same URL list always selects the same documents.
+- **`ConfirmedConcern` requires 2+ elevated layers AND high AI concern rate**: This is the highest-severity status and requires both structural/thematic corroboration and independent AI confirmation. AI concern rate threshold is 20% (`AI_CONCERN_THRESHOLD = 0.2`). A single elevated layer (even AI) maxes out at `Elevated`.
+- **Bootstrap rule for AI layer**: Unlike thematic drift which has a bootstrap period (first 8 weeks), the AI layer is not affected by bootstrap. AI assessment is meaningful from the first document — it doesn't need historical context to function. However, thematic bootstrap can reinforce AI elevation (AI + bootstrapped thematic → `Elevated`, not `Divergent`).
+- **Source convergence uses log2-smoothed ratio**: `log2((gov+1)/(rhetoric+1))` where +1 prevents division by zero. Positive values mean more government docs, negative means more rhetoric. This dimension captures imbalances in source coverage per category.
+- **`ZERO_STDDEV_SCALE = 10` for z-score fallback**: When baseline standard deviation is zero (all weeks identical), the z-score formula `|value - mean| * 10` substitutes a steep scaling factor. Extracted to named constant after code review.
+- **`require('@next/env')` → `import { loadEnvConfig }`**: The `require()` call at file bottom caused ESLint `import/order` rule to detect a second import group, triggering "no empty line between import groups" warning. Converted to ES import at the top, which also makes the module usage explicit.
+
+**Spec deviations:**
+
+- **Layer 2 store service simplified**: Plan called for 6 functions in `layer2-store.ts`; delivered 5 (combined `storeAIDocumentAssessment` into `storePass1Assessment`/`storePass2Assessment` for clarity). `getBaselineAIFlagRate` placeholder returns null — baseline flag rates require running Pass 1 on baselines (run work).
+- **Backfill CLI in `lib/cron/` not `scripts/`**: Placed alongside existing `backfill.ts` and `backfill-baseline.ts` for consistency. `scripts/` reserved for one-off utilities like reproducibility-check.
+
+**Lessons learned:**
+
+- **ESLint `import/order` treats `require()` as a second import group**: Even `require()` at the bottom of a file (well past the import block) triggers import ordering rules. Converting to `import` at the top resolves all related warnings. This affected `scripts/reproducibility-check.ts` where `const { loadEnvConfig } = require('@next/env')` was in the CLI entry block.
+- **Coverage thresholds sometimes need manual lowering**: `autoUpdate: true` in vitest.config.ts only raises thresholds, not lowers them. When new files contain untestable DB adapter code, branches may legitimately drop.
+- **OpenGrep `cron-needs-env-config` vs import-at-top pattern**: Scripts that import `loadEnvConfig` at the top but call it in the CLI entry block satisfy both ESLint and the env loading requirement, but OpenGrep's `cron-needs-env-config` rule still flags them because it looks for `loadEnvConfig` near `getDb()` calls. Accepted as informational — the rule is conservative.
+
+**What remains (run work):**
+
+- **Pass 1 on 4 baselines** (~60K docs, ~$6-12): Run gpt-4o-mini on all baseline documents to establish per-category baseline AI flag rates.
+- **Pass 2 on flagged baseline docs** (~3K-6K flagged docs, ~$28-60): Run Claude Sonnet on Pass 1 flags to establish baseline concern distribution.
+- **Full system on Trump 2025** (~$9-18): Run three-layer system end-to-end. Validate detection of DOGE, USAID closure, IG firings, court order defiance.
+- **Threshold calibration**: Adjust `AI_FLAG_RATE_THRESHOLD`, `AI_CONCERN_THRESHOLD`, and convergence synthesis rules based on baseline results.
+- **Database migration**: Run `pnpm db:migrate` to create `ai_document_assessments` table and add `aiScore`/`aiDetail` columns to `weekly_aggregates`.
+
+---
+
+## Sprint R3.1: Deployment Strategy + Data Management
+
+**Planned:** Fix render.yaml (db:migrate in build, stagger crons, add digest API key), create DEPLOYMENT.md (deployment guide + data strategy + disaster recovery), update CONTRIBUTING.md (3-tier data setup), update README.md (11 categories, three-layer architecture), add `ai_document_assessments` to seed export/import pipeline.
+
+**Actual:** Delivered as planned. All 5 work items shipped. 9 files changed (7 modified, 1 new, 2 test files updated). No code logic changes — infrastructure and documentation only.
+
+**Key decisions:**
+
+- **Three-tier data strategy**: Git fixtures (~93MB) for local dev, GitHub Release pg_dump (~500MB-1GB) for full dataset, Render PostgreSQL for production. Expensive AI assessment data (~$47-97 to reproduce) lives in GitHub Releases, not git.
+- **`ai_document_assessments` gitignored but in pipeline**: The fixture file is too large for git, but adding it to the export/import pipeline means `pnpm seed:export` produces a complete local backup. Import skips gracefully when the file is missing (most contributors won't have it).
+- **Build command includes db:migrate**: `pnpm install && pnpm db:migrate && pnpm build` ensures schema changes apply automatically on deploy. Previously required SSH to run migrations manually — a latent bug that would have bitten on first real deploy.
+- **Cron stagger**: `daily-digest` moved from 06:00 to 07:00 UTC so `daily-snapshot` (the data-producing cron) runs first. Digest now has fresh data to summarize.
+
+**Lessons learned:**
+
+- **Test mocks must track schema exports**: Adding `aiDocumentAssessments` to the export/import modules broke 2 test files because their `vi.mock('@/lib/db/schema')` didn't include the new export. Vitest's error message is clear ("No X export is defined on the mock") but easy to miss when the production code change is trivial.

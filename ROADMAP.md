@@ -489,7 +489,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint R3: Layer 2 (AI Two-Pass Assessment)
+### Sprint R3: Layer 2 (AI Two-Pass Assessment) + Source Convergence + Reproducibility
 
 **Goal:** Implement AI-based assessment that runs on every document, independently of keywords and structural signals. Establish baseline AI flag rates.
 
@@ -497,19 +497,27 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Reference:** `ARCHITECTURE_PROPOSAL.md` §Layer 2
 
-**Code work (~300–400 lines new):**
+**Actual:** Code work delivered. ~750 LOC production, ~450 LOC tests. 27 files changed (14 modified, 13 new), 47 new tests (1221 total). Ships Layer 2 (two-pass AI assessment with epistemic independence), source convergence (6th structural dimension), reproducibility audit script, backfill CLI, and ConfirmedConcern convergence status. Run work (baseline AI runs, ~$47-97) deferred to separate session. Key decisions in DECISIONS.md.
 
-1. **Pass 1 — Signal Finder** — Structured prompt, gpt-4o-mini/Haiku, runs on every document. Returns `{relevant, confidence, signals, erosionType}`. Temperature 0, no keyword references in prompt. (~100 LOC)
-2. **Pass 2 — Skeptical Analyst** — Structured prompt, Claude Sonnet/gpt-4o, runs only on Pass 1 flags + 2–5% audit sample. Different model than Pass 1 for epistemic independence. Returns `{assessment, confidence, reasoning, comparativeContext, citedPassages, erosionType, counterArguments}`. (~100 LOC)
-3. **Pass 1 False-Negative Audit** — Weekly 2–5% sample of unflagged docs through Pass 2. Track `pass1_false_negative_estimate` per week.
-4. **Baseline AI flag rates** — Run Pass 1 against all 4 baselines (~60K docs, ~$6–12). Record flag rate per category per week.
-5. **Pass 2 baseline assessments** — Run on flagged baseline docs (~3K–6K docs, ~$28–60). Establish baseline concern rate.
-6. **Update convergence synthesis** — Add Layer 2 signals (flag rate z-score, concern rate) to status determination.
-7. **Source convergence dimension (deferred from R2)** — 6th structural dimension: ratio of FR/PRESDOCU to GDELT to WH per category. Requires per-category rhetoric volume aggregation. Wire into `computeStructuralScore()` and update baseline distributions.
-8. **AI reproducibility strategy** — Pin model versions, record in assessments, structured output enforcement.
-9. **Full three-layer validation** — Run complete system against Trump 2025 data.
+**Code work:**
 
-**Implementation note:** Pass 2 is greenfield code, NOT an adaptation of existing AI Skeptic. The current AI Skeptic was designed to "confirm or lower" keyword assessments. Pass 2 independently assesses documents that Pass 1 flagged, with no reference to keyword results. The existing `enhancedAssessment()` function, prompts, and output schema do not carry over.
+1. ~~**Pass 1 — Signal Finder**~~ — **Done.** Zod schema + prompt + assessPass1() pure function. gpt-4o-mini default, temperature 0, structured JSON output. (~50 LOC)
+2. ~~**Pass 2 — Skeptical Analyst**~~ — **Done.** Zod schema + prompt + assessPass2(). Claude Sonnet 4.5 default. Different provider for epistemic independence. (~50 LOC)
+3. ~~**Pass 1 False-Negative Audit**~~ — **Done.** selectAuditSample() deterministic selection + audit tracking in computeAIAssessmentSummary(). (~30 LOC)
+4. **Baseline AI flag rates** — Deferred to run work (~$6-12).
+5. **Pass 2 baseline assessments** — Deferred to run work (~$28-60).
+6. ~~**Update convergence synthesis**~~ — **Done.** 3-layer synthesis with ConfirmedConcern status. Bootstrap-aware AI integration. (~80 LOC rewrite)
+7. ~~**Source convergence dimension**~~ — **Done.** log2-smoothed gov/rhetoric ratio, integrated into structural scoring with 0.13 weight. (~65 LOC)
+8. ~~**AI reproducibility strategy**~~ — **Done.** Model versions recorded in ai_document_assessments table. Reproducibility audit script compares stored vs re-run results. (~170 LOC)
+9. **Full three-layer validation** — Deferred to run work (~$9-18).
+
+**Additional items delivered:**
+
+- **Layer 2 orchestrator** — Coordinates Pass 1 → Pass 2 → audit flow with rate limiting. (~80 LOC)
+- **Layer 2 storage adapter** — DB adapter for ai_document_assessments table. (~70 LOC)
+- **Backfill CLI** — `pnpm layer2:backfill` with --baseline/--from/--to/--category/--pass/--dry-run. (~80 LOC)
+- **Schema migration** — ai_document_assessments table (22 columns), aiScore/aiDetail on weekly_aggregates. (migration 0019)
+- **Pipeline integration** — Layer 2 wired into snapshot.ts and enrichWithLayerScores(). (~25 LOC)
 
 **Run work (~$47–97 total for baseline regeneration):**
 
@@ -517,18 +525,11 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Pass 2 on flagged baseline docs (~$28–60)
 - Full system on Trump 2025 (~$9–18)
 
-**Validation:**
+---
 
-- Does the system detect DOGE, USAID closure, IG firings, court order defiance?
-- Compare three-layer results vs. current keyword-based results — document what new system catches that old missed, and vice versa
+### Sprint R3.1: Deployment Strategy + Data Management
 
-**Tests:**
-
-- Unit: Pass 1 structured output parsing
-- Unit: Pass 2 structured output parsing
-- Unit: flag rate z-score computation
-- Unit: false-negative audit sampling logic
-- Integration: full convergence synthesis with all 3 layers
+> **Status: Done.** render.yaml fixes (db:migrate in build, cron stagger, digest API key), DEPLOYMENT.md (deploy guide + data strategy + disaster recovery), CONTRIBUTING.md data setup tiers, README.md architecture refresh (11 categories, three-layer detection), ai_document_assessments in seed pipeline. 9 files changed. See `DECISIONS.md` for retrospective.
 
 ---
 
