@@ -2,11 +2,11 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across US government institutions. It reads official government documents, RSS feeds, and public APIs, then uses keyword-based analysis to assess whether democratic checks and balances are functioning normally.
+A real-time dashboard that monitors signals of executive-power centralization across US government institutions. It reads official government documents, RSS feeds, and public APIs, then uses three-layer triangulated detection (structural anomaly, AI assessment, thematic drift) to assess whether democratic checks and balances are functioning normally.
 
 ## What It Does
 
-The dashboard tracks **9 institutional categories** — civil service neutrality, fiscal independence, inspector general oversight, judicial compliance, military constraints, rulemaking autonomy, Hatch Act enforcement, democratic indices, and information availability — and assigns each a status:
+The dashboard tracks **11 institutional categories** — civil service neutrality, fiscal independence, inspector general oversight, judicial compliance, military constraints, rulemaking autonomy, Hatch Act enforcement, executive actions, information availability, elections, and media freedom — and assigns each a status:
 
 | Status      | Meaning                                                    |
 | ----------- | ---------------------------------------------------------- |
@@ -19,31 +19,27 @@ Assessments are fully transparent: every status shows the exact keywords matched
 
 ## How It Works
 
-1. **Data collection** — Server-side API routes fetch from ~20 official sources (Federal Register API, GAO reports, IG feeds, Supreme Court, DoD, etc.) with caching
-2. **Keyword analysis** — Each category has keyword dictionaries organized by severity tier (capture/drift/warning) with word-boundary matching, source authority weighting, and pattern detection
-3. **Status determination** — Requires corroboration (2+ capture-tier matches for "Capture" status), flags insufficient data, and includes explicit disclaimers
-4. **Optional AI layer** — When API keys are configured, provides multi-agent debate analysis, legal citation checking, and trend detection
+1. **Data collection** — Cron jobs fetch from ~30 official sources (Federal Register API, White House, GDELT, GAO reports, IG feeds, etc.) and store documents in PostgreSQL
+2. **Layer 1 — Structural anomaly** — Deterministic, metadata-only analysis: volume spikes, timing shifts, agency concentration, document-class distribution, and source convergence
+3. **Layer 2 — AI assessment** — Two-pass AI review (GPT-4o-mini + Claude Sonnet) with epistemic independence between providers, per-document concern classification
+4. **Layer 3 — Thematic drift** — Embedding-based intra-administration rolling window comparison detecting semantic shifts in government output
+5. **Convergence synthesis** — Combines all three layers into a single status (Stable → Elevated → Divergent → Confirmed Concern), requiring multi-layer agreement for escalation
 
 For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md).
-
-## Demo Mode
-
-Seed the database with deterministic fixture data, then browse via the normal app:
-
-```bash
-pnpm demo:seed --scenario mixed --days 3   # mixed, stable, crisis, or degrading
-pnpm dev                                    # http://localhost:3000
-```
 
 ## Quickstart
 
 ```bash
 pnpm install
-cp .env.example .env.local   # optional — works without it
+cp .env.example .env.local    # optional — works without it
+pnpm db:migrate               # create tables (requires PostgreSQL)
+pnpm seed:import              # load fixture data (~93MB, no API keys needed)
 pnpm dev                      # http://localhost:3000
 ```
 
-**Requirements:** Node.js 18+, pnpm
+**Requirements:** Node.js 18+, pnpm, PostgreSQL
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup tiers (quick start, with AI, full dataset).
 
 ### Running tests
 
@@ -78,21 +74,20 @@ Next.js 14 (Pages Router), TypeScript strict mode, Tailwind CSS.
 ```
 lib/
   data/           # Category definitions, keyword dictionaries, assessment rules
-  services/       # Assessment engine, AI services, feed processing
+  services/       # Assessment engine, AI services, convergence, feed processing
   parsers/        # RSS/JSON/HTML feed parsers
   cache/          # Redis + in-memory fallback
   ai/             # OpenAI/Anthropic provider abstraction
   db/             # Drizzle ORM schema and migrations
-  demo/           # Demo fixture data and scenario definitions (used by seed script)
+  cron/           # Scheduled tasks (snapshot, backfill, digest, clustering)
+  methodology/    # Scoring config, named constants, thresholds
+  seed/           # Seed data export/import pipeline + fixtures
+  types/          # TypeScript type definitions
+  utils/          # Pure utility functions
 
-components/
-  dashboard/      # CategoryCard, FeedBlock, StatusLegend
-  disclosure/     # Progressive disclosure layers (summary → evidence → deep analysis)
-  intent/         # Administration's Intent section (rhetoric vs. action scoring)
-  ui/             # Reusable components (StatusPill, Card, ConfidenceBar)
-
-pages/api/        # Server-side API routes (proxy, assessment, AI endpoints)
-__tests__/        # Vitest tests mirroring lib/ structure
+components/       # UI components (CategoryCard, TrendChart, StatusPill, etc.)
+pages/api/        # Server-side API routes (proxy, assessment, health, history)
+__tests__/        # Vitest tests mirroring lib/ structure (1221 tests)
 ```
 
 For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
@@ -108,7 +103,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 - **Assessment methodology** — Reducing false positives/negatives in keyword analysis
 - **Signal coverage** — Adding data sources for under-monitored institutions
 - **Authoritarian infrastructure tracking** — Detention facilities, surveillance contracts, opposition criminalization (see [TODO.md](TODO.md) for details)
-- **Test coverage** — Currently ~39% of services; API routes and components untested
+- **Test coverage** — 1221 tests across 96 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
 ## Limitations

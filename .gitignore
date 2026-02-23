@@ -41,3 +41,6 @@ lib/seed/reports/
 # Raw document fixtures (reproducible via pnpm backfill; ~35MB per baseline)
 lib/seed/fixtures/documents.json
 lib/seed/fixtures-pre-remediation/
+
+# AI document assessments (too large for git; available in GitHub Releases)
+lib/seed/fixtures/ai_document_assessments.json

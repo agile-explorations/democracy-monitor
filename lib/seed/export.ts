@@ -21,6 +21,7 @@ import {
   documentScores,
   weeklyAggregates,
   intentWeekly,
+  aiDocumentAssessments,
 } from '@/lib/db/schema';
 
 const SEED_TABLES = [
@@ -29,6 +30,7 @@ const SEED_TABLES = [
   { name: 'document_scores', table: documentScores },
   { name: 'weekly_aggregates', table: weeklyAggregates },
   { name: 'intent_weekly', table: intentWeekly },
+  { name: 'ai_document_assessments', table: aiDocumentAssessments },
 ] as const;
 
 interface SeedMetadata {

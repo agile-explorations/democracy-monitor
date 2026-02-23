@@ -21,27 +21,44 @@ cp .env.example .env.local   # optional
 pnpm dev                      # http://localhost:3000
 ```
 
-### Demo Mode
+### Data Setup
 
-Seed the database with deterministic fixture data, then browse via the normal app:
+**Tier 1 — Quick start (most contributors):**
 
 ```bash
-pnpm demo:seed --scenario mixed --days 3
+pnpm db:migrate     # Create tables
+pnpm seed:import    # Load ~93MB of fixtures (assessments, baselines, scores, aggregates)
 pnpm dev
 ```
 
-This creates realistic snapshots across all 9 categories with varied statuses — useful for UI development and testing.
+No API keys needed. The full app works with historical data. AI assessment columns are null but the app handles this gracefully.
+
+**Tier 2 — With AI (data pipeline contributors):**
+
+Same as Tier 1, plus set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in `.env.local`. You can then run `pnpm snapshot` or `pnpm layer2:backfill --dry-run` to test pipeline changes.
+
+**Tier 3 — Full dataset (maintainers):**
+
+Download the complete database dump from the latest GitHub Release and restore:
+
+```bash
+pg_restore -d democracy_monitor data-dump.pgdump
+```
+
+This includes all AI assessment data (~228K rows). Only needed for validating AI quality or running the full pipeline end-to-end.
 
 ### Commands
 
 ```bash
-pnpm dev          # Start dev server
-pnpm build        # Production build (includes type checking)
-pnpm test         # Run test suite (Vitest)
-pnpm test:watch   # Watch mode
-pnpm lint         # ESLint
-pnpm db:generate  # Generate Drizzle migrations from schema changes
-pnpm db:migrate   # Apply migrations to PostgreSQL
+pnpm dev            # Start dev server
+pnpm build          # Production build (includes type checking)
+pnpm test           # Run test suite (Vitest)
+pnpm test:watch     # Watch mode
+pnpm lint           # ESLint
+pnpm db:generate    # Generate Drizzle migrations from schema changes
+pnpm db:migrate     # Apply migrations to PostgreSQL
+pnpm seed:import    # Import seed fixtures into DB (no API keys needed)
+pnpm seed:export    # Export seed data from DB to fixtures
 ```
 
 ## Code Conventions

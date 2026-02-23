@@ -15,12 +15,14 @@ import {
   documentScores,
   weeklyAggregates,
   intentWeekly,
+  aiDocumentAssessments,
 } from '@/lib/db/schema';
 
 /**
  * Import order for light fixtures (calibrated outputs only).
  * Raw documents are excluded — they can be re-fetched via `pnpm backfill`.
  * document_scores.documentId is nullable, so scores import without documents.
+ * ai_document_assessments is optional — most contributors won't have it (gitignored).
  */
 const IMPORT_ORDER = [
   { name: 'assessments', table: assessments },
@@ -28,6 +30,7 @@ const IMPORT_ORDER = [
   { name: 'document_scores', table: documentScores },
   { name: 'weekly_aggregates', table: weeklyAggregates },
   { name: 'intent_weekly', table: intentWeekly },
+  { name: 'ai_document_assessments', table: aiDocumentAssessments },
 ] as const;
 
 interface SeedFixture {

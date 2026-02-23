@@ -3,7 +3,7 @@ services:
     name: democracy-monitor
     runtime: node
     plan: standard
-    buildCommand: pnpm install && pnpm build
+    buildCommand: pnpm install && pnpm db:migrate && pnpm build
     startCommand: pnpm start
     envVars:
       - key: DATABASE_URL
@@ -35,7 +35,7 @@ keyValueStores:
 
 crons:
   - name: daily-digest
-    schedule: '0 6 * * *'
+    schedule: '0 7 * * *'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/daily-digest.ts
     envVars:
@@ -48,6 +48,8 @@ crons:
           name: epd-redis
           type: redis
           property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
 
   - name: hourly-uptime
     schedule: '0 * * * *'

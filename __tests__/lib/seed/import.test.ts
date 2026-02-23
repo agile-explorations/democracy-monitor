@@ -13,6 +13,7 @@ vi.mock('@/lib/db/schema', () => ({
   documentScores: { _: 'document_scores' },
   weeklyAggregates: { _: 'weekly_aggregates' },
   intentWeekly: { _: 'intent_weekly' },
+  aiDocumentAssessments: { _: 'ai_document_assessments' },
 }));
 
 const { isDbAvailable, getDb } = await import('@/lib/db');
