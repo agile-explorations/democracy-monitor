@@ -78,8 +78,24 @@ async function snapshotCategory(
   console.log(`[snapshot]   Scored ${docScores.length} documents`);
 
   const weekOf = getWeekOfDate();
+
+  // Layer 2: AI two-pass assessment (runs inline, not fire-and-forget)
+  let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
+  try {
+    const { runLayer2Assessment } = await import('@/lib/services/layer2-orchestrator');
+    aiSummary = await runLayer2Assessment(items, cat.key, weekOf);
+    if (aiSummary) {
+      console.log(
+        `[snapshot]   Layer 2: ${aiSummary.flagCount}/${aiSummary.totalDocuments} flagged, ` +
+          `concern rate ${(aiSummary.concernRate * 100).toFixed(1)}%`,
+      );
+    }
+  } catch (err) {
+    console.warn(`[snapshot] Layer 2 failed for ${cat.key}:`, err);
+  }
+
   computeWeeklyAggregate(cat.key, weekOf)
-    .then((agg) => enrichWithLayerScores(agg))
+    .then((agg) => enrichWithLayerScores(agg, aiSummary))
     .then((agg) => storeWeeklyAggregate(agg))
     .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
 
@@ -87,17 +103,20 @@ async function snapshotCategory(
 }
 
 /**
- * Enrich a weekly aggregate with Layer 1 (structural) and Layer 3 (thematic) scores,
- * plus the partial convergence synthesis.
+ * Enrich a weekly aggregate with Layer 1 (structural), Layer 2 (AI), and Layer 3 (thematic) scores,
+ * plus the convergence synthesis.
  */
-async function enrichWithLayerScores(agg: WeeklyAggregate): Promise<WeeklyAggregate> {
+async function enrichWithLayerScores(
+  agg: WeeklyAggregate,
+  aiSummary?: import('@/lib/types/structural').AIAssessmentSummary | null,
+): Promise<WeeklyAggregate> {
   try {
     const [structural, thematic] = await Promise.all([
       computeStructuralLayer(agg.category, agg.weekOf),
       computeRollingThematicDrift(agg.category, agg.weekOf),
     ]);
 
-    const convergence = synthesizeConvergence(structural, thematic);
+    const convergence = synthesizeConvergence(structural, aiSummary ?? null, thematic);
 
     return {
       ...agg,
@@ -107,6 +126,8 @@ async function enrichWithLayerScores(agg: WeeklyAggregate): Promise<WeeklyAggreg
       thematicDetail: thematic ?? undefined,
       convergenceScore: convergence.layersElevated,
       convergenceDetail: convergence,
+      aiScore: aiSummary?.flagRateZScore ?? undefined,
+      aiDetail: aiSummary ?? undefined,
     };
   } catch (err) {
     console.warn(`[snapshot] Layer scoring failed for ${agg.category}/${agg.weekOf}:`, err);

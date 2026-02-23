@@ -143,11 +143,12 @@ export function getCurrentCycleYear(date?: Date): number {
 
 /** Dimension weights for the composite structural score. Must sum to 1.0. */
 export const STRUCTURAL_DIMENSION_WEIGHTS = {
-  volume: 0.25,
-  typeComposition: 0.2,
-  functionalDistribution: 0.25,
-  agencyActivity: 0.15,
-  publicationTempo: 0.15,
+  volume: 0.22,
+  typeComposition: 0.18,
+  functionalDistribution: 0.22,
+  agencyActivity: 0.13,
+  publicationTempo: 0.12,
+  sourceConvergence: 0.13,
 } as const;
 
 /** Composite structural score above this threshold is considered anomalous. */
@@ -184,6 +185,20 @@ export const BOOTSTRAP_CONFIDENCE = 0.5;
 
 /** Novel document rate above this fraction is considered significant. */
 export const NOVEL_DOCUMENT_RATE_THRESHOLD = 0.15;
+
+// --- Layer 2 (AI two-pass assessment) ---
+
+/** Z-score threshold for AI flag rate to be considered elevated. */
+export const AI_FLAG_RATE_THRESHOLD = 1.5;
+
+/** Fraction of Pass 2 docs at potentially/clearly concerning to trigger high concern. */
+export const AI_CONCERN_THRESHOLD = 0.2;
+
+/** Pass 1 false-negative rate above this triggers a warning. */
+export const PASS1_FALSE_NEGATIVE_WARNING = 0.03;
+
+/** Default fraction of unflagged docs to audit with Pass 2. */
+export const AUDIT_SAMPLE_RATE = 0.03;
 
 // --- Convergence synthesis ---
 

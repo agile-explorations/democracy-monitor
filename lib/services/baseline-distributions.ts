@@ -76,6 +76,8 @@ export function buildWeekMetadata(
     rows.map((r) => r.publishedAt),
   );
 
+  const sourceConvergenceRatio = computeSourceConvergenceRatio(rows);
+
   return {
     category,
     weekOf,
@@ -84,6 +86,7 @@ export function buildWeekMetadata(
     functionalDistribution,
     agencyDistribution,
     dailyCounts,
+    sourceConvergenceRatio,
   };
 }
 
@@ -150,6 +153,10 @@ export function buildBaselineDistribution(
     return computeVarianceValue(daily);
   });
 
+  const weeklySourceRatios = Object.values(weeklyGroups).map((weekRows) =>
+    computeSourceConvergenceRatio(weekRows),
+  );
+
   return {
     baselineId: config.id,
     category,
@@ -160,7 +167,44 @@ export function buildBaselineDistribution(
     agencyDistribution,
     meanDailyVariance: mean(weeklyDailyVariances),
     stdDevDailyVariance: stddev(weeklyDailyVariances),
+    meanSourceConvergenceRatio: mean(weeklySourceRatios),
+    stdDevSourceConvergenceRatio: stddev(weeklySourceRatios),
   };
+}
+
+/** FR document types that indicate government-origin documents. */
+const GOVERNMENT_DOC_TYPES = new Set([
+  'Notice',
+  'Rule',
+  'Proposed Rule',
+  'Presidential Document',
+  'executive_order',
+  'presidential_memorandum',
+  'proclamation',
+  'presidential_notice',
+  'final_rule',
+  'proposed_rule',
+  'notice',
+]);
+
+/**
+ * Compute the ratio of government (FR-type) docs to rhetoric (GDELT/WH) docs.
+ * Returns 0 when no docs exist, approaches Infinity when all docs are government.
+ * Uses a log-smoothed ratio: log2((gov + 1) / (rhetoric + 1)) to handle zero denominators.
+ */
+export function computeSourceConvergenceRatio(rows: DocumentRow[]): number {
+  let govCount = 0;
+  let rhetoricCount = 0;
+
+  for (const row of rows) {
+    if (GOVERNMENT_DOC_TYPES.has(row.sourceType)) {
+      govCount++;
+    } else if (row.sourceType === 'rhetoric') {
+      rhetoricCount++;
+    }
+  }
+
+  return Math.log2((govCount + 1) / (rhetoricCount + 1));
 }
 
 /** Compute proportional distribution from a list of string values. */

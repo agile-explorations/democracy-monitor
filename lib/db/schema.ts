@@ -203,6 +203,39 @@ export const semanticClusters = pgTable('semantic_clusters', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const aiDocumentAssessments = pgTable(
+  'ai_document_assessments',
+  {
+    id: serial('id').primaryKey(),
+    documentId: integer('document_id'),
+    url: text('url').notNull(),
+    category: varchar('category', { length: 50 }).notNull(),
+    pass: integer('pass').notNull(),
+    relevant: boolean('relevant'),
+    confidence: real('confidence'),
+    erosionType: varchar('erosion_type', { length: 30 }),
+    signals: jsonb('signals').$type<string[]>(),
+    assessment: varchar('assessment', { length: 30 }),
+    reasoning: text('reasoning'),
+    comparativeContext: text('comparative_context'),
+    citedPassages: jsonb('cited_passages').$type<string[]>(),
+    counterArguments: jsonb('counter_arguments').$type<string[]>(),
+    isAuditSample: boolean('is_audit_sample').notNull().default(false),
+    model: varchar('model', { length: 100 }).notNull(),
+    provider: varchar('provider', { length: 50 }).notNull(),
+    tokensInput: integer('tokens_input'),
+    tokensOutput: integer('tokens_output'),
+    latencyMs: integer('latency_ms'),
+    weekOf: date('week_of').notNull(),
+    assessedAt: timestamp('assessed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_ai_doc_assess_category_week').on(table.category, table.weekOf),
+    index('idx_ai_doc_assess_url').on(table.url),
+    unique('uq_ai_doc_assess_url_pass_model').on(table.url, table.pass, table.model),
+  ],
+);
+
 export const documentScores = pgTable(
   'document_scores',
   {
@@ -255,6 +288,8 @@ export const weeklyAggregates = pgTable(
     thematicDetail: jsonb('thematic_detail'),
     convergenceScore: real('convergence_score'),
     convergenceDetail: jsonb('convergence_detail'),
+    aiScore: real('ai_score'),
+    aiDetail: jsonb('ai_detail'),
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [

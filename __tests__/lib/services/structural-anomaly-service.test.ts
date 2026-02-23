@@ -223,12 +223,14 @@ describe('computeStructuralScore', () => {
     expect(score.anomalous).toBe(true);
   });
 
-  it('all dimension scores are marked as available', () => {
+  it('all present dimension scores are marked as available', () => {
     const week = makeWeekMetadata();
     const baseline = makeBaseline();
     const score = computeStructuralScore(week, baseline);
     for (const dim of Object.values(score.dimensions)) {
-      expect(dim.available).toBe(true);
+      if (dim !== undefined) {
+        expect(dim.available).toBe(true);
+      }
     }
   });
 });

@@ -103,14 +103,10 @@ export function detectFunctionalShifts(
   return shifts;
 }
 
-/**
- * Compute the composite structural anomaly score for a single category-week.
- * Pure function — no I/O.
- */
-export function computeStructuralScore(
+function computeDimensions(
   week: WeekMetadata,
   baseline: BaselineDistribution,
-): StructuralScore {
+): StructuralScore['dimensions'] {
   const volume = makeDimensionScore(
     week.documentCount,
     baseline.meanDocCount,
@@ -140,14 +136,36 @@ export function computeStructuralScore(
     baseline.stdDevDailyVariance,
   );
 
-  const dimensions = {
+  const sourceConvergence =
+    week.sourceConvergenceRatio !== undefined &&
+    baseline.meanSourceConvergenceRatio !== undefined &&
+    baseline.stdDevSourceConvergenceRatio !== undefined
+      ? makeDimensionScore(
+          week.sourceConvergenceRatio,
+          baseline.meanSourceConvergenceRatio,
+          baseline.stdDevSourceConvergenceRatio,
+        )
+      : undefined;
+
+  return {
     volume,
     typeComposition,
     functionalDistribution,
     agencyActivity,
     publicationTempo,
+    sourceConvergence,
   };
+}
 
+/**
+ * Compute the composite structural anomaly score for a single category-week.
+ * Pure function — no I/O.
+ */
+export function computeStructuralScore(
+  week: WeekMetadata,
+  baseline: BaselineDistribution,
+): StructuralScore {
+  const dimensions = computeDimensions(week, baseline);
   const composite = computeWeightedComposite(dimensions);
   const functionalShifts = detectFunctionalShifts(
     week.functionalDistribution,
@@ -169,16 +187,17 @@ function computeWeightedComposite(dimensions: StructuralScore['dimensions']): nu
   let totalWeight = 0;
   let weighted = 0;
 
-  const entries: Array<[keyof typeof w, DimensionScore]> = [
+  const entries: Array<[keyof typeof w, DimensionScore | undefined]> = [
     ['volume', dimensions.volume],
     ['typeComposition', dimensions.typeComposition],
     ['functionalDistribution', dimensions.functionalDistribution],
     ['agencyActivity', dimensions.agencyActivity],
     ['publicationTempo', dimensions.publicationTempo],
+    ['sourceConvergence', dimensions.sourceConvergence],
   ];
 
   for (const [key, dim] of entries) {
-    if (!dim.available) continue;
+    if (!dim || !dim.available) continue;
     weighted += w[key] * Math.abs(dim.zScore);
     totalWeight += w[key];
   }

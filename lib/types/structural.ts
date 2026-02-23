@@ -37,6 +37,7 @@ export interface StructuralScore {
     functionalDistribution: DimensionScore;
     agencyActivity: DimensionScore;
     publicationTempo: DimensionScore;
+    sourceConvergence?: DimensionScore;
   };
   anomalous: boolean;
   functionalShifts: FunctionalShift[];
@@ -73,16 +74,40 @@ export interface ThematicDriftScore {
 }
 
 /** Convergence synthesis status levels. */
-export type ConvergenceStatus = 'Stable' | 'Elevated' | 'Divergent';
+export type ConvergenceStatus = 'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConcern';
 
-/** Result of combining L1 + L3 (partial — L2 deferred to Sprint R3). */
+/** Result of combining L1 + L2 + L3. */
 export interface ConvergenceSynthesis {
   status: ConvergenceStatus;
   structuralElevated: boolean;
+  aiElevated: boolean;
   thematicElevated: boolean;
   layersElevated: number;
   pattern: string;
   bootstrap: boolean;
+}
+
+/** Summary of Layer 2 AI assessment results for a category-week. */
+export interface AIAssessmentSummary {
+  flagCount: number;
+  totalDocuments: number;
+  flagRate: number;
+  baselineFlagRate: number;
+  flagRateZScore: number;
+  concernDistribution: {
+    routine: number;
+    novelNotConcerning: number;
+    potentiallyConcerning: number;
+    clearlyConcerning: number;
+  };
+  concernRate: number;
+  auditSample: {
+    sampled: number;
+    falseNegatives: number;
+    falseNegativeRate: number;
+  };
+  pass1Model: string;
+  pass2Model: string;
 }
 
 /** Metadata extracted from documents for structural analysis. */
@@ -94,6 +119,7 @@ export interface WeekMetadata {
   functionalDistribution: Record<FunctionalBucket, number>;
   agencyDistribution: Record<string, number>;
   dailyCounts: number[];
+  sourceConvergenceRatio?: number;
 }
 
 /** Baseline structural distributions for a category. */
@@ -107,4 +133,6 @@ export interface BaselineDistribution {
   agencyDistribution: Record<string, number>;
   meanDailyVariance: number;
   stdDevDailyVariance: number;
+  meanSourceConvergenceRatio?: number;
+  stdDevSourceConvergenceRatio?: number;
 }

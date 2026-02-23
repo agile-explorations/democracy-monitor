@@ -34,6 +34,8 @@ export interface WeeklyAggregate {
   thematicDetail?: unknown;
   convergenceScore?: number;
   convergenceDetail?: unknown;
+  aiScore?: number;
+  aiDetail?: unknown;
   computedAt: string;
 }
 
@@ -169,6 +171,8 @@ function buildAggregateValues(agg: WeeklyAggregate) {
     thematicDetail: agg.thematicDetail ?? null,
     convergenceScore: agg.convergenceScore ?? null,
     convergenceDetail: agg.convergenceDetail ?? null,
+    aiScore: agg.aiScore ?? null,
+    aiDetail: agg.aiDetail ?? null,
     computedAt: new Date(agg.computedAt),
   };
 }
@@ -192,6 +196,8 @@ const UPSERT_SET = {
   thematicDetail: sql`excluded.thematic_detail`,
   convergenceScore: sql`excluded.convergence_score`,
   convergenceDetail: sql`excluded.convergence_detail`,
+  aiScore: sql`excluded.ai_score`,
+  aiDetail: sql`excluded.ai_detail`,
   computedAt: sql`excluded.computed_at`,
 };
 

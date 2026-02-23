@@ -67,6 +67,7 @@ export type {
   ThematicDriftScore,
   ConvergenceStatus,
   ConvergenceSynthesis,
+  AIAssessmentSummary,
   WeekMetadata,
   BaselineDistribution,
 } from './structural';
