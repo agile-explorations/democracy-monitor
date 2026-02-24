@@ -106,6 +106,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 - **Test coverage** — 1221 tests across 96 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
+## Sponsor This Project
+
+Democracy Monitor costs ~$260/month to run (hosting, AI APIs, development tools). Sponsorship keeps the daily monitoring pipeline running and funds continued development. See [SPONSORS.md](SPONSORS.md) for a full cost breakdown.
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-♡-pink)](https://github.com/sponsors/agile-explorations)
+
 ## Limitations
 
 This is an automated keyword analysis tool, not a substitute for expert judgment. See [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md#limitations--caveats) for known false positive/negative risks.
