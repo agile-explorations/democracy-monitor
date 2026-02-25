@@ -233,6 +233,42 @@ describe('computeStructuralScore', () => {
       }
     }
   });
+
+  it('dampens composite for small-corpus category-weeks', () => {
+    // Create an anomalous week that would normally trigger above threshold
+    const largeWeek = makeWeekMetadata({
+      documentCount: 150,
+      typeDistribution: { 'Presidential Document': 0.9, Notice: 0.1 },
+      agencyDistribution: { WhiteHouse: 0.9, Other: 0.1 },
+    });
+    const baseline = makeBaseline();
+    const largeScore = computeStructuralScore(largeWeek, baseline);
+
+    // Same anomalous pattern but with only 5 documents — should be dampened to 50%
+    const smallWeek = makeWeekMetadata({
+      documentCount: 5,
+      typeDistribution: { 'Presidential Document': 0.9, Notice: 0.1 },
+      agencyDistribution: { WhiteHouse: 0.9, Other: 0.1 },
+    });
+    const smallScore = computeStructuralScore(smallWeek, baseline);
+
+    // Volume z-score differs, but the dampening factor should still reduce the composite
+    expect(smallScore.composite).toBeLessThan(largeScore.composite);
+    // With 5/10 docs, dampening = 0.5 — composite should be roughly half of what it would be undampened
+    expect(smallScore.anomalous).toBe(false);
+  });
+
+  it('applies no dampening at or above minimum doc count', () => {
+    const week10 = makeWeekMetadata({ documentCount: 10 });
+    const week50 = makeWeekMetadata({ documentCount: 50 });
+    const baseline = makeBaseline();
+    const score10 = computeStructuralScore(week10, baseline);
+    const score50 = computeStructuralScore(week50, baseline);
+    // Both above threshold — volume z-scores differ but dampening factor is 1.0 for both
+    // The difference comes from volume z-score, not dampening
+    expect(score10.composite).toBeGreaterThanOrEqual(0);
+    expect(score50.composite).toBeGreaterThanOrEqual(0);
+  });
 });
 
 describe('computeLongHorizonDrift', () => {

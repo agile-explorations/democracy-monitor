@@ -66,7 +66,8 @@ export async function assessPass1(
         latencyMs: result.latencyMs,
       },
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[layer2] Pass 1 failed for ${doc.link ?? doc.title}:`, (err as Error).message);
     return null;
   }
 }
@@ -115,7 +116,8 @@ export async function assessPass2(
       },
       isAuditSample,
     };
-  } catch {
+  } catch (err) {
+    console.warn(`[layer2] Pass 2 failed for ${doc.link ?? doc.title}:`, (err as Error).message);
     return null;
   }
 }

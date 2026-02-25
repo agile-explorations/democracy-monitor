@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, count, eq, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { aiDocumentAssessments } from '@/lib/db/schema';
 import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
@@ -116,6 +116,27 @@ export async function getUnflaggedDocumentUrls(
     );
 
   return rows.map((r) => r.url);
+}
+
+/**
+ * Count Pass 1 assessments already stored for a category-week.
+ */
+export async function getPass1Count(category: string, weekOf: string): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+
+  const [row] = await db
+    .select({ n: count() })
+    .from(aiDocumentAssessments)
+    .where(
+      and(
+        eq(aiDocumentAssessments.category, category),
+        eq(aiDocumentAssessments.weekOf, weekOf),
+        eq(aiDocumentAssessments.pass, 1),
+      ),
+    );
+
+  return row?.n ?? 0;
 }
 
 /**

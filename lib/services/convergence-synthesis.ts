@@ -1,4 +1,5 @@
 import {
+  AI_CONCERN_MIN_SAMPLE,
   AI_CONCERN_THRESHOLD,
   AI_FLAG_RATE_THRESHOLD,
   STRUCTURAL_ANOMALY_THRESHOLD,
@@ -41,7 +42,7 @@ export function synthesizeConvergence(
     thematicElevated,
     isBootstrap,
   );
-  const highConcern = aiAssessment ? aiAssessment.concernRate > AI_CONCERN_THRESHOLD : false;
+  const highConcern = isHighConcern(aiAssessment);
   const status = determineStatus(layersElevated, highConcern);
   const pattern = describePattern(structuralElevated, aiElevated, thematicElevated, isBootstrap);
 
@@ -69,6 +70,15 @@ function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {
 function isThematicElevated(thematic: ThematicDriftScore | null): boolean {
   if (!thematic) return false;
   return Math.abs(thematic.zScore) > THEMATIC_DRIFT_ELEVATED;
+}
+
+function isHighConcern(aiAssessment: AIAssessmentSummary | null): boolean {
+  if (!aiAssessment) return false;
+  const { concernDistribution: d } = aiAssessment;
+  const pass2Count =
+    d.routine + d.novelNotConcerning + d.potentiallyConcerning + d.clearlyConcerning;
+  if (pass2Count < AI_CONCERN_MIN_SAMPLE) return false;
+  return aiAssessment.concernRate > AI_CONCERN_THRESHOLD;
 }
 
 function countElevatedLayers(

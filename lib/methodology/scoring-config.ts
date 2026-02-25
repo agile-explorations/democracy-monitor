@@ -152,7 +152,10 @@ export const STRUCTURAL_DIMENSION_WEIGHTS = {
 } as const;
 
 /** Composite structural score above this threshold is considered anomalous. */
-export const STRUCTURAL_ANOMALY_THRESHOLD = 2.0;
+export const STRUCTURAL_ANOMALY_THRESHOLD = 2.5;
+
+/** Minimum documents in a category-week for full structural score weight. Below this, dampen. */
+export const STRUCTURAL_MIN_DOC_COUNT = 10;
 
 /** Expected JSD baseline mean (identical distributions produce JSD = 0). */
 export const JSD_BASELINE_MEAN = 0;
@@ -178,7 +181,7 @@ export const FUNCTIONAL_SHIFT_THRESHOLD = 0.03;
 export const THEMATIC_ROLLING_WINDOW_WEEKS = 8;
 
 /** Z-score above this for thematic drift is considered elevated. */
-export const THEMATIC_DRIFT_ELEVATED = 1.5;
+export const THEMATIC_DRIFT_ELEVATED = 3.5;
 
 /** Confidence multiplier during bootstrap period (first N weeks). */
 export const BOOTSTRAP_CONFIDENCE = 0.5;
@@ -193,6 +196,9 @@ export const AI_FLAG_RATE_THRESHOLD = 1.5;
 
 /** Fraction of Pass 2 docs at potentially/clearly concerning to trigger high concern. */
 export const AI_CONCERN_THRESHOLD = 0.2;
+
+/** Minimum non-audit Pass 2 assessments required for concern rate to be meaningful. */
+export const AI_CONCERN_MIN_SAMPLE = 3;
 
 /** Pass 1 false-negative rate above this triggers a warning. */
 export const PASS1_FALSE_NEGATIVE_WARNING = 0.03;

@@ -4,9 +4,10 @@ This document describes the planned sprint sequence for completing the Democracy
 
 **Specification documents:**
 
-- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5.** Three-layer triangulated detection: structural anomaly (Layer 1), AI two-pass assessment (Layer 2), thematic drift (Layer 3). Convergence synthesis replaces keyword-severity scoring. Keywords become annotations only.
+- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, and category framework with framework alignment mapping.
+- `CATEGORY_FRAMEWORK_ANALYSIS.md` — Analysis mapping Democracy Monitor categories against established democracy measurement frameworks. Rationale for 13-category architecture, renames (courts → judicialIndependence, igs → executiveOversight), and new categories (lawEnforcement, civilLiberties).
 - `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15). Partially superseded by architecture proposal — source health (Sprint 17) and cycle-aware baselines (Sprint 15.1) remain; feedback learning and novel threat detection restructured under Layers 2 and 3.
-- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). Dashboard visualization restructured around three-layer display in Sprint R4.
+- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). **Partially superseded** — data model, status system, and visualization content changed by Architecture Proposal. Architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern) carry forward. See `UI_V3_DIVERGENCE_MAP.md` for section-by-section mapping. Full V4 rewrite tracked as R-F10 in Post-R5.
 - `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22). Sprints 20-21 code work completed; Sprint 22 rhetoric cross-feed absorbed into Sprint R1.
 
 **Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. Sprints 13-21 built keyword tuning pipeline, 4 baselines (Biden 2021/2022, Trump 2017/2018), cycle-aware adjustments, UI rebuild (landing page, category detail, week detail), source health monitoring, and signal gap remediation. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
@@ -363,7 +364,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 **E2E test:**
 
 - Click trend chart data point — navigates to week detail page
-- `/category/courts/week/2025-02-03` loads independently (URL-stable, no prior nav state required)
+- `/category/judicialIndependence/week/2025-02-03` loads independently (URL-stable, no prior nav state required)
 - Week summary cards show correct values from seed data
 - Document table shows scored documents with correct tier counts
 - CSV export contains correct data matching DB
@@ -525,6 +526,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Pass 2 on flagged baseline docs (~$28–60)
 - Full system on Trump 2025 (~$9–18)
 
+> **Run work status: Done (2026-02-24/25).** Completed Phases 0–6: Pass 1 on all 4 baselines, Pass 2 on flagged docs, Trump 2025 full backfill (221 flags / 14,480 docs = 1.5% flag rate). Layer score enrichment across all 2,896 category-weeks. Calibration findings: STRUCTURAL_ANOMALY_THRESHOLD raised to 2.5, THEMATIC_DRIFT_ELEVATED raised to 3.5, STRUCTURAL_MIN_DOC_COUNT = 10 dampening introduced. Final results: Biden 2022 97.7% Stable, Biden 2021 95.3%, Trump 2017 92.0%, Trump 2018 89.2%, Trump 2025 84.0%. Both Biden baselines exceed >95% Stable target. AI layer fires only in Trump 2025 (8 Elevated). See `ARCHITECTURE_PROPOSAL.md` §Calibration findings for full details.
+
 ---
 
 ### Sprint R3.1: Deployment Strategy + Data Management
@@ -533,77 +536,290 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
+### Sprint R3.2: Snapshot Source Parity (Launch Blocker)
+
+**Goal:** Ensure the daily cron snapshot produces the same source mix per category as the backfill, so live monitoring data is directly comparable to baselines.
+
+**Depends on:** Sprint R1 (rhetoric cross-feed classifier ✅)
+
+**Problem:** The backfill fetches FR + WH + GDELT and routes rhetoric documents into assessment categories via `rhetoric-crossfeed.ts`. The daily snapshot fetches WH + GDELT via `snapshotRhetoric()` but stores them only under the intent/rhetoric pipeline — they never reach the 11 assessment categories. This means:
+
+- Layer 1 structural baselines (volume, composition, source convergence) were computed _with_ cross-fed rhetoric documents
+- Daily data will be computed _without_ them
+- Every layer will see a systematic difference between baseline and live data — not from governance changes, but from pipeline mismatch
+- Source convergence (Layer 1 dimension) is specifically designed to measure the gov-to-rhetoric ratio per category; it will produce false anomalies if rhetoric documents aren't present in daily category data
+
+**Code work (~30–50 lines modified):**
+
+1. **Wire rhetoric cross-feed into daily snapshot** — After `snapshotRhetoric()` fetches WH + GDELT documents, run them through `rhetoric-crossfeed.ts` classification and store category-classified documents in the same tables the backfill uses. The cross-feed classifier already exists (Sprint R1); this is plumbing, not new logic.
+2. **Verify source mix parity** — Run one week's snapshot and compare document counts per category per source type against the same week from backfill data. Counts should be within ~5% (timing differences for same-day fetches are expected).
+3. **Test** — Unit test: `snapshotRhetoric()` produces documents with category classifications. Integration test: weekly aggregate for a snapshot week includes rhetoric-sourced documents in category counts.
+
+**Risk if skipped:** Every week of live monitoring after launch will be structurally incomparable to baselines. This is not a "nice to have" — it invalidates the baseline calibration that Sprints R2–R3 spent ~$50–100 establishing.
+
+---
+
+### Sprint R3.3: Category Renames
+
+**Goal:** Rename `courts` → `judicialIndependence` and `igs` → `executiveOversight` across the entire codebase before new code accumulates under old names.
+
+**Depends on:** Nothing (can run anytime, but best done before Sprint R4 starts building new UI against category keys)
+
+**Code work (mechanical, ~2-4 hours):**
+
+1. **Database migration** — Rename category keys in `categories`, `weekly_aggregates`, `documents`, `ai_document_assessments`, and any other tables referencing category keys.
+2. **Codebase rename** — Update `categories.ts`, signal queries, seed data, fixtures, test files, API routes, UI components. Global find-and-replace with manual review of each occurrence.
+3. **Seed data + fixtures** — Update JSON fixtures to use new category keys.
+4. **Documentation** — Update README, DEPLOYMENT, CONTRIBUTING references.
+5. **Single atomic commit** — All changes in one commit to avoid partial rename state.
+
+**Rationale:** Doing this now (before R4 builds the dashboard UI) avoids a larger rename diff later. Every component built after this point uses the correct threat-vector-oriented names.
+
+---
+
+### Source Availability Spikes (pre-R-S1, parallelizes with R3.2/R3.3/R4)
+
+**Goal:** Validate that proposed new document sources produce sufficient structured data before committing Sprint R-S1 scope.
+
+**Reference:** `SOURCE_AVAILABILITY_SPIKES.md`
+
+**Total effort:** ~4-5 days sequential, ~2-3 days with parallelism.
+
+| Spike | Source                     | Category                             | Effort     |
+| ----- | -------------------------- | ------------------------------------ | ---------- |
+| 1     | LegiScan classification    | elections                            | 1 day      |
+| 2     | CourtListener volume       | judicialIndependence, lawEnforcement | Half day   |
+| 3     | DOJ/FBI/DHS press releases | lawEnforcement                       | Half day   |
+| 4     | civilLiberties sources     | civilLiberties                       | Half-1 day |
+| 5     | FCC ECFS                   | mediaFreedom                         | Half day   |
+| 6     | GDELT diversity metrics    | mediaFreedom                         | Half day   |
+| 7     | FEC enforcement            | elections                            | 2-3 hours  |
+| 8     | GAO/CIGIE                  | executiveOversight                   | 2-3 hours  |
+
+**Decision point:** After all spikes complete, decide final category count for launch (11, 12, or 13) and scope Sprint R-S1 accordingly. Spike results determine which sources are viable and which categories are launch blockers vs. fast-follows.
+
+---
+
 ### Sprint R4: Narrative Generation + Dashboard Redesign
 
-**Goal:** AI-generated weekly narratives for elevated categories + dashboard visualization for three-layer architecture. Keywords demoted to annotation role.
+**Goal:** AI-generated weekly narratives for elevated categories + dashboard visualization for three-layer architecture. Administration Overview as primary entry point. Keywords demoted to annotation role.
 
-**Depends on:** Sprint R3 (all three layers operational + validated)
+**Depends on:** Sprint R3 (all three layers operational + validated) + Sprint R3.2 (snapshot source parity)
 
 **Reference:** `ARCHITECTURE_PROPOSAL.md` §AI Narrative Generation, §Dashboard Visualization, §Role of Keywords
 
-**Code work (~400–500 lines new/modified):**
+**Code work (~500–700 lines new/modified):**
 
-1. **Narrative generation** — Opus 4.6 Extended Thinking for Elevated+ categories. Expert version (~800–1500 words) + public version (~300–500 words). Input: all 3 layer outputs + driving documents + labeled cluster shifts.
-2. **Dashboard redesign — category card** — Status pill (Stable/Elevated/Divergent/Confirmed Concern/No Data), convergence indicator (3 dots for layer status), sparkline (composite structural deviation), brief summary.
-3. **Category detail — three-panel visualization**:
+1. **Administration Overview page** (`/overview`) — Primary entry point for visitors. Category drift heatmap (all 13 categories × weeks, color = composite structural deviation from fixed baseline), status timeline (when each category changed status), cross-category synchrony chart (count of Elevated+ categories per week), cross-cutting patterns section (Opus AI-identified thematic threads across categories, labeled "not a structural metric"). Built from data already computed in R2–R3 (long-horizon drift, status history, cross-category counts). This is the highest-priority UI deliverable — the page that gets linked and shared.
+2. **Narrative generation** — Opus 4.6 Extended Thinking for Elevated+ categories. Expert version (~800–1500 words) + public version (~300–500 words). Input: all 3 layer outputs + driving documents + labeled cluster shifts. Cross-category synthesis for infrastructure convergence (detention, surveillance, criminalization threads) as part of administration-level narrative.
+3. **Dashboard redesign — landing page** — Category cards with status pill (Stable/Elevated/Divergent/Confirmed Concern/No Data), convergence indicator (3 dots for layer status), sparkline (composite structural deviation), brief summary, long-horizon context line ("X% above historical baseline"). Prominent link to Administration Overview.
+4. **Category detail — three-panel visualization**:
    - Panel 1: Structural signature (volume + type composition + functional distribution + source convergence)
    - Panel 2: AI assessment distribution (stacked bar per week: routine/novel/concerning/clearly concerning)
    - Panel 3: Thematic drift (rolling centroid distance + cluster annotations)
-4. **Convergence matrix** — 3-column indicator showing Layer 1/2/3 status + pattern label.
-5. **Keywords → annotation role** — Remove keywords from status determination. Keep for UI display (highlighted terms in evidence panel). Update EvidencePanel to show Pass 1/Pass 2 results alongside keyword annotations.
-6. **Methodology page** — Updated for three-layer architecture. Detection scope statement.
-7. **Reading level toggle** — Expert vs. public narrative versions.
-8. **Playwright e2e tests** — Core user journeys through new dashboard.
+5. **Convergence matrix** — 3-column indicator showing Layer 1/2/3 status + pattern label.
+6. **Keywords → annotation role** — Remove keywords from status determination. Keep for UI display (highlighted terms in evidence panel). Update EvidencePanel to show Pass 1/Pass 2 results alongside keyword annotations.
+7. **Methodology page** — Updated for three-layer architecture. Detection scope statement.
+8. **Reading level toggle** — Expert vs. public narrative versions.
+9. **Playwright e2e tests** — Core user journeys through new dashboard.
 
 **Run work (~$1–5/week ongoing for narrative generation):**
 
 - Opus 4.6 Extended on ~1–3 elevated categories per week
+- Cross-category synthesis: ~$0.50–2.00/week additional
 
 ---
 
-### Sprint R5: Immigration Category + Cross-Architecture Validation
+### Sprint R5: Cross-Architecture Validation + Launch Prep
 
-**Goal:** Add immigration category using the new architecture. Validate by running both old and new systems in parallel.
+**Goal:** Validate the three-layer system against old architecture. Prepare for public launch.
 
-**Depends on:** Sprint R4 (dashboard shows three-layer results)
+**Depends on:** Sprint R4 (dashboard shows three-layer results), Sprint R-S1 (source expansion complete)
 
 **Reference:** `ARCHITECTURE_PROPOSAL.md` §Sprint R5
 
-**Code work (~200 lines new):**
+**Code work:**
 
-1. **Immigration category** — Define signal queries for `categories.ts`, compute baselines across all 4 baseline periods, calibrate Layer 1 thresholds.
-2. **Cross-architecture validation** — Run both old (keyword) and new (three-layer) systems in parallel for 4 weeks.
-3. **Publish comparison report** — Document detection differences between architectures.
-4. **Decommission keyword-based status determination** — After validation period confirms three-layer system catches everything keywords caught plus more.
-5. **Methodology documentation** — Updated public methodology docs for three-layer architecture.
+1. **Cross-architecture validation** — Run both old (keyword) and new (three-layer) systems in parallel for 4 weeks.
+2. **Publish comparison report** — Document detection differences between architectures.
+3. **Decommission keyword-based status determination** — After validation period confirms three-layer system catches everything keywords caught plus more.
+4. **Methodology documentation** — Updated public methodology docs for three-layer architecture, citing V-Dem/Freedom House/Levitsky & Ziblatt framework alignment.
+
+### Sprint R-S1: Source Expansion (parallelizes with R4/R5)
+
+**Goal:** Expand document sources to achieve meaningful signal across all 13 categories. Build ingestion pipelines, run historical backfills, recompute baselines for affected categories.
+
+**Depends on:** Sprint R1 (document corpus + rhetoric cross-feed operational). Can run in parallel with R4 and R5.
+
+**Prerequisite:** LegiScan classification spike — 1 day, validates elections pipeline approach. Pull LegiScan bills for one state/year, AI-classify as restrictive/expansive/neutral, compare against Voting Rights Lab ground truth. Target >90% agreement.
+
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Source Expansion, `CATEGORY_FRAMEWORK_ANALYSIS.md`
+
+**Phase 1 — Ingestion pipelines (~2 weeks, parallelizable):**
+
+1. **CourtListener API** — Federal court opinions/orders filtered by relevance queries (injunctions against federal agencies, compliance orders, contempt, stays). Token auth. Serves judicialIndependence + lawEnforcement.
+2. **FCC ECFS API** — Commission orders, NOPRMs, enforcement actions, media ownership proceedings. Free API key. Serves mediaFreedom.
+3. **DOJ press releases** — justice.gov scrape/RSS. Indictments, investigations, enforcement actions, settlements. Serves lawEnforcement.
+4. **FBI press releases** — fbi.gov scrape/RSS. Major investigations, field operations. Serves lawEnforcement.
+5. **DHS/ICE/CBP data** — Enforcement announcements, quarterly detention/removal statistics. Serves lawEnforcement + immigrationEnforcement.
+6. **LegiScan + AI classification** (contingent on spike) — Election-relevant bills with AI restrictive/expansive/neutral classification. Serves elections.
+7. **Voting Rights Lab tracker** — State voting legislation since 2021, pre-classified. Serves elections (partial baseline coverage).
+8. **FEC enforcement data** — Enforcement actions, deadlocked votes. Serves elections.
+9. **ACLU litigation tracker** — Active cases, outcomes. Serves civilLiberties.
+10. **DOJ Civil Rights Division** — justice.gov/crt output. Serves civilLiberties.
+11. **GDELT media diversity metrics** — Source count per topic, local/national ratio, coverage volume. No new ingestion — new computation over existing GDELT data. Serves mediaFreedom.
+12. **CIGIE / expanded IG reports** — ignet.gov, oversight.gov. Serves executiveOversight.
+13. **CBO reports** — cbo.gov. Serves fiscal.
+
+**Phase 2 — Historical backfill (~1 week, mostly compute time):**
+
+- Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
+- Route through category assignment logic
+
+**Phase 3 — Baseline recomputation:**
+
+- Recompute Layer 1 structural baselines for 6 affected categories (judicialIndependence, elections, lawEnforcement, civilLiberties, mediaFreedom, executiveOversight)
+- Run Layer 2 Pass 1 + Pass 2 for new documents
+- Compute Layer 3 embeddings for new documents
+- Recalibrate thresholds if distributions shift
+
+**Phase 4 — Validation:**
+
+- Confirm baselines meet >95% Stable for Biden periods
+- Verify Trump 2025 signal quality with enriched corpus
+- Adjust structural dampening constants if corpus sizes changed significantly
 
 ---
 
-## Post-R5: Remaining Features
+## Post-R5: Remaining Features & Validated Improvements
 
-These items from the original Sprint 23–29 plan survive but are restructured for the three-layer architecture. They can be scheduled after the architecture is validated and operational.
+These items are validated but not yet scoped for specific sprints. They come from two sources: (1) features from the original Sprint 23–29 plan that survive under the new architecture, and (2) improvements identified during the architecture review process (2026-02-22 through 2026-02-24) by ChatGPT, Claude Code, and design discussion.
 
-### Admin Auth + Review Queue (was Sprint 24)
+When starting sprint planning, review this list for items relevant to current work. When new ideas emerge during implementation, add them to the "Added During Implementation" section at the bottom.
+
+---
+
+### Architecture Improvements (from review)
+
+#### R-F1: Pass 1 Pre-filtering with Functional Classifier
+
+**Source**: Claude Code review #4 · **Layer**: 2 · **Effort**: Small (~20 LOC)
+**Prerequisite**: Layer 1 functional classifier operational (Sprint R2 ✅)
+
+Documents classified by Layer 1 as `financial_regulatory` or `cultural_ceremonial` are formulaic and extremely unlikely to be relevant. Skipping Pass 1 for these saves ~15–20% AI costs with zero false-negative risk. Add a `PASS1_SKIP_BUCKETS` constant — documents in those buckets still get embedded (Layer 3) and counted (Layer 1) but skip AI assessment.
+
+#### R-F2: Sprint 21 Preservation vs. Deprecation
+
+**Source**: Claude Code review #7 · **Layer**: Keywords/annotations · **Effort**: Medium (~2–4 hours)
+**Prerequisite**: Sprint R4 (keywords demoted to annotation role)
+
+Sprint 21 added 56 operational keywords, admin overlay system, `getEffectiveKeywords()`. Under the new architecture:
+
+- **Preserve**: Admin overlay data as annotation metadata, keyword dictionaries as research artifact
+- **Simplify**: Date-filtering complexity → simpler "highlight for this administration?" logic
+- **Deprecate**: `getEffectiveKeywords()` pipeline integration, `document-scorer.ts` scoring pathway
+
+#### R-F3: Cross-Category Synchrony Detection
+
+**Source**: ChatGPT red team analysis #4 · **Layer**: Convergence synthesis · **Effort**: Medium (~50–80 LOC)
+**Prerequisite**: Convergence synthesis operational (Sprint R2+ ✅)
+
+Count how many categories are simultaneously at Elevated or above per week. If N > threshold (e.g., 5 of 13), flag as cross-category synchrony event. UI element: dashboard-level indicator with historical sparkline. Already feeds the Administration Overview page's synchrony chart.
+
+#### R-F4: Coverage Health Monitoring
+
+**Source**: ChatGPT red team analysis #5 · **Layer**: Infrastructure · **Effort**: Medium (~100–150 LOC + dashboard)
+**Prerequisite**: None (independent). Complements existing Sprint 17 source health.
+
+Track per-source ingestion health: documents fetched, success rate, latency, schema changes, missingness. Distinguish "no data" reasons: no activity vs. pipeline broken vs. source changed format vs. stopped publishing. Monitor functional classifier "Other/unclassified" ratio — spikes may indicate metadata convention changes (potential evasion).
+
+#### R-F5: Pass 2 Mechanism Extraction Fields
+
+**Source**: ChatGPT red team analysis #3 · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema change)
+**Prerequisite**: Pass 2 operational (Sprint R3 ✅)
+
+Add structured mechanism fields to Pass 2 output: `powerCreatedOrExpanded`, `oversightReduced`, `enforcementLeverChanged`, `dueProcessChanged`, `accessToSystemsChanged`. Anchors Pass 2 in verifiable mechanics, improves narrative generation input, resists language manipulation.
+
+#### R-F6: Semantic Escalation Within Functional Buckets
+
+**Source**: ChatGPT red team analysis #2 · **Layer**: 3 · **Effort**: Medium–Large
+**Prerequisite**: Layer 1 functional classifier + Layer 3 operational
+
+Track embedding drift _within_ each functional bucket, not just at category level. Catches the most sophisticated evasion: keeping structure, function, and volume identical while changing substance within a functional category. Sub-cluster Layer 3's embeddings by functional bucket, compute per-bucket centroid distance.
+
+#### R-F7: AI Model Challenge Set
+
+**Source**: ChatGPT red team analysis #3 · **Layer**: 2 · **Effort**: Medium (initial) + Small (ongoing)
+**Prerequisite**: Pass 1 + Pass 2 operational (Sprint R3 ✅)
+
+~50–100 curated documents (routine governance, known erosion events, edge cases) as a fixed test suite. Run against Pass 1/Pass 2 on model updates or prompt revisions. Detect classification drift and regression before production deployment.
+
+#### R-F8: Semantic Variance Decomposition
+
+**Source**: ChatGPT final review · **Layer**: 3 · **Effort**: Medium (~80–120 LOC)
+**Prerequisite**: Layer 3 operational with clustering (Sprint R2 ✅)
+
+Decompose Layer 3 centroid drift into within-cluster variance (stylistic change) vs. between-cluster variance (substantive institutional change). Standard ANOVA on embedding vectors. A shift in the ratio is more specific than raw centroid distance. UI: "variance type: structural" vs. "variance type: stylistic" annotation on thematic drift panel.
+
+#### R-F9: Event Retrospective Harness
+
+**Source**: ChatGPT red team validation · **Layer**: All / validation · **Effort**: Large (~200–300 LOC)
+**Prerequisite**: Full three-layer system operational (Sprint R3 ✅)
+
+Run DOGE establishment, USAID closure, and IG firings through the complete pipeline retrospectively. Report per week: which layers fired, signal strength, top driver documents, detection ordering. Expected patterns: DOGE (Layer 2 first → Layer 1 corroborates), USAID (Layer 1 convergence gap or Layer 2 news), IG firings (Layer 2 first). Produces: public methodology chapter, calibration reference, credibility artifact for OSS release.
+
+#### R-F10: UI Design Specification V4
+
+**Source**: Architecture review process (2026-02-24) · **Layer**: All (UI) · **Effort**: Large (~2–3 days)
+**Prerequisite**: Sprint R3 complete
+
+UI Spec V3 was written against the old keyword-severity architecture. V4 rewrites all data-model-dependent sections while preserving architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern). A divergence map (`UI_V3_DIVERGENCE_MAP.md`) documents every V3 section that needs updating. The Architecture Proposal's Dashboard Visualization section serves as the interim UI specification for Sprint R4.
+
+#### R-F11: Pass 2 Infrastructure Theme Tagging
+
+**Source**: Architecture design discussion (2026-02-24) · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema)
+**Prerequisite**: Next baseline re-run (AI model version update)
+**Trigger**: Add to Pass 2 schema _before_ next baseline re-run so theme tags ride the re-run at zero additional cost.
+
+Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceApparatus`, `criminalizationOfOpposition`. Enables structured cross-category infrastructure convergence detection (replaces V3 keyword-based infrastructure convergence). Until then, Opus cross-category narrative synthesis provides interpretive coverage. Deferred because all four baselines already ran through Pass 2 — adding now would cost ~$28–60 for re-runs.
+
+---
+
+### Surviving Features (from original Sprint 23–29 plan)
+
+#### Admin Auth + Review Queue (was Sprint 24)
 
 - Admin auth, feedback store, review queue page, feedback fields
 - Review queue now reviews Pass 2 assessments instead of keyword-based alerts
 - See original Sprint 24 plan and V3 Addendum Sprint D
 
-### Suppression Learning + Proposals (was Sprint 26)
+#### Suppression Learning + Proposals (was Sprint 26)
 
 - Feedback learning pipeline using Pass 2 assessment patterns
 - Admin proposal review for prompt adjustments and threshold changes
 - See original Sprint 26 plan and V3 Addendum Sprint E
 
-### Onboarding + Responsive Polish + Performance (was Sprint 28)
+#### Onboarding + Responsive Polish + Performance (was Sprint 28)
 
 - First-time visitor onboarding, mobile layouts, performance optimization
 - See original Sprint 28 plan and UI spec section 4.5, 4.6, 10.2
 
-### Alternative Sources (was Sprint 29)
+#### Alternative Sources (was Sprint 29) — **Absorbed into Sprint R-S1**
 
-- CourtListener, State AG feeds, source priority framework
-- See original Sprint 29 plan and V3 Addendum Sprints I, J
+- ~~CourtListener, State AG feeds, source priority framework~~ — Superseded by Sprint R-S1 source expansion, which covers CourtListener + FCC + DOJ/FBI/DHS + VRL/LegiScan + FEC + ACLU + CIGIE + CBO. See `ARCHITECTURE_PROPOSAL.md` §Source Expansion.
+- See original Sprint 29 plan and V3 Addendum Sprints I, J for historical context
+
+---
+
+### Added During Implementation
+
+_(Items added as work progresses — append here with date and source)_
+
+---
+
+### Completed
+
+_(Move items here when implemented, with sprint reference)_
 
 ---
 
@@ -623,6 +839,7 @@ These items from the original Sprint 23–29 plan survive but are restructured f
 | Sprint R2 embedding backfill (~15 min)            | Sprint R2 structural anomaly scoring code (pure functions)                |
 | Sprint R2 baseline structural distributions (SQL) | Sprint R2 Layer 3 semantic drift adaptation                               |
 | Sprint R3 baseline AI runs (~$47–97, ~8–11 hours) | Sprint R4 dashboard component scaffolding                                 |
+| Sprint R3 baseline AI runs                        | Sprint R3.2 snapshot source parity (~30–50 LOC, no data dependency)       |
 
 ---
 

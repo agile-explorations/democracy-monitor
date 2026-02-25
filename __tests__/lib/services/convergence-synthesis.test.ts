@@ -79,7 +79,7 @@ describe('synthesizeConvergence', () => {
     });
 
     it('returns Elevated when only thematic is elevated', () => {
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(makeStructuralScore(), null, thematic);
       expect(result.status).toBe('Elevated');
       expect(result.layersElevated).toBe(1);
@@ -88,7 +88,7 @@ describe('synthesizeConvergence', () => {
 
     it('returns Divergent when L1 + L3 are elevated (no AI)', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(structural, null, thematic);
       expect(result.status).toBe('Divergent');
       expect(result.layersElevated).toBe(2);
@@ -143,7 +143,7 @@ describe('synthesizeConvergence', () => {
     it('triggers with all 3 layers elevated + high concern', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.4 });
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(structural, ai, thematic);
       expect(result.status).toBe('ConfirmedConcern');
       expect(result.layersElevated).toBe(3);
@@ -152,16 +152,67 @@ describe('synthesizeConvergence', () => {
     it('triggers with structural + thematic + high AI concern (AI not flag-elevated)', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
       const ai = makeAISummary({ flagRateZScore: 1.0, concernRate: 0.3 });
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(structural, ai, thematic);
       // 2 layers elevated (structural + thematic), high concern → ConfirmedConcern
+      expect(result.status).toBe('ConfirmedConcern');
+    });
+
+    it('does NOT trigger when concern rate is high but Pass 2 sample too small', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const ai = makeAISummary({
+        flagRateZScore: 2.0,
+        concernRate: 1.0,
+        concernDistribution: {
+          routine: 0,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 0,
+        },
+      });
+      const result = synthesizeConvergence(structural, ai, makeThematicDrift());
+      // 2 layers elevated but only 1 Pass 2 doc → highConcern gated off → Divergent not ConfirmedConcern
+      expect(result.status).toBe('Divergent');
+    });
+
+    it('triggers when concern rate is high and Pass 2 sample meets minimum', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const ai = makeAISummary({
+        flagRateZScore: 2.0,
+        concernRate: 0.33,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 0,
+        },
+      });
+      // Only 2 Pass 2 docs — below minimum of 3
+      const result = synthesizeConvergence(structural, ai, makeThematicDrift());
+      expect(result.status).toBe('Divergent');
+    });
+
+    it('triggers at exactly the minimum sample size', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const ai = makeAISummary({
+        flagRateZScore: 2.0,
+        concernRate: 0.33,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 1,
+        },
+      });
+      // 3 Pass 2 docs — exactly at minimum, 2/3 = 0.67 > 0.2 concern rate
+      const result = synthesizeConvergence(structural, ai, makeThematicDrift());
       expect(result.status).toBe('ConfirmedConcern');
     });
   });
 
   describe('bootstrap behavior', () => {
     it('thematic alone cannot trigger Elevated during bootstrap', () => {
-      const thematic = makeThematicDrift({ zScore: 2.5, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
       const result = synthesizeConvergence(makeStructuralScore(), null, thematic);
       expect(result.status).toBe('Stable');
       expect(result.bootstrap).toBe(true);
@@ -169,7 +220,7 @@ describe('synthesizeConvergence', () => {
 
     it('thematic can reinforce structural during bootstrap', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
-      const thematic = makeThematicDrift({ zScore: 2.5, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
       const result = synthesizeConvergence(structural, null, thematic);
       expect(result.status).toBe('Divergent');
       expect(result.layersElevated).toBe(2);
@@ -177,7 +228,7 @@ describe('synthesizeConvergence', () => {
 
     it('thematic can reinforce AI during bootstrap', () => {
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.3 });
-      const thematic = makeThematicDrift({ zScore: 2.5, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
       const result = synthesizeConvergence(makeStructuralScore(), ai, thematic);
       expect(result.status).toBe('ConfirmedConcern');
       expect(result.layersElevated).toBe(2);
@@ -211,7 +262,7 @@ describe('synthesizeConvergence', () => {
     });
 
     it('describes thematic drift', () => {
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(makeStructuralScore(), null, thematic);
       expect(result.pattern).toContain('thematic drift');
     });
@@ -219,7 +270,7 @@ describe('synthesizeConvergence', () => {
     it('describes multiple layers', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
       const ai = makeAISummary({ flagRateZScore: 2.0 });
-      const thematic = makeThematicDrift({ zScore: 2.5 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(structural, ai, thematic);
       expect(result.pattern).toContain('structural anomaly');
       expect(result.pattern).toContain('AI flag rate');
@@ -228,7 +279,7 @@ describe('synthesizeConvergence', () => {
 
     it('describes bootstrap thematic drift with reduced confidence', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
-      const thematic = makeThematicDrift({ zScore: 2.5, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
       const result = synthesizeConvergence(structural, null, thematic);
       expect(result.pattern).toContain('reduced confidence');
     });

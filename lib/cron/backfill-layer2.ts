@@ -14,6 +14,7 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { Layer2Options } from '@/lib/services/layer2-orchestrator';
 import { runLayer2Assessment } from '@/lib/services/layer2-orchestrator';
+import { getPass1Count } from '@/lib/services/layer2-store';
 import type { ContentItem } from '@/lib/types';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
 
@@ -124,11 +125,18 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   const options: Layer2Options = { dryRun: args.dryRun };
   let totalDocs = 0;
   let totalFlagged = 0;
+  let skipped = 0;
 
   for (const cat of categories) {
     for (const weekOf of weeks) {
       const items = await getDocumentsForCategoryWeek(cat.key, weekOf);
       if (items.length === 0) continue;
+
+      const existing = await getPass1Count(cat.key, weekOf);
+      if (existing >= items.length) {
+        skipped += items.length;
+        continue;
+      }
 
       console.log(`[backfill-l2] ${cat.key} / ${weekOf}: ${items.length} docs`);
       const summary = await runLayer2Assessment(items, cat.key, weekOf, options);
@@ -140,7 +148,10 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
     }
   }
 
-  console.log(`[backfill-l2] Complete: ${totalDocs} docs assessed, ${totalFlagged} flagged`);
+  console.log(
+    `[backfill-l2] Complete: ${totalDocs} docs assessed, ${totalFlagged} flagged` +
+      (skipped > 0 ? `, ${skipped} skipped (already processed)` : ''),
+  );
 }
 
 if (require.main === module) {

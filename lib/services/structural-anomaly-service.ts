@@ -6,6 +6,7 @@ import {
   LONG_HORIZON_WINDOW_WEEKS,
   STRUCTURAL_ANOMALY_THRESHOLD,
   STRUCTURAL_DIMENSION_WEIGHTS,
+  STRUCTURAL_MIN_DOC_COUNT,
 } from '@/lib/methodology/scoring-config';
 import type {
   BaselineDistribution,
@@ -166,7 +167,11 @@ export function computeStructuralScore(
   baseline: BaselineDistribution,
 ): StructuralScore {
   const dimensions = computeDimensions(week, baseline);
-  const composite = computeWeightedComposite(dimensions);
+  const rawComposite = computeWeightedComposite(dimensions);
+  // Dampen composite for small-corpus category-weeks (z-scores are unreliable with few docs)
+  const dampening =
+    Math.min(week.documentCount, STRUCTURAL_MIN_DOC_COUNT) / STRUCTURAL_MIN_DOC_COUNT;
+  const composite = rawComposite * dampening;
   const functionalShifts = detectFunctionalShifts(
     week.functionalDistribution,
     baseline.functionalDistribution,
