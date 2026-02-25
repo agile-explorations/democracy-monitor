@@ -107,7 +107,7 @@ export async function crossfeedRhetoricToCategories(items: ContentItem[]): Promi
   for (const item of items) {
     if (!item.link) continue;
 
-    const categories = classifyRhetoricToCategories(item.title, item.summary);
+    const categories = classifyRhetoricToCategories(item.title || '', item.summary);
     for (const category of categories) {
       await storeDocuments([item], category);
       totalAssignments++;

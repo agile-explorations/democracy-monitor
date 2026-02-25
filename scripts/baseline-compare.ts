@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { getDb } from '@/lib/db/client';
+import { getDb } from '@/lib/db';
 
 type Db = ReturnType<typeof getDb>;
 
