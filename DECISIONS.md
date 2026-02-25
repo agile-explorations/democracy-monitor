@@ -431,3 +431,43 @@ Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US
 **Lessons learned:**
 
 - **Test mocks must track schema exports**: Adding `aiDocumentAssessments` to the export/import modules broke 2 test files because their `vi.mock('@/lib/db/schema')` didn't include the new export. Vitest's error message is clear ("No X export is defined on the mock") but easy to miss when the production code change is trivial.
+
+---
+
+## Sprint R3-RUN: Threshold Calibration, Layer 2 Backfill, Layer Score Recomputation
+
+**Planned:** Run work from Sprint R3 — Pass 1/Pass 2 on 4 baselines, T2 Layer 2 backfill, threshold calibration, layer score recomputation. Estimated cost $47-97.
+
+**Actual:** Completed in 6 phases. T2 Layer 2 backfill (14,480 docs, 221 flagged). Structural dampening calibration to suppress false positives from mild statistical deviations. Layer score recomputation across all 2,896 category-weeks. Logo and favicon assets added. Actual AI cost ~$15 (T2 only; baseline runs deferred — source convergence is a no-op without rhetoric cross-feed, so baseline Layer 2 data would be incomplete).
+
+**Key decisions:**
+
+- **Baseline Layer 2 runs deferred**: Neither backfill nor snapshot was cross-feeding rhetoric to assessment categories (see WI-15 below). Source convergence dimension was a no-op (always comparing zero rhetoric vs zero rhetoric). Running Layer 2 on baselines without cross-feed would produce incomplete data. Deferred to Sprint R-S1 (source expansion + baseline recomputation).
+- **Structural dampening**: Exponential decay (`exp(-abs(z))`) for z-scores below 1.5 σ to suppress noise from mild deviations. JSD z-score cap prevents single-dimension outliers from dominating. These thresholds are in `scoring-config.ts` as named constants (`DAMPENING_THRESHOLD`, `JSD_Z_SCORE_CAP`).
+- **Seed fixture export includes ai_document_assessments**: 78,576 rows. The fixture file is large (~75MB) but captured in the git-tracked seed pipeline for local development.
+
+**Spec deviations:**
+
+- **Baseline AI runs skipped**: Plan called for all 4 baselines (~60K docs); only T2 (14,480 docs) was assessed. Baselines will be assessed after rhetoric cross-feed is enabled and baselines are recomputed with cross-fed data.
+
+---
+
+## Sprint R3.2: Snapshot Source Parity (WI-15)
+
+**Planned:** 4 work items: schema migration (composite unique on documents), crossfeed helper function, wire into snapshot/backfill pipelines, tests.
+
+**Actual:** All 4 work items delivered. 10 files changed, 5 new tests (1240 total). Schema migration applied cleanly. Cross-feed function shared across all 3 pipelines.
+
+**Key decisions:**
+
+- **Composite unique `(url, category)` instead of `url` alone**: The single-column unique on `documents.url` prevented the same URL from existing under multiple categories. Cross-feed requires exactly this — a rhetoric doc stored as 'intent' also needs rows under 'civilService', 'fiscal', etc. The migration is non-destructive: all existing rows already had unique (url, category) pairs since url was previously unique alone.
+- **`IF NOT EXISTS` on category index**: Local DB already had `idx_documents_category` from prior manual creation. Added `IF NOT EXISTS` to the generated migration SQL for idempotency.
+- **Crossfeed function calls storeDocuments per-item-per-category (serial)**: Could be batched for performance, but rhetoric batches are typically <500 items, the function mirrors existing pipeline patterns, and the upsert is fast. Simplicity over optimization.
+- **No baseline re-run required now**: Baselines and T2 data were both computed without cross-feed, so they're consistent. Source convergence is a no-op for both. When baselines are re-run (Sprint R-S1), cross-feed will be enabled, making source convergence meaningful.
+
+**Lessons learned:**
+
+- **`vi.mock()` between imports triggers ESLint `import/order`**: ESLint sees `vi.mock()` calls as non-import statements that create a gap between import groups, triggering "no empty line between import groups". Fix: put all imports first (vitest hoists `vi.mock()` regardless of position), then all `vi.mock()` calls after.
+- **Drizzle `db:generate` doesn't know about manually created indices**: If an index already exists in the DB but wasn't in a Drizzle migration, `db:generate` will generate a `CREATE INDEX` that fails. Use `IF NOT EXISTS` when the index may already exist.
+- **Prettier must format seed fixtures**: `pnpm seed:export` writes raw JSON; pre-commit hook checks formatting. Always run `prettier --write lib/seed/fixtures/*.json` after export.
+- **Script files need ESLint max-lines-per-function compliance**: Unlike test files which are exempt, `scripts/` files are not exempt from the 50-line function limit. Split large query functions into focused helpers.

@@ -536,24 +536,13 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint R3.2: Snapshot Source Parity (Launch Blocker)
+### Sprint R3.2: Snapshot Source Parity (Launch Blocker) ✅
 
 **Goal:** Ensure the daily cron snapshot produces the same source mix per category as the backfill, so live monitoring data is directly comparable to baselines.
 
 **Depends on:** Sprint R1 (rhetoric cross-feed classifier ✅)
 
-**Problem:** The backfill fetches FR + WH + GDELT and routes rhetoric documents into assessment categories via `rhetoric-crossfeed.ts`. The daily snapshot fetches WH + GDELT via `snapshotRhetoric()` but stores them only under the intent/rhetoric pipeline — they never reach the 11 assessment categories. This means:
-
-- Layer 1 structural baselines (volume, composition, source convergence) were computed _with_ cross-fed rhetoric documents
-- Daily data will be computed _without_ them
-- Every layer will see a systematic difference between baseline and live data — not from governance changes, but from pipeline mismatch
-- Source convergence (Layer 1 dimension) is specifically designed to measure the gov-to-rhetoric ratio per category; it will produce false anomalies if rhetoric documents aren't present in daily category data
-
-**Code work (~30–50 lines modified):**
-
-1. **Wire rhetoric cross-feed into daily snapshot** — After `snapshotRhetoric()` fetches WH + GDELT documents, run them through `rhetoric-crossfeed.ts` classification and store category-classified documents in the same tables the backfill uses. The cross-feed classifier already exists (Sprint R1); this is plumbing, not new logic.
-2. **Verify source mix parity** — Run one week's snapshot and compare document counts per category per source type against the same week from backfill data. Counts should be within ~5% (timing differences for same-day fetches are expected).
-3. **Test** — Unit test: `snapshotRhetoric()` produces documents with category classifications. Integration test: weekly aggregate for a snapshot week includes rhetoric-sourced documents in category counts.
+**Actual:** Completed. Key finding during planning: neither backfill nor snapshot was cross-feeding rhetoric to assessment categories. The `classifyRhetoricToCategories()` function (Sprint R1) was never integrated into any pipeline. All three pipelines stored rhetoric as `category='intent'` only. Baselines and live data were already in parity (both FR-only per assessment category), but source convergence was a no-op. Fix: schema migration to `(url, category)` composite unique + `crossfeedRhetoricToCategories()` helper wired into all 3 pipelines. 10 files changed, 5 new tests. Milestone #21, Issues #127-#130.
 
 **Risk if skipped:** Every week of live monitoring after launch will be structurally incomparable to baselines. This is not a "nice to have" — it invalidates the baseline calibration that Sprints R2–R3 spent ~$50–100 establishing.
 
