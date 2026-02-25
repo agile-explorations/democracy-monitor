@@ -32,9 +32,9 @@ describe('CATEGORIES', () => {
     const keys = CATEGORIES.map((c) => c.key);
     expect(keys).toContain('civilService');
     expect(keys).toContain('fiscal');
-    expect(keys).toContain('igs');
+    expect(keys).toContain('executiveOversight');
     expect(keys).toContain('hatch');
-    expect(keys).toContain('courts');
+    expect(keys).toContain('judicialIndependence');
     expect(keys).toContain('military');
     expect(keys).toContain('rulemaking');
     expect(keys).toContain('executiveActions');

@@ -59,7 +59,7 @@ describe('exportSeedData', () => {
   it('exports each table and manifest as JSON fixture files', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
-    const mockRows = [{ id: 1, category: 'courts', status: 'Stable' }];
+    const mockRows = [{ id: 1, category: 'judicialIndependence', status: 'Stable' }];
     mockDb(mockRows);
 
     await exportSeedData(testDir);

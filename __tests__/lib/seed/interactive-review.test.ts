@@ -15,7 +15,7 @@ import {
 function makeAlert(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
-    category: 'courts',
+    category: 'judicialIndependence',
     severity: 'Warning',
     message: 'AI recommends Stable vs keyword Warning',
     metadata: {
@@ -109,7 +109,11 @@ describe('extractAiFeedback', () => {
           keywordReview: [
             { keyword: 'injunction issued', assessment: 'false_positive', reasoning: 'Routine' },
             { keyword: 'drift', assessment: 'false_positive', reasoning: 'Not a real keyword' },
-            { keyword: 'courts', assessment: 'false_positive', reasoning: 'Category name' },
+            {
+              keyword: 'judicialIndependence',
+              assessment: 'false_positive',
+              reasoning: 'Category name',
+            },
           ],
         },
       }),
@@ -158,7 +162,7 @@ describe('formatItemForDisplay', () => {
   it('produces expected terminal output with progress', () => {
     const output = formatItemForDisplay(makeAlert(), 0, 10);
     expect(output).toContain('Review 1 of 10');
-    expect(output).toContain('courts');
+    expect(output).toContain('judicialIndependence');
     expect(output).toContain('Warning');
     expect(output).toContain('Stable');
     expect(output).toContain('50%');

@@ -548,19 +548,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ---
 
-### Sprint R3.3: Category Renames
+### Sprint R3.3: Category Renames ✅
+
+> **Status: Done.** Database migration script renamed all category values across 11 tables. Codebase-wide rename: 7 data files, 2 service files, 1 UI component, 2 demo files, 2 comment examples, 34 test files. Seed fixtures regenerated via `pnpm seed:export`. 1240 tests pass. Milestone #22, Issues #131-#137.
 
 **Goal:** Rename `courts` → `judicialIndependence` and `igs` → `executiveOversight` across the entire codebase before new code accumulates under old names.
 
 **Depends on:** Nothing (can run anytime, but best done before Sprint R4 starts building new UI against category keys)
 
-**Code work (mechanical, ~2-4 hours):**
+**Actual code work:**
 
-1. **Database migration** — Rename category keys in `categories`, `weekly_aggregates`, `documents`, `ai_document_assessments`, and any other tables referencing category keys.
-2. **Codebase rename** — Update `categories.ts`, signal queries, seed data, fixtures, test files, API routes, UI components. Global find-and-replace with manual review of each occurrence.
-3. **Seed data + fixtures** — Update JSON fixtures to use new category keys.
-4. **Documentation** — Update README, DEPLOYMENT, CONTRIBUTING references.
-5. **Single atomic commit** — All changes in one commit to avoid partial rename state.
+1. ~~**Database migration**~~ — **Done.** `scripts/rename-categories.ts` renamed category values in `documents`, `ai_document_assessments`, `weekly_aggregates`, `document_scores`, `baselines`, `source_health`, `assessments`, `alerts`, `debates`, `keyword_trends`, `cycle_adjustment_factors`, `p2025_proposals` (dashboard_category). Also handles JSONB arrays in `legal_documents` and `semantic_clusters`.
+2. ~~**Codebase rename**~~ — **Done.** 7 data definition files, 2 service files, 1 UI component, 2 demo files, 2 comment examples, 34 test files.
+3. ~~**Seed data + fixtures**~~ — **Done.** Regenerated all 7 fixture JSONs via `pnpm seed:export`.
+4. ~~**Single atomic commit**~~ — **Done.**
 
 **Rationale:** Doing this now (before R4 builds the dashboard UI) avoids a larger rename diff later. Every component built after this point uses the correct threat-vector-oriented names.
 
@@ -593,24 +594,47 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Goal:** AI-generated weekly narratives for elevated categories + dashboard visualization for three-layer architecture. Administration Overview as primary entry point. Keywords demoted to annotation role.
 
-**Depends on:** Sprint R3 (all three layers operational + validated) + Sprint R3.2 (snapshot source parity)
+**Depends on:** Sprint R3 (all three layers operational + validated) + Sprint R3.2 (snapshot source parity) + Sprint R3.3 (category renames)
 
 **Reference:** `ARCHITECTURE_PROPOSAL.md` §AI Narrative Generation, §Dashboard Visualization, §Role of Keywords
 
-**Code work (~500–700 lines new/modified):**
+**Split into three incremental sub-sprints (R4a → R4b → R4c) to ship working slices and avoid a monolithic UI sprint.**
 
-1. **Administration Overview page** (`/overview`) — Primary entry point for visitors. Category drift heatmap (all 13 categories × weeks, color = composite structural deviation from fixed baseline), status timeline (when each category changed status), cross-category synchrony chart (count of Elevated+ categories per week), cross-cutting patterns section (Opus AI-identified thematic threads across categories, labeled "not a structural metric"). Built from data already computed in R2–R3 (long-horizon drift, status history, cross-category counts). This is the highest-priority UI deliverable — the page that gets linked and shared.
-2. **Narrative generation** — Opus 4.6 Extended Thinking for Elevated+ categories. Expert version (~800–1500 words) + public version (~300–500 words). Input: all 3 layer outputs + driving documents + labeled cluster shifts. Cross-category synthesis for infrastructure convergence (detention, surveillance, criminalization threads) as part of administration-level narrative.
-3. **Dashboard redesign — landing page** — Category cards with status pill (Stable/Elevated/Divergent/Confirmed Concern/No Data), convergence indicator (3 dots for layer status), sparkline (composite structural deviation), brief summary, long-horizon context line ("X% above historical baseline"). Prominent link to Administration Overview.
-4. **Category detail — three-panel visualization**:
-   - Panel 1: Structural signature (volume + type composition + functional distribution + source convergence)
-   - Panel 2: AI assessment distribution (stacked bar per week: routine/novel/concerning/clearly concerning)
-   - Panel 3: Thematic drift (rolling centroid distance + cluster annotations)
-5. **Convergence matrix** — 3-column indicator showing Layer 1/2/3 status + pattern label.
-6. **Keywords → annotation role** — Remove keywords from status determination. Keep for UI display (highlighted terms in evidence panel). Update EvidencePanel to show Pass 1/Pass 2 results alongside keyword annotations.
-7. **Methodology page** — Updated for three-layer architecture. Detection scope statement.
-8. **Reading level toggle** — Expert vs. public narrative versions.
-9. **Playwright e2e tests** — Core user journeys through new dashboard.
+#### Sprint R4a: API Layer + Narrative Generation (Backend)
+
+**Goal:** Build narrative generation service and API endpoints. No UI changes.
+
+**Code work (~300 lines new, ~100 lines tests):**
+
+1. **`narratives` table** — Schema: `category`, `weekOf`, `version` ('expert'|'public'), `content` (text), `model` (varchar), `generatedAt` (timestamp). Composite unique on `(category, weekOf, version)`.
+2. **Narrative generation service** (`lib/services/narrative-generation-service.ts`) — `generateCategoryNarrative(category, weekOf, layerData)` → expert + public versions. Uses Opus 4.6 Extended Thinking. Elevated+ categories get live generation; Stable categories get template summary.
+3. **Overview API endpoint** (`pages/api/overview/summary.ts`) — Returns all categories with current status, sparkline data, narrative summaries, synchrony counts, status timeline. Aggregates from `weekly_aggregates` + `narratives`.
+4. **Narrative API endpoint** (`pages/api/narratives/[category].ts`) — Returns expert + public narratives for a category. Triggers generation if missing and category is Elevated+.
+5. **Snapshot integration** — Wire narrative generation into `snapshot.ts` for Elevated+ categories.
+6. **Tests** — Unit tests for narrative service (mock AI provider), API endpoint tests.
+
+#### Sprint R4b: Administration Overview Page
+
+**Goal:** Build the primary entry point page that gets linked and shared.
+
+**Code work (~400 lines new components, ~150 lines tests):**
+
+1. **`pages/overview.tsx`** — Overall status summary (AI narrative from overview API), category drift heatmap, status timeline, synchrony chart, cross-cutting patterns, category cards sorted by long-horizon drift, methodology footer.
+2. **New components:** `CategoryDriftHeatmap` (categories × weeks, color = structural deviation), `StatusTimeline` (convergence status change history), `SynchronyChart` (Elevated+ count per week), `ConvergenceMatrix` (3-column Layer 1/2/3 indicator).
+3. **Landing page update** — Prominent link to `/overview` from `pages/index.tsx`.
+4. **Tests** — Component tests for new overview components.
+
+#### Sprint R4c: Category Detail Redesign + Keyword Demotion
+
+**Goal:** Three-panel category detail page with convergence matrix. Demote keywords to annotation role.
+
+**Code work (~350 lines new/modified, ~200 lines tests):**
+
+1. **Category detail page update** — Convergence matrix at top. Panel 1: Structural signature (volume + type composition + functional distribution). Panel 2: AI assessment distribution (stacked bar). Panel 3: Thematic drift (centroid distance + clusters). Narrative with reading level toggle.
+2. **Landing page CategoryCard update** — Convergence indicator (3 dots), AI summary line, long-horizon context ("X% above baseline").
+3. **Keyword demotion** — Label keywords as "annotations for context (not scoring)". Show Pass 1/Pass 2 results alongside keyword annotations. No code removal.
+4. **Methodology page** — Updated for three-layer architecture.
+5. **Tests** — Component tests, Playwright e2e for core journeys.
 
 **Run work (~$1–5/week ongoing for narrative generation):**
 

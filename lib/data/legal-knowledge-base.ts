@@ -47,7 +47,7 @@ export const LEGAL_KNOWLEDGE_BASE: LegalDocument[] = [
     citation: '5 U.S.C. App. §§ 1-13',
     content:
       'The Inspector General Act created independent Inspectors General in federal agencies to conduct audits and investigations, promote economy and efficiency, and prevent fraud and abuse. IGs have broad powers including subpoena authority and access to agency records. The President can remove IGs but must communicate the reasons to Congress 30 days in advance. IG independence is considered essential to government accountability.',
-    relevantCategories: ['igs', 'all'],
+    relevantCategories: ['executiveOversight', 'all'],
   },
   {
     title: 'Pendleton Civil Service Reform Act',
@@ -63,7 +63,7 @@ export const LEGAL_KNOWLEDGE_BASE: LegalDocument[] = [
     citation: '5 U.S. (1 Cranch) 137 (1803)',
     content:
       'Established the principle of judicial review — the power of federal courts to declare legislative and executive actions unconstitutional. Chief Justice Marshall wrote: "It is emphatically the province and duty of the Judicial Department to say what the law is." This case is the foundation of the courts\' role as a check on executive power.',
-    relevantCategories: ['courts', 'all'],
+    relevantCategories: ['judicialIndependence', 'all'],
   },
   {
     title: 'Youngstown Sheet & Tube Co. v. Sawyer',
@@ -79,7 +79,7 @@ export const LEGAL_KNOWLEDGE_BASE: LegalDocument[] = [
     citation: '418 U.S. 683 (1974)',
     content:
       'The Supreme Court unanimously held that the President is not above the law and must comply with judicial subpoenas. While recognizing a constitutionally based executive privilege, the Court held it is not absolute and must yield to the demonstrated, specific need for evidence in a criminal proceeding. The case established that the rule of law applies to the President.',
-    relevantCategories: ['courts', 'all'],
+    relevantCategories: ['judicialIndependence', 'all'],
   },
   {
     title: 'U.S. Constitution, Article I',

@@ -4,7 +4,7 @@
  *
  * Usage:
  *   pnpm recompute-scores                       # Recompute all
- *   pnpm recompute-scores --category courts      # Single category
+ *   pnpm recompute-scores --category judicialIndependence  # Single category
  *   pnpm recompute-scores --from 2025-01-20      # Date range
  *   pnpm recompute-scores --dry-run              # Preview without writing
  *   pnpm recompute-scores --aggregate            # Also recompute weekly aggregates

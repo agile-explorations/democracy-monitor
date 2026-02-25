@@ -45,8 +45,8 @@ describe('getEffectiveKeywords', () => {
     });
 
     it('does not add overlay keywords to unaffected categories', () => {
-      const result = getEffectiveKeywords('courts', 'warning', '2025-06-01');
-      expect(result).toEqual(ASSESSMENT_RULES.courts.keywords.warning);
+      const result = getEffectiveKeywords('judicialIndependence', 'warning', '2025-06-01');
+      expect(result).toEqual(ASSESSMENT_RULES.judicialIndependence.keywords.warning);
     });
 
     it('does not add overlay keywords to unaffected tiers', () => {

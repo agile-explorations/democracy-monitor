@@ -66,7 +66,7 @@ const REASONS: Record<string, Record<StatusLevel, string>> = {
     Capture:
       'Systematic withholding of appropriated funds across multiple agencies. GAO has issued formal opinions finding ICA violations.',
   },
-  igs: {
+  executiveOversight: {
     Stable:
       'Inspectors General are operating independently. Reports are being published on schedule.',
     Warning: 'Some IG positions remain vacant. Oversight.gov access has been intermittent.',
@@ -84,7 +84,7 @@ const REASONS: Record<string, Record<StatusLevel, string>> = {
     Capture:
       'Systematic politicization of the federal workforce. OSC enforcement effectively neutralized.',
   },
-  courts: {
+  judicialIndependence: {
     Stable: 'Federal agencies are complying with court orders in a timely manner.',
     Warning:
       'Some agencies have requested extensions on compliance timelines. DOJ is seeking stays on recent injunctions.',
@@ -173,7 +173,7 @@ const DEBATE_TOPICS: Record<string, Record<StatusLevel, string>> = {
     Capture:
       'Whether the systematic withholding of congressionally appropriated funds represents a constitutional crisis in the power of the purse.',
   },
-  igs: {
+  executiveOversight: {
     Stable: '',
     Warning: '',
     Drift:
@@ -189,7 +189,7 @@ const DEBATE_TOPICS: Record<string, Record<StatusLevel, string>> = {
     Capture:
       'Whether the neutralization of OSC enforcement represents a complete politicization of the federal workforce.',
   },
-  courts: {
+  judicialIndependence: {
     Stable: '',
     Warning: '',
     Drift:
@@ -307,7 +307,7 @@ const LEGAL_REFS: Record<string, { citation: string; title: string; type: string
       type: 'case',
     },
   ],
-  igs: [
+  executiveOversight: [
     {
       citation: '5 U.S.C. App. \u00A7 3(b)',
       title: 'Inspector General Act of 1978',
@@ -327,7 +327,7 @@ const LEGAL_REFS: Record<string, { citation: string; title: string; type: string
       type: 'statute',
     },
   ],
-  courts: [
+  judicialIndependence: [
     { citation: 'U.S. Const. Art. III', title: 'Judicial Power', type: 'constitutional' },
     { citation: 'Cooper v. Aaron, 358 U.S. 1 (1958)', title: 'Cooper v. Aaron', type: 'case' },
   ],

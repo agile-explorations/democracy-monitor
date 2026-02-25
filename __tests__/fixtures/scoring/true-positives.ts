@@ -22,7 +22,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
       summary:
         'The administration fired five inspectors general across major departments, marking the largest mass ig removal in modern history.',
     },
-    category: 'igs',
+    category: 'executiveOversight',
     expectedKeyword: 'mass ig removal',
     expectedTier: 'capture',
   },
@@ -33,7 +33,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
       summary:
         'Despite a federal injunction, the administration defied court order and continued deportation flights, prompting calls for contempt proceedings.',
     },
-    category: 'courts',
+    category: 'judicialIndependence',
     expectedKeyword: 'defied court order',
     expectedTier: 'capture',
   },

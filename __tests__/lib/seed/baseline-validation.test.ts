@@ -31,7 +31,7 @@ const bidenYear2: BaselineStats = makeStats({
   administration: 'biden',
   categories: [
     {
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 10,
       stddevWeeklySeverity: 3,
       avgWeeklyDocCount: 20,
@@ -56,7 +56,7 @@ const bidenYear1: BaselineStats = makeStats({
   administration: 'biden',
   categories: [
     {
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 18,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 35,
@@ -81,7 +81,7 @@ const trumpYear1: BaselineStats = makeStats({
   administration: 'trump',
   categories: [
     {
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 14,
       stddevWeeklySeverity: 4,
       avgWeeklyDocCount: 18,
@@ -107,7 +107,7 @@ const frOnlyStats: BaselineStats = makeStats({
   availableSources: ['federal_register'],
   categories: [
     {
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 12,
       stddevWeeklySeverity: 3,
       avgWeeklyDocCount: 10,
@@ -151,9 +151,9 @@ describe('detectSourceAsymmetry', () => {
 
 describe('compareCategoryAcrossBaselines', () => {
   it('computes severity and volume ratios for Year 1 vs Year 2', () => {
-    const result = compareCategoryAcrossBaselines('courts', [bidenYear2, bidenYear1]);
+    const result = compareCategoryAcrossBaselines('judicialIndependence', [bidenYear2, bidenYear1]);
 
-    expect(result.category).toBe('courts');
+    expect(result.category).toBe('judicialIndependence');
     expect(result.baselines).toHaveLength(2);
     // Year 1 severity (18) / Year 2 severity (10) = 1.8
     expect(result.severityRatio).toBeCloseTo(1.8, 1);
@@ -162,7 +162,11 @@ describe('compareCategoryAcrossBaselines', () => {
   });
 
   it('averages multiple Year 1 baselines', () => {
-    const result = compareCategoryAcrossBaselines('courts', [bidenYear2, bidenYear1, trumpYear1]);
+    const result = compareCategoryAcrossBaselines('judicialIndependence', [
+      bidenYear2,
+      bidenYear1,
+      trumpYear1,
+    ]);
 
     // Average Year 1 severity: (18 + 14) / 2 = 16
     // Year 2 severity: 10
@@ -171,14 +175,14 @@ describe('compareCategoryAcrossBaselines', () => {
   });
 
   it('returns null ratios when only one cycle year exists', () => {
-    const result = compareCategoryAcrossBaselines('courts', [bidenYear1, trumpYear1]);
+    const result = compareCategoryAcrossBaselines('judicialIndependence', [bidenYear1, trumpYear1]);
 
     expect(result.severityRatio).toBeNull();
     expect(result.volumeRatio).toBeNull();
   });
 
   it('detects source asymmetry', () => {
-    const result = compareCategoryAcrossBaselines('courts', [
+    const result = compareCategoryAcrossBaselines('judicialIndependence', [
       bidenYear2,
       frOnlyStats, // FR only
     ]);
@@ -187,7 +191,7 @@ describe('compareCategoryAcrossBaselines', () => {
   });
 
   it('returns no asymmetry when sources match', () => {
-    const result = compareCategoryAcrossBaselines('courts', [bidenYear2, bidenYear1]);
+    const result = compareCategoryAcrossBaselines('judicialIndependence', [bidenYear2, bidenYear1]);
 
     expect(result.sourceAsymmetry).toBe(false);
   });
@@ -217,7 +221,7 @@ describe('summarizeCycleFindings', () => {
   it('reports high severity ratios', () => {
     const comparisons: CategoryComparison[] = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         baselines: [],
         severityRatio: 2.0,
         volumeRatio: 1.8,
@@ -227,7 +231,7 @@ describe('summarizeCycleFindings', () => {
 
     const findings = summarizeCycleFindings(comparisons);
     expect(findings.some((f) => f.includes('>1.5x severity'))).toBe(true);
-    expect(findings.some((f) => f.includes('courts (2.0x)'))).toBe(true);
+    expect(findings.some((f) => f.includes('judicialIndependence (2.0x)'))).toBe(true);
   });
 
   it('reports low severity ratios', () => {
@@ -248,7 +252,7 @@ describe('summarizeCycleFindings', () => {
   it('reports no significant cycle effects', () => {
     const comparisons: CategoryComparison[] = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         baselines: [],
         severityRatio: 1.1,
         volumeRatio: 1.0,
@@ -263,7 +267,7 @@ describe('summarizeCycleFindings', () => {
   it('warns about source asymmetry in comparisons', () => {
     const comparisons: CategoryComparison[] = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         baselines: [],
         severityRatio: 1.8,
         volumeRatio: 1.5,
@@ -278,7 +282,7 @@ describe('summarizeCycleFindings', () => {
   it('handles no comparisons possible', () => {
     const comparisons: CategoryComparison[] = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         baselines: [],
         severityRatio: null,
         volumeRatio: null,
@@ -296,7 +300,7 @@ describe('buildValidationReport', () => {
     const report = buildValidationReport([bidenYear2, bidenYear1, trumpYear1]);
 
     expect(report.baselineCount).toBe(3);
-    expect(report.comparisons).toHaveLength(2); // courts + executiveActions
+    expect(report.comparisons).toHaveLength(2); // judicialIndependence + executiveActions
     expect(report.sourceAsymmetryWarnings).toEqual([]);
     expect(report.cycleYearFindings.length).toBeGreaterThan(0);
   });
@@ -310,9 +314,9 @@ describe('buildValidationReport', () => {
   it('sorts comparisons by divergence from 1.0 ratio', () => {
     const report = buildValidationReport([bidenYear2, bidenYear1]);
 
-    // executiveActions has higher ratio (12/5=2.4) than courts (18/10=1.8)
+    // executiveActions has higher ratio (12/5=2.4) than judicialIndependence (18/10=1.8)
     expect(report.comparisons[0].category).toBe('executiveActions');
-    expect(report.comparisons[1].category).toBe('courts');
+    expect(report.comparisons[1].category).toBe('judicialIndependence');
   });
 
   it('handles single baseline', () => {

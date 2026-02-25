@@ -27,7 +27,10 @@ describe('GET /api/category/[key]', () => {
 
   it('returns 405 for non-GET requests', async () => {
     const { default: handler } = await import('@/pages/api/category/[key]');
-    const req = { method: 'POST', query: { key: 'courts' } } as unknown as NextApiRequest;
+    const req = {
+      method: 'POST',
+      query: { key: 'judicialIndependence' },
+    } as unknown as NextApiRequest;
     const res = createMockRes();
 
     await handler(req, res);
@@ -59,14 +62,17 @@ describe('GET /api/category/[key]', () => {
     }));
 
     const { default: handler } = await import('@/pages/api/category/[key]');
-    const req = { method: 'GET', query: { key: 'courts' } } as unknown as NextApiRequest;
+    const req = {
+      method: 'GET',
+      query: { key: 'judicialIndependence' },
+    } as unknown as NextApiRequest;
     const res = createMockRes();
 
     await handler(req, res);
     expect(res.statusCode).toBe(200);
 
     const data = res.body as Record<string, unknown>;
-    expect(data.category).toBe('courts');
+    expect(data.category).toBe('judicialIndependence');
     expect(data.title).toBe('Following Court Orders');
     expect(data.assessment).toBeNull();
     expect(data.baseline).toEqual({ avg: 0, stddev: 0 });

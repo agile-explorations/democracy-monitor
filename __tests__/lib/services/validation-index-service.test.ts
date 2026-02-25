@@ -30,9 +30,9 @@ describe('DIMENSION_TO_CATEGORY', () => {
     const validCategories = [
       'civilService',
       'fiscal',
-      'igs',
+      'executiveOversight',
       'hatch',
-      'courts',
+      'judicialIndependence',
       'military',
       'rulemaking',
       'executiveActions',
@@ -115,13 +115,13 @@ describe('buildComparisons', () => {
         { source: 'v-dem', dimension: 'rule_of_law', score: 0.85, date: '2026-01-01' },
       ],
     ]);
-    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+    const latestByCategory = new Map([['judicialIndependence', { status: 'Stable' }]]);
 
     const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
 
     expect(comparisons).toHaveLength(1);
     expect(comparisons[0].alignment).toBe('aligned');
-    expect(comparisons[0].internalCategory).toBe('courts');
+    expect(comparisons[0].internalCategory).toBe('judicialIndependence');
     expect(comparisons[0].externalScore).toBe(0.85);
   });
 
@@ -132,7 +132,7 @@ describe('buildComparisons', () => {
         { source: 'v-dem', dimension: 'rule_of_law', score: 0.9, date: '2026-01-01' },
       ],
     ]);
-    const latestByCategory = new Map([['courts', { status: 'Capture' }]]);
+    const latestByCategory = new Map([['judicialIndependence', { status: 'Capture' }]]);
 
     const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
 
@@ -163,7 +163,7 @@ describe('buildComparisons', () => {
         { source: 'v-dem', dimension: 'nonexistent_dimension', score: 0.5, date: '2026-01-01' },
       ],
     ]);
-    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+    const latestByCategory = new Map([['judicialIndependence', { status: 'Stable' }]]);
 
     const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
 
@@ -181,7 +181,7 @@ describe('buildComparisons', () => {
         { source: 'freedom-house', dimension: 'rule_of_law', score: 0.8, date: '2026-01-01' },
       ],
     ]);
-    const latestByCategory = new Map([['courts', { status: 'Stable' }]]);
+    const latestByCategory = new Map([['judicialIndependence', { status: 'Stable' }]]);
 
     const comparisons = buildComparisons(latestBySourceDim, latestByCategory);
 
@@ -196,7 +196,7 @@ describe('computeOverallAlignment', () => {
         source: 'v-dem' as const,
         dimension: 'rule_of_law',
         externalScore: 0.85,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'Stable',
         alignment: 'aligned' as const,
         lastUpdated: '2026-01-01',
@@ -205,7 +205,7 @@ describe('computeOverallAlignment', () => {
         source: 'freedom-house' as const,
         dimension: 'rule_of_law',
         externalScore: 0.8,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'Stable',
         alignment: 'aligned' as const,
         lastUpdated: '2026-01-01',
@@ -221,7 +221,7 @@ describe('computeOverallAlignment', () => {
         source: 'v-dem' as const,
         dimension: 'rule_of_law',
         externalScore: 0.9,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'Capture',
         alignment: 'divergent' as const,
         lastUpdated: '2026-01-01',
@@ -237,7 +237,7 @@ describe('computeOverallAlignment', () => {
         source: 'v-dem' as const,
         dimension: 'rule_of_law',
         externalScore: 0.85,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'Stable',
         alignment: 'aligned' as const,
         lastUpdated: '2026-01-01',
@@ -262,7 +262,7 @@ describe('computeOverallAlignment', () => {
         source: 'v-dem' as const,
         dimension: 'rule_of_law',
         externalScore: 0.85,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'Stable',
         alignment: 'aligned' as const,
         lastUpdated: '2026-01-01',
@@ -291,7 +291,7 @@ describe('computeOverallAlignment', () => {
         source: 'v-dem' as const,
         dimension: 'rule_of_law',
         externalScore: 0.7,
-        internalCategory: 'courts',
+        internalCategory: 'judicialIndependence',
         internalStatus: 'unknown',
         alignment: 'insufficient_data' as const,
         lastUpdated: '2026-01-01',

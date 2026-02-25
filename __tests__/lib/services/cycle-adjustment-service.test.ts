@@ -51,7 +51,7 @@ describe('computeRatios', () => {
   });
 
   it('returns 1.0 for all ratios when target is empty', () => {
-    const ref = [makeBaseline('ref', 'courts', 2, 10, 1)];
+    const ref = [makeBaseline('ref', 'judicialIndependence', 2, 10, 1)];
     const result = computeRatios([], ref);
     expect(result.severityRatio).toBe(1);
     expect(result.volumeRatio).toBe(1);
@@ -59,7 +59,7 @@ describe('computeRatios', () => {
   });
 
   it('returns 1.0 for all ratios when reference is empty', () => {
-    const target = [makeBaseline('t', 'courts', 2, 10, 1)];
+    const target = [makeBaseline('t', 'judicialIndependence', 2, 10, 1)];
     const result = computeRatios(target, []);
     expect(result.severityRatio).toBe(1);
     expect(result.volumeRatio).toBe(1);
@@ -108,8 +108,8 @@ describe('computeRatios', () => {
   });
 
   it('returns 1.0 ratios when target equals reference', () => {
-    const target = [makeBaseline('t', 'courts', 3, 50, 1)];
-    const ref = [makeBaseline('r', 'courts', 3, 50, 1)];
+    const target = [makeBaseline('t', 'judicialIndependence', 3, 50, 1)];
+    const ref = [makeBaseline('r', 'judicialIndependence', 3, 50, 1)];
     const result = computeRatios(target, ref);
     expect(result.severityRatio).toBe(1);
     expect(result.volumeRatio).toBe(1);
@@ -233,9 +233,9 @@ describe('analyzeContent with cycle factors', () => {
   it('does not crash when category not in factors map', () => {
     const factors = new Map<string, CycleAdjustmentFactor>([
       [
-        'courts',
+        'judicialIndependence',
         {
-          category: 'courts',
+          category: 'judicialIndependence',
           cycleYear: 1,
           referenceCycleYear: 2,
           severityRatio: 1.5,

@@ -4,9 +4,9 @@ export type MaturityBadge = 'Experimental' | 'Calibrating' | 'Validated';
 export const CATEGORY_MATURITY: Record<string, MaturityBadge> = {
   civilService: 'Experimental',
   fiscal: 'Experimental',
-  igs: 'Experimental',
+  executiveOversight: 'Experimental',
   hatch: 'Experimental',
-  courts: 'Experimental',
+  judicialIndependence: 'Experimental',
   military: 'Experimental',
   rulemaking: 'Experimental',
   executiveActions: 'Experimental',

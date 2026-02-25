@@ -13,7 +13,7 @@ function makeCheck(overrides: Partial<SourceHealthCheck> = {}): SourceHealthChec
     sourceId: 'test',
     sourceName: 'Test Source',
     sourceType: 'rss',
-    category: 'courts',
+    category: 'judicialIndependence',
     status: 'healthy',
     documentCount: 5,
     expectedDocCount: null,

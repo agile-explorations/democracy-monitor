@@ -5,10 +5,10 @@ import type { ValidationSource } from '@/lib/types/validation';
  */
 export const DIMENSION_TO_CATEGORY: Record<string, string> = {
   liberal_democracy: 'executiveActions',
-  rule_of_law: 'courts',
+  rule_of_law: 'judicialIndependence',
   civil_liberties: 'elections',
   media_freedom: 'mediaFreedom',
-  government_accountability: 'igs',
+  government_accountability: 'executiveOversight',
   executive_constraints: 'fiscal',
   civil_service_independence: 'civilService',
 };

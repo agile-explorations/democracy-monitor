@@ -257,7 +257,7 @@ export function analyzeContent(
     return { status: 'Warning', reason: 'No assessment rules configured', matches: [] };
   }
 
-  if (category === 'igs') {
+  if (category === 'executiveOversight') {
     const override = checkIgsOverride(items);
     if (override) return override;
   }

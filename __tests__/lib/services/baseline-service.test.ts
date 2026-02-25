@@ -156,21 +156,21 @@ describe('computeBaseline', () => {
 
     const weeklyRows = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-01',
         totalSeverity: 10,
         documentCount: 5,
         severityMix: 2.0,
       },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-08',
         totalSeverity: 20,
         documentCount: 8,
         severityMix: 3.0,
       },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-15',
         totalSeverity: 15,
         documentCount: 6,
@@ -200,7 +200,7 @@ describe('computeBaseline', () => {
     const result = await computeBaseline(BASELINE_CONFIGS[0]);
 
     expect(result).toHaveLength(1);
-    expect(result[0].category).toBe('courts');
+    expect(result[0].category).toBe('judicialIndependence');
     expect(result[0].baselineId).toBe('biden_2022');
     expect(result[0].avgWeeklySeverity).toBe(15);
     expect(result[0].stddevWeeklySeverity).toBe(5);
@@ -218,21 +218,21 @@ describe('computeBaseline', () => {
 
     const weeklyRows = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-01',
         totalSeverity: 10,
         documentCount: 2,
         severityMix: 2.0,
       },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-08',
         totalSeverity: 20,
         documentCount: 2,
         severityMix: 3.0,
       },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-15',
         totalSeverity: 15,
         documentCount: 2,
@@ -282,7 +282,7 @@ describe('computeBaseline', () => {
 
     const weeklyRows = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         weekOf: '2024-01-01',
         totalSeverity: 10,
         documentCount: 2,
@@ -324,7 +324,7 @@ describe('computeBaseline', () => {
 describe('getBaseline', () => {
   it('returns null when DB is unavailable', async () => {
     mockIsDbAvailable.mockReturnValue(false);
-    const result = await getBaseline('biden_2022', 'courts');
+    const result = await getBaseline('biden_2022', 'judicialIndependence');
     expect(result).toBeNull();
   });
 
@@ -340,7 +340,7 @@ describe('getBaseline', () => {
       }),
     } as never);
 
-    const result = await getBaseline('biden_2022', 'courts');
+    const result = await getBaseline('biden_2022', 'judicialIndependence');
     expect(result).toBeNull();
   });
 
@@ -353,7 +353,7 @@ describe('getBaseline', () => {
             limit: vi.fn().mockResolvedValue([
               {
                 baselineId: 'biden_2022',
-                category: 'courts',
+                category: 'judicialIndependence',
                 avgWeeklySeverity: 15,
                 stddevWeeklySeverity: 5,
                 avgWeeklyDocCount: 6,
@@ -371,7 +371,7 @@ describe('getBaseline', () => {
       }),
     } as never);
 
-    const result = await getBaseline('biden_2022', 'courts');
+    const result = await getBaseline('biden_2022', 'judicialIndependence');
     expect(result).not.toBeNull();
     expect(result!.computedAt).toBe('2025-02-08T00:00:00.000Z');
     expect(typeof result!.computedAt).toBe('string');

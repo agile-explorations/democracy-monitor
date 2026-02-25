@@ -134,7 +134,7 @@ describe('scoreDocument', () => {
         title: 'FDR and the 1937 Court-Packing Plan: Historical Lessons',
         summary: "Analysis of Roosevelt's attempt at court packing and its consequences.",
       },
-      'courts',
+      'judicialIndependence',
     );
     expect(score.suppressed.some((s) => s.keyword === 'court packing')).toBe(true);
     // The keyword should NOT appear in matches (it was suppressed)
@@ -147,7 +147,7 @@ describe('scoreDocument', () => {
         title: 'Contempt of Court Finding in Civil Contempt Case',
         summary: 'Judge issues civil contempt citation for procedural non-compliance.',
       },
-      'courts',
+      'judicialIndependence',
     );
     // "contempt of court" has downweight_if_any: ['civil contempt', 'procedural']
     // The keyword should still appear in matches (not suppressed), but at a lower tier
@@ -194,7 +194,10 @@ describe('scoreDocument', () => {
 
 describe('logarithmic diminishing returns', () => {
   it('1 capture = ~4.0 severity', () => {
-    const score = scoreDocument({ title: 'Inspector general removed from post' }, 'igs');
+    const score = scoreDocument(
+      { title: 'Inspector general removed from post' },
+      'executiveOversight',
+    );
     const captureMatches = score.matches.filter((m) => m.tier === 'capture');
     if (captureMatches.length === 1 && score.driftCount === 0 && score.warningCount === 0) {
       // 4 * log2(2) = 4.0

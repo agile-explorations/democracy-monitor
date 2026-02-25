@@ -471,3 +471,26 @@ Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US
 - **Drizzle `db:generate` doesn't know about manually created indices**: If an index already exists in the DB but wasn't in a Drizzle migration, `db:generate` will generate a `CREATE INDEX` that fails. Use `IF NOT EXISTS` when the index may already exist.
 - **Prettier must format seed fixtures**: `pnpm seed:export` writes raw JSON; pre-commit hook checks formatting. Always run `prettier --write lib/seed/fixtures/*.json` after export.
 - **Script files need ESLint max-lines-per-function compliance**: Unlike test files which are exempt, `scripts/` files are not exempt from the 50-line function limit. Split large query functions into focused helpers.
+
+---
+
+## Sprint R3.3: Category Renames
+
+**Planned:** Rename `courts` → `judicialIndependence` and `igs` → `executiveOversight` across entire codebase + database. Standalone DB migration script (not Drizzle migration). Single atomic commit.
+
+**Actual:** Delivered as planned. Database migration renamed values in 11 tables (including JSONB arrays). Codebase rename: 7 data files, 2 service files, 1 UI component, 2 demo files, 2 comment examples, 34 test files. Seed fixtures regenerated. 1240 tests pass. Also added R4 sub-sprint breakdown to ROADMAP.md.
+
+**Key decisions:**
+
+- **Standalone script instead of Drizzle migration**: Data-only migration (no schema change) via `scripts/rename-categories.ts`. Avoids polluting Drizzle journal with non-schema changes. Idempotent (safe to re-run).
+- **Tables without `category` column skipped**: `intent_weekly` uses `policy_area`, not `category`. Script discovered this at runtime; fixed and re-ran.
+- **JSONB array handling**: `legal_documents.relevant_categories` and `semantic_clusters.categories` store category names as JSONB arrays. Script uses `jsonb_array_elements` + `jsonb_agg` for in-place replacement.
+- **TrajectoryChart labels shortened**: `'IGs'` → `'Exec Oversight'`, `'Courts'` → `'Judicial Indep'` (legend space constrained).
+- **Prose text preserved**: `'federal courts'` in demo fixture content, `'The courts have overstepped...'` in intent fixtures — these are narrative text, not category keys.
+- **R4 split into sub-sprints (R4a/R4b/R4c)**: R4a = API + narrative generation (backend only), R4b = overview page, R4c = category detail redesign + keyword demotion. Avoids monolithic UI sprint.
+
+**Lessons learned:**
+
+- **Check DB schema before assuming column names**: `intent_weekly` has `policy_area`, not `category`. `p2025_proposals` has `dashboard_category`. Always verify against `schema.ts` before writing migration scripts.
+- **`sql.raw()` for data migrations**: Drizzle's `sql.raw()` works well for UPDATE statements. No need for raw pg client.
+- **Regenerate fixtures after DB rename**: `pnpm seed:export` after the migration script produces fixtures with correct category keys. No manual JSON editing needed for large fixture files.

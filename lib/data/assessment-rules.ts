@@ -115,7 +115,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
     },
     volumeThreshold: { warning: 200, drift: 200, capture: 400 },
   },
-  igs: {
+  executiveOversight: {
     keywords: {
       capture: [
         'inspector general removed',
@@ -193,7 +193,7 @@ export const ASSESSMENT_RULES: AssessmentRules = {
     },
     volumeThreshold: { warning: 5, drift: 5, capture: 15 },
   },
-  courts: {
+  judicialIndependence: {
     keywords: {
       capture: [
         'contempt of court',

@@ -13,7 +13,7 @@ import {
 function makeResolved(overrides: Record<string, unknown> = {}) {
   return {
     id: 1,
-    category: 'courts',
+    category: 'judicialIndependence',
     metadata: {
       resolution: {
         decision: 'approve',
@@ -31,12 +31,14 @@ describe('extractFeedbackEntries', () => {
   it('extracts entries with feedback', () => {
     const entries = extractFeedbackEntries([makeResolved()]);
     expect(entries).toHaveLength(1);
-    expect(entries[0].category).toBe('courts');
+    expect(entries[0].category).toBe('judicialIndependence');
     expect(entries[0].feedback.falsePositiveKeywords).toEqual(['injunction issued']);
   });
 
   it('skips entries without resolution', () => {
-    const entries = extractFeedbackEntries([{ id: 1, category: 'courts', metadata: {} }]);
+    const entries = extractFeedbackEntries([
+      { id: 1, category: 'judicialIndependence', metadata: {} },
+    ]);
     expect(entries).toHaveLength(0);
   });
 
@@ -51,12 +53,15 @@ describe('extractFeedbackEntries', () => {
 describe('aggregateFalsePositives', () => {
   it('counts false positive occurrences', () => {
     const entries = [
-      { category: 'courts', feedback: { falsePositiveKeywords: ['injunction issued'] } },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
+        feedback: { falsePositiveKeywords: ['injunction issued'] },
+      },
+      {
+        category: 'judicialIndependence',
         feedback: { falsePositiveKeywords: ['injunction issued', 'court ordered'] },
       },
-      { category: 'courts', feedback: { falsePositiveKeywords: ['court ordered'] } },
+      { category: 'judicialIndependence', feedback: { falsePositiveKeywords: ['court ordered'] } },
     ];
     const fpMap = aggregateFalsePositives(entries);
     expect(fpMap.get('injunction issued')!.count).toBe(2);
@@ -65,7 +70,7 @@ describe('aggregateFalsePositives', () => {
 
   it('tracks categories', () => {
     const entries = [
-      { category: 'courts', feedback: { falsePositiveKeywords: ['emergency'] } },
+      { category: 'judicialIndependence', feedback: { falsePositiveKeywords: ['emergency'] } },
       { category: 'military', feedback: { falsePositiveKeywords: ['emergency'] } },
     ];
     const fpMap = aggregateFalsePositives(entries);
@@ -77,7 +82,7 @@ describe('aggregateTierChanges', () => {
   it('aggregates consistent tier changes', () => {
     const entries = [
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         feedback: {
           tierChanges: [
             {
@@ -90,7 +95,7 @@ describe('aggregateTierChanges', () => {
         },
       },
       {
-        category: 'courts',
+        category: 'judicialIndependence',
         feedback: {
           tierChanges: [
             {
@@ -112,8 +117,14 @@ describe('aggregateTierChanges', () => {
 describe('aggregateSuppressions', () => {
   it('counts suppression pattern occurrences', () => {
     const entries = [
-      { category: 'courts', feedback: { suppressionSuggestions: ['emergency: routine admin'] } },
-      { category: 'courts', feedback: { suppressionSuggestions: ['emergency: routine admin'] } },
+      {
+        category: 'judicialIndependence',
+        feedback: { suppressionSuggestions: ['emergency: routine admin'] },
+      },
+      {
+        category: 'judicialIndependence',
+        feedback: { suppressionSuggestions: ['emergency: routine admin'] },
+      },
     ];
     const supMap = aggregateSuppressions(entries);
     expect(supMap.get('emergency: routine admin')!.count).toBe(2);
@@ -137,8 +148,11 @@ describe('extractFeedbackEntries — missingKeywords', () => {
 describe('aggregateMissingKeywords', () => {
   it('counts missing keyword occurrences across reviews', () => {
     const entries = [
-      { category: 'courts', feedback: { missingKeywords: ['judicial crisis'] } },
-      { category: 'courts', feedback: { missingKeywords: ['judicial crisis', 'bench warrant'] } },
+      { category: 'judicialIndependence', feedback: { missingKeywords: ['judicial crisis'] } },
+      {
+        category: 'judicialIndependence',
+        feedback: { missingKeywords: ['judicial crisis', 'bench warrant'] },
+      },
       { category: 'military', feedback: { missingKeywords: ['judicial crisis'] } },
     ];
     const mkMap = aggregateMissingKeywords(entries);
@@ -149,8 +163,8 @@ describe('aggregateMissingKeywords', () => {
 
   it('lowercases keywords for consistent aggregation', () => {
     const entries = [
-      { category: 'courts', feedback: { missingKeywords: ['Executive Order'] } },
-      { category: 'courts', feedback: { missingKeywords: ['executive order'] } },
+      { category: 'judicialIndependence', feedback: { missingKeywords: ['Executive Order'] } },
+      { category: 'judicialIndependence', feedback: { missingKeywords: ['executive order'] } },
     ];
     const mkMap = aggregateMissingKeywords(entries);
     expect(mkMap.get('executive order')!.count).toBe(2);
@@ -158,7 +172,10 @@ describe('aggregateMissingKeywords', () => {
 
   it('returns empty map when no missing keywords', () => {
     const entries = [
-      { category: 'courts', feedback: { falsePositiveKeywords: ['injunction issued'] } },
+      {
+        category: 'judicialIndependence',
+        feedback: { falsePositiveKeywords: ['injunction issued'] },
+      },
     ];
     expect(aggregateMissingKeywords(entries).size).toBe(0);
   });
@@ -245,7 +262,7 @@ describe('detectCategoryFindings', () => {
   it('detects AI consistently overriding keyword status', () => {
     const alerts = Array.from({ length: 4 }, (_, i) => ({
       id: i + 1,
-      category: 'courts',
+      category: 'judicialIndependence',
       metadata: {
         keywordStatus: 'Drift',
         aiRecommendedStatus: 'Warning',
@@ -262,7 +279,7 @@ describe('detectCategoryFindings', () => {
     const alerts = [
       {
         id: 1,
-        category: 'courts',
+        category: 'judicialIndependence',
         metadata: { keywordMatches: ['injunction issued'], keywordStatus: 'Warning' },
       },
     ];

@@ -10,14 +10,14 @@ describe('classifyLegislativeRelevance', () => {
     const categories = classifyLegislativeRelevance(
       'Hearing on contempt of court regarding executive order compliance',
     );
-    expect(categories).toContain('courts');
+    expect(categories).toContain('judicialIndependence');
   });
 
   it('matches igs-related text', () => {
     const categories = classifyLegislativeRelevance(
       'Inspector general removed from oversight position',
     );
-    expect(categories).toContain('igs');
+    expect(categories).toContain('executiveOversight');
   });
 
   it('matches fiscal-related text', () => {
@@ -39,8 +39,8 @@ describe('classifyLegislativeRelevance', () => {
     const categories = classifyLegislativeRelevance(
       'IG fired amid contempt of court finding against executive branch',
     );
-    expect(categories).toContain('igs');
-    expect(categories).toContain('courts');
+    expect(categories).toContain('executiveOversight');
+    expect(categories).toContain('judicialIndependence');
   });
 
   it('uses summary text for additional matching', () => {

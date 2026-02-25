@@ -105,9 +105,9 @@ describe('computeWeeklyAggregate', () => {
   it('returns empty aggregate when DB is unavailable', async () => {
     mockIsDbAvailable.mockReturnValue(false);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
 
-    expect(result.category).toBe('courts');
+    expect(result.category).toBe('judicialIndependence');
     expect(result.weekOf).toBe('2025-02-03');
     expect(result.totalSeverity).toBe(0);
     expect(result.documentCount).toBe(0);
@@ -132,7 +132,7 @@ describe('computeWeeklyAggregate', () => {
     );
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
 
     expect(result.totalSeverity).toBe(30);
     expect(result.documentCount).toBe(3);
@@ -158,7 +158,7 @@ describe('computeWeeklyAggregate', () => {
     });
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
 
     expect(result.captureProportion).toBe(0);
     expect(result.driftProportion).toBe(0);
@@ -180,7 +180,7 @@ describe('computeWeeklyAggregate', () => {
     db.execute = vi.fn().mockRejectedValue(new Error('JSONB error'));
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
 
     expect(result.topKeywords).toEqual([]);
     expect(result.totalSeverity).toBe(10);
@@ -198,7 +198,7 @@ describe('computeWeeklyAggregate', () => {
     });
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
     expect(result.severityMix).toBe(4);
   });
 
@@ -214,7 +214,7 @@ describe('computeWeeklyAggregate', () => {
     });
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
     expect(result.avgSeverityPerDoc).toBe(5);
   });
 
@@ -230,7 +230,7 @@ describe('computeWeeklyAggregate', () => {
     });
     mockGetDb.mockReturnValue(db as never);
 
-    const result = await computeWeeklyAggregate('courts', '2025-02-03');
+    const result = await computeWeeklyAggregate('judicialIndependence', '2025-02-03');
     expect(result.avgSeverityPerDoc).toBe(0);
   });
 });
@@ -246,7 +246,7 @@ describe('computeAllWeeklyAggregates', () => {
     mockIsDbAvailable.mockReturnValue(true);
 
     const groups = [
-      { category: 'courts', weekOf: '2025-02-03' },
+      { category: 'judicialIndependence', weekOf: '2025-02-03' },
       { category: 'agencies', weekOf: '2025-02-03' },
     ];
 
@@ -281,9 +281,9 @@ describe('computeAllWeeklyAggregates', () => {
 
     const result = await computeAllWeeklyAggregates();
 
-    expect(Object.keys(result)).toContain('courts');
+    expect(Object.keys(result)).toContain('judicialIndependence');
     expect(Object.keys(result)).toContain('agencies');
-    expect(result['courts']).toHaveLength(1);
+    expect(result['judicialIndependence']).toHaveLength(1);
     expect(result['agencies']).toHaveLength(1);
   });
 });

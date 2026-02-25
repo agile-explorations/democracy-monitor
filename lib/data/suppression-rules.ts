@@ -41,7 +41,7 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
       suppress_if_any: ['omb circular a-11', 'a-11 submission', 'budget formulation'],
     },
   ],
-  courts: [
+  judicialIndependence: [
     {
       keyword: 'court packing',
       suppress_if_any: [
@@ -65,7 +65,7 @@ export const SUPPRESSION_RULES: Record<string, SuppressionRule[]> = {
       downweight_if_any: ['committee debate', 'hearing on'],
     },
   ],
-  igs: [
+  executiveOversight: [
     {
       keyword: 'acting inspector general',
       suppress_if_any: ['appointed', 'confirmed', 'sworn in', 'senate confirmed'],

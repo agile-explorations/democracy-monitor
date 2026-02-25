@@ -13,7 +13,7 @@ describe('computeConvergenceSeries', () => {
 
   it('returns "none" when no themes are activated', () => {
     const weekMap: WeekMap = new Map([
-      ['2025-02-03', [{ category: 'courts', reason: 'routine update', matches: [] }]],
+      ['2025-02-03', [{ category: 'judicialIndependence', reason: 'routine update', matches: [] }]],
     ]);
     const result = computeConvergenceSeries(weekMap);
     expect(result).toHaveLength(1);
@@ -96,9 +96,9 @@ describe('computeConvergenceSeries', () => {
 
   it('sorts weeks chronologically', () => {
     const weekMap: WeekMap = new Map([
-      ['2025-02-10', [{ category: 'courts', reason: 'update', matches: [] }]],
-      ['2025-01-27', [{ category: 'courts', reason: 'update', matches: [] }]],
-      ['2025-02-03', [{ category: 'courts', reason: 'update', matches: [] }]],
+      ['2025-02-10', [{ category: 'judicialIndependence', reason: 'update', matches: [] }]],
+      ['2025-01-27', [{ category: 'judicialIndependence', reason: 'update', matches: [] }]],
+      ['2025-02-03', [{ category: 'judicialIndependence', reason: 'update', matches: [] }]],
     ]);
     const result = computeConvergenceSeries(weekMap);
     expect(result.map((r) => r.week)).toEqual(['2025-01-27', '2025-02-03', '2025-02-10']);
@@ -107,7 +107,7 @@ describe('computeConvergenceSeries', () => {
   it('computes independent convergence per week', () => {
     const weekMap: WeekMap = new Map([
       // Week 1: no themes
-      ['2025-01-27', [{ category: 'courts', reason: 'routine', matches: [] }]],
+      ['2025-01-27', [{ category: 'judicialIndependence', reason: 'routine', matches: [] }]],
       // Week 2: detention theme active
       [
         '2025-02-03',

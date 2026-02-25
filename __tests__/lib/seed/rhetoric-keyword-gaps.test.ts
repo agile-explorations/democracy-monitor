@@ -10,7 +10,7 @@ import {
 import type { AssessmentRules } from '@/lib/types';
 
 const mockRules: AssessmentRules = {
-  courts: {
+  judicialIndependence: {
     keywords: {
       capture: ['court packing', 'judicial override'],
       drift: ['restructuring courts'],
@@ -61,7 +61,7 @@ describe('extractBigrams', () => {
 
 describe('getAllKeywords', () => {
   it('returns all keywords across tiers for a category', () => {
-    const keywords = getAllKeywords(mockRules, 'courts');
+    const keywords = getAllKeywords(mockRules, 'judicialIndependence');
     expect(keywords.has('court packing')).toBe(true);
     expect(keywords.has('judicial override')).toBe(true);
     expect(keywords.has('restructuring courts')).toBe(true);
@@ -159,7 +159,7 @@ describe('buildGapReport', () => {
   it('builds report across multiple categories', () => {
     const titlesByCategory = new Map([
       [
-        'courts',
+        'judicialIndependence',
         [
           'Federal Court Emergency Session',
           'Federal Court Emergency Hearing',
@@ -174,7 +174,7 @@ describe('buildGapReport', () => {
     expect(report.categories).toHaveLength(2);
     expect(report.minDocThreshold).toBe(2);
 
-    const courtsReport = report.categories.find((c) => c.category === 'courts');
+    const courtsReport = report.categories.find((c) => c.category === 'judicialIndependence');
     expect(courtsReport).toBeDefined();
     expect(courtsReport!.totalDocuments).toBe(3);
     // "federal court" appears 3 times but is NOT in dictionary → should be a gap
@@ -186,7 +186,7 @@ describe('buildGapReport', () => {
   it('excludes terms that are already keywords', () => {
     const titlesByCategory = new Map([
       [
-        'courts',
+        'judicialIndependence',
         [
           'Court Packing Crisis Deepens',
           'Court Packing Effort Stalls',
@@ -196,7 +196,7 @@ describe('buildGapReport', () => {
     ]);
 
     const report = buildGapReport(titlesByCategory, mockRules, 2);
-    const courtsReport = report.categories.find((c) => c.category === 'courts');
+    const courtsReport = report.categories.find((c) => c.category === 'judicialIndependence');
     const courtPacking = courtsReport!.gaps.find((g) => g.term === 'court packing');
     expect(courtPacking).toBeUndefined();
   });
@@ -205,7 +205,7 @@ describe('buildGapReport', () => {
     const titlesByCategory = new Map([
       ['military', ['Training exercise completed']],
       [
-        'courts',
+        'judicialIndependence',
         [
           'Judicial emergency order filed',
           'Judicial emergency response delayed',
@@ -215,7 +215,7 @@ describe('buildGapReport', () => {
     ]);
 
     const report = buildGapReport(titlesByCategory, mockRules, 2);
-    expect(report.categories[0].category).toBe('courts');
+    expect(report.categories[0].category).toBe('judicialIndependence');
   });
 });
 
@@ -226,9 +226,9 @@ describe('formatGapMarkdown', () => {
       minDocThreshold: 3,
       categories: [
         {
-          category: 'courts',
+          category: 'judicialIndependence',
           totalDocuments: 100,
-          gaps: [{ term: 'judicial crisis', count: 15, category: 'courts' }],
+          gaps: [{ term: 'judicial crisis', count: 15, category: 'judicialIndependence' }],
         },
       ],
     };
@@ -236,7 +236,7 @@ describe('formatGapMarkdown', () => {
     const md = formatGapMarkdown(report);
     expect(md).toContain('# Rhetoric-to-Keyword Gap Analysis');
     expect(md).toContain('Total gaps found: 1');
-    expect(md).toContain('## courts (100 statements)');
+    expect(md).toContain('## judicialIndependence (100 statements)');
     expect(md).toContain('| judicial crisis | 15 |');
   });
 

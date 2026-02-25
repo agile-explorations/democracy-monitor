@@ -13,13 +13,13 @@ describe('POLICY_AREA_CATEGORIES', () => {
   });
 
   it('maps igs to both rule_of_law and institutional_independence', () => {
-    expect(POLICY_AREA_CATEGORIES.rule_of_law).toContain('igs');
-    expect(POLICY_AREA_CATEGORIES.institutional_independence).toContain('igs');
+    expect(POLICY_AREA_CATEGORIES.rule_of_law).toContain('executiveOversight');
+    expect(POLICY_AREA_CATEGORIES.institutional_independence).toContain('executiveOversight');
   });
 
   it('maps courts to both rule_of_law and civil_liberties', () => {
-    expect(POLICY_AREA_CATEGORIES.rule_of_law).toContain('courts');
-    expect(POLICY_AREA_CATEGORIES.civil_liberties).toContain('courts');
+    expect(POLICY_AREA_CATEGORIES.rule_of_law).toContain('judicialIndependence');
+    expect(POLICY_AREA_CATEGORIES.civil_liberties).toContain('judicialIndependence');
   });
 
   it('maps executiveActions to both civil_liberties and institutional_independence', () => {
@@ -46,8 +46,14 @@ describe('mapPolicyAreaToCategories', () => {
 
     const result = mapPolicyAreaToCategories(textsByPolicyArea);
 
-    expect(result.get('courts')).toEqual(['Court ruling on oversight', 'IG investigation blocked']);
-    expect(result.get('igs')).toEqual(['Court ruling on oversight', 'IG investigation blocked']);
+    expect(result.get('judicialIndependence')).toEqual([
+      'Court ruling on oversight',
+      'IG investigation blocked',
+    ]);
+    expect(result.get('executiveOversight')).toEqual([
+      'Court ruling on oversight',
+      'IG investigation blocked',
+    ]);
     expect(result.get('elections')).toEqual(['Ballot access restricted']);
   });
 
@@ -60,7 +66,10 @@ describe('mapPolicyAreaToCategories', () => {
     const result = mapPolicyAreaToCategories(textsByPolicyArea);
 
     // courts maps from both rule_of_law and civil_liberties
-    expect(result.get('courts')).toEqual(['Court order defied', 'Detention without charge']);
+    expect(result.get('judicialIndependence')).toEqual([
+      'Court order defied',
+      'Detention without charge',
+    ]);
   });
 
   it('returns empty map for empty input', () => {

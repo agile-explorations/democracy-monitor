@@ -53,7 +53,7 @@ beforeEach(() => {
 describe('computeWeekCentroid', () => {
   it('returns null when DB is unavailable', async () => {
     mockIsDbAvailable.mockReturnValue(false);
-    const result = await computeWeekCentroid('courts', '2025-02-03');
+    const result = await computeWeekCentroid('judicialIndependence', '2025-02-03');
     expect(result).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe('computeWeekCentroid', () => {
       }),
     } as never);
 
-    const result = await computeWeekCentroid('courts', '2025-02-03');
+    const result = await computeWeekCentroid('judicialIndependence', '2025-02-03');
     expect(result).toBeNull();
   });
 
@@ -87,7 +87,7 @@ describe('computeWeekCentroid', () => {
       }),
     } as never);
 
-    const result = await computeWeekCentroid('courts', '2025-02-03');
+    const result = await computeWeekCentroid('judicialIndependence', '2025-02-03');
     expect(result).toEqual([3, 4, 5]);
   });
 
@@ -101,7 +101,7 @@ describe('computeWeekCentroid', () => {
       }),
     } as never);
 
-    const result = await computeWeekCentroid('courts', '2025-02-03');
+    const result = await computeWeekCentroid('judicialIndependence', '2025-02-03');
     expect(result).toEqual([0.1, 0.2, 0.3]);
   });
 
@@ -115,7 +115,7 @@ describe('computeWeekCentroid', () => {
       }),
     } as never);
 
-    const result = await computeWeekCentroid('courts', '2025-02-03');
+    const result = await computeWeekCentroid('judicialIndependence', '2025-02-03');
     expect(result).toEqual([0.5, 0.5, 0]);
   });
 });
@@ -123,7 +123,7 @@ describe('computeWeekCentroid', () => {
 describe('computeSemanticDrift', () => {
   it('returns null when no week centroid available', async () => {
     mockIsDbAvailable.mockReturnValue(false);
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).toBeNull();
   });
 
@@ -138,7 +138,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -148,7 +148,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).toBeNull();
   });
 
@@ -163,7 +163,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -173,7 +173,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).not.toBeNull();
     expect(result!.rawCosineDrift).toBeCloseTo(0);
     expect(result!.normalizedDrift).toBeCloseTo(0);
@@ -191,7 +191,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -201,7 +201,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).not.toBeNull();
     expect(result!.rawCosineDrift).toBeCloseTo(1);
     expect(result!.normalizedDrift).toBeCloseTo(10);
@@ -222,7 +222,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -232,7 +232,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).not.toBeNull();
     const expectedDrift = 1 - Math.sqrt(2) / 2; // ≈ 0.293
     expect(result!.rawCosineDrift).toBeCloseTo(expectedDrift, 2);
@@ -250,7 +250,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -260,7 +260,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).not.toBeNull();
     expect(result!.normalizedDrift).toBeNull();
     expect(result!.interpretation).toContain('Noise floor not available');
@@ -277,7 +277,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -287,7 +287,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
 
     expect(result).not.toBeNull();
     expect(result!.baselineId).toBe('biden_2022');
@@ -307,7 +307,7 @@ describe('computeSemanticDrift', () => {
     } as never);
     mockGetBaseline.mockResolvedValue({
       baselineId: 'biden_2022',
-      category: 'courts',
+      category: 'judicialIndependence',
       avgWeeklySeverity: 15,
       stddevWeeklySeverity: 5,
       avgWeeklyDocCount: 6,
@@ -317,7 +317,7 @@ describe('computeSemanticDrift', () => {
       computedAt: '2025-02-08T00:00:00.000Z',
     });
 
-    const result = await computeSemanticDrift('courts', '2025-02-03');
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
     expect(result).not.toBeNull();
     expect(result!.normalizedDrift!).toBeGreaterThanOrEqual(1);
     expect(result!.normalizedDrift!).toBeLessThan(2);

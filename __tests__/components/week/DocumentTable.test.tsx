@@ -35,7 +35,7 @@ const docs = [
 describe('DocumentTable', () => {
   it('renders all documents', () => {
     const { getByText } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     expect(getByText('Alpha Doc')).toBeTruthy();
     expect(getByText('Beta Doc')).toBeTruthy();
@@ -44,7 +44,7 @@ describe('DocumentTable', () => {
 
   it('sorts by score descending by default', () => {
     const { container } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     const rows = container.querySelectorAll('tbody tr');
     expect(rows[0].textContent).toContain('Gamma Doc');
@@ -54,7 +54,7 @@ describe('DocumentTable', () => {
 
   it('toggles sort direction on column click', () => {
     const { container, getByText } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     // Click Score header to toggle to ascending
     fireEvent.click(getByText(/Score/));
@@ -65,7 +65,7 @@ describe('DocumentTable', () => {
 
   it('sorts by title when clicking Title header', () => {
     const { container, getByText } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     fireEvent.click(getByText('Title'));
     const rows = container.querySelectorAll('tbody tr');
@@ -76,14 +76,14 @@ describe('DocumentTable', () => {
 
   it('shows empty state when no documents', () => {
     const { getByText } = render(
-      <DocumentTable documents={[]} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={[]} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     expect(getByText('No scored documents this week.')).toBeTruthy();
   });
 
   it('renders export CSV button', () => {
     const { getByText } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     expect(getByText(/Export CSV/)).toBeTruthy();
   });
@@ -94,7 +94,7 @@ describe('DocumentTable', () => {
     Object.assign(URL, { createObjectURL, revokeObjectURL });
 
     const { getByText } = render(
-      <DocumentTable documents={docs} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     fireEvent.click(getByText(/Export CSV/));
     expect(createObjectURL).toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe('DocumentTable', () => {
 
   it('renders document links with correct href', () => {
     const { container } = render(
-      <DocumentTable documents={[docs[0]]} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={[docs[0]]} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     const link = container.querySelector('a[href="https://example.com/1"]');
     expect(link).toBeTruthy();
@@ -120,7 +120,7 @@ describe('DocumentTable', () => {
       suppressed: [{ keyword: 'd', tier: 'warning', rule: 'test', reason: 'test' }],
     });
     const { container } = render(
-      <DocumentTable documents={[doc]} category="courts" weekOf="2025-02-03" />,
+      <DocumentTable documents={[doc]} category="judicialIndependence" weekOf="2025-02-03" />,
     );
     const cells = container.querySelectorAll('tbody td');
     // Matches count = 3, Suppressed count = 1

@@ -10,7 +10,7 @@
  *
  * Usage:
  *   pnpm seed:rhetoric-gaps                    # Analyze all categories
- *   pnpm seed:rhetoric-gaps --category courts   # Single category
+ *   pnpm seed:rhetoric-gaps --category judicialIndependence  # Single category
  *   pnpm seed:rhetoric-gaps --min-docs 5        # Minimum document threshold
  *   pnpm seed:rhetoric-gaps --out ./my-dir      # Custom output directory
  */

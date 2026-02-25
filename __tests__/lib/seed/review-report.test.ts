@@ -13,7 +13,7 @@ import type { EnhancedAssessment } from '@/lib/types';
 
 function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAssessment {
   return {
-    category: 'courts',
+    category: 'judicialIndependence',
     status: 'Warning',
     reason: 'Test reason',
     matches: ['keyword-a'],
@@ -29,7 +29,9 @@ function makeAssessment(overrides: Partial<EnhancedAssessment> = {}): EnhancedAs
 
 describe('buildReviewId', () => {
   it('produces category--date format', () => {
-    expect(buildReviewId('courts', '2024-06-15')).toBe('courts--2024-06-15');
+    expect(buildReviewId('judicialIndependence', '2024-06-15')).toBe(
+      'judicialIndependence--2024-06-15',
+    );
     expect(buildReviewId('military', '2024-01-01')).toBe('military--2024-01-01');
   });
 });
@@ -52,7 +54,7 @@ describe('extractReviewItem', () => {
       }),
     );
     expect(item).not.toBeNull();
-    expect(item!.category).toBe('courts');
+    expect(item!.category).toBe('judicialIndependence');
     expect(item!.keywordStatus).toBe('Warning');
     expect(item!.aiRecommendedStatus).toBe('Stable');
     expect(item!.confidence).toBe(0.5);
@@ -113,8 +115,16 @@ describe('sortReviewItems', () => {
   it('sorts by category, then date descending', () => {
     const items = [
       { id: 'military--2024-01-01', category: 'military', date: '2024-01-01' },
-      { id: 'courts--2024-06-01', category: 'courts', date: '2024-06-01' },
-      { id: 'courts--2024-07-01', category: 'courts', date: '2024-07-01' },
+      {
+        id: 'judicialIndependence--2024-06-01',
+        category: 'judicialIndependence',
+        date: '2024-06-01',
+      },
+      {
+        id: 'judicialIndependence--2024-07-01',
+        category: 'judicialIndependence',
+        date: '2024-07-01',
+      },
     ].map((base) => ({
       ...base,
       keywordStatus: 'Warning',
@@ -126,8 +136,8 @@ describe('sortReviewItems', () => {
 
     const sorted = sortReviewItems(items);
     expect(sorted.map((i) => i.id)).toEqual([
-      'courts--2024-07-01',
-      'courts--2024-06-01',
+      'judicialIndependence--2024-07-01',
+      'judicialIndependence--2024-06-01',
       'military--2024-01-01',
     ]);
   });
@@ -136,8 +146,8 @@ describe('sortReviewItems', () => {
 describe('formatSummaryTable', () => {
   it('counts by category', () => {
     const items = [
-      { id: 'a', category: 'courts', date: 'd' },
-      { id: 'b', category: 'courts', date: 'd' },
+      { id: 'a', category: 'judicialIndependence', date: 'd' },
+      { id: 'b', category: 'judicialIndependence', date: 'd' },
       { id: 'c', category: 'military', date: 'd' },
     ].map((base) => ({
       ...base,
@@ -149,7 +159,7 @@ describe('formatSummaryTable', () => {
     }));
 
     const table = formatSummaryTable(items);
-    expect(table).toContain('| courts | 2 |');
+    expect(table).toContain('| judicialIndependence | 2 |');
     expect(table).toContain('| military | 1 |');
     expect(table).toContain('| **Total** | **3** |');
   });
@@ -158,8 +168,8 @@ describe('formatSummaryTable', () => {
 describe('formatReviewItem', () => {
   it('shows keyword vs AI status, confidence, reasoning', () => {
     const md = formatReviewItem({
-      id: 'courts--2024-06-01',
-      category: 'courts',
+      id: 'judicialIndependence--2024-06-01',
+      category: 'judicialIndependence',
       date: '2024-06-01',
       keywordStatus: 'Warning',
       aiRecommendedStatus: 'Stable',
@@ -172,7 +182,7 @@ describe('formatReviewItem', () => {
         { keyword: 'emergency', assessment: 'false_positive', reasoning: 'Routine use' },
       ],
     });
-    expect(md).toContain('### courts--2024-06-01');
+    expect(md).toContain('### judicialIndependence--2024-06-01');
     expect(md).toContain('**Keyword Status:** Warning');
     expect(md).toContain('**AI Recommended:** Stable');
     expect(md).toContain('**Confidence:** 85%');
@@ -239,8 +249,8 @@ describe('formatReportMarkdown', () => {
   it('produces a complete report with header, summary, and items', () => {
     const items = [
       {
-        id: 'courts--2024-06-01',
-        category: 'courts',
+        id: 'judicialIndependence--2024-06-01',
+        category: 'judicialIndependence',
         date: '2024-06-01',
         keywordStatus: 'Warning',
         finalStatus: 'Warning',
@@ -253,6 +263,6 @@ describe('formatReportMarkdown', () => {
     expect(report).toContain('# AI Skeptic Review Report');
     expect(report).toContain('## Summary');
     expect(report).toContain('## Review Items');
-    expect(report).toContain('### courts--2024-06-01');
+    expect(report).toContain('### judicialIndependence--2024-06-01');
   });
 });

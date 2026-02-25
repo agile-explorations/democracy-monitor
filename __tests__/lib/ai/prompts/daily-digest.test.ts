@@ -7,7 +7,7 @@ import {
 
 const sampleCategoryData = [
   {
-    category: 'courts',
+    category: 'judicialIndependence',
     status: 'Warning',
     reason: 'Multiple injunction-related items detected',
     itemCount: 12,
@@ -22,7 +22,7 @@ const sampleCategoryData = [
   },
 ];
 
-const sampleAnomalies = [{ keyword: 'injunction', category: 'courts', ratio: 3.2 }];
+const sampleAnomalies = [{ keyword: 'injunction', category: 'judicialIndependence', ratio: 3.2 }];
 
 describe('buildDailyDigestPrompt', () => {
   it('requests both general and expert reading levels', () => {
@@ -49,7 +49,7 @@ describe('buildDailyDigestPrompt', () => {
   it('includes category data in the prompt', () => {
     const prompt = buildDailyDigestPrompt('2025-06-15', sampleCategoryData, []);
 
-    expect(prompt).toContain('courts');
+    expect(prompt).toContain('judicialIndependence');
     expect(prompt).toContain('Warning');
     expect(prompt).toContain('Federal judge issues TRO against executive order');
     expect(prompt).toContain('civilService');

@@ -203,7 +203,7 @@ describe('getWeekExplanation', () => {
 
   it('returns null when no aggregate found in DB', async () => {
     mockIsDbAvailable.mockReturnValue(true);
-    const result = await getWeekExplanation('courts', '2025-02-03');
+    const result = await getWeekExplanation('judicialIndependence', '2025-02-03');
     expect(result).toBeNull();
     expect(mockSelect).toHaveBeenCalled();
   });

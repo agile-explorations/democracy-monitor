@@ -10,7 +10,7 @@ import type { AssessmentRules } from '@/lib/types';
 
 function makeRules(): AssessmentRules {
   return {
-    courts: {
+    judicialIndependence: {
       keywords: {
         capture: ['contempt of court', 'defied court order'],
         drift: ['delayed compliance', 'partial compliance'],
@@ -32,13 +32,13 @@ function makeRules(): AssessmentRules {
 describe('findKeywordTier', () => {
   it('finds keyword in correct tier', () => {
     const rules = makeRules();
-    expect(findKeywordTier(rules.courts, 'contempt of court')).toBe('capture');
-    expect(findKeywordTier(rules.courts, 'delayed compliance')).toBe('drift');
-    expect(findKeywordTier(rules.courts, 'injunction issued')).toBe('warning');
+    expect(findKeywordTier(rules.judicialIndependence, 'contempt of court')).toBe('capture');
+    expect(findKeywordTier(rules.judicialIndependence, 'delayed compliance')).toBe('drift');
+    expect(findKeywordTier(rules.judicialIndependence, 'injunction issued')).toBe('warning');
   });
 
   it('returns null for missing keyword', () => {
-    expect(findKeywordTier(makeRules().courts, 'nonexistent')).toBeNull();
+    expect(findKeywordTier(makeRules().judicialIndependence, 'nonexistent')).toBeNull();
   });
 });
 
@@ -47,7 +47,7 @@ describe('applyRecommendation', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'injunction issued',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'remove',
       reason: 'FP 80%',
       occurrences: 8,
@@ -55,18 +55,18 @@ describe('applyRecommendation', () => {
     });
     expect(change).toEqual({
       keyword: 'injunction issued',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'removed',
       fromTier: 'warning',
     });
-    expect(rules.courts.keywords.warning).not.toContain('injunction issued');
+    expect(rules.judicialIndependence.keywords.warning).not.toContain('injunction issued');
   });
 
   it('moves a keyword between tiers', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'delayed compliance',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'move',
       currentTier: 'drift',
       suggestedTier: 'warning',
@@ -76,20 +76,20 @@ describe('applyRecommendation', () => {
     });
     expect(change).toEqual({
       keyword: 'delayed compliance',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'moved',
       fromTier: 'drift',
       toTier: 'warning',
     });
-    expect(rules.courts.keywords.drift).not.toContain('delayed compliance');
-    expect(rules.courts.keywords.warning).toContain('delayed compliance');
+    expect(rules.judicialIndependence.keywords.drift).not.toContain('delayed compliance');
+    expect(rules.judicialIndependence.keywords.warning).toContain('delayed compliance');
   });
 
   it('returns null when keyword not found', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'nonexistent',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'remove',
       reason: 'test',
       occurrences: 1,
@@ -102,7 +102,7 @@ describe('applyRecommendation', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'injunction issued',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'move',
       currentTier: 'warning',
       suggestedTier: 'warning',
@@ -117,7 +117,7 @@ describe('applyRecommendation', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'judicial independence',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'add',
       suggestedTier: 'warning',
       reason: 'Missing from dictionary',
@@ -126,18 +126,18 @@ describe('applyRecommendation', () => {
     });
     expect(change).toEqual({
       keyword: 'judicial independence',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'added',
       toTier: 'warning',
     });
-    expect(rules.courts.keywords.warning).toContain('judicial independence');
+    expect(rules.judicialIndependence.keywords.warning).toContain('judicial independence');
   });
 
   it('skips add when keyword already exists in any tier', () => {
     const rules = makeRules();
     const change = applyRecommendation(rules, {
       keyword: 'contempt of court',
-      category: 'courts',
+      category: 'judicialIndependence',
       action: 'add',
       suggestedTier: 'warning',
       reason: 'Already exists',
@@ -168,7 +168,7 @@ describe('applyAllRecommendations', () => {
     const changes = applyAllRecommendations(rules, [
       {
         keyword: 'injunction issued',
-        category: 'courts',
+        category: 'judicialIndependence',
         action: 'remove',
         reason: 'FP',
         occurrences: 5,
@@ -176,7 +176,7 @@ describe('applyAllRecommendations', () => {
       },
       {
         keyword: 'court ordered',
-        category: 'courts',
+        category: 'judicialIndependence',
         action: 'remove',
         reason: 'FP',
         occurrences: 4,
@@ -184,9 +184,9 @@ describe('applyAllRecommendations', () => {
       },
     ]);
     expect(changes).toHaveLength(2);
-    expect(rules.courts.keywords.warning).not.toContain('injunction issued');
-    expect(rules.courts.keywords.warning).not.toContain('court ordered');
-    expect(rules.courts.keywords.warning).toContain('preliminary injunction');
+    expect(rules.judicialIndependence.keywords.warning).not.toContain('injunction issued');
+    expect(rules.judicialIndependence.keywords.warning).not.toContain('court ordered');
+    expect(rules.judicialIndependence.keywords.warning).toContain('preliminary injunction');
   });
 
   it('returns empty array for no applicable changes', () => {
@@ -194,7 +194,7 @@ describe('applyAllRecommendations', () => {
     const changes = applyAllRecommendations(rules, [
       {
         keyword: 'nonexistent',
-        category: 'courts',
+        category: 'judicialIndependence',
         action: 'remove',
         reason: 'test',
         occurrences: 1,
@@ -211,7 +211,7 @@ describe('serializeRules', () => {
     const source = serializeRules(rules);
     expect(source).toContain("import type { AssessmentRules } from '@/lib/types'");
     expect(source).toContain('export const ASSESSMENT_RULES: AssessmentRules = {');
-    expect(source).toContain('courts: {');
+    expect(source).toContain('judicialIndependence: {');
     expect(source).toContain("'contempt of court',");
     expect(source).toContain('volumeThreshold: { warning: 5, drift: 10, capture: 15 },');
   });
@@ -242,18 +242,23 @@ describe('serializeRules', () => {
 describe('formatChangePreview', () => {
   it('formats removal changes', () => {
     const preview = formatChangePreview([
-      { keyword: 'injunction issued', category: 'courts', action: 'removed', fromTier: 'warning' },
+      {
+        keyword: 'injunction issued',
+        category: 'judicialIndependence',
+        action: 'removed',
+        fromTier: 'warning',
+      },
     ]);
     expect(preview).toContain('1 change(s) to apply');
     expect(preview).toContain('REMOVE "injunction issued"');
-    expect(preview).toContain('courts.warning');
+    expect(preview).toContain('judicialIndependence.warning');
   });
 
   it('formats move changes', () => {
     const preview = formatChangePreview([
       {
         keyword: 'delayed compliance',
-        category: 'courts',
+        category: 'judicialIndependence',
         action: 'moved',
         fromTier: 'drift',
         toTier: 'warning',
@@ -265,10 +270,15 @@ describe('formatChangePreview', () => {
 
   it('formats add changes', () => {
     const preview = formatChangePreview([
-      { keyword: 'judicial independence', category: 'courts', action: 'added', toTier: 'warning' },
+      {
+        keyword: 'judicial independence',
+        category: 'judicialIndependence',
+        action: 'added',
+        toTier: 'warning',
+      },
     ]);
     expect(preview).toContain('ADD "judicial independence"');
-    expect(preview).toContain('courts.warning');
+    expect(preview).toContain('judicialIndependence.warning');
   });
 
   it('shows no-changes message for empty array', () => {

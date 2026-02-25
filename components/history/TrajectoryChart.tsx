@@ -21,9 +21,9 @@ const STATUS_LEVEL: Record<string, number> = {
 const CATEGORY_COLORS: Record<string, string> = {
   civilService: '#6366f1',
   fiscal: '#8b5cf6',
-  igs: '#a855f7',
+  executiveOversight: '#a855f7',
   hatch: '#d946ef',
-  courts: '#ec4899',
+  judicialIndependence: '#ec4899',
   military: '#f43f5e',
   rulemaking: '#f97316',
   indices: '#eab308',
@@ -137,9 +137,9 @@ export function TrajectoryChart({ data, convergenceData }: TrajectoryChartProps)
             const labels: Record<string, string> = {
               civilService: 'Civil Service',
               fiscal: 'Fiscal',
-              igs: 'IGs',
+              executiveOversight: 'Exec Oversight',
               hatch: 'Hatch Act',
-              courts: 'Courts',
+              judicialIndependence: 'Judicial Indep',
               military: 'Military',
               rulemaking: 'Rulemaking',
               indices: 'Exec Power Vol',

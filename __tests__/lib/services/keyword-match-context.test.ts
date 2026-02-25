@@ -26,28 +26,34 @@ describe('stripAnnotation', () => {
 });
 
 describe('classifyMatchTier', () => {
-  it('classifies a capture-tier keyword for the courts category', () => {
-    expect(classifyMatchTier('contempt of court', 'courts')).toBe('capture');
+  it('classifies a capture-tier keyword for the judicialIndependence category', () => {
+    expect(classifyMatchTier('contempt of court', 'judicialIndependence')).toBe('capture');
   });
 
-  it('classifies a drift-tier keyword for the courts category', () => {
-    expect(classifyMatchTier('delayed compliance', 'courts')).toBe('drift');
+  it('classifies a drift-tier keyword for the judicialIndependence category', () => {
+    expect(classifyMatchTier('delayed compliance', 'judicialIndependence')).toBe('drift');
   });
 
-  it('classifies a warning-tier keyword for the courts category', () => {
-    expect(classifyMatchTier('injunction issued', 'courts')).toBe('warning');
+  it('classifies a warning-tier keyword for the judicialIndependence category', () => {
+    expect(classifyMatchTier('injunction issued', 'judicialIndependence')).toBe('warning');
   });
 
   it('strips annotations before matching', () => {
-    expect(classifyMatchTier('contempt of court (authoritative source)', 'courts')).toBe('capture');
+    expect(
+      classifyMatchTier('contempt of court (authoritative source)', 'judicialIndependence'),
+    ).toBe('capture');
   });
 
   it('falls back to capture for systematic pattern annotation on unknown keyword', () => {
-    expect(classifyMatchTier('unknown keyword (systematic pattern)', 'courts')).toBe('capture');
+    expect(classifyMatchTier('unknown keyword (systematic pattern)', 'judicialIndependence')).toBe(
+      'capture',
+    );
   });
 
   it('falls back to capture for authoritative source annotation on unknown keyword', () => {
-    expect(classifyMatchTier('unknown keyword (authoritative source)', 'courts')).toBe('capture');
+    expect(
+      classifyMatchTier('unknown keyword (authoritative source)', 'judicialIndependence'),
+    ).toBe('capture');
   });
 
   it('returns warning for unknown category', () => {
@@ -55,7 +61,7 @@ describe('classifyMatchTier', () => {
   });
 
   it('returns warning for unrecognized keyword in a valid category', () => {
-    expect(classifyMatchTier('unrecognized gibberish', 'courts')).toBe('warning');
+    expect(classifyMatchTier('unrecognized gibberish', 'judicialIndependence')).toBe('warning');
   });
 });
 
@@ -93,26 +99,26 @@ describe('findMatchSource', () => {
 
 describe('generateKeywordCounterEvidence', () => {
   it('returns counter-evidence strings for Capture status', () => {
-    const result = generateKeywordCounterEvidence('Capture', 'courts');
+    const result = generateKeywordCounterEvidence('Capture', 'judicialIndependence');
     expect(result).toBeInstanceOf(Array);
     expect(result.length).toBeGreaterThan(0);
     expect(result.every((s) => typeof s === 'string')).toBe(true);
   });
 
   it('returns counter-evidence strings for Drift status', () => {
-    const result = generateKeywordCounterEvidence('Drift', 'courts');
+    const result = generateKeywordCounterEvidence('Drift', 'judicialIndependence');
     expect(result.length).toBeGreaterThan(0);
     expect(result.some((s) => s.includes('reporting'))).toBe(true);
   });
 
   it('returns counter-evidence strings for Warning status', () => {
-    const result = generateKeywordCounterEvidence('Warning', 'courts');
+    const result = generateKeywordCounterEvidence('Warning', 'judicialIndependence');
     expect(result.length).toBeGreaterThan(0);
     expect(result.some((s) => s.includes('routine'))).toBe(true);
   });
 
   it('returns counter-evidence strings for Stable status', () => {
-    const result = generateKeywordCounterEvidence('Stable', 'courts');
+    const result = generateKeywordCounterEvidence('Stable', 'judicialIndependence');
     expect(result.length).toBeGreaterThan(0);
     expect(result.some((s) => s.includes('absence'))).toBe(true);
   });

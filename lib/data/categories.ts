@@ -88,7 +88,7 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    key: 'igs',
+    key: 'executiveOversight',
     title: 'Government Watchdogs (Inspectors General)',
     description:
       'Inspectors General (IGs) are like detectives who check if government agencies are doing their jobs correctly. Can they do their work without being fired or blocked?',
@@ -166,7 +166,7 @@ export const CATEGORIES: Category[] = [
     ],
   },
   {
-    key: 'courts',
+    key: 'judicialIndependence',
     title: 'Following Court Orders',
     description:
       'When a judge orders the government to do something (or stop doing something), does the President follow those orders? This is a key part of our system of checks and balances.',

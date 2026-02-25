@@ -71,13 +71,16 @@ describe('recomputeScores', () => {
   it('processes a batch of documents and stores scores', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
-    const docs = [makeDocRow(1, 'courts', 'Court Order'), makeDocRow(2, 'courts', 'Ruling')];
+    const docs = [
+      makeDocRow(1, 'judicialIndependence', 'Court Order'),
+      makeDocRow(2, 'judicialIndependence', 'Ruling'),
+    ];
     const mockDb = makeMockDb([docs, []]);
     mockGetDb.mockReturnValue(mockDb);
 
     mockScoreDocument.mockReturnValue({
       documentId: 0,
-      category: 'courts',
+      category: 'judicialIndependence',
       finalScore: 5,
       tierScores: { capture: 0, drift: 2, warning: 1 },
       classMultiplier: 1.3,
@@ -106,13 +109,13 @@ describe('recomputeScores', () => {
   it('scores documents in dry-run mode without storing', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
-    const docs = [makeDocRow(1, 'courts', 'Test Doc')];
+    const docs = [makeDocRow(1, 'judicialIndependence', 'Test Doc')];
     const mockDb = makeMockDb([docs, []]);
     mockGetDb.mockReturnValue(mockDb);
 
     mockScoreDocument.mockReturnValue({
       documentId: 0,
-      category: 'courts',
+      category: 'judicialIndependence',
       finalScore: 3,
       tierScores: { capture: 0, drift: 1, warning: 1 },
       classMultiplier: 1.0,
@@ -134,7 +137,7 @@ describe('recomputeScores', () => {
     mockGetDb.mockReturnValue(mockDb);
 
     mockComputeAllWeeklyAggregates.mockResolvedValue({
-      courts: [{ category: 'courts', weekOf: '2025-01-27', avgScore: 3 }],
+      courts: [{ category: 'judicialIndependence', weekOf: '2025-01-27', avgScore: 3 }],
     } as Record<string, Array<{ category: string; weekOf: string; avgScore: number }>>);
     mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
 

@@ -20,9 +20,9 @@ beforeEach(() => {
 
 describe('computeCumulativeFromWeeks (pure function)', () => {
   it('returns zeroes for empty input', () => {
-    const result = computeCumulativeFromWeeks('courts', [], 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', [], 8);
 
-    expect(result.category).toBe('courts');
+    expect(result.category).toBe('judicialIndependence');
     expect(result.runningSum).toBe(0);
     expect(result.runningAverage).toBe(0);
     expect(result.weekCount).toBe(0);
@@ -40,7 +40,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-10', totalSeverity: 20 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.runningSum).toBe(70);
     expect(result.weekCount).toBe(4);
@@ -54,7 +54,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-10', totalSeverity: 20 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.runningAverage).toBe(17.5);
   });
@@ -66,7 +66,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-03', totalSeverity: 15 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.highWaterMark).toBe(25);
     expect(result.highWaterWeek).toBe('2025-01-27');
@@ -78,7 +78,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-03', totalSeverity: 20 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.currentWeekScore).toBe(20);
     expect(result.asOf).toBe('2025-02-03');
@@ -92,7 +92,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-10', totalSeverity: 20 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.decayWeightedScore).toBeLessThan(result.runningSum);
     expect(result.decayWeightedScore).toBeGreaterThan(0);
@@ -106,8 +106,8 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-10', totalSeverity: 20 },
     ];
 
-    const longHalfLife = computeCumulativeFromWeeks('courts', weeks, 16);
-    const shortHalfLife = computeCumulativeFromWeeks('courts', weeks, 2);
+    const longHalfLife = computeCumulativeFromWeeks('judicialIndependence', weeks, 16);
+    const shortHalfLife = computeCumulativeFromWeeks('judicialIndependence', weeks, 2);
 
     expect(shortHalfLife.decayWeightedScore).toBeLessThan(longHalfLife.decayWeightedScore);
   });
@@ -115,7 +115,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
   it('single week: decay-weighted equals the score itself', () => {
     const weeks = [{ weekOf: '2025-01-20', totalSeverity: 10 }];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.decayWeightedScore).toBe(10);
     expect(result.runningSum).toBe(10);
@@ -130,7 +130,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-01-27', totalSeverity: 20 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 1);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 1);
 
     // 10 * 0.5 + 20 * 1.0 = 25
     expect(result.decayWeightedScore).toBe(25);
@@ -143,7 +143,7 @@ describe('computeCumulativeFromWeeks (pure function)', () => {
       { weekOf: '2025-02-03', totalSeverity: 30 },
     ];
 
-    const result = computeCumulativeFromWeeks('courts', weeks, 8);
+    const result = computeCumulativeFromWeeks('judicialIndependence', weeks, 8);
 
     expect(result.highWaterMark).toBe(30);
     expect(result.highWaterWeek).toBe('2025-01-20');
@@ -154,7 +154,7 @@ describe('computeCumulativeScores (DB integration)', () => {
   it('returns zeroes when DB is unavailable', async () => {
     mockIsDbAvailable.mockReturnValue(false);
 
-    const result = await computeCumulativeScores('courts');
+    const result = await computeCumulativeScores('judicialIndependence');
 
     expect(result.runningSum).toBe(0);
     expect(result.weekCount).toBe(0);
@@ -164,7 +164,7 @@ describe('computeCumulativeScores (DB integration)', () => {
   it('uses custom half-life parameter', async () => {
     mockIsDbAvailable.mockReturnValue(false);
 
-    const result = await computeCumulativeScores('courts', { halfLifeWeeks: 4 });
+    const result = await computeCumulativeScores('judicialIndependence', { halfLifeWeeks: 4 });
     expect(result.decayHalfLifeWeeks).toBe(4);
   });
 });
@@ -182,8 +182,8 @@ describe('computeAllCumulativeScores', () => {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockResolvedValue([
-            { category: 'courts', weekOf: '2025-01-20', totalSeverity: 10 },
-            { category: 'courts', weekOf: '2025-01-27', totalSeverity: 20 },
+            { category: 'judicialIndependence', weekOf: '2025-01-20', totalSeverity: 10 },
+            { category: 'judicialIndependence', weekOf: '2025-01-27', totalSeverity: 20 },
             { category: 'agencies', weekOf: '2025-01-20', totalSeverity: 5 },
           ]),
         }),
@@ -192,10 +192,10 @@ describe('computeAllCumulativeScores', () => {
 
     const result = await computeAllCumulativeScores();
 
-    expect(Object.keys(result)).toContain('courts');
+    expect(Object.keys(result)).toContain('judicialIndependence');
     expect(Object.keys(result)).toContain('agencies');
-    expect(result['courts'].runningSum).toBe(30);
-    expect(result['courts'].weekCount).toBe(2);
+    expect(result['judicialIndependence'].runningSum).toBe(30);
+    expect(result['judicialIndependence'].weekCount).toBe(2);
     expect(result['agencies'].runningSum).toBe(5);
     expect(result['agencies'].weekCount).toBe(1);
   });

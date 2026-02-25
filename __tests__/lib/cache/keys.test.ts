@@ -31,7 +31,7 @@ describe('CacheKeys', () => {
   });
 
   it('generates fallback key', () => {
-    expect(CacheKeys.fallback('courts')).toBe('fallback:courts');
+    expect(CacheKeys.fallback('judicialIndependence')).toBe('fallback:judicialIndependence');
   });
 
   it('generates embedding key with numeric ID', () => {

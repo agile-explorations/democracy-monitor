@@ -57,9 +57,11 @@ describe('assessWeek', () => {
   });
 
   it('builds correct keyword-only result structure', async () => {
-    const result = await assessWeek(baseItems, 'courts', '2026-01-20', { skipAi: true });
+    const result = await assessWeek(baseItems, 'judicialIndependence', '2026-01-20', {
+      skipAi: true,
+    });
 
-    expect(result.category).toBe('courts');
+    expect(result.category).toBe('judicialIndependence');
     expect(result.matches).toEqual(['executive order']);
     expect(result.evidenceFor).toEqual([]);
     expect(result.evidenceAgainst).toEqual([]);
@@ -68,7 +70,9 @@ describe('assessWeek', () => {
   });
 
   it('computes dataCoverage from item count', async () => {
-    const result = await assessWeek(baseItems, 'courts', '2026-01-20', { skipAi: true });
+    const result = await assessWeek(baseItems, 'judicialIndependence', '2026-01-20', {
+      skipAi: true,
+    });
 
     // 2 items / 10 = 0.2, capped at 1
     expect(result.dataCoverage).toBe(0.2);
@@ -79,7 +83,9 @@ describe('assessWeek', () => {
       title: `Doc ${i}`,
       link: `https://example.com/${i}`,
     }));
-    const result = await assessWeek(manyItems, 'courts', '2026-01-20', { skipAi: true });
+    const result = await assessWeek(manyItems, 'judicialIndependence', '2026-01-20', {
+      skipAi: true,
+    });
 
     expect(result.dataCoverage).toBe(1);
   });
@@ -103,7 +109,7 @@ describe('assessWeek', () => {
       reason: 'No data',
       matches: [],
     });
-    const result = await assessWeek([], 'courts', '2026-01-20', { skipAi: true });
+    const result = await assessWeek([], 'judicialIndependence', '2026-01-20', { skipAi: true });
 
     expect(result.dataCoverage).toBe(0);
     expect(result.status).toBe('Stable');

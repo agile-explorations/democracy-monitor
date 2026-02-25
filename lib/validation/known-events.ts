@@ -38,7 +38,7 @@ export const TRUMP_2017_2018_EVENTS: KnownEvent[] = [
   },
   {
     date: '2017-05-09',
-    category: 'igs',
+    category: 'executiveOversight',
     description: 'James Comey firing',
     expectedSeverity: 'Drift',
   },

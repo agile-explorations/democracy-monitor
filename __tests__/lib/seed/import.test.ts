@@ -81,7 +81,9 @@ describe('importSeedData', () => {
     setupMockDb();
 
     // Write only one fixture — others are missing
-    writeFixture(testDir, 'assessments', [{ id: 1, category: 'courts', status: 'Stable' }]);
+    writeFixture(testDir, 'assessments', [
+      { id: 1, category: 'judicialIndependence', status: 'Stable' },
+    ]);
 
     await importSeedData(testDir);
 
@@ -95,7 +97,7 @@ describe('importSeedData', () => {
     setupMockDb();
 
     writeFixture(testDir, 'assessments', [
-      { id: 1, category: 'courts', status: 'Stable', reason: 'test' },
+      { id: 1, category: 'judicialIndependence', status: 'Stable', reason: 'test' },
       { id: 2, category: 'military', status: 'Warning', reason: 'test2' },
     ]);
 
@@ -104,7 +106,7 @@ describe('importSeedData', () => {
     const assessmentInsert = insertedRows.find((r) => r.table === 'assessments');
     expect(assessmentInsert).toBeDefined();
     expect(assessmentInsert!.rows[0]).not.toHaveProperty('id');
-    expect(assessmentInsert!.rows[0]).toHaveProperty('category', 'courts');
+    expect(assessmentInsert!.rows[0]).toHaveProperty('category', 'judicialIndependence');
     expect(assessmentInsert!.rows[1]).not.toHaveProperty('id');
     expect(assessmentInsert!.rows[1]).toHaveProperty('category', 'military');
   });
@@ -125,7 +127,9 @@ describe('importSeedData', () => {
     mockIsDbAvailable.mockReturnValue(true);
     setupMockDb();
 
-    writeFixture(testDir, 'assessments', [{ id: 1, category: 'courts', status: 'Stable' }]);
+    writeFixture(testDir, 'assessments', [
+      { id: 1, category: 'judicialIndependence', status: 'Stable' },
+    ]);
     writeFixture(testDir, 'document_scores', [{ id: 1, url: 'https://example.com' }]);
 
     await importSeedData(testDir);

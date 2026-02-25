@@ -76,14 +76,14 @@ describe('classifyRhetoricToCategories', () => {
 
   it('routes inspector general rhetoric to igs', () => {
     const cats = classifyRhetoricToCategories('Inspector General fired amid ongoing investigation');
-    expect(cats).toContain('igs');
+    expect(cats).toContain('executiveOversight');
   });
 
   it('routes court rhetoric to courts', () => {
     const cats = classifyRhetoricToCategories(
       'Administration defies court injunction compliance order',
     );
-    expect(cats).toContain('courts');
+    expect(cats).toContain('judicialIndependence');
   });
 
   it('routes military rhetoric to military', () => {

@@ -20,7 +20,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       summary:
         "A historical analysis of Roosevelt's failed attempt at court packing and its long-term consequences for judicial independence.",
     },
-    category: 'courts',
+    category: 'judicialIndependence',
     suppressedKeyword: 'court packing',
   },
   {
@@ -30,7 +30,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       summary:
         'Federal prosecutors filed RICO charges against members of an organized crime ring involved in drug trafficking and money laundering.',
     },
-    category: 'courts',
+    category: 'judicialIndependence',
     suppressedKeyword: 'court packing', // Not relevant to courts — the RICO suppression is for infrastructure
   },
   {
@@ -50,7 +50,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       summary:
         'The Office of the Director of National Intelligence published its annual report on FISA compliance, showing adherence to court-imposed minimization procedures.',
     },
-    category: 'courts',
+    category: 'judicialIndependence',
     suppressedKeyword: 'court packing', // FISA suppression is for infrastructure
   },
   {
@@ -70,7 +70,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       summary:
         'A federal judge dismissed the contempt of court citation after finding the defendant had substantially complied with the original order.',
     },
-    category: 'courts',
+    category: 'judicialIndependence',
     suppressedKeyword: 'contempt of court',
   },
   {
@@ -90,7 +90,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       summary:
         'The Senate confirmed the nomination, ending a prolonged ig vacancy at the Department of Commerce. The new IG was sworn in today.',
     },
-    category: 'igs',
+    category: 'executiveOversight',
     suppressedKeyword: 'ig vacancy',
   },
   {

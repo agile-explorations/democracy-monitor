@@ -94,7 +94,7 @@ describe('analyzeContent', () => {
 
   it('handles igs oversight.gov down special case', () => {
     const items = [{ title: '⚠️ Oversight.gov - CURRENTLY DOWN' }];
-    const result = analyzeContent(items, 'igs');
+    const result = analyzeContent(items, 'executiveOversight');
     expect(result.status).toBe('Drift');
     expect(result.reason).toContain('Oversight.gov');
   });
@@ -165,7 +165,7 @@ describe('analyzeContent', () => {
   it('does not match keywords in agency field', () => {
     const items = [{ title: 'Routine quarterly report', agency: 'Office of Inspector General' }];
     // "inspector general" appears in agency but should not trigger igs keywords
-    const result = analyzeContent(items, 'igs');
+    const result = analyzeContent(items, 'executiveOversight');
     expect(result.matches).not.toContain('inspector general');
   });
 });
