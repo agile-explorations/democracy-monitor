@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CATEGORIES } from '@/lib/data/categories';
+import { storeDocuments } from '@/lib/services/document-store';
 import {
   extractCategoryCrossfeedTerms,
   classifyRhetoricToCategories,
+  crossfeedRhetoricToCategories,
 } from '@/lib/services/rhetoric-crossfeed';
+
+vi.mock('@/lib/services/document-store', () => ({
+  storeDocuments: vi.fn().mockResolvedValue(1),
+}));
+
+const mockStoreDocuments = vi.mocked(storeDocuments);
 
 describe('extractCategoryCrossfeedTerms', () => {
   it('returns entries for all categories with FR signals', () => {
@@ -134,5 +142,55 @@ describe('classifyRhetoricToCategories', () => {
       'The reduction in force will affect thousands of federal employees',
     );
     expect(cats).toContain('civilService');
+  });
+});
+
+describe('crossfeedRhetoricToCategories', () => {
+  beforeEach(() => {
+    mockStoreDocuments.mockClear();
+  });
+
+  it('returns 0 for empty array', async () => {
+    const result = await crossfeedRhetoricToCategories([]);
+    expect(result).toBe(0);
+    expect(mockStoreDocuments).not.toHaveBeenCalled();
+  });
+
+  it('cross-feeds items to matched categories', async () => {
+    const items = [
+      { title: 'Federal workforce reduction announced', link: 'https://example.com/1' },
+    ];
+    const result = await crossfeedRhetoricToCategories(items);
+    expect(result).toBeGreaterThan(0);
+    expect(mockStoreDocuments).toHaveBeenCalledWith([items[0]], 'civilService');
+  });
+
+  it('items with no category matches are not cross-fed', async () => {
+    const items = [
+      { title: 'Local sports championship results', link: 'https://example.com/sports' },
+    ];
+    const result = await crossfeedRhetoricToCategories(items);
+    expect(result).toBe(0);
+    expect(mockStoreDocuments).not.toHaveBeenCalled();
+  });
+
+  it('items without links are skipped', async () => {
+    const items = [{ title: 'Federal workforce reduction announced' }];
+    const result = await crossfeedRhetoricToCategories(items);
+    expect(result).toBe(0);
+    expect(mockStoreDocuments).not.toHaveBeenCalled();
+  });
+
+  it('counts total category assignments across all items', async () => {
+    const items = [
+      {
+        title: 'Executive order impoundment oversight inspector general',
+        link: 'https://example.com/multi',
+      },
+    ];
+    // This title matches multiple categories
+    const result = await crossfeedRhetoricToCategories(items);
+    expect(result).toBeGreaterThan(1);
+    expect(mockStoreDocuments).toHaveBeenCalledTimes(result);
   });
 });

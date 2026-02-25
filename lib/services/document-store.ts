@@ -39,7 +39,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           metadata: buildMetadata(item),
         })
         .onConflictDoUpdate({
-          target: documents.url,
+          target: [documents.url, documents.category],
           set: {
             title: sql`excluded.title`,
             content: sql`excluded.content`,

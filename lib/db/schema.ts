@@ -37,19 +37,26 @@ export const cacheEntries = pgTable('cache_entries', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const documents = pgTable('documents', {
-  id: serial('id').primaryKey(),
-  sourceType: varchar('source_type', { length: 50 }).notNull(),
-  category: varchar('category', { length: 50 }).notNull(),
-  title: text('title').notNull(),
-  content: text('content'),
-  url: text('url').unique(),
-  publishedAt: timestamp('published_at', { withTimezone: true }),
-  fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
-  metadata: jsonb('metadata'),
-  embedding: vector('embedding'),
-  embeddedAt: timestamp('embedded_at', { withTimezone: true }),
-});
+export const documents = pgTable(
+  'documents',
+  {
+    id: serial('id').primaryKey(),
+    sourceType: varchar('source_type', { length: 50 }).notNull(),
+    category: varchar('category', { length: 50 }).notNull(),
+    title: text('title').notNull(),
+    content: text('content'),
+    url: text('url'),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+    metadata: jsonb('metadata'),
+    embedding: vector('embedding'),
+    embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('uq_documents_url_category').on(table.url, table.category),
+    index('idx_documents_category').on(table.category),
+  ],
+);
 
 export const assessments = pgTable('assessments', {
   id: serial('id').primaryKey(),

@@ -1,14 +1,7 @@
 import { CATEGORIES } from '@/lib/data/categories';
-import {
-  PRIMARY_BASELINE_ID,
-  getCurrentCycleYear,
-  PRIMARY_BASELINE_CYCLE_YEAR,
-} from '@/lib/methodology/scoring-config';
+import { getCurrentCycleYear, PRIMARY_BASELINE_CYCLE_YEAR } from '@/lib/methodology/scoring-config';
 import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
-import { extractWeekMetadata } from '@/lib/services/baseline-distributions';
-import { getBaseline } from '@/lib/services/baseline-service';
-import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
 import type { CycleAdjustmentFactor } from '@/lib/services/cycle-adjustment-service';
 import { loadCycleAdjustmentFactors } from '@/lib/services/cycle-adjustment-service';
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
@@ -22,10 +15,11 @@ import {
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
+import { enrichWithLayerScores } from '@/lib/services/layer-scoring';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
-import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
+import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
@@ -37,7 +31,6 @@ import {
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
-import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { toDateString } from '@/lib/utils/date-utils';
 
 async function snapshotCategory(
@@ -102,68 +95,17 @@ async function snapshotCategory(
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
 }
 
-/**
- * Enrich a weekly aggregate with Layer 1 (structural), Layer 2 (AI), and Layer 3 (thematic) scores,
- * plus the convergence synthesis.
- */
-async function enrichWithLayerScores(
-  agg: WeeklyAggregate,
-  aiSummary?: import('@/lib/types/structural').AIAssessmentSummary | null,
-): Promise<WeeklyAggregate> {
-  try {
-    const [structural, thematic] = await Promise.all([
-      computeStructuralLayer(agg.category, agg.weekOf),
-      computeRollingThematicDrift(agg.category, agg.weekOf),
-    ]);
-
-    const convergence = synthesizeConvergence(structural, aiSummary ?? null, thematic);
-
-    return {
-      ...agg,
-      structuralScore: structural?.composite ?? undefined,
-      structuralDetail: structural ?? undefined,
-      thematicScore: thematic?.zScore ?? undefined,
-      thematicDetail: thematic ?? undefined,
-      convergenceScore: convergence.layersElevated,
-      convergenceDetail: convergence,
-      aiScore: aiSummary?.flagRateZScore ?? undefined,
-      aiDetail: aiSummary ?? undefined,
-    };
-  } catch (err) {
-    console.warn(`[snapshot] Layer scoring failed for ${agg.category}/${agg.weekOf}:`, err);
-    return agg;
-  }
-}
-
-async function computeStructuralLayer(
-  category: string,
-  weekOf: string,
-): Promise<import('@/lib/types/structural').StructuralScore | null> {
-  const { computeStructuralScore } = await import('@/lib/services/structural-anomaly-service');
-  const { computeBaselineStructuralDistribution } =
-    await import('@/lib/services/baseline-distributions');
-  const { BASELINE_CONFIGS } = await import('@/lib/data/baselines');
-
-  const weekMetadata = await extractWeekMetadata(category, weekOf);
-  if (!weekMetadata) return null;
-
-  const primaryConfig = BASELINE_CONFIGS.find((c) => c.id === PRIMARY_BASELINE_ID);
-  if (!primaryConfig) return null;
-
-  const baselineDistribution = await computeBaselineStructuralDistribution(primaryConfig, category);
-  if (!baselineDistribution) return null;
-
-  return computeStructuralScore(weekMetadata, baselineDistribution);
-}
-
 async function snapshotRhetoric(): Promise<void> {
   console.log('[snapshot] Fetching rhetoric sources for RAG storage...');
   try {
     const statements = await fetchAllRhetoricSources();
     const contentItems = statementsToContentItems(statements);
     const stored = await storeDocuments(contentItems, 'intent');
+    const crossfed = await crossfeedRhetoricToCategories(contentItems);
     await embedUnprocessedDocuments(50);
-    console.log(`[snapshot] Stored ${stored} rhetoric documents`);
+    console.log(
+      `[snapshot] Stored ${stored} rhetoric documents, cross-fed ${crossfed} to categories`,
+    );
 
     console.log('[snapshot] Running intent assessment...');
     try {

@@ -2,6 +2,7 @@
 
 import type { BaselineSource, WhArchiveConfig } from '@/lib/data/baselines';
 import { storeDocuments } from '@/lib/services/document-store';
+import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import {
   fetchWhiteHouseHistorical,
   fetchWhArchiveHistorical,
@@ -33,6 +34,7 @@ export async function backfillGdelt(
         callsDone++;
         if (items.length > 0) {
           const stored = await storeDocuments(items, 'intent');
+          await crossfeedRhetoricToCategories(items);
           gdeltDocs += stored;
         }
         process.stdout.write(`\r  GDELT: ${callsDone}/${totalCalls} calls, ${gdeltDocs} docs`);
@@ -88,6 +90,7 @@ export async function backfillRhetoric(
         const whItems = await fetchWhDocs(weeks, whArchive);
         if (whItems.length > 0) {
           const stored = await storeDocuments(whItems, 'intent');
+          await crossfeedRhetoricToCategories(whItems);
           whDocs = stored;
           console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
         } else {

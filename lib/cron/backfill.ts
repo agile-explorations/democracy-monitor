@@ -8,6 +8,7 @@ import {
   parseSignalParams,
 } from '@/lib/services/federal-register-fetcher';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
+import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import {
   fetchWhiteHouseHistorical,
   fetchGdeltHistorical,
@@ -138,6 +139,7 @@ async function backfillGdeltWeeks(
         });
         if (items.length > 0) {
           const stored = await storeDocuments(items, 'intent');
+          await crossfeedRhetoricToCategories(items);
           gdeltDocs += stored;
         }
       } catch (err) {
@@ -175,6 +177,7 @@ async function backfillRhetoric(
       });
       if (whItems.length > 0) {
         const stored = await storeDocuments(whItems, 'intent');
+        await crossfeedRhetoricToCategories(whItems);
         whDocs = stored;
         console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
       } else {

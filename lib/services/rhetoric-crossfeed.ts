@@ -7,6 +7,8 @@
  */
 
 import { CATEGORIES } from '@/lib/data/categories';
+import { storeDocuments } from '@/lib/services/document-store';
+import type { ContentItem } from '@/lib/types';
 
 export interface CrossfeedTerm {
   category: string;
@@ -90,4 +92,37 @@ export function classifyRhetoricToCategories(title: string, summary?: string): s
   }
 
   return matched;
+}
+
+/**
+ * Cross-feed rhetoric documents to monitoring categories.
+ * For each item, classifies it into categories via signal term matching,
+ * then stores a copy under each matched category.
+ * Returns total number of category assignments.
+ */
+export async function crossfeedRhetoricToCategories(items: ContentItem[]): Promise<number> {
+  let totalAssignments = 0;
+  const categoryCounts: Record<string, number> = {};
+
+  for (const item of items) {
+    if (!item.link) continue;
+
+    const categories = classifyRhetoricToCategories(item.title, item.summary);
+    for (const category of categories) {
+      await storeDocuments([item], category);
+      totalAssignments++;
+      categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+    }
+  }
+
+  if (totalAssignments > 0) {
+    const catSummary = Object.entries(categoryCounts)
+      .map(([k, v]) => `${k}:${v}`)
+      .join(', ');
+    console.log(
+      `[crossfeed] ${items.length} items → ${totalAssignments} category assignments (${catSummary})`,
+    );
+  }
+
+  return totalAssignments;
 }
