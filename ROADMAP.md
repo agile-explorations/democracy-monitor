@@ -6,6 +6,8 @@ This document describes the planned sprint sequence for completing the Democracy
 
 - `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, and category framework with framework alignment mapping.
 - `CATEGORY_FRAMEWORK_ANALYSIS.md` — Analysis mapping Democracy Monitor categories against established democracy measurement frameworks. Rationale for 13-category architecture, renames (courts → judicialIndependence, igs → executiveOversight), and new categories (lawEnforcement, civilLiberties).
+- `SPIKE_FINDINGS.md` — Results from 8 source availability spikes. 7 passed (CourtListener, DOJ API, GovInfo/GAO, IG RSS, LegiScan, FEC, FCC RSS), 1 failed (GDELT diversity metrics). Validates source volumes, API access, historical depth, and metadata quality for Sprint R-S1.
+- `TEST_SPECIFICATION.md` — Ship/no-ship gate checklist for Sprint R-S1. Unit tests (routing, structural scoring, convergence logic, status mapping), integration tests (pipeline behavior, coverage health, embedding segregation), calibration assertions (baseline stability, known-events sensitivity, router drift). Derived from ChatGPT architecture review.
 - `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15). Partially superseded by architecture proposal — source health (Sprint 17) and cycle-aware baselines (Sprint 15.1) remain; feedback learning and novel threat detection restructured under Layers 2 and 3.
 - `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). **Partially superseded** — data model, status system, and visualization content changed by Architecture Proposal. Architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern) carry forward. See `UI_V3_DIVERGENCE_MAP.md` for section-by-section mapping. Full V4 rewrite tracked as R-F10 in Post-R5.
 - `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22). Sprints 20-21 code work completed; Sprint 22 rhetoric cross-feed absorbed into Sprint R1.
@@ -569,24 +571,24 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Source Availability Spikes (pre-R-S1, parallelizes with R3.2/R3.3/R4)
 
-**Goal:** Validate that proposed new document sources produce sufficient structured data before committing Sprint R-S1 scope.
+> **Status: Done (2026-02-25).** All 8 spikes complete. 7 passed, 1 failed (GDELT diversity metrics — wire syndication inflates domain counts). 13 categories confirmed viable for launch. Key discoveries: DOJ has open JSON API (360-400 enforcement docs/week), CourtListener serves 3 categories (selective prosecution claims up 663% in 2025), LegiScan upgraded to Strong Pass with national account approach (metadata drives Layer 1 without AI classification). See `SPIKE_FINDINGS.md` for full results.
 
-**Reference:** `SOURCE_AVAILABILITY_SPIKES.md`
+**Reference:** `SOURCE_AVAILABILITY_SPIKES.md` (spike specs), `SPIKE_FINDINGS.md` (results)
 
-**Total effort:** ~4-5 days sequential, ~2-3 days with parallelism.
+**Results summary:**
 
-| Spike | Source                     | Category                             | Effort     |
-| ----- | -------------------------- | ------------------------------------ | ---------- |
-| 1     | LegiScan classification    | elections                            | 1 day      |
-| 2     | CourtListener volume       | judicialIndependence, lawEnforcement | Half day   |
-| 3     | DOJ/FBI/DHS press releases | lawEnforcement                       | Half day   |
-| 4     | civilLiberties sources     | civilLiberties                       | Half-1 day |
-| 5     | FCC ECFS                   | mediaFreedom                         | Half day   |
-| 6     | GDELT diversity metrics    | mediaFreedom                         | Half day   |
-| 7     | FEC enforcement            | elections                            | 2-3 hours  |
-| 8     | GAO/CIGIE                  | executiveOversight                   | 2-3 hours  |
+| Spike | Source          | Verdict                  | Key Finding                                                                            |
+| ----- | --------------- | ------------------------ | -------------------------------------------------------------------------------------- |
+| 1     | LegiScan        | **Strong pass**          | National account ($1K/yr) unlocks Bulk API + SAST. ~20 election bills/week nationally. |
+| 2     | CourtListener   | **Strong pass**          | Free API, 15-20/wk (judicial) + 50-70/wk (law) + 67-123/wk (civil liberties).          |
+| 3     | DOJ API         | **Strong pass**          | Open JSON API — 360-400 enforcement docs/week. Major discovery.                        |
+| 4     | civilLiberties  | **Strong pass**          | CourtListener NOS 440 alone gives 67-123/week.                                         |
+| 5     | FCC RSS         | **Pass**                 | ~5-10 media-relevant docs/week (meets ≥5 bar).                                         |
+| 6     | GDELT diversity | **Failed**               | Wire syndication noise. Keep existing rhetoric pipeline only.                          |
+| 7     | FEC             | **Pass (supplementary)** | ~5-8/week. Unique institutional signal: deadlock rate + 2025 quorum collapse.          |
+| 8     | GAO/CIGIE       | **Strong pass**          | GovInfo API excellent. Combined with IG RSS = 15-30/week.                              |
 
-**Decision point:** After all spikes complete, decide final category count for launch (11, 12, or 13) and scope Sprint R-S1 accordingly. Spike results determine which sources are viable and which categories are launch blockers vs. fast-follows.
+**Decision:** 13 categories viable. lawEnforcement and civilLiberties are launch candidates (not fast-follows). Sprint R-S1 scope determined — see below.
 
 ---
 
@@ -664,47 +666,60 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ### Sprint R-S1: Source Expansion (parallelizes with R4/R5)
 
-**Goal:** Expand document sources to achieve meaningful signal across all 13 categories. Build ingestion pipelines, run historical backfills, recompute baselines for affected categories.
+**Goal:** Expand document sources to achieve meaningful signal across all 13 categories. Build ingestion pipelines, run historical backfills, compute per-source-type baselines. Includes elevated items: coverage health monitoring, Pass 2 mechanism extraction.
 
-**Depends on:** Sprint R1 (document corpus + rhetoric cross-feed operational). Can run in parallel with R4 and R5.
+**Depends on:** Sprint R3.3 (category renames ✅). Source availability spikes complete (✅). Can run in parallel with R4 and R5.
 
-**Prerequisite:** LegiScan classification spike — 1 day, validates elections pipeline approach. Pull LegiScan bills for one state/year, AI-classify as restrictive/expansive/neutral, compare against Voting Rights Lab ground truth. Target >90% agreement.
+**Reference:** `ARCHITECTURE_PROPOSAL.md` §Source Expansion, §Layer 1 Multi-Source Structural Analysis, §Sprint R-S1. `SPIKE_FINDINGS.md` for source details. `TEST_SPECIFICATION.md` for ship/no-ship gates.
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Source Expansion, `CATEGORY_FRAMEWORK_ANALYSIS.md`
+**Phase 1 — P0 Ingestion pipelines + coverage health (~2 weeks, parallelizable):**
 
-**Phase 1 — Ingestion pipelines (~2 weeks, parallelizable):**
+Build in order of category coverage breadth and implementation simplicity:
 
-1. **CourtListener API** — Federal court opinions/orders filtered by relevance queries (injunctions against federal agencies, compliance orders, contempt, stays). Token auth. Serves judicialIndependence + lawEnforcement.
-2. **FCC ECFS API** — Commission orders, NOPRMs, enforcement actions, media ownership proceedings. Free API key. Serves mediaFreedom.
-3. **DOJ press releases** — justice.gov scrape/RSS. Indictments, investigations, enforcement actions, settlements. Serves lawEnforcement.
-4. **FBI press releases** — fbi.gov scrape/RSS. Major investigations, field operations. Serves lawEnforcement.
-5. **DHS/ICE/CBP data** — Enforcement announcements, quarterly detention/removal statistics. Serves lawEnforcement + immigrationEnforcement.
-6. **LegiScan + AI classification** (contingent on spike) — Election-relevant bills with AI restrictive/expansive/neutral classification. Serves elections.
-7. **Voting Rights Lab tracker** — State voting legislation since 2021, pre-classified. Serves elections (partial baseline coverage).
-8. **FEC enforcement data** — Enforcement actions, deadlocked votes. Serves elections.
-9. **ACLU litigation tracker** — Active cases, outcomes. Serves civilLiberties.
-10. **DOJ Civil Rights Division** — justice.gov/crt output. Serves civilLiberties.
-11. **GDELT media diversity metrics** — Source count per topic, local/national ratio, coverage volume. No new ingestion — new computation over existing GDELT data. Serves mediaFreedom.
-12. **CIGIE / expanded IG reports** — ignet.gov, oversight.gov. Serves executiveOversight.
-13. **CBO reports** — cbo.gov. Serves fiscal.
+1. **CourtListener REST API** — Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. RECAP docket search with NOS-code-based category routing. Establishes source integration pattern for subsequent APIs.
+2. **GovInfo/GAO REST API** — Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free key, MODS XML metadata, 36K req/hr.
+3. **DOJ Press Release JSON API** — Enriches lawEnforcement (360-400/wk). Open JSON API. **Prerequisite:** freeze stable internal taxonomy mapping (10-20 durable buckets) before integration to prevent DOJ taxonomy changes from appearing as structural anomalies.
+4. **LegiScan Bulk API** — Anchor source for elections. `getDataset` session downloads + subject-tag filtering + SAST cross-state tracking. Pending $1K/yr partnership or subscription.
+5. **Coverage health monitoring** — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking. _(Elevated from R-F4 — pipeline break vs. real silence is critical with 7+ source types.)_
+
+**Phase 1b — P1 Enrichment sources (fast-follow or tail of Phase 1):**
+
+6. **IG RSS feeds** (DOD, HHS, DOJ OIG) — Supplements GovInfo for executiveOversight. Easy RSS polling.
+7. **FCC RSS feeds** — Supplementary enrichment for mediaFreedom (~5-10/wk).
+8. **FEC OpenFEC API** — Unique institutional signal for elections (deadlock rate, quorum status). Monthly batch aggregation. Null on non-batch weeks.
 
 **Phase 2 — Historical backfill (~1 week, mostly compute time):**
 
 - Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
-- Route through category assignment logic
+- All validated sources have 2017+ archives
+- Route documents through category assignment logic with source-type tagging
 
-**Phase 3 — Baseline recomputation:**
+**Phase 3 — Per-source-type baseline computation + Layer 2 enhancement:**
 
-- Recompute Layer 1 structural baselines for 6 affected categories (judicialIndependence, elections, lawEnforcement, civilLiberties, mediaFreedom, executiveOversight)
-- Run Layer 2 Pass 1 + Pass 2 for new documents
-- Compute Layer 3 embeddings for new documents
-- Recalibrate thresholds if distributions shift
+- Compute source-type-specific Layer 1 structural baselines (start with volume + 1-2 source-specific dimensions per source type; expand after calibration validates cross-source aggregation)
+- **Pass 2 mechanism extraction** — Update Pass 2 prompt to require structured mechanism identification fields. Prompt change only. _(Elevated from R-F5 — makes narratives defensible rather than vibes-based.)_
+- Run Layer 2 Pass 1 + Pass 2 for new documents in affected categories
+- Compute Layer 3 per-source-type embeddings and baseline centroids
+- Source-type-specific cycle-aware normalization (legislative sessions for LegiScan, judicial calendar for CourtListener, fiscal year for GovInfo)
+- Validate asymmetric dampening bypass (volume collapse → dampeningFactor = 1.0)
+- Existing FR source-type baselines preserved unchanged — source expansion is additive
 
-**Phase 4 — Validation:**
+**Phase 4 — Validation (per `TEST_SPECIFICATION.md` ship/no-ship gates):**
 
-- Confirm baselines meet >95% Stable for Biden periods
-- Verify Trump 2025 signal quality with enriched corpus
-- Adjust structural dampening constants if corpus sizes changed significantly
+- Category-level baselines still meet >95% Stable for Biden periods
+- Trump 2025 signal quality with enriched multi-source corpus
+- Cross-source convergence scoring with source influence cap (≤ 40% per source type)
+- Source dependency map: DOJ↔CourtListener and FR↔GDELT pairs receive 0.75× convergence weight
+- Pass 2 mechanism extraction produces structured, verifiable output
+- Coverage health monitoring fires correctly (simulate source silence)
+- FEC monthly aggregation: null on non-batch weeks, meaningful institutional capacity signal
+- LegiScan Layer 1 structural signals work without AI classification
+
+**Phase 5 — P2 Deferred sources (post-launch):**
+
+- Oversight.gov scraping (all 75 IGs — no API)
+- VRL partnership (calibration dataset for LegiScan AI accuracy)
+- CBO reports pipeline (fiscal — low-volume supplementary signal)
 
 ---
 
@@ -743,19 +758,19 @@ Sprint 21 added 56 operational keywords, admin overlay system, `getEffectiveKeyw
 
 Count how many categories are simultaneously at Elevated or above per week. If N > threshold (e.g., 5 of 13), flag as cross-category synchrony event. UI element: dashboard-level indicator with historical sparkline. Already feeds the Administration Overview page's synchrony chart.
 
-#### R-F4: Coverage Health Monitoring
+#### R-F4: Coverage Health Monitoring — **Elevated to Sprint R-S1**
 
-**Source**: ChatGPT red team analysis #5 · **Layer**: Infrastructure · **Effort**: Medium (~100–150 LOC + dashboard)
+**Source**: ChatGPT red team analysis #5, elevated per ChatGPT/Claude Code source expansion review · **Layer**: Infrastructure · **Effort**: Medium (~100–150 LOC + dashboard)
 **Prerequisite**: None (independent). Complements existing Sprint 17 source health.
 
-Track per-source ingestion health: documents fetched, success rate, latency, schema changes, missingness. Distinguish "no data" reasons: no activity vs. pipeline broken vs. source changed format vs. stopped publishing. Monitor functional classifier "Other/unclassified" ratio — spikes may indicate metadata convention changes (potential evasion).
+_Minimum viable scope ships in Sprint R-S1 Phase 1 (item 5):_ per-source-type document count per day, "source silent" alerts when a source goes silent for >2× expected cadence, DOJ taxonomy change tracking. Full operational dashboard with schema change detection and seasonal dip classification deferred to this R-F item.
 
-#### R-F5: Pass 2 Mechanism Extraction Fields
+#### R-F5: Pass 2 Mechanism Extraction Fields — **Elevated to Sprint R-S1**
 
-**Source**: ChatGPT red team analysis #3 · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema change)
+**Source**: ChatGPT red team analysis #3, elevated per ChatGPT architecture review · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema change)
 **Prerequisite**: Pass 2 operational (Sprint R3 ✅)
 
-Add structured mechanism fields to Pass 2 output: `powerCreatedOrExpanded`, `oversightReduced`, `enforcementLeverChanged`, `dueProcessChanged`, `accessToSystemsChanged`. Anchors Pass 2 in verifiable mechanics, improves narrative generation input, resists language manipulation.
+_Ships in Sprint R-S1 Phase 3:_ Add structured mechanism fields to Pass 2 output: `powerCreatedOrExpanded`, `oversightReduced`, `enforcementLeverChanged`, `dueProcessChanged`, `accessToSystemsChanged`. Prompt change to Pass 2's structured output schema — not infrastructure. Ships with source expansion so the enriched document corpus gets mechanism-tagged from the start. Without this, the most shareable output (AI narrative) can drift into persuasive prose without a mechanically checkable backbone.
 
 #### R-F6: Semantic Escalation Within Functional Buckets
 
@@ -823,8 +838,7 @@ Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceAppa
 
 #### Alternative Sources (was Sprint 29) — **Absorbed into Sprint R-S1**
 
-- ~~CourtListener, State AG feeds, source priority framework~~ — Superseded by Sprint R-S1 source expansion, which covers CourtListener + FCC + DOJ/FBI/DHS + VRL/LegiScan + FEC + ACLU + CIGIE + CBO. See `ARCHITECTURE_PROPOSAL.md` §Source Expansion.
-- See original Sprint 29 plan and V3 Addendum Sprints I, J for historical context
+- ~~CourtListener, State AG feeds, source priority framework~~ — Superseded by Sprint R-S1 source expansion, validated by availability spikes. P0: CourtListener + GovInfo/GAO + DOJ API + LegiScan. P1: IG RSS + FCC RSS + FEC. P2 (deferred): Oversight.gov + VRL + CBO. See `ARCHITECTURE_PROPOSAL.md` §Source Expansion and `SPIKE_FINDINGS.md` for validated source details.
 
 ---
 
