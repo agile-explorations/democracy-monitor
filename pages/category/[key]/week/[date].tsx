@@ -2,12 +2,17 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
+import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
+import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
+import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { DocumentTable } from '@/components/week/DocumentTable';
 import { KeywordMatchesSection } from '@/components/week/KeywordMatchesSection';
 import { WeekSummaryCards } from '@/components/week/WeekSummaryCards';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { CATEGORIES } from '@/lib/data/categories';
+import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import type { WeekExplanation } from '@/lib/types/explanation';
 
 interface WeeklyRow {
@@ -42,6 +47,7 @@ export default function WeekDetailPage() {
   const [sparklineData, setSparklineData] = useState<Array<{ week: string; score: number }>>([]);
   const [baselineAvg, setBaselineAvg] = useState(0);
   const [baselineStdDev, setBaselineStdDev] = useState(0);
+  const [weekLayers, setWeekLayers] = useState<CategoryDetailLatestWeek | null>(null);
   const [loading, setLoading] = useState(true);
 
   const category = CATEGORIES.find((c) => c.key === key);
@@ -55,7 +61,7 @@ export default function WeekDetailPage() {
         const [explainRes, weeklyRes, catRes] = await Promise.all([
           fetch(`/api/explain/week?category=${key}&weekOf=${date}&top=200`),
           fetch(`/api/history/weekly-scores?category=${key}`),
-          fetch(`/api/category/${key}`),
+          fetch(`/api/category/${key}?weekOf=${date}`),
         ]);
 
         if (explainRes.ok) setExplanation(await explainRes.json());
@@ -67,6 +73,7 @@ export default function WeekDetailPage() {
           const catData = await catRes.json();
           setBaselineAvg(catData.baseline?.avg ?? 0);
           setBaselineStdDev(catData.baseline?.stddev ?? 0);
+          setWeekLayers(catData.latestWeek ?? null);
         }
       } catch (err) {
         console.error('Failed to load week detail:', err);
@@ -128,6 +135,9 @@ export default function WeekDetailPage() {
         </p>
       </header>
 
+      {/* Convergence header */}
+      <ConvergenceHeader synthesis={weekLayers?.convergenceDetail ?? null} />
+
       {/* Summary cards */}
       <div className="mb-6">
         <WeekSummaryCards
@@ -137,6 +147,25 @@ export default function WeekDetailPage() {
           driftCount={tierCounts.drift}
           warningCount={tierCounts.warning}
           baselineAvg={baselineAvg}
+        />
+      </div>
+
+      {/* Three-layer panels */}
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <StructuralSignaturePanel
+          score={weekLayers?.structuralDetail ?? null}
+          readingLevel={readingLevel}
+        />
+      </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <AIAssessmentPanel summary={weekLayers?.aiDetail ?? null} readingLevel={readingLevel} />
+      </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <ThematicDriftPanel
+          drift={weekLayers?.thematicDetail ?? null}
+          readingLevel={readingLevel}
         />
       </div>
 
@@ -158,8 +187,11 @@ export default function WeekDetailPage() {
       {/* Top keyword matches */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-          Top Keyword Matches
+          Keyword Annotations
         </h3>
+        <p className="text-[11px] text-dm-muted mb-3">
+          Keywords provide context but do not drive the assessment.
+        </p>
         <KeywordMatchesSection documents={explanation.topDocuments} readingLevel={readingLevel} />
       </div>
 

@@ -2,20 +2,26 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
 import { AiReviewerNotes } from '@/components/category/AiReviewerNotes';
 import { AssessmentSummary } from '@/components/category/AssessmentSummary';
+import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
 import { EvidencePanel } from '@/components/category/EvidencePanel';
+import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
+import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { TrendChart } from '@/components/category/TrendChart';
 import type { TrendDataPoint } from '@/components/category/TrendChart';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import type { EnhancedAssessment, StatusLevel } from '@/lib/types';
+import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 
 interface CategoryDetail {
   category: string;
   title: string;
   assessment: EnhancedAssessment | null;
   baseline: { avg: number; stddev: number };
+  latestWeek: CategoryDetailLatestWeek | null;
 }
 
 interface WeeklyRow {
@@ -83,6 +89,7 @@ export default function CategoryDetailPage() {
   }
 
   const assessment = detail.assessment;
+  const convergence = detail.latestWeek?.convergenceDetail ?? null;
   const status: StatusLevel = assessment?.status ?? 'Stable';
   const insufficientData = assessment?.keywordResult?.detail?.insufficientData === true;
   const docCount = weeklyData[weeklyData.length - 1]?.documentCount ?? 0;
@@ -148,11 +155,36 @@ export default function CategoryDetailPage() {
         )}
       </header>
 
+      {/* Convergence header */}
+      <ConvergenceHeader synthesis={convergence} />
+
       {/* Assessment summary */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <AssessmentSummary
           reason={assessment?.reason ?? 'No assessment data available.'}
           howWeCouldBeWrong={assessment?.howWeCouldBeWrong ?? []}
+          readingLevel={readingLevel}
+        />
+      </div>
+
+      {/* Three-layer panels */}
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <StructuralSignaturePanel
+          score={detail.latestWeek?.structuralDetail ?? null}
+          readingLevel={readingLevel}
+        />
+      </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <AIAssessmentPanel
+          summary={detail.latestWeek?.aiDetail ?? null}
+          readingLevel={readingLevel}
+        />
+      </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <ThematicDriftPanel
+          drift={detail.latestWeek?.thematicDetail ?? null}
           readingLevel={readingLevel}
         />
       </div>
@@ -171,7 +203,7 @@ export default function CategoryDetailPage() {
         />
       </div>
 
-      {/* Evidence panel */}
+      {/* Evidence panel — keyword annotations */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <EvidencePanel
           matches={assessment?.matches ?? []}
@@ -179,10 +211,11 @@ export default function CategoryDetailPage() {
           reviewedDocuments={assessment?.reviewedDocuments}
           suppressedKeywords={suppressedKeywords}
           readingLevel={readingLevel}
+          annotationMode={true}
         />
       </div>
 
-      {/* AI reviewer notes */}
+      {/* Legacy AI reviewer notes */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <AiReviewerNotes
           aiResult={assessment?.aiResult}
@@ -192,6 +225,7 @@ export default function CategoryDetailPage() {
           whatWouldChangeMind={assessment?.whatWouldChangeMind}
           keywordStatus={assessment?.keywordResult?.status ?? 'Stable'}
           readingLevel={readingLevel}
+          legacy={true}
         />
       </div>
     </>

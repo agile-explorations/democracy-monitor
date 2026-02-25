@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { StatusPill } from '@/components/ui/StatusPill';
 import type { StatusLevel } from '@/lib/types';
+import type { ConvergenceStatus } from '@/lib/types/structural';
 
 export interface CategoryCardProps {
   category: string;
@@ -18,6 +20,10 @@ export interface CategoryCardProps {
   readingLevel: 'summary' | 'detailed';
   showExperimentalBadge?: boolean;
   linkBase?: string;
+  convergenceStatus?: ConvergenceStatus | null;
+  structuralElevated?: boolean;
+  aiElevated?: boolean;
+  thematicElevated?: boolean;
 }
 
 function formatRatio(score: number, baseline: number): string {
@@ -41,6 +47,10 @@ export function CategoryCard({
   readingLevel,
   showExperimentalBadge = true,
   linkBase = '/category',
+  convergenceStatus,
+  structuralElevated = false,
+  aiElevated = false,
+  thematicElevated = false,
 }: CategoryCardProps) {
   return (
     <Link
@@ -63,6 +73,18 @@ export function CategoryCard({
           <StatusPill level={status} />
         )}
       </div>
+
+      {/* Convergence indicator */}
+      {convergenceStatus && (
+        <div className="flex items-center gap-2 mt-1">
+          <ConvergenceIndicator
+            structural={structuralElevated}
+            ai={aiElevated}
+            thematic={thematicElevated}
+          />
+          <span className="text-[10px] text-dm-text-secondary">{convergenceStatus}</span>
+        </div>
+      )}
 
       {/* Technical key (Detailed mode only) */}
       {readingLevel === 'detailed' && (

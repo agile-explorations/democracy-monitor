@@ -64,4 +64,29 @@ describe('AiReviewerNotes', () => {
     );
     expect(screen.getByText('gpt-4o-mini')).toBeDefined();
   });
+
+  it('shows "Legacy AI Reviewer" heading when legacy is true', () => {
+    render(
+      <AiReviewerNotes
+        aiResult={baseAiResult}
+        keywordStatus="Warning"
+        readingLevel="summary"
+        legacy={true}
+      />,
+    );
+    expect(screen.getByText('Legacy AI Reviewer (Pre-L2)')).toBeDefined();
+  });
+
+  it('shows legacy phaseout note in detailed mode when legacy is true', () => {
+    render(
+      <AiReviewerNotes
+        aiResult={baseAiResult}
+        keywordStatus="Warning"
+        readingLevel="detailed"
+        legacy={true}
+      />,
+    );
+    expect(screen.getByText('Legacy AI Reviewer Notes (Pre-L2)')).toBeDefined();
+    expect(screen.getByText(/being phased out in favor of the Layer 2/)).toBeDefined();
+  });
 });

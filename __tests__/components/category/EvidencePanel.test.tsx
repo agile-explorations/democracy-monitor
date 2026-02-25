@@ -88,4 +88,20 @@ describe('EvidencePanel', () => {
     expect(screen.getByText('What was suppressed')).toBeDefined();
     expect(screen.getByText('routine')).toBeDefined();
   });
+
+  it('shows "Keyword Annotations" heading when annotationMode is true', () => {
+    render(<EvidencePanel matches={['test']} readingLevel="summary" annotationMode={true} />);
+    expect(screen.getByText('Keyword Annotations')).toBeDefined();
+    expect(screen.getByText(/Keywords provide context but do not drive/)).toBeDefined();
+  });
+
+  it('shows "Evidence" heading when annotationMode is false', () => {
+    render(<EvidencePanel matches={['test']} readingLevel="summary" annotationMode={false} />);
+    expect(screen.getByText('Evidence')).toBeDefined();
+  });
+
+  it('defaults to "Evidence" heading when annotationMode is not provided', () => {
+    render(<EvidencePanel matches={['test']} readingLevel="summary" />);
+    expect(screen.getByText('Evidence')).toBeDefined();
+  });
 });

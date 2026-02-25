@@ -7,6 +7,7 @@ import { formatWeekLabel } from '@/lib/utils/date-utils';
 export interface StatusTimelineProps {
   entries: StatusTimelineEntry[];
   mode: 'light' | 'dark';
+  onCellClick?: (category: string, week: string) => void;
 }
 
 const STATUS_LABELS: Record<ConvergenceStatus, string> = {
@@ -16,7 +17,7 @@ const STATUS_LABELS: Record<ConvergenceStatus, string> = {
   ConfirmedConcern: 'Confirmed Concern',
 };
 
-export function StatusTimeline({ entries, mode }: StatusTimelineProps) {
+export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelineProps) {
   const colors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
 
   if (entries.length === 0) {
@@ -50,7 +51,12 @@ export function StatusTimeline({ entries, mode }: StatusTimelineProps) {
 
         {/* Rows */}
         {entries.map((entry) => (
-          <TimelineRow key={entry.category} entry={entry} colors={colors} />
+          <TimelineRow
+            key={entry.category}
+            entry={entry}
+            colors={colors}
+            onCellClick={onCellClick}
+          />
         ))}
       </div>
     </div>
@@ -60,9 +66,11 @@ export function StatusTimeline({ entries, mode }: StatusTimelineProps) {
 function TimelineRow({
   entry,
   colors,
+  onCellClick,
 }: {
   entry: StatusTimelineEntry;
   colors: Record<string, string>;
+  onCellClick?: (category: string, week: string) => void;
 }) {
   return (
     <>
@@ -76,10 +84,11 @@ function TimelineRow({
       {entry.segments.map((seg) => (
         <div
           key={seg.week}
-          className="rounded-sm min-h-[24px]"
+          className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
           style={{ backgroundColor: colors[seg.status] }}
           title={`${entry.title} — ${formatWeekLabel(seg.week)}: ${STATUS_LABELS[seg.status]}`}
           role="cell"
+          onClick={onCellClick ? () => onCellClick(entry.category, seg.week) : undefined}
         />
       ))}
     </>

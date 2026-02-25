@@ -5,9 +5,10 @@ export function MethodologyFooter() {
     <footer className="mt-12 pt-8 border-t border-dm-border">
       <div className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl">
         <p>
-          Democracy Monitor uses transparent, auditable keyword analysis of government documents
-          published in the Federal Register, White House briefings, and GDELT news coverage. Every
-          assessment traces to specific documents and specific keywords.
+          Democracy Monitor uses three-layer triangulated detection — structural anomaly analysis,
+          AI document assessment, and thematic drift monitoring — to track institutional health
+          across government documents. Every assessment traces to specific documents and
+          reproducible metrics.
         </p>
         <div className="flex items-center gap-4 mt-4">
           <Link href="/methodology" className="text-dm-accent hover:underline">

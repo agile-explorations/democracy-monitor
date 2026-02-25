@@ -20,6 +20,7 @@ export interface AiReviewerNotesProps {
   whatWouldChangeMind?: string;
   keywordStatus: StatusLevel;
   readingLevel: 'summary' | 'detailed';
+  legacy?: boolean;
 }
 
 /** AI can only confirm or lower the keyword assessment — never raise it. */
@@ -36,12 +37,15 @@ export function AiReviewerNotes({
   whatWouldChangeMind,
   keywordStatus,
   readingLevel,
+  legacy = false,
 }: AiReviewerNotesProps) {
+  const heading = legacy ? 'Legacy AI Reviewer (Pre-L2)' : 'AI Reviewer';
+
   if (!aiResult) {
     return (
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-2">
-          AI Reviewer
+          {heading}
         </h2>
         <p className="text-xs text-dm-muted italic">No AI review available for this assessment.</p>
       </section>
@@ -55,7 +59,7 @@ export function AiReviewerNotes({
     return (
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-2">
-          AI Reviewer
+          {heading}
         </h2>
         <p className="text-xs text-dm-text-secondary">
           AI reviewer {label}{' '}
@@ -70,8 +74,14 @@ export function AiReviewerNotes({
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-        AI Reviewer Notes
+        {legacy ? 'Legacy AI Reviewer Notes (Pre-L2)' : 'AI Reviewer Notes'}
       </h2>
+      {legacy && (
+        <p className="text-[11px] text-dm-muted italic mb-3">
+          This section shows the keyword-era AI reviewer. It is being phased out in favor of the
+          Layer 2 AI assessment system above.
+        </p>
+      )}
 
       <p className="text-xs text-dm-text-secondary mb-3">
         AI reviewer {label}{' '}

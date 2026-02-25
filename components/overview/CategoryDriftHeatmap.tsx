@@ -5,6 +5,7 @@ import { formatWeekLabel } from '@/lib/utils/date-utils';
 export interface CategoryDriftHeatmapProps {
   rows: HeatmapRow[];
   mode: 'light' | 'dark';
+  onCellClick?: (category: string, week: string) => void;
 }
 
 /**
@@ -43,7 +44,7 @@ function lerpColor(a: string, b: string, t: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
 }
 
-export function CategoryDriftHeatmap({ rows, mode }: CategoryDriftHeatmapProps) {
+export function CategoryDriftHeatmap({ rows, mode, onCellClick }: CategoryDriftHeatmapProps) {
   const weeks = useMemo(() => {
     if (rows.length === 0 || rows[0].weeks.length === 0) return [];
     return rows[0].weeks.map((w) => w.week);
@@ -80,14 +81,22 @@ export function CategoryDriftHeatmap({ rows, mode }: CategoryDriftHeatmapProps) 
 
         {/* Data rows */}
         {rows.map((row) => (
-          <HeatmapRowComponent key={row.category} row={row} mode={mode} />
+          <HeatmapRowComponent key={row.category} row={row} mode={mode} onCellClick={onCellClick} />
         ))}
       </div>
     </div>
   );
 }
 
-function HeatmapRowComponent({ row, mode }: { row: HeatmapRow; mode: 'light' | 'dark' }) {
+function HeatmapRowComponent({
+  row,
+  mode,
+  onCellClick,
+}: {
+  row: HeatmapRow;
+  mode: 'light' | 'dark';
+  onCellClick?: (category: string, week: string) => void;
+}) {
   return (
     <>
       <div
@@ -100,10 +109,11 @@ function HeatmapRowComponent({ row, mode }: { row: HeatmapRow; mode: 'light' | '
       {row.weeks.map((cell) => (
         <div
           key={cell.week}
-          className="rounded-sm min-h-[24px]"
+          className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
           style={{ backgroundColor: scoreToColor(cell.score, mode) }}
           title={`${row.title} — ${formatWeekLabel(cell.week)}: ${cell.score.toFixed(2)}`}
           role="cell"
+          onClick={onCellClick ? () => onCellClick(row.category, cell.week) : undefined}
         />
       ))}
     </>

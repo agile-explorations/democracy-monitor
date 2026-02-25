@@ -1,5 +1,6 @@
 import Head from 'next/head';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
+import { useCallback, useEffect, useState } from 'react';
 import { CategoryCard } from '@/components/landing/CategoryCard';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
@@ -17,8 +18,13 @@ import type { SourceHealthCheck, SourceHealthSummary } from '@/lib/services/sour
 import type { OverviewSummary } from '@/lib/types/overview';
 
 export default function Home() {
+  const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
+  const handleCellClick = useCallback(
+    (category: string, week: string) => router.push(`/category/${category}/week/${week}`),
+    [router],
+  );
   const [categories, setCategories] = useState<CategorySummary[]>([]);
   const [overview, setOverview] = useState<OverviewSummary | null>(null);
   const [meta, setMeta] = useState<MetaAssessment | null>(null);
@@ -100,9 +106,10 @@ export default function Home() {
         <section className="mb-6">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
             Democracy Monitor reads government documents published in the Federal Register and
-            scores them using transparent, auditable keyword analysis. Unlike expert opinion
-            indices, every assessment traces to specific documents and specific keywords. The
-            methodology is open source.
+            analyzes them using three-layer triangulated detection: structural anomaly analysis, AI
+            document assessment, and thematic drift monitoring. Unlike expert opinion indices, every
+            assessment traces to specific documents and reproducible metrics. The methodology is
+            open source.
           </p>
         </section>
 
@@ -148,7 +155,11 @@ export default function Home() {
               <p className="text-[11px] text-dm-muted mb-3">
                 Warmer colors indicate higher convergence scores across detection layers
               </p>
-              <CategoryDriftHeatmap rows={overview.heatmap} mode={resolvedMode} />
+              <CategoryDriftHeatmap
+                rows={overview.heatmap}
+                mode={resolvedMode}
+                onCellClick={handleCellClick}
+              />
             </section>
 
             {/* Status timeline */}
@@ -157,7 +168,11 @@ export default function Home() {
               <p className="text-[11px] text-dm-muted mb-3">
                 Convergence status per category over time
               </p>
-              <StatusTimeline entries={overview.statusTimeline} mode={resolvedMode} />
+              <StatusTimeline
+                entries={overview.statusTimeline}
+                mode={resolvedMode}
+                onCellClick={handleCellClick}
+              />
             </section>
           </div>
         )}
@@ -189,6 +204,10 @@ export default function Home() {
                 flaggedCount={cat.flaggedCount}
                 summary={cat.summary}
                 readingLevel={readingLevel}
+                convergenceStatus={cat.convergenceStatus}
+                structuralElevated={cat.structuralElevated}
+                aiElevated={cat.aiElevated}
+                thematicElevated={cat.thematicElevated}
               />
             ))}
           </div>

@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db';
 import { baselines, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
 import type { StatusLevel } from '@/lib/types';
+import type { ConvergenceStatus, ConvergenceSynthesis } from '@/lib/types/structural';
 
 const SPARKLINE_WEEKS = 8;
 
@@ -20,6 +21,10 @@ export interface CategorySummary {
   flaggedCount: number;
   summary: string;
   assessedAt: string | null;
+  convergenceStatus: ConvergenceStatus | null;
+  structuralElevated: boolean;
+  aiElevated: boolean;
+  thematicElevated: boolean;
 }
 
 /** Fetch latest assessment status per category via DISTINCT ON. */
@@ -115,6 +120,28 @@ async function fetchSparklineData(
   return result;
 }
 
+/** Fetch latest convergence synthesis per category via DISTINCT ON. */
+async function fetchLatestConvergence(
+  db: ReturnType<typeof getDb>,
+): Promise<Record<string, ConvergenceSynthesis>> {
+  const rows = await db.execute(sql`
+    SELECT DISTINCT ON (category) category, convergence_detail
+    FROM weekly_aggregates
+    WHERE convergence_detail IS NOT NULL
+    ORDER BY category, week_of DESC
+  `);
+
+  const result: Record<string, ConvergenceSynthesis> = {};
+  for (const row of rows.rows) {
+    const r = row as Record<string, unknown>;
+    const detail = r.convergence_detail as ConvergenceSynthesis | null;
+    if (detail) {
+      result[r.category as string] = detail;
+    }
+  }
+  return result;
+}
+
 /**
  * Build category summaries combining static metadata, latest assessments,
  * baselines, and sparkline data.
@@ -122,16 +149,18 @@ async function fetchSparklineData(
 export async function getCategorySummaries(): Promise<CategorySummary[]> {
   const db = getDb();
 
-  const [latestAssessments, baselineData, sparklineData] = await Promise.all([
+  const [latestAssessments, baselineData, sparklineData, convergenceData] = await Promise.all([
     fetchLatestAssessments(db),
     fetchBaselines(db),
     fetchSparklineData(db),
+    fetchLatestConvergence(db),
   ]);
 
   return CATEGORIES.map((cat) => {
     const assessment = latestAssessments[cat.key];
     const baseline = baselineData[cat.key] ?? { avg: 0, stddev: 0 };
     const sparkline = sparklineData[cat.key] ?? [];
+    const convergence = convergenceData[cat.key] ?? null;
 
     const latestWeek = sparkline[sparkline.length - 1];
     const matches = assessment?.matches;
@@ -150,6 +179,10 @@ export async function getCategorySummaries(): Promise<CategorySummary[]> {
       flaggedCount,
       summary: assessment?.reason ?? 'No assessment data available.',
       assessedAt: assessment?.assessedAt?.toISOString() ?? null,
+      convergenceStatus: convergence?.status ?? null,
+      structuralElevated: convergence?.structuralElevated ?? false,
+      aiElevated: convergence?.aiElevated ?? false,
+      thematicElevated: convergence?.thematicElevated ?? false,
     };
   });
 }

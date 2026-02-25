@@ -21,6 +21,7 @@ export interface EvidencePanelProps {
   reviewedDocuments?: ReviewedDoc[];
   suppressedKeywords?: SuppressedKeyword[];
   readingLevel: 'summary' | 'detailed';
+  annotationMode?: boolean;
 }
 
 const TIER_ORDER = ['capture', 'drift', 'warning'] as const;
@@ -60,6 +61,7 @@ export function EvidencePanel({
   reviewedDocuments,
   suppressedKeywords,
   readingLevel,
+  annotationMode = false,
 }: EvidencePanelProps) {
   const groups = groupByTier(matches, keywordMatches);
   const hasTriggers = Object.values(groups).some((g) => g.length > 0);
@@ -68,9 +70,16 @@ export function EvidencePanel({
 
   return (
     <section>
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-        Evidence
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-1">
+        {annotationMode ? 'Keyword Annotations' : 'Evidence'}
       </h2>
+      {annotationMode && (
+        <p className="text-[11px] text-dm-muted mb-3">
+          Keywords provide context but do not drive the assessment. The three-layer convergence
+          system above determines status.
+        </p>
+      )}
+      {!annotationMode && <div className="mb-2" />}
 
       <div className={showSuppressed ? 'grid grid-cols-1 md:grid-cols-2 gap-6' : ''}>
         {/* Left column: triggers */}
