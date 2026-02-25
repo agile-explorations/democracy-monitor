@@ -10,6 +10,36 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R4b: Administration Overview Page ✅
+
+**Status: Done.** Replaced landing page with cross-category overview. 6 new components, 1 new service, 1 new API endpoint, 7 new test files (28 tests, 1273 total). Shared utilities extracted (chart colors, formatWeekLabel). Bug fix in TrajectoryChart (stale `indices` key). OpenGrep sql.raw finding fixed.
+
+**Scope vs. Actual:**
+
+- Planned: overview page with heatmap, status timeline, synchrony chart, convergence indicators, category cards grid
+- Actual: all delivered. R4a (narrative generation) deferred — document corpus too narrow for quality narratives. Overview uses existing `weekly_aggregates` data directly.
+
+**Key Decisions:**
+
+1. **No separate `/overview` route** — Plan originally had a separate `/overview` page with a link from landing. Instead, replaced the landing page (`/`) directly. Rationale: overview IS the primary entry point. One page, not two. Avoids dead landing page with just a link.
+2. **Pure CSS heatmap/timeline** — Used CSS grid with inline `backgroundColor` instead of recharts for the heatmap and timeline. Rationale: these are dense grids (11×16 = 176 cells), not charts. recharts adds complexity and bundle size for a simple colored grid. SVG-based approaches would need manual viewBox management. CSS grid + color interpolation is simpler and more maintainable.
+3. **`buildOverviewFromRows` as pure function** — Separated DB fetch from data transformation. Service exposes both `getOverviewSummary()` (with DB) and `buildOverviewFromRows()` (pure, testable). All 8 service tests use the pure function — no DB mocking needed.
+4. **Shared chart colors** — Extracted `CHART_COLORS`, `CATEGORY_COLORS`, `CONVERGENCE_STATUS_COLORS` to `lib/data/chart-colors.ts`. Was duplicated across TrendChart, TrajectoryChart, and now needed in 3 more overview components. Single source of truth.
+5. **`make_interval()` over `sql.raw()`** — OpenGrep flagged `sql.raw(String(weeks * 7))` in the interval calculation. Replaced with `make_interval(days => ${weeks * 7})` — parameterized, safe from injection. PostgreSQL-specific but correct.
+
+**Lessons Learned:**
+
+1. **TrajectoryChart stale key** — R3.3 renamed `indices` → `executiveActions` across 48 files but missed the `CATEGORY_COLORS` map in TrajectoryChart. The `indices` key was stale since Sprint 11 (renamed to `executiveActions` then). Lesson: when renaming, search for string-keyed maps, not just imports/types. The map compiled fine — missing key just returns `undefined` → falls back to `'#94a3b8'`.
+2. **`as const` type narrowing** — Using `CONVERGENCE_STATUS_COLORS` with `as const` makes the light/dark sub-objects have literal string types. Passing them as props to child components requires `Record<string, string>` instead of the specific const type. Not a bug, but a pattern to remember.
+3. **R4a deferral was correct** — Document corpus has FR + GDELT + WH, but GDELT is mostly international noise (50% of rhetoric docs are from outside the US) and WH coverage is archives-only. Narrative quality would suffer. Better to expand sources (R-S1) first, then generate narratives.
+
+**Spec Deviations:**
+
+- ROADMAP.md §R4b listed `pages/overview.tsx` as a separate page. Built as `pages/index.tsx` (rewrite of existing landing). Same functionality, better UX.
+- ROADMAP.md §R4b listed `ConvergenceMatrix` component. Built as `ConvergenceIndicator` (3-dot indicator instead of 3-column matrix). Simpler, fits in card headers. Full matrix deferred to R4c detail page.
+
+---
+
 ## Sprints 11-12 (condensed)
 
 Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, Biden 2024 baseline backfill with AI Skeptic, review report, interactive CLI review, and DB-centric review flow. Key decisions that remain relevant:

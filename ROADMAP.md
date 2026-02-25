@@ -613,7 +613,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 5. **Snapshot integration** — Wire narrative generation into `snapshot.ts` for Elevated+ categories.
 6. **Tests** — Unit tests for narrative service (mock AI provider), API endpoint tests.
 
-#### Sprint R4b: Administration Overview Page
+#### Sprint R4b: Administration Overview Page ✅
 
 **Goal:** Build the primary entry point page that gets linked and shared.
 
@@ -623,6 +623,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 2. **New components:** `CategoryDriftHeatmap` (categories × weeks, color = structural deviation), `StatusTimeline` (convergence status change history), `SynchronyChart` (Elevated+ count per week), `ConvergenceMatrix` (3-column Layer 1/2/3 indicator).
 3. **Landing page update** — Prominent link to `/overview` from `pages/index.tsx`.
 4. **Tests** — Component tests for new overview components.
+
+**Actual:** Delivered as rewrite of `pages/index.tsx` (not separate route). R4a deferred — narrative generation requires source expansion first. Built: overview-service.ts, `/api/overview/summary`, CategoryDriftHeatmap, StatusTimeline, SynchronyChart, OverviewStatusSummary, ConvergenceIndicator (simplified from ConvergenceMatrix). Shared chart-colors.ts extracted from TrendChart/TrajectoryChart. 28 new tests (1273 total). Bug fix: TrajectoryChart stale `indices` key.
 
 #### Sprint R4c: Category Detail Redesign + Keyword Demotion
 
