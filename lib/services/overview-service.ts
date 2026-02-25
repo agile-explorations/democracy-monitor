@@ -36,7 +36,7 @@ async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
     .from(weeklyAggregates)
     .where(
       sql`${weeklyAggregates.weekOf} >= (
-        SELECT MAX(week_of) - interval '${sql.raw(String(weeks * 7))} days'
+        SELECT MAX(week_of) - make_interval(days => ${weeks * 7})
         FROM weekly_aggregates
       )`,
     )
