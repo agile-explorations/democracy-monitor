@@ -9,6 +9,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { CATEGORY_COLORS } from '@/lib/data/chart-colors';
 import type { TrajectoryPoint } from '@/lib/services/snapshot-store';
 
 const STATUS_LEVEL: Record<string, number> = {
@@ -16,20 +17,6 @@ const STATUS_LEVEL: Record<string, number> = {
   Warning: 1,
   Drift: 2,
   Capture: 3,
-};
-
-const CATEGORY_COLORS: Record<string, string> = {
-  civilService: '#6366f1',
-  fiscal: '#8b5cf6',
-  executiveOversight: '#a855f7',
-  hatch: '#d946ef',
-  judicialIndependence: '#ec4899',
-  military: '#f43f5e',
-  rulemaking: '#f97316',
-  indices: '#eab308',
-  infoAvailability: '#22c55e',
-  elections: '#14b8a6',
-  mediaFreedom: '#06b6d4',
 };
 
 interface TrajectoryChartProps {
@@ -142,7 +129,7 @@ export function TrajectoryChart({ data, convergenceData }: TrajectoryChartProps)
               judicialIndependence: 'Judicial Indep',
               military: 'Military',
               rulemaking: 'Rulemaking',
-              indices: 'Exec Power Vol',
+              executiveActions: 'Exec Power Vol',
               infoAvailability: 'Info Access',
               elections: 'Elections',
               mediaFreedom: 'Press Freedom',

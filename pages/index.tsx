@@ -4,15 +4,23 @@ import { CategoryCard } from '@/components/landing/CategoryCard';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
 import { SourceHealthBar } from '@/components/landing/SourceHealthBar';
+import { CategoryDriftHeatmap } from '@/components/overview/CategoryDriftHeatmap';
+import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
+import { StatusTimeline } from '@/components/overview/StatusTimeline';
+import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import type { CategorySummary } from '@/lib/services/category-summary-service';
 import type { MetaAssessment } from '@/lib/services/meta-assessment-service';
 import type { SourceHealthCheck, SourceHealthSummary } from '@/lib/services/source-health-service';
+import type { OverviewSummary } from '@/lib/types/overview';
 
 export default function Home() {
   const { readingLevel } = useReadingLevel();
+  const { resolvedMode } = useTheme();
   const [categories, setCategories] = useState<CategorySummary[]>([]);
+  const [overview, setOverview] = useState<OverviewSummary | null>(null);
   const [meta, setMeta] = useState<MetaAssessment | null>(null);
   const [healthSummary, setHealthSummary] = useState<SourceHealthSummary | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
@@ -21,8 +29,9 @@ export default function Home() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [catRes, metaRes, srcRes] = await Promise.all([
+        const [catRes, overviewRes, metaRes, srcRes] = await Promise.all([
           fetch('/api/categories/summary'),
+          fetch('/api/overview/summary'),
           fetch('/api/health/meta'),
           fetch('/api/health/sources'),
         ]);
@@ -30,6 +39,7 @@ export default function Home() {
           const data: CategorySummary[] = await catRes.json();
           setCategories([...data].sort((a, b) => b.decayWeightedScore - a.decayWeightedScore));
         }
+        if (overviewRes.ok) setOverview(await overviewRes.json());
         if (metaRes.ok) setMeta(await metaRes.json());
         if (srcRes.ok) {
           const srcData = await srcRes.json();
@@ -106,6 +116,50 @@ export default function Home() {
             totalSources={healthSummary.totalSources}
             lastCheckedAt={lastCheckedAt}
           />
+        )}
+
+        {/* Overview section — only shown when overview data is available */}
+        {overview && (
+          <div className="space-y-8 mb-8">
+            {/* Status distribution */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-3">
+                Current Status Distribution
+              </h2>
+              <OverviewStatusSummary statusCounts={overview.statusCounts} />
+            </section>
+
+            {/* Synchrony chart */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                Cross-Category Synchrony
+              </h2>
+              <p className="text-[11px] text-dm-muted mb-3">
+                Number of categories at Elevated or above per week
+              </p>
+              <SynchronyChart data={overview.synchrony} mode={resolvedMode} />
+            </section>
+
+            {/* Drift heatmap */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                Convergence Score Heatmap
+              </h2>
+              <p className="text-[11px] text-dm-muted mb-3">
+                Warmer colors indicate higher convergence scores across detection layers
+              </p>
+              <CategoryDriftHeatmap rows={overview.heatmap} mode={resolvedMode} />
+            </section>
+
+            {/* Status timeline */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Status Timeline</h2>
+              <p className="text-[11px] text-dm-muted mb-3">
+                Convergence status per category over time
+              </p>
+              <StatusTimeline entries={overview.statusTimeline} mode={resolvedMode} />
+            </section>
+          </div>
         )}
 
         {/* Category grid */}

@@ -72,6 +72,7 @@ export type {
   BaselineDistribution,
 } from './structural';
 export type { EvidenceItem, KeywordMatchContext, EnhancedAssessment } from './enhanced-assessment';
+export type { HeatmapRow, StatusTimelineEntry, SynchronyPoint, OverviewSummary } from './overview';
 export type {
   TierBreakdown,
   DocumentExplanation,

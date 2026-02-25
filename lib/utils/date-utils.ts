@@ -35,6 +35,12 @@ export function addDays(dateStr: string, days: number): string {
   return toDateString(d);
 }
 
+/** Format a week date string (YYYY-MM-DD) as a short label like "Jan 27". */
+export function formatWeekLabel(week: string): string {
+  const d = new Date(week + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 /** Split a date range into week-sized chunks (Monday-aligned). */
 export function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = [];

@@ -11,21 +11,9 @@ import {
   YAxis,
 } from 'recharts';
 import { useTheme } from '@/lib/contexts/ThemeContext';
+import { CHART_COLORS } from '@/lib/data/chart-colors';
 import { getCurrentCycleYear, PRIMARY_BASELINE_CYCLE_YEAR } from '@/lib/methodology/scoring-config';
-
-/** Resolved chart colors per mode — recharts SVG attrs don't support CSS var() */
-const CHART_COLORS = {
-  light: {
-    accent: '#4f46e5',
-    border: '#e2e8f0',
-    textSecondary: '#64748b',
-  },
-  dark: {
-    accent: '#818cf8',
-    border: '#334155',
-    textSecondary: '#94a3b8',
-  },
-} as const;
+import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export interface TrendDataPoint {
   week: string;
@@ -39,11 +27,6 @@ export interface TrendChartProps {
   baselineStdDev: number;
   readingLevel: 'summary' | 'detailed';
   onWeekClick?: (week: string) => void;
-}
-
-function formatWeekLabel(week: string): string {
-  const d = new Date(week + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function CycleAnnotation() {

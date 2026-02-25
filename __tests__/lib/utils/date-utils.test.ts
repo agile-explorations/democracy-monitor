@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { toDateString, scotusTermYear, getWeekRanges } from '@/lib/utils/date-utils';
+import {
+  toDateString,
+  scotusTermYear,
+  getWeekRanges,
+  formatWeekLabel,
+} from '@/lib/utils/date-utils';
 
 describe('toDateString', () => {
   it('extracts YYYY-MM-DD from a Date', () => {
@@ -42,6 +47,24 @@ describe('scotusTermYear', () => {
     // September 2025 -> term started Oct 2024 -> "24"
     vi.setSystemTime(new Date('2025-09-15T00:00:00Z'));
     expect(scotusTermYear()).toBe('24');
+  });
+});
+
+describe('formatWeekLabel', () => {
+  it('formats a date string as "Mon DD"', () => {
+    expect(formatWeekLabel('2025-01-27')).toBe('Jan 27');
+  });
+
+  it('formats month correctly for mid-year', () => {
+    expect(formatWeekLabel('2025-07-14')).toBe('Jul 14');
+  });
+
+  it('formats single-digit days without leading zero', () => {
+    expect(formatWeekLabel('2025-03-03')).toBe('Mar 3');
+  });
+
+  it('handles December dates', () => {
+    expect(formatWeekLabel('2025-12-25')).toBe('Dec 25');
   });
 });
 
