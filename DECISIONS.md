@@ -10,6 +10,38 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R4c: Category Detail Redesign + Keyword Demotion + Methodology Rewrite ✅
+
+**Status: Done.** Surfaced three-layer convergence data on category detail and week detail pages. Reframed keywords as annotations. Added click-to-navigate on overview charts. Rewrote methodology page. 6 new components, 4 new test files (32 new tests, 1305 total). 23 files changed, 1371 lines added.
+
+**Scope vs. Actual:**
+
+- Planned: three-layer panels on category detail, convergence indicators on category cards, keyword demotion (annotationMode/legacy props), methodology rewrite
+- Actual: all delivered plus two additions — click-to-navigate on overview heatmap/timeline (#156) and three-layer data on week detail page (#157). These were added mid-sprint when reviewing the live UI revealed that historical convergence data visible in overview charts had no drill-down path.
+
+**Key Decisions:**
+
+1. **`?weekOf=` param on existing API** — Rather than creating a new API route for week-specific three-layer data, added an optional `weekOf` query parameter to `/api/category/[key]`. When absent, returns latest week (backward compatible). When present, returns that specific week. Avoids route proliferation.
+2. **`fetchWeekLayers()` extraction** — The weekly_aggregates query was extracted from the handler into a named helper to keep the handler under 50 lines (ESLint `max-lines-per-function`). The helper accepts an optional `weekOf` and builds conditions dynamically.
+3. **Keyword annotation framing, not removal** — Keywords are reframed as "Keyword Annotations" on category detail and "Keyword Annotations" on week detail, with explanatory text ("Keywords provide context but do not drive the assessment"). No keyword code was removed — week detail pages still show keyword data for historical context, and the assessment pipeline still runs keywords.
+4. **No Playwright e2e** — ROADMAP listed "Playwright e2e for core journeys" but the project doesn't have Playwright configured. Skipped in favor of comprehensive component tests. E2e can be added in a future infra sprint.
+5. **SynchronyChart not clickable** — Heatmap and timeline cells navigate to `/category/{key}/week/{date}` on click. SynchronyChart was left view-only because it shows cross-category aggregates (elevatedCount per week) with no single category to navigate to. Adding a week-overview page would be a separate feature.
+
+**Lessons Learned:**
+
+1. **`STRUCTURAL_DIMENSION_ELEVATED` exists** — StructuralSignaturePanel initially used magic number `1.5` for the dimension elevation threshold. Caught in code review — the named constant already existed in scoring-config.ts. Always search for existing constants before introducing numeric literals.
+2. **`getByText` vs. `textContent` for middot-separated text** — `screen.getByText('gpt-4o-mini')` fails when the text is part of a larger string with `&middot;` separators. Use `document.body.textContent` with `toContain()` instead. Same pattern as TrendChart axis labels from Sprint 18.
+3. **Data is genuinely Stable** — All 11 categories currently show "Stable" convergence status. This is correct per the data: L1 structural scores are below the 2.5 anomaly threshold, L3 thematic z-scores are negative, and L2 AI data is sparse (backfill deferred). Historical data does contain 225 Elevated and 16 Divergent weeks visible in the overview charts.
+
+**Spec Deviations:**
+
+- ROADMAP.md §R4c listed "Convergence matrix at top" — built as ConvergenceHeader with reused ConvergenceIndicator (3-dot) component from R4b, plus status label and explanation text. Not a full matrix.
+- ROADMAP.md §R4c listed "Narrative with reading level toggle" — narratives deferred (R4a dependency). Reading level toggle controls summary/detailed mode on all three-layer panels instead.
+- ROADMAP.md §R4c listed "Playwright e2e for core journeys" — not built (no Playwright in project).
+- ROADMAP.md §R4c listed "Long-horizon context ('X% above baseline')" on CategoryCard — not added. CategoryCard already shows `Current: X.X / Baseline avg: X.X (Y.Yx baseline)`. Adding a separate long-horizon metric would require additional weekly_aggregates queries per card.
+
+---
+
 ## Sprint R4b: Administration Overview Page ✅
 
 **Status: Done.** Replaced landing page with cross-category overview. 6 new components, 1 new service, 1 new API endpoint, 7 new test files (28 tests, 1273 total). Shared utilities extracted (chart colors, formatWeekLabel). Bug fix in TrajectoryChart (stale `indices` key). OpenGrep sql.raw finding fixed.

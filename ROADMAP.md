@@ -643,6 +643,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Opus 4.6 Extended on ~1–3 elevated categories per week
 - Cross-category synthesis: ~$0.50–2.00/week additional
 
+**Actual:** Delivered. ConvergenceHeader (reuses R4b ConvergenceIndicator), StructuralSignaturePanel, AIAssessmentPanel, ThematicDriftPanel on category detail + week detail pages. CategoryCard convergence indicator. EvidencePanel annotationMode, AiReviewerNotes legacy framing. Methodology page full rewrite (9 sections). Added: click-to-navigate on overview heatmap/timeline (#156), three-layer data on week detail page (#157). Deferred: narratives (R4a), Playwright e2e, long-horizon CategoryCard metric. 6 new components, 32 new tests (1305 total).
+
 ---
 
 ### Sprint R5: Cross-Architecture Validation + Launch Prep
