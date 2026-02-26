@@ -2,7 +2,9 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
 const FEC_API_BASE = 'https://api.open.fec.gov/v1';
-const RATE_LIMIT_DELAY_MS = 200;
+const RATE_LIMIT_DELAY_MS = 4000; // FEC allows 1,000 req/hr with API key (~3.6s/req)
+const RETRY_429_DELAY_MS = 60_000; // Wait 60s on rate limit before retry
+const MAX_429_RETRIES = 3;
 const MAX_SUMMARY_LENGTH = 800;
 
 type FecEndpointType = 'advisory_opinions' | 'murs' | 'admin_fines';
@@ -99,6 +101,24 @@ function buildSearchUrl(
   return `${FEC_API_BASE}/legal/search/?${qs.toString()}`;
 }
 
+async function fetchWithRetry(url: string, label: string): Promise<Response | null> {
+  for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
+    });
+    if (response.status !== 429) return response;
+    if (attempt < MAX_429_RETRIES) {
+      const wait = RETRY_429_DELAY_MS * (attempt + 1);
+      console.log(
+        `[fec] 429 on ${label}, waiting ${wait / 1000}s (attempt ${attempt + 1}/${MAX_429_RETRIES})`,
+      );
+      await sleep(wait);
+    }
+  }
+  console.error(`[fec] 429 on ${label} after ${MAX_429_RETRIES} retries, giving up`);
+  return null;
+}
+
 /** Fetch recent FEC data for the snapshot pipeline. */
 export async function fetchFecRecent(params: {
   endpointType: FecEndpointType;
@@ -162,12 +182,10 @@ async function fetchAoHistorical(
       per_page: '100',
     });
 
-    const response = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
-    });
-
-    if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on AO page ${page}`);
+    await sleep(RATE_LIMIT_DELAY_MS);
+    const response = await fetchWithRetry(url, `AO ${dateFrom}`);
+    if (!response || !response.ok) {
+      if (response) console.error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
       break;
     }
 
@@ -176,10 +194,7 @@ async function fetchAoHistorical(
     if (results.length === 0) break;
 
     allItems.push(...results.map(aoToContentItem));
-
-    // AO date filtering is server-side, so no need for client-side filtering
-    // The API doesn't support cursor pagination for legal/search — single page per date range
-    break;
+    break; // legal/search doesn't support cursor pagination
   }
 
   return allItems;
@@ -200,12 +215,10 @@ async function fetchMurHistorical(
       per_page: '100',
     });
 
-    const response = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
-    });
-
-    if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on MUR page ${page}`);
+    await sleep(RATE_LIMIT_DELAY_MS);
+    const response = await fetchWithRetry(url, `MUR ${dateFrom}`);
+    if (!response || !response.ok) {
+      if (response) console.error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
       break;
     }
 
@@ -214,11 +227,8 @@ async function fetchMurHistorical(
     if (results.length === 0) break;
 
     allItems.push(...results.map(murToContentItem));
-
-    // Server-side date filtering — single page per date range
-    break;
+    break; // legal/search doesn't support cursor pagination
   }
 
-  await sleep(RATE_LIMIT_DELAY_MS);
   return allItems;
 }
