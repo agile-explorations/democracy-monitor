@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
@@ -118,6 +118,29 @@ export async function getDocumentHistory(
     .where(and(...conditions))
     .orderBy(desc(documents.publishedAt))
     .limit(options?.limit || 500);
+}
+
+/** Check if documents from a given source already exist for a category+week. */
+export async function countWeekDocsBySource(
+  sourceOrigin: string,
+  category: string,
+  weekStart: string,
+  weekEnd: string,
+): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+  const rows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.sourceOrigin, sourceOrigin),
+        eq(documents.category, category),
+        gte(documents.publishedAt, new Date(weekStart)),
+        lt(documents.publishedAt, new Date(weekEnd)),
+      ),
+    );
+  return rows[0]?.count ?? 0;
 }
 
 export interface VolumePoint {

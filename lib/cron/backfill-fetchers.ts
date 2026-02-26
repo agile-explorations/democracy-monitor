@@ -10,6 +10,10 @@ import {
 } from '@/lib/services/federal-register-fetcher';
 import { fetchGovInfoHistorical, parseGovInfoParams } from '@/lib/services/govinfo-fetcher';
 import type { ContentItem } from '@/lib/types';
+import { deduplicateByUrl } from '@/lib/utils/collections';
+
+type Signal = { url: string; type: string };
+type SignalGroups = { fr: Signal[]; cl: Signal[]; doj: Signal[]; gi: Signal[]; fec: Signal[] };
 
 interface WeekRange {
   start: string;
@@ -128,4 +132,28 @@ export async function fetchWeekItemsFec(
     }
   }
   return items;
+}
+
+export async function fetchWeekDocuments(
+  week: WeekRange,
+  signalGroups: SignalGroups,
+  categoryKey: string,
+): Promise<ContentItem[]> {
+  const weekItems: ContentItem[] = [];
+  if (signalGroups.fr.length > 0) {
+    weekItems.push(...(await fetchWeekItemsFr(signalGroups.fr, week, categoryKey)));
+  }
+  if (signalGroups.cl.length > 0) {
+    weekItems.push(...(await fetchWeekItemsCourtListener(signalGroups.cl, week, categoryKey)));
+  }
+  if (signalGroups.doj.length > 0) {
+    weekItems.push(...(await fetchWeekItemsDoj(signalGroups.doj, week, categoryKey)));
+  }
+  if (signalGroups.gi.length > 0) {
+    weekItems.push(...(await fetchWeekItemsGovInfo(signalGroups.gi, week, categoryKey)));
+  }
+  if (signalGroups.fec.length > 0) {
+    weekItems.push(...(await fetchWeekItemsFec(signalGroups.fec, week, categoryKey)));
+  }
+  return deduplicateByUrl(weekItems);
 }

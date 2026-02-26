@@ -1,24 +1,19 @@
 import { assessWeek } from '@/lib/cron/assess-week';
 import type { AiOptions } from '@/lib/cron/assess-week';
-import {
-  fetchWeekItemsCourtListener,
-  fetchWeekItemsDoj,
-  fetchWeekItemsFec,
-  fetchWeekItemsFr,
-  fetchWeekItemsGovInfo,
-} from '@/lib/cron/backfill-fetchers';
+import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
 import { CATEGORIES } from '@/lib/data/categories';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { countWeekDocsBySource, storeDocuments } from '@/lib/services/document-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
-import { deduplicateByUrl } from '@/lib/utils/collections';
 import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
 
 const INAUGURATION_DATE = '2025-01-20';
+const MAX_WEEK_RETRIES = 3;
+const RETRY_BACKOFF_MS = 10_000;
 
 interface BackfillOptions {
   from?: string;
@@ -50,30 +45,6 @@ const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
   fec_json: 'fec',
   federal_register: 'fr',
 };
-
-async function fetchWeekDocuments(
-  week: { start: string; end: string },
-  signalGroups: SignalGroups,
-  categoryKey: string,
-): Promise<ContentItem[]> {
-  const weekItems: ContentItem[] = [];
-  if (signalGroups.fr.length > 0) {
-    weekItems.push(...(await fetchWeekItemsFr(signalGroups.fr, week, categoryKey)));
-  }
-  if (signalGroups.cl.length > 0) {
-    weekItems.push(...(await fetchWeekItemsCourtListener(signalGroups.cl, week, categoryKey)));
-  }
-  if (signalGroups.doj.length > 0) {
-    weekItems.push(...(await fetchWeekItemsDoj(signalGroups.doj, week, categoryKey)));
-  }
-  if (signalGroups.gi.length > 0) {
-    weekItems.push(...(await fetchWeekItemsGovInfo(signalGroups.gi, week, categoryKey)));
-  }
-  if (signalGroups.fec.length > 0) {
-    weekItems.push(...(await fetchWeekItemsFec(signalGroups.fec, week, categoryKey)));
-  }
-  return deduplicateByUrl(weekItems);
-}
 
 async function ingestBackfillWeek(
   week: { start: string; end: string },
@@ -122,6 +93,56 @@ async function processBackfillWeek(
   return { docs: stored, snapshots: 1 };
 }
 
+async function processWeekWithRetry(
+  week: { start: string; end: string },
+  signalGroups: SignalGroups,
+  categoryKey: string,
+  ingestOnly: boolean,
+  aiOptions: AiOptions,
+): Promise<{ docs: number; snapshots: number }> {
+  for (let attempt = 1; attempt <= MAX_WEEK_RETRIES; attempt++) {
+    try {
+      if (ingestOnly) {
+        const r = await ingestBackfillWeek(week, signalGroups, categoryKey);
+        return { docs: r.docs, snapshots: 0 };
+      }
+      const r = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
+      return { docs: r.docs, snapshots: r.snapshots };
+    } catch (err) {
+      if (attempt < MAX_WEEK_RETRIES) {
+        const delay = RETRY_BACKOFF_MS * attempt;
+        console.log(
+          `  [${categoryKey}] ${week.start} attempt ${attempt} failed, retrying in ${delay / 1000}s...`,
+        );
+        await sleep(delay);
+      } else {
+        console.error(`  [${categoryKey}] ${week.start} failed after ${MAX_WEEK_RETRIES} attempts`);
+      }
+    }
+  }
+  return { docs: 0, snapshots: 0 };
+}
+
+function buildSignalGroups(
+  signals: Array<{ url: string; type: string }>,
+  sourceSignalType?: string,
+): SignalGroups {
+  const groups: SignalGroups = {
+    fr: signals.filter((s) => s.type === 'federal_register'),
+    cl: signals.filter((s) => s.type === 'courtlistener'),
+    doj: signals.filter((s) => s.type === 'doj_json'),
+    gi: signals.filter((s) => s.type === 'govinfo'),
+    fec: signals.filter((s) => s.type === 'fec_json'),
+  };
+  if (sourceSignalType) {
+    const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];
+    for (const key of Object.keys(groups) as Array<keyof SignalGroups>) {
+      if (key !== keepKey) groups[key] = [];
+    }
+  }
+  return groups;
+}
+
 async function backfillCategory(
   categoryKey: string,
   signals: Array<{ url: string; type: string }>,
@@ -135,22 +156,7 @@ async function backfillCategory(
   let totalSnapshots = 0;
   let apiCalls = 0;
 
-  const signalGroups: SignalGroups = {
-    fr: signals.filter((s) => s.type === 'federal_register'),
-    cl: signals.filter((s) => s.type === 'courtlistener'),
-    doj: signals.filter((s) => s.type === 'doj_json'),
-    gi: signals.filter((s) => s.type === 'govinfo'),
-    fec: signals.filter((s) => s.type === 'fec_json'),
-  };
-
-  // Filter to single source type when --source is specified
-  if (sourceSignalType) {
-    const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];
-    for (const key of Object.keys(signalGroups) as Array<keyof SignalGroups>) {
-      if (key !== keepKey) signalGroups[key] = [];
-    }
-  }
-
+  const signalGroups = buildSignalGroups(signals, sourceSignalType);
   const totalSignals = Object.values(signalGroups).reduce((sum, g) => sum + g.length, 0);
 
   if (totalSignals === 0) {
@@ -158,23 +164,33 @@ async function backfillCategory(
     return { docs: 0, snapshots: 0, apiCalls: 0 };
   }
 
+  const sourceOrigin = sourceSignalType?.replace('_json', '');
+  let skipped = 0;
+
   for (const week of weeks) {
     apiCalls += totalSignals;
     if (dryRun) continue;
 
-    try {
-      if (ingestOnly) {
-        const result = await ingestBackfillWeek(week, signalGroups, categoryKey);
-        totalDocs += result.docs;
-      } else {
-        const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
-        totalDocs += result.docs;
-        totalSnapshots += result.snapshots;
+    if (sourceOrigin) {
+      const existing = await countWeekDocsBySource(sourceOrigin, categoryKey, week.start, week.end);
+      if (existing > 0) {
+        skipped++;
+        continue;
       }
-    } catch (err) {
-      console.error(`  [${categoryKey}] Week ${week.start} failed:`, err);
     }
+
+    const result = await processWeekWithRetry(
+      week,
+      signalGroups,
+      categoryKey,
+      !!ingestOnly,
+      aiOptions,
+    );
+    totalDocs += result.docs;
+    totalSnapshots += result.snapshots;
   }
+
+  if (skipped > 0) console.log(`  [${categoryKey}] Skipped ${skipped} weeks (already ingested)`);
 
   return { docs: totalDocs, snapshots: totalSnapshots, apiCalls };
 }
