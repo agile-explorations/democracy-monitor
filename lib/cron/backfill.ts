@@ -7,16 +7,10 @@ import {
   fetchWeekItemsFr,
   fetchWeekItemsGovInfo,
 } from '@/lib/cron/backfill-fetchers';
+import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
 import { CATEGORIES } from '@/lib/data/categories';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
-import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
-import {
-  fetchWhiteHouseHistorical,
-  fetchGdeltHistorical,
-  GDELT_QUERIES,
-} from '@/lib/services/rhetoric-fetcher';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
@@ -34,20 +28,34 @@ interface BackfillOptions {
   includeRhetoric?: boolean;
   skipAi?: boolean;
   model?: string;
+  source?: string;
+  ingestOnly?: boolean;
 }
 
-async function processBackfillWeek(
+const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
+  courtlistener: 'courtlistener',
+  doj: 'doj_json',
+  govinfo: 'govinfo',
+  fec: 'fec_json',
+  fr: 'federal_register',
+};
+
+type Signal = { url: string; type: string };
+type SignalGroups = { fr: Signal[]; cl: Signal[]; doj: Signal[]; gi: Signal[]; fec: Signal[] };
+
+const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
+  courtlistener: 'cl',
+  doj_json: 'doj',
+  govinfo: 'gi',
+  fec_json: 'fec',
+  federal_register: 'fr',
+};
+
+async function fetchWeekDocuments(
   week: { start: string; end: string },
-  signalGroups: {
-    fr: Array<{ url: string; type: string }>;
-    cl: Array<{ url: string; type: string }>;
-    doj: Array<{ url: string; type: string }>;
-    gi: Array<{ url: string; type: string }>;
-    fec: Array<{ url: string; type: string }>;
-  },
+  signalGroups: SignalGroups,
   categoryKey: string,
-  aiOptions: AiOptions,
-): Promise<{ docs: number; snapshots: number }> {
+): Promise<ContentItem[]> {
   const weekItems: ContentItem[] = [];
   if (signalGroups.fr.length > 0) {
     weekItems.push(...(await fetchWeekItemsFr(signalGroups.fr, week, categoryKey)));
@@ -64,7 +72,35 @@ async function processBackfillWeek(
   if (signalGroups.fec.length > 0) {
     weekItems.push(...(await fetchWeekItemsFec(signalGroups.fec, week, categoryKey)));
   }
-  const dedupedItems = deduplicateByUrl(weekItems);
+  return deduplicateByUrl(weekItems);
+}
+
+async function ingestBackfillWeek(
+  week: { start: string; end: string },
+  signalGroups: SignalGroups,
+  categoryKey: string,
+): Promise<{ docs: number }> {
+  const dedupedItems = await fetchWeekDocuments(week, signalGroups, categoryKey);
+  if (dedupedItems.length === 0) return { docs: 0 };
+
+  const stored = await storeDocuments(dedupedItems, categoryKey);
+  const docScores = scoreDocumentBatch(dedupedItems, categoryKey);
+  await storeDocumentScores(docScores);
+
+  console.log(
+    `  [${categoryKey}] ${week.start} → ${week.end}: ${dedupedItems.length} docs (ingest-only)`,
+  );
+  await sleep(500);
+  return { docs: stored };
+}
+
+async function processBackfillWeek(
+  week: { start: string; end: string },
+  signalGroups: SignalGroups,
+  categoryKey: string,
+  aiOptions: AiOptions,
+): Promise<{ docs: number; snapshots: number }> {
+  const dedupedItems = await fetchWeekDocuments(week, signalGroups, categoryKey);
   if (dedupedItems.length === 0) return { docs: 0, snapshots: 0 };
 
   const stored = await storeDocuments(dedupedItems, categoryKey);
@@ -92,24 +128,30 @@ async function backfillCategory(
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
   aiOptions: AiOptions,
+  sourceSignalType?: string,
+  ingestOnly?: boolean,
 ): Promise<{ docs: number; snapshots: number; apiCalls: number }> {
   let totalDocs = 0;
   let totalSnapshots = 0;
   let apiCalls = 0;
 
-  const signalGroups = {
+  const signalGroups: SignalGroups = {
     fr: signals.filter((s) => s.type === 'federal_register'),
     cl: signals.filter((s) => s.type === 'courtlistener'),
     doj: signals.filter((s) => s.type === 'doj_json'),
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
   };
-  const totalSignals =
-    signalGroups.fr.length +
-    signalGroups.cl.length +
-    signalGroups.doj.length +
-    signalGroups.gi.length +
-    signalGroups.fec.length;
+
+  // Filter to single source type when --source is specified
+  if (sourceSignalType) {
+    const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];
+    for (const key of Object.keys(signalGroups) as Array<keyof SignalGroups>) {
+      if (key !== keepKey) signalGroups[key] = [];
+    }
+  }
+
+  const totalSignals = Object.values(signalGroups).reduce((sum, g) => sum + g.length, 0);
 
   if (totalSignals === 0) {
     console.log(`  [${categoryKey}] No fetchable signals — skipping`);
@@ -120,102 +162,51 @@ async function backfillCategory(
     apiCalls += totalSignals;
     if (dryRun) continue;
 
-    const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
-    totalDocs += result.docs;
-    totalSnapshots += result.snapshots;
+    if (ingestOnly) {
+      const result = await ingestBackfillWeek(week, signalGroups, categoryKey);
+      totalDocs += result.docs;
+    } else {
+      const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
+      totalDocs += result.docs;
+      totalSnapshots += result.snapshots;
+    }
   }
 
   return { docs: totalDocs, snapshots: totalSnapshots, apiCalls };
 }
 
-async function backfillGdeltWeeks(
-  weeks: Array<{ start: string; end: string }>,
-  dryRun: boolean,
-): Promise<number> {
-  let gdeltDocs = 0;
-
-  console.log('[backfill] Fetching GDELT article data...');
-  for (const week of weeks) {
-    for (const query of GDELT_QUERIES) {
-      if (dryRun) continue;
-
-      try {
-        const items = await fetchGdeltHistorical({
-          query,
-          dateFrom: week.start,
-          dateTo: week.end,
-          maxRecords: 250,
-          delayMs: 300,
-        });
-        if (items.length > 0) {
-          const stored = await storeDocuments(items, 'intent');
-          await crossfeedRhetoricToCategories(items);
-          gdeltDocs += stored;
-        }
-      } catch (err) {
-        console.error(`  GDELT error for ${week.start} query="${query.slice(0, 30)}...":`, err);
-      }
-    }
-    if (!dryRun && gdeltDocs > 0) {
-      process.stdout.write(`  GDELT ${week.start}: ${gdeltDocs} total stored\r`);
-    }
-  }
-  if (!dryRun) console.log(`\n  GDELT: ${gdeltDocs} total documents stored`);
-  else {
-    const calls = weeks.length * GDELT_QUERIES.length;
-    console.log(`  GDELT: [dry run] would make ~${calls} API calls`);
-  }
-
-  return gdeltDocs;
+function logConfig(options: BackfillOptions, from: string, to: string, signalType?: string): void {
+  console.log(`[backfill] ${options.dryRun ? '(DRY RUN) ' : ''}Range: ${from} → ${to}`);
+  if (options.source)
+    console.log(`[backfill] Source filter: ${options.source} (signal type: ${signalType})`);
+  if (options.ingestOnly)
+    console.log('[backfill] Mode: ingest-only (fetch + store + score, no assessment/aggregate)');
+  const aiOff = options.skipAi || options.ingestOnly;
+  console.log(
+    `[backfill] AI: ${aiOff ? 'disabled' : `enabled (model: ${options.model || 'default'})`}`,
+  );
 }
 
-async function backfillRhetoric(
-  weeks: Array<{ start: string; end: string }>,
-  dryRun: boolean,
-): Promise<{ whDocs: number; gdeltDocs: number }> {
-  let whDocs = 0;
-
-  console.log('\n[backfill] === Rhetoric Sources ===');
-
-  console.log('[backfill] Fetching White House briefing-room archive...');
-  if (!dryRun) {
-    try {
-      const whItems = await fetchWhiteHouseHistorical({
-        dateFrom: weeks[0].start,
-        dateTo: weeks[weeks.length - 1].end,
-        delayMs: 500,
-      });
-      if (whItems.length > 0) {
-        const stored = await storeDocuments(whItems, 'intent');
-        await crossfeedRhetoricToCategories(whItems);
-        whDocs = stored;
-        console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
-      } else {
-        console.log('  White House: 0 items (site may be blocking)');
-      }
-    } catch (err) {
-      console.error('  White House fetch error:', err);
-    }
-  } else {
-    console.log('  White House: [dry run] would fetch archive pages');
+function resolveSourceFilter(options: BackfillOptions): string | undefined {
+  if (!options.source) return undefined;
+  const signalType = SOURCE_TO_SIGNAL_TYPE[options.source];
+  if (!signalType) {
+    const valid = Object.keys(SOURCE_TO_SIGNAL_TYPE).join(', ');
+    throw new Error(`Unknown source: ${options.source}. Valid: ${valid}`);
   }
-
-  const gdeltDocs = await backfillGdeltWeeks(weeks, dryRun);
-
-  return { whDocs, gdeltDocs };
+  options.includeRhetoric = false; // rhetoric is FR/WH/GDELT only
+  return signalType;
 }
 
 export async function runBackfill(options: BackfillOptions = {}): Promise<void> {
   const from = options.from || INAUGURATION_DATE;
   const to = options.to || toDateString(new Date());
   const dryRun = options.dryRun || false;
-  const includeRhetoric = options.includeRhetoric !== false; // default true
   const aiOptions: AiOptions = { skipAi: options.skipAi ?? false, model: options.model };
+  const sourceSignalType = resolveSourceFilter(options);
+  const includeRhetoric = options.includeRhetoric !== false;
 
-  console.log(`[backfill] ${dryRun ? '(DRY RUN) ' : ''}Range: ${from} → ${to}`);
-  console.log(
-    `[backfill] AI: ${aiOptions.skipAi ? 'disabled' : `enabled (model: ${aiOptions.model || 'default'})`}`,
-  );
+  logConfig(options, from, to, sourceSignalType);
 
   const weeks = getWeekRanges(from, to);
   console.log(`[backfill] ${weeks.length} weeks to process`);
@@ -236,29 +227,22 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
 
   for (const cat of categoriesToProcess) {
     console.log(`\n[backfill] === ${cat.key} (${cat.signals.length} signals) ===`);
-    const result = await backfillCategory(cat.key, cat.signals, weeks, dryRun, aiOptions);
+    const result = await backfillCategory(
+      cat.key,
+      cat.signals,
+      weeks,
+      dryRun,
+      aiOptions,
+      sourceSignalType,
+      options.ingestOnly,
+    );
     totalDocs += result.docs;
     totalSnapshots += result.snapshots;
     totalApiCalls += result.apiCalls;
   }
 
-  // Rhetoric backfill
   if (includeRhetoric && !options.category) {
-    const rhetoric = await backfillRhetoric(weeks, dryRun);
-    totalDocs += rhetoric.whDocs + rhetoric.gdeltDocs;
-
-    // Intent weekly aggregation for each backfilled week
-    if (!dryRun) {
-      console.log('\n[backfill] === Intent Weekly Aggregation ===');
-      for (const week of weeks) {
-        try {
-          await aggregateAllAreas(week.start);
-        } catch (err) {
-          console.error(`[backfill] Intent weekly aggregation failed for ${week.start}:`, err);
-        }
-      }
-      console.log(`[backfill] Intent weekly aggregation complete for ${weeks.length} weeks`);
-    }
+    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun);
   }
 
   console.log(`\n[backfill] === Summary ===`);
@@ -295,6 +279,12 @@ if (require.main === module) {
         break;
       case '--model':
         options.model = args[++i];
+        break;
+      case '--source':
+        options.source = args[++i];
+        break;
+      case '--ingest-only':
+        options.ingestOnly = true;
         break;
     }
   }
