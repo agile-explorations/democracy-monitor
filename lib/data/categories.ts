@@ -142,11 +142,11 @@ export const CATEGORIES: Category[] = [
         note: 'Inspector General removals, vacancies, and appointments',
       },
       {
-        id: 'gi_gao_reports',
-        name: 'GAO Reports (GovInfo)',
-        url: 'govinfo://collection?collection=GAOREPORTS',
+        id: 'gi_congressional_reports',
+        name: 'Congressional Reports (GovInfo)',
+        url: 'govinfo://collection?collection=CRPT',
         type: 'govinfo',
-        note: 'Government Accountability Office reports via GovInfo API (~4-6/week)',
+        note: 'Congressional oversight and committee reports via GovInfo API',
         health: {
           isCanary: false,
           expectedFrequency: 'weekly',

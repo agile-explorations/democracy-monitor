@@ -1,13 +1,33 @@
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { toDateString } from '@/lib/utils/date-utils';
 
 const GOVINFO_API_BASE = 'https://api.govinfo.gov';
-const RATE_LIMIT_DELAY_MS = 100;
+const RATE_LIMIT_DELAY_MS = 200;
+const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 
 /** Collection codes supported by the GovInfo fetcher. */
 type GovInfoCollection = 'GAOREPORTS' | 'CRPT' | 'PLAW';
 
+/** Result from the GovInfo search POST endpoint. */
+interface GovInfoSearchResult {
+  packageId?: string;
+  title?: string;
+  dateIssued?: string;
+  collectionCode?: string;
+  governmentAuthor?: string[];
+  download?: { txtLink?: string; pdfLink?: string };
+  resultLink?: string;
+}
+
+interface GovInfoSearchResponse {
+  results?: GovInfoSearchResult[];
+  count?: number;
+  offsetMark?: string | null;
+}
+
+/** @deprecated Collections GET response — kept for toContentItem backward compat. */
 interface GovInfoPackage {
   packageId?: string;
   title?: string;
@@ -17,12 +37,7 @@ interface GovInfoPackage {
   category?: string;
 }
 
-interface GovInfoCollectionResponse {
-  packages?: GovInfoPackage[];
-  nextPage?: string;
-  count?: number;
-}
-
+/** @deprecated Summary type — kept for toContentItem backward compat. */
 interface GovInfoSummary {
   title?: string;
   collectionCode?: string;
@@ -66,7 +81,26 @@ function mapCollectionToDocType(collection: string): string {
   }
 }
 
-/** Convert a GovInfo package to a ContentItem. */
+/** Convert a GovInfo search result to a ContentItem. */
+export function searchResultToContentItem(result: GovInfoSearchResult): ContentItem {
+  const collection = result.collectionCode || 'CRPT';
+  const url =
+    result.download?.pdfLink ||
+    result.download?.txtLink ||
+    `https://www.govinfo.gov/app/details/${result.packageId}`;
+
+  return {
+    title: result.title || '(untitled document)',
+    link: url,
+    pubDate: result.dateIssued,
+    agency: result.governmentAuthor?.[0] || 'U.S. Government',
+    type: mapCollectionToDocType(collection),
+    sourceOrigin: 'govinfo',
+    metadata: { packageId: result.packageId, collectionCode: collection },
+  };
+}
+
+/** @deprecated Convert a GovInfo collections package to ContentItem. Use searchResultToContentItem. */
 export function toContentItem(
   pkg: GovInfoPackage,
   collection: string,
@@ -89,19 +123,34 @@ function getApiKey(): string | undefined {
   return process.env.GOVINFO_API_KEY;
 }
 
-function toIsoDatetime(dateStr: string): string {
-  return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`;
-}
-
-function buildCollectionUrl(
-  collection: string,
-  startDate: string,
-  pageSize: number,
-  offset: number,
+/** Execute a GovInfo search POST request with cursor-based pagination. */
+async function searchGovInfo(
+  query: string,
   apiKey: string,
-): string {
-  const isoDate = toIsoDatetime(startDate);
-  return `${GOVINFO_API_BASE}/collections/${collection}/${isoDate}?offset=${offset}&pageSize=${pageSize}&api_key=${apiKey}`;
+  pageSize: number,
+  offsetMark: string,
+): Promise<GovInfoSearchResponse> {
+  const response = await fetch(`${GOVINFO_API_BASE}/search?api_key=${apiKey}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'DemocracyMonitor/1.0',
+    },
+    body: JSON.stringify({
+      query,
+      pageSize: String(pageSize),
+      offsetMark,
+      sorts: [{ field: 'publishdate', sortOrder: 'ASC' }],
+    }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    console.error(`[govinfo] Search HTTP ${response.status}`);
+    return { results: [], count: 0, offsetMark: null };
+  }
+
+  return response.json();
 }
 
 /** Fetch recent GovInfo documents for the snapshot pipeline. */
@@ -117,21 +166,11 @@ export async function fetchGovInfoRecent(params: {
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const startDate = sevenDaysAgo.toISOString().split('T')[0];
+  const startDate = toDateString(sevenDaysAgo);
+  const query = `collection:${params.collection} publishdate:range(${startDate},)`;
 
-  const url = buildCollectionUrl(params.collection, startDate, 20, params.offset ?? 0, apiKey);
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
-  });
-
-  if (!response.ok) {
-    console.error(`[govinfo] HTTP ${response.status}`);
-    return [];
-  }
-
-  const data: GovInfoCollectionResponse = await response.json();
-  return (data.packages || []).slice(0, 20).map((pkg) => toContentItem(pkg, params.collection));
+  const data = await searchGovInfo(query, apiKey, 20, '*');
+  return (data.results || []).slice(0, 20).map(searchResultToContentItem);
 }
 
 /** Fetch historical GovInfo documents for the backfill pipeline. */
@@ -147,36 +186,21 @@ export async function fetchGovInfoHistorical(params: {
     return [];
   }
 
-  const { dateFrom, maxPages = 5 } = params;
+  const { dateFrom, dateTo, maxPages = 10 } = params;
+  const query = `collection:${params.collection} publishdate:range(${dateFrom},${dateTo})`;
   const allItems: ContentItem[] = [];
-  const toDate = new Date(params.dateTo);
   const pageSize = 100;
+  let offsetMark = '*';
 
   for (let page = 0; page < maxPages; page++) {
-    const offset = page * pageSize;
-    const url = buildCollectionUrl(params.collection, dateFrom, pageSize, offset, apiKey);
+    const data = await searchGovInfo(query, apiKey, pageSize, offsetMark);
+    const results = data.results || [];
+    if (results.length === 0) break;
 
-    const response = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
-    });
+    allItems.push(...results.map(searchResultToContentItem));
 
-    if (!response.ok) {
-      console.error(`[govinfo] HTTP ${response.status} on page ${page}`);
-      break;
-    }
-
-    const data: GovInfoCollectionResponse = await response.json();
-    const packages = data.packages || [];
-    if (packages.length === 0) break;
-
-    const filtered = packages.filter((pkg) => {
-      const d = pkg.dateIssued ? new Date(pkg.dateIssued) : null;
-      return d && d <= toDate;
-    });
-
-    allItems.push(...filtered.map((pkg) => toContentItem(pkg, params.collection)));
-
-    if (packages.length < pageSize) break;
+    if (!data.offsetMark || results.length < pageSize) break;
+    offsetMark = data.offsetMark;
     await sleep(RATE_LIMIT_DELAY_MS);
   }
 
