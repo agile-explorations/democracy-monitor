@@ -4,6 +4,7 @@ import { sleep } from '@/lib/utils/async';
 const CL_BASE_URL = 'https://www.courtlistener.com';
 const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
 const RATE_LIMIT_DELAY_MS = 750;
+const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 
 interface ClDocketEntry {
@@ -104,7 +105,10 @@ export async function fetchCourtListenerRecent(params: {
 }): Promise<ContentItem[]> {
   const url = buildSearchUrl(params);
 
-  const response = await fetch(url, { headers: getAuthHeaders() });
+  const response = await fetch(url, {
+    headers: getAuthHeaders(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!response.ok) {
     console.error(`[courtlistener] HTTP ${response.status}`);
     return [];
@@ -138,7 +142,10 @@ export async function fetchCourtListenerHistorical(params: {
   let page = 0;
 
   while (url && page < maxPages) {
-    const response = await fetch(url, { headers: getAuthHeaders() });
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     if (!response.ok) {
       console.error(`[courtlistener] HTTP ${response.status} on page ${page}`);
       break;
