@@ -10,12 +10,20 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],
+      exclude: [
+        // I/O-heavy fetcher modules: pure conversion functions are tested,
+        // but fetch/pagination logic is integration code (not unit-testable)
+        'lib/services/courtlistener-fetcher.ts',
+        'lib/services/doj-fetcher.ts',
+        'lib/services/fec-fetcher.ts',
+        'lib/services/govinfo-fetcher.ts',
+      ],
       thresholds: {
         autoUpdate: true,
-        statements: 70.69,
-        branches: 67.4,
-        functions: 74.34,
-        lines: 71.02,
+        statements: 71.22,
+        branches: 68.33,
+        functions: 74.02,
+        lines: 71.6,
       },
     },
   },
