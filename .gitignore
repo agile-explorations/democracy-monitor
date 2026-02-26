@@ -44,3 +44,6 @@ lib/seed/fixtures-pre-remediation/
 
 # AI document assessments (too large for git; available in GitHub Releases)
 lib/seed/fixtures/ai_document_assessments.json
+
+# Internal specification/research documents (kept on disk for local reference)
+docs/internal/

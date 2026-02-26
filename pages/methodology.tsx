@@ -32,7 +32,7 @@ export default function Methodology() {
         {/* Overview */}
         <Section title="Overview">
           <p>
-            Democracy Monitor tracks institutional health across 11 categories of executive-power
+            Democracy Monitor tracks institutional health across 13 categories of executive-power
             signals using a three-layer triangulated detection system. Rather than relying on any
             single method, the system combines structural anomaly detection, AI document assessment,
             and thematic drift monitoring. When multiple independent layers flag the same category,

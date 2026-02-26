@@ -2,28 +2,28 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across US government institutions. It reads official government documents, RSS feeds, and public APIs, then uses three-layer triangulated detection (structural anomaly, AI assessment, thematic drift) to assess whether democratic checks and balances are functioning normally.
+A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and public APIs, then uses three-layer triangulated detection (structural anomaly, AI assessment, thematic drift) to assess whether democratic checks and balances are functioning normally.
 
 ## What It Does
 
-The dashboard tracks **11 institutional categories** — civil service neutrality, fiscal independence, inspector general oversight, judicial compliance, military constraints, rulemaking autonomy, Hatch Act enforcement, executive actions, information availability, elections, and media freedom — and assigns each a status:
+The dashboard tracks **13 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, and civil liberties — and assigns each a convergence status:
 
-| Status      | Meaning                                                    |
-| ----------- | ---------------------------------------------------------- |
-| **Stable**  | No warning signs — institutions functioning normally       |
-| **Warning** | Some concerns found, but checks and balances appear intact |
-| **Drift**   | Multiple warning signs — power becoming more centralized   |
-| **Capture** | Serious violations — laws or court orders being ignored    |
+| Status                | Meaning                                                                     |
+| --------------------- | --------------------------------------------------------------------------- |
+| **Stable**            | No layers elevated — institutions functioning normally                      |
+| **Elevated**          | One detection layer flagging anomalies — worth monitoring                   |
+| **Divergent**         | Two or more independent layers flag anomalies — multiple methods see something unusual |
+| **Confirmed Concern** | Two or more layers elevated AND high AI concern rate — independent methods converge on concerning findings |
 
-Assessments are fully transparent: every status shows the exact keywords matched, the number of sources reviewed, and the reasoning behind the determination.
+No single detection layer can escalate a category beyond Elevated on its own. Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
 
 ## How It Works
 
-1. **Data collection** — Cron jobs fetch from ~30 official sources (Federal Register API, White House, GDELT, GAO reports, IG feeds, etc.) and store documents in PostgreSQL
-2. **Layer 1 — Structural anomaly** — Deterministic, metadata-only analysis: volume spikes, timing shifts, agency concentration, document-class distribution, and source convergence
-3. **Layer 2 — AI assessment** — Two-pass AI review (GPT-4o-mini + Claude Sonnet) with epistemic independence between providers, per-document concern classification
-4. **Layer 3 — Thematic drift** — Embedding-based intra-administration rolling window comparison detecting semantic shifts in government output
-5. **Convergence synthesis** — Combines all three layers into a single status (Stable → Elevated → Divergent → Confirmed Concern), requiring multi-layer agreement for escalation
+1. **Data collection** — Cron jobs fetch from 7 source types (Federal Register, White House, GDELT, CourtListener, DOJ, GovInfo/GAO, FEC) plus IG and FCC RSS feeds, storing documents in PostgreSQL
+2. **Layer 1 — Structural anomaly** — Deterministic, metadata-only analysis: volume spikes, document-type shifts, functional distribution changes, agency concentration, publication tempo, and source convergence. Uses Jensen-Shannon divergence and z-scores against historical baselines.
+3. **Layer 2 — AI assessment** — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document, then Claude evaluates flagged documents. Different providers ensure independent evaluation. Tracks flag rates and concern rates against baselines.
+4. **Layer 3 — Thematic drift** — Embedding-based intra-administration rolling window (8 weeks) detecting semantic shifts in government output that wouldn't appear in structural metadata
+5. **Convergence synthesis** — Combines all three layers into a single status, requiring multi-layer agreement for escalation beyond Elevated
 
 For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md).
 
@@ -44,7 +44,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup tiers (quick start, with A
 ### Running tests
 
 ```bash
-pnpm test          # Run full test suite (Vitest)
+pnpm test          # Run full test suite (Vitest, 1450+ tests)
 pnpm test:watch    # Watch mode
 ```
 
@@ -59,13 +59,16 @@ pnpm start
 
 All optional except `DATABASE_URL` for persistence features. See [.env.example](.env.example) for the full list.
 
-| Variable              | Required        | Description                                  |
-| --------------------- | --------------- | -------------------------------------------- |
-| `DATABASE_URL`        | For persistence | PostgreSQL connection string                 |
-| `REDIS_URL`           | No              | Redis for caching (falls back to in-memory)  |
-| `OPENAI_API_KEY`      | No              | Enables AI-enhanced assessment               |
-| `ANTHROPIC_API_KEY`   | No              | Enables AI-enhanced assessment               |
-| `ALLOWED_PROXY_HOSTS` | No              | Comma-separated hostname whitelist for proxy |
+| Variable                 | Required        | Description                                        |
+| ------------------------ | --------------- | -------------------------------------------------- |
+| `DATABASE_URL`           | For persistence | PostgreSQL connection string                       |
+| `REDIS_URL`              | No              | Redis for caching (falls back to in-memory)        |
+| `OPENAI_API_KEY`         | No              | Enables AI assessment (Layer 2 Pass 1)             |
+| `ANTHROPIC_API_KEY`      | No              | Enables AI assessment (Layer 2 Pass 2)             |
+| `GOVINFO_API_KEY`        | No              | Enables GovInfo/GAO legislative tracking           |
+| `COURTLISTENER_API_TOKEN`| No              | Enables CourtListener court docket ingestion       |
+| `FEC_API_KEY`            | No              | Enables FEC election enforcement tracking          |
+| `ALLOWED_PROXY_HOSTS`    | No              | Comma-separated hostname whitelist for proxy       |
 
 ## Architecture
 
@@ -79,15 +82,16 @@ lib/
   cache/          # Redis + in-memory fallback
   ai/             # OpenAI/Anthropic provider abstraction
   db/             # Drizzle ORM schema and migrations
-  cron/           # Scheduled tasks (snapshot, backfill, digest, clustering)
+  cron/           # Scheduled tasks (snapshot, backfill, digest)
   methodology/    # Scoring config, named constants, thresholds
   seed/           # Seed data export/import pipeline + fixtures
   types/          # TypeScript type definitions
   utils/          # Pure utility functions
+  validation/     # Cross-baseline validation
 
 components/       # UI components (CategoryCard, TrendChart, StatusPill, etc.)
 pages/api/        # Server-side API routes (proxy, assessment, health, history)
-__tests__/        # Vitest tests mirroring lib/ structure (1221 tests)
+__tests__/        # Vitest tests mirroring lib/ structure (1450+ tests)
 ```
 
 For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
@@ -100,10 +104,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 
 ### Areas where help is needed
 
-- **Assessment methodology** — Reducing false positives/negatives in keyword analysis
-- **Signal coverage** — Adding data sources for under-monitored institutions
-- **Authoritarian infrastructure tracking** — Detention facilities, surveillance contracts, opposition criminalization (see [TODO.md](TODO.md) for details)
-- **Test coverage** — 1221 tests across 96 files; UI components and newer services need coverage
+- **Detection methodology** — Improving three-layer detection accuracy, reducing false positives in structural and AI assessment
+- **Signal coverage** — Adding data sources for under-monitored categories (state-level data, international indices)
+- **Source integrations** — New fetchers for government data sources (LegiScan legislative tracking is planned)
+- **Test coverage** — 1450+ tests across 117 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
 ## Sponsor This Project
@@ -114,7 +118,7 @@ Democracy Monitor costs ~$260/month to run (hosting, AI APIs, development tools)
 
 ## Limitations
 
-This is an automated keyword analysis tool, not a substitute for expert judgment. See [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md#limitations--caveats) for known false positive/negative risks.
+This is an automated monitoring system, not a substitute for expert judgment. It surfaces patterns worth human examination using structural analysis, AI assessment, and thematic drift detection. See [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md#limitations) for known limitations including federal focus, source availability dependence, and AI assessment constraints.
 
 ## License
 
