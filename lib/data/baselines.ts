@@ -18,8 +18,6 @@ export interface BaselineConfig {
   whArchive?: WhArchiveConfig; // for archive-era baselines (non-current WH)
 }
 
-export const T2_START_DATE = '2025-01-20';
-
 const TRUMP_WH_ARCHIVE: WhArchiveConfig = {
   baseUrl: 'https://trumpwhitehouse.archives.gov',
   sections: ['/remarks/', '/briefings-statements/'],

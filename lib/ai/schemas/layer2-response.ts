@@ -9,8 +9,6 @@ export const ErosionTypeSchema = z.enum([
   'unclear',
 ]);
 
-export type ErosionType = z.infer<typeof ErosionTypeSchema>;
-
 export const Pass1ResponseSchema = z.object({
   relevant: z.boolean(),
   confidence: z.number().min(0).max(1),
@@ -26,8 +24,6 @@ export const Pass2AssessmentSchema = z.enum([
   'potentially_concerning',
   'clearly_concerning',
 ]);
-
-export type Pass2Assessment = z.infer<typeof Pass2AssessmentSchema>;
 
 export const Pass2ResponseSchema = z.object({
   assessment: Pass2AssessmentSchema,

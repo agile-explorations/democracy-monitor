@@ -467,3 +467,14 @@ export const narratives = pgTable(
     index('idx_narratives_week_of').on(table.weekOf),
   ],
 );
+
+export const legiscanDatasets = pgTable('legiscan_datasets', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().unique(),
+  state: varchar('state', { length: 2 }).notNull(),
+  sessionName: text('session_name'),
+  datasetHash: varchar('dataset_hash', { length: 32 }).notNull(),
+  datasetDate: timestamp('dataset_date', { withTimezone: true }),
+  downloadedAt: timestamp('downloaded_at', { withTimezone: true }).defaultNow().notNull(),
+  billCount: integer('bill_count'),
+});

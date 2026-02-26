@@ -119,19 +119,6 @@ export function analyzeInfrastructure(
 }
 
 /**
- * Run infrastructure analysis per week to produce a time-series of convergence states.
- * Each entry in weeklySnapshots is a Record<category, EnhancedAssessment> for that week.
- */
-export function analyzeInfrastructureOverTime(
-  weeklySnapshots: Array<{ week: string; snapshots: Record<string, EnhancedAssessment> }>,
-): Array<{ week: string; assessment: InfrastructureAssessment }> {
-  return weeklySnapshots.map(({ week, snapshots }) => ({
-    week,
-    assessment: analyzeInfrastructure(snapshots),
-  }));
-}
-
-/**
  * Compute multiplicative convergence score from active theme intensities.
  * When 0–1 themes are active, returns 0 (no cross-cutting pattern).
  * With 2+ themes, returns the product of their intensities.

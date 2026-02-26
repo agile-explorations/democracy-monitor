@@ -162,6 +162,13 @@
       "when": 1772072977389,
       "tag": "0022_normal_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1772133984166,
+      "tag": "0023_odd_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

@@ -63,7 +63,6 @@ export type {
   DimensionScore,
   FunctionalShift,
   StructuralScore,
-  ClusterShift,
   ThematicDriftScore,
   ConvergenceStatus,
   ConvergenceSynthesis,

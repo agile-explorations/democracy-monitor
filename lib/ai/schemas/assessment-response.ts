@@ -40,8 +40,6 @@ const SuggestedActionSchema = z.enum([
   'move_to_capture',
 ]);
 
-export type SuggestedAction = z.infer<typeof SuggestedActionSchema>;
-
 export const KeywordVerdictSchema = z.object({
   keyword: z.string(),
   assessment: z.enum(['genuine_concern', 'false_positive', 'ambiguous']),
@@ -49,8 +47,6 @@ export const KeywordVerdictSchema = z.object({
   suggestedAction: SuggestedActionSchema.optional(),
   suppressionContext: z.string().optional(),
 });
-
-export type KeywordVerdict = z.infer<typeof KeywordVerdictSchema>;
 
 export const SkepticReviewResponseSchema = z.object({
   keywordReview: z.array(KeywordVerdictSchema),

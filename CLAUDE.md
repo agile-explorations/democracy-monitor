@@ -22,6 +22,7 @@ pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtu
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
+pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
@@ -36,6 +37,7 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `REDIS_URL` — Redis connection string (optional; falls back to in-memory cache)
 - `OPENAI_API_KEY` — OpenAI API key (optional; enables AI-enhanced assessment)
 - `ANTHROPIC_API_KEY` — Anthropic API key (optional; enables AI-enhanced assessment)
+- `LEGISCAN_API_KEY` — LegiScan API key (optional; enables legislative bill tracking via bulk datasets)
 
 ### Local development
 
@@ -154,6 +156,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 6. **OpenGrep rule candidates** — for any issue that represents a recurring anti-pattern, evaluate whether a new `.opengrep/security.yml` rule could prevent it. Write and test the rule before fixing the code.
 7. **Test Quality** - All automated tests must test functionality, not implementation.
 8. **File and function length** — ESLint `max-lines` and `max-lines-per-function` rules are enforced (see `.eslintrc.json`). Data/fixture files and tests are exempt via overrides.
+9. **Dead code** — run `pnpm lint:unused` (Knip) and remove unused files, exports, types, and dependencies introduced by the sprint. Exports planned for future sprints may be kept with justification.
 
 ### Where shared code lives
 

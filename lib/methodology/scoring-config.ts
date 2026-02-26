@@ -108,9 +108,6 @@ export const EVIDENCE_COUNT_MAX = 10;
 /** Keyword density ratio: matches / (items × ratio) caps the density score. */
 export const KEYWORD_DENSITY_RATIO = 0.3;
 
-/** Start of the current presidential term (Trump 2025). */
-export const CURRENT_TERM_START = '2025-01-20';
-
 /** Baseline ID for the primary "normal governance" reference period. */
 export const PRIMARY_BASELINE_ID = 'biden_2022';
 
@@ -186,9 +183,6 @@ export const THEMATIC_DRIFT_ELEVATED = 3.5;
 /** Confidence multiplier during bootstrap period (first N weeks). */
 export const BOOTSTRAP_CONFIDENCE = 0.5;
 
-/** Novel document rate above this fraction is considered significant. */
-export const NOVEL_DOCUMENT_RATE_THRESHOLD = 0.15;
-
 // --- Layer 2 (AI two-pass assessment) ---
 
 /** Z-score threshold for AI flag rate to be considered elevated. */
@@ -200,19 +194,8 @@ export const AI_CONCERN_THRESHOLD = 0.2;
 /** Minimum non-audit Pass 2 assessments required for concern rate to be meaningful. */
 export const AI_CONCERN_MIN_SAMPLE = 3;
 
-/** Pass 1 false-negative rate above this triggers a warning. */
-export const PASS1_FALSE_NEGATIVE_WARNING = 0.03;
-
 /** Default fraction of unflagged docs to audit with Pass 2. */
 export const AUDIT_SAMPLE_RATE = 0.03;
-
-// --- Convergence synthesis ---
-
-/** Convergence score thresholds for mapping to status. */
-export const CONVERGENCE_THRESHOLDS = {
-  elevated: 1,
-  divergent: 2,
-} as const;
 
 // --- Multi-source constants ---
 
@@ -221,15 +204,6 @@ export const SOURCE_MAX_WEIGHT = 0.4;
 
 /** Fraction of total volume below which a source is considered collapsed. */
 export const VOLUME_COLLAPSE_FRACTION = 0.25;
-
-/** Source pairs that share provenance and should be de-weighted when converging. */
-export const SOURCE_DEPENDENCY_PAIRS: [string, string][] = [
-  ['doj', 'courtlistener'],
-  ['federal_register', 'gdelt'],
-];
-
-/** Weight applied to convergence signal from dependent source pairs. */
-export const DEPENDENT_PAIR_CONVERGENCE_WEIGHT = 0.75;
 
 /** Expected cadence in days for each source origin (used for silence detection). */
 export const SOURCE_EXPECTED_CADENCE_DAYS: Record<string, number> = {

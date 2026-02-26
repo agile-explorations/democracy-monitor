@@ -1,5 +1,3 @@
-import { isDbAvailable, getDb } from '@/lib/db';
-import { validationDataPoints } from '@/lib/db/schema';
 import type { ValidationDataPoint } from '@/lib/types/validation';
 
 /**
@@ -148,34 +146,3 @@ export const SEED_VALIDATION_DATA: ValidationDataPoint[] = [
     notes: 'BLW executive constraints sub-dimension',
   },
 ];
-
-/**
- * Seed validation data into the database. Uses ON CONFLICT DO NOTHING
- * to avoid duplicates on re-run.
- */
-export async function seedValidationData(): Promise<number> {
-  if (!isDbAvailable()) return 0;
-
-  const db = getDb();
-  let inserted = 0;
-
-  for (const point of SEED_VALIDATION_DATA) {
-    const result = await db
-      .insert(validationDataPoints)
-      .values({
-        source: point.source,
-        date: point.date,
-        dimension: point.dimension,
-        score: point.score,
-        rawScore: point.rawScore,
-        notes: point.notes,
-      })
-      .onConflictDoNothing();
-
-    if (result.rowCount && result.rowCount > 0) {
-      inserted++;
-    }
-  }
-
-  return inserted;
-}

@@ -47,11 +47,13 @@
     "seed:rhetoric-gaps": "tsx lib/seed/rhetoric-keyword-gaps.ts",
     "seed:validate": "tsx lib/seed/baseline-validation.ts",
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
+    "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "prepare": "husky"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
+    "adm-zip": "^0.5.16",
     "cheerio": "^1.1.2",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.9.2",
@@ -65,8 +67,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "20.14.12",
     "@types/pg": "^8.16.0",
     "@types/react": "18.3.3",

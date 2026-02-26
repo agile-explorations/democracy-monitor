@@ -50,15 +50,6 @@ export interface StructuralScore {
   };
 }
 
-/** A shift in a thematic cluster's proportion. */
-export interface ClusterShift {
-  clusterId: string;
-  label: string;
-  rollingPercentage: number;
-  currentPercentage: number;
-  shift: number;
-}
-
 /** Thematic drift score from embedding-based analysis. */
 export interface ThematicDriftScore {
   rollingCentroidDistance: number;

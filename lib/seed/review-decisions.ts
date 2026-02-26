@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { z } from 'zod';
 
 const StatusLevelSchema = z.enum(['Stable', 'Warning', 'Drift', 'Capture']);
@@ -43,14 +42,6 @@ export const ReviewDecisionsFileSchema = z.object({
   }),
   decisions: z.array(ReviewDecisionSchema),
 });
-
-export type ReviewDecisionsFile = z.infer<typeof ReviewDecisionsFileSchema>;
-
-export function loadDecisions(filePath: string): ReviewDecisionsFile {
-  const raw = fs.readFileSync(filePath, 'utf-8');
-  const parsed = JSON.parse(raw);
-  return ReviewDecisionsFileSchema.parse(parsed);
-}
 
 export function validateDecisionsComplete(decisions: ReviewDecision[]): string[] {
   return decisions.filter((d) => d.decision === 'skip').map((d) => d.id);

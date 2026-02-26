@@ -9,19 +9,6 @@ export type SignalType =
   | 'govinfo'
   | 'fec_json';
 
-export type SourceOrigin =
-  | 'federal_register'
-  | 'whitehouse'
-  | 'gdelt'
-  | 'courtlistener'
-  | 'doj'
-  | 'govinfo'
-  | 'legiscan'
-  | 'fec'
-  | 'rss'
-  | 'html'
-  | 'json';
-
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 
 export type SourceStatus = 'healthy' | 'degraded' | 'unavailable' | 'silent';
