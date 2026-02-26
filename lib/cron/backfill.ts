@@ -162,13 +162,17 @@ async function backfillCategory(
     apiCalls += totalSignals;
     if (dryRun) continue;
 
-    if (ingestOnly) {
-      const result = await ingestBackfillWeek(week, signalGroups, categoryKey);
-      totalDocs += result.docs;
-    } else {
-      const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
-      totalDocs += result.docs;
-      totalSnapshots += result.snapshots;
+    try {
+      if (ingestOnly) {
+        const result = await ingestBackfillWeek(week, signalGroups, categoryKey);
+        totalDocs += result.docs;
+      } else {
+        const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
+        totalDocs += result.docs;
+        totalSnapshots += result.snapshots;
+      }
+    } catch (err) {
+      console.error(`  [${categoryKey}] Week ${week.start} failed:`, err);
     }
   }
 
