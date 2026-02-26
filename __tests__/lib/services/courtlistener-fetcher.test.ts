@@ -5,6 +5,7 @@ describe('parseCourtListenerParams', () => {
   it('extracts NOS codes from pseudo-URL', () => {
     const result = parseCourtListenerParams('courtlistener://recap?nos=440');
     expect(result.nos).toBe('440');
+    expect(result.searchType).toBe('r');
   });
 
   it('extracts multiple NOS codes', () => {
@@ -33,6 +34,16 @@ describe('parseCourtListenerParams', () => {
     expect(result.nos).toBeUndefined();
     expect(result.type).toBeUndefined();
     expect(result.query).toBeUndefined();
+  });
+
+  it('maps recap path to searchType r', () => {
+    const result = parseCourtListenerParams('courtlistener://recap?nos=440');
+    expect(result.searchType).toBe('r');
+  });
+
+  it('maps non-recap path to searchType o', () => {
+    const result = parseCourtListenerParams('courtlistener://opinions?q=first+amendment');
+    expect(result.searchType).toBe('o');
   });
 });
 

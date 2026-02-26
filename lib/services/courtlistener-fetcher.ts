@@ -25,17 +25,25 @@ interface ClSearchResult {
 /**
  * Parse a courtlistener:// pseudo-URL into API query parameters.
  * Format: courtlistener://recap?nos=440&type=opinion
+ * The path segment (recap/opinions) maps to CL search type param:
+ *   recap → type=r (RECAP dockets, supports nature_of_suit)
+ *   opinions → type=o (opinions, supports text search)
+ *   (default) → type=o
  */
 export function parseCourtListenerParams(signalUrl: string): {
   nos?: string;
   type?: string;
   query?: string;
+  searchType: string;
 } {
   const parsed = new URL(signalUrl.replace('courtlistener://', 'http://cl/'));
+  const path = parsed.pathname.replace(/^\//, '');
+  const searchType = path === 'recap' ? 'r' : 'o';
   return {
     nos: parsed.searchParams.get('nos') || undefined,
     type: parsed.searchParams.get('type') || undefined,
     query: parsed.searchParams.get('q') || undefined,
+    searchType,
   };
 }
 
@@ -74,12 +82,16 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-function buildSearchUrl(params: { nos?: string; type?: string; query?: string }): string {
+function buildSearchUrl(params: {
+  nos?: string;
+  type?: string;
+  query?: string;
+  searchType: string;
+}): string {
   const qs = new URLSearchParams();
+  qs.set('type', params.searchType);
   if (params.nos) qs.set('nature_of_suit', params.nos);
-  if (params.type) qs.set('type', params.type);
   if (params.query) qs.set('q', params.query);
-  qs.set('order_by', '-date_filed');
   return `${CL_API_V4}/search/?${qs.toString()}`;
 }
 
@@ -88,6 +100,7 @@ export async function fetchCourtListenerRecent(params: {
   nos?: string;
   type?: string;
   query?: string;
+  searchType: string;
 }): Promise<ContentItem[]> {
   const url = buildSearchUrl(params);
 
@@ -106,6 +119,7 @@ export async function fetchCourtListenerHistorical(params: {
   nos?: string;
   type?: string;
   query?: string;
+  searchType: string;
   dateFrom: string;
   dateTo: string;
   maxPages?: number;
@@ -114,12 +128,11 @@ export async function fetchCourtListenerHistorical(params: {
   const allItems: ContentItem[] = [];
 
   const qs = new URLSearchParams();
+  qs.set('type', params.searchType);
   if (params.nos) qs.set('nature_of_suit', params.nos);
-  if (params.type) qs.set('type', params.type);
   if (params.query) qs.set('q', params.query);
-  qs.set('date_filed__gte', dateFrom);
-  qs.set('date_filed__lte', dateTo);
-  qs.set('order_by', '-date_filed');
+  qs.set('filed_after', dateFrom);
+  qs.set('filed_before', dateTo);
 
   let url: string | null = `${CL_API_V4}/search/?${qs.toString()}`;
   let page = 0;
