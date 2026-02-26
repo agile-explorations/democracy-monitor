@@ -49,12 +49,14 @@ export const documents = pgTable(
     publishedAt: timestamp('published_at', { withTimezone: true }),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
     metadata: jsonb('metadata'),
+    sourceOrigin: varchar('source_origin', { length: 30 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),
     index('idx_documents_category').on(table.category),
+    index('idx_documents_source_origin').on(table.sourceOrigin),
   ],
 );
 

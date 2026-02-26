@@ -172,7 +172,7 @@ export function buildBaselineDistribution(
   };
 }
 
-/** FR document types that indicate government-origin documents. */
+/** Document types that indicate government-origin documents. */
 const GOVERNMENT_DOC_TYPES = new Set([
   'Notice',
   'Rule',
@@ -185,6 +185,9 @@ const GOVERNMENT_DOC_TYPES = new Set([
   'final_rule',
   'proposed_rule',
   'notice',
+  'court_opinion',
+  'docket_entry',
+  'press_release',
 ]);
 
 /**

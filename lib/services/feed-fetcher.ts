@@ -4,6 +4,11 @@ import { CacheKeys } from '@/lib/cache/keys';
 import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { stripHtml } from '@/lib/parsers/feed-parser';
+import {
+  fetchCourtListenerRecent,
+  parseCourtListenerParams,
+} from '@/lib/services/courtlistener-fetcher';
+import { fetchDojRecent, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import type { Category, Signal } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 
@@ -85,6 +90,12 @@ async function fetchSignalInner(signal: Signal): Promise<FeedItem[]> {
   if (signal.type === 'federal_register') {
     return await fetchFederalRegister(signal);
   }
+  if (signal.type === 'courtlistener') {
+    return await fetchCourtListenerSignal(signal);
+  }
+  if (signal.type === 'doj_json') {
+    return await fetchDojJsonSignal(signal);
+  }
   if (signal.type === 'rss') {
     return await fetchRss(signal);
   }
@@ -95,6 +106,30 @@ async function fetchSignalInner(signal: Signal): Promise<FeedItem[]> {
     return await fetchHtml(signal);
   }
   return [];
+}
+
+async function fetchCourtListenerSignal(signal: Signal): Promise<FeedItem[]> {
+  const cacheKey = CacheKeys.courtlistener(signal.url);
+  const cached = await cacheGet<FeedItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const params = parseCourtListenerParams(signal.url);
+  const items = (await fetchCourtListenerRecent(params)) as FeedItem[];
+
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
+  return items;
+}
+
+async function fetchDojJsonSignal(signal: Signal): Promise<FeedItem[]> {
+  const cacheKey = CacheKeys.doj(signal.url);
+  const cached = await cacheGet<FeedItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const params = parseDojSignalParams(signal.url);
+  const items = (await fetchDojRecent(params)) as FeedItem[];
+
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
+  return items;
 }
 
 async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {

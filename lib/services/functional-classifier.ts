@@ -104,6 +104,8 @@ function classifyByType(doc: ClassifiableDocument): FunctionalBucket | null {
   if (sourceType === 'executive_order' || sourceType === 'proclamation') return 'executive_action';
   if (sourceType === 'presidential_notice') return 'executive_action';
   if (sourceType === 'rhetoric') return 'news_rhetoric';
+  if (sourceType === 'court_opinion' || sourceType === 'docket_entry') return 'judicial_action';
+  if (sourceType === 'press_release') return 'enforcement_action';
 
   return null;
 }
@@ -134,6 +136,8 @@ export function classifyBatch(docs: ClassifiableDocument[]): Record<FunctionalBu
     financial_regulatory: 0,
     cultural_ceremonial: 0,
     news_rhetoric: 0,
+    enforcement_action: 0,
+    judicial_action: 0,
     unclassified: 0,
   };
 

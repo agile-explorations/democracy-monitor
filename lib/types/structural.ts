@@ -8,6 +8,8 @@ export type FunctionalBucket =
   | 'financial_regulatory'
   | 'cultural_ceremonial'
   | 'news_rhetoric'
+  | 'enforcement_action'
+  | 'judicial_action'
   | 'unclassified';
 
 /** Score for a single structural dimension (volume, type composition, etc.). */

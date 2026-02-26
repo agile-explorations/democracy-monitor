@@ -1,4 +1,24 @@
-export type SignalType = 'json' | 'rss' | 'html' | 'federal_register' | 'tracker_scrape';
+export type SignalType =
+  | 'json'
+  | 'rss'
+  | 'html'
+  | 'federal_register'
+  | 'tracker_scrape'
+  | 'courtlistener'
+  | 'doj_json';
+
+export type SourceOrigin =
+  | 'federal_register'
+  | 'whitehouse'
+  | 'gdelt'
+  | 'courtlistener'
+  | 'doj'
+  | 'govinfo'
+  | 'legiscan'
+  | 'fec'
+  | 'rss'
+  | 'html'
+  | 'json';
 
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 

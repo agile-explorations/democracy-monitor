@@ -48,6 +48,18 @@ describe('classifyDocumentFunction', () => {
     it('classifies rhetoric as news_rhetoric', () => {
       expect(classifyDocumentFunction({ sourceType: 'rhetoric' })).toBe('news_rhetoric');
     });
+
+    it('classifies court_opinion as judicial_action', () => {
+      expect(classifyDocumentFunction({ sourceType: 'court_opinion' })).toBe('judicial_action');
+    });
+
+    it('classifies docket_entry as judicial_action', () => {
+      expect(classifyDocumentFunction({ sourceType: 'docket_entry' })).toBe('judicial_action');
+    });
+
+    it('classifies press_release as enforcement_action', () => {
+      expect(classifyDocumentFunction({ sourceType: 'press_release' })).toBe('enforcement_action');
+    });
   });
 
   describe('Tier 2 — title heuristics', () => {
@@ -252,5 +264,25 @@ describe('classifyBatch', () => {
     const dist = classifyBatch(docs);
     const sum = Object.values(dist).reduce((s, v) => s + v, 0);
     expect(sum).toBeCloseTo(1.0, 10);
+  });
+
+  it('includes new buckets (enforcement_action, judicial_action)', () => {
+    const docs = [
+      { sourceType: 'court_opinion' },
+      { sourceType: 'press_release' },
+      { sourceType: 'Rule' },
+    ];
+    const dist = classifyBatch(docs);
+    expect(dist.judicial_action).toBeCloseTo(1 / 3, 10);
+    expect(dist.enforcement_action).toBeCloseTo(1 / 3, 10);
+    expect(dist.rulemaking).toBeCloseTo(1 / 3, 10);
+    const sum = Object.values(dist).reduce((s, v) => s + v, 0);
+    expect(sum).toBeCloseTo(1.0, 10);
+  });
+
+  it('new buckets initialized at 0 for empty batch', () => {
+    const dist = classifyBatch([]);
+    expect(dist.enforcement_action).toBe(0);
+    expect(dist.judicial_action).toBe(0);
   });
 });

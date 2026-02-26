@@ -45,6 +45,7 @@ function parseWhiteHouseArticles(
       pubDate: itemDate ? toDateString(itemDate) : undefined,
       agency: 'White House',
       type: 'rhetoric',
+      sourceOrigin: 'whitehouse',
     });
   });
 
@@ -132,6 +133,7 @@ function parseWhArchiveArticles(
       pubDate: itemDate ? toDateString(itemDate) : undefined,
       agency: 'White House',
       type: 'rhetoric',
+      sourceOrigin: 'whitehouse',
     });
   });
 
@@ -208,6 +210,7 @@ function parseGdeltArticles(articles: GdeltRawArticle[], dateFrom: string): Cont
     agency: article.domain || 'GDELT',
     summary: article.tone !== undefined ? `Tone: ${article.tone.toFixed(1)}` : undefined,
     type: 'rhetoric',
+    sourceOrigin: 'gdelt' as const,
   }));
 }
 

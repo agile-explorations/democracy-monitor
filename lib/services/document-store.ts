@@ -12,6 +12,30 @@ export function buildMetadata(item: ContentItem): Record<string, string> | null 
   return Object.keys(meta).length > 0 ? meta : null;
 }
 
+/** FR document types that map to federal_register origin. */
+const FR_DOC_TYPES = new Set([
+  'Notice',
+  'Rule',
+  'Proposed Rule',
+  'Presidential Document',
+  'executive_order',
+  'presidential_memorandum',
+  'proclamation',
+  'presidential_notice',
+  'final_rule',
+  'proposed_rule',
+  'notice',
+]);
+
+/** Infer sourceOrigin from item type for backward compatibility. */
+export function inferSourceOrigin(item: ContentItem): string | null {
+  const t = item.type ?? '';
+  if (FR_DOC_TYPES.has(t)) return 'federal_register';
+  if (t === 'press_release') return 'doj';
+  if (t === 'court_opinion' || t === 'docket_entry') return 'courtlistener';
+  return null;
+}
+
 /**
  * Upsert documents from feed items into the database for RAG retrieval.
  * No-op when DATABASE_URL is not configured.
@@ -37,6 +61,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           publishedAt: item.pubDate ? new Date(item.pubDate) : null,
           fetchedAt: new Date(),
           metadata: buildMetadata(item),
+          sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
         })
         .onConflictDoUpdate({
           target: [documents.url, documents.category],
@@ -45,6 +70,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
             content: sql`excluded.content`,
             fetchedAt: sql`excluded.fetched_at`,
             metadata: sql`excluded.metadata`,
+            sourceOrigin: sql`excluded.source_origin`,
           },
         });
       stored++;

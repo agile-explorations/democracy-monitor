@@ -214,6 +214,37 @@ export const CONVERGENCE_THRESHOLDS = {
   divergent: 2,
 } as const;
 
+// --- Multi-source constants ---
+
+/** Maximum weight any single source can contribute to a composite score. */
+export const SOURCE_MAX_WEIGHT = 0.4;
+
+/** Fraction of total volume below which a source is considered collapsed. */
+export const VOLUME_COLLAPSE_FRACTION = 0.25;
+
+/** Source pairs that share provenance and should be de-weighted when converging. */
+export const SOURCE_DEPENDENCY_PAIRS: [string, string][] = [
+  ['doj', 'courtlistener'],
+  ['federal_register', 'gdelt'],
+];
+
+/** Weight applied to convergence signal from dependent source pairs. */
+export const DEPENDENT_PAIR_CONVERGENCE_WEIGHT = 0.75;
+
+/** Expected cadence in days for each source origin (used for silence detection). */
+export const SOURCE_EXPECTED_CADENCE_DAYS: Record<string, number> = {
+  federal_register: 1,
+  courtlistener: 3,
+  doj: 2,
+  whitehouse: 1,
+  gdelt: 1,
+  govinfo: 3,
+  rss: 7,
+};
+
+/** Multiplier for expected cadence beyond which a source is flagged as silent. */
+export const SILENCE_ALERT_MULTIPLIER = 2;
+
 /** Characters before a keyword to scan for negation patterns. */
 export const NEGATION_WINDOW_BEFORE = 200;
 

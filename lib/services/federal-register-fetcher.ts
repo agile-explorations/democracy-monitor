@@ -52,6 +52,7 @@ export function toContentItem(doc: FrApiDocument): ContentItem {
     type: doc.type,
     subtype: doc.subtype,
     action: doc.action,
+    sourceOrigin: 'federal_register',
   };
 }
 

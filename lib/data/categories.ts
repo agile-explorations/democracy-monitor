@@ -425,4 +425,90 @@ export const CATEGORIES: Category[] = [
       },
     ],
   },
+  {
+    key: 'lawEnforcement',
+    title: 'Federal Law Enforcement',
+    description:
+      'Is federal law enforcement being used selectively or politically? Tracks DOJ prosecution patterns, enforcement priorities, and potential politicization of the justice system.',
+    signals: [
+      {
+        id: 'cl_enforcement_cases',
+        name: 'CourtListener: Enforcement Challenges',
+        url: 'courtlistener://recap?nos=440,530,890',
+        type: 'courtlistener',
+        note: 'Federal cases involving selective prosecution, civil rights, and habeas corpus',
+      },
+      {
+        id: 'doj_criminal',
+        name: 'DOJ Criminal Division Releases',
+        url: 'doj://press?component=criminal-division',
+        type: 'doj_json',
+        note: 'Press releases from the DOJ Criminal Division',
+      },
+      {
+        id: 'doj_civil_rights',
+        name: 'DOJ Civil Rights Division Releases',
+        url: 'doj://press?component=civil-rights-division',
+        type: 'doj_json',
+        note: 'Press releases from the DOJ Civil Rights Division',
+      },
+      {
+        id: 'doj_national_security',
+        name: 'DOJ National Security Division Releases',
+        url: 'doj://press?component=national-security-division',
+        type: 'doj_json',
+        note: 'Press releases from the DOJ National Security Division',
+      },
+      {
+        id: 'fr_doj',
+        name: 'DOJ Federal Register Documents',
+        url: '/api/federal-register?agency=justice-department',
+        type: 'federal_register',
+        note: 'Federal Register documents from the Department of Justice',
+      },
+    ],
+  },
+  {
+    key: 'civilLiberties',
+    title: 'Civil Rights & Liberties',
+    description:
+      'Are civil rights and individual liberties being protected? Tracks court cases involving constitutional rights, due process, and equal protection challenges.',
+    signals: [
+      {
+        id: 'cl_civil_rights',
+        name: 'CourtListener: Civil Rights Cases',
+        url: 'courtlistener://recap?nos=440',
+        type: 'courtlistener',
+        note: 'Federal civil rights cases (NOS 440)',
+      },
+      {
+        id: 'cl_first_amendment',
+        name: 'CourtListener: First Amendment',
+        url: 'courtlistener://recap?q=first+amendment',
+        type: 'courtlistener',
+        note: 'First Amendment challenges in federal court',
+      },
+      {
+        id: 'cl_habeas',
+        name: 'CourtListener: Habeas Corpus',
+        url: 'courtlistener://recap?nos=530',
+        type: 'courtlistener',
+        note: 'Habeas corpus petitions (NOS 530)',
+      },
+      {
+        id: 'doj_crd',
+        name: 'DOJ Civil Rights Division',
+        url: 'doj://press?component=civil-rights-division',
+        type: 'doj_json',
+        note: 'DOJ Civil Rights Division press releases',
+      },
+      {
+        id: 'fr_civil_rights',
+        name: 'Civil Rights FR Documents',
+        url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22',
+        type: 'federal_register',
+        note: 'Federal Register documents on civil rights and due process',
+      },
+    ],
+  },
 ];

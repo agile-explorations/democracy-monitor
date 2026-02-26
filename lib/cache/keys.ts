@@ -9,4 +9,6 @@ export const CacheKeys = {
   fallback: (category: string) => `fallback:${category}`,
   embedding: (docId: number) => `emb:${docId}`,
   retrieval: (category: string, queryHash: string) => `rag:${category}:${queryHash}`,
+  courtlistener: (queryKey: string) => `cl:${queryKey}`,
+  doj: (queryKey: string) => `doj:${queryKey}`,
 } as const;

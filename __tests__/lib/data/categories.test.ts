@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { CATEGORIES } from '@/lib/data/categories';
 
 describe('CATEGORIES', () => {
-  it('has 11 categories', () => {
-    expect(CATEGORIES).toHaveLength(11);
+  it('has 13 categories', () => {
+    expect(CATEGORIES).toHaveLength(13);
   });
 
   it('each category has required fields', () => {
@@ -17,13 +17,20 @@ describe('CATEGORIES', () => {
   });
 
   it('each signal has required fields', () => {
+    const validTypes = [
+      'json',
+      'rss',
+      'html',
+      'federal_register',
+      'tracker_scrape',
+      'courtlistener',
+      'doj_json',
+    ];
     for (const cat of CATEGORIES) {
       for (const signal of cat.signals) {
         expect(signal.name).toBeTruthy();
         expect(signal.url).toBeTruthy();
-        expect(['json', 'rss', 'html', 'federal_register', 'tracker_scrape']).toContain(
-          signal.type,
-        );
+        expect(validTypes).toContain(signal.type);
       }
     }
   });
@@ -41,10 +48,35 @@ describe('CATEGORIES', () => {
     expect(keys).toContain('infoAvailability');
     expect(keys).toContain('elections');
     expect(keys).toContain('mediaFreedom');
+    expect(keys).toContain('lawEnforcement');
+    expect(keys).toContain('civilLiberties');
   });
 
   it('all category keys are unique', () => {
     const keys = CATEGORIES.map((c) => c.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('all signal IDs are unique across all categories', () => {
+    const allIds = CATEGORIES.flatMap((c) => c.signals.map((s) => s.id));
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+
+  it('lawEnforcement has courtlistener and doj_json signal types', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'lawEnforcement');
+    expect(cat).toBeDefined();
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('courtlistener');
+    expect(types).toContain('doj_json');
+    expect(types).toContain('federal_register');
+  });
+
+  it('civilLiberties has courtlistener and doj_json signal types', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'civilLiberties');
+    expect(cat).toBeDefined();
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('courtlistener');
+    expect(types).toContain('doj_json');
+    expect(types).toContain('federal_register');
   });
 });

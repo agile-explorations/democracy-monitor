@@ -12,6 +12,7 @@ export interface ContentItem {
   type?: string;
   subtype?: string;
   action?: string;
+  sourceOrigin?: string;
   isError?: boolean;
   isWarning?: boolean;
 }

@@ -1,6 +1,6 @@
 /**
  * Rhetoric cross-feed: routes rhetoric documents (stored as category='intent')
- * to the 11 monitoring categories based on FR signal search terms.
+ * to monitoring categories based on FR signal search terms and supplemental terms.
  *
  * A rhetoric document is assigned to every category whose signal terms match
  * its title/summary. The original category='intent' row is preserved.
@@ -26,6 +26,13 @@ const SUPPLEMENTAL_TERMS: Record<string, string[]> = {
     'presidential memorandum',
     'proclamation',
     'signing ceremony',
+  ],
+  lawEnforcement: [
+    'department of justice',
+    'doj prosecution',
+    'federal indictment',
+    'selective prosecution',
+    'attorney general',
   ],
 };
 

@@ -1,12 +1,13 @@
 import { assessWeek } from '@/lib/cron/assess-week';
 import type { AiOptions } from '@/lib/cron/assess-week';
+import {
+  fetchWeekItemsCourtListener,
+  fetchWeekItemsDoj,
+  fetchWeekItemsFr,
+} from '@/lib/cron/backfill-fetchers';
 import { CATEGORIES } from '@/lib/data/categories';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import {
-  fetchFederalRegisterHistorical,
-  parseSignalParams,
-} from '@/lib/services/federal-register-fetcher';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import {
@@ -33,39 +34,26 @@ interface BackfillOptions {
   model?: string;
 }
 
-async function fetchWeekItems(
-  frSignals: Array<{ url: string; type: string }>,
-  week: { start: string; end: string },
-  categoryKey: string,
-): Promise<ContentItem[]> {
-  const weekItems: ContentItem[] = [];
-
-  for (const signal of frSignals) {
-    const params = parseSignalParams(signal.url);
-    try {
-      const items = await fetchFederalRegisterHistorical({
-        ...params,
-        dateFrom: week.start,
-        dateTo: week.end,
-        perPage: 1000,
-        delayMs: 200,
-      });
-      weekItems.push(...items);
-    } catch (err) {
-      console.error(`  [${categoryKey}] FR fetch error for ${week.start}:`, err);
-    }
-  }
-
-  return weekItems;
-}
-
 async function processBackfillWeek(
   week: { start: string; end: string },
-  frSignals: Array<{ url: string; type: string }>,
+  signalGroups: {
+    fr: Array<{ url: string; type: string }>;
+    cl: Array<{ url: string; type: string }>;
+    doj: Array<{ url: string; type: string }>;
+  },
   categoryKey: string,
   aiOptions: AiOptions,
 ): Promise<{ docs: number; snapshots: number }> {
-  const weekItems = await fetchWeekItems(frSignals, week, categoryKey);
+  const weekItems: ContentItem[] = [];
+  if (signalGroups.fr.length > 0) {
+    weekItems.push(...(await fetchWeekItemsFr(signalGroups.fr, week, categoryKey)));
+  }
+  if (signalGroups.cl.length > 0) {
+    weekItems.push(...(await fetchWeekItemsCourtListener(signalGroups.cl, week, categoryKey)));
+  }
+  if (signalGroups.doj.length > 0) {
+    weekItems.push(...(await fetchWeekItemsDoj(signalGroups.doj, week, categoryKey)));
+  }
   const dedupedItems = deduplicateByUrl(weekItems);
   if (dedupedItems.length === 0) return { docs: 0, snapshots: 0 };
 
@@ -99,18 +87,23 @@ async function backfillCategory(
   let totalSnapshots = 0;
   let apiCalls = 0;
 
-  const frSignals = signals.filter((s) => s.type === 'federal_register');
+  const signalGroups = {
+    fr: signals.filter((s) => s.type === 'federal_register'),
+    cl: signals.filter((s) => s.type === 'courtlistener'),
+    doj: signals.filter((s) => s.type === 'doj_json'),
+  };
+  const totalSignals = signalGroups.fr.length + signalGroups.cl.length + signalGroups.doj.length;
 
-  if (frSignals.length === 0) {
-    console.log(`  [${categoryKey}] No Federal Register signals — skipping`);
+  if (totalSignals === 0) {
+    console.log(`  [${categoryKey}] No fetchable signals — skipping`);
     return { docs: 0, snapshots: 0, apiCalls: 0 };
   }
 
   for (const week of weeks) {
-    apiCalls += frSignals.length;
+    apiCalls += totalSignals;
     if (dryRun) continue;
 
-    const result = await processBackfillWeek(week, frSignals, categoryKey, aiOptions);
+    const result = await processBackfillWeek(week, signalGroups, categoryKey, aiOptions);
     totalDocs += result.docs;
     totalSnapshots += result.snapshots;
   }
