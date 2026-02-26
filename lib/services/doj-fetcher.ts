@@ -3,6 +3,7 @@ import { sleep } from '@/lib/utils/async';
 
 const DOJ_API_BASE = 'https://www.justice.gov/api/v1/press_releases.json';
 const POLITENESS_DELAY_MS = 2000;
+const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 
 interface DojNamedRef {
@@ -143,6 +144,7 @@ export async function fetchDojRecent(params: {
       Accept: 'application/json',
       'User-Agent': 'DemocracyMonitor/1.0',
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -180,7 +182,7 @@ export async function fetchDojHistorical(params: {
     };
     if (cookies) headers['Cookie'] = cookies;
 
-    const response = await fetch(url, { headers });
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!response.ok) {
       console.error(`[doj] HTTP ${response.status} on page ${page}`);
       break;
