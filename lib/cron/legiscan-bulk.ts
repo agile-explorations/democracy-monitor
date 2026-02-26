@@ -10,37 +10,26 @@ import {
   isBillInDateRange,
   parseBillToContentItem,
 } from '@/lib/services/legiscan-fetcher';
-import type { LegiScanDatasetEntry } from '@/lib/services/legiscan-fetcher';
+import type { LegiScanBill, LegiScanDatasetEntry } from '@/lib/services/legiscan-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
 
-/**
- * Target Congress sessions mapped to baseline periods.
- * year_start identifies the Congress number from the getDatasetList response.
- */
-const TARGET_SESSIONS: Array<{
+/** Baseline periods aligned to presidential administrations. */
+const BASELINE_PERIODS: Array<{
   label: string;
-  congressNumber: number;
-  yearStart: number;
   dateRange: { start: string; end: string };
 }> = [
   {
-    label: '115th Congress (Trump T1)',
-    congressNumber: 115,
-    yearStart: 2017,
+    label: 'Trump T1',
     dateRange: { start: '2017-01-20', end: '2019-01-19' },
   },
   {
-    label: '117th Congress (Biden)',
-    congressNumber: 117,
-    yearStart: 2021,
+    label: 'Biden',
     dateRange: { start: '2021-01-20', end: '2023-01-19' },
   },
   {
-    label: '119th Congress (Trump T2)',
-    congressNumber: 119,
-    yearStart: 2025,
+    label: 'Trump T2',
     dateRange: { start: '2025-01-20', end: toDateString(new Date()) },
   },
 ];
@@ -93,35 +82,22 @@ async function recordDatasetDownload(
     });
 }
 
-async function processSession(
-  entry: LegiScanDatasetEntry,
-  target: (typeof TARGET_SESSIONS)[number],
-  dryRun: boolean,
+/** Store bills matching a specific baseline period into the documents table. */
+function storeBillsForBaseline(
+  bills: LegiScanBill[],
+  baseline: (typeof BASELINE_PERIODS)[number],
 ): Promise<{ bills: number; stored: number; categories: Record<string, number> }> {
-  console.log(`\n  [${target.label}] session_id=${entry.session_id}`);
-  console.log(`    Date range: ${target.dateRange.start} → ${target.dateRange.end}`);
+  return storeBillsInRange(bills, baseline.dateRange.start, baseline.dateRange.end, baseline.label);
+}
 
-  // Check hash to avoid duplicate downloads
-  const storedHash = await getStoredHash(entry.session_id);
-  if (storedHash === entry.dataset_hash) {
-    console.log(`    Skipped: dataset_hash unchanged (${entry.dataset_hash})`);
-    return { bills: 0, stored: 0, categories: {} };
-  }
-
-  if (dryRun) {
-    console.log(`    [DRY RUN] Would download dataset (${entry.dataset_size} bytes)`);
-    return { bills: 0, stored: 0, categories: {} };
-  }
-
-  console.log(`    Downloading dataset (${(entry.dataset_size / 1024 / 1024).toFixed(1)} MB)...`);
-  const { bills, hash } = await fetchDataset(entry.session_id, entry.access_key);
-  console.log(`    Extracted ${bills.length} bills from ZIP`);
-
-  // Filter by date range
-  const filtered = bills.filter((b) =>
-    isBillInDateRange(b, target.dateRange.start, target.dateRange.end),
-  );
-  console.log(`    ${filtered.length} bills within date range`);
+async function storeBillsInRange(
+  bills: LegiScanBill[],
+  rangeStart: string,
+  rangeEnd: string,
+  label: string,
+): Promise<{ bills: number; stored: number; categories: Record<string, number> }> {
+  const filtered = bills.filter((b) => isBillInDateRange(b, rangeStart, rangeEnd));
+  console.log(`    [${label}] ${filtered.length} bills within ${rangeStart} → ${rangeEnd}`);
 
   let totalStored = 0;
   const categoryCounts: Record<string, number> = {};
@@ -133,9 +109,8 @@ async function processSession(
     const baseItem = parseBillToContentItem(bill);
     const metadata = buildBillMetadata(bill);
 
-    // Store once per matching category
     for (const category of categories) {
-      const item: ContentItem = { ...baseItem, ...{ metadata } };
+      const item: ContentItem = { ...baseItem, metadata };
       const stored = await storeDocuments([item], category);
       totalStored += stored;
       categoryCounts[category] = (categoryCounts[category] || 0) + stored;
@@ -143,25 +118,91 @@ async function processSession(
   }
 
   console.log(
-    `    Stored ${totalStored} document rows across ${Object.keys(categoryCounts).length} categories`,
+    `    [${label}] Stored ${totalStored} rows across ${Object.keys(categoryCounts).length} categories`,
   );
-
-  await recordDatasetDownload(entry, hash, filtered.length);
 
   return { bills: filtered.length, stored: totalStored, categories: categoryCounts };
 }
 
-function matchSessionToTarget(
+/** Find all baseline periods that overlap with a session's year range. */
+function matchSessionToBaselines(
   entry: LegiScanDatasetEntry,
-): (typeof TARGET_SESSIONS)[number] | null {
-  // Match by year_start; skip special sessions
-  if (entry.special !== 0) return null;
-  return TARGET_SESSIONS.find((t) => t.yearStart === entry.year_start) ?? null;
+): (typeof BASELINE_PERIODS)[number][] {
+  if (entry.special !== 0) return [];
+
+  const sessionStartYear = entry.year_start;
+  const sessionEndYear = entry.year_end;
+
+  return BASELINE_PERIODS.filter((b) => {
+    const baselineStartYear = parseInt(b.dateRange.start.slice(0, 4));
+    const baselineEndYear = parseInt(b.dateRange.end.slice(0, 4));
+    return sessionStartYear <= baselineEndYear && sessionEndYear >= baselineStartYear;
+  });
+}
+
+type SessionMatch = {
+  entry: LegiScanDatasetEntry;
+  baselines: (typeof BASELINE_PERIODS)[number][];
+};
+
+/** Build a map of sessions to their overlapping baseline periods. */
+function buildSessionBaselineMap(
+  datasets: LegiScanDatasetEntry[],
+): Map<number, SessionMatch> {
+  const result = new Map<number, SessionMatch>();
+  for (const entry of datasets) {
+    const baselines = matchSessionToBaselines(entry);
+    if (baselines.length > 0) {
+      result.set(entry.session_id, { entry, baselines });
+    }
+  }
+  return result;
+}
+
+/** Download one session and store bills for each matching baseline period. */
+async function downloadAndProcessSession(
+  { entry, baselines }: SessionMatch,
+  dryRun: boolean,
+): Promise<{ bills: number; stored: number; categories: Record<string, number> }> {
+  console.log(`\n  Session: ${entry.session_name} (id=${entry.session_id})`);
+
+  const storedHash = await getStoredHash(entry.session_id);
+  if (storedHash === entry.dataset_hash) {
+    console.log(`    Skipped: dataset_hash unchanged (${entry.dataset_hash})`);
+    return { bills: 0, stored: 0, categories: {} };
+  }
+
+  if (dryRun) {
+    console.log(`    [DRY RUN] Would download dataset (${entry.dataset_size} bytes)`);
+    for (const b of baselines) {
+      console.log(`    [DRY RUN] Would process for ${b.label}: ${b.dateRange.start} → ${b.dateRange.end}`);
+    }
+    return { bills: 0, stored: 0, categories: {} };
+  }
+
+  console.log(`    Downloading dataset (${(entry.dataset_size / 1024 / 1024).toFixed(1)} MB)...`);
+  const { bills, hash } = await fetchDataset(entry.session_id, entry.access_key);
+  console.log(`    Extracted ${bills.length} bills from ZIP`);
+
+  let totalBills = 0;
+  let totalStored = 0;
+  const categories: Record<string, number> = {};
+
+  for (const baseline of baselines) {
+    const result = await storeBillsForBaseline(bills, baseline);
+    totalBills += result.bills;
+    totalStored += result.stored;
+    for (const [cat, count] of Object.entries(result.categories)) {
+      categories[cat] = (categories[cat] || 0) + count;
+    }
+  }
+
+  await recordDatasetDownload(entry, hash, totalBills);
+  return { bills: totalBills, stored: totalStored, categories };
 }
 
 export async function runLegiscanBulk(options: BulkOptions): Promise<void> {
   const { state, dryRun } = options;
-
   console.log(
     `[legiscan-bulk] ${dryRun ? '(DRY RUN) ' : ''}Fetching dataset list for state=${state}`,
   );
@@ -169,24 +210,16 @@ export async function runLegiscanBulk(options: BulkOptions): Promise<void> {
   const datasets = await fetchDatasetList(state);
   console.log(`[legiscan-bulk] Found ${datasets.length} available sessions`);
 
-  const matched: Array<{
-    entry: LegiScanDatasetEntry;
-    target: (typeof TARGET_SESSIONS)[number];
-  }> = [];
-
-  for (const entry of datasets) {
-    const target = matchSessionToTarget(entry);
-    if (target) {
-      matched.push({ entry, target });
-    }
+  const sessionMap = buildSessionBaselineMap(datasets);
+  const pairCount = [...sessionMap.values()].reduce((s, m) => s + m.baselines.length, 0);
+  console.log(`[legiscan-bulk] Matched ${sessionMap.size} sessions (${pairCount} baseline pairs):`);
+  for (const { entry, baselines } of sessionMap.values()) {
+    console.log(
+      `  - ${entry.session_name} (id=${entry.session_id}): ${baselines.map((b) => b.label).join(', ')}`,
+    );
   }
 
-  console.log(`[legiscan-bulk] Matched ${matched.length} target sessions:`);
-  for (const { target, entry } of matched) {
-    console.log(`  - ${target.label}: session_id=${entry.session_id}, hash=${entry.dataset_hash}`);
-  }
-
-  if (matched.length === 0) {
+  if (sessionMap.size === 0) {
     console.log('[legiscan-bulk] No matching sessions found. Check state parameter.');
     return;
   }
@@ -195,20 +228,18 @@ export async function runLegiscanBulk(options: BulkOptions): Promise<void> {
   let totalStored = 0;
   const allCategories: Record<string, number> = {};
 
-  for (const { entry, target } of matched) {
-    const result = await processSession(entry, target, dryRun);
+  for (const match of sessionMap.values()) {
+    const result = await downloadAndProcessSession(match, dryRun);
     totalBills += result.bills;
     totalStored += result.stored;
     for (const [cat, count] of Object.entries(result.categories)) {
       allCategories[cat] = (allCategories[cat] || 0) + count;
     }
-
-    // Rate limit between session downloads
-    if (!dryRun) await sleep(1000);
+    if (!dryRun && result.stored > 0) await sleep(1000);
   }
 
   console.log('\n[legiscan-bulk] === Summary ===');
-  console.log(`  Sessions processed: ${matched.length}`);
+  console.log(`  Sessions downloaded: ${sessionMap.size}`);
   console.log(`  Bills in date ranges: ${totalBills}`);
   console.log(`  Document rows stored: ${totalStored}`);
   if (Object.keys(allCategories).length > 0) {

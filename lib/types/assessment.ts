@@ -15,6 +15,8 @@ export interface ContentItem {
   sourceOrigin?: string;
   isError?: boolean;
   isWarning?: boolean;
+  /** Extra metadata to store alongside the document (merged with auto-extracted fields). */
+  metadata?: Record<string, unknown>;
 }
 
 export interface AssessmentDetail {

@@ -4,11 +4,12 @@ import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
 import { toDateString } from '@/lib/utils/date-utils';
 
-export function buildMetadata(item: ContentItem): Record<string, string> | null {
-  const meta: Record<string, string> = {};
+export function buildMetadata(item: ContentItem): Record<string, unknown> | null {
+  const meta: Record<string, unknown> = {};
   if (item.agency) meta.agency = item.agency;
   if (item.action) meta.action = item.action;
   if (item.subtype) meta.subtype = item.subtype;
+  if (item.metadata) Object.assign(meta, item.metadata);
   return Object.keys(meta).length > 0 ? meta : null;
 }
 
