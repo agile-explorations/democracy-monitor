@@ -89,6 +89,10 @@ function getApiKey(): string | undefined {
   return process.env.GOVINFO_API_KEY;
 }
 
+function toIsoDatetime(dateStr: string): string {
+  return dateStr.includes('T') ? dateStr : `${dateStr}T00:00:00Z`;
+}
+
 function buildCollectionUrl(
   collection: string,
   startDate: string,
@@ -96,7 +100,8 @@ function buildCollectionUrl(
   offset: number,
   apiKey: string,
 ): string {
-  return `${GOVINFO_API_BASE}/collections/${collection}/${startDate}?offset=${offset}&pageSize=${pageSize}&api_key=${apiKey}`;
+  const isoDate = toIsoDatetime(startDate);
+  return `${GOVINFO_API_BASE}/collections/${collection}/${isoDate}?offset=${offset}&pageSize=${pageSize}&api_key=${apiKey}`;
 }
 
 /** Fetch recent GovInfo documents for the snapshot pipeline. */
