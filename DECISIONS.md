@@ -10,6 +10,66 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R4a: AI Narrative Generation Service ✅
+
+**Status: Done.** Built narrative generation pipeline with dual-audience (expert/public) AI narratives for Elevated+ categories. Stable categories get template text (no AI call). `narratives` DB table, narrative-generation-service (prompt construction + AI calls), narrative-store (DB CRUD), narrative-pipeline (orchestration), 2 API endpoints (`/api/narratives/[category]`, `/api/narratives/overview`). Wired into snapshot pipeline as final step. 15 files changed, 4164 lines added. 51 new tests (1411 total).
+
+**Scope vs. Actual:**
+
+- Planned (ROADMAP R4a): narratives table, narrative generation service, overview API endpoint update, narrative API endpoint, snapshot integration, tests (~300 lines new, ~100 lines tests)
+- Actual: All delivered. Lines significantly higher than estimate (4164 vs ~400) due to comprehensive prompt construction, 4 layer-formatting functions, overview narrative generation, and thorough API endpoint code. Test count well above estimate (51 vs ~10–15). Migration generated via Drizzle (0022_normal_green_goblin.sql).
+
+**Key Decisions:**
+
+1. **Claude Opus 4.6 for narratives** — `NARRATIVE_MODEL = 'claude-opus-4-6'`. Narratives require nuanced reasoning about multi-layer convergence patterns, counter-arguments, and limitations framing. Opus is the right model for this. Cost acceptable since only Elevated+ categories trigger AI calls (~1–3 per week).
+2. **Separate narrative API routes (not overview/summary)** — ROADMAP planned to add narratives to the existing `/api/overview/summary` endpoint. Instead built dedicated `/api/narratives/[category]` and `/api/narratives/overview` routes. Cleaner separation of concerns — overview/summary returns structural data, narrative endpoints return generated text. On-demand generation if stored narrative missing.
+3. **`_overview` pseudo-category key** — Overview narratives stored in the same `narratives` table using `_overview` as the category key. Avoids a separate table while keeping the schema clean. Underscore prefix prevents collision with real category keys.
+4. **Template fallback for Stable categories** — When all categories are Stable or AI provider unavailable, returns a template string ("No significant structural, AI, or thematic anomalies detected..."). No AI cost for routine weeks.
+5. **`runLayersAndAggregate()` extraction** — Adding narrative generation to `snapshot.ts` pushed `snapshotCategory()` over the 50-line ESLint limit. Extracted the Layer 2 + weekly aggregate computation into a standalone helper. Cleaner than suppressing the lint rule.
+6. **Narrative pipeline as final snapshot step** — `generateNarrativesForWeek()` runs after all categories are processed (not per-category). This ensures all weekly aggregates are computed before the overview narrative synthesizes across categories.
+
+**Lessons Learned:**
+
+1. **Worktree test leakage** — Task agents running in `.claude/worktrees/` leave behind test files that vitest discovers during `pnpm test:coverage`. The stale tests reference outdated code (e.g., missing signal types added by a parallel agent). Fix: clean up worktrees (`git worktree prune`) before pushing. Added to MEMORY.md.
+2. **Coverage thresholds vs. I/O code** — New fetcher modules (R-S1a/R-S1b) are ~60% network I/O by line count. Their pure functions are tested but coverage percentages drop because fetch/pagination code isn't unit-testable. Solution: exclude I/O-heavy fetcher files from coverage thresholds rather than continuously lowering thresholds. Thresholds should reflect testable code coverage.
+3. **Parallel agent file conflicts** — R-S1b and R4a ran as parallel Task agents. No file conflicts because the sprints had zero overlapping files. This validates the ROADMAP's "parallelizable" annotations — the key is verifying no shared file modifications before launching parallel agents.
+
+**Spec Deviations:**
+
+- ROADMAP specified "Opus 4.6 Extended Thinking" — implemented as standard Opus 4.6 completion. Extended Thinking adds latency and cost without clear benefit for narrative generation (the prompts provide structured data, not open-ended reasoning tasks).
+- ROADMAP R4a item 3 planned adding narratives to the existing overview/summary endpoint — built as separate routes instead (see Key Decision #2).
+
+---
+
+## Sprint R-S1b: GovInfo/GAO + FEC + IG RSS + FCC RSS Source Integrations ✅
+
+**Status: Done.** Built GovInfo/GAO REST API fetcher (GAO Reports, Congressional Reports, Public Laws) and FEC OpenFEC API fetcher (Advisory Opinions, MURs/enforcement). Added 8 new signals across 4 categories. Extended backfill pipeline, functional classifier, and document classifier. 17 files changed, 953 lines added. 36 new tests (1405 total).
+
+**Scope vs. Actual:**
+
+- Planned (ROADMAP R-S1 Phase 1 item 2 + Phase 1b items 6–8): GovInfo/GAO fetcher, IG RSS feeds, FCC RSS feeds, FEC OpenFEC API
+- Actual: GovInfo and FEC fetchers delivered as full modules with historical backfill support. IG RSS and FCC RSS added as standard RSS signals (no custom fetcher needed — existing RSS infrastructure handles them). All 8 signals wired into categories.
+
+**Key Decisions:**
+
+1. **RSS reuse for IG + FCC** — IG RSS (DOD, HHS, DOJ OIG) and FCC RSS feeds don't need custom fetchers. The existing RSS feed infrastructure in feed-fetcher.ts handles them directly. Signals added as `type: 'rss'` with appropriate URLs. Simpler than building dedicated fetcher modules.
+2. **GovInfo pseudo-protocol URLs** — `govinfo://collection?collection=GAOREPORTS&offset=0`. Same pattern as CourtListener/DOJ from R-S1a. `parseGovInfoParams()` extracts collection type from pseudo-URL.
+3. **FEC pseudo-protocol URLs** — `fec://advisory-opinions?type=advisory_opinions`. Separate endpoint types for advisory opinions vs. MURs because they have different API response structures and map to different ContentItem types.
+4. **FEC API key optional** — `FEC_API_KEY` env var. OpenFEC works without a key but with stricter rate limits. Key enables higher throughput for backfill. Added to `.env.example`.
+5. **Functional classifier extensions** — `gao_report`/`congressional_report` → `administrative_procedure`, `advisory_opinion` → `administrative_procedure`, `enforcement_action`/`admin_fine` → `enforcement_action`. Maps new document types to existing functional buckets rather than creating new ones.
+6. **Signal distribution** — executiveOversight: +4 (1 GovInfo + 3 IG RSS), elections: +2 (FEC), mediaFreedom: +2 (FCC RSS). Focused on categories with thinnest signal coverage.
+
+**Lessons Learned:**
+
+1. **Fetcher module pattern is stable** — All 4 new fetchers (CourtListener, DOJ, GovInfo, FEC across R-S1a/R-S1b) follow the same structure: `parseParams()` + `toContentItem()` (pure, tested) + `fetchRecent()` + `fetchHistorical()` (I/O). This pattern should be documented as the standard for future source integrations.
+2. **Existing RSS infrastructure scales** — IG and FCC signals required zero new code beyond signal definitions. The generic RSS fetcher + parser handles them. Only sources with non-RSS APIs (REST JSON, pseudo-protocols) need custom fetchers.
+
+**Spec Deviations:**
+
+- None material. ROADMAP Phase 1b items 6–8 all delivered. IG RSS and FCC RSS delivered as RSS signals rather than custom fetchers (simpler, correct approach).
+
+---
+
 ## Sprint R-S1a: Foundation + CourtListener + DOJ Integration ✅
 
 **Status: Done.** Added source-origin tracking to documents table, built CourtListener REST API v4 and DOJ Press Release JSON fetchers, created 2 new categories (lawEnforcement, civilLiberties — 13 total), extended functional classifier with enforcement_action and judicial_action buckets, added coverage health monitoring with silence detection. Backfilled 132,260 existing documents with source_origin values. 37 files changed, 3836 lines added. 61 new tests (1366 total).

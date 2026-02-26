@@ -602,18 +602,20 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Split into three incremental sub-sprints (R4a → R4b → R4c) to ship working slices and avoid a monolithic UI sprint.**
 
-#### Sprint R4a: API Layer + Narrative Generation (Backend)
+#### Sprint R4a: API Layer + Narrative Generation (Backend) ✅
+
+> **Status: Done.** `narratives` table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts (DB CRUD), narrative-pipeline.ts (orchestration), `/api/narratives/[category]` + `/api/narratives/overview` endpoints with on-demand generation, snapshot pipeline integration as final step. 15 files changed, 51 new tests (1411 total). See `DECISIONS.md` for retrospective.
 
 **Goal:** Build narrative generation service and API endpoints. No UI changes.
 
 **Code work (~300 lines new, ~100 lines tests):**
 
-1. **`narratives` table** — Schema: `category`, `weekOf`, `version` ('expert'|'public'), `content` (text), `model` (varchar), `generatedAt` (timestamp). Composite unique on `(category, weekOf, version)`.
-2. **Narrative generation service** (`lib/services/narrative-generation-service.ts`) — `generateCategoryNarrative(category, weekOf, layerData)` → expert + public versions. Uses Opus 4.6 Extended Thinking. Elevated+ categories get live generation; Stable categories get template summary.
-3. **Overview API endpoint** (`pages/api/overview/summary.ts`) — Returns all categories with current status, sparkline data, narrative summaries, synchrony counts, status timeline. Aggregates from `weekly_aggregates` + `narratives`.
-4. **Narrative API endpoint** (`pages/api/narratives/[category].ts`) — Returns expert + public narratives for a category. Triggers generation if missing and category is Elevated+.
-5. **Snapshot integration** — Wire narrative generation into `snapshot.ts` for Elevated+ categories.
-6. **Tests** — Unit tests for narrative service (mock AI provider), API endpoint tests.
+1. ~~**`narratives` table**~~ ✅ — Schema: `category`, `weekOf`, `version` ('expert'|'public'), `content` (text), `model` (varchar), `generatedAt` (timestamp). Composite unique on `(category, weekOf, version)`.
+2. ~~**Narrative generation service**~~ ✅ (`lib/services/narrative-generation-service.ts`) — `generateCategoryNarrative(category, weekOf, layerData)` → expert + public versions. Uses Opus 4.6. Elevated+ categories get live generation; Stable categories get template summary.
+3. **Overview API endpoint** (`pages/api/overview/summary.ts`) — Returns all categories with current status, sparkline data, narrative summaries, synchrony counts, status timeline. Aggregates from `weekly_aggregates` + `narratives`. _Note: narrative data served via separate `/api/narratives/overview` route instead._
+4. ~~**Narrative API endpoint**~~ ✅ (`pages/api/narratives/[category].ts`) — Returns expert + public narratives for a category. Triggers generation if missing and category is Elevated+.
+5. ~~**Snapshot integration**~~ ✅ — Wire narrative generation into `snapshot.ts` for Elevated+ categories.
+6. ~~**Tests**~~ ✅ — Unit tests for narrative service (mock AI provider), API endpoint tests.
 
 #### Sprint R4b: Administration Overview Page ✅
 
@@ -626,7 +628,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 3. **Landing page update** — Prominent link to `/overview` from `pages/index.tsx`.
 4. **Tests** — Component tests for new overview components.
 
-**Actual:** Delivered as rewrite of `pages/index.tsx` (not separate route). R4a deferred — narrative generation requires source expansion first. Built: overview-service.ts, `/api/overview/summary`, CategoryDriftHeatmap, StatusTimeline, SynchronyChart, OverviewStatusSummary, ConvergenceIndicator (simplified from ConvergenceMatrix). Shared chart-colors.ts extracted from TrendChart/TrajectoryChart. 28 new tests (1273 total). Bug fix: TrajectoryChart stale `indices` key.
+**Actual:** Delivered as rewrite of `pages/index.tsx` (not separate route). R4a was deferred at time of R4b (narrative generation required source expansion) — now completed as Sprint R4a. Built: overview-service.ts, `/api/overview/summary`, CategoryDriftHeatmap, StatusTimeline, SynchronyChart, OverviewStatusSummary, ConvergenceIndicator (simplified from ConvergenceMatrix). Shared chart-colors.ts extracted from TrendChart/TrajectoryChart. 28 new tests (1273 total). Bug fix: TrajectoryChart stale `indices` key.
 
 #### Sprint R4c: Category Detail Redesign + Keyword Demotion
 
@@ -681,16 +683,18 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 Build in order of category coverage breadth and implementation simplicity:
 
 1. **CourtListener REST API** ✅ (Sprint R-S1a) — Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. RECAP docket search with NOS-code-based category routing. Establishes source integration pattern for subsequent APIs.
-2. **GovInfo/GAO REST API** — Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free key, MODS XML metadata, 36K req/hr.
+2. **GovInfo/GAO REST API** ✅ (Sprint R-S1b) — Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free key, MODS XML metadata, 36K req/hr. `lib/services/govinfo-fetcher.ts` — GAO Reports, Congressional Reports, Public Laws.
 3. **DOJ Press Release JSON API** ✅ (Sprint R-S1a) — Enriches lawEnforcement (360-400/wk). Open JSON API. **Prerequisite:** ~~freeze stable internal taxonomy mapping (10-20 durable buckets) before integration~~ Done: `lib/data/doj-taxonomy.ts` — 15 durable internal buckets.
 4. **LegiScan Bulk API** — Anchor source for elections. `getDataset` session downloads + subject-tag filtering + SAST cross-state tracking. Pending $1K/yr partnership or subscription.
 5. **Coverage health monitoring** ✅ (Sprint R-S1a) — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking. _(Elevated from R-F4 — pipeline break vs. real silence is critical with 7+ source types.)_
 
 **Phase 1b — P1 Enrichment sources (fast-follow or tail of Phase 1):**
 
-6. **IG RSS feeds** (DOD, HHS, DOJ OIG) — Supplements GovInfo for executiveOversight. Easy RSS polling.
-7. **FCC RSS feeds** — Supplementary enrichment for mediaFreedom (~5-10/wk).
-8. **FEC OpenFEC API** — Unique institutional signal for elections (deadlock rate, quorum status). Monthly batch aggregation. Null on non-batch weeks.
+> **Status: Done (Sprint R-S1b).** All 3 items delivered. IG + FCC as RSS signals (no custom fetcher needed), FEC as full fetcher module. 8 new signals across 4 categories. 17 files changed, 36 new tests. See `DECISIONS.md` for retrospective.
+
+6. **IG RSS feeds** ✅ (Sprint R-S1b) (DOD, HHS, DOJ OIG) — Supplements GovInfo for executiveOversight. Added as standard RSS signals. 3 signals: `ig_dod_rss`, `ig_hhs_rss`, `ig_doj_rss`.
+7. **FCC RSS feeds** ✅ (Sprint R-S1b) — Supplementary enrichment for mediaFreedom (~5-10/wk). 2 signals: `fcc_news_rss`, `fcc_actions_rss`.
+8. **FEC OpenFEC API** ✅ (Sprint R-S1b) — `lib/services/fec-fetcher.ts` — Advisory opinions + MURs/enforcement. 2 signals: `fec_advisory_opinions`, `fec_enforcement`. Optional API key for higher rate limits.
 
 **Phase 2 — Historical backfill (~1 week, mostly compute time):**
 
