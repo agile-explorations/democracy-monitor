@@ -27,14 +27,11 @@ interface FecMur {
   commission_votes?: Array<{ action?: string; vote_date?: string }>;
 }
 
-interface FecApiResponse<T> {
-  results?: T[];
-  pagination?: {
-    pages?: number;
-    page?: number;
-    per_page?: number;
-    count?: number;
-  };
+interface FecLegalSearchResponse {
+  advisory_opinions?: FecAdvisoryOpinion[];
+  murs?: FecMur[];
+  total_advisory_opinions?: number;
+  total_murs?: number;
 }
 
 /**
@@ -76,7 +73,11 @@ export function murToContentItem(mur: FecMur): ContentItem {
 
   return {
     title: mur.name || `MUR ${mur.case_no || '(unknown)'}`,
-    link: mur.url || (mur.case_no ? `https://www.fec.gov/data/legal/matter-under-review/${mur.case_no}/` : undefined),
+    link:
+      mur.url ||
+      (mur.case_no
+        ? `https://www.fec.gov/data/legal/matter-under-review/${mur.case_no}/`
+        : undefined),
     pubDate: mur.open_date,
     agency: 'Federal Election Commission',
     summary: summary ? truncate(summary) : undefined,
@@ -89,9 +90,13 @@ function getApiKey(): string | undefined {
   return process.env.FEC_API_KEY;
 }
 
-function buildFecUrl(endpoint: string, apiKey: string, extraParams?: Record<string, string>): string {
-  const qs = new URLSearchParams({ api_key: apiKey, per_page: '20', ...extraParams });
-  return `${FEC_API_BASE}/${endpoint}?${qs.toString()}`;
+function buildSearchUrl(
+  apiKey: string,
+  type: string,
+  extraParams?: Record<string, string>,
+): string {
+  const qs = new URLSearchParams({ api_key: apiKey, type, per_page: '20', ...extraParams });
+  return `${FEC_API_BASE}/legal/search/?${qs.toString()}`;
 }
 
 /** Fetch recent FEC data for the snapshot pipeline. */
@@ -104,46 +109,21 @@ export async function fetchFecRecent(params: {
     return [];
   }
 
+  const url = buildSearchUrl(apiKey, params.endpointType);
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
+  });
+
+  if (!response.ok) {
+    console.error(`[fec] HTTP ${response.status}`);
+    return [];
+  }
+
+  const data: FecLegalSearchResponse = await response.json();
   if (params.endpointType === 'advisory_opinions') {
-    return fetchAdvisoryOpinions(apiKey);
+    return (data.advisory_opinions || []).slice(0, 20).map(aoToContentItem);
   }
-  return fetchMurs(apiKey);
-}
-
-async function fetchAdvisoryOpinions(apiKey: string): Promise<ContentItem[]> {
-  const url = buildFecUrl('legal/advisory_opinions/', apiKey, {
-    sort: '-issue_date',
-  });
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
-  });
-
-  if (!response.ok) {
-    console.error(`[fec] HTTP ${response.status}`);
-    return [];
-  }
-
-  const data: FecApiResponse<FecAdvisoryOpinion> = await response.json();
-  return (data.results || []).slice(0, 20).map(aoToContentItem);
-}
-
-async function fetchMurs(apiKey: string): Promise<ContentItem[]> {
-  const url = buildFecUrl('legal/murs/', apiKey, {
-    sort: '-open_date',
-  });
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
-  });
-
-  if (!response.ok) {
-    console.error(`[fec] HTTP ${response.status}`);
-    return [];
-  }
-
-  const data: FecApiResponse<FecMur> = await response.json();
-  return (data.results || []).slice(0, 20).map(murToContentItem);
+  return (data.murs || []).slice(0, 20).map(murToContentItem);
 }
 
 /** Fetch historical FEC data for the backfill pipeline. */
@@ -160,27 +140,26 @@ export async function fetchFecHistorical(params: {
   }
 
   const { maxPages = 5 } = params;
-  const fromDate = new Date(params.dateFrom);
-  const toDate = new Date(params.dateTo);
 
   if (params.endpointType === 'advisory_opinions') {
-    return fetchAoHistorical(apiKey, fromDate, toDate, maxPages);
+    return fetchAoHistorical(apiKey, params.dateFrom, params.dateTo, maxPages);
   }
-  return fetchMurHistorical(apiKey, fromDate, toDate, maxPages);
+  return fetchMurHistorical(apiKey, params.dateFrom, params.dateTo, maxPages);
 }
 
 async function fetchAoHistorical(
   apiKey: string,
-  fromDate: Date,
-  toDate: Date,
+  dateFrom: string,
+  dateTo: string,
   maxPages: number,
 ): Promise<ContentItem[]> {
   const allItems: ContentItem[] = [];
 
   for (let page = 1; page <= maxPages; page++) {
-    const url = buildFecUrl('legal/advisory_opinions/', apiKey, {
-      sort: '-issue_date',
-      page: String(page),
+    const url = buildSearchUrl(apiKey, 'advisory_opinions', {
+      ao_min_issue_date: dateFrom,
+      ao_max_issue_date: dateTo,
+      per_page: '100',
     });
 
     const response = await fetch(url, {
@@ -188,26 +167,19 @@ async function fetchAoHistorical(
     });
 
     if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on page ${page}`);
+      console.error(`[fec] HTTP ${response.status} on AO page ${page}`);
       break;
     }
 
-    const data: FecApiResponse<FecAdvisoryOpinion> = await response.json();
-    const results = data.results || [];
+    const data: FecLegalSearchResponse = await response.json();
+    const results = data.advisory_opinions || [];
     if (results.length === 0) break;
 
-    const filtered = results.filter((ao) => {
-      const d = ao.issue_date ? new Date(ao.issue_date) : null;
-      return d && d >= fromDate && d <= toDate;
-    });
+    allItems.push(...results.map(aoToContentItem));
 
-    allItems.push(...filtered.map(aoToContentItem));
-
-    const lastDate = results[results.length - 1]?.issue_date;
-    if (lastDate && new Date(lastDate) < fromDate) break;
-
-    if (!data.pagination?.pages || page >= data.pagination.pages) break;
-    await sleep(RATE_LIMIT_DELAY_MS);
+    // AO date filtering is server-side, so no need for client-side filtering
+    // The API doesn't support cursor pagination for legal/search — single page per date range
+    break;
   }
 
   return allItems;
@@ -215,16 +187,17 @@ async function fetchAoHistorical(
 
 async function fetchMurHistorical(
   apiKey: string,
-  fromDate: Date,
-  toDate: Date,
+  dateFrom: string,
+  dateTo: string,
   maxPages: number,
 ): Promise<ContentItem[]> {
   const allItems: ContentItem[] = [];
 
   for (let page = 1; page <= maxPages; page++) {
-    const url = buildFecUrl('legal/murs/', apiKey, {
-      sort: '-open_date',
-      page: String(page),
+    const url = buildSearchUrl(apiKey, 'murs', {
+      case_min_open_date: dateFrom,
+      case_max_open_date: dateTo,
+      per_page: '100',
     });
 
     const response = await fetch(url, {
@@ -232,27 +205,20 @@ async function fetchMurHistorical(
     });
 
     if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on page ${page}`);
+      console.error(`[fec] HTTP ${response.status} on MUR page ${page}`);
       break;
     }
 
-    const data: FecApiResponse<FecMur> = await response.json();
-    const results = data.results || [];
+    const data: FecLegalSearchResponse = await response.json();
+    const results = data.murs || [];
     if (results.length === 0) break;
 
-    const filtered = results.filter((mur) => {
-      const d = mur.open_date ? new Date(mur.open_date) : null;
-      return d && d >= fromDate && d <= toDate;
-    });
+    allItems.push(...results.map(murToContentItem));
 
-    allItems.push(...filtered.map(murToContentItem));
-
-    const lastDate = results[results.length - 1]?.open_date;
-    if (lastDate && new Date(lastDate) < fromDate) break;
-
-    if (!data.pagination?.pages || page >= data.pagination.pages) break;
-    await sleep(RATE_LIMIT_DELAY_MS);
+    // Server-side date filtering — single page per date range
+    break;
   }
 
+  await sleep(RATE_LIMIT_DELAY_MS);
   return allItems;
 }
