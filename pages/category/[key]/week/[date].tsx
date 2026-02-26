@@ -180,6 +180,8 @@ export default function WeekDetailPage() {
             baselineAvg={baselineAvg}
             baselineStdDev={baselineStdDev}
             highlightWeek={String(date)}
+            width={800}
+            height={120}
           />
         </div>
       )}

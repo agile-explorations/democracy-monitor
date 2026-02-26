@@ -1,6 +1,6 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { documentScores, weeklyAggregates } from '@/lib/db/schema';
+import { documents, documentScores, weeklyAggregates } from '@/lib/db/schema';
 import {
   AUTHORITY_COUNT_MAX,
   CLASS_MULTIPLIERS,
@@ -118,37 +118,40 @@ export async function getDocumentExplanation(url: string): Promise<DocumentExpla
   });
 }
 
-/** Explain a week's aggregate for a category, including top N documents. */
-export async function getWeekExplanation(
+/** Fetch top N scored documents for a category+week, joining documents table for titles. */
+async function fetchTopScoredDocuments(
   category: string,
-  weekOf?: string,
-  topN: number = 5,
-): Promise<WeekExplanation | null> {
-  if (!isDbAvailable()) return null;
-
-  const resolvedWeek = weekOf ?? getWeekOfDate();
+  weekOf: string,
+  topN: number,
+): Promise<DocumentExplanation[]> {
   const db = getDb();
-
-  // Fetch weekly aggregate
-  const [agg] = await db
-    .select()
-    .from(weeklyAggregates)
-    .where(and(eq(weeklyAggregates.category, category), eq(weeklyAggregates.weekOf, resolvedWeek)))
-    .limit(1);
-
-  if (!agg) return null;
-
-  // Fetch top N documents by finalScore for this category+week
-  const topDocs = await db
-    .select()
+  const rows = await db
+    .select({
+      url: documentScores.url,
+      title: sql<string>`${documents.title}`.as('doc_title'),
+      documentClass: documentScores.documentClass,
+      classMultiplier: documentScores.classMultiplier,
+      severityScore: documentScores.severityScore,
+      finalScore: documentScores.finalScore,
+      captureCount: documentScores.captureCount,
+      driftCount: documentScores.driftCount,
+      warningCount: documentScores.warningCount,
+      matches: documentScores.matches,
+      suppressed: documentScores.suppressed,
+    })
     .from(documentScores)
-    .where(and(eq(documentScores.category, category), eq(documentScores.weekOf, resolvedWeek)))
+    .leftJoin(
+      documents,
+      and(eq(documentScores.url, documents.url), eq(documentScores.category, documents.category)),
+    )
+    .where(and(eq(documentScores.category, category), eq(documentScores.weekOf, weekOf)))
     .orderBy(desc(documentScores.finalScore))
     .limit(topN);
 
-  const topDocuments = topDocs.map((row) =>
+  return rows.map((row) =>
     explainDocumentScore({
       url: row.url,
+      title: row.title ?? undefined,
       documentClass: row.documentClass,
       classMultiplier: row.classMultiplier,
       severityScore: row.severityScore,
@@ -160,6 +163,28 @@ export async function getWeekExplanation(
       suppressed: row.suppressed,
     }),
   );
+}
+
+/** Explain a week's aggregate for a category, including top N documents. */
+export async function getWeekExplanation(
+  category: string,
+  weekOf?: string,
+  topN: number = 5,
+): Promise<WeekExplanation | null> {
+  if (!isDbAvailable()) return null;
+
+  const resolvedWeek = weekOf ?? getWeekOfDate();
+  const db = getDb();
+
+  const [agg] = await db
+    .select()
+    .from(weeklyAggregates)
+    .where(and(eq(weeklyAggregates.category, category), eq(weeklyAggregates.weekOf, resolvedWeek)))
+    .limit(1);
+
+  if (!agg) return null;
+
+  const topDocuments = await fetchTopScoredDocuments(category, resolvedWeek, topN);
 
   return {
     category,
