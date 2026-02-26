@@ -3,6 +3,7 @@
  *
  * Usage: npx tsx scripts/backfill-source-origin.ts [--dry-run]
  */
+// @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';

@@ -10,6 +10,37 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1a: Foundation + CourtListener + DOJ Integration ✅
+
+**Status: Done.** Added source-origin tracking to documents table, built CourtListener REST API v4 and DOJ Press Release JSON fetchers, created 2 new categories (lawEnforcement, civilLiberties — 13 total), extended functional classifier with enforcement_action and judicial_action buckets, added coverage health monitoring with silence detection. Backfilled 132,260 existing documents with source_origin values. 37 files changed, 3836 lines added. 61 new tests (1366 total).
+
+**Scope vs. Actual:**
+
+- Planned: All 16 plan items (types, schema, scoring constants, DOJ taxonomy, CourtListener fetcher, DOJ fetcher, functional classifier, document store, FR/rhetoric fetcher updates, baseline distributions, feed fetcher dispatch, cache keys, new categories + rules, coverage health, backfill pipeline, backfill script, ~54 tests)
+- Actual: All delivered. Test count slightly higher than estimated (61 vs ~54). Backfill-fetchers.ts extracted as additional file to stay under ESLint max-lines (300) on backfill.ts.
+
+**Key Decisions:**
+
+1. **Pseudo-protocol signal URLs** — CourtListener signals use `courtlistener://recap?nos=440` and DOJ signals use `doj://press?component=criminal-division`. Parsed by respective fetchers. Consistent with existing FR signals using `/api/federal-register?agency=...` pattern but clearer about being internal routing, not actual HTTP endpoints.
+2. **DOJ frozen taxonomy** — `lib/data/doj-taxonomy.ts` maps DOJ's mutable topic/component labels to 15 stable internal buckets (e.g., `civil_rights_enforcement`, `criminal_prosecution`). DOJ reorganizes labels periodically — mapping to durable buckets prevents taxonomy changes from appearing as structural anomalies.
+3. **lawEnforcement supplemental crossfeed terms** — lawEnforcement category has no FR signals with `term=` params (all signals are CourtListener/DOJ). Added 5 supplemental terms to `SUPPLEMENTAL_TERMS` in rhetoric-crossfeed.ts so rhetoric cross-feed can route to this category. Same pattern as executiveActions.
+4. **Backfill-fetchers extraction** — `fetchWeekItemsFr()`, `fetchWeekItemsCourtListener()`, `fetchWeekItemsDoj()` extracted from backfill.ts to `lib/cron/backfill-fetchers.ts` to keep backfill.ts under 300 lines. Clean module boundary — fetchers handle signal-type-specific API calls, backfill.ts handles orchestration.
+5. **New categories as Experimental** — Both lawEnforcement and civilLiberties added to `category-maturity.ts` as `'Experimental'`. No baseline data yet — will be computed after historical backfill in R-S1 Phase 2.
+6. **Conservative volume thresholds** — lawEnforcement: 50/50/100, civilLiberties: 30/30/75. Higher than established categories because new sources may have different volume patterns. Will calibrate after backfill.
+
+**Lessons Learned:**
+
+1. **Category count ripples** — Adding 2 categories broke 4 existing test files that hardcoded `11` (overview-service, rhetoric-crossfeed, categories-summary, category-maturity). Always search for the old count in tests when adding categories.
+2. **ESLint import/order with `require()` at file bottom** — `const { loadEnvConfig } = require('@next/env')` at the bottom of scripts triggers ESLint import/order warning. Must use ES `import` at the top. Already in MEMORY.md but easy to forget for new scripts.
+3. **Backfill pipeline signal grouping** — The multi-source backfill groups signals by type (fr, cl, doj), fetches from each in parallel per week, then merges items. This pattern scales to additional sources without modifying the core loop.
+
+**Spec Deviations:**
+
+- Plan listed `sourceConvergence?: DimensionScore` as optional on StructuralScore dimensions — this was already present from Sprint R2. No change needed.
+- Plan listed `enforcement_action` and `judicial_action` as "NEW" functional buckets — these were also already present from Sprint R2/R3 (added in functional-classifier.ts). The sprint extended their Tier 1 classification coverage rather than creating them.
+
+---
+
 ## Sprint R4c: Category Detail Redesign + Keyword Demotion + Methodology Rewrite ✅
 
 **Status: Done.** Surfaced three-layer convergence data on category detail and week detail pages. Reframed keywords as annotations. Added click-to-navigate on overview charts. Rewrote methodology page. 6 new components, 4 new test files (32 new tests, 1305 total). 23 files changed, 1371 lines added.

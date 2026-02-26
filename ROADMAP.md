@@ -672,15 +672,19 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Reference:** `ARCHITECTURE_PROPOSAL.md` §Source Expansion, §Layer 1 Multi-Source Structural Analysis, §Sprint R-S1. `SPIKE_FINDINGS.md` for source details. `TEST_SPECIFICATION.md` for ship/no-ship gates.
 
+#### Sprint R-S1a: Foundation + CourtListener + DOJ Integration ✅
+
+> **Status: Done.** Schema foundation (`source_origin` column + migration), CourtListener REST API v4 fetcher, DOJ Press Release JSON fetcher, DOJ frozen taxonomy (15 internal buckets), 2 new categories (lawEnforcement, civilLiberties — 13 total), coverage health monitoring with silence detection, multi-source backfill pipeline extensions, source-origin backfill of 132,260 existing documents. 37 files changed, 61 new tests (1366 total). See `DECISIONS.md` for retrospective.
+
 **Phase 1 — P0 Ingestion pipelines + coverage health (~2 weeks, parallelizable):**
 
 Build in order of category coverage breadth and implementation simplicity:
 
-1. **CourtListener REST API** — Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. RECAP docket search with NOS-code-based category routing. Establishes source integration pattern for subsequent APIs.
+1. **CourtListener REST API** ✅ (Sprint R-S1a) — Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. RECAP docket search with NOS-code-based category routing. Establishes source integration pattern for subsequent APIs.
 2. **GovInfo/GAO REST API** — Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free key, MODS XML metadata, 36K req/hr.
-3. **DOJ Press Release JSON API** — Enriches lawEnforcement (360-400/wk). Open JSON API. **Prerequisite:** freeze stable internal taxonomy mapping (10-20 durable buckets) before integration to prevent DOJ taxonomy changes from appearing as structural anomalies.
+3. **DOJ Press Release JSON API** ✅ (Sprint R-S1a) — Enriches lawEnforcement (360-400/wk). Open JSON API. **Prerequisite:** ~~freeze stable internal taxonomy mapping (10-20 durable buckets) before integration~~ Done: `lib/data/doj-taxonomy.ts` — 15 durable internal buckets.
 4. **LegiScan Bulk API** — Anchor source for elections. `getDataset` session downloads + subject-tag filtering + SAST cross-state tracking. Pending $1K/yr partnership or subscription.
-5. **Coverage health monitoring** — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking. _(Elevated from R-F4 — pipeline break vs. real silence is critical with 7+ source types.)_
+5. **Coverage health monitoring** ✅ (Sprint R-S1a) — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking. _(Elevated from R-F4 — pipeline break vs. real silence is critical with 7+ source types.)_
 
 **Phase 1b — P1 Enrichment sources (fast-follow or tail of Phase 1):**
 
