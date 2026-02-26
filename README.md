@@ -8,11 +8,11 @@ A real-time dashboard that monitors signals of executive-power centralization ac
 
 The dashboard tracks **13 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, and civil liberties — and assigns each a convergence status:
 
-| Status                | Meaning                                                                     |
-| --------------------- | --------------------------------------------------------------------------- |
-| **Stable**            | No layers elevated — institutions functioning normally                      |
-| **Elevated**          | One detection layer flagging anomalies — worth monitoring                   |
-| **Divergent**         | Two or more independent layers flag anomalies — multiple methods see something unusual |
+| Status                | Meaning                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Stable**            | No layers elevated — institutions functioning normally                                                     |
+| **Elevated**          | One detection layer flagging anomalies — worth monitoring                                                  |
+| **Divergent**         | Two or more independent layers flag anomalies — multiple methods see something unusual                     |
 | **Confirmed Concern** | Two or more layers elevated AND high AI concern rate — independent methods converge on concerning findings |
 
 No single detection layer can escalate a category beyond Elevated on its own. Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
@@ -59,16 +59,16 @@ pnpm start
 
 All optional except `DATABASE_URL` for persistence features. See [.env.example](.env.example) for the full list.
 
-| Variable                 | Required        | Description                                        |
-| ------------------------ | --------------- | -------------------------------------------------- |
-| `DATABASE_URL`           | For persistence | PostgreSQL connection string                       |
-| `REDIS_URL`              | No              | Redis for caching (falls back to in-memory)        |
-| `OPENAI_API_KEY`         | No              | Enables AI assessment (Layer 2 Pass 1)             |
-| `ANTHROPIC_API_KEY`      | No              | Enables AI assessment (Layer 2 Pass 2)             |
-| `GOVINFO_API_KEY`        | No              | Enables GovInfo/GAO legislative tracking           |
-| `COURTLISTENER_API_TOKEN`| No              | Enables CourtListener court docket ingestion       |
-| `FEC_API_KEY`            | No              | Enables FEC election enforcement tracking          |
-| `ALLOWED_PROXY_HOSTS`    | No              | Comma-separated hostname whitelist for proxy       |
+| Variable                  | Required        | Description                                  |
+| ------------------------- | --------------- | -------------------------------------------- |
+| `DATABASE_URL`            | For persistence | PostgreSQL connection string                 |
+| `REDIS_URL`               | No              | Redis for caching (falls back to in-memory)  |
+| `OPENAI_API_KEY`          | No              | Enables AI assessment (Layer 2 Pass 1)       |
+| `ANTHROPIC_API_KEY`       | No              | Enables AI assessment (Layer 2 Pass 2)       |
+| `GOVINFO_API_KEY`         | No              | Enables GovInfo/GAO legislative tracking     |
+| `COURTLISTENER_API_TOKEN` | No              | Enables CourtListener court docket ingestion |
+| `FEC_API_KEY`             | No              | Enables FEC election enforcement tracking    |
+| `ALLOWED_PROXY_HOSTS`     | No              | Comma-separated hostname whitelist for proxy |
 
 ## Architecture
 
