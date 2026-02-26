@@ -4,6 +4,7 @@ import { sleep } from '@/lib/utils/async';
 const DOJ_API_BASE = 'https://www.justice.gov/api/v1/press_releases.json';
 const POLITENESS_DELAY_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
+const PAGE_SIZE = 50;
 const MAX_SUMMARY_LENGTH = 800;
 
 interface DojNamedRef {
@@ -116,20 +117,70 @@ function parseUnixDate(timestamp: string | undefined): Date | null {
   return new Date(parseInt(timestamp) * 1000);
 }
 
-/** Check if more pages remain based on API metadata. */
-function hasMorePages(metadata: DojApiResponse['metadata'], currentPage: number): boolean {
-  const resultset = metadata?.resultset;
-  if (!resultset) return false;
-  const totalPages = Math.ceil(parseInt(resultset.count) / resultset.pagesize);
-  return currentPage < totalPages - 1;
-}
-
-function buildDojUrl(params: { page?: number }): string {
+function buildDojUrl(page: number): string {
   const qs = new URLSearchParams();
   qs.set('sort_order', 'DESC');
-  qs.set('pagesize', '50');
-  if (params.page) qs.set('page', String(params.page));
+  qs.set('pagesize', String(PAGE_SIZE));
+  if (page > 0) qs.set('page', String(page));
   return `${DOJ_API_BASE}?${qs.toString()}`;
+}
+
+/** Fetch a single page from the DOJ API, returning parsed data and updated cookies. */
+async function fetchDojPage(
+  page: number,
+  cookies: string,
+): Promise<{ data: DojApiResponse; cookies: string } | null> {
+  const url = buildDojUrl(page);
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'User-Agent': 'DemocracyMonitor/1.0 (backfill)',
+  };
+  if (cookies) headers['Cookie'] = cookies;
+
+  const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  if (!response.ok) {
+    console.error(`[doj] HTTP ${response.status} on page ${page}`);
+    return null;
+  }
+
+  const newCookies = parseCookies(response.headers.get('set-cookie')) || cookies;
+  const data: DojApiResponse = await response.json();
+  return { data, cookies: newCookies };
+}
+
+/** Get the first release date on a given page (DESC order = newest first). */
+function firstDateOnPage(results: DojPressRelease[]): Date | null {
+  return results.length > 0 ? parseUnixDate(results[0].date) : null;
+}
+
+/**
+ * Binary search for the page where `targetDate` first appears.
+ * Results are DESC-sorted, so higher page numbers = older dates.
+ * Returns the page number where results are at or just after targetDate.
+ */
+async function findStartPage(targetDate: Date, totalPages: number): Promise<number> {
+  let lo = 0;
+  let hi = totalPages - 1;
+  let cookies = '';
+
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    await sleep(POLITENESS_DELAY_MS);
+    const result = await fetchDojPage(mid, cookies);
+    if (!result) return lo;
+
+    cookies = result.cookies;
+    const pageDate = firstDateOnPage(result.data.results || []);
+    if (!pageDate) return lo;
+
+    // If the first item on this page is newer than target, we need a higher page (older dates)
+    if (pageDate > targetDate) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
 }
 
 /** Fetch recent DOJ press releases for the snapshot pipeline. */
@@ -137,7 +188,7 @@ export async function fetchDojRecent(params: {
   component?: string;
   topic?: string;
 }): Promise<ContentItem[]> {
-  const url = buildDojUrl({});
+  const url = buildDojUrl(0);
 
   const response = await fetch(url, {
     headers: {
@@ -168,30 +219,37 @@ export async function fetchDojHistorical(params: {
   dateTo: string;
   maxPages?: number;
 }): Promise<ContentItem[]> {
-  const { maxPages = 10 } = params;
-  const allItems: ContentItem[] = [];
+  const { maxPages = 50 } = params;
   const fromDate = new Date(params.dateFrom);
   const toDate = new Date(params.dateTo);
-  let cookies = '';
 
-  for (let page = 0; page < maxPages; page++) {
-    const url = buildDojUrl({ page });
-    const headers: Record<string, string> = {
-      Accept: 'application/json',
-      'User-Agent': 'DemocracyMonitor/1.0 (backfill)',
-    };
-    if (cookies) headers['Cookie'] = cookies;
+  // Fetch page 0 to get total count for binary search
+  const initial = await fetchDojPage(0, '');
+  if (!initial) return [];
 
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-    if (!response.ok) {
-      console.error(`[doj] HTTP ${response.status} on page ${page}`);
-      break;
-    }
+  const totalCount = parseInt(initial.data.metadata?.resultset?.count || '0');
+  if (totalCount === 0) return [];
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-    cookies = parseCookies(response.headers.get('set-cookie')) || cookies;
+  // Binary search for the page containing dateTo (start of our range in DESC order)
+  console.log(`  [doj] Binary searching ${totalPages} pages for ${params.dateTo}...`);
+  const startPage = await findStartPage(toDate, totalPages);
+  console.log(`  [doj] Starting at page ${startPage}`);
 
-    const data: DojApiResponse = await response.json();
-    const releases = data.results || [];
+  // Paginate forward from startPage (increasing page = older dates)
+  const allItems: ContentItem[] = [];
+  let { cookies } = initial;
+
+  for (let i = 0; i < maxPages; i++) {
+    const page = startPage + i;
+    if (page >= totalPages) break;
+
+    await sleep(POLITENESS_DELAY_MS);
+    const result = await fetchDojPage(page, cookies);
+    if (!result) break;
+
+    cookies = result.cookies;
+    const releases = result.data.results || [];
     if (releases.length === 0) break;
 
     const filtered = releases.filter((r) => {
@@ -204,10 +262,8 @@ export async function fetchDojHistorical(params: {
     // With DESC sort, stop when last item's date is before our range
     const lastDate = parseUnixDate(releases[releases.length - 1]?.date);
     if (lastDate && lastDate < fromDate) break;
-
-    if (!hasMorePages(data.metadata, page)) break;
-    await sleep(POLITENESS_DELAY_MS);
   }
 
+  console.log(`  [doj] Found ${allItems.length} items in range`);
   return allItems;
 }
