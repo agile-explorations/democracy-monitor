@@ -239,6 +239,7 @@ export const SOURCE_EXPECTED_CADENCE_DAYS: Record<string, number> = {
   whitehouse: 1,
   gdelt: 1,
   govinfo: 3,
+  fec: 7,
   rss: 7,
 };
 

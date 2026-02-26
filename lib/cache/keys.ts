@@ -11,4 +11,6 @@ export const CacheKeys = {
   retrieval: (category: string, queryHash: string) => `rag:${category}:${queryHash}`,
   courtlistener: (queryKey: string) => `cl:${queryKey}`,
   doj: (queryKey: string) => `doj:${queryKey}`,
+  govinfo: (queryKey: string) => `gi:${queryKey}`,
+  fec: (queryKey: string) => `fec:${queryKey}`,
 } as const;

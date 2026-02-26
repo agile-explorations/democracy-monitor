@@ -25,6 +25,8 @@ describe('CATEGORIES', () => {
       'tracker_scrape',
       'courtlistener',
       'doj_json',
+      'govinfo',
+      'fec_json',
     ];
     for (const cat of CATEGORIES) {
       for (const signal of cat.signals) {
@@ -78,5 +80,36 @@ describe('CATEGORIES', () => {
     expect(types).toContain('courtlistener');
     expect(types).toContain('doj_json');
     expect(types).toContain('federal_register');
+  });
+
+  it('executiveOversight has govinfo and rss (IG) signal types', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'executiveOversight');
+    expect(cat).toBeDefined();
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('govinfo');
+    expect(types).toContain('rss');
+    const ids = cat!.signals.map((s) => s.id);
+    expect(ids).toContain('gi_gao_reports');
+    expect(ids).toContain('rss_dod_oig');
+    expect(ids).toContain('rss_hhs_oig');
+    expect(ids).toContain('rss_doj_oig');
+  });
+
+  it('elections has fec_json signal type', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'elections');
+    expect(cat).toBeDefined();
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('fec_json');
+    const ids = cat!.signals.map((s) => s.id);
+    expect(ids).toContain('fec_advisory_opinions');
+    expect(ids).toContain('fec_enforcement');
+  });
+
+  it('mediaFreedom has FCC RSS signals', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'mediaFreedom');
+    expect(cat).toBeDefined();
+    const ids = cat!.signals.map((s) => s.id);
+    expect(ids).toContain('rss_fcc_media');
+    expect(ids).toContain('rss_fcc_enforcement');
   });
 });

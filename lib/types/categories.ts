@@ -5,7 +5,9 @@ export type SignalType =
   | 'federal_register'
   | 'tracker_scrape'
   | 'courtlistener'
-  | 'doj_json';
+  | 'doj_json'
+  | 'govinfo'
+  | 'fec_json';
 
 export type SourceOrigin =
   | 'federal_register'

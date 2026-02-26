@@ -188,6 +188,12 @@ const GOVERNMENT_DOC_TYPES = new Set([
   'court_opinion',
   'docket_entry',
   'press_release',
+  'gao_report',
+  'congressional_report',
+  'public_law',
+  'advisory_opinion',
+  'enforcement_action',
+  'admin_fine',
 ]);
 
 /**

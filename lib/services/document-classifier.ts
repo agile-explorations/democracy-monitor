@@ -28,6 +28,8 @@ const SOURCE_CLASS_PATTERNS: Array<{ pattern: string; cls: DocumentClass }> = [
   { pattern: 'department of defense', cls: 'press_release' },
   { pattern: 'dod', cls: 'press_release' },
   { pattern: 'white house', cls: 'press_release' },
+  { pattern: 'federal election commission', cls: 'report' },
+  { pattern: 'fec', cls: 'report' },
 ];
 
 export function classifyDocument(item: ContentItem): DocumentClass {
@@ -42,6 +44,13 @@ export function classifyDocument(item: ContentItem): DocumentClass {
   if (item.type && FR_TYPE_MAP[item.type]) {
     return FR_TYPE_MAP[item.type];
   }
+
+  // Direct type mappings for non-FR sources
+  if (item.type === 'court_opinion') return 'court_opinion';
+  if (item.type === 'press_release') return 'press_release';
+  if (item.type === 'gao_report' || item.type === 'congressional_report') return 'report';
+  if (item.type === 'advisory_opinion' || item.type === 'enforcement_action') return 'report';
+  if (item.type === 'admin_fine') return 'report';
 
   const title = (item.title || '').toLowerCase();
   if (title.includes('executive order')) return 'executive_order';

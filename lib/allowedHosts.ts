@@ -31,5 +31,11 @@ export function getAllowedHosts(): string[] {
     'news.google.com',
     'api.govinfo.gov',
     'brightlinewatch.org',
+    'api.open.fec.gov',
+    'www.fec.gov',
+    'www.dodig.mil',
+    'oig.hhs.gov',
+    'oig.justice.gov',
+    'www.fcc.gov',
   ];
 }

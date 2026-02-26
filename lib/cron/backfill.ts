@@ -3,7 +3,9 @@ import type { AiOptions } from '@/lib/cron/assess-week';
 import {
   fetchWeekItemsCourtListener,
   fetchWeekItemsDoj,
+  fetchWeekItemsFec,
   fetchWeekItemsFr,
+  fetchWeekItemsGovInfo,
 } from '@/lib/cron/backfill-fetchers';
 import { CATEGORIES } from '@/lib/data/categories';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -40,6 +42,8 @@ async function processBackfillWeek(
     fr: Array<{ url: string; type: string }>;
     cl: Array<{ url: string; type: string }>;
     doj: Array<{ url: string; type: string }>;
+    gi: Array<{ url: string; type: string }>;
+    fec: Array<{ url: string; type: string }>;
   },
   categoryKey: string,
   aiOptions: AiOptions,
@@ -53,6 +57,12 @@ async function processBackfillWeek(
   }
   if (signalGroups.doj.length > 0) {
     weekItems.push(...(await fetchWeekItemsDoj(signalGroups.doj, week, categoryKey)));
+  }
+  if (signalGroups.gi.length > 0) {
+    weekItems.push(...(await fetchWeekItemsGovInfo(signalGroups.gi, week, categoryKey)));
+  }
+  if (signalGroups.fec.length > 0) {
+    weekItems.push(...(await fetchWeekItemsFec(signalGroups.fec, week, categoryKey)));
   }
   const dedupedItems = deduplicateByUrl(weekItems);
   if (dedupedItems.length === 0) return { docs: 0, snapshots: 0 };
@@ -91,8 +101,15 @@ async function backfillCategory(
     fr: signals.filter((s) => s.type === 'federal_register'),
     cl: signals.filter((s) => s.type === 'courtlistener'),
     doj: signals.filter((s) => s.type === 'doj_json'),
+    gi: signals.filter((s) => s.type === 'govinfo'),
+    fec: signals.filter((s) => s.type === 'fec_json'),
   };
-  const totalSignals = signalGroups.fr.length + signalGroups.cl.length + signalGroups.doj.length;
+  const totalSignals =
+    signalGroups.fr.length +
+    signalGroups.cl.length +
+    signalGroups.doj.length +
+    signalGroups.gi.length +
+    signalGroups.fec.length;
 
   if (totalSignals === 0) {
     console.log(`  [${categoryKey}] No fetchable signals — skipping`);

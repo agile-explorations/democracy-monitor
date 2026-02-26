@@ -106,6 +106,9 @@ function classifyByType(doc: ClassifiableDocument): FunctionalBucket | null {
   if (sourceType === 'rhetoric') return 'news_rhetoric';
   if (sourceType === 'court_opinion' || sourceType === 'docket_entry') return 'judicial_action';
   if (sourceType === 'press_release') return 'enforcement_action';
+  if (sourceType === 'gao_report' || sourceType === 'congressional_report') return 'administrative_procedure';
+  if (sourceType === 'advisory_opinion') return 'administrative_procedure';
+  if (sourceType === 'enforcement_action' || sourceType === 'admin_fine') return 'enforcement_action';
 
   return null;
 }

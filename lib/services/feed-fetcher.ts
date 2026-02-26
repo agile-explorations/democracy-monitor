@@ -9,6 +9,8 @@ import {
   parseCourtListenerParams,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDojRecent, parseDojSignalParams } from '@/lib/services/doj-fetcher';
+import { fetchFecRecent, parseFecParams } from '@/lib/services/fec-fetcher';
+import { fetchGovInfoRecent, parseGovInfoParams } from '@/lib/services/govinfo-fetcher';
 import type { Category, Signal } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 
@@ -96,6 +98,12 @@ async function fetchSignalInner(signal: Signal): Promise<FeedItem[]> {
   if (signal.type === 'doj_json') {
     return await fetchDojJsonSignal(signal);
   }
+  if (signal.type === 'govinfo') {
+    return await fetchGovInfoSignal(signal);
+  }
+  if (signal.type === 'fec_json') {
+    return await fetchFecJsonSignal(signal);
+  }
   if (signal.type === 'rss') {
     return await fetchRss(signal);
   }
@@ -127,6 +135,30 @@ async function fetchDojJsonSignal(signal: Signal): Promise<FeedItem[]> {
 
   const params = parseDojSignalParams(signal.url);
   const items = (await fetchDojRecent(params)) as FeedItem[];
+
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
+  return items;
+}
+
+async function fetchGovInfoSignal(signal: Signal): Promise<FeedItem[]> {
+  const cacheKey = CacheKeys.govinfo(signal.url);
+  const cached = await cacheGet<FeedItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const params = parseGovInfoParams(signal.url);
+  const items = (await fetchGovInfoRecent(params)) as FeedItem[];
+
+  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
+  return items;
+}
+
+async function fetchFecJsonSignal(signal: Signal): Promise<FeedItem[]> {
+  const cacheKey = CacheKeys.fec(signal.url);
+  const cached = await cacheGet<FeedItem[]>(cacheKey);
+  if (cached) return cached;
+
+  const params = parseFecParams(signal.url);
+  const items = (await fetchFecRecent(params)) as FeedItem[];
 
   await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
