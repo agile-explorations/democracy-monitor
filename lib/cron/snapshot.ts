@@ -19,6 +19,7 @@ import { enrichWithLayerScores } from '@/lib/services/layer-scoring';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
+import { generateNarrativesForWeek } from '@/lib/services/narrative-pipeline';
 import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
@@ -31,7 +32,37 @@ import {
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
+import type { ContentItem } from '@/lib/types/assessment';
 import { toDateString } from '@/lib/utils/date-utils';
+
+/** Run Layer 2 AI assessment + weekly aggregate computation. */
+async function runLayersAndAggregate(
+  items: ContentItem[],
+  category: string,
+  weekOf: string,
+): Promise<void> {
+  let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
+  try {
+    const { runLayer2Assessment } = await import('@/lib/services/layer2-orchestrator');
+    aiSummary = await runLayer2Assessment(items, category, weekOf);
+    if (aiSummary) {
+      console.log(
+        `[snapshot]   Layer 2: ${aiSummary.flagCount}/${aiSummary.totalDocuments} flagged, ` +
+          `concern rate ${(aiSummary.concernRate * 100).toFixed(1)}%`,
+      );
+    }
+  } catch (err) {
+    console.warn(`[snapshot] Layer 2 failed for ${category}:`, err);
+  }
+
+  try {
+    const agg = await computeWeeklyAggregate(category, weekOf);
+    const enriched = await enrichWithLayerScores(agg, aiSummary);
+    await storeWeeklyAggregate(enriched);
+  } catch (err) {
+    console.error(`[snapshot] Weekly aggregate failed for ${category}:`, err);
+  }
+}
 
 async function snapshotCategory(
   cat: (typeof CATEGORIES)[number],
@@ -71,26 +102,7 @@ async function snapshotCategory(
   console.log(`[snapshot]   Scored ${docScores.length} documents`);
 
   const weekOf = getWeekOfDate();
-
-  // Layer 2: AI two-pass assessment (runs inline, not fire-and-forget)
-  let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
-  try {
-    const { runLayer2Assessment } = await import('@/lib/services/layer2-orchestrator');
-    aiSummary = await runLayer2Assessment(items, cat.key, weekOf);
-    if (aiSummary) {
-      console.log(
-        `[snapshot]   Layer 2: ${aiSummary.flagCount}/${aiSummary.totalDocuments} flagged, ` +
-          `concern rate ${(aiSummary.concernRate * 100).toFixed(1)}%`,
-      );
-    }
-  } catch (err) {
-    console.warn(`[snapshot] Layer 2 failed for ${cat.key}:`, err);
-  }
-
-  computeWeeklyAggregate(cat.key, weekOf)
-    .then((agg) => enrichWithLayerScores(agg, aiSummary))
-    .then((agg) => storeWeeklyAggregate(agg))
-    .catch((err) => console.error(`[snapshot] Weekly aggregate failed for ${cat.key}:`, err));
+  await runLayersAndAggregate(items, cat.key, weekOf);
 
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
 }
@@ -172,6 +184,14 @@ export async function runSnapshots(): Promise<void> {
 
   await snapshotRhetoric();
   await snapshotLegislative();
+
+  // Generate narratives for Elevated+ categories (after all aggregates are computed)
+  try {
+    const weekOf = getWeekOfDate();
+    await generateNarrativesForWeek(weekOf);
+  } catch (err) {
+    console.error('[snapshot] Narrative generation failed:', err);
+  }
 
   const elapsed = Date.now() - start;
   console.log(`[snapshot] Complete in ${elapsed}ms: ${succeeded} succeeded, ${failed} failed`);

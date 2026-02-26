@@ -91,3 +91,10 @@ export type {
   ValidationSummary,
 } from './validation';
 export { VALIDATION_SOURCES } from './validation';
+export type {
+  NarrativeVersion,
+  NarrativeLayerData,
+  NarrativeResult,
+  StoredNarrative,
+  OverviewNarrativeInput,
+} from './narrative';

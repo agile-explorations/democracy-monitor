@@ -155,6 +155,13 @@
       "when": 1772058596065,
       "tag": "0021_funny_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1772072977389,
+      "tag": "0022_normal_green_goblin",
+      "breakpoints": true
     }
   ]
 }

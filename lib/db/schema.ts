@@ -449,3 +449,21 @@ export const validationDataPoints = pgTable(
     index('idx_validation_date').on(table.date),
   ],
 );
+
+export const narratives = pgTable(
+  'narratives',
+  {
+    id: serial('id').primaryKey(),
+    category: varchar('category', { length: 50 }).notNull(),
+    weekOf: date('week_of').notNull(),
+    version: varchar('version', { length: 20 }).notNull(),
+    content: text('content').notNull(),
+    model: varchar('model', { length: 100 }).notNull(),
+    generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_narratives_category_week_version').on(table.category, table.weekOf, table.version),
+    index('idx_narratives_category').on(table.category),
+    index('idx_narratives_week_of').on(table.weekOf),
+  ],
+);
