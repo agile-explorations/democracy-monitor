@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseCourtListenerParams, toContentItem } from '@/lib/services/courtlistener-fetcher';
+import {
+  expandNosParams,
+  parseCourtListenerParams,
+  toContentItem,
+} from '@/lib/services/courtlistener-fetcher';
 
 describe('parseCourtListenerParams', () => {
   it('extracts NOS codes from pseudo-URL', () => {
@@ -48,22 +52,33 @@ describe('parseCourtListenerParams', () => {
 });
 
 describe('toContentItem', () => {
-  it('maps fields correctly', () => {
+  it('maps CL V4 search fields correctly', () => {
     const item = toContentItem({
-      case_name: 'Smith v. United States',
-      absolute_url: '/docket/12345/',
-      date_filed: '2025-06-15',
+      caseName: 'Smith v. United States',
+      docket_absolute_url: '/docket/12345/smith-v-united-states/',
+      dateFiled: '2025-06-15',
       court: 'D.C. Circuit',
-      description: 'Civil rights case',
+      cause: '42:1983 Civil Rights',
+      suitNature: '440 Civil Rights: Other',
+      docketNumber: '1:25-cv-00100',
     });
 
     expect(item.title).toBe('Smith v. United States');
-    expect(item.link).toBe('https://www.courtlistener.com/docket/12345/');
+    expect(item.link).toBe('https://www.courtlistener.com/docket/12345/smith-v-united-states/');
     expect(item.pubDate).toBe('2025-06-15');
     expect(item.agency).toBe('D.C. Circuit');
-    expect(item.summary).toBe('Civil rights case');
+    expect(item.summary).toBe('42:1983 Civil Rights');
     expect(item.type).toBe('court_opinion');
     expect(item.sourceOrigin).toBe('courtlistener');
+    expect(item.metadata).toEqual({
+      docketNumber: '1:25-cv-00100',
+      suitNature: '440 Civil Rights: Other',
+    });
+  });
+
+  it('falls back to suitNature when cause is missing', () => {
+    const item = toContentItem({ suitNature: '530 Habeas Corpus' });
+    expect(item.summary).toBe('530 Habeas Corpus');
   });
 
   it('handles missing optional fields', () => {
@@ -76,20 +91,49 @@ describe('toContentItem', () => {
   });
 
   it('constructs full URL from relative paths', () => {
-    const item = toContentItem({ absolute_url: '/opinion/67890/' });
-    expect(item.link).toBe('https://www.courtlistener.com/opinion/67890/');
+    const item = toContentItem({ docket_absolute_url: '/docket/67890/doe-v-roe/' });
+    expect(item.link).toBe('https://www.courtlistener.com/docket/67890/doe-v-roe/');
   });
 
   it('preserves absolute URLs', () => {
     const item = toContentItem({
-      absolute_url: 'https://www.courtlistener.com/docket/99/',
+      docket_absolute_url: 'https://www.courtlistener.com/docket/99/',
     });
     expect(item.link).toBe('https://www.courtlistener.com/docket/99/');
   });
 
-  it('truncates long descriptions', () => {
-    const longDesc = 'A'.repeat(1000);
-    const item = toContentItem({ description: longDesc });
+  it('truncates long cause strings', () => {
+    const longCause = 'A'.repeat(1000);
+    const item = toContentItem({ cause: longCause });
     expect(item.summary!.length).toBeLessThanOrEqual(801); // 800 + ellipsis
+  });
+});
+
+describe('expandNosParams', () => {
+  it('returns single-element array for single NOS code', () => {
+    const result = expandNosParams({ nos: '440', searchType: 'r' });
+    expect(result).toEqual([{ nos: '440', searchType: 'r' }]);
+  });
+
+  it('splits comma-separated NOS codes into individual param sets', () => {
+    const result = expandNosParams({ nos: '440,530,890', searchType: 'r' });
+    expect(result).toHaveLength(3);
+    expect(result[0].nos).toBe('440');
+    expect(result[1].nos).toBe('530');
+    expect(result[2].nos).toBe('890');
+    expect(result.every((p) => p.searchType === 'r')).toBe(true);
+  });
+
+  it('preserves other params when splitting', () => {
+    const result = expandNosParams({ nos: '440,530', query: 'test', searchType: 'r' });
+    expect(result).toHaveLength(2);
+    expect(result[0]).toEqual({ nos: '440', query: 'test', searchType: 'r' });
+    expect(result[1]).toEqual({ nos: '530', query: 'test', searchType: 'r' });
+  });
+
+  it('returns params unchanged when no NOS', () => {
+    const params = { query: 'first amendment', searchType: 'o' };
+    const result = expandNosParams(params);
+    expect(result).toEqual([params]);
   });
 });

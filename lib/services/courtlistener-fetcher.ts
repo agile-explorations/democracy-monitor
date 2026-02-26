@@ -7,14 +7,16 @@ const RATE_LIMIT_DELAY_MS = 750;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 
+/** Fields returned by CourtListener V4 search API (RECAP type=r). */
 interface ClDocketEntry {
-  id?: number;
-  absolute_url?: string;
-  case_name?: string;
-  date_filed?: string;
+  docket_id?: number;
+  docket_absolute_url?: string;
+  caseName?: string;
+  dateFiled?: string;
   court?: string;
-  nature_of_suit?: string;
-  description?: string;
+  suitNature?: string;
+  cause?: string;
+  docketNumber?: string;
 }
 
 interface ClSearchResult {
@@ -54,20 +56,23 @@ function truncate(text: string): string {
 
 /** Convert a CourtListener docket entry to a ContentItem. */
 export function toContentItem(doc: ClDocketEntry): ContentItem {
-  const url = doc.absolute_url
-    ? doc.absolute_url.startsWith('http')
-      ? doc.absolute_url
-      : `${CL_BASE_URL}${doc.absolute_url}`
-    : undefined;
+  const rawUrl = doc.docket_absolute_url;
+  const url = rawUrl ? (rawUrl.startsWith('http') ? rawUrl : `${CL_BASE_URL}${rawUrl}`) : undefined;
+
+  const summary = doc.cause || doc.suitNature;
 
   return {
-    title: doc.case_name || '(untitled case)',
+    title: doc.caseName || '(untitled case)',
     link: url,
-    pubDate: doc.date_filed,
+    pubDate: doc.dateFiled,
     agency: doc.court || 'Federal Court',
-    summary: doc.description ? truncate(doc.description) : undefined,
+    summary: summary ? truncate(summary) : undefined,
     type: 'court_opinion',
     sourceOrigin: 'courtlistener',
+    metadata: {
+      docketNumber: doc.docketNumber,
+      suitNature: doc.suitNature,
+    },
   };
 }
 
@@ -83,12 +88,18 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-function buildSearchUrl(params: {
-  nos?: string;
-  type?: string;
-  query?: string;
-  searchType: string;
-}): string {
+type ClParams = { nos?: string; type?: string; query?: string; searchType: string };
+
+/**
+ * Split multi-NOS params into individual param sets.
+ * CL API only supports one nature_of_suit value per request.
+ */
+export function expandNosParams(params: ClParams): ClParams[] {
+  if (!params.nos || !params.nos.includes(',')) return [params];
+  return params.nos.split(',').map((code) => ({ ...params, nos: code.trim() }));
+}
+
+function buildSearchUrl(params: ClParams): string {
   const qs = new URLSearchParams();
   qs.set('type', params.searchType);
   if (params.nos) qs.set('nature_of_suit', params.nos);
@@ -97,48 +108,32 @@ function buildSearchUrl(params: {
 }
 
 /** Fetch recent CourtListener docket entries for the snapshot pipeline. */
-export async function fetchCourtListenerRecent(params: {
-  nos?: string;
-  type?: string;
-  query?: string;
-  searchType: string;
-}): Promise<ContentItem[]> {
-  const url = buildSearchUrl(params);
-
-  const response = await fetch(url, {
-    headers: getAuthHeaders(),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    console.error(`[courtlistener] HTTP ${response.status}`);
-    return [];
-  }
-
-  const data: ClSearchResult = await response.json();
-  return (data.results || []).slice(0, 20).map(toContentItem);
-}
-
-/** Fetch historical CourtListener entries for the backfill pipeline. */
-export async function fetchCourtListenerHistorical(params: {
-  nos?: string;
-  type?: string;
-  query?: string;
-  searchType: string;
-  dateFrom: string;
-  dateTo: string;
-  maxPages?: number;
-}): Promise<ContentItem[]> {
-  const { dateFrom, dateTo, maxPages = 10 } = params;
+export async function fetchCourtListenerRecent(params: ClParams): Promise<ContentItem[]> {
+  const expanded = expandNosParams(params);
   const allItems: ContentItem[] = [];
 
-  const qs = new URLSearchParams();
-  qs.set('type', params.searchType);
-  if (params.nos) qs.set('nature_of_suit', params.nos);
-  if (params.query) qs.set('q', params.query);
-  qs.set('filed_after', dateFrom);
-  qs.set('filed_before', dateTo);
+  for (const p of expanded) {
+    const url = buildSearchUrl(p);
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      console.error(`[courtlistener] HTTP ${response.status}`);
+      continue;
+    }
+    const data: ClSearchResult = await response.json();
+    allItems.push(...(data.results || []).slice(0, 20).map(toContentItem));
+    if (expanded.length > 1) await sleep(RATE_LIMIT_DELAY_MS);
+  }
 
-  let url: string | null = `${CL_API_V4}/search/?${qs.toString()}`;
+  return allItems;
+}
+
+/** Paginate through one CL search query, returning all items. */
+async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<ContentItem[]> {
+  const items: ContentItem[] = [];
+  let url: string | null = baseUrl;
   let page = 0;
 
   while (url && page < maxPages) {
@@ -152,11 +147,37 @@ export async function fetchCourtListenerHistorical(params: {
     }
 
     const data: ClSearchResult = await response.json();
-    allItems.push(...(data.results || []).map(toContentItem));
+    items.push(...(data.results || []).map(toContentItem));
     url = data.next || null;
     page++;
 
     if (url) await sleep(RATE_LIMIT_DELAY_MS);
+  }
+
+  return items;
+}
+
+/** Fetch historical CourtListener entries for the backfill pipeline. */
+export async function fetchCourtListenerHistorical(
+  params: ClParams & { dateFrom: string; dateTo: string; maxPages?: number },
+): Promise<ContentItem[]> {
+  const { dateFrom, dateTo, maxPages = 10 } = params;
+  const expanded = expandNosParams(params);
+  const allItems: ContentItem[] = [];
+
+  for (const p of expanded) {
+    const qs = new URLSearchParams();
+    qs.set('type', p.searchType);
+    if (p.nos) qs.set('nature_of_suit', p.nos);
+    if (p.query) qs.set('q', p.query);
+    qs.set('filed_after', dateFrom);
+    qs.set('filed_before', dateTo);
+
+    const url = `${CL_API_V4}/search/?${qs.toString()}`;
+    const items = await fetchPaginatedSearch(url, maxPages);
+    allItems.push(...items);
+
+    if (expanded.length > 1) await sleep(RATE_LIMIT_DELAY_MS);
   }
 
   return allItems;
