@@ -57,25 +57,23 @@ Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, 
 
 ### Data flow
 
-The dashboard monitors executive-power signals across 11 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, HTML pages, Federal Register queries, scraped trackers). The flow is:
+The dashboard monitors executive-power signals across 13 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, Federal Register queries, CourtListener, DOJ press releases, GovInfo/GAO, FEC filings, GDELT news). The flow is:
 
-1. **Cron/backfill** fetches data from external sources (FR, WH, GDELT, RSS) and stores documents in PostgreSQL
-2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs keyword assessment → AI Skeptic review → stores assessment snapshots
+1. **Cron/backfill** fetches data from external sources (FR, WH, GDELT, CourtListener, DOJ, GovInfo, FEC, RSS) and stores documents in PostgreSQL
+2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs three-layer assessment (structural anomaly → AI two-pass → thematic drift) → convergence synthesis → stores assessment snapshots
 3. **API routes** (`/api/proxy`, `/api/federal-register`, `/api/scrape-tracker`) act as server-side proxies with Redis caching (in-memory fallback)
 4. **UI** reads stored snapshots and documents via API routes; progressive disclosure surfaces assessment details on demand
-5. Assessment returns a status level (Stable → Warning → Drift → Capture) with matched keywords, AI review, and reasoning
-
-> **Note:** The UI is being rebuilt from scratch per `UI DESIGN SPECIFICATION V3.md`. The current component tree will be replaced.
+5. Assessment returns a convergence status (Stable → Elevated → Divergent → Confirmed Concern) with layer scores, AI review, and reasoning
 
 ### Directory structure
 
 ```
 lib/
   types/          # TypeScript type definitions (categories, assessment, AI)
-  data/           # Static data (CATEGORIES array, ASSESSMENT_RULES, P2025 seeds)
+  data/           # Static data (CATEGORIES array, ASSESSMENT_RULES, DOJ taxonomy, chart colors)
   parsers/        # Feed response parsers
   hooks/          # React hooks (useLocalStorage, useAutoRefresh)
-  services/       # Business logic (assessment, convergence, rhetoric, proxy-parser, tracker)
+  services/       # Business logic (assessment, convergence, structural, narrative, fetchers)
   db/             # Drizzle ORM (schema, client, migrations)
   cache/          # Redis + in-memory fallback cache layer
   ai/             # AI provider abstraction (OpenAI, Anthropic) + prompt templates
@@ -83,9 +81,10 @@ lib/
   methodology/    # Scoring config, named constants, thresholds
   utils/          # Pure utility functions (async, collections, date, math, ai)
   seed/           # Seed data export/import pipeline + fixtures
+  validation/     # Historical backtesting and known-event validation
   allowedHosts.ts # Proxy host whitelist
 
-components/       # UI components (being rebuilt — see UI DESIGN SPECIFICATION V3.md)
+components/       # UI components (overview, category detail, week detail, shared)
 
 pages/
   api/            # API routes (proxy, federal-register, scrape-tracker, assess-status)
@@ -96,16 +95,20 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 ### Key files
 
-- **`lib/data/categories.ts`** — All 11 category and signal definitions. This is where signals are added/removed.
-- **`lib/data/assessment-rules.ts`** — Keyword dictionaries per category and severity tier.
+- **`lib/data/categories.ts`** — All 13 category and signal definitions. This is where signals are added/removed.
+- **`lib/data/assessment-rules.ts`** — Keyword dictionaries per category and severity tier (annotation layer).
 - **`lib/services/assessment-service.ts`** — Keyword-based assessment engine with authority weighting and volume thresholds.
 - **`lib/services/ai-assessment-service.ts`** — AI Skeptic review layer (runs after keyword assessment).
+- **`lib/services/structural-scoring-service.ts`** — Layer 1: structural anomaly detection (JSD, z-scores, 5 dimensions).
+- **`lib/services/thematic-drift-service.ts`** — Layer 3: rolling thematic drift (8-week intra-admin window).
+- **`lib/services/convergence-service.ts`** — Convergence synthesis across all three layers.
+- **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
 - **`lib/methodology/scoring-config.ts`** — Tier weights, class multipliers, volume thresholds, named constants.
-- **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → keyword assess → AI Skeptic → store.
-- **`lib/cron/backfill.ts`** — Historical backfill (FR + WH + GDELT) with AI assessment.
+- **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → three-layer assess → convergence → store.
+- **`lib/cron/backfill.ts`** — Historical backfill (FR + WH + GDELT + CourtListener + DOJ + GovInfo + FEC) with AI assessment.
 - **`lib/cache/index.ts`** — Redis cache with automatic in-memory fallback when Redis is unavailable.
 - **`lib/ai/provider.ts`** — AI provider factory (OpenAI, Anthropic) with availability checks.
-- **`lib/db/schema.ts`** — Drizzle ORM table definitions (documents, assessments, baselines, weekly_aggregates, etc.).
+- **`lib/db/schema.ts`** — Drizzle ORM table definitions (documents, assessments, baselines, weekly_aggregates, ai_document_assessments, narratives, etc.).
 - **`pages/api/proxy.ts`** — CORS proxy with host whitelist, content-type detection, Redis caching.
 - **`pages/api/assess-status.ts`** — Assessment endpoint delegating to assessment-service.
 
@@ -117,12 +120,13 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 ### Assessment methodology
 
-Two-layer assessment pipeline:
+Three-layer triangulated detection pipeline:
 
-1. **Keyword assessment** (`assessment-service.ts`) — keyword dictionaries organized by category and severity tier (capture/drift/warning). Normalizes text, searches for keyword matches, weights by source authority, detects pattern language, applies volume thresholds.
-2. **AI Skeptic review** (`ai-assessment-service.ts`) — LLM reviews keyword matches and renders per-keyword verdicts (`genuine_concern`, `false_positive`, `ambiguous`). Can recommend status changes with confidence scores and evidence.
+1. **Layer 1: Structural anomaly** (`structural-scoring-service.ts`) — deterministic, metadata-only. Functional classifier (9 buckets, 4 tiers), 5+1 structural dimensions (volume, composition, authority, timing, velocity, source convergence), JSD + z-score against baselines.
+2. **Layer 2: AI two-pass assessment** (`ai-assessment-service.ts`, `ai_document_assessments`) — Pass 1 (gpt-4o-mini) flags potentially concerning documents, Pass 2 (Claude Sonnet) classifies flagged docs. Different providers for epistemic independence.
+3. **Layer 3: Thematic drift** (`thematic-drift-service.ts`) — rolling 8-week intra-admin window, detects topic distribution shifts.
 
-Both layers run during snapshot creation and backfill. AI assessment subsumes keyword assessment — the UI shows the single best-available result (AI preferred, keyword fallback). Documented in `ASSESSMENT_METHODOLOGY.md`.
+**Convergence synthesis** (`convergence-service.ts`) combines all three layers into a single status: Stable → Elevated → Divergent → Confirmed Concern. Keywords serve as annotations only (not detection gates). Documented in `ASSESSMENT_METHODOLOGY.md`.
 
 ## Sprint process
 
@@ -132,11 +136,11 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
 3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
 4. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
-5. **Sprint number** — Update the sprint log in `MEMORY.md` with the new sprint number and summary
+5. **Sprint number** — Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` with the new sprint number and summary
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
 7. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
 8. **Commit** — Stage, format, and commit only after the review is clean
-9. **Retrospective** — Update `DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Then review the full document and condense or remove entries that are superseded, obsolete, or codified elsewhere (e.g., lessons already in MEMORY.md, decisions overridden by later ones). Keep `DECISIONS.md` lean. Annotate `docs/internal/ROADMAP.md` for the completed sprint. Update `MEMORY.md` if new persistent patterns were discovered. The results of the retrospective **MUST** be presented to the user for approval.
+9. **Retrospective** — Update `DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Then review the full document and condense or remove entries that are superseded, obsolete, or codified elsewhere (e.g., lessons already in `docs/PROJECT_KNOWLEDGE.md`, decisions overridden by later ones). Keep `DECISIONS.md` lean. Annotate `docs/internal/ROADMAP.md` for the completed sprint. Update `docs/PROJECT_KNOWLEDGE.md` if new persistent patterns were discovered. The results of the retrospective **MUST** be presented to the user for approval.
 10. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 7–8 first.
 11. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
@@ -179,6 +183,7 @@ Configured for **Render.com** deployment via `render.yaml`:
 
 ### Spec documents
 
+- **`docs/PROJECT_KNOWLEDGE.md`** — Shared institutional knowledge: architecture decisions, sprint log, current state, module patterns, database gotchas
 - **`docs/internal/SYSTEM SPECIFICATION V3 ADDENDUM.md`** — Backend requirements (Sprints A–J), risk reminders, schema changes
 - **`docs/internal/UI DESIGN SPECIFICATION V3.md`** — Full UI redesign spec (Phases 1–5), component specs, API endpoint requirements
 - **`ASSESSMENT_METHODOLOGY.md`** — Public-facing methodology documentation
