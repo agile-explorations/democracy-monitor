@@ -169,6 +169,13 @@
       "when": 1772133984166,
       "tag": "0023_odd_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1772185680152,
+      "tag": "0024_first_tony_stark",
+      "breakpoints": true
     }
   ]
 }

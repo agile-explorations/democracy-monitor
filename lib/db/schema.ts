@@ -468,6 +468,29 @@ export const narratives = pgTable(
   ],
 );
 
+export const fetchLog = pgTable(
+  'fetch_log',
+  {
+    id: serial('id').primaryKey(),
+    sourceOrigin: varchar('source_origin', { length: 30 }).notNull(),
+    category: varchar('category', { length: 50 }).notNull(),
+    weekStart: date('week_start').notNull(),
+    weekEnd: date('week_end').notNull(),
+    status: varchar('status', { length: 20 }).notNull(),
+    itemsFetched: integer('items_fetched').notNull().default(0),
+    itemsStored: integer('items_stored').notNull().default(0),
+    errors: jsonb('errors').$type<string[]>(),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_fetch_log_source_category_week').on(
+      table.sourceOrigin,
+      table.category,
+      table.weekStart,
+    ),
+  ],
+);
+
 export const legiscanDatasets = pgTable('legiscan_datasets', {
   id: serial('id').primaryKey(),
   sessionId: integer('session_id').notNull().unique(),

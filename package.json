@@ -47,6 +47,7 @@
     "seed:rhetoric-gaps": "tsx lib/seed/rhetoric-keyword-gaps.ts",
     "seed:validate": "tsx lib/seed/baseline-validation.ts",
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
+    "backfill:gaps": "tsx lib/cron/backfill-gaps.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "prepare": "husky"

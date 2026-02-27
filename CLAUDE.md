@@ -18,6 +18,7 @@ pnpm db:generate    # Generate Drizzle migrations from schema
 pnpm db:migrate     # Apply migrations to PostgreSQL
 pnpm snapshot       # Run daily snapshot cron (real data)
 pnpm backfill       # Backfill historical data (FR + WH + GDELT)
+pnpm backfill:gaps  # Show incomplete/failed fetches from backfill pipeline
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtures
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
