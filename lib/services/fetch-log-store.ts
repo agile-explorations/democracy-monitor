@@ -1,8 +1,12 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { fetchLog } from '@/lib/db/schema';
+import type { SignalFetchResult } from '@/lib/services/feed-fetcher';
 
 type FetchStatus = 'complete' | 'partial' | 'failed';
+
+/** Signal types recorded in fetch_log from the snapshot pipeline. */
+const SNAPSHOT_LOGGED_TYPES = new Set(['rss', 'html', 'json', 'federal_register']);
 
 interface FetchResultParams {
   sourceOrigin: string;
@@ -146,4 +150,28 @@ export async function getIncompleteWeeks(
     .orderBy(fetchLog.category, fetchLog.weekStart);
 
   return rows;
+}
+
+/** Record RSS/HTML/JSON/FR signal results in fetch_log for gap visibility. */
+export async function recordSnapshotSignalResults(
+  category: string,
+  weekStart: string,
+  weekEnd: string,
+  signalResults: SignalFetchResult[],
+): Promise<void> {
+  if (!isDbAvailable()) return;
+
+  for (const result of signalResults) {
+    if (!SNAPSHOT_LOGGED_TYPES.has(result.signalType)) continue;
+
+    await recordFetchResult({
+      sourceOrigin: result.signalId,
+      category,
+      weekStart,
+      weekEnd,
+      itemsFetched: result.documentCount,
+      itemsStored: result.documentCount,
+      errors: result.errorMessage ? [result.errorMessage] : [],
+    });
+  }
 }

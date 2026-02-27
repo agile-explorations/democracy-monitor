@@ -9,6 +9,7 @@ import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
 import { fetchCategoryFeedsWithMetadata } from '@/lib/services/feed-fetcher';
+import { recordSnapshotSignalResults } from '@/lib/services/fetch-log-store';
 import {
   fetchAllRhetoricSources,
   statementsToContentItems,
@@ -33,7 +34,7 @@ import {
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types/assessment';
-import { toDateString } from '@/lib/utils/date-utils';
+import { addDays, toDateString } from '@/lib/utils/date-utils';
 
 /** Run Layer 2 AI assessment + weekly aggregate computation. */
 async function runLayersAndAggregate(
@@ -76,6 +77,11 @@ async function snapshotCategory(
 
   const checks = await recordSourceHealthChecks(cat.key, signalResults);
   allHealthChecks.push(...checks);
+
+  const weekStart = getWeekOfDate();
+  recordSnapshotSignalResults(cat.key, weekStart, addDays(weekStart, 6), signalResults).catch(
+    (err) => console.error(`[snapshot] fetch_log recording failed for ${cat.key}:`, err),
+  );
 
   storeDocuments(items, cat.key).catch((err) =>
     console.error(`[snapshot] RAG store failed for ${cat.key}:`, err),

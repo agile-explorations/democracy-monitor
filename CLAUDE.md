@@ -23,6 +23,7 @@ pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtu
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
+pnpm retry:signals  # Retry failed RSS/HTML/JSON/FR signals from last snapshot
 pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
 ```
 

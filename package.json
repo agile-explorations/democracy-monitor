@@ -49,6 +49,7 @@
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
     "backfill:gaps": "tsx lib/cron/backfill-gaps.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
+    "retry:signals": "tsx lib/cron/retry-failed-signals.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "prepare": "husky"
   },

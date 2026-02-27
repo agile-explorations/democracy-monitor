@@ -1,4 +1,4 @@
-import type { Category } from '@/lib/types';
+import type { Category, Signal } from '@/lib/types';
 import { scotusTermYear } from '@/lib/utils/date-utils';
 
 export const CATEGORIES: Category[] = [
@@ -598,3 +598,14 @@ export const CATEGORIES: Category[] = [
     ],
   },
 ];
+
+/** Flat lookup from signal ID to Signal + category key. */
+export function buildSignalLookup(): Map<string, { signal: Signal; categoryKey: string }> {
+  const map = new Map<string, { signal: Signal; categoryKey: string }>();
+  for (const cat of CATEGORIES) {
+    for (const signal of cat.signals) {
+      map.set(signal.id, { signal, categoryKey: cat.key });
+    }
+  }
+  return map;
+}

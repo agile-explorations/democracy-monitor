@@ -20,13 +20,14 @@ export default defineConfig({
         // DB I/O and CLI modules — pure functions tested, DB ops need integration tests
         'lib/services/fetch-log-store.ts',
         'lib/cron/backfill-gaps.ts',
+        'lib/cron/retry-failed-signals.ts',
       ],
       thresholds: {
         autoUpdate: true,
-        statements: 71.04,
-        branches: 68.3,
-        functions: 74.18,
-        lines: 71.39,
+        statements: 71.23,
+        branches: 68.48,
+        functions: 74.26,
+        lines: 71.59,
       },
     },
   },

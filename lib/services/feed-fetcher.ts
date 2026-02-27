@@ -13,6 +13,7 @@ import { fetchFecRecent, parseFecParams } from '@/lib/services/fec-fetcher';
 import { fetchGovInfoRecent, parseGovInfoParams } from '@/lib/services/govinfo-fetcher';
 import type { Category, Signal } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
+import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
 const MAX_SUMMARY_LENGTH = 800;
 
@@ -59,7 +60,7 @@ export async function fetchCategoryFeedsWithMetadata(
   return { items, signalResults };
 }
 
-async function fetchSignalWithMetadata(signal: Signal): Promise<SignalFetchResult> {
+export async function fetchSignalWithMetadata(signal: Signal): Promise<SignalFetchResult> {
   const start = Date.now();
   try {
     const items = await fetchSignalInner(signal);
@@ -184,12 +185,16 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
   const cached = await cacheGet<FeedItem[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'DemocracyMonitor/1.0',
+  const response = await fetchWithRetry(
+    url,
+    {
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'DemocracyMonitor/1.0',
+      },
     },
-  });
+    { label: signal.id },
+  );
 
   if (!response.ok) {
     return [{ title: `Federal Register error: ${response.status}`, isError: true }];
@@ -253,12 +258,11 @@ async function fetchRss(signal: Signal): Promise<FeedItem[]> {
   const cached = await cacheGet<FeedItem[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(signal.url, {
-    headers: {
-      'User-Agent': 'DemocracyMonitor/1.0',
-      Accept: 'application/xml, text/xml, application/rss+xml, */*',
-    },
-  });
+  const rssHeaders = {
+    'User-Agent': 'DemocracyMonitor/1.0',
+    Accept: 'application/xml, text/xml, application/rss+xml, */*',
+  };
+  const response = await fetchWithRetry(signal.url, { headers: rssHeaders }, { label: signal.id });
 
   if (!response.ok) {
     return [{ title: `RSS error: ${response.status}`, isError: true }];
@@ -286,9 +290,8 @@ async function fetchJson(signal: Signal): Promise<FeedItem[]> {
   const cached = await cacheGet<FeedItem[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(signal.url, {
-    headers: { 'User-Agent': 'DemocracyMonitor/1.0', Accept: 'application/json' },
-  });
+  const headers = { 'User-Agent': 'DemocracyMonitor/1.0', Accept: 'application/json' };
+  const response = await fetchWithRetry(signal.url, { headers }, { label: signal.id });
 
   if (!response.ok) {
     return [{ title: `JSON error: ${response.status}`, isError: true }];
@@ -311,13 +314,17 @@ async function fetchHtml(signal: Signal): Promise<FeedItem[]> {
   const cached = await cacheGet<FeedItem[]>(cacheKey);
   if (cached) return cached;
 
-  const response = await fetch(signal.url, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-      Accept: 'text/html,application/xhtml+xml,*/*',
+  const response = await fetchWithRetry(
+    signal.url,
+    {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,*/*',
+      },
     },
-  });
+    { label: signal.id },
+  );
 
   if (!response.ok) {
     return [{ title: `HTML error: ${response.status}`, isError: true }];

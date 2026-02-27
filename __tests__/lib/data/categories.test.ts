@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CATEGORIES } from '@/lib/data/categories';
+import { CATEGORIES, buildSignalLookup } from '@/lib/data/categories';
 
 describe('CATEGORIES', () => {
   it('has 13 categories', () => {
@@ -111,5 +111,39 @@ describe('CATEGORIES', () => {
     const ids = cat!.signals.map((s) => s.id);
     expect(ids).toContain('rss_fcc_media');
     expect(ids).toContain('rss_fcc_enforcement');
+  });
+});
+
+describe('buildSignalLookup', () => {
+  it('returns all signal IDs from CATEGORIES', () => {
+    const lookup = buildSignalLookup();
+    const allIds = CATEGORIES.flatMap((c) => c.signals.map((s) => s.id));
+
+    expect(lookup.size).toBe(allIds.length);
+
+    for (const id of allIds) {
+      expect(lookup.has(id)).toBe(true);
+    }
+  });
+
+  it('maps each signal to correct category key', () => {
+    const lookup = buildSignalLookup();
+
+    for (const cat of CATEGORIES) {
+      for (const signal of cat.signals) {
+        const entry = lookup.get(signal.id);
+        expect(entry).toBeDefined();
+        expect(entry!.categoryKey).toBe(cat.key);
+        expect(entry!.signal).toBe(signal);
+      }
+    }
+  });
+
+  it('has no duplicate signal IDs', () => {
+    const lookup = buildSignalLookup();
+    const allIds = CATEGORIES.flatMap((c) => c.signals.map((s) => s.id));
+
+    // If there were duplicates, the map would be smaller
+    expect(lookup.size).toBe(allIds.length);
   });
 });

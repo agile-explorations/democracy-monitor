@@ -8,6 +8,11 @@ vi.mock('@/lib/cache', () => ({
   cacheSet: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock sleep to avoid real delays in tests
+vi.mock('@/lib/utils/async', () => ({
+  sleep: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Stub global fetch (network boundary)
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
@@ -104,13 +109,17 @@ describe('fetchCategoryFeeds', () => {
       expect(items[1].summary).toBeUndefined();
     });
 
-    it('returns error item on non-ok response', async () => {
+    it('returns error item on non-ok response after retries', async () => {
       const signal = makeSignal({
         type: 'federal_register',
         url: '/api/federal-register?agency=DOJ',
       });
 
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 });
+      // fetchWithRetry retries on 503 (3 attempts by default)
+      mockFetch
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({ ok: false, status: 503 });
 
       const items = await fetchCategoryFeeds(makeCategory([signal]));
 
@@ -296,6 +305,23 @@ describe('fetchCategoryFeeds', () => {
       expect(items).toHaveLength(1);
       expect(items[0].title).toContain('Error loading');
       expect(items[0].isError).toBe(true);
+    });
+  });
+
+  describe('fetchWithRetry integration', () => {
+    it('RSS 503 then success returns items via retry', async () => {
+      const signal = makeSignal({ id: 'rss_test', type: 'rss' });
+
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 503 }).mockResolvedValueOnce({
+        ok: true,
+        text: async () => RSS_XML,
+      });
+
+      const items = await fetchCategoryFeeds(makeCategory([signal]));
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(items).toHaveLength(2);
+      expect(items[0].title).toBe('Breaking News');
     });
   });
 });
