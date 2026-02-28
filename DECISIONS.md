@@ -10,6 +10,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1c: Fault-Tolerant RSS/HTML/JSON Signal Fetching ✅
+
+**Status: Done.** Added HTTP retry with exponential backoff to the snapshot pipeline, a scheduled retry cron for extended outages, and fetch_log integration for unified gap visibility across all signal types. 8 files changed (5 modified, 3 new), 4 test files (2 new, 2 extended), 1526 tests total.
+
+**Scope vs. Actual:**
+
+- Planned: 9 changes (fetch-retry wrapper, feed-fetcher integration, buildSignalLookup, recordSnapshotSignalResults, snapshot wiring, retry cron, render.yaml/package.json/CLAUDE.md updates, tests)
+- Actual: All delivered. No scope changes. Feed-fetcher.ts required compaction (304 → 300 lines) to stay under ESLint max-lines. retry-failed-signals.ts required helper extraction (53 → 50 lines) to stay under ESLint max-lines-per-function.
+
+**Key Decisions:**
+
+1. **`fetchWithRetry` as separate utility** — Lives in `lib/utils/fetch-retry.ts`, not embedded in feed-fetcher. Reusable by any module that makes HTTP calls. Returns error response on final failed attempt (not throw) so existing `if (!response.ok)` handlers still work. Throws on persistent network errors (caught by `fetchSignalWithMetadata`'s try/catch).
+2. **Only 4 fetch sites changed** — `fetchRss`, `fetchHtml`, `fetchJson`, `fetchFederalRegister`. API-backed signals (CourtListener, DOJ, GovInfo, FEC) have their own fetcher modules with dedicated error handling and were not changed.
+3. **`SNAPSHOT_LOGGED_TYPES` filter** — `recordSnapshotSignalResults` only records RSS/HTML/JSON/federal_register signals in fetch_log. API signals are already tracked by the backfill pipeline with different sourceOrigin format. Prevents double-recording.
+4. **Retry cron at 11am UTC** — 5 hours after 6am snapshot. All feed caches expired (10-min TTL). Does NOT re-run assessment — just stores documents + scores for next day's snapshot.
+5. **`buildSignalLookup()` in categories.ts** — Flat `Map<signalId, { signal, categoryKey }>` for O(1) lookup by retry cron. Scans all CATEGORIES once per invocation.
+
+**Lessons Learned:**
+
+1. **`vi.hoisted()` for mock function references** — `vi.mock()` factory functions can't reference `const` variables due to Vitest hoisting. Use `vi.hoisted()` to create mock functions that are accessible inside `vi.mock()` factories.
+2. **Mock response count must match retry attempts** — A test providing 1 mock 503 response when `fetchWithRetry` tries 3 times causes subsequent calls to return undefined. Provide N mock responses for N-attempt scenarios.
+3. **`autoUpdate: true` only raises thresholds** — Coverage threshold auto-update in vitest.config.ts never lowers values. When new code legitimately reduces coverage (e.g., adding I/O-heavy cron modules), manually lower thresholds or add the file to the exclude list.
+
+**Spec Deviations:**
+
+- None. Plan delivered as specified.
+
+---
+
 ## Sprint R4a: AI Narrative Generation Service ✅
 
 **Status: Done.** Built narrative generation pipeline with dual-audience (expert/public) AI narratives for Elevated+ categories. Stable categories get template text (no AI call). `narratives` DB table, narrative-generation-service (prompt construction + AI calls), narrative-store (DB CRUD), narrative-pipeline (orchestration), 2 API endpoints (`/api/narratives/[category]`, `/api/narratives/overview`). Wired into snapshot pipeline as final step. 15 files changed, 4164 lines added. 51 new tests (1411 total).
@@ -174,67 +203,15 @@ Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, 
 
 ---
 
-## Sprint 13: AI Skeptic Structured Feedback + Keyword Tuning Pipeline
+## Sprints 13-14.1 (condensed)
 
-**Planned:** Extend AI Skeptic prompt for structured keyword feedback, pre-populate feedback in interactive review, build aggregate report generator, create `apply-decisions.ts`, regression test fixtures.
+Sprints 13, 14, and 14.1 built the keyword tuning pipeline: AI Skeptic structured feedback, `apply-decisions.ts`, and Biden 2022 baseline calibration (3 iterations, 42→8 alerts). Rhetoric gap analysis found zero keyword additions needed. Key decisions that remain relevant:
 
-**Actual:** Delivered as planned. All 7 work items shipped. No spec deviations — this sprint builds pipeline tooling not covered by the UI spec.
-
-**Key decisions:**
-
-- **AI response schema extension**: Added optional `suggestedAction` (keep/remove/move_to_warning/move_to_drift/move_to_capture) and `suppressionContext` to each keyword verdict. Optional fields ensure backward compatibility with existing stored assessments.
-- **`extractAiFeedback()` as pure function**: Maps AI verdicts to `ReviewFeedback` fields — `false_positive` → `falsePositiveKeywords`, `suppressionContext` → `suppressionSuggestions`, tier move actions → `tierChanges`. Testable, no I/O.
-- **Aggregate thresholds**: FP rate ≥50% for removal recommendation, ≥2 occurrences for tier change or suppression recommendation. Conservative — first cycle will validate these thresholds.
-- **`apply-decisions.ts` regenerates entire file**: Rather than AST manipulation or string patching, it serializes the modified rules object to TypeScript source. Simpler and less fragile. Requires `prettier --write` after.
-- **`lib/seed/**` added to ESLint max-lines exemption\*\*: Seed CLI files are growing CLI tools that don't benefit from the 300-line limit.
-
----
-
-## Sprint 14: Biden 2022 Baseline Calibration
-
-**Planned:** Biden 2022 baseline generation, rhetoric-based keyword gaps, first keyword refinement cycle.
-
-**Actual:** Baseline calibration required 3 iterations (42→8 alerts). Signal tightening, volume threshold tuning, and keyword hallucination filter consumed the sprint. Rhetoric gap analysis and refinement cycle deferred to Sprint 14.1.
-
-**Key decisions:**
-
-- **`indices` → `executiveActions` rename** (V3 Addendum §14.2): The `indices` key was misleading — it implied external democracy indices, but the category actually tracks executive action volume/tempo. Renamed to `executiveActions` with title "Executive Action Volume". DB migration applied to 9 tables.
-- **Signal tightening over keyword removal**: fiscal and elections had broad FR signal queries generating too many irrelevant documents. Fixed at the signal level (narrower FR queries) rather than adding suppressions. fiscal: 20→0 alerts, elections: 13→1 alert.
-- **Volume thresholds raised**: drift 3→5, capture 2→3. The original thresholds were too sensitive for Biden 2022's document volumes.
-- **Keyword hallucination filter**: AI assessment sometimes returned keywords not in the dictionary. Added validation in `resolveDowngrade()` to filter these before flagging.
-- **Light fixtures strategy**: Export calibrated outputs (~29MB) + document manifest, not raw documents (~35MB). Raw docs are reproducible via `pnpm backfill`. Titles kept in manifest for future search support (SEARCH SPECIFICATION §4.1).
-- **External Indices as separate capability** (V3 Addendum §14.5, UI Spec §9B): V-Dem, Freedom House, etc. will be a cross-reference validation layer at `/indices`, not part of the 11-category keyword pipeline. Deferred to Sprint K (~Sprint 20+).
-
----
-
-## Sprint 14.1: Rhetoric Gap Analysis + Refinement Cycle
-
-**Planned:** Rhetoric-to-keyword gap analysis, missingKeywords in aggregate report, first refinement cycle.
-
-**Actual:** Gap analysis built and run. All 6 mapped category dictionaries reviewed against rhetoric corpus. Result: **zero keyword additions needed** — dictionaries are well-calibrated. Rhetoric→document vocabulary gap is a translation gap (e.g., "fake news" → "press credentials revoked"), and existing keywords already cover the action side.
-
-**Key decisions:**
-
-- **PolicyArea-based classification**: Rhetoric docs are stored as `category = 'intent'` (undifferentiated). Gap analysis reuses `classifyPolicyAreaWithScore()` from the live intent path to classify each doc title into one of 5 policy areas, then maps to assessment categories via `POLICY_AREA_CATEGORIES` (many-to-many). Docs with score 0 (no keyword matches) are skipped — 49,685 of 50,651 are unclassifiable generic government content.
-- **Many-to-many PolicyArea → category mapping**: `rule_of_law` → courts, igs; `civil_liberties` → courts, executiveActions; `elections` → elections; `media_freedom` → mediaFreedom; `institutional_independence` → rulemaking, executiveActions, igs. Five categories intentionally unmapped (civilService, fiscal, military, hatch, infoAvailability) — they get keyword proposals from other feedback loops.
-- **Bigram-only analysis**: Extracts bigrams from document titles. Many keyword dictionary entries are multi-word phrases, making bigrams a good match. Unigrams would be too noisy; trigrams could be added later.
-- **Title-only, not content**: GDELT content is often null; titles are the reliable field across all rhetoric sources.
-- **GDELT international noise**: ~50% of gaps are artifacts of GDELT's global coverage (Ethiopia, Hong Kong, Pakistan, Philippines press freedom stories). Future improvement: filter by GDELT country codes to US-only rhetoric. Not built now — noted for rhetoric pipeline (§13.6).
-- **Refinement cycle outcome**: No keywords added → no `apply-decisions.ts` run needed → no re-validation run needed. Sprint 14.1 refinement cycle completes as "dictionaries confirmed well-calibrated."
-
-**Spec deviation — `source_type` inconsistency (#28):**
-
-Three specs define `source_type` differently:
-
-| Spec                           | `source_type` means                                                       |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| V3 Addendum (line 60)          | Fetch method (`api`, `rss`, `html`, `json`)                               |
-| Search Specification (§8, §10) | Origin/provider (`federal_register`, `whitehouse`, `gdelt`)               |
-| Actual DB                      | FR document classification (`Notice`, `Rule`) + content type (`rhetoric`) |
-
-Root cause: `federal-register-fetcher.ts` stores FR API document types (`Notice`, `Rule`); `rhetoric-fetcher.ts` hardcodes `'rhetoric'` for both WH and GDELT. Neither matches either spec. The Search Specification assumed origin-based values that don't exist.
-
-**Resolution:** Tracked as #28. Must be fixed before Sprint L (Search Infrastructure). `rhetoric-keyword-gaps.ts` works around it with `WHERE source_type = 'rhetoric'` and a `TODO(#28)` comment. No other current code is affected.
+- **`indices` → `executiveActions` rename** (Sprint 14): The `indices` key was misleading — category tracks executive action volume/tempo. DB migration applied to 9 tables. Later fully renamed in Sprint R3.3.
+- **Signal tightening over keyword removal** (Sprint 14): fiscal/elections had broad FR signal queries. Fixed at signal level (narrower queries) rather than adding suppressions.
+- **Volume thresholds**: drift 3→5, capture 2→3. Keyword hallucination filter added to AI assessment.
+- **Light fixtures strategy** (Sprint 14): Export calibrated outputs (~29MB) + document manifest, not raw documents. Raw docs reproducible via `pnpm backfill`.
+- **`source_type` inconsistency (#28)** (Sprint 14.1): Three specs define `source_type` differently. Tracked as #28, must be fixed before Sprint L (Search Infrastructure).
 
 ---
 

@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-02-26)
+## Current state (as of 2026-02-27)
 
 ### Categories & baselines
 
@@ -72,6 +72,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Source health & coverage
 
+- Fault-tolerant fetching: `fetchWithRetry()` in `lib/utils/fetch-retry.ts` wraps HTTP calls with 3-attempt exponential backoff (2s, 4s). Retries on 5xx/429, returns immediately on 4xx. Used by RSS/HTML/JSON/FR signal fetchers in feed-fetcher.ts. Retry cron (`pnpm retry:signals`) runs at 11am UTC for extended outages.
+- RSS/HTML/JSON signals recorded in `fetch_log` via `recordSnapshotSignalResults()` for unified gap visibility alongside API signals
 - Source health monitoring: `source_health` table, 31 signals with stable IDs, 6 canary sources, SourceHealthCheck classification (healthy/degraded/unavailable/silent)
 - Meta-assessment: 4 integrity levels (high/moderate/low/critical) from `INTEGRITY_THRESHOLDS` in scoring-config; canary downgrade from high→moderate when ≥50% canaries critical
 - Confidence degradation: `sourceAvailability` factor (weight 0.15) in `DATA_COVERAGE_WEIGHTS`; `CRITICAL_CONFIDENCE_CAP = 0.3` hard cap
@@ -212,4 +214,5 @@ Requires updating:
 - Sprint R-S1a: Foundation + CourtListener + DOJ integration — source_origin column + migration, CourtListener REST API v4 fetcher, DOJ Press Release JSON fetcher, DOJ frozen taxonomy (15 internal buckets), 2 new categories (lawEnforcement, civilLiberties — 13 total), coverage health monitoring, multi-source backfill pipeline, source-origin backfill (132,260 rows). 61 new tests (1366 total).
 - Sprint R-S1b: GovInfo/GAO + FEC + IG RSS + FCC RSS source integrations — govinfo-fetcher.ts (GAO Reports, Congressional Reports, Public Laws), fec-fetcher.ts (Advisory Opinions, MURs), 8 new signals across 4 categories, backfill pipeline extensions, functional classifier extensions. IG + FCC as standard RSS signals (no custom fetcher). 36 new tests (1405 total).
 - Sprint R4a: AI narrative generation service — narratives table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts, narrative-pipeline.ts, /api/narratives/[category] + /api/narratives/overview endpoints, snapshot pipeline integration. Stable → template, Elevated+ → AI generation. 51 new tests (1411 total).
+- Sprint R-S1c: Fault-tolerant RSS/HTML/JSON signal fetching — fetchWithRetry() wrapper (3 attempts, exponential backoff), retry cron (11am UTC), recordSnapshotSignalResults() for fetch_log integration, buildSignalLookup() helper. 115 new tests (1526 total).
 - Sprints remaining: R-S1 Phase 2-4 (historical backfill + per-source baselines + validation), LegiScan (pending subscription), R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.
