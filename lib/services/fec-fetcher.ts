@@ -92,12 +92,14 @@ function getApiKey(): string | undefined {
   return process.env.FEC_API_KEY;
 }
 
+const PAGE_SIZE = 20; // FEC legal/search ignores per_page and returns 20 per request
+
 function buildSearchUrl(
   apiKey: string,
   type: string,
   extraParams?: Record<string, string>,
 ): string {
-  const qs = new URLSearchParams({ api_key: apiKey, type, per_page: '20', ...extraParams });
+  const qs = new URLSearchParams({ api_key: apiKey, type, ...extraParams });
   return `${FEC_API_BASE}/legal/search/?${qs.toString()}`;
 }
 
@@ -175,15 +177,16 @@ async function fetchAoHistorical(
 ): Promise<ContentItem[]> {
   const allItems: ContentItem[] = [];
 
-  for (let page = 1; page <= maxPages; page++) {
+  for (let page = 0; page < maxPages; page++) {
+    const fromHit = page * PAGE_SIZE;
     const url = buildSearchUrl(apiKey, 'advisory_opinions', {
       ao_min_issue_date: dateFrom,
       ao_max_issue_date: dateTo,
-      per_page: '100',
+      from_hit: String(fromHit),
     });
 
     await sleep(RATE_LIMIT_DELAY_MS);
-    const response = await fetchWithRetry(url, `AO ${dateFrom}`);
+    const response = await fetchWithRetry(url, `AO ${dateFrom} p${page + 1}`);
     if (!response || !response.ok) {
       if (response) console.error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
       break;
@@ -194,7 +197,7 @@ async function fetchAoHistorical(
     if (results.length === 0) break;
 
     allItems.push(...results.map(aoToContentItem));
-    break; // legal/search doesn't support cursor pagination
+    if (results.length < PAGE_SIZE) break;
   }
 
   return allItems;
@@ -208,15 +211,16 @@ async function fetchMurHistorical(
 ): Promise<ContentItem[]> {
   const allItems: ContentItem[] = [];
 
-  for (let page = 1; page <= maxPages; page++) {
+  for (let page = 0; page < maxPages; page++) {
+    const fromHit = page * PAGE_SIZE;
     const url = buildSearchUrl(apiKey, 'murs', {
       case_min_open_date: dateFrom,
       case_max_open_date: dateTo,
-      per_page: '100',
+      from_hit: String(fromHit),
     });
 
     await sleep(RATE_LIMIT_DELAY_MS);
-    const response = await fetchWithRetry(url, `MUR ${dateFrom}`);
+    const response = await fetchWithRetry(url, `MUR ${dateFrom} p${page + 1}`);
     if (!response || !response.ok) {
       if (response) console.error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
       break;
@@ -227,7 +231,7 @@ async function fetchMurHistorical(
     if (results.length === 0) break;
 
     allItems.push(...results.map(murToContentItem));
-    break; // legal/search doesn't support cursor pagination
+    if (results.length < PAGE_SIZE) break;
   }
 
   return allItems;

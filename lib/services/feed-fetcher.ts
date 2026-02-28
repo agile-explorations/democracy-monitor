@@ -201,24 +201,22 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
   }
 
   const data = await response.json();
-  const items: FeedItem[] = (data.results || [])
-    .slice(0, 8)
-    .map(
-      (doc: {
-        title?: string;
-        html_url?: string;
-        publication_date?: string;
-        agencies?: { name: string }[];
-        type?: string;
-        abstract?: string;
-      }) => ({
-        title: doc.title || '(document)',
-        link: doc.html_url,
-        pubDate: doc.publication_date,
-        agency: doc.agencies?.map((a) => a.name).join(', '),
-        summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
-      }),
-    );
+  const items: FeedItem[] = (data.results || []).map(
+    (doc: {
+      title?: string;
+      html_url?: string;
+      publication_date?: string;
+      agencies?: { name: string }[];
+      type?: string;
+      abstract?: string;
+    }) => ({
+      title: doc.title || '(document)',
+      link: doc.html_url,
+      pubDate: doc.publication_date,
+      agency: doc.agencies?.map((a) => a.name).join(', '),
+      summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
+    }),
+  );
 
   await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
@@ -273,7 +271,7 @@ async function fetchRss(signal: Signal): Promise<FeedItem[]> {
   const rawItems = parsed?.rss?.channel?.item || parsed?.feed?.entry || [];
   const arr = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
 
-  const items: FeedItem[] = arr.slice(0, 8).map(normalizeRssItem);
+  const items: FeedItem[] = arr.map(normalizeRssItem);
 
   await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;
@@ -299,7 +297,7 @@ async function fetchJson(signal: Signal): Promise<FeedItem[]> {
 
   const data = await response.json();
   const items: FeedItem[] = Array.isArray(data)
-    ? data.slice(0, 8).map((d: { title?: string; link?: string; url?: string }) => ({
+    ? data.map((d: { title?: string; link?: string; url?: string }) => ({
         title: d.title || '(item)',
         link: d.link || d.url,
       }))
@@ -332,7 +330,7 @@ async function fetchHtml(signal: Signal): Promise<FeedItem[]> {
 
   const text = await response.text();
   const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi))
-    .slice(0, 10)
+    .slice(0, 25)
     .map((m) => ({
       href: m[1].startsWith('http') ? m[1] : new URL(m[1], signal.url).toString(),
       text: m[2].replace(/<[^>]*>/g, '').trim(),
