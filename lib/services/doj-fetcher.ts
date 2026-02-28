@@ -233,7 +233,10 @@ export async function fetchDojHistorical(params: {
 
   // Binary search for the page containing dateTo (start of our range in DESC order)
   console.log(`  [doj] Binary searching ${totalPages} pages for ${params.dateTo}...`);
-  const startPage = await findStartPage(toDate, totalPages);
+  // Start one page earlier: the binary search finds the first page whose newest item
+  // is <= toDate, but the previous page's tail items may also be in range.
+  const rawStart = await findStartPage(toDate, totalPages);
+  const startPage = Math.max(0, rawStart - 1);
   console.log(`  [doj] Starting at page ${startPage}`);
 
   // Paginate forward from startPage (increasing page = older dates)
