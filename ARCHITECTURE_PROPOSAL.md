@@ -146,6 +146,76 @@ Sources are grouped by integration priority based on category coverage breadth, 
 | VRL partnership | Calibration dataset for LegiScan AI classification accuracy. Nice-to-have. | Data partnership |
 | CBO reports | Low-volume supplementary signal for fiscal. | RSS or scrape |
 
+#### Cross-Source Document Deduplication
+
+With 7+ source types, the same underlying government document can arrive through multiple ingestion paths with different URLs. A GAO report might appear as both a `govinfo.gov/content/pkg/...` URL from the GovInfo API and a `gao.gov/products/GAO-26-...` URL from GAO RSS. Without dedup, this inflates Layer 1 volume counts and makes one document look like two independent observations — a different problem than the correlated-source issue (§Source Dependency Map), which handles genuinely _different_ documents about the same event.
+
+**Duplication risk matrix:**
+
+| Source A      | Source B              | Overlap Risk                                          | Mechanism                               |
+| ------------- | --------------------- | ----------------------------------------------------- | --------------------------------------- |
+| GovInfo API   | IG RSS feeds          | **High** — GovInfo aggregates IG reports              | Same report, different URL patterns     |
+| GovInfo API   | GAO RSS               | **High** — GovInfo includes GAO reports               | Same report, different domains          |
+| FCC ECFS API  | FCC RSS               | **Medium** — commission orders appear in both         | Different URL schemes for same document |
+| DOJ API       | DOJ Civil Rights (P2) | **Medium** — CRT press releases overlap main DOJ feed | Subset overlap                          |
+| CourtListener | SCOTUS RSS (if added) | **Low** — CourtListener already aggregates SCOTUS     | CourtListener is authoritative          |
+
+**Deduplication strategy — `canonical_id`:**
+
+Each fetcher extracts a source-native document identifier when one exists. This serves as a cross-URL dedup key.
+
+```typescript
+// Schema addition to documents table
+canonical_id VARCHAR(255) NULLABLE  // e.g., "GAO-26-107283", "DOJ-PR-2025-1234"
+// Unique constraint: UNIQUE(canonical_id) WHERE canonical_id IS NOT NULL
+
+// Known canonical ID patterns per source:
+// - GovInfo:        packageId from MODS XML (e.g., "GAOREPORTS-GAO-26-107283")
+// - GAO RSS:        GAO report number from URL (e.g., "GAO-26-107283")
+// - DOJ API:        uuid field from JSON response
+// - CourtListener:  docket number + court (e.g., "courtlistener:1:24-cv-01234")
+// - LegiScan:       bill_id from API (e.g., "legiscan:1234567")
+// - FEC:            case_no from OpenFEC (e.g., "FEC-MUR-8012")
+// - FCC ECFS:       filing ID from API (e.g., "fcc:1033142661477")
+// - IG RSS:         report_id from feed or URL pattern (e.g., "dodig:DODIG-2026-001")
+// - Federal Register: document_number (e.g., "FR-2026-01234")
+
+function normalizeCanonicalId(sourceType: string, rawId: string): string {
+  // Strip source-specific prefixes to enable cross-source matching
+  // e.g., GovInfo packageId "GAOREPORTS-GAO-26-107283" → "GAO-26-107283"
+  //        GAO RSS URL "/products/GAO-26-107283"        → "GAO-26-107283"
+  // Normalization rules are source-pair-specific
+}
+```
+
+**Dedup at ingestion time:**
+
+```typescript
+async function insertDocumentWithDedup(doc: IngestedDocument): Promise<'inserted' | 'duplicate'> {
+  // 1. Check canonical_id if present
+  if (doc.canonicalId) {
+    const normalized = normalizeCanonicalId(doc.sourceType, doc.canonicalId);
+    const existing = await db.documents.findOne({ canonical_id: normalized });
+    if (existing) {
+      // Log: duplicate detected, skip insert, record source_type that produced duplicate
+      return 'duplicate';
+    }
+  }
+
+  // 2. Fall back to URL uniqueness (existing composite unique on (url, category))
+  // 3. Insert with normalized canonical_id
+  await db.documents.insert({ ...doc, canonical_id: doc.canonicalId ? normalized : null });
+  return 'inserted';
+}
+```
+
+**Design decisions:**
+
+- **First-in wins**: whichever source delivers the document first gets the record. No merging of metadata across sources — this avoids complexity and the record already has a `source_type` tag.
+- **Nullable**: Documents without a discoverable canonical ID (some RSS entries with no document number) fall back to URL-only dedup. This accepts a small residual duplication risk for low-structure sources.
+- **Normalization is source-pair-specific**: The `normalizeCanonicalId` function handles known cross-source ID mappings (GovInfo packageId → GAO report number). New source pairs require explicit normalization rules — this is intentional, not a framework that guesses.
+- **Monitoring**: Coverage health (§Sprint R-S1 Phase 1) should track duplicate-rejection rate per source pair. A sudden drop in duplicates may indicate one source changed its ID scheme; a sudden rise may indicate a new overlap path.
+
 #### Key Spike Findings That Affect Architecture
 
 Several spike findings have architectural implications beyond simple source addition:
@@ -1555,6 +1625,7 @@ Build integrations in order of category coverage breadth and implementation simp
 3. **DOJ Press Release JSON API** — Massively enriches lawEnforcement (360-400/wk). Open JSON API — the major spike discovery. **Requires stable internal taxonomy mapping (10-20 durable buckets) before integration** — see §Source-Type Structural Dimensions.
 4. **LegiScan Bulk API** — Anchor source for elections. `getDataset` session downloads + subject-tag filtering + SAST tracking. Pending $1K/yr partnership or subscription (see §LegiScan Partnership Strategy).
 5. **Coverage health monitoring** — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking.
+6. **Cross-source document deduplication** — Add nullable `canonical_id` column to documents table with partial unique constraint. Each fetcher extracts source-native document identifiers (GAO report numbers, DOJ UUIDs, CourtListener docket numbers, etc.) and normalizes them for cross-URL matching. First-in wins; duplicates are rejected at insert time. Ships with first multi-source category (executiveOversight: GovInfo + IG RSS) to prevent volume inflation. See §Cross-Source Document Deduplication for schema and normalization rules.
 
 **Phase 1b — P1 Enrichment sources (fast-follow or tail of Phase 1):**
 
@@ -1589,6 +1660,7 @@ Build integrations in order of category coverage breadth and implementation simp
 - Validate FEC monthly aggregation produces meaningful institutional capacity signal (deadlock rate, quorum status); confirm null on non-batch weeks
 - Validate Pass 2 mechanism extraction fields produce structured, verifiable output (not just "concerning" labels)
 - Verify coverage health monitoring: simulate source silence and confirm alert triggers before real monitoring begins
+- Verify cross-source deduplication: confirm canonical_id matching catches GovInfo↔GAO and GovInfo↔IG overlaps; confirm duplicate-rejection rate is tracked per source pair
 
 **Phase 5 — P2 Deferred sources (post-launch):**
 
