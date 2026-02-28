@@ -55,7 +55,7 @@ describe('GET /api/categories/summary', () => {
 
     const data = res.body as Array<Record<string, unknown>>;
     expect(Array.isArray(data)).toBe(true);
-    expect(data.length).toBe(13);
+    expect(data.length).toBe(14);
     expect(data[0]).toHaveProperty('category');
     expect(data[0]).toHaveProperty('title');
     expect(data[0]).toHaveProperty('status', 'Stable');

@@ -1,5 +1,5 @@
 import type { InferInsertModel } from 'drizzle-orm';
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
@@ -130,30 +130,6 @@ export function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
         ? new Date((row.assessed_at || row.assessedAt) as unknown as string).toISOString()
         : null) || new Date().toISOString(),
   };
-}
-
-/**
- * Get snapshot history for a single category within a date range.
- */
-export async function getSnapshotHistory(
-  category: string,
-  options?: { from?: string; to?: string },
-): Promise<EnhancedAssessment[]> {
-  const db = getDb();
-
-  const conditions = [eq(assessments.category, category)];
-  if (options?.from) conditions.push(gte(assessments.assessedAt, new Date(options.from)));
-  if (options?.to) conditions.push(lte(assessments.assessedAt, new Date(options.to)));
-
-  const rows = await db
-    .select()
-    .from(assessments)
-    .where(and(...conditions))
-    .orderBy(assessments.assessedAt);
-
-  return rows
-    .map((row) => rowToAssessment(row as unknown as AssessmentRow))
-    .filter((a): a is EnhancedAssessment => a !== null);
 }
 
 export interface TrajectoryPoint {

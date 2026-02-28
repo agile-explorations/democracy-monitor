@@ -520,4 +520,37 @@ export const ASSESSMENT_RULES: AssessmentRules = {
     },
     volumeThreshold: { warning: 30, drift: 30, capture: 75 },
   },
+  immigrationEnforcement: {
+    keywords: {
+      capture: [
+        'mass deportation',
+        'expedited removal expanded',
+        'asylum abolished',
+        'detention without hearing',
+        'immigration court bypassed',
+        'TPS revoked',
+        'denaturalization',
+      ],
+      drift: [
+        'asylum restrictions tightened',
+        'detention capacity expanded',
+        'border wall construction',
+        'public charge rule expanded',
+        'immigration enforcement surge',
+        'deportation flights increased',
+        'sanctuary policy overridden',
+        'visa restrictions expanded',
+      ],
+      warning: [
+        'immigration enforcement action',
+        'detention facility',
+        'deportation proceedings',
+        'asylum application',
+        'border apprehension',
+        'immigration court backlog',
+        'removal order',
+      ],
+    },
+    volumeThreshold: { warning: 30, drift: 30, capture: 75 },
+  },
 };

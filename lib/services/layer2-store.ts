@@ -72,53 +72,6 @@ export async function storePass2Assessment(
 }
 
 /**
- * Get URLs of documents flagged by Pass 1 for a category-week.
- */
-export async function getFlaggedDocumentUrls(category: string, weekOf: string): Promise<string[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const rows = await db
-    .select({ url: aiDocumentAssessments.url })
-    .from(aiDocumentAssessments)
-    .where(
-      and(
-        eq(aiDocumentAssessments.category, category),
-        eq(aiDocumentAssessments.weekOf, weekOf),
-        eq(aiDocumentAssessments.pass, 1),
-        eq(aiDocumentAssessments.relevant, true),
-      ),
-    );
-
-  return rows.map((r) => r.url);
-}
-
-/**
- * Get URLs of documents NOT flagged by Pass 1 for a category-week.
- */
-export async function getUnflaggedDocumentUrls(
-  category: string,
-  weekOf: string,
-): Promise<string[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const rows = await db
-    .select({ url: aiDocumentAssessments.url })
-    .from(aiDocumentAssessments)
-    .where(
-      and(
-        eq(aiDocumentAssessments.category, category),
-        eq(aiDocumentAssessments.weekOf, weekOf),
-        eq(aiDocumentAssessments.pass, 1),
-        eq(aiDocumentAssessments.relevant, false),
-      ),
-    );
-
-  return rows.map((r) => r.url);
-}
-
-/**
  * Count Pass 1 assessments already stored for a category-week.
  */
 export async function getPass1Count(category: string, weekOf: string): Promise<number> {

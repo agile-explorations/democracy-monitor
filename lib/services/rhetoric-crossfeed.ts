@@ -34,6 +34,16 @@ const SUPPLEMENTAL_TERMS: Record<string, string[]> = {
     'selective prosecution',
     'attorney general',
   ],
+  immigrationEnforcement: [
+    'immigration enforcement',
+    'deportation',
+    'detention',
+    'asylum',
+    'border security',
+    'ice raids',
+    'expedited removal',
+    'public charge',
+  ],
 };
 
 /**

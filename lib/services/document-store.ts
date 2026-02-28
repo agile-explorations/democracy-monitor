@@ -2,7 +2,6 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
-import { toDateString } from '@/lib/utils/date-utils';
 
 export function buildMetadata(item: ContentItem): Record<string, unknown> | null {
   const meta: Record<string, unknown> = {};
@@ -119,46 +118,4 @@ export async function getDocumentHistory(
     .where(and(...conditions))
     .orderBy(desc(documents.publishedAt))
     .limit(options?.limit || 500);
-}
-
-export interface VolumePoint {
-  week: string;
-  count: number;
-}
-
-/**
- * Get weekly document volume per category within a date range.
- */
-export async function getDocumentVolume(options?: {
-  from?: string;
-  to?: string;
-}): Promise<Record<string, VolumePoint[]>> {
-  if (!isDbAvailable()) return {};
-  const db = getDb();
-
-  const fromClause = options?.from ? sql`AND published_at >= ${new Date(options.from)}` : sql``;
-  const toClause = options?.to ? sql`AND published_at <= ${new Date(options.to)}` : sql``;
-
-  const rows = await db.execute(sql`
-    SELECT
-      category,
-      date_trunc('week', published_at) AS week,
-      COUNT(*)::int AS count
-    FROM documents
-    WHERE published_at IS NOT NULL ${fromClause} ${toClause}
-    GROUP BY category, date_trunc('week', published_at)
-    ORDER BY category, week
-  `);
-
-  const result: Record<string, VolumePoint[]> = {};
-  for (const row of rows.rows) {
-    const r = row as Record<string, unknown>;
-    const cat = r.category as string;
-    if (!result[cat]) result[cat] = [];
-    result[cat].push({
-      week: toDateString(new Date(r.week as string)),
-      count: r.count as number,
-    });
-  }
-  return result;
 }

@@ -18,7 +18,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Categories & baselines
 
-- 13 categories (added elections, mediaFreedom, lawEnforcement, civilLiberties; expanded courts, military; `indices` renamed to `executiveActions`)
+- 14 categories (added elections, mediaFreedom, lawEnforcement, civilLiberties, immigrationEnforcement; expanded courts, military; `indices` renamed to `executiveActions`)
 - 4 baselines: Biden 2022 (Year 2, primary), Biden 2021 (Year 1), Trump 2017 (Year 1), Trump 2018 (Year 2)
 - Biden 2022 is primary baseline (replaced biden_2024); 58,713 docs, 8 alerts (3 iterations calibrated it down from 42)
 - Biden 2022 exported as light fixtures (~29MB): assessments, baselines, document_scores, weekly_aggregates, intent_weekly + document manifest (raw docs gitignored)
@@ -99,7 +99,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Rhetoric & crossfeed
 
-- `rhetoric-crossfeed.ts`: `classifyRhetoricToCategories(title, summary?)` routes rhetoric docs to 13 categories using FR signal search terms; `SUPPLEMENTAL_TERMS` for executiveActions + lawEnforcement (type-based signals have no search terms); module-level cache
+- `rhetoric-crossfeed.ts`: `classifyRhetoricToCategories(title, summary?)` routes rhetoric docs to 14 categories using FR signal search terms; `SUPPLEMENTAL_TERMS` for executiveActions + lawEnforcement + immigrationEnforcement (agency-based signals need supplemental terms); module-level cache
 - `crossfeedRhetoricToCategories(items)` in rhetoric-crossfeed.ts — classifies rhetoric items by FR signal terms, stores under matched categories. Called in snapshot, backfill, and backfill-rhetoric pipelines.
 - `lib/data/category-topics.ts` — PolicyArea→categories many-to-many mapping (bridges 5 rhetoric areas to 13 assessment categories)
 - `classifyPolicyAreaWithScore()` exported from intent-data-service.ts — returns {area, score}; score=0 means unclassifiable
@@ -215,4 +215,5 @@ Requires updating:
 - Sprint R-S1b: GovInfo/GAO + FEC + IG RSS + FCC RSS source integrations — govinfo-fetcher.ts (GAO Reports, Congressional Reports, Public Laws), fec-fetcher.ts (Advisory Opinions, MURs), 8 new signals across 4 categories, backfill pipeline extensions, functional classifier extensions. IG + FCC as standard RSS signals (no custom fetcher). 36 new tests (1405 total).
 - Sprint R4a: AI narrative generation service — narratives table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts, narrative-pipeline.ts, /api/narratives/[category] + /api/narratives/overview endpoints, snapshot pipeline integration. Stable → template, Elevated+ → AI generation. 51 new tests (1411 total).
 - Sprint R-S1c: Fault-tolerant RSS/HTML/JSON signal fetching — fetchWithRetry() wrapper (3 attempts, exponential backoff), retry cron (11am UTC), recordSnapshotSignalResults() for fetch_log integration, buildSignalLookup() helper. 115 new tests (1526 total).
+- Sprint R-S1d: Backfill verification fixes — cl_first_amendment query rewrite (unquoted→quoted + qualifying terms), CourtListener NOS maxPages 10→15, immigrationEnforcement category (2 FR signals + SUPPLEMENTAL_TERMS). Run work: FR backfill for 4 categories, cl_first_amendment purge + re-backfill, FCC RSS verification.
 - Sprints remaining: R-S1 Phase 2-4 (historical backfill + per-source baselines + validation), LegiScan pipeline wiring (operational at free tier — signals in categories.ts + snapshot integration), R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

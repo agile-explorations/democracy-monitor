@@ -88,7 +88,7 @@ export const DOJ_BUCKET_TO_CATEGORIES: Record<DojInternalBucket, string[]> = {
   antitrust: ['rulemaking'],
   environmental_enforcement: ['rulemaking'],
   consumer_protection: ['rulemaking'],
-  immigration_enforcement: ['lawEnforcement', 'civilLiberties'],
+  immigration_enforcement: ['lawEnforcement', 'civilLiberties', 'immigrationEnforcement'],
   public_corruption: ['executiveOversight', 'lawEnforcement'],
   organized_crime: ['lawEnforcement'],
   cybercrime: ['lawEnforcement'],

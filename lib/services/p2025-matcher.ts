@@ -201,32 +201,3 @@ async function judgeAndStoreMatch(
 
   return match;
 }
-
-/**
- * Full pipeline: find similar proposals for a document, judge each, store results.
- */
-export async function matchDocumentToProposals(
-  documentId: number,
-  options: { threshold?: number; topK?: number } = {},
-): Promise<P2025Match[]> {
-  if (!isDbAvailable()) return [];
-
-  const db = getDb();
-
-  const [doc] = await db
-    .select({ id: documents.id, title: documents.title, content: documents.content })
-    .from(documents)
-    .where(eq(documents.id, documentId));
-
-  if (!doc) return [];
-
-  const similar = await findSimilarProposals(documentId, options);
-  const matches: P2025Match[] = [];
-
-  for (const proposal of similar) {
-    const match = await judgeAndStoreMatch(proposal, doc, documentId);
-    matches.push(match);
-  }
-
-  return matches;
-}

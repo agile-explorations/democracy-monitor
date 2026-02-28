@@ -14,10 +14,10 @@ function makeRow(
 describe('buildOverviewFromRows', () => {
   it('returns empty arrays for empty input', () => {
     const result = buildOverviewFromRows([]);
-    expect(result.heatmap).toHaveLength(13); // Still includes all CATEGORIES
+    expect(result.heatmap).toHaveLength(14); // Still includes all CATEGORIES
     expect(result.synchrony).toEqual([]);
     expect(result.statusCounts).toEqual({
-      Stable: 13,
+      Stable: 14,
       Elevated: 0,
       Divergent: 0,
       ConfirmedConcern: 0,
@@ -92,8 +92,8 @@ describe('buildOverviewFromRows', () => {
     const result = buildOverviewFromRows(rows);
 
     // Latest week is 2026-01-13
-    // civilService=Stable, fiscal=Divergent, rest=Stable (11 more)
-    expect(result.statusCounts.Stable).toBe(12);
+    // civilService=Stable, fiscal=Divergent, rest=Stable (12 more)
+    expect(result.statusCounts.Stable).toBe(13);
     expect(result.statusCounts.Divergent).toBe(1);
     expect(result.statusCounts.Elevated).toBe(0);
   });
@@ -115,12 +115,12 @@ describe('buildOverviewFromRows', () => {
     expect(fiscalIdx).toBeLessThan(csIdx);
   });
 
-  it('includes all 13 categories even when DB has no rows for some', () => {
+  it('includes all 14 categories even when DB has no rows for some', () => {
     const rows = [makeRow('civilService', '2026-01-06', 0.5)];
     const result = buildOverviewFromRows(rows);
 
-    expect(result.heatmap).toHaveLength(13);
-    expect(result.statusTimeline).toHaveLength(13);
+    expect(result.heatmap).toHaveLength(14);
+    expect(result.statusTimeline).toHaveLength(14);
 
     // Categories without data still get entries
     const fiscal = result.heatmap.find((r) => r.category === 'fiscal');

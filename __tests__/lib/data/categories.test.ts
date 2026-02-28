@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { CATEGORIES, buildSignalLookup } from '@/lib/data/categories';
 
 describe('CATEGORIES', () => {
-  it('has 13 categories', () => {
-    expect(CATEGORIES).toHaveLength(13);
+  it('has 14 categories', () => {
+    expect(CATEGORIES).toHaveLength(14);
   });
 
   it('each category has required fields', () => {
@@ -52,6 +52,7 @@ describe('CATEGORIES', () => {
     expect(keys).toContain('mediaFreedom');
     expect(keys).toContain('lawEnforcement');
     expect(keys).toContain('civilLiberties');
+    expect(keys).toContain('immigrationEnforcement');
   });
 
   it('all category keys are unique', () => {
@@ -103,6 +104,16 @@ describe('CATEGORIES', () => {
     const ids = cat!.signals.map((s) => s.id);
     expect(ids).toContain('fec_advisory_opinions');
     expect(ids).toContain('fec_enforcement');
+  });
+
+  it('immigrationEnforcement has federal_register signal types', () => {
+    const cat = CATEGORIES.find((c) => c.key === 'immigrationEnforcement');
+    expect(cat).toBeDefined();
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('federal_register');
+    const ids = cat!.signals.map((s) => s.id);
+    expect(ids).toContain('fr_dhs_immigration');
+    expect(ids).toContain('fr_cbp_enforcement');
   });
 
   it('mediaFreedom has FCC RSS signals', () => {

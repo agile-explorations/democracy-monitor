@@ -570,7 +570,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'cl_first_amendment',
         name: 'CourtListener: First Amendment',
-        url: 'courtlistener://recap?q=first+amendment',
+        url: 'courtlistener://recap?q=%22first+amendment%22+AND+(violation+OR+injunction+OR+challenge+OR+retaliation+OR+%22free+speech%22+OR+%22free+press%22)',
         type: 'courtlistener',
         note: 'First Amendment challenges in federal court',
       },
@@ -594,6 +594,28 @@ export const CATEGORIES: Category[] = [
         url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22',
         type: 'federal_register',
         note: 'Federal Register documents on civil rights and due process',
+      },
+    ],
+  },
+  {
+    key: 'immigrationEnforcement',
+    title: 'Immigration Enforcement',
+    description:
+      'How is immigration enforcement changing? Tracks detention, removal, asylum restrictions, and enforcement apparatus patterns through DHS and CBP actions.',
+    signals: [
+      {
+        id: 'fr_dhs_immigration',
+        name: 'Federal Register: DHS Immigration',
+        url: 'https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=homeland-security-department&conditions[term]=asylum|TPS|deportation|detention|removal|immigration|public+charge&per_page=20',
+        type: 'federal_register',
+        note: 'DHS immigration-related Federal Register documents',
+      },
+      {
+        id: 'fr_cbp_enforcement',
+        name: 'Federal Register: CBP Enforcement',
+        url: 'https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=u-s-customs-and-border-protection&conditions[term]=detention|removal|deportation|expedited+removal|border+wall|apprehension|enforcement&per_page=20',
+        type: 'federal_register',
+        note: 'CBP enforcement-related Federal Register documents',
       },
     ],
   },

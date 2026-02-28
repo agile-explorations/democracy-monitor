@@ -161,7 +161,7 @@ async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<
 export async function fetchCourtListenerHistorical(
   params: ClParams & { dateFrom: string; dateTo: string; maxPages?: number },
 ): Promise<ContentItem[]> {
-  const { dateFrom, dateTo, maxPages = 10 } = params;
+  const { dateFrom, dateTo, maxPages = 15 } = params;
   const expanded = expandNosParams(params);
   const allItems: ContentItem[] = [];
 

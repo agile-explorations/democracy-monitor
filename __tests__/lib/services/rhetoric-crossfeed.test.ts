@@ -115,7 +115,7 @@ describe('classifyRhetoricToCategories', () => {
     expect(cats).toContain('executiveActions');
   });
 
-  it('all 13 categories are reachable', () => {
+  it('all 14 categories are reachable', () => {
     const allTerms = extractCategoryCrossfeedTerms();
     const covered = new Set(allTerms.map((t) => t.category));
     const expected = CATEGORIES.map((c) => c.key);

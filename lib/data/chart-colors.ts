@@ -25,6 +25,9 @@ export const CATEGORY_COLORS: Record<string, string> = {
   infoAvailability: '#22c55e',
   elections: '#14b8a6',
   mediaFreedom: '#06b6d4',
+  lawEnforcement: '#0ea5e9',
+  civilLiberties: '#3b82f6',
+  immigrationEnforcement: '#0284c7',
 };
 
 /** Per-convergence-status colors for heatmap/timeline visualizations. */
