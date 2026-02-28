@@ -140,11 +140,85 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 Requires updating:
 
-1. `lib/data/categories.ts` — category + signal definitions
-2. `lib/data/assessment-rules.ts` — keyword dictionaries
-3. `lib/data/category-maturity.ts` — maturity level
-4. `lib/services/rhetoric-crossfeed.ts` — `SUPPLEMENTAL_TERMS` if no FR term-based signals
-5. Hardcoded category counts in tests
+1. `lib/data/categories.ts` — category + signal definitions. **FR signals MUST use shorthand URL format** `/api/federal-register?agency=X&term=Y` (not raw FR API URLs — `parseSignalParams()` can't parse them)
+2. `lib/data/assessment-rules.ts` — keyword dictionaries (capture/drift/warning tiers)
+3. `lib/data/category-maturity.ts` — maturity level (usually `'Experimental'` for new categories)
+4. `lib/data/chart-colors.ts` — `CATEGORY_COLORS` entry
+5. `lib/data/doj-taxonomy.ts` — add to relevant `DOJ_BUCKET_TO_CATEGORIES` buckets if applicable
+6. `lib/services/rhetoric-crossfeed.ts` — `SUPPLEMENTAL_TERMS` if no FR term-based signals
+7. Hardcoded category counts in tests (search for the old count across test files)
+8. Run backfill (see Backfill runbook below)
+
+## Backfill runbook
+
+### Periods
+
+| Period       | Dates                   | Notes             |
+| ------------ | ----------------------- | ----------------- |
+| Trump Year 1 | 2017-01-20 → 2018-01-19 | Baseline          |
+| Trump Year 2 | 2018-01-20 → 2019-01-19 | Baseline          |
+| Biden Year 1 | 2021-01-20 → 2022-01-19 | Baseline          |
+| Biden Year 2 | 2022-01-20 → 2023-01-19 | Baseline          |
+| Trump T2     | 2025-01-20 → present    | Active monitoring |
+
+Gap years (2019–2020, 2023–2024) are intentionally excluded.
+
+### Federal Register baselines
+
+FR baselines use `pnpm build-baseline` because it both fetches documents AND computes baseline statistics (needed for Layer 1 structural anomaly detection). Run one category at a time to respect FR API rate limits. Two categories can run in parallel in separate terminals.
+
+```bash
+# All 4 baselines for a specific category (runs sequentially)
+pnpm build-baseline --category immigrationEnforcement --ingest-only
+
+# Or target a specific baseline period
+pnpm build-baseline --category immigrationEnforcement --baseline trump_2017 --ingest-only
+```
+
+### Federal Register T2 (active period)
+
+```bash
+pnpm backfill --category immigrationEnforcement --source fr --ingest-only
+```
+
+### Non-FR sources (CourtListener, DOJ, GovInfo, FEC)
+
+Non-FR sources use `pnpm backfill` with explicit date ranges. These can run in parallel across terminals (one source per terminal). Each command chains the 3 period groups sequentially.
+
+```bash
+# Terminal 1: CourtListener → courts, civilLiberties, mediaFreedom
+pnpm backfill --source courtlistener --from 2017-01-20 --to 2019-01-19 --ingest-only && \
+pnpm backfill --source courtlistener --from 2021-01-20 --to 2023-01-19 --ingest-only && \
+pnpm backfill --source courtlistener --from 2025-01-20 --ingest-only
+
+# Terminal 2: DOJ → lawEnforcement, civilLiberties
+pnpm backfill --source doj --from 2017-01-20 --to 2019-01-19 --ingest-only && \
+pnpm backfill --source doj --from 2021-01-20 --to 2023-01-19 --ingest-only && \
+pnpm backfill --source doj --from 2025-01-20 --ingest-only
+
+# Terminal 3: GovInfo → executiveOversight
+pnpm backfill --source govinfo --from 2017-01-20 --to 2019-01-19 --ingest-only && \
+pnpm backfill --source govinfo --from 2021-01-20 --to 2023-01-19 --ingest-only && \
+pnpm backfill --source govinfo --from 2025-01-20 --ingest-only
+
+# Terminal 4: FEC → elections
+pnpm backfill --source fec --from 2017-01-20 --to 2019-01-19 --ingest-only && \
+pnpm backfill --source fec --from 2021-01-20 --to 2023-01-19 --ingest-only && \
+pnpm backfill --source fec --from 2025-01-20 --ingest-only
+```
+
+### New category: full backfill checklist
+
+1. FR baselines: `pnpm build-baseline --category <key> --ingest-only`
+2. FR T2: `pnpm backfill --category <key> --source fr --ingest-only`
+3. Verify: `SELECT category, baseline_period, COUNT(*) FROM documents WHERE category = '<key>' GROUP BY 1, 2 ORDER BY 2`
+4. Non-FR sources backfill automatically for all categories — no per-category flag needed for CL/DOJ/GovInfo/FEC
+
+### Troubleshooting
+
+- **"Skipped N weeks (already complete)"**: Stale `fetch_log` entries from a previous run. Delete them: `DELETE FROM fetch_log WHERE category = '<key>'`, then re-run.
+- **Suspiciously high doc counts**: Check signal URLs. FR signals must use shorthand format (`/api/federal-register?agency=X&term=Y`). Raw FR API URLs bypass `parseSignalParams()` and fetch ALL documents unfiltered.
+- **Rate limits**: FR API tolerates 2 concurrent category backfills. More than that risks 429s. Chain runs sequentially within a terminal, parallelize across terminals by source or category.
 
 ## Signal gap findings (resolved in Sprint 20)
 

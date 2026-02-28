@@ -606,14 +606,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_dhs_immigration',
         name: 'Federal Register: DHS Immigration',
-        url: 'https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=homeland-security-department&conditions[term]=asylum|TPS|deportation|detention|removal|immigration|public+charge&per_page=20',
+        url: '/api/federal-register?agency=homeland-security-department&term=asylum+|+TPS+|+deportation+|+detention+|+removal+|+immigration+|+%22public+charge%22',
         type: 'federal_register',
         note: 'DHS immigration-related Federal Register documents',
       },
       {
         id: 'fr_cbp_enforcement',
         name: 'Federal Register: CBP Enforcement',
-        url: 'https://www.federalregister.gov/api/v1/documents.json?conditions[agencies][]=u-s-customs-and-border-protection&conditions[term]=detention|removal|deportation|expedited+removal|border+wall|apprehension|enforcement&per_page=20',
+        url: '/api/federal-register?agency=u-s-customs-and-border-protection&term=detention+|+removal+|+deportation+|+%22expedited+removal%22+|+%22border+wall%22+|+apprehension+|+enforcement',
         type: 'federal_register',
         note: 'CBP enforcement-related Federal Register documents',
       },
