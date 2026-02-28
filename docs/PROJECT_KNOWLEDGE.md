@@ -136,6 +136,12 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Weekly aggregator date mismatch fixed: range query (gte/lt 7-day window) replaces exact eq() match — document_scores use Monday-based weeks, weekly_aggregates used config-start-date-based weeks
 - `document_scores.document_id` NULL: fixed via post-store `resolveDocumentIds()` UPDATE joining on URL
 
+## Known data issues (deferred to pipeline redesign)
+
+- **cl_first_amendment noise (civilLiberties)**: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. ~41K of 101K CL docs in civilLiberties are noise (irrelevant NOS codes like Insurance, Patent, Fraud, or empty NOS). Query was rewritten in R-S1d to `"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")`. **Repair**: purge docs where `source_origin='courtlistener' AND category='civilLiberties'` and NOS not in 440-448 or 530; re-backfill with new query; recompute aggregates and baselines. The ~56K NOS 440/530 docs are correct (from cl_civil_rights and cl_habeas signals).
+- **FCC RSS feeds down (mediaFreedom)**: `rss_fcc_media` and `rss_fcc_enforcement` time out due to Feb 2026 government shutdown. Not a config bug — will recover when FCC site comes back online. Source health service marks them `unavailable`; retry cron handles recovery automatically.
+- **~18K documents missing weekly aggregates**: `ingestWeek` (used with `--ingest-only` flag) stores + scores docs but does not compute `weekly_aggregates`. Pipeline redesign will make aggregation a mandatory stage.
+
 ## Adding new categories
 
 Requires updating:
