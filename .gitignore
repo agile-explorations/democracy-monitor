@@ -46,4 +46,4 @@ lib/seed/fixtures-pre-remediation/
 lib/seed/fixtures/ai_document_assessments.json
 
 # Internal specification/research documents (kept on disk for local reference)
-docs/internal/
+# docs/internal/

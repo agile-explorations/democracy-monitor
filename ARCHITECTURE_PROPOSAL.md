@@ -62,29 +62,33 @@ GDELT + White House → Rhetoric Pipeline (separate) → Intent classification
 
 Categories are organized around **democratic threat vectors** — the mechanisms through which democratic institutions erode — not around document sources. Each category is mapped to established framework dimensions to ensure comprehensive coverage.
 
-| #   | Category Key             | Threat Vector                                             | Primary Sources                        | Framework Alignment                                          | Status                                                    |
-| --- | ------------------------ | --------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| 1   | `executiveActions`       | Executive overreach & constraint erosion                  | FR, WH                                 | V-Dem executive constraints; FH-C                            | Operational                                               |
-| 2   | `rulemaking`             | Independent agency capture                                | FR                                     | Unique to DM — no other framework tracks at this granularity | Operational                                               |
-| 3   | `civilService`           | Politicization of bureaucracy                             | FR, WH, OPM                            | V-Dem impartial administration; FH-C                         | Operational                                               |
-| 4   | `judicialIndependence` ★ | Erosion of judicial independence & rule of law compliance | CourtListener, FR                      | V-Dem judicial constraints; FH-F1                            | Rename pending; source expansion validated                |
-| 5   | `elections`              | Electoral integrity & voter access                        | LegiScan, FEC, FR                      | V-Dem elections & suffrage; FH-A/B                           | Source expansion validated (LegiScan pending partnership) |
-| 6   | `lawEnforcement` ✦       | Selective enforcement & due process erosion               | DOJ API, CourtListener                 | V-Dem rule of law; FH-F2/F3; L&Z indicator 2                 | New — sources validated, launch candidate                 |
-| 7   | `civilLiberties` ✦       | Assembly, association & individual rights                 | CourtListener (NOS 440), ACLU, DOJ-CRD | V-Dem freedom of association; FH-E/G; L&Z indicator 4        | New — sources validated, launch candidate                 |
-| 8   | `mediaFreedom`           | Press freedom & media landscape health                    | FCC RSS, FR, GDELT rhetoric            | V-Dem freedom of expression; FH-D                            | Source expansion validated                                |
-| 9   | `infoAvailability`       | Government transparency & censorship                      | FR, WH, agency websites                | V-Dem government censorship; FH-C3/D                         | Operational                                               |
-| 10  | `fiscal`                 | Budget weaponization & corruption                         | FR, GAO, CBO†                          | V-Dem corruption; FH-C2                                      | Operational (CBO nice-to-have)                            |
-| 11  | `executiveOversight` ★   | Watchdog independence (IGs, GAO, congressional oversight) | GovInfo/GAO API, IG RSS, FR            | V-Dem executive oversight; FH-C                              | Rename pending; source expansion validated                |
-| 12  | `military`               | Military/security in domestic politics                    | FR, DOD, GDELT                         | V-Dem political violence; FH-F3                              | Operational                                               |
-| 13  | `immigrationEnforcement` | Immigration enforcement patterns                          | FR, DHS, ICE/CBP statistics            | FH-F2/G1                                                     | Operational                                               |
+| #   | Category Key             | Threat Vector                                             | Primary Sources                                        | Framework Alignment                                          | Status                                                         |
+| --- | ------------------------ | --------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| 1   | `executiveActions`       | Executive overreach & constraint erosion                  | FR, WH                                                 | V-Dem executive constraints; FH-C                            | Operational                                                    |
+| 2   | `rulemaking`             | Independent agency capture                                | FR                                                     | Unique to DM — no other framework tracks at this granularity | Operational                                                    |
+| 3   | `civilService`           | Politicization of bureaucracy                             | FR, WH, OPM                                            | V-Dem impartial administration; FH-C                         | Operational                                                    |
+| 4   | `judicialIndependence` ★ | Erosion of judicial independence & rule of law compliance | CourtListener, FR                                      | V-Dem judicial constraints; FH-F1                            | Rename pending; source expansion validated                     |
+| 5   | `elections`              | Electoral integrity & voter access                        | LegiScan, FEC, FR                                      | V-Dem elections & suffrage; FH-A/B                           | Source expansion validated (LegiScan operational at free tier) |
+| 6   | `lawEnforcement` ✦       | Selective enforcement & due process erosion               | DOJ API, CourtListener                                 | V-Dem rule of law; FH-F2/F3; L&Z indicator 2                 | New — sources validated, launch candidate                      |
+| 7   | `civilLiberties` ✦       | Assembly, association & individual rights                 | CourtListener (NOS 440), ACLU, DOJ-CRD                 | V-Dem freedom of association; FH-E/G; L&Z indicator 4        | New — sources validated, launch candidate                      |
+| 8   | `mediaFreedom`           | Press freedom & media landscape health                    | FCC RSS, FR, GDELT rhetoric                            | V-Dem freedom of expression; FH-D                            | Source expansion validated                                     |
+| 9   | `infoAvailability`       | Government transparency & censorship                      | FR, WH, agency websites                                | V-Dem government censorship; FH-C3/D                         | Operational                                                    |
+| 10  | `fiscal`                 | Budget weaponization & corruption                         | FR, GAO, CBO†                                          | V-Dem corruption; FH-C2                                      | Operational (CBO nice-to-have)                                 |
+| 11  | `executiveOversight` ★   | Watchdog independence (IGs, GAO, congressional oversight) | GovInfo/GAO API, IG RSS, FR                            | V-Dem executive oversight; FH-C                              | Rename pending; source expansion validated                     |
+| 12  | `military`               | Military/security in domestic politics                    | FR, DOD, GDELT                                         | V-Dem political violence; FH-F3                              | Operational                                                    |
+| 13  | `immigrationEnforcement` | Immigration enforcement patterns                          | FR (DHS, CBP), GDELT; DHS/ICE/CBP statistics (Phase 5) | FH-F2/G1                                                     | Adding in R-S1d; GDELT cross-feed essential                    |
 
 ★ = Rename from prior architecture (courts → judicialIndependence, igs → executiveOversight). Currently operational under old name with FR-only sources. Current baselines are FR-only; baselines will need recomputation after source expansion adds CourtListener/GovInfo data.
 ✦ = New category. Does not exist in codebase. Source availability validated by spikes (see `SPIKE_FINDINGS.md`). Implementation in Sprint R-S1.
 † = Nice-to-have source addition; not required for launch.
 
+**Status label definitions:** "Operational" = exists in codebase with signal definitions, documents in DB, and included in aggregation queries. "Source expansion validated" = category exists but new sources validated and awaiting pipeline integration. "New — sources validated, launch candidate" = category does not yet exist in codebase; sources validated by spikes. "Adding in [sprint]" = implementation planned for specific sprint. "Rename pending" = operational under old name, rename tracked.
+
 **Renames from prior architecture:** `courts` → `judicialIndependence`, `igs` → `executiveOversight`. These renames clarify that the category tracks the _threat vector_ (erosion of independence, erosion of oversight) not the _institution_. Rename should happen early (Sprint R3.2 or R4 timeframe) to avoid accumulating code under old names.
 
 **New categories:** `lawEnforcement` and `civilLiberties`. These fill gaps identified by mapping against V-Dem, Freedom House, and Levitsky & Ziblatt frameworks. Source availability validated by spikes: lawEnforcement has 420-540 docs/week from CourtListener + DOJ API; civilLiberties has 67-123 docs/week from CourtListener NOS 440 alone. Both are launch candidates. See `SPIKE_FINDINGS.md`.
+
+**Implementation gap closed:** `immigrationEnforcement` was listed as "Operational" in earlier versions of this document but was never added to the codebase. Adding in Sprint R-S1d with 2 FR signals: `fr_dhs_immigration` (DHS parent agency + immigration terms, ~98.5% of unique documents) and `fr_cbp_enforcement` (CBP + enforcement terms, ~9 unique border enforcement docs per period). A third signal (`fr_ice`) was evaluated and dropped — 100% redundant due to FR API nesting sub-agency documents under DHS parent. FR-only volume is thin (~5-6 docs/week, comparable to hatch) so GDELT rhetoric cross-feed is essential for this category's convergence scoring. The category tracks immigration enforcement _patterns_ — the operational rulemaking that enables detention expansion, removal acceleration, asylum restrictions, and border enforcement posture changes. This is distinct from lawEnforcement (which captures DOJ enforcement priorities and CourtListener filings) and civilLiberties (which captures civil rights litigation). The unique future signal is DHS monthly statistical tables (encounters, detention bed counts, removals), deferred until a download pipeline for the Excel/PDF data is built.
 
 **Framework coverage achieved:**
 
@@ -101,24 +105,24 @@ The expanded category framework requires document sources beyond the Federal Reg
 
 #### Source Inventory (Post-Spike)
 
-| Source                               | API/Access                          | Volume                                                           | Historical Depth                         | Categories Served                                    | Spike Result                                                                         |
-| ------------------------------------ | ----------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| **Federal Register** (existing)      | federalregister.gov API             | Varies by category                                               | 1994+                                    | All categories                                       | Already integrated                                                                   |
-| **White House** (existing)           | whitehouse.gov RSS                  | Variable                                                         | Variable                                 | executiveActions, civilService, infoAvailability     | Already integrated                                                                   |
-| **GDELT** (existing)                 | GDELT API                           | High                                                             | 2015+                                    | mediaFreedom, military, rhetoric pipeline            | Already integrated                                                                   |
-| **CourtListener**                    | REST API v4, free, 5K req/hr        | 15-20/wk (judicial), 50-70/wk (law), 67-123/wk (civil liberties) | All federal courts, millions of opinions | judicialIndependence, lawEnforcement, civilLiberties | **Strong pass**                                                                      |
-| **DOJ Press Releases**               | justice.gov JSON API                | 360-400/wk enforcement-relevant                                  | Archive available                        | lawEnforcement                                       | **Strong pass**                                                                      |
-| **GovInfo/GAO**                      | REST API, free key, 36K req/hr      | 4-6 GAO reports/wk                                               | 1995+ (MODS XML metadata)                | executiveOversight, fiscal                           | **Strong pass**                                                                      |
-| **IG RSS feeds** (DOD, HHS, DOJ OIG) | RSS                                 | 5-10/wk                                                          | Varies by agency                         | executiveOversight                                   | **Strong pass**                                                                      |
-| **LegiScan**                         | REST API, national account ($1K/yr) | ~20 election bills/wk nationally                                 | 2009+, all 50 states                     | elections                                            | **Strong pass** (pending partnership)                                                |
-| **FEC**                              | OpenFEC API, free key               | 5-8/wk (below Layer 1 threshold)                                 | MURs from 1999+                          | elections                                            | **Pass** (supplementary — monthly aggregation)                                       |
-| **FCC**                              | RSS feeds                           | 5-10 media-relevant/wk                                           | Archive available                        | mediaFreedom                                         | **Pass** (supplementary)                                                             |
-| ~~**GDELT diversity metrics**~~      | ~~Computed from existing data~~     | ~~N/A~~                                                          | ~~N/A~~                                  | ~~mediaFreedom~~                                     | **Failed** — wire syndication inflates domain counts; cannot measure media diversity |
-| **ACLU litigation tracker**          | Web scrape                          | TBD (supplementary)                                              | Years of case data                       | civilLiberties                                       | Part of Spike 4 pass (CourtListener is primary)                                      |
-| **DOJ Civil Rights Division**        | justice.gov/crt                     | Intermittent                                                     | Archive available                        | civilLiberties                                       | Part of Spike 4 pass (supplementary)                                                 |
-| **Oversight.gov**                    | HTML scraping only (no API)         | ~40 IG reports/wk (all 75 IGs)                                   | Aggregated                               | executiveOversight                                   | Deferred — no API; community scraper spotty                                          |
-| **CBO**                              | cbo.gov                             | Low                                                              | Reports archive                          | fiscal                                               | Nice-to-have                                                                         |
-| **VRL**                              | Tracker (2021+)                     | Expert classifications                                           | 2021+                                    | elections                                            | Nice-to-have calibration dataset for LegiScan AI                                     |
+| Source                               | API/Access                      | Volume                                                           | Historical Depth                         | Categories Served                                    | Spike Result                                                                         |
+| ------------------------------------ | ------------------------------- | ---------------------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Federal Register** (existing)      | federalregister.gov API         | Varies by category                                               | 1994+                                    | All categories                                       | Already integrated                                                                   |
+| **White House** (existing)           | whitehouse.gov RSS              | Variable                                                         | Variable                                 | executiveActions, civilService, infoAvailability     | Already integrated                                                                   |
+| **GDELT** (existing)                 | GDELT API                       | High                                                             | 2015+                                    | mediaFreedom, military, rhetoric pipeline            | Already integrated                                                                   |
+| **CourtListener**                    | REST API v4, free, 5K req/hr    | 15-20/wk (judicial), 50-70/wk (law), 67-123/wk (civil liberties) | All federal courts, millions of opinions | judicialIndependence, lawEnforcement, civilLiberties | **Strong pass**                                                                      |
+| **DOJ Press Releases**               | justice.gov JSON API            | 360-400/wk enforcement-relevant                                  | Archive available                        | lawEnforcement                                       | **Strong pass**                                                                      |
+| **GovInfo/GAO**                      | REST API, free key, 36K req/hr  | 4-6 GAO reports/wk                                               | 1995+ (MODS XML metadata)                | executiveOversight, fiscal                           | **Strong pass**                                                                      |
+| **IG RSS feeds** (DOD, HHS, DOJ OIG) | RSS                             | 5-10/wk                                                          | Varies by agency                         | executiveOversight                                   | **Strong pass**                                                                      |
+| **LegiScan**                         | REST API (free tier)            | ~20 election bills/wk nationally                                 | 2009+, all 50 states                     | elections                                            | **Strong pass** — operational, 1,826 bills in DB                                     |
+| **FEC**                              | OpenFEC API, free key           | 5-8/wk (below Layer 1 threshold)                                 | MURs from 1999+                          | elections                                            | **Pass** (supplementary — monthly aggregation)                                       |
+| **FCC**                              | RSS feeds                       | 5-10 media-relevant/wk                                           | Archive available                        | mediaFreedom                                         | **Pass** (supplementary)                                                             |
+| ~~**GDELT diversity metrics**~~      | ~~Computed from existing data~~ | ~~N/A~~                                                          | ~~N/A~~                                  | ~~mediaFreedom~~                                     | **Failed** — wire syndication inflates domain counts; cannot measure media diversity |
+| **ACLU litigation tracker**          | Web scrape                      | TBD (supplementary)                                              | Years of case data                       | civilLiberties                                       | Part of Spike 4 pass (CourtListener is primary)                                      |
+| **DOJ Civil Rights Division**        | justice.gov/crt                 | Intermittent                                                     | Archive available                        | civilLiberties                                       | Part of Spike 4 pass (supplementary)                                                 |
+| **Oversight.gov**                    | HTML scraping only (no API)     | ~40 IG reports/wk (all 75 IGs)                                   | Aggregated                               | executiveOversight                                   | Deferred — no API; community scraper spotty                                          |
+| **CBO**                              | cbo.gov                         | Low                                                              | Reports archive                          | fiscal                                               | Nice-to-have                                                                         |
+| **VRL**                              | Tracker (2021+)                 | Expert classifications                                           | 2021+                                    | elections                                            | Nice-to-have calibration dataset for LegiScan AI                                     |
 
 #### Integration Priority
 
@@ -130,7 +134,7 @@ Sources are grouped by integration priority based on category coverage breadth, 
 | CourtListener | Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. | REST API integration + NOS-code-based category routing |
 | GovInfo/GAO API | Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free, structured MODS XML. | REST API + MODS XML parser |
 | DOJ Press Releases | Massively enriches lawEnforcement (360-400/wk). Open JSON API — major discovery. | JSON API integration |
-| LegiScan | Anchor source for elections. Bulk API + SAST cross-state tracking — unique signal. | Bulk API integration (pending $1K/yr partnership or subscription) |
+| LegiScan | Anchor source for elections. Bulk API + SAST cross-state tracking — unique signal. | Operational at free tier. Weekly cron integration in Sprint R-S1e. |
 
 **P1 — Enrichment (Sprint R-S1 or fast-follow):**
 | Source | Rationale | Implementation |
@@ -145,6 +149,7 @@ Sources are grouped by integration priority based on category coverage breadth, 
 | Oversight.gov | All 75 IGs aggregated, but no API — scraping only, community scraper spotty. | HTML scraping |
 | VRL partnership | Calibration dataset for LegiScan AI classification accuracy. Nice-to-have. | Data partnership |
 | CBO reports | Low-volume supplementary signal for fiscal. | RSS or scrape |
+| DHS/ICE/CBP statistics | Monthly enforcement tables (encounters, detention, removals) for immigrationEnforcement. Unique operational tempo signal — no other source captures this. | Excel/PDF download, quarterly batch processing |
 
 #### Cross-Source Document Deduplication
 
@@ -167,7 +172,9 @@ Each fetcher extracts a source-native document identifier when one exists. This 
 ```typescript
 // Schema addition to documents table
 canonical_id VARCHAR(255) NULLABLE  // e.g., "GAO-26-107283", "DOJ-PR-2025-1234"
-// Unique constraint: UNIQUE(canonical_id) WHERE canonical_id IS NOT NULL
+// Unique constraint: UNIQUE(canonical_id, category) WHERE canonical_id IS NOT NULL
+// Per-category, not global — same document can legitimately appear in multiple categories
+// (primary + secondary routing, cross-feed). Matches existing (url, category) composite unique.
 
 // Known canonical ID patterns per source:
 // - GovInfo:        packageId from MODS XML (e.g., "GAOREPORTS-GAO-26-107283")
@@ -192,10 +199,13 @@ function normalizeCanonicalId(sourceType: string, rawId: string): string {
 
 ```typescript
 async function insertDocumentWithDedup(doc: IngestedDocument): Promise<'inserted' | 'duplicate'> {
-  // 1. Check canonical_id if present
+  // 1. Check canonical_id if present (scoped to category)
   if (doc.canonicalId) {
     const normalized = normalizeCanonicalId(doc.sourceType, doc.canonicalId);
-    const existing = await db.documents.findOne({ canonical_id: normalized });
+    const existing = await db.documents.findOne({
+      canonical_id: normalized,
+      category: doc.category,
+    });
     if (existing) {
       // Log: duplicate detected, skip insert, record source_type that produced duplicate
       return 'duplicate';
@@ -208,6 +218,8 @@ async function insertDocumentWithDedup(doc: IngestedDocument): Promise<'inserted
   return 'inserted';
 }
 ```
+
+**Why per-category uniqueness, not global:** The documents table stores category-scoped rows — the same document can legitimately appear in multiple categories (primary + secondary routing, rhetoric cross-feed). A global `UNIQUE(canonical_id)` would break multi-category routing. The canonical*id's purpose is preventing cross-source duplication \_within a category* (e.g., GovInfo and GAO RSS both delivering the same report to executiveOversight), not preventing the same document from appearing in multiple categories.
 
 **Design decisions:**
 
@@ -258,36 +270,42 @@ This rule has a clear semantic: dampening applies to categories that are _inhere
 
 **4. Cross-source event linking.** A DOJ press release about a selective prosecution case may correspond to a CourtListener filing in the same matter. A LegiScan bill that passes may generate FR rulemaking. These are the same event observed from different institutional vantage points. The system should treat them as **linked observations that strengthen convergence** rather than independent signals that inflate volume. Implementation: defer to R-F (future) — track as a known limitation for launch.
 
-#### LegiScan Partnership Strategy
+**5. Snapshot pipeline completeness (Sprint R-S1e).** The daily snapshot fetches the latest 20 items per signal — a fixed-page-count strategy with no awareness of what's already in the database. For high-volume signals, this causes routine silent data loss: CourtListener/civilLiberties averages 38 docs/day (snapshot captures ~20), FR/infoAvailability peaks at 159/day (snapshot captures ~20). The backfill pipeline uses paginated `fetchHistorical` and captures everything, but real-time monitoring has gaps between backfills. Sprint R-S1e replaces the "fetch latest 20" strategy with incremental backfill: query last stored date per source/category, fetch everything since `lastDate - 2 days` using existing `fetchHistorical` variants, paginate fully. The snapshot/backfill distinction collapses — every daily run brings the DB up to date. A DB-based cron lock prevents overlapping runs during catch-up after outages. See ROADMAP §Sprint R-S1e.
 
-LegiScan's national account ($1K/year) unlocks the Bulk API (full session downloads), national search (`getSearchRaw` with `state=ALL`), and SAST cross-state tracking. The approach:
+#### LegiScan Status
 
-1. **Build first, then pitch.** Launch the dashboard with 12+ categories showing real data. Show elections running on FEC supplementary data (deadlock rate, 2025 quorum collapse) — functional but visibly thinner than other categories.
-2. **Demonstrate the gap.** The pitch: "Here's what we built. Here's what your data would enable — SAST propagation tracking, structural baselines on bill introduction patterns, Layer 3 drift on bill language."
-3. **Fallback:** $1K/year is fundable through GitHub Sponsors / Open Collective if a free partnership isn't granted.
-4. **Highlight mutual value:** SAST cross-state tracking of model legislation propagation velocity is unique analytical infrastructure — no democracy monitoring framework currently does this at scale. LegiScan benefits from the visibility.
+LegiScan is operational at the free tier. Fetcher (`legiscan-fetcher.ts`, 207 lines), bulk import (`legiscan-bulk.ts`, 278 lines), and data are already in place: 332 sessions from all 50 states + DC + PR, 693,905 total bills downloaded, 1,826 classified across 11 categories (T1: 627, Biden: 515, T2: 676). API key is in `.env.local`.
+
+**Remaining for pipeline integration (Sprint R-S1e):**
+
+1. LegiScan runs as a separate weekly cron (not through the signal/feed-fetcher pattern — session-based ZIP downloads don't fit `fetchSignalInner`). Weekly cron checks `dataset_hash` for changes, downloads updated sessions, runs Layer 2 on new bills, records source health and fetch_log.
+2. Re-classify bills for immigrationEnforcement + mediaFreedom (categories not defined when bulk import ran)
+3. Current classification is keyword-based (ASSESSMENT_RULES matching), not the architecture-proposed subject-tag filtering — adequate for launch, subject-tag upgrade is a refinement
+4. Wrap `legiscan-fetcher.ts` API calls with `fetchWithRetry` for transient failure handling
+
+**$1K/yr national account (nice-to-have, not blocking):** The free tier already includes the Bulk API (`getDatasetList`, `getDataset`) with 30,000 queries/month — ~60× headroom over our ~500/month ongoing usage. The national account adds `getSearchRaw` with `state=ALL` and SAST cross-state tracking. Fundable through GitHub Sponsors / Open Collective if desired. The national account adds convenience and SAST propagation analysis, not data access.
 
 #### Baseline Recomputation Strategy
 
 Adding sources requires computing **new source-type-specific baselines** for affected categories. Existing FR-based baselines are preserved (source expansion is additive under the per-source-type baseline segregation design):
 
-| Category               | New Sources                                    | Baseline Action                                                  |
-| ---------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
-| executiveActions       | No change                                      | Preserve existing FR baselines                                   |
-| rulemaking             | No change                                      | Preserve existing FR baselines                                   |
-| civilService           | No change                                      | Preserve existing FR baselines                                   |
-| judicialIndependence   | CourtListener (15-20/wk)                       | Add CourtListener source-type baselines. Preserve FR baselines.  |
-| elections              | LegiScan (~20/wk), FEC (monthly)               | Add LegiScan + FEC source-type baselines. Preserve FR baselines. |
-| lawEnforcement         | CourtListener (50-70/wk), DOJ API (360-400/wk) | New category — full computation from scratch, two source types.  |
-| civilLiberties         | CourtListener NOS 440 (67-123/wk)              | New category — full computation from scratch.                    |
-| mediaFreedom           | FCC RSS (5-10/wk)                              | Add FCC source-type baselines. Preserve FR + GDELT baselines.    |
-| infoAvailability       | No change                                      | Preserve existing FR baselines                                   |
-| fiscal                 | GAO (via GovInfo, 4-6/wk)                      | Add GovInfo source-type baselines. Preserve FR baselines.        |
-| executiveOversight     | GovInfo/GAO (4-6/wk), IG RSS (5-10/wk)         | Add GovInfo + IG source-type baselines. Preserve FR baselines.   |
-| military               | No change                                      | Preserve existing FR baselines                                   |
-| immigrationEnforcement | No change                                      | Preserve existing FR baselines                                   |
+| Category               | New Sources                                             | Baseline Action                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| executiveActions       | No change                                               | Preserve existing FR baselines                                                                                                                                                                                                                                                                                                                                        |
+| rulemaking             | No change                                               | Preserve existing FR baselines                                                                                                                                                                                                                                                                                                                                        |
+| civilService           | No change                                               | Preserve existing FR baselines                                                                                                                                                                                                                                                                                                                                        |
+| judicialIndependence   | CourtListener (15-20/wk)                                | Add CourtListener source-type baselines. Preserve FR baselines.                                                                                                                                                                                                                                                                                                       |
+| elections              | LegiScan (~20/wk), FEC (monthly)                        | Add LegiScan + FEC source-type baselines. Preserve FR baselines.                                                                                                                                                                                                                                                                                                      |
+| lawEnforcement         | CourtListener (50-70/wk), DOJ API (360-400/wk)          | New category — full computation from scratch, two source types. FR backfill needed (`fr_doj` signal added after initial FR backfill).                                                                                                                                                                                                                                 |
+| civilLiberties         | CourtListener NOS 440 (67-123/wk) + text-search signals | New category — full computation from scratch. Text-search signals (e.g., `cl_first_amendment`) must use quoted/scoped queries to fit within pagination cap — see §CourtListener ingest strategy. FR backfill needed (`fr_civil_rights` signal added after initial FR backfill).                                                                                       |
+| mediaFreedom           | FCC RSS (5-10/wk)                                       | Add FCC source-type baselines. Preserve FR + GDELT baselines. FR backfill needed (`fr_press_foia`, `fr_foia_compliance` signals added but FR backfill not re-run). **Currently zero documents total** — the only non-intent category that is completely empty. FCC RSS signals configured in R-S1b but never produced documents; require verification before Phase 2. |
+| infoAvailability       | No change                                               | Preserve existing FR baselines                                                                                                                                                                                                                                                                                                                                        |
+| fiscal                 | GAO (via GovInfo, 4-6/wk)                               | Add GovInfo source-type baselines. Preserve FR baselines.                                                                                                                                                                                                                                                                                                             |
+| executiveOversight     | GovInfo/GAO (4-6/wk), IG RSS (5-10/wk)                  | Add GovInfo + IG source-type baselines. Preserve FR baselines.                                                                                                                                                                                                                                                                                                        |
+| military               | No change                                               | Preserve existing FR baselines                                                                                                                                                                                                                                                                                                                                        |
+| immigrationEnforcement | FR (DHS/ICE/CBP agencies) + GDELT (via cross-feed)      | New category — full computation from scratch. FR-only volume is thin (~5-6/wk); GDELT cross-feed essential for convergence scoring. 2 FR signals (fr_dhs_immigration, fr_cbp_enforcement). DHS monthly statistical tables deferred to Phase 5 (no API, Excel/PDF downloads only). Adding in R-S1d.                                                                    |
 
-6 categories preserve existing baselines unchanged. 5 existing categories add new source-type baselines alongside existing ones. 2 new categories (lawEnforcement, civilLiberties) require full baseline computation from scratch.
+5 categories preserve existing baselines unchanged. 5 existing categories add new source-type baselines alongside existing ones. 3 new categories (lawEnforcement, civilLiberties, immigrationEnforcement) require full baseline computation from scratch.
 
 **Cost note:** Baseline computation for new source types involves Layer 2 AI costs for _new documents only_. Existing FR documents in renamed categories (judicialIndependence, executiveOversight) already have Pass 1 and Pass 2 assessments from Sprint R3-RUN — those are preserved. Estimated new-source Layer 2 cost: ~$30-60 across all affected categories, depending on document volumes during baseline periods.
 
@@ -298,8 +316,7 @@ Adding sources requires computing **new source-type-specific baselines** for aff
 ```
 All Document Sources
   │  Existing: FR, PRESDOCU, GDELT, WH
-  │  Validated: CourtListener, DOJ API, GovInfo/GAO, IG RSS, LegiScan*, FEC, FCC RSS
-  │  (* = pending partnership)
+  │  Validated: CourtListener, DOJ API, GovInfo/GAO, IG RSS, LegiScan, FEC, FCC RSS
   │
   ├──→ Layer 1: STRUCTURAL ANOMALY DETECTION (deterministic, language-immune)
   │    Source-type-specific structural analyzers (FR dimensions ≠ CourtListener dimensions ≠ LegiScan dimensions)
@@ -319,7 +336,7 @@ All Document Sources
   │
   └──→ CONVERGENCE SYNTHESIS
        Combines all three layers into category status
-       Outputs: Stable / Elevated / Divergent / Confirmed Concern
+       Outputs: Stable / Elevated / Divergent / Confirmed Concern / Baseline Invalid
        │
        └──→ AI NARRATIVE GENERATION (Opus 4.6 Extended Thinking)
             Produces weekly discussion at expert and public reading levels
@@ -364,6 +381,8 @@ The original Layer 1 was designed around Federal Register metadata — document 
 **CourtListener:**
 
 _Ingest strategy:_ Primary ingest is **RECAP dockets** (not opinion search), because NOS (Nature of Suit) codes are only reliably present on RECAP docket entries. NOS codes are the routing mechanism for category assignment: NOS 440 (civil rights - other) → civilLiberties; selective prosecution and enforcement NOS codes → lawEnforcement; APA/injunction dockets → judicialIndependence. Opinion search is supplementary — used for semantic content (Layer 2 assessment, Layer 3 embeddings) but not for structural routing. When opinions lack NOS codes, they inherit the NOS from their parent docket via RECAP cross-reference.
+
+_Pagination constraint for text-search signals:_ CourtListener text-search queries (e.g., `cl_first_amendment`) must be scoped tightly enough that peak weekly results fit within the API pagination cap (200 results at maxPages=10). Unscoped or unquoted queries can return orders of magnitude more results than the cap allows, causing the pipeline to capture a biased random sample rather than the full set. **Design rule:** all text-search queries must use quoted phrases and qualifying terms to keep peak weekly volume below the pagination cap. NOS-code-based signals are less vulnerable (each NOS code is a narrow filter), but high-volume NOS codes (440, 530, 890) can occasionally exceed the cap in peak weeks — maxPages should be set with headroom (e.g., 15 instead of 10) for codes with known weekly peaks above 200.
 
 | Dimension                     | Metric                                                                                                         | Baseline Comparison                                       |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
@@ -466,6 +485,8 @@ function computeCrossSourceConvergence(
 ```
 
 **Implementation note:** The pseudocode above computes raw convergence. Before use in the category composite, apply the **source dependency map** (see §Source Dependency Map below): when only 2 source types are anomalous and they form a dependency pair (DOJ↔CourtListener, FR↔GDELT, LegiScan↔FR), multiply `convergenceFraction` by 0.75. When a third independent source corroborates, apply full weight. The dependency pairs are initial estimates — validate empirical co-occurrence rates during R-S1 calibration and adjust if actual correlation differs from assumed.
+
+**"Active source" definition for convergence denominator:** A source type is _active_ in a given week's convergence calculation only if it meets all of: (a) at least one document ingested for this category in the current week, (b) not in a known staleness window (FEC: non-batch weeks → exclude), (c) not in a known outage state (fetch_log records HTTP failure for all signals of this source type → exclude with coverage health alert, not convergence penalty). Sources excluded due to seasonal dip (LegiScan legislative off-session, CourtListener court recess) are also excluded from `totalSourceCount` — their absence is expected, not informative. This prevents the convergence denominator from being unstable week-to-week due to source cadence differences. The determination of expected vs. unexpected silence uses the source-type-specific cycle-aware baseline: if the current week's cycle position historically has near-zero documents for a source type, that source is seasonal-dip excluded.
 
 5. **Category composite**: Weighted combination of per-source-type scores + convergence bonus. Weights are per-category (since different categories rely on different source mixes), fixed, and versioned. The composite preserves the source-type breakdown for diagnostic purposes.
 
@@ -643,7 +664,7 @@ _Tier 4 — Unclassified remainder (~20% without `action` field, shrinking as `a
 - Proposed Rules declined in fiscal (11.6% → 8.5%) — deregulatory posture visible in document type shift
 - These signals are invisible to keyword matching and require no AI to detect
 
-**Composite structural score**: Per-source-type scores are computed from their respective dimension sets, then aggregated into a category-level composite using the formulas defined in §Category-Level Aggregation (source influence capping + convergence bonus). All weights are fixed, versioned, and per-category (since different categories rely on different source mixes). When a dimension or source type is unavailable (e.g., LegiScan before partnership is established), its weight is redistributed proportionally, and the score reports reduced confidence.
+**Composite structural score**: Per-source-type scores are computed from their respective dimension sets, then aggregated into a category-level composite using the formulas defined in §Category-Level Aggregation (source influence capping + convergence bonus). All weights are fixed, versioned, and per-category (since different categories rely on different source mixes). When a dimension or source type is unavailable, its weight is redistributed proportionally, and the score reports reduced confidence.
 
 **What it catches that keywords miss**:
 
@@ -959,6 +980,7 @@ The three layers produce independent signals. The convergence synthesis combines
 | **Elevated**          | One layer showing significant deviation                                   | e.g., Layer 2 flag rate elevated but Layers 1 and 3 normal — OR — Layer 1 structural anomaly but Layers 2 and 3 normal                                                                                                                                                           |
 | **Divergent**         | Two or more layers showing deviation, but AI concern rate below threshold | e.g., Layer 1 structural anomaly AND Layer 3 thematic drift, but AI assessment doesn't flag concerning content — could be a legitimate policy shift that changes structure without erosion                                                                                       |
 | **Confirmed Concern** | Two or more layers deviating AND Layer 2 concern rate above threshold     | Structural anomaly + AI concern (+ optionally thematic drift), all pointing in the same direction. Does not require all three layers — two layers with high AI concern rate is sufficient, because Layer 3's rolling window may not register drift during consistent escalation. |
+| **Baseline Invalid**  | Baseline bundle version does not match current bundle version             | Pre-check guard — not computed from layer outputs. Prevents "instrument changed" from being misread as "government changed."                                                                                                                                                     |
 | **No Data**           | Insufficient documents to assess                                          | Fewer than threshold documents available (display-layer check on `insufficientData` flag)                                                                                                                                                                                        |
 
 **"No Data" sub-states** (distinct in data model and UI, critical for multi-source monitoring):
@@ -972,6 +994,23 @@ The three layers produce independent signals. The convergence synthesis combines
 These distinctions prevent the worst confusion for this project: interpreting a broken pipeline as institutional silence, or interpreting expected seasonal quiet as a crisis. The coverage health monitoring system (§Sprint R-S1, Phase 1) provides the underlying data; the status display uses it to disambiguate.
 
 #### Status Determination Logic
+
+`BaselineInvalid` is a pre-check guard, not a layer-computed status. It is checked before `determineStatus()` runs:
+
+```typescript
+function checkBaselineValidity(
+  category: string,
+  currentBundleVersion: string,
+  baselineBundleVersion: string,
+): 'valid' | 'BaselineInvalid' {
+  if (currentBundleVersion !== baselineBundleVersion) {
+    return 'BaselineInvalid';
+  }
+  return 'valid';
+}
+```
+
+If the baseline is invalid, the system produces `BaselineInvalid` status for the category without running layer scoring. This prevents stale baselines from producing misleading Stable/Elevated/Divergent/Confirmed Concern statuses after a bundle change. The UI displays a banner: "Baselines need recomputation for current model version." See TEST_SPECIFICATION §Router Drift Detection for the ship gate.
 
 ```typescript
 function determineStatus(
@@ -1173,7 +1212,7 @@ Keywords remain in the codebase but their role changes fundamentally:
    ├── CourtListener REST API (NOS-code-based category routing) [P0]
    ├── DOJ Press Release JSON API [P0]
    ├── GovInfo/GAO REST API (MODS XML metadata) [P0]
-   ├── LegiScan Bulk API (session downloads, subject-tag filtering) [P0, pending partnership]
+   ├── LegiScan Bulk API (session downloads, subject-tag filtering) [P0, operational — pipeline wiring remaining]
    ├── IG RSS feeds (DOD, HHS, DOJ OIG) [P1]
    ├── FCC RSS feeds [P1]
    └── FEC OpenFEC API (monthly batch) [P1]
@@ -1182,7 +1221,7 @@ Keywords remain in the codebase but their role changes fundamentally:
    ├── Assign source type → determines which structural analyzer applies
    ├── Compute embedding → store in pgvector (tagged with source type for baseline segregation)
    ├── AI Pass 1 assessment → store structured result
-   ├── Classify institutional function → deterministic (source-type-specific: FR uses type/title/action heuristics; CourtListener uses NOS codes; LegiScan uses subject tags + bill type)
+   ├── Classify institutional function → deterministic (source-type-specific: FR uses type/title/action heuristics; CourtListener uses NOS codes; LegiScan uses subject tags + bill type (target — currently keyword-based, adequate for launch))
    ├── Keyword annotation → store matches (for UI display only)
    └── Extract metadata → source-type-specific fields (FR: document type, subtype, action, agency; CourtListener: NOS code, opinion type, court level; LegiScan: subjects, sponsor party, SAST relationships, status/progress)
 
@@ -1206,7 +1245,7 @@ Keywords remain in the codebase but their role changes fundamentally:
    └── Opus 4.6 Extended Thinking → expert + public versions
 
 5. DASHBOARD OUTPUT
-   ├── Status pills (Stable / Elevated / Divergent / Confirmed Concern / No Data)
+   ├── Status pills (Stable / Elevated / Divergent / Confirmed Concern / Baseline Invalid / No Data)
    ├── Three-panel visualization per category
    │   ├── Structural signature (per-source-type breakdowns + cross-source convergence)
    │   ├── AI assessment distribution (flag counts by concern level)
@@ -1334,7 +1373,7 @@ The landing page shows the most recent week's analysis. It is the monitoring cad
 
 Each category card shows:
 
-- **Status pill**: Stable / Elevated / Divergent / Confirmed Concern / No Data
+- **Status pill**: Stable / Elevated / Divergent / Confirmed Concern / Baseline Invalid / No Data
 - **Convergence indicator**: Three small dots or bars representing each layer's status (normal/elevated)
 - **Sparkline**: Composite structural deviation over time (the simplest single metric to track)
 - **Brief summary**: One sentence from the AI narrative, or "Consistent with baseline" for Stable
@@ -1521,7 +1560,7 @@ Weekly operational costs (~$2.50–10) are based on the original 11 categories w
 - DOJ API adds 360-400 docs/week to lawEnforcement
 - Combined new sources add an estimated 500-700 docs/week
 
-Layer 2 AI costs scale linearly with document volume. Estimated post-expansion weekly costs: ~$8-20/week (Layer 2 dominates). LegiScan adds $1K/year ($19/week amortized) for the national API subscription. One-time baseline computation costs for new source types: ~$30-60 for Layer 2 across the 6 affected categories (new documents only — existing FR assessments preserved).
+Layer 2 AI costs scale linearly with document volume. Estimated post-expansion weekly costs: ~$8-20/week (Layer 2 dominates). One-time baseline computation costs for new source types: ~$30-60 for Layer 2 across the 6 affected categories (new documents only — existing FR assessments preserved).
 
 ---
 
@@ -1623,7 +1662,7 @@ Build integrations in order of category coverage breadth and implementation simp
 1. **CourtListener REST API** — Serves 3 categories (judicialIndependence, lawEnforcement, civilLiberties). Free, well-structured API. RECAP docket search with NOS-code-based category routing. Establishes the source integration pattern for all subsequent APIs.
 2. **GovInfo/GAO REST API** — Fixes executiveOversight thinness (5-15 → 15-30 docs/wk). Free key, MODS XML metadata, 36K req/hr. Simple structured integration.
 3. **DOJ Press Release JSON API** — Massively enriches lawEnforcement (360-400/wk). Open JSON API — the major spike discovery. **Requires stable internal taxonomy mapping (10-20 durable buckets) before integration** — see §Source-Type Structural Dimensions.
-4. **LegiScan Bulk API** — Anchor source for elections. `getDataset` session downloads + subject-tag filtering + SAST tracking. Pending $1K/yr partnership or subscription (see §LegiScan Partnership Strategy).
+4. **LegiScan pipeline wiring** — Fetcher and bulk import already implemented (485 lines total), 1,826 classified bills in DB. Integration via separate weekly cron (not signal/feed-fetcher pattern). See §LegiScan Status and ROADMAP §Sprint R-S1e.
 5. **Coverage health monitoring** — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking.
 6. **Cross-source document deduplication** — Add nullable `canonical_id` column to documents table with partial unique constraint. Each fetcher extracts source-native document identifiers (GAO report numbers, DOJ UUIDs, CourtListener docket numbers, etc.) and normalizes them for cross-URL matching. First-in wins; duplicates are rejected at insert time. Ships with first multi-source category (executiveOversight: GovInfo + IG RSS) to prevent volume inflation. See §Cross-Source Document Deduplication for schema and normalization rules.
 
@@ -1635,9 +1674,12 @@ Build integrations in order of category coverage breadth and implementation simp
 
 **Phase 2 — Historical backfill (~1 week, mostly compute time):**
 
+_Prerequisite: (a) Sprint R-S1d data quality fixes landed, (b) Sprint R-S1e incremental snapshot deployed, and (c) fetch_log-based verification passes (API-vs-DB counts within tolerance per source type). All three conditions required — computing baselines against incomplete data invalidates downstream detection. See ROADMAP §Phase 2 for full condition list._
+
 - Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
 - All validated sources have 2017+ archives (CourtListener: all federal courts; DOJ: archive; GovInfo: 1995+; LegiScan: 2009+; FEC: 1999+)
 - Route documents through category assignment logic with source-type tagging
+- **Re-cross-feed existing GDELT rhetoric corpus to 13 categories.** The Sprint R1/R3.2 cross-feed was validated against 11 categories. Three new categories (lawEnforcement, civilLiberties, immigrationEnforcement) need GDELT cross-feed rows generated. Re-run `crossfeedRhetoricToCategories()` against existing ~57K rhetoric documents with updated `categories.ts`. One-time batch. Required before baseline computation — without it, new categories lack GDELT source-type baselines and source convergence is a no-op. Critical for immigrationEnforcement (FR-only volume is ~5-6/wk).
 
 **Phase 3 — Per-source-type baseline computation + Layer 2 enhancement (overlaps with Phase 2):**
 
@@ -1661,12 +1703,14 @@ Build integrations in order of category coverage breadth and implementation simp
 - Validate Pass 2 mechanism extraction fields produce structured, verifiable output (not just "concerning" labels)
 - Verify coverage health monitoring: simulate source silence and confirm alert triggers before real monitoring begins
 - Verify cross-source deduplication: confirm canonical_id matching catches GovInfo↔GAO and GovInfo↔IG overlaps; confirm duplicate-rejection rate is tracked per source pair
+- Verify backfill completeness: API count vs. DB count per source type per baseline period within tolerance (FEC: exact; GovInfo: ≤1%; CourtListener NOS: ≤3%; text-search signals: peak weekly within pagination cap; FR: all 13 categories populated; GDELT cross-feed: all 13 categories have rhetoric documents)
 
 **Phase 5 — P2 Deferred sources (post-launch):**
 
 - Oversight.gov scraping (all 75 IGs — no API, community scraper spotty)
 - VRL partnership (calibration dataset for LegiScan AI classification accuracy)
 - CBO reports pipeline (fiscal — low-volume supplementary signal)
+- DHS/ICE/CBP monthly statistical tables for immigrationEnforcement (encounters, detention bed counts, removals — Excel/PDF download, quarterly batch processing, similar to FEC aggregation pattern)
 
 **Category rename migration** (Sprint R3.3, before R-S1):
 
@@ -1720,6 +1764,8 @@ These items emerged from the ChatGPT and Claude Code reviews. They are validated
 **Pass 2 mechanism extraction fields** _(elevated to Sprint R-S1)_: Strengthen Pass 2's structured output by requiring concrete mechanism identification beyond "is it concerning." Additional fields: "What power is created or expanded?", "What oversight is reduced?", "What enforcement lever changes?", "What due process changes?", "Who gains access to what systems or data?" This anchors Pass 2 in verifiable institutional mechanics rather than impressionistic concern, and makes the output more useful for narrative generation. Without mechanism extraction, the most shareable output (AI narrative) can drift into persuasive prose without a mechanically checkable backbone — the narrative cites "concerning" documents but doesn't specify _what institutional change_ makes them concerning. This is a prompt change to Pass 2's structured output schema, not infrastructure work. Ship with source expansion so the enriched document corpus gets mechanism-tagged from the start. (Source: ChatGPT Red Team #3, elevated per ChatGPT architecture review)
 
 **Status naming refinement**: "Confirmed Concern" replaced the earlier "Convergent Concern" label based on reviewer feedback. The term is technically accurate — the status requires `highConcern = true` from Layer 2, meaning AI assessment has confirmed a concern identified by structural analysis. However, external reviewers note that "Confirmed Concern" could be read as a factual adjudication by journalists or policymakers. Alternatives: "Confirmed Signal" (weaker — loses the Layer 2 concern-rate requirement), "Convergent Signal" (ambiguous). The current recommendation is to keep "Confirmed Concern" internally and in the methodology, but pair it with prominent methodology context in the UI: _"'Confirmed Concern' means multiple independent detection methods agree that something unusual is happening AND AI assessment identifies concerning content. It is a measurement finding, not a factual determination."_ User testing with non-technical audiences should validate this before public launch. (Source: Claude Code review #10, ChatGPT review feedback)
+
+**Data contract for status naming flexibility:** To allow public label changes without a DB migration, implement status as two fields: `statusInternal` (enum: `Stable | Elevated | Divergent | ConfirmedConcern | BaselineInvalid | NoData` — stored in DB, used in all backend logic) and a UI-layer `statusDisplayLabel` mapping (e.g., `ConfirmedConcern → "Confirmed Concern"` or future rename). This keeps the internal semantics stable while allowing the public-facing label to evolve based on user testing.
 
 ---
 
