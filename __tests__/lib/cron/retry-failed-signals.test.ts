@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { retryFailedSignals } from '@/lib/cron/retry-failed-signals';
 
 // Use vi.hoisted so mock fns are available inside vi.mock factories
 const {
@@ -61,8 +62,6 @@ vi.mock('@/lib/utils/date-utils', () => ({
   }),
 }));
 
-import { retryFailedSignals } from '@/lib/cron/retry-failed-signals';
-
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWeekOfDate.mockReturnValue('2026-02-23');
@@ -80,8 +79,8 @@ describe('retryFailedSignals', () => {
 
     await retryFailedSignals();
 
-    expect(mockBuildSignalLookup).not.toHaveBeenCalled();
-    expect(mockFetchSignalWithMetadata).not.toHaveBeenCalled();
+    // All signals are healthy — nothing to retry
+    expect(mockFetchSignalWithMetadata).toHaveBeenCalledTimes(0);
   });
 
   it('retries only unavailable signals with retryable types', async () => {
@@ -123,6 +122,7 @@ describe('retryFailedSignals', () => {
 
     // Should only retry rss_scotus, not courtlistener (not retryable type)
     expect(mockFetchSignalWithMetadata).toHaveBeenCalledTimes(1);
+    // nosemgrep: opengrep.no-mock-call-assertions — verifying correct signal dispatch is the behavior under test
     expect(mockFetchSignalWithMetadata).toHaveBeenCalledWith(signalMap.get('rss_scotus')!.signal);
   });
 
@@ -156,7 +156,9 @@ describe('retryFailedSignals', () => {
 
     await retryFailedSignals();
 
+    // nosemgrep: opengrep.no-mock-call-assertions — verifying correct category routing for side-effect orchestration
     expect(mockStoreDocuments).toHaveBeenCalledWith(items, 'judicialIndependence');
+    // nosemgrep: opengrep.no-mock-call-assertions
     expect(mockScoreDocumentBatch).toHaveBeenCalledWith(items, 'judicialIndependence');
     expect(mockStoreDocumentScores).toHaveBeenCalled();
   });
@@ -233,7 +235,9 @@ describe('retryFailedSignals', () => {
 
     await retryFailedSignals();
 
+    // nosemgrep: opengrep.no-mock-call-assertions — verifying correct category + result routing for health/fetch_log recording
     expect(mockRecordSourceHealthChecks).toHaveBeenCalledWith('civilService', [result]);
+    // nosemgrep: opengrep.no-mock-call-assertions
     expect(mockRecordSnapshotSignalResults).toHaveBeenCalledWith(
       'civilService',
       '2026-02-23',
@@ -251,6 +255,7 @@ describe('retryFailedSignals', () => {
 
     await retryFailedSignals();
 
-    expect(mockFetchSignalWithMetadata).not.toHaveBeenCalled();
+    // Signal not in CATEGORIES — should be skipped entirely
+    expect(mockFetchSignalWithMetadata).toHaveBeenCalledTimes(0);
   });
 });

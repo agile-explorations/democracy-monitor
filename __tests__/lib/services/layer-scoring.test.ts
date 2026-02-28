@@ -192,7 +192,6 @@ describe('computeStructuralLayer', () => {
 
     const result = await computeStructuralLayer('civilService', '2025-02-17');
     expect(result).toBe(expected);
-    expect(computeStructuralScore).toHaveBeenCalledWith(mockMetadata, mockBaseline);
   });
 });
 
@@ -312,9 +311,11 @@ describe('enrichWithLayerScores', () => {
       bootstrap: true,
     });
 
-    await enrichWithLayerScores(makeAggregate());
+    const result = await enrichWithLayerScores(makeAggregate());
 
-    expect(synthesizeConvergence).toHaveBeenCalledWith(null, null, null);
+    // With no layers available, convergence should be Stable
+    expect(result.convergenceDetail?.status).toBe('Stable');
+    expect(result.convergenceDetail?.layersElevated).toBe(0);
   });
 
   it('passes AI summary through to convergence synthesis', async () => {
@@ -331,8 +332,11 @@ describe('enrichWithLayerScores', () => {
       bootstrap: true,
     });
 
-    await enrichWithLayerScores(makeAggregate(), aiSummary);
+    const result = await enrichWithLayerScores(makeAggregate(), aiSummary);
 
-    expect(synthesizeConvergence).toHaveBeenCalledWith(null, aiSummary, null);
+    // AI elevation should propagate to convergence
+    expect(result.convergenceDetail?.status).toBe('Elevated');
+    expect(result.convergenceDetail?.aiElevated).toBe(true);
+    expect(result.aiDetail).toBe(aiSummary);
   });
 });

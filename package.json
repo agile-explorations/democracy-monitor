@@ -25,7 +25,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "lint:patterns": "opengrep scan --config .opengrep/ .",
+    "lint:patterns": "opengrep scan --error --config .opengrep/ .",
     "lint:unused": "knip",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

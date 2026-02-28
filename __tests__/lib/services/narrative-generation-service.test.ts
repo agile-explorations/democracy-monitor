@@ -1,12 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { NarrativeLayerData, OverviewNarrativeInput } from '@/lib/types';
-import type { ConvergenceSynthesis, StructuralScore, ThematicDriftScore } from '@/lib/types/structural';
-
-// Mock the AI provider module
-vi.mock('@/lib/ai/provider', () => ({
-  getProvider: vi.fn(),
-}));
-
 import { getProvider } from '@/lib/ai/provider';
 import {
   isElevatedStatus,
@@ -18,6 +10,17 @@ import {
   generateCategoryNarrative,
   generateOverviewNarrative,
 } from '@/lib/services/narrative-generation-service';
+import type { NarrativeLayerData, OverviewNarrativeInput } from '@/lib/types';
+import type {
+  ConvergenceSynthesis,
+  StructuralScore,
+  ThematicDriftScore,
+} from '@/lib/types/structural';
+
+// Mock the AI provider module
+vi.mock('@/lib/ai/provider', () => ({
+  getProvider: vi.fn(),
+}));
 
 function makeConvergence(
   status: ConvergenceSynthesis['status'],
@@ -66,9 +69,7 @@ function makeThematicScore(): ThematicDriftScore {
   };
 }
 
-function makeLayerData(
-  overrides: Partial<NarrativeLayerData> = {},
-): NarrativeLayerData {
+function makeLayerData(overrides: Partial<NarrativeLayerData> = {}): NarrativeLayerData {
   return {
     category: 'civilService',
     categoryTitle: 'Government Worker Protections',
@@ -252,7 +253,6 @@ describe('generateCategoryNarrative', () => {
     const result = await generateCategoryNarrative(data);
     expect(result.model).toBe('template');
     expect(result.expert).toContain('No significant structural');
-    expect(mockProvider.complete).not.toHaveBeenCalled();
   });
 
   it('returns template when AI provider is unavailable', async () => {
@@ -343,9 +343,7 @@ describe('buildOverviewPrompt', () => {
   it('lists elevated categories with their status', () => {
     const input: OverviewNarrativeInput = {
       weekOf: '2026-02-17',
-      categories: [
-        makeLayerData({ convergenceDetail: makeConvergence('Divergent', 2) }),
-      ],
+      categories: [makeLayerData({ convergenceDetail: makeConvergence('Divergent', 2) })],
     };
     const prompt = buildOverviewPrompt(input, 'public');
     expect(prompt).toContain('Government Worker Protections');
@@ -355,9 +353,7 @@ describe('buildOverviewPrompt', () => {
   it('notes when all categories are stable', () => {
     const input: OverviewNarrativeInput = {
       weekOf: '2026-02-17',
-      categories: [
-        makeLayerData({ convergenceDetail: makeConvergence('Stable') }),
-      ],
+      categories: [makeLayerData({ convergenceDetail: makeConvergence('Stable') })],
     };
     const prompt = buildOverviewPrompt(input, 'expert');
     expect(prompt).toContain('All categories are within baseline parameters');

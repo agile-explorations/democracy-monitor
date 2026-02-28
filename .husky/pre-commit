@@ -1,2 +1,3 @@
+set -e
 pnpm exec lint-staged
 pnpm lint:patterns
