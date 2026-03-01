@@ -169,8 +169,10 @@ function printReport(report: VerifyReport, categoryFilter?: string): void {
   console.log(`  Weeks missing aggregates:      ${s.missingAggregates} / ${s.totalWeeks}`);
 
   console.log('\n=== Baseline Completeness ===');
+  const categoryKeys = new Set(CATEGORIES.map((c) => c.key));
   const baselinesByConfig = new Map<string, string[]>();
   for (const b of report.baselineCompleteness) {
+    if (!categoryKeys.has(b.category)) continue; // skip non-monitoring categories (e.g. intent)
     if (!baselinesByConfig.has(b.baselineId)) baselinesByConfig.set(b.baselineId, []);
     baselinesByConfig.get(b.baselineId)!.push(b.category);
   }
