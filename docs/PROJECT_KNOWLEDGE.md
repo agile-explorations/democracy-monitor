@@ -117,8 +117,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Testing & coverage
 
-- 1532 tests across 124 test files (22 added in R-S1e follow-up: backfill-verify 12, verification-service 10)
-- Coverage thresholds: statements 71.44%, branches 68.94%, functions 74.86%, lines 71.73%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
+- 1561 tests across 126 test files
+- Coverage thresholds: statements 71.55%, branches 69%, functions 74.94%, lines 71.87%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
 ### Infrastructure
@@ -139,7 +139,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ## Known data issues
 
-- **cl_first_amendment noise (civilLiberties)**: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. ~41K of 101K CL docs in civilLiberties are noise (irrelevant NOS codes like Insurance, Patent, Fraud, or empty NOS). Query was rewritten in R-S1d to `"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")`. **Repair**: purge docs where `source_origin='courtlistener' AND category='civilLiberties'` and NOS not in 440-448 or 530; re-backfill with new query; recompute aggregates and baselines. The ~56K NOS 440/530 docs are correct (from cl_civil_rights and cl_habeas signals).
+- **cl_first_amendment noise (civilLiberties)** _(resolved R-S1f)_: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. 50,973 noise docs purged via `pnpm purge:cl-noise --confirm`; 50,223 valid docs retained. Scores, aggregates, and baselines recomputed.
 - **FCC RSS feeds down (mediaFreedom)**: `rss_fcc_media` and `rss_fcc_enforcement` time out due to Feb 2026 government shutdown. Not a config bug — will recover when FCC site comes back online. Source health service marks them `unavailable`; retry cron handles recovery automatically.
 - **3 WhiteHouse docs missing scores**: Boundary condition in OFFSET pagination — 3 WH docs at exact batch boundaries (publishedAt ties with batch cutoff). Negligible impact (3 of 337,494). Will self-resolve on next full recompute.
 - **~18K documents missing weekly aggregates** _(resolved R-S1e)_: Backfill now always runs score → aggregate → embed even when ingest is skipped.
@@ -251,14 +251,11 @@ pnpm backfill:verify
 
 ## Project management
 
-- GitHub Issues + Milestones for tracking (not Jira/Linear)
-- Milestones = sprints (one per sprint, close when shipped)
-- Issues = individual work items within a sprint
-- `docs/internal/ROADMAP.md` = strategic plan (forward-looking; completed sprints get "Actual:" annotations)
+See `CLAUDE.md` for sprint process, project management workflow, and labels. Additional notes:
+
 - DECISIONS.md = sprint retrospectives (planned vs built, spec deviations, key decisions, lessons learned) — **read before every sprint**
 - Spec documents in `docs/internal/` (gitignored, local-only) = requirements (V3 Addendum, UI Design Spec) — specs are NOT updated inline; deviations tracked in DECISIONS.md
 - `ASSESSMENT_METHODOLOGY.md` = public-facing methodology doc (3-layer detection, convergence, data sources, limitations)
-- Labels: stream:{data-pipeline,backend,ui,infra}, type:{feature,bug,research,review-gate}, priority:{p0,p1,p2}
 
 ## Sprint log
 

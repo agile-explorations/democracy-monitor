@@ -27,8 +27,13 @@ pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
 pnpm retry:signals  # Retry failed RSS/HTML/JSON/FR signals from last snapshot
+pnpm embed:missing  # Embed all documents missing embeddings (--category <key> to filter)
+pnpm layer2:backfill # Backfill Layer 2 AI assessments (Pass 1 + Pass 2)
 pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
 pnpm purge:cl-noise # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
+pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
+pnpm seed:validate  # Cross-baseline validation (severity/volume ratios)
+pnpm backtest       # Run historical backtesting
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
@@ -43,6 +48,9 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `REDIS_URL` — Redis connection string (optional; falls back to in-memory cache)
 - `OPENAI_API_KEY` — OpenAI API key (optional; enables AI-enhanced assessment)
 - `ANTHROPIC_API_KEY` — Anthropic API key (optional; enables AI-enhanced assessment)
+- `COURTLISTENER_API_TOKEN` — CourtListener API token (optional; enables court docket fetching)
+- `GOVINFO_API_KEY` — GovInfo API key (optional; enables GAO/Congressional/Public Law fetching)
+- `FEC_API_KEY` — FEC API key (optional; enables advisory opinion and MUR fetching)
 - `LEGISCAN_API_KEY` — LegiScan API key (optional; enables legislative bill tracking via bulk datasets)
 
 ### Local development
@@ -65,7 +73,7 @@ Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, 
 
 ### Data flow
 
-The dashboard monitors executive-power signals across 13 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, Federal Register queries, CourtListener, DOJ press releases, GovInfo/GAO, FEC filings, GDELT news). The flow is:
+The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, Federal Register queries, CourtListener, DOJ press releases, GovInfo/GAO, FEC filings, GDELT news). The flow is:
 
 1. **Cron/backfill** fetches data from external sources (FR, WH, GDELT, CourtListener, DOJ, GovInfo, FEC, RSS) and stores documents in PostgreSQL
 2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs three-layer assessment (structural anomaly → AI two-pass → thematic drift) → convergence synthesis → stores assessment snapshots
@@ -85,7 +93,7 @@ lib/
   db/             # Drizzle ORM (schema, client, migrations)
   cache/          # Redis + in-memory fallback cache layer
   ai/             # AI provider abstraction (OpenAI, Anthropic) + prompt templates
-  cron/           # Scheduled tasks (snapshot, backfill, backfill-baseline)
+  cron/           # Scheduled tasks (snapshot, backfill, embed-missing, recompute-scores)
   methodology/    # Scoring config, named constants, thresholds
   utils/          # Pure utility functions (async, collections, date, math, ai)
   seed/           # Seed data export/import pipeline + fixtures
@@ -103,7 +111,7 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 ### Key files
 
-- **`lib/data/categories.ts`** — All 13 category and signal definitions. This is where signals are added/removed.
+- **`lib/data/categories.ts`** — All 14 category and signal definitions. This is where signals are added/removed.
 - **`lib/data/assessment-rules.ts`** — Keyword dictionaries per category and severity tier (annotation layer).
 - **`lib/services/assessment-service.ts`** — Keyword-based assessment engine with authority weighting and volume thresholds.
 - **`lib/services/ai-assessment-service.ts`** — AI Skeptic review layer (runs after keyword assessment).
@@ -173,12 +181,21 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 | Type definitions               | `lib/types/`                        |
 | Scoring constants / thresholds | `lib/methodology/scoring-config.ts` |
 
+### Source fetcher pattern
+
+All source fetchers (`lib/services/*-fetcher.ts`) follow the same module structure:
+
+- `parseParams(signalUrl)` — parse pseudo-URL into API query params (pure, tested)
+- `toContentItem(rawRecord)` — convert API response to `ContentItem` (pure, tested)
+- `fetchRecent(params)` — fetch latest data for snapshot pipeline (I/O, excluded from coverage)
+- `fetchHistorical(params)` — fetch date-ranged data for backfill pipeline (I/O, excluded from coverage)
+
 ### Infrastructure
 
 Configured for **Render.com** deployment via `render.yaml`:
 
 - Web Service (Next.js app)
-- PostgreSQL (Drizzle ORM, future pgvector)
+- PostgreSQL (Drizzle ORM, pgvector embeddings)
 - Redis Key-Value store (caching)
 - 3 Cron jobs (stubs for future phases)
 
