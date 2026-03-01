@@ -16,9 +16,12 @@ pnpm test:coverage  # Run tests with coverage thresholds
 pnpm test:watch     # Run Vitest in watch mode
 pnpm db:generate    # Generate Drizzle migrations from schema
 pnpm db:migrate     # Apply migrations to PostgreSQL
-pnpm snapshot       # Run daily snapshot cron (real data)
-pnpm backfill       # Backfill historical data (FR + WH + GDELT)
-pnpm backfill:gaps  # Show incomplete/failed fetches from backfill pipeline
+pnpm snapshot              # Run daily snapshot cron (incremental fetch + full assessment)
+pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
+pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
+pnpm backfill:verify       # Completeness check: doc coverage, scores, aggregates, embeddings
+pnpm compute-baseline-stats # Compute baseline statistics from existing aggregates/embeddings
+pnpm recompute-scores      # Re-score all documents + re-aggregate (after rule changes)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtures
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)

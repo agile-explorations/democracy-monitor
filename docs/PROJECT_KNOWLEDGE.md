@@ -116,7 +116,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Testing & coverage
 
-- 1454 tests across 117 test files
+- 1532 tests across 124 test files
 - Coverage thresholds: statements 71.22%, branches 68.33%, functions 74.02%, lines 71.6%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
@@ -140,7 +140,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 - **cl_first_amendment noise (civilLiberties)**: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. ~41K of 101K CL docs in civilLiberties are noise (irrelevant NOS codes like Insurance, Patent, Fraud, or empty NOS). Query was rewritten in R-S1d to `"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")`. **Repair**: purge docs where `source_origin='courtlistener' AND category='civilLiberties'` and NOS not in 440-448 or 530; re-backfill with new query; recompute aggregates and baselines. The ~56K NOS 440/530 docs are correct (from cl_civil_rights and cl_habeas signals).
 - **FCC RSS feeds down (mediaFreedom)**: `rss_fcc_media` and `rss_fcc_enforcement` time out due to Feb 2026 government shutdown. Not a config bug — will recover when FCC site comes back online. Source health service marks them `unavailable`; retry cron handles recovery automatically.
-- **~18K documents missing weekly aggregates**: `ingestWeek` (used with `--ingest-only` flag) stores + scores docs but does not compute `weekly_aggregates`. Pipeline redesign will make aggregation a mandatory stage.
+- **~18K documents missing weekly aggregates**: Fixed in R-S1e. Backfill now always runs score → aggregate → embed (even when ingest is skipped). Re-run `pnpm backfill` to fill gaps.
 
 ## Adding new categories
 
@@ -169,56 +169,41 @@ Requires updating:
 
 Gap years (2019–2020, 2023–2024) are intentionally excluded.
 
-### Federal Register baselines
+### Backfill commands (R-S1e redesign)
 
-FR baselines use `pnpm build-baseline` because it both fetches documents AND computes baseline statistics (needed for Layer 1 structural anomaly detection). Run one category at a time to respect FR API rate limits. Two categories can run in parallel in separate terminals.
-
-```bash
-# All 4 baselines for a specific category (runs sequentially)
-pnpm build-baseline --category immigrationEnforcement --ingest-only
-
-# Or target a specific baseline period
-pnpm build-baseline --category immigrationEnforcement --baseline trump_2017 --ingest-only
-```
-
-### Federal Register T2 (active period)
+`pnpm backfill` is the single command for loading data. It runs: fetch → score → aggregate → embed. When `fetch_log` marks a week complete, only ingest is skipped — score/aggregate/embed still run on existing docs.
 
 ```bash
-pnpm backfill --category immigrationEnforcement --source fr --ingest-only
+# All sources, all periods
+pnpm backfill --source fr --from 2017-01-20 --to 2019-01-19
+pnpm backfill --source fr --from 2021-01-20 --to 2023-01-19
+pnpm backfill --source fr --from 2025-01-20
+
+# Compute baseline statistics (from existing aggregates/embeddings)
+pnpm compute-baseline-stats
+
+# Verify completeness
+pnpm backfill:verify
 ```
 
 ### Non-FR sources (CourtListener, DOJ, GovInfo, FEC)
 
-Non-FR sources use `pnpm backfill` with explicit date ranges. These can run in parallel across terminals (one source per terminal). Each command chains the 3 period groups sequentially.
-
 ```bash
-# Terminal 1: CourtListener → courts, civilLiberties, mediaFreedom
-pnpm backfill --source courtlistener --from 2017-01-20 --to 2019-01-19 --ingest-only && \
-pnpm backfill --source courtlistener --from 2021-01-20 --to 2023-01-19 --ingest-only && \
-pnpm backfill --source courtlistener --from 2025-01-20 --ingest-only
+pnpm backfill --source courtlistener --from 2017-01-20 --to 2019-01-19 && \
+pnpm backfill --source courtlistener --from 2021-01-20 --to 2023-01-19 && \
+pnpm backfill --source courtlistener --from 2025-01-20
 
-# Terminal 2: DOJ → lawEnforcement, civilLiberties
-pnpm backfill --source doj --from 2017-01-20 --to 2019-01-19 --ingest-only && \
-pnpm backfill --source doj --from 2021-01-20 --to 2023-01-19 --ingest-only && \
-pnpm backfill --source doj --from 2025-01-20 --ingest-only
-
-# Terminal 3: GovInfo → executiveOversight
-pnpm backfill --source govinfo --from 2017-01-20 --to 2019-01-19 --ingest-only && \
-pnpm backfill --source govinfo --from 2021-01-20 --to 2023-01-19 --ingest-only && \
-pnpm backfill --source govinfo --from 2025-01-20 --ingest-only
-
-# Terminal 4: FEC → elections
-pnpm backfill --source fec --from 2017-01-20 --to 2019-01-19 --ingest-only && \
-pnpm backfill --source fec --from 2021-01-20 --to 2023-01-19 --ingest-only && \
-pnpm backfill --source fec --from 2025-01-20 --ingest-only
+pnpm backfill --source doj --from 2017-01-20 --to 2019-01-19 && \
+pnpm backfill --source doj --from 2021-01-20 --to 2023-01-19 && \
+pnpm backfill --source doj --from 2025-01-20
 ```
 
 ### New category: full backfill checklist
 
-1. FR baselines: `pnpm build-baseline --category <key> --ingest-only`
-2. FR T2: `pnpm backfill --category <key> --source fr --ingest-only`
-3. Verify: `SELECT category, baseline_period, COUNT(*) FROM documents WHERE category = '<key>' GROUP BY 1, 2 ORDER BY 2`
-4. Non-FR sources backfill automatically for all categories — no per-category flag needed for CL/DOJ/GovInfo/FEC
+1. FR all periods: `pnpm backfill --category <key> --source fr --from 2017-01-20 --to 2019-01-19` (repeat for all periods)
+2. Compute baselines: `pnpm compute-baseline-stats`
+3. Verify: `pnpm backfill:verify --category <key>`
+4. Non-FR sources backfill automatically for all categories
 
 ### Troubleshooting
 
@@ -296,4 +281,5 @@ pnpm backfill --source fec --from 2025-01-20 --ingest-only
 - Sprint R4a: AI narrative generation service — narratives table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts, narrative-pipeline.ts, /api/narratives/[category] + /api/narratives/overview endpoints, snapshot pipeline integration. Stable → template, Elevated+ → AI generation. 51 new tests (1411 total).
 - Sprint R-S1c: Fault-tolerant RSS/HTML/JSON signal fetching — fetchWithRetry() wrapper (3 attempts, exponential backoff), retry cron (11am UTC), recordSnapshotSignalResults() for fetch_log integration, buildSignalLookup() helper. 115 new tests (1526 total).
 - Sprint R-S1d: Backfill verification fixes — cl_first_amendment query rewrite (unquoted→quoted + qualifying terms), CourtListener NOS maxPages 10→15, immigrationEnforcement category (2 FR signals + SUPPLEMENTAL_TERMS), FEC pagination fix (offset-based), DOJ binary search off-by-one fix, OpenGrep blocking enforcement, dead code removal (246 lines from 4 services). FR backfills complete for 4 new categories. cl_first_amendment purge + FCC RSS verification deferred to pipeline redesign. Pipeline redesign proposal (BACKFILL_PIPELINE_REDESIGN.md). 1 new test (1527 total).
-- Sprints remaining: R-S1 Phase 2-4 (historical backfill + per-source baselines + validation), LegiScan pipeline wiring (operational at free tier — signals in categories.ts + snapshot integration), R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.
+- Sprint R-S1e: Backfill pipeline redesign Phase 1 — fix skip logic (score/aggregate/embed always run even when ingest skipped), incremental snapshot (API signals use historical fetchers from last stored date), compute-baseline-stats command, backfill:verify completeness check (9 checks). Removed: build-baseline command, assess-week.ts, --ingest-only/--skip-ai/--model/--no-rhetoric flags, backfillGdelt/fetchWhDocs/backfillRhetoric dead functions. recompute-scores always re-aggregates. ~580 lines removed, 4 new files, 3 new test files. Issues #184-#190. 5 new tests (1532 total).
+- Sprints remaining: R-S1f Phase 2 (source unification, `snapshot --from/--to`), LegiScan pipeline wiring, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

@@ -782,13 +782,17 @@ Work items:
 
 **Not a fix — GovInfo Trump T2 delta (-7):** Self-corrects on next backfill run. No action needed.
 
-#### Sprint R-S1e: Incremental Snapshot + LegiScan Integration + Pipeline Fault Tolerance
+#### Sprint R-S1e: Backfill Pipeline Redesign
 
-**Source:** Claude Code analysis (2026-02-28). The daily snapshot's fixed 20-item fetch cap causes routine silent data loss — not just during outages. CourtListener/civilLiberties averages 38 docs/day but the snapshot captures only ~20. FR/infoAvailability peaks at 159 docs/day — snapshot misses ~87% on spike days. The backfill pipeline (which uses paginated `fetchHistorical`) has been masking this, but real-time monitoring has gaps between backfills. Separately, LegiScan's session-based ZIP model doesn't fit the signal/feed-fetcher pattern and needs its own integration path.
+**Absorbed:** Original R-S1e scope (incremental snapshot, LegiScan integration, cron locks) folded into the pipeline redesign. See `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` for the complete proposal.
 
-**Goal:** Replace best-effort "fetch latest 20" snapshot with incremental "bring DB up to date since last run" for all API sources. Wire LegiScan into pipeline. Add cron overlap protection.
+**Source:** Pipeline redesign proposal (2026-02-28). The existing backfill/snapshot/build-baseline commands have overlapping responsibilities, inconsistent stage execution, and CLI flags that bypass methodology. The redesign unifies everything into a 9-stage pipeline with clean commands.
 
-**Depends on:** Sprint R-S1c (fetchWithRetry ✅). Can run in parallel with R-S1d — R-S1d fixes historical data quality, R-S1e fixes forward-looking data completeness. Both must land before Phase 2 baseline computation.
+**Goal:** Replace the current patchwork of `pnpm backfill`, `pnpm build-baseline`, `pnpm snapshot` with a unified pipeline: `pnpm backfill` (stages 1-4: ingest/score/aggregate/embed), `pnpm compute-baseline-stats` (stage 5), `pnpm snapshot --from/--to` (stages 6-9: L1/L2/L3/convergence), plus `pnpm backfill:verify` and `pnpm recompute-scores`. Also includes cl_first_amendment data purge (deferred from R-S1d), incremental snapshot (replacing 20-item cap), LegiScan as `--source legiscan`, WH/GDELT as `--source` options, and cron overlap protection.
+
+**Depends on:** Sprint R-S1d ✅. Must land before Phase 2 baseline computation.
+
+_The original R-S1e analysis below is preserved as context. The implementation plan is in `BACKFILL_PIPELINE_REDESIGN.md`._
 
 **Finding: 20-item cap silent data loss**
 

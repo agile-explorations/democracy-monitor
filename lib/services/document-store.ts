@@ -2,6 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
+import { toDateString } from '@/lib/utils/date-utils';
 
 export function buildMetadata(item: ContentItem): Record<string, unknown> | null {
   const meta: Record<string, unknown> = {};
@@ -80,6 +81,67 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
   }
 
   return stored;
+}
+
+/**
+ * Load stored documents for a category+week range, returning ContentItem[] for re-scoring.
+ * Used by backfill when ingest is skipped but score/aggregate/embed still need to run.
+ */
+export async function getDocumentsForWeek(
+  category: string,
+  weekStart: string,
+  weekEnd: string,
+): Promise<ContentItem[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      title: documents.title,
+      content: documents.content,
+      url: documents.url,
+      publishedAt: documents.publishedAt,
+      sourceType: documents.sourceType,
+      metadata: documents.metadata,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.category, category),
+        gte(documents.publishedAt, new Date(weekStart)),
+        lte(documents.publishedAt, new Date(weekEnd)),
+      ),
+    )
+    .orderBy(desc(documents.publishedAt));
+
+  return rows.map((r) => {
+    const meta = r.metadata as Record<string, unknown> | null;
+    return {
+      title: r.title,
+      summary: r.content || undefined,
+      link: r.url || undefined,
+      pubDate: r.publishedAt?.toISOString(),
+      agency: meta?.agency as string | undefined,
+      type: r.sourceType,
+    };
+  });
+}
+
+/**
+ * Get the most recent document date for a category.
+ * Used by incremental snapshot to determine the fetch window.
+ */
+export async function getLastDocumentDate(category: string): Promise<string | null> {
+  if (!isDbAvailable()) return null;
+  const db = getDb();
+
+  const [row] = await db
+    .select({ maxDate: sql<Date | null>`max(${documents.publishedAt})` })
+    .from(documents)
+    .where(eq(documents.category, category));
+
+  if (!row?.maxDate) return null;
+  return toDateString(row.maxDate);
 }
 
 /**

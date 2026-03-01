@@ -7,9 +7,10 @@ import { loadCycleAdjustmentFactors } from '@/lib/services/cycle-adjustment-serv
 import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { getLastDocumentDate, storeDocuments } from '@/lib/services/document-store';
 import { fetchCategoryFeedsWithMetadata } from '@/lib/services/feed-fetcher';
 import { recordSnapshotSignalResults } from '@/lib/services/fetch-log-store';
+import { fetchCategoryIncremental } from '@/lib/services/incremental-fetcher';
 import {
   fetchAllRhetoricSources,
   statementsToContentItems,
@@ -72,8 +73,24 @@ async function snapshotCategory(
 ): Promise<void> {
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
-  const { items, signalResults } = await fetchCategoryFeedsWithMetadata(cat);
-  console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
+
+  // Try incremental fetch (API signals from last stored date, RSS latest-N)
+  const lastDate = await getLastDocumentDate(cat.key);
+  let items: ContentItem[];
+  let signalResults: import('@/lib/services/feed-fetcher').SignalFetchResult[];
+
+  if (lastDate) {
+    const result = await fetchCategoryIncremental(cat, lastDate);
+    items = result.items;
+    signalResults = result.signalResults;
+    console.log(`[snapshot]   ${items.length} items fetched (incremental from ${lastDate})`);
+  } else {
+    // Fallback: no stored docs, use existing latest-N behavior
+    const result = await fetchCategoryFeedsWithMetadata(cat);
+    items = result.items;
+    signalResults = result.signalResults;
+    console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
+  }
 
   const checks = await recordSourceHealthChecks(cat.key, signalResults);
   allHealthChecks.push(...checks);

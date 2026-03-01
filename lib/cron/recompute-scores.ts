@@ -3,11 +3,10 @@
  * No API calls are made — this only reads from the documents table and writes to document_scores.
  *
  * Usage:
- *   pnpm recompute-scores                       # Recompute all
+ *   pnpm recompute-scores                       # Recompute all + re-aggregate
  *   pnpm recompute-scores --category judicialIndependence  # Single category
  *   pnpm recompute-scores --from 2025-01-20      # Date range
  *   pnpm recompute-scores --dry-run              # Preview without writing
- *   pnpm recompute-scores --aggregate            # Also recompute weekly aggregates
  */
 
 import { and, desc, eq, gte, lte } from 'drizzle-orm';
@@ -24,7 +23,6 @@ interface RecomputeOptions {
   to?: string;
   dryRun?: boolean;
   batchSize?: number;
-  aggregate?: boolean;
 }
 
 type DocumentRow = typeof documents.$inferSelect;
@@ -149,7 +147,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
   }
 
   logRecomputeSummary(totalScored, totalStored, categoryCounts, dryRun);
-  if (options.aggregate && !dryRun) await recomputeWeeklyAggregates(options.from, options.to);
+  if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to);
 }
 
 if (require.main === module) {
@@ -174,9 +172,6 @@ if (require.main === module) {
         break;
       case '--batch-size':
         options.batchSize = parseInt(args[++i], 10);
-        break;
-      case '--aggregate':
-        options.aggregate = true;
         break;
     }
   }

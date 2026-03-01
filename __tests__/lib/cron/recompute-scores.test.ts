@@ -88,22 +88,29 @@ describe('recomputeScores', () => {
       scoredAt: new Date().toISOString(),
     });
     mockStoreDocumentScores.mockResolvedValue(2);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+    mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
 
     await recomputeScores({ batchSize: 10 });
 
     expect(mockScoreDocument).toHaveBeenCalledTimes(2);
     expect(mockStoreDocumentScores).toHaveBeenCalledOnce();
+    // Aggregation always runs after scoring
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
   });
 
   it('completes immediately when no documents exist', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
 
     await expect(recomputeScores({})).resolves.toBeUndefined();
 
     // No documents means no scoring calls
     expect(mockScoreDocument).toHaveBeenCalledTimes(0);
+    // Aggregation still runs (no-op with empty results)
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
   });
 
   it('scores documents in dry-run mode without storing', async () => {
@@ -131,7 +138,7 @@ describe('recomputeScores', () => {
     expect(mockStoreDocumentScores).toHaveBeenCalledTimes(0);
   });
 
-  it('triggers weekly aggregation when aggregate flag is set', async () => {
+  it('always triggers weekly aggregation after scoring', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
@@ -141,18 +148,18 @@ describe('recomputeScores', () => {
     } as Record<string, Array<{ category: string; weekOf: string; avgScore: number }>>);
     mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
 
-    await recomputeScores({ aggregate: true });
+    await recomputeScores({});
 
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
     expect(mockStoreWeeklyAggregate).toHaveBeenCalledOnce();
   });
 
-  it('skips aggregation in dry-run mode even with aggregate flag', async () => {
+  it('skips aggregation in dry-run mode', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
 
-    await recomputeScores({ aggregate: true, dryRun: true });
+    await recomputeScores({ dryRun: true });
 
     // Aggregation is skipped in dry-run
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(0);
