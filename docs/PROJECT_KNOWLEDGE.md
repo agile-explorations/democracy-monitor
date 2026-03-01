@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-02-27)
+## Current state (as of 2026-02-28)
 
 ### Categories & baselines
 
@@ -113,11 +113,12 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Shared utils: lib/utils/async.ts (sleep), lib/utils/collections.ts (deduplicateByUrl), lib/types/category-card.ts (AutoStatus, EnhancedData)
 - AIProvider.complete() signature: (prompt: string, options?: AICompletionOptions) → result.content (not result.text)
 - ESLint max-lines (300) + max-lines-per-function (50) enforced; data/schema/test/demo/seed/hooks/component files exempt
+- OFFSET pagination tiebreaker: always add a unique column (e.g. `documents.id`) to ORDER BY when using OFFSET — without it, rows sharing the same sort value get skipped at batch boundaries (caused 8,583 missing scores before fix in `recompute-scores.ts`)
 
 ### Testing & coverage
 
-- 1532 tests across 124 test files
-- Coverage thresholds: statements 71.22%, branches 68.33%, functions 74.02%, lines 71.6%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
+- 1532 tests across 124 test files (22 added in R-S1e follow-up: backfill-verify 12, verification-service 10)
+- Coverage thresholds: statements 71.44%, branches 68.94%, functions 74.86%, lines 71.73%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
 ### Infrastructure
@@ -136,11 +137,12 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Weekly aggregator date mismatch fixed: range query (gte/lt 7-day window) replaces exact eq() match — document_scores use Monday-based weeks, weekly_aggregates used config-start-date-based weeks
 - `document_scores.document_id` NULL: fixed via post-store `resolveDocumentIds()` UPDATE joining on URL
 
-## Known data issues (deferred to pipeline redesign)
+## Known data issues
 
 - **cl_first_amendment noise (civilLiberties)**: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. ~41K of 101K CL docs in civilLiberties are noise (irrelevant NOS codes like Insurance, Patent, Fraud, or empty NOS). Query was rewritten in R-S1d to `"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")`. **Repair**: purge docs where `source_origin='courtlistener' AND category='civilLiberties'` and NOS not in 440-448 or 530; re-backfill with new query; recompute aggregates and baselines. The ~56K NOS 440/530 docs are correct (from cl_civil_rights and cl_habeas signals).
 - **FCC RSS feeds down (mediaFreedom)**: `rss_fcc_media` and `rss_fcc_enforcement` time out due to Feb 2026 government shutdown. Not a config bug — will recover when FCC site comes back online. Source health service marks them `unavailable`; retry cron handles recovery automatically.
-- **~18K documents missing weekly aggregates**: Fixed in R-S1e. Backfill now always runs score → aggregate → embed (even when ingest is skipped). Re-run `pnpm backfill` to fill gaps.
+- **3 WhiteHouse docs missing scores**: Boundary condition in OFFSET pagination — 3 WH docs at exact batch boundaries (publishedAt ties with batch cutoff). Negligible impact (3 of 337,494). Will self-resolve on next full recompute.
+- **~18K documents missing weekly aggregates** _(resolved R-S1e)_: Backfill now always runs score → aggregate → embed even when ingest is skipped.
 
 ## Adding new categories
 
@@ -204,6 +206,25 @@ pnpm backfill --source doj --from 2025-01-20
 2. Compute baselines: `pnpm compute-baseline-stats`
 3. Verify: `pnpm backfill:verify --category <key>`
 4. Non-FR sources backfill automatically for all categories
+
+### Repairing incomplete data
+
+All pipeline commands are idempotent — safe to re-run on existing data:
+
+- `pnpm backfill`: skips completed ingest via `fetch_log`, always re-scores/aggregates, skips already-embedded docs
+- `pnpm layer2:backfill`: skips weeks where Pass 1 count >= document count
+- `pnpm recompute-scores`: re-scores from `documents` table and re-aggregates (no API calls)
+- `pnpm compute-baseline-stats`: recomputes from existing aggregates/embeddings
+
+Full repair workflow (from `BACKFILL_PIPELINE_REDESIGN.md`):
+
+```bash
+pnpm backfill --from 2017-01-20 --to 2019-01-19
+pnpm backfill --from 2021-01-20 --to 2023-01-19
+pnpm backfill --from 2025-01-20
+pnpm layer2:backfill --from 2025-01-20
+pnpm backfill:verify
+```
 
 ### Troubleshooting
 
@@ -281,5 +302,6 @@ pnpm backfill --source doj --from 2025-01-20
 - Sprint R4a: AI narrative generation service — narratives table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts, narrative-pipeline.ts, /api/narratives/[category] + /api/narratives/overview endpoints, snapshot pipeline integration. Stable → template, Elevated+ → AI generation. 51 new tests (1411 total).
 - Sprint R-S1c: Fault-tolerant RSS/HTML/JSON signal fetching — fetchWithRetry() wrapper (3 attempts, exponential backoff), retry cron (11am UTC), recordSnapshotSignalResults() for fetch_log integration, buildSignalLookup() helper. 115 new tests (1526 total).
 - Sprint R-S1d: Backfill verification fixes — cl_first_amendment query rewrite (unquoted→quoted + qualifying terms), CourtListener NOS maxPages 10→15, immigrationEnforcement category (2 FR signals + SUPPLEMENTAL_TERMS), FEC pagination fix (offset-based), DOJ binary search off-by-one fix, OpenGrep blocking enforcement, dead code removal (246 lines from 4 services). FR backfills complete for 4 new categories. cl_first_amendment purge + FCC RSS verification deferred to pipeline redesign. Pipeline redesign proposal (BACKFILL_PIPELINE_REDESIGN.md). 1 new test (1527 total).
-- Sprint R-S1e: Backfill pipeline redesign Phase 1 — fix skip logic (score/aggregate/embed always run even when ingest skipped), incremental snapshot (API signals use historical fetchers from last stored date), compute-baseline-stats command, backfill:verify completeness check (9 checks). Removed: build-baseline command, assess-week.ts, --ingest-only/--skip-ai/--model/--no-rhetoric flags, backfillGdelt/fetchWhDocs/backfillRhetoric dead functions. recompute-scores always re-aggregates. ~580 lines removed, 4 new files, 3 new test files. Issues #184-#190. 5 new tests (1532 total).
-- Sprints remaining: R-S1f Phase 2 (source unification, `snapshot --from/--to`), LegiScan pipeline wiring, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.
+- Sprint R-S1e: Backfill pipeline redesign Phase 1 — fix skip logic (score/aggregate/embed always run even when ingest skipped), incremental snapshot (API signals use historical fetchers from last stored date), compute-baseline-stats command, backfill:verify completeness check (9 checks). Removed: build-baseline command, assess-week.ts, --ingest-only/--skip-ai/--model/--no-rhetoric flags, backfillGdelt/fetchWhDocs/backfillRhetoric dead functions. recompute-scores always re-aggregates. ~580 lines removed, 4 new files, 3 new test files. Issues #184-#190. 5 new tests (1532 total). Post-sprint: added FR period coverage + GDELT cross-feed checks to backfill:verify, fixed OFFSET pagination tiebreaker in recompute-scores (59K→3 missing scores), 22 additional tests for verify/service, ran full data repair (recompute-scores + backfill embedding).
+- Sprint R-S1f: Backfill pipeline redesign Phase 2 — unified WH/GDELT/LegiScan as `--source` options, cron overlap protection (PostgreSQL advisory locks via cron_locks table), `snapshot --from/--to` for retroactive assessment, `purge:cl-noise` command for CL noise document cleanup. Removed dead fetchWhArchiveHistorical (~94 lines). Issues #191-#195. 8 new tests (1561 total across 126 files).
+- Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

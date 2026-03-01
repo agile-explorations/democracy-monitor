@@ -125,9 +125,7 @@ async function storeBillsInRange(
 }
 
 /** Find all baseline periods that overlap with a session's year range. */
-function matchSessionToBaselines(
-  entry: LegiScanDatasetEntry,
-): (typeof BASELINE_PERIODS)[number][] {
+function matchSessionToBaselines(entry: LegiScanDatasetEntry): (typeof BASELINE_PERIODS)[number][] {
   if (entry.special !== 0) return [];
 
   const sessionStartYear = entry.year_start;
@@ -146,9 +144,7 @@ type SessionMatch = {
 };
 
 /** Build a map of sessions to their overlapping baseline periods. */
-function buildSessionBaselineMap(
-  datasets: LegiScanDatasetEntry[],
-): Map<number, SessionMatch> {
+function buildSessionBaselineMap(datasets: LegiScanDatasetEntry[]): Map<number, SessionMatch> {
   const result = new Map<number, SessionMatch>();
   for (const entry of datasets) {
     const baselines = matchSessionToBaselines(entry);
@@ -175,7 +171,9 @@ async function downloadAndProcessSession(
   if (dryRun) {
     console.log(`    [DRY RUN] Would download dataset (${entry.dataset_size} bytes)`);
     for (const b of baselines) {
-      console.log(`    [DRY RUN] Would process for ${b.label}: ${b.dateRange.start} → ${b.dateRange.end}`);
+      console.log(
+        `    [DRY RUN] Would process for ${b.label}: ${b.dateRange.start} → ${b.dateRange.end}`,
+      );
     }
     return { bills: 0, stored: 0, categories: {} };
   }
@@ -199,6 +197,44 @@ async function downloadAndProcessSession(
 
   await recordDatasetDownload(entry, hash, totalBills);
   return { bills: totalBills, stored: totalStored, categories };
+}
+
+/** Backfill LegiScan bills for a specific date range. Called by pnpm backfill --source legiscan. */
+export async function backfillLegiscan(
+  from: string,
+  to: string,
+  dryRun: boolean,
+  state = 'US',
+): Promise<number> {
+  console.log(`\n[backfill] === LegiScan (${from} → ${to}) ===`);
+
+  const datasets = await fetchDatasetList(state);
+  const sessionMap = buildSessionBaselineMap(datasets);
+  console.log(`[backfill] ${sessionMap.size} sessions matched baseline periods`);
+
+  let totalStored = 0;
+  for (const match of sessionMap.values()) {
+    if (dryRun) {
+      console.log(`  [DRY RUN] Would process ${match.entry.session_name}`);
+      continue;
+    }
+
+    const storedHash = await getStoredHash(match.entry.session_id);
+    if (storedHash === match.entry.dataset_hash) {
+      console.log(`  ${match.entry.session_name}: skipped (unchanged)`);
+      continue;
+    }
+
+    console.log(`  Downloading ${match.entry.session_name}...`);
+    const { bills, hash } = await fetchDataset(match.entry.session_id, match.entry.access_key);
+    const result = await storeBillsInRange(bills, from, to, 'backfill');
+    totalStored += result.stored;
+    await recordDatasetDownload(match.entry, hash, result.bills);
+    if (result.stored > 0) await sleep(1000);
+  }
+
+  console.log(`[backfill] LegiScan: ${totalStored} document rows stored`);
+  return totalStored;
 }
 
 export async function runLegiscanBulk(options: BulkOptions): Promise<void> {

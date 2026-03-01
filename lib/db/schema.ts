@@ -491,6 +491,13 @@ export const fetchLog = pgTable(
   ],
 );
 
+export const cronLocks = pgTable('cron_locks', {
+  lockKey: varchar('lock_key', { length: 64 }).primaryKey(),
+  acquiredAt: timestamp('acquired_at', { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  pid: integer('pid'),
+});
+
 export const legiscanDatasets = pgTable('legiscan_datasets', {
   id: serial('id').primaryKey(),
   sessionId: integer('session_id').notNull().unique(),

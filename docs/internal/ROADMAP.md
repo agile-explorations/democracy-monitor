@@ -797,6 +797,10 @@ Work items:
 > - Ran `recompute-scores` across all categories: 337,491/337,494 scored, 3,665 weekly aggregates
 > - Final verify state: 3 missing scores, 0 missing aggregates, baselines 4/4 × 14/14 complete
 
+#### Sprint R-S1f: Backfill Pipeline Redesign (Phase 2) ✅
+
+> **Actual:** Phase 2 delivered (5 issues, #191-#195). Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL advisory locks), added `snapshot --from/--to` for retroactive assessment, created `purge:cl-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
+
 **Absorbed:** Original R-S1e scope (incremental snapshot, LegiScan integration, cron locks) folded into the pipeline redesign. See `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` for the complete proposal.
 
 **Source:** Pipeline redesign proposal (2026-02-28). The existing backfill/snapshot/build-baseline commands have overlapping responsibilities, inconsistent stage execution, and CLI flags that bypass methodology. The redesign unifies everything into a 9-stage pipeline with clean commands.

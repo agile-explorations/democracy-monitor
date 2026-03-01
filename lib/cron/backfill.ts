@@ -1,6 +1,8 @@
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
 import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
+import type { RhetoricSource } from '@/lib/cron/backfill-rhetoric';
+import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
 import { CATEGORIES } from '@/lib/data/categories';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -10,6 +12,7 @@ import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/wee
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
+import { withCronLock } from '@/lib/utils/cron-lock';
 import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
 
 const INAUGURATION_DATE = '2025-01-20';
@@ -30,6 +33,10 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   fec: 'fec_json',
   fr: 'federal_register',
 };
+
+const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['whitehouse', 'gdelt']);
+const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legiscan']);
+const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
 type SignalGroups = { fr: Signal[]; cl: Signal[]; doj: Signal[]; gi: Signal[]; fec: Signal[] };
@@ -181,10 +188,10 @@ async function backfillCategory(
 
 function resolveSourceFilter(source?: string): string | undefined {
   if (!source) return undefined;
+  if (SPECIAL_SOURCES.has(source)) return undefined; // Rhetoric/LegiScan handled separately
   const signalType = SOURCE_TO_SIGNAL_TYPE[source];
   if (!signalType) {
-    const valid = Object.keys(SOURCE_TO_SIGNAL_TYPE).join(', ');
-    throw new Error(`Unknown source: ${source}. Valid: ${valid}`);
+    throw new Error(`Unknown source: ${source}. Valid: ${ALL_VALID_SOURCES.join(', ')}`);
   }
   return signalType;
 }
@@ -197,7 +204,9 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
 
   console.log(`[backfill] ${dryRun ? '(DRY RUN) ' : ''}Range: ${from} → ${to}`);
   if (options.source)
-    console.log(`[backfill] Source filter: ${options.source} (${sourceSignalType})`);
+    console.log(
+      `[backfill] Source filter: ${options.source}${sourceSignalType ? ` (${sourceSignalType})` : ''}`,
+    );
 
   const weeks = getWeekRanges(from, to);
   console.log(`[backfill] ${weeks.length} weeks to process`);
@@ -208,16 +217,29 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
 
   let totalDocs = 0;
   let totalApiCalls = 0;
+  const isSpecialSource = options.source ? SPECIAL_SOURCES.has(options.source) : false;
 
-  for (const cat of cats) {
-    console.log(`\n[backfill] === ${cat.key} (${cat.signals.length} signals) ===`);
-    const r = await backfillCategory(cat.key, cat.signals, weeks, dryRun, sourceSignalType);
-    totalDocs += r.docs;
-    totalApiCalls += r.apiCalls;
+  // Category-based signal backfill (skip if --source is a special source)
+  if (!isSpecialSource) {
+    for (const cat of cats) {
+      console.log(`\n[backfill] === ${cat.key} (${cat.signals.length} signals) ===`);
+      const r = await backfillCategory(cat.key, cat.signals, weeks, dryRun, sourceSignalType);
+      totalDocs += r.docs;
+      totalApiCalls += r.apiCalls;
+    }
   }
 
-  if (!options.source && !options.category) {
-    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun);
+  // Rhetoric backfill: runs when no source filter, or when source is whitehouse/gdelt
+  const isRhetoricSource = options.source ? RHETORIC_SOURCES.has(options.source) : false;
+  const shouldRunRhetoric = !options.source || isRhetoricSource;
+  if (shouldRunRhetoric && !options.category) {
+    const rhetoricFilter = isRhetoricSource ? (options.source as RhetoricSource) : undefined;
+    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun, rhetoricFilter);
+  }
+
+  // LegiScan backfill: runs when no source filter, or when source is legiscan
+  if (!options.source || options.source === 'legiscan') {
+    totalDocs += await backfillLegiscan(from, to, dryRun);
   }
 
   console.log(`\n[backfill] === Summary ===`);
@@ -241,8 +263,9 @@ function parseCliArgs(args: string[]): BackfillOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  runBackfill(parseCliArgs(process.argv.slice(2)))
-    .then(() => process.exit(0))
+  const opts = parseCliArgs(process.argv.slice(2));
+  withCronLock('backfill', () => runBackfill(opts))
+    .then((ran) => process.exit(ran ? 0 : 0))
     .catch((err) => {
       console.error('[backfill] Fatal error:', err);
       process.exit(1);

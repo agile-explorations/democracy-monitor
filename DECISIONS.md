@@ -10,6 +10,34 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1f: Backfill Pipeline Redesign (Phase 2) ✅
+
+**Status: Done.** Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL locks), added `snapshot --from/--to` for retroactive assessment, created `purge:cl-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
+
+**Scope vs. Actual:**
+
+- Planned (5 issues): WH/GDELT as `--source` options (#191), CL noise purge (#192), cron locks (#193), LegiScan integration (#194), `snapshot --from/--to` (#195)
+- Actual: All 5 issues delivered. No scope changes.
+
+**Key Decisions:**
+
+1. **Special source routing**: WH/GDELT/LegiScan are "special sources" — they don't map to per-category signal types. `SPECIAL_SOURCES` set bypasses `SOURCE_TO_SIGNAL_TYPE` resolution. Category-based signal loop skips entirely when `--source` is special. Rhetoric sources fetch globally then classify to categories; LegiScan downloads bulk ZIPs per session then filters by date range.
+2. **`fetchWhiteHouseHistorical` over `fetchWhArchiveHistorical`**: The monitoring-period fetcher (`fetchWhiteHouseHistorical`) scrapes the current `whitehouse.gov/briefing-room` archive pages. The archive fetcher (`fetchWhArchiveHistorical`) targeted `trumpwhitehouse.archives.gov` with WordPress-specific selectors. Since WH `--source` only needs the monitoring period, the archive function was removed as dead code.
+3. **Cron lock via `INSERT ON CONFLICT DO NOTHING`**: Atomic lock acquisition using PostgreSQL's conflict resolution. Returns 0 rows when lock exists (held), 1 row when acquired. Stale locks (>6hr) cleared before acquisition. `withCronLock()` wrapper handles acquire/release lifecycle. No-ops when DB unavailable (dev mode).
+4. **`snapshot --from/--to` loads from DB, not fetch**: Historical snapshot mode calls `getDocumentsForWeek()` to load already-stored documents, then runs stages 2-3 (score/aggregate) + 6-9 (L2/assessment/deep-analysis/snapshot). No external fetching — designed for retroactive assessment of backfilled data.
+5. **NOS-based purge for CL noise**: `VALID_NOS_PATTERNS` match Civil Rights (440-448), Habeas (530+), Prisoner (540-550), and explicit First Amendment suits. Everything else under `source_origin='courtlistener' AND category='civilLiberties'` is noise from the old unscoped `q=first+amendment` query. Cascade deletes: `ai_document_assessments` → `document_scores` → `documents` → `fetch_log`.
+
+**Lessons Learned:**
+
+- **Mock chain implementations persist across tests**: `vi.clearAllMocks()` clears call history but NOT mock implementations. When one test overrides `mockFn.mockResolvedValue(x)`, subsequent tests inherit that override. Fix: create a `setupMockChain()` function called from `beforeEach` that re-establishes all mock implementations.
+- **Thenable mock pattern for Drizzle chains**: Some Drizzle methods (e.g., `db.delete(...).where(...)`) are awaited directly (no `.returning()`), while others chain `.returning()`. A mock supporting both must return an object with both a `returning` method and be thenable: `{ returning: mockFn, then: (resolve) => Promise.resolve(undefined).then(resolve) }`.
+
+**Spec Deviations:**
+
+- None. All 5 Phase 2 items from the pipeline redesign proposal delivered.
+
+---
+
 ## Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
 
 **Status: Done.** Fixed backfill skip logic (score/aggregate/embed always run even when ingest is skipped), removed dead CLI flags and 3 files (~580 lines), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. 1532 tests across 124 files. Phase 2 deferred to R-S1f.
@@ -26,7 +54,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 3. **Incremental fetch: API vs RSS split**: API signals (FR, CL, DOJ, GovInfo, FEC) use historical fetchers with `dateFrom=lastStoredDate`. RSS/HTML/JSON signals keep existing latest-N behavior (no historical API available). The `groupSignals()` function routes signals to the correct path.
 4. **`getLastDocumentDate()` fallback**: When no stored documents exist for a category, the snapshot falls back to the existing `fetchCategoryFeedsWithMetadata()` (latest-N). This handles fresh deployments and new categories.
 5. **backfill:verify exit codes**: Returns exit code 1 when warnings exist, 0 when all checks pass. Enables CI integration (future sprint).
-6. **`fetchWhArchiveHistorical` export kept**: The export in `rhetoric-fetcher.ts` became unused after deleting `backfill-baseline.ts`, but it's kept for Phase 2 (R-S1f source unification) where WH will be a `--source` option.
+6. ~~**`fetchWhArchiveHistorical` export kept**~~: Removed in R-S1f — WH `--source` uses `fetchWhiteHouseHistorical` instead.
 
 **Lessons Learned:**
 
@@ -35,7 +63,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Spec Deviations:**
 
-- Phase 2 items deferred to R-S1f: LegiScan integration, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT as `--source` options. Phase 1 focused on data quality fixes and essential commands.
+- Phase 2 items deferred to R-S1f: LegiScan integration, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT as `--source` options. All delivered in R-S1f.
 
 ---
 
@@ -282,7 +310,7 @@ Sprints 13, 14, and 14.1 built the keyword tuning pipeline: AI Skeptic structure
 
 Key decisions that remain relevant:
 
-- **Trump WH archive scraper**: `parseWhArchiveArticles` with WordPress-specific selectors. `WhArchiveConfig` interface on `BaselineConfig`. Only Trump 2017/2018 use it.
+- **Trump WH archive scraper**: `parseWhArchiveArticles` with WordPress-specific selectors. `WhArchiveConfig` interface on `BaselineConfig`. Only Trump 2017/2018 use it. _(Removed in R-S1f — dead code after monitoring-period fetcher used instead.)_
 - **Weekly aggregator date mismatch bug** (fixed): `eq(weekOf)` → range query `gte/lt` with 7-day window. Root cause: `getWeekOf()` (Monday-based) vs `getWeekRanges()` (config-date-based) — systemic mismatch, range query is a workaround.
 
 ---

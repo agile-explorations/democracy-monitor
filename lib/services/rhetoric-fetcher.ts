@@ -1,5 +1,4 @@
 import * as cheerio from 'cheerio';
-import type { WhArchiveConfig } from '@/lib/data/baselines';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
@@ -93,101 +92,6 @@ export async function fetchWhiteHouseHistorical(options: {
 
     page++;
     await sleep(delayMs);
-  }
-
-  return allItems;
-}
-
-function parseWhArchiveArticles(
-  $: cheerio.CheerioAPI,
-  from: Date,
-  to: Date,
-): { items: ContentItem[]; pastRange: boolean; foundItemsInRange: boolean } {
-  const items: ContentItem[] = [];
-  let pastRange = false;
-  let foundItemsInRange = false;
-
-  $('article.briefing-statement').each((_, el) => {
-    const $el = $(el);
-    const linkEl = $el.find('h2.briefing-statement__title a').first();
-    const href = linkEl.attr('href');
-    const title = linkEl.text().trim();
-
-    const dateStr = $el.find('p.meta__date time').first().text().trim();
-
-    if (!title || !href) return;
-
-    const itemDate = dateStr ? new Date(dateStr) : null;
-    if (itemDate) {
-      if (itemDate < from) {
-        pastRange = true;
-        return;
-      }
-      if (itemDate > to) return;
-      foundItemsInRange = true;
-    }
-
-    items.push({
-      title,
-      link: href, // Archive URLs are already absolute
-      pubDate: itemDate ? toDateString(itemDate) : undefined,
-      agency: 'White House',
-      type: 'rhetoric',
-      sourceOrigin: 'whitehouse',
-    });
-  });
-
-  return { items, pastRange, foundItemsInRange };
-}
-
-/**
- * Fetch WH archive pages for a date range (e.g. trumpwhitehouse.archives.gov).
- * Scrapes paginated WordPress archive with archive-specific selectors.
- */
-export async function fetchWhArchiveHistorical(options: {
-  archiveConfig: WhArchiveConfig;
-  dateFrom: string;
-  dateTo: string;
-  delayMs?: number;
-}): Promise<ContentItem[]> {
-  const { archiveConfig, dateFrom, dateTo, delayMs = 500 } = options;
-  const from = new Date(dateFrom);
-  const to = new Date(dateTo);
-  const allItems: ContentItem[] = [];
-
-  for (const section of archiveConfig.sections) {
-    let page = 1;
-    const maxPages = 700; // /briefings-statements/ has ~670 pages
-
-    while (page <= maxPages) {
-      const url = `${archiveConfig.baseUrl}${section}page/${page}/`;
-
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; DemocracyMonitor/1.0)',
-          Accept: 'text/html',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) break;
-        console.error(`[wh-archive] HTTP ${response.status} for ${section}page/${page}`);
-        break;
-      }
-
-      const html = await response.text();
-      const $ = cheerio.load(html);
-      const parsed = parseWhArchiveArticles($, from, to);
-      allItems.push(...parsed.items);
-
-      if (parsed.pastRange && !parsed.foundItemsInRange) break;
-
-      page++;
-      if (page % 50 === 0) {
-        console.log(`  [wh-archive] ${section}: page ${page}, ${allItems.length} items so far`);
-      }
-      await sleep(delayMs);
-    }
   }
 
   return allItems;
