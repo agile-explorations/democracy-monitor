@@ -67,6 +67,23 @@ function checkFrCoverage(frCoverage: SourcePeriodCoverage[], cats: Category[]): 
   return warnings;
 }
 
+const THIN_CATEGORY_THRESHOLD = 500;
+
+function checkGdeltCoverage(report: VerifyReport, cats: Category[]): string[] {
+  const gdeltCats = new Set(report.gdeltCrossfeedCoverage.map((r) => r.category));
+  const docsByCat = new Map<string, number>();
+  for (const row of report.documentCoverage) {
+    docsByCat.set(row.category, (docsByCat.get(row.category) ?? 0) + row.count);
+  }
+  const missingGdelt = cats
+    .filter((c) => !gdeltCats.has(c.key) && (docsByCat.get(c.key) ?? 0) >= THIN_CATEGORY_THRESHOLD)
+    .map((c) => c.key);
+  if (missingGdelt.length > 0) {
+    return [`Categories missing GDELT cross-feed: ${missingGdelt.join(', ')}`];
+  }
+  return [];
+}
+
 function collectWarnings(report: VerifyReport, categoryFilter?: string): string[] {
   const warnings: string[] = [];
   const { stageCompleteness: s } = report;
@@ -100,12 +117,7 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
   }
 
   warnings.push(...checkFrCoverage(report.frPeriodCoverage, cats));
-
-  const gdeltCats = new Set(report.gdeltCrossfeedCoverage.map((r) => r.category));
-  const missingGdelt = cats.filter((c) => !gdeltCats.has(c.key)).map((c) => c.key);
-  if (missingGdelt.length > 0) {
-    warnings.push(`Categories missing GDELT cross-feed: ${missingGdelt.join(', ')}`);
-  }
+  warnings.push(...checkGdeltCoverage(report, cats));
 
   for (const p of report.layer2Completeness) {
     if (p.missingPass1 > 0) {
@@ -144,13 +156,23 @@ function printFrPeriodCoverage(frCoverage: SourcePeriodCoverage[], cats: Categor
   }
 }
 
-function printGdeltCoverage(gdeltCoverage: SourcePeriodCoverage[], cats: Category[]): void {
+function printGdeltCoverage(
+  gdeltCoverage: SourcePeriodCoverage[],
+  docCoverage: DocumentCoverage[],
+  cats: Category[],
+): void {
   console.log('\n=== GDELT Cross-Feed Coverage ===');
   const gdeltMap = new Map(gdeltCoverage.map((r) => [r.category, r.count]));
+  const docsByCat = new Map<string, number>();
+  for (const row of docCoverage) {
+    docsByCat.set(row.category, (docsByCat.get(row.category) ?? 0) + row.count);
+  }
   for (const cat of cats) {
     const count = gdeltMap.get(cat.key) ?? 0;
-    const mark = count > 0 ? '\u2713' : '\u2717';
-    console.log(`  ${cat.key.padEnd(30)} ${mark} ${count}`);
+    const thin = (docsByCat.get(cat.key) ?? 0) < 500;
+    const mark = count > 0 ? '\u2713' : thin ? '-' : '\u2717';
+    const note = count === 0 && thin ? ' (thin category)' : '';
+    console.log(`  ${cat.key.padEnd(30)} ${mark} ${count}${note}`);
   }
 }
 
@@ -234,7 +256,7 @@ function printReport(report: VerifyReport, categoryFilter?: string): void {
   }
 
   printFrPeriodCoverage(report.frPeriodCoverage, cats);
-  printGdeltCoverage(report.gdeltCrossfeedCoverage, cats);
+  printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

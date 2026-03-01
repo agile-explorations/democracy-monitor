@@ -938,6 +938,32 @@ _Depends on: (a) R-S1d data quality fixes landed (cl_first_amendment query scope
 - CBO reports pipeline (fiscal — low-volume supplementary signal)
 - DHS/ICE/CBP monthly statistical tables for immigrationEnforcement (encounters, detention, removals — Excel/PDF download, quarterly batch, no API)
 
+#### Sprint R-S1g: CourtListener Pagination & Deduplication
+
+**Source:** `backfill:verify` pagination fitness warnings (2026-03-01). Analysis of weekly CL volume distributions revealed systemic truncation across civilLiberties and lawEnforcement.
+
+**Problem:** civilLiberties and lawEnforcement CourtListener signals both query NOS 440 (civil rights). With `maxPages=15` (300 results), 37% of all weeks exceed the cap (101/272 for civilLiberties, 102/272 for lawEnforcement). Trump T1 (2017–2018) averages 430–530 docs/week — every week is truncated. 51,774 URLs (72% of civilLiberties CL corpus) are shared between the two categories, meaning the same documents are fetched twice via separate queries.
+
+**Key constraint:** Baselines and monitoring must use the same pagination cap. Current baselines are computed from truncated data. Fixing forward monitoring without re-backfilling baselines would create false volume anomalies (500 docs/week vs baseline computed from 300 docs/week).
+
+**Approach:**
+
+1. Deduplicate NOS 440 ingestion: fetch once, route to both categories via `(url, category)` composite unique. Halves API budget for shared NOS codes.
+2. Bump `maxPages` to cover observed peaks (lawEnforcement peak=838, needs ~42 pages). Single deduplicated query makes this affordable.
+3. Re-backfill Trump T1 CourtListener data with corrected pagination.
+4. Recompute baselines for affected categories.
+5. Update TEST_SPECIFICATION ship gate: "maxPages sufficient for observed peak volume per NOS code" (NOS codes can't be scoped tighter without losing signal).
+
+**Volume profile (weekly docs, courtlistener):**
+
+| Period             | civilLiberties avg | lawEnforcement avg | Cap status                    |
+| ------------------ | -----------------: | -----------------: | ----------------------------- |
+| Trump T1 (2017–18) |            430–448 |            464–531 | Permanently exceeded          |
+| Biden (2021–22)    |            131–135 |            123–126 | Under cap                     |
+| Trump T2 (2025–26) |            182–187 |            159–195 | Borderline, some weeks exceed |
+
+**Depends on:** No blockers. Should land before Phase 2 baseline computation (R2).
+
 ---
 
 ## Post-R5: Remaining Features & Validated Improvements

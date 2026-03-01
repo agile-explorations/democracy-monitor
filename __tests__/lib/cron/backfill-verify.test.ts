@@ -191,17 +191,34 @@ describe('backfill-verify', () => {
     );
   });
 
-  it('warns when categories are missing GDELT cross-feed', async () => {
+  it('warns when non-thin categories are missing GDELT cross-feed', async () => {
     const { isDbAvailable } = await import('@/lib/db');
     vi.mocked(isDbAvailable).mockReturnValue(true);
 
-    // No GDELT data at all
     mockGetGdeltCrossfeedCoverage.mockResolvedValue([]);
+    // executiveActions has enough docs to not be considered thin
+    mockGetDocumentCoverage.mockResolvedValue([
+      { category: 'executiveActions', sourceOrigin: 'federal_register', count: 8000 },
+    ]);
 
     const report = await runVerify({ category: 'executiveActions' });
     expect(report.warnings).toContainEqual(
       expect.stringContaining('Categories missing GDELT cross-feed'),
     );
+  });
+
+  it('does not warn for thin categories missing GDELT cross-feed', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+
+    mockGetGdeltCrossfeedCoverage.mockResolvedValue([]);
+    mockGetDocumentCoverage.mockResolvedValue([
+      { category: 'hatch', sourceOrigin: 'federal_register', count: 22 },
+    ]);
+
+    const report = await runVerify({ category: 'hatch' });
+    const gdeltWarnings = report.warnings.filter((w) => w.includes('GDELT'));
+    expect(gdeltWarnings).toHaveLength(0);
   });
 
   it('warns when L2 docs are missing Pass 1', async () => {
