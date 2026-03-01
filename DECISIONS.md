@@ -10,6 +10,33 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1d: Backfill Verification Fixes ✅
+
+**Status: Done.** Fixed FEC pagination, DOJ binary search, cl_first_amendment query, CourtListener maxPages, and added immigrationEnforcement category. Removed 246 lines of dead code from 4 service files. Made OpenGrep checks blocking. FR backfills completed for 4 new categories across all baseline periods. cl_first_amendment data purge and FCC RSS verification deferred to pipeline redesign sprint.
+
+**Scope vs. Actual:**
+
+- Planned (6 issues): cl_first_amendment query rewrite (#178), CourtListener maxPages bump (#179), immigrationEnforcement category (#180), FR backfill for 4 categories (#181), cl_first_amendment purge + re-backfill (#182), FCC RSS verification (#183)
+- Actual: #178-181 delivered. #182 deferred — investigation revealed ~41K noise docs from old unscoped query, but purge/re-backfill requires downstream recomputation (aggregates, baselines) best handled by pipeline redesign tooling. #183 deferred — FCC website down due to Feb 2026 government shutdown (not a config bug). Also fixed FEC pagination and DOJ binary search bugs discovered during verification, plus 26 OpenGrep findings.
+
+**Key Decisions:**
+
+1. **cl_first_amendment purge deferred to pipeline redesign**: The old `q=first+amendment` query produced ~41K noise docs (insurance, patent, fraud) mixed with ~56K valid docs (NOS 440/530). Since documents don't track which signal produced them, purging requires NOS-based filtering. Downstream data (scores, aggregates, baselines) also needs recomputation. The pipeline redesign sprint provides proper `pnpm backfill --stage` tooling for this.
+2. **FCC RSS treated as external outage, not bug**: Both `rss_fcc_media` and `rss_fcc_enforcement` time out because the FCC website is down during the government shutdown. The fault-tolerant retry infrastructure (R-S1c) handles this gracefully — marks as `unavailable`, retry cron attempts recovery.
+3. **FEC pagination: offset-based, not per_page**: FEC API ignores `per_page` parameter and returns exactly 20 results. Fixed to use `from_hit` offset with `PAGE_SIZE = 20` constant.
+4. **DOJ binary search: -1 adjustment**: `findStartPage` could miss boundary items when a page's newest item exactly equaled toDate. Fixed with `Math.max(0, rawStart - 1)`.
+5. **OpenGrep made blocking**: Added `--error` flag to `opengrep scan` in pre-commit hook. All 26 existing findings (mostly `no-mock-call-assertions`) resolved with either code fixes or justified `nosemgrep` annotations.
+6. **Pipeline redesign proposal drafted**: `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` — 9-stage pipeline, 6 commands, source integration plan. Reviewed by Claude Online with 6 refinements applied.
+
+**Lessons Learned:**
+
+- **FR signal URLs must use shorthand format**: `parseSignalParams()` can't parse raw FR API URLs (`https://www.federalregister.gov/api/v1/...`). Must use `/api/federal-register?agency=X&term=Y`. The immigrationEnforcement signals were initially broken because of this. Documented in "Adding new categories" checklist.
+- **Documents don't track which signal produced them**: `source_origin` is `'courtlistener'` for all CL signals in a category. No `signalId` in metadata. Makes signal-level purging impossible without NOS-based heuristics. Pipeline redesign should consider adding signal ID to document metadata.
+- **Government shutdowns break RSS signals**: Federal government RSS feeds (FCC, potentially others) go down during funding lapses. Not a bug — our fault-tolerant retry handles it. But worth tracking in "Known data issues" section.
+- **Dead code accumulates silently**: 246 lines across 4 services (`layer-scoring.ts`, `layer2-store.ts`, `p2025-matcher.ts`, `document-store.ts`) were unused but not caught until OpenGrep enforcement + Knip audit. Regular `pnpm lint:unused` runs catch this.
+
+---
+
 ## Sprint R-S1c: Fault-Tolerant RSS/HTML/JSON Signal Fetching ✅
 
 **Status: Done.** Added HTTP retry with exponential backoff to the snapshot pipeline, a scheduled retry cron for extended outages, and fetch_log integration for unified gap visibility across all signal types. 8 files changed (5 modified, 3 new), 4 test files (2 new, 2 extended), 1526 tests total.

@@ -703,7 +703,9 @@ Build in order of category coverage breadth and implementation simplicity:
 
 > **Status: Done.** `fetchWithRetry()` HTTP retry wrapper (3 attempts, exponential backoff), wired into 4 feed-fetcher signal handlers (RSS, HTML, JSON, Federal Register). `recordSnapshotSignalResults()` for fetch_log integration. `retry-failed-signals` cron at 11am UTC for extended outages. `buildSignalLookup()` helper. 8 files changed, 1526 tests total. See `DECISIONS.md` for retrospective.
 
-#### Sprint R-S1d: Backfill Verification Fixes
+#### Sprint R-S1d: Backfill Verification Fixes ✅
+
+**Actual:** Code fixes (#178-181) delivered. FR backfills complete for 4 new categories across all baseline periods. Also fixed FEC pagination (offset-based) and DOJ binary search (off-by-one), made OpenGrep blocking, removed 246 lines dead code. cl_first_amendment purge (#182) deferred to pipeline redesign — ~41K noise docs identified but purge needs downstream recomputation. FCC RSS (#183) deferred — gov shutdown. Pipeline redesign proposal drafted (BACKFILL_PIPELINE_REDESIGN.md).
 
 **Source:** Backfill verification audit (2026-02-28). API-vs-DB count comparison across all source types and baseline periods. FEC perfect match, GovInfo near-perfect, DOJ structurally verified. CourtListener and FR require fixes before Phase 2 baseline computation.
 
