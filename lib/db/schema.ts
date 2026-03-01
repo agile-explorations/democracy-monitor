@@ -258,7 +258,7 @@ export const documentScores = pgTable(
     driftCount: integer('drift_count').notNull().default(0),
     warningCount: integer('warning_count').notNull().default(0),
     suppressedCount: integer('suppressed_count').notNull().default(0),
-    documentClass: varchar('document_class', { length: 20 }).notNull().default('unknown'),
+    documentClass: varchar('document_class', { length: 30 }).notNull().default('unknown'),
     classMultiplier: real('class_multiplier').notNull().default(1.0),
     isHighAuthority: boolean('is_high_authority').notNull().default(false),
     matches: jsonb('matches').$type<unknown[]>().notNull(),

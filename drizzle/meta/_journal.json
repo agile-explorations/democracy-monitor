@@ -183,6 +183,13 @@
       "when": 1772346382095,
       "tag": "0025_awesome_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1772391389924,
+      "tag": "0026_chief_jazinda",
+      "breakpoints": true
     }
   ]
 }
