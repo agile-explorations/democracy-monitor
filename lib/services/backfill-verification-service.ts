@@ -42,6 +42,13 @@ export interface PaginationFitness {
   peakWeeklyCount: number;
 }
 
+export interface SourcePeriodCoverage {
+  category: string;
+  sourceOrigin: string;
+  period: string;
+  count: number;
+}
+
 export async function getDocumentCoverage(category?: string): Promise<DocumentCoverage[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
@@ -214,5 +221,68 @@ export async function getPaginationFitness(category?: string): Promise<Paginatio
     category: r.category,
     sourceOrigin: r.source_origin,
     peakWeeklyCount: Number(r.peak_weekly_count),
+  }));
+}
+
+/** FR document counts per category per baseline period. */
+export async function getFrPeriodCoverage(category?: string): Promise<SourcePeriodCoverage[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const catFilter = category ? sql`category = ${category}` : sql`1=1`;
+
+  const rows = await db.execute(sql`
+    select
+      category,
+      case
+        when published_at >= '2022-01-20' and published_at < '2023-01-20' then 'biden_2022'
+        when published_at >= '2021-01-20' and published_at < '2022-01-20' then 'biden_2021'
+        when published_at >= '2017-01-20' and published_at < '2018-01-20' then 'trump_2017'
+        when published_at >= '2018-01-20' and published_at < '2019-01-20' then 'trump_2018'
+        when published_at >= '2025-01-20' then 'trump_t2'
+        else 'other'
+      end as period,
+      count(*)::int as count
+    from documents
+    where source_origin = 'federal_register'
+      and ${catFilter}
+    group by category, period
+    order by category, period
+  `);
+
+  return (rows.rows as Array<{ category: string; period: string; count: number }>).map((r) => ({
+    category: r.category,
+    sourceOrigin: 'federal_register',
+    period: r.period,
+    count: Number(r.count),
+  }));
+}
+
+/** GDELT cross-feed document counts per category (excluding 'intent'). */
+export async function getGdeltCrossfeedCoverage(
+  category?: string,
+): Promise<SourcePeriodCoverage[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const catFilter = category ? sql`category = ${category}` : sql`1=1`;
+
+  const rows = await db.execute(sql`
+    select
+      category,
+      count(*)::int as count
+    from documents
+    where source_origin = 'gdelt'
+      and category != 'intent'
+      and ${catFilter}
+    group by category
+    order by category
+  `);
+
+  return (rows.rows as Array<{ category: string; count: number }>).map((r) => ({
+    category: r.category,
+    sourceOrigin: 'gdelt',
+    period: 'all',
+    count: Number(r.count),
   }));
 }
