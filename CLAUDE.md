@@ -32,7 +32,6 @@ pnpm layer2:backfill # Backfill Layer 2 AI assessments (Pass 1 + Pass 2)
 pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
 pnpm purge:cl-noise # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
-pnpm seed:validate  # Cross-baseline validation (severity/volume ratios)
 pnpm backtest       # Run historical backtesting
 ```
 

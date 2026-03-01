@@ -44,8 +44,6 @@
     "seed:import": "tsx lib/seed/import.ts",
     "seed:review": "tsx lib/seed/review-report.ts",
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
-    "seed:rhetoric-gaps": "tsx lib/seed/rhetoric-keyword-gaps.ts",
-    "seed:validate": "tsx lib/seed/baseline-validation.ts",
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
     "backfill:gaps": "tsx lib/cron/backfill-gaps.ts",
     "backfill:verify": "tsx lib/cron/backfill-verify.ts",
