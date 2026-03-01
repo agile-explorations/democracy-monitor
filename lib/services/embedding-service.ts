@@ -9,6 +9,7 @@ export async function embedText(text: string): Promise<number[] | null> {
     const result = await provider.embed(text);
     return result.embedding;
   } catch (err) {
+    if (isTokenLimitError(err)) throw err;
     console.error('Embedding failed:', err);
     return null;
   }
@@ -22,9 +23,19 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
     const results = await provider.embedBatch(texts);
     return results.map((r) => r.embedding);
   } catch (err) {
+    if (isTokenLimitError(err)) throw err;
     console.error('Batch embedding failed:', err);
     return texts.map(() => null);
   }
+}
+
+export function isTokenLimitError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    'status' in err &&
+    (err as { status: number }).status === 400 &&
+    err.message.includes('maximum context length')
+  );
 }
 
 /** Compute the element-wise mean of a set of embedding vectors. */

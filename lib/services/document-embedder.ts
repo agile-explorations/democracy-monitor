@@ -1,7 +1,38 @@
 import { and, eq, isNull, asc } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
-import { embedBatch } from './embedding-service';
+import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
+
+/** text-embedding-3-small max is 8192 tokens; ~4 chars/token gives safe char limit */
+const MAX_EMBED_CHARS = 30_000;
+
+function docToText(doc: { title: string; content: string | null }): string {
+  return `${doc.title}${doc.content ? '\n' + doc.content : ''}`;
+}
+
+/** Embed a single oversized document by truncating its text. */
+async function embedWithTruncation(text: string): Promise<number[] | null> {
+  const truncated = text.slice(0, MAX_EMBED_CHARS);
+  return embedText(truncated);
+}
+
+/** Fallback: embed each document individually, truncating oversized ones. */
+async function embedIndividually(texts: string[]): Promise<(number[] | null)[]> {
+  const results: (number[] | null)[] = [];
+  for (const text of texts) {
+    try {
+      results.push(await embedText(text));
+    } catch (err) {
+      if (isTokenLimitError(err)) {
+        results.push(await embedWithTruncation(text));
+      } else {
+        console.error('Single embedding failed:', err);
+        results.push(null);
+      }
+    }
+  }
+  return results;
+}
 
 /** Embed a single batch, returning the count embedded. */
 async function embedOneBatch(batchSize: number, category?: string): Promise<number> {
@@ -19,8 +50,18 @@ async function embedOneBatch(batchSize: number, category?: string): Promise<numb
 
   if (unembedded.length === 0) return 0;
 
-  const texts = unembedded.map((doc) => `${doc.title}${doc.content ? '\n' + doc.content : ''}`);
-  const embeddings = await embedBatch(texts);
+  const texts = unembedded.map(docToText);
+
+  let embeddings: (number[] | null)[];
+  try {
+    embeddings = await embedBatch(texts);
+  } catch (err) {
+    if (isTokenLimitError(err)) {
+      embeddings = await embedIndividually(texts);
+    } else {
+      throw err;
+    }
+  }
 
   let embedded = 0;
   const now = new Date();

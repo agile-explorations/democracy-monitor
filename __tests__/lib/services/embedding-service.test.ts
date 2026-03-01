@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { cosineSimilarity, computeCentroid } from '@/lib/services/embedding-service';
+import {
+  cosineSimilarity,
+  computeCentroid,
+  isTokenLimitError,
+} from '@/lib/services/embedding-service';
 
 describe('cosineSimilarity', () => {
   it('returns 1 for identical vectors', () => {
@@ -57,6 +61,34 @@ describe('cosineSimilarity', () => {
     const a = [1, 2, 3];
     const b = [2, 4, 6]; // same direction, 2x magnitude
     expect(cosineSimilarity(a, b)).toBeCloseTo(1, 5);
+  });
+});
+
+describe('isTokenLimitError', () => {
+  it('returns true for OpenAI token limit errors', () => {
+    const err = Object.assign(
+      new Error(
+        "This model's maximum context length is 8192 tokens, however you requested 10070 tokens",
+      ),
+      { status: 400 },
+    );
+    expect(isTokenLimitError(err)).toBe(true);
+  });
+
+  it('returns false for other 400 errors', () => {
+    const err = Object.assign(new Error('Invalid API key'), { status: 400 });
+    expect(isTokenLimitError(err)).toBe(false);
+  });
+
+  it('returns false for 500 errors', () => {
+    const err = Object.assign(new Error('maximum context length'), { status: 500 });
+    expect(isTokenLimitError(err)).toBe(false);
+  });
+
+  it('returns false for non-Error objects', () => {
+    expect(isTokenLimitError('maximum context length')).toBe(false);
+    expect(isTokenLimitError(null)).toBe(false);
+    expect(isTokenLimitError(undefined)).toBe(false);
   });
 });
 
