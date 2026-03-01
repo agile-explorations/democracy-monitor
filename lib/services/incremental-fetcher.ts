@@ -12,6 +12,7 @@ import {
   fetchWeekItemsFec,
 } from '@/lib/cron/backfill-fetchers';
 import type { SourceFetchResult } from '@/lib/cron/backfill-fetchers';
+import type { FeedItem } from '@/lib/parsers/feed-parser';
 import { fetchSignalWithMetadata } from '@/lib/services/feed-fetcher';
 import type { SignalFetchResult } from '@/lib/services/feed-fetcher';
 import type { Category, Signal } from '@/lib/types';
@@ -64,7 +65,7 @@ function sourceResultToSignalResult(
     documentCount: result.items.length,
     durationMs: Date.now() - startMs,
     errorMessage: result.errors[0],
-    items: result.items,
+    items: result.items.map((i): FeedItem => ({ ...i, title: i.title ?? '' })),
   };
 }
 
