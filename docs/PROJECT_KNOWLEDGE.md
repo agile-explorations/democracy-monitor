@@ -79,7 +79,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Confidence degradation: `sourceAvailability` factor (weight 0.15) in `DATA_COVERAGE_WEIGHTS`; `CRITICAL_CONFIDENCE_CAP = 0.3` hard cap
 - `fetchCategoryFeedsWithMetadata()` wraps feed fetcher with per-signal success/failure, doc count, timing
 - Landing page: DataIntegrityBanner (4 levels, hidden at high) + SourceHealthBar (dots per signal)
-- Coverage health: `lib/services/coverage-health.ts`, `getSourceCoverage()` SQL, `detectSilenceAlerts()` pure filter, `SOURCE_EXPECTED_CADENCE_DAYS` + `SILENCE_ALERT_MULTIPLIER` in scoring-config
+- Coverage health: `lib/services/coverage-health.ts`, `getSourceCoverage()` SQL, `detectSilenceAlerts()` pure filter, `HEALTH_THRESHOLDS.silentCheckCount` in scoring-config
 
 ### Source fetchers
 
@@ -117,8 +117,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Testing & coverage
 
-- 1561 tests across 126 test files
-- Coverage thresholds: statements 71.55%, branches 69%, functions 74.94%, lines 71.87%. I/O-heavy fetcher files excluded from coverage (courtlistener, doj, fec, govinfo fetchers — pure functions tested, fetch/pagination not unit-testable). `autoUpdate: true` only ratchets UP thresholds.
+- 1525 tests across 124 test files
+- Coverage thresholds: statements 73.74%, branches 69.74%, functions 75.82%, lines 74.39%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable. `autoUpdate: true` only ratchets UP thresholds — manual lowering needed when deleting test files or adding uncovered I/O paths.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
 ### Infrastructure
@@ -135,6 +135,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `source_origin` column on documents table: tracks data provenance (federal_register, whitehouse, gdelt, courtlistener, doj, etc.). `SourceOrigin` type in `lib/types/categories.ts`. `inferSourceOrigin()` in document-store.ts for backward compat.
 - `documents` table unique constraint: `(url, category)` composite (not `url` alone) — allows same URL under multiple categories for rhetoric cross-feed
 - Weekly aggregator date mismatch fixed: range query (gte/lt 7-day window) replaces exact eq() match — document_scores use Monday-based weeks, weekly_aggregates used config-start-date-based weeks
+- `intent` category: exists in `documents` and `baselines` tables but is NOT a monitoring category (not in `CATEGORIES` array). It's a special data pipeline for rhetoric docs. Filter it out when displaying monitoring-category counts (e.g., `backfill:verify` baseline completeness).
 - `document_scores.document_id` NULL: fixed via post-store `resolveDocumentIds()` UPDATE joining on URL
 
 ## Known data issues

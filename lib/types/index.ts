@@ -32,7 +32,7 @@ export type {
   LagAnalysisResult,
 } from './intent';
 export { POLICY_AREAS } from './intent';
-export type { P2025Proposal, P2025Classification, P2025Match, P2025Summary } from './p2025';
+export type { P2025Proposal, P2025Classification, P2025Summary } from './p2025';
 export type {
   MonitoredSite,
   UptimeResult,

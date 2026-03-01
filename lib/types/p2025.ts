@@ -14,16 +14,6 @@ export interface P2025Proposal {
 
 export type P2025Classification = 'not_related' | 'loosely_related' | 'implements' | 'exceeds';
 
-export interface P2025Match {
-  proposalId: string;
-  documentId: number | null;
-  cosineSimilarity: number;
-  llmClassification: P2025Classification | null;
-  llmConfidence: number | null;
-  llmReasoning: string | null;
-  humanReviewed: boolean;
-}
-
 export interface P2025Summary {
   totalProposals: number;
   matchedCount: number;

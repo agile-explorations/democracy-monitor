@@ -197,29 +197,6 @@ export const AI_CONCERN_MIN_SAMPLE = 3;
 /** Default fraction of unflagged docs to audit with Pass 2. */
 export const AUDIT_SAMPLE_RATE = 0.03;
 
-// --- Multi-source constants ---
-
-/** Maximum weight any single source can contribute to a composite score. */
-export const SOURCE_MAX_WEIGHT = 0.4;
-
-/** Fraction of total volume below which a source is considered collapsed. */
-export const VOLUME_COLLAPSE_FRACTION = 0.25;
-
-/** Expected cadence in days for each source origin (used for silence detection). */
-export const SOURCE_EXPECTED_CADENCE_DAYS: Record<string, number> = {
-  federal_register: 1,
-  courtlistener: 3,
-  doj: 2,
-  whitehouse: 1,
-  gdelt: 1,
-  govinfo: 3,
-  fec: 7,
-  rss: 7,
-};
-
-/** Multiplier for expected cadence beyond which a source is flagged as silent. */
-export const SILENCE_ALERT_MULTIPLIER = 2;
-
 /** Characters before a keyword to scan for negation patterns. */
 export const NEGATION_WINDOW_BEFORE = 200;
 
