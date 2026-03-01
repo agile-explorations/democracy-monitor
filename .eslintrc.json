@@ -43,6 +43,7 @@
   "overrides": [
     {
       "files": [
+        "lib/cron/**",
         "lib/data/**",
         "lib/demo/**",
         "lib/seed/**",

@@ -183,12 +183,19 @@ function printDocumentCoverage(coverage: DocumentCoverage[]): void {
     if (!grouped.has(row.category)) grouped.set(row.category, new Map());
     grouped.get(row.category)!.set(row.sourceOrigin, row.count);
   }
+  const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
+  let grandTotal = 0;
   for (const [cat, sources] of [...grouped.entries()].sort()) {
+    let catTotal = 0;
     for (const [source, count] of [...sources.entries()].sort()) {
       const mark = count > 0 ? '\u2713' : '\u2717';
-      console.log(`  ${cat.padEnd(30)} ${source.padEnd(20)} ${mark} ${count}`);
+      console.log(`  ${cat.padEnd(30)} ${source.padEnd(20)} ${mark} ${String(count).padStart(8)}`);
+      catTotal += count;
     }
+    console.log(`  ${''.padEnd(53)} ${bold(String(catTotal).padStart(8))}\n`);
+    grandTotal += catTotal;
   }
+  console.log(`  ${''.padEnd(47)} ${bold(`TOTAL ${String(grandTotal).padStart(8)}`)}`);
 }
 
 function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
