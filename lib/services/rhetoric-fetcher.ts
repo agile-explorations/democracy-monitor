@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
+import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
 function parseWhiteHouseArticles(
   $: cheerio.CheerioAPI,
@@ -119,49 +120,8 @@ function parseGdeltArticles(articles: GdeltRawArticle[], dateFrom: string): Cont
 }
 
 /**
- * Fetch GDELT data for a date range.
- * Uses the GDELT DOC 2.0 API for full-text article search.
- */
-async function fetchGdeltWithRetry(url: string, delayMs: number): Promise<GdeltRawArticle[]> {
-  const maxRetries = 3;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    await sleep(delayMs);
-
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (backfill)', Accept: 'application/json' },
-    });
-
-    if (response.status === 429) {
-      const backoff = 10_000 * 2 ** attempt; // 10s, 20s, 40s
-      console.error(
-        `[gdelt-historical] HTTP 429 — backing off ${backoff}ms (attempt ${attempt + 1})`,
-      );
-      await sleep(backoff);
-      continue;
-    }
-
-    if (!response.ok) {
-      console.error(`[gdelt-historical] HTTP ${response.status}`);
-      return [];
-    }
-
-    const text = await response.text();
-    if (!text.startsWith('{')) {
-      console.error(`[gdelt-historical] Non-JSON response (attempt ${attempt + 1})`);
-      await sleep(10_000);
-      continue;
-    }
-
-    return (JSON.parse(text).articles as GdeltRawArticle[]) || [];
-  }
-
-  console.error('[gdelt-historical] Exhausted retries');
-  return [];
-}
-
-/**
  * Fetch GDELT data for a date range with retry and rate-limit handling.
+ * Uses the generic fetchWithRetry for 429/5xx/network retries.
  */
 export async function fetchGdeltHistorical(options: {
   query: string;
@@ -182,12 +142,28 @@ export async function fetchGdeltHistorical(options: {
     sort: 'DateDesc',
   });
 
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+
   try {
-    const articles = await fetchGdeltWithRetry(
-      `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`,
-      delayMs,
+    await sleep(delayMs); // courtesy delay before request
+    const response = await fetchWithRetry(
+      url,
+      { headers: { 'User-Agent': 'DemocracyMonitor/1.0 (backfill)', Accept: 'application/json' } },
+      { baseDelayMs: 10_000, maxAttempts: 3, label: 'gdelt-historical' },
     );
-    return parseGdeltArticles(articles, dateFrom);
+
+    if (!response.ok) {
+      console.error(`[gdelt-historical] HTTP ${response.status} after retries`);
+      return [];
+    }
+
+    const text = await response.text();
+    if (!text.startsWith('{')) {
+      console.error('[gdelt-historical] Non-JSON 200 response, skipping');
+      return [];
+    }
+
+    return parseGdeltArticles((JSON.parse(text).articles as GdeltRawArticle[]) || [], dateFrom);
   } catch (err) {
     if (err instanceof SyntaxError) {
       console.error('[gdelt-historical] Malformed JSON after retries');

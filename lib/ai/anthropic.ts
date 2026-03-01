@@ -7,7 +7,7 @@ export class AnthropicProvider implements AIProvider {
 
   private getClient(): Anthropic {
     if (!this.client) {
-      this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, maxRetries: 3 });
     }
     return this.client;
   }

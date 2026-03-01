@@ -55,7 +55,7 @@ async function fetchSignalWithRetry(
       return { items: await fetchFn(), error: null };
     } catch (err) {
       if (attempt < SIGNAL_MAX_RETRIES) {
-        const delay = SIGNAL_RETRY_BACKOFF_MS * attempt;
+        const delay = SIGNAL_RETRY_BACKOFF_MS * 2 ** (attempt - 1);
         console.log(
           `  [${categoryKey}] ${label} attempt ${attempt}/${SIGNAL_MAX_RETRIES} failed for ${weekStart}, retrying in ${delay / 1000}s...`,
         );

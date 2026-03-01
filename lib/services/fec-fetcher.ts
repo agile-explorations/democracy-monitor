@@ -1,10 +1,10 @@
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
 const FEC_API_BASE = 'https://api.open.fec.gov/v1';
 const RATE_LIMIT_DELAY_MS = 4000; // FEC allows 1,000 req/hr with API key (~3.6s/req)
-const RETRY_429_DELAY_MS = 60_000; // Wait 60s on rate limit before retry
-const MAX_429_RETRIES = 3;
+const FEC_RETRY_BASE_DELAY_MS = 60_000; // FEC rate limits are aggressive — 60s base backoff
 const MAX_SUMMARY_LENGTH = 800;
 
 type FecEndpointType = 'advisory_opinions' | 'murs' | 'admin_fines';
@@ -103,23 +103,9 @@ function buildSearchUrl(
   return `${FEC_API_BASE}/legal/search/?${qs.toString()}`;
 }
 
-async function fetchWithRetry(url: string, label: string): Promise<Response | null> {
-  for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
-    const response = await fetch(url, {
-      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
-    });
-    if (response.status !== 429) return response;
-    if (attempt < MAX_429_RETRIES) {
-      const wait = RETRY_429_DELAY_MS * (attempt + 1);
-      console.log(
-        `[fec] 429 on ${label}, waiting ${wait / 1000}s (attempt ${attempt + 1}/${MAX_429_RETRIES})`,
-      );
-      await sleep(wait);
-    }
-  }
-  console.error(`[fec] 429 on ${label} after ${MAX_429_RETRIES} retries, giving up`);
-  return null;
-}
+const FEC_FETCH_INIT: RequestInit = {
+  headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
+};
 
 /** Fetch recent FEC data for the snapshot pipeline. */
 export async function fetchFecRecent(params: {
@@ -132,8 +118,9 @@ export async function fetchFecRecent(params: {
   }
 
   const url = buildSearchUrl(apiKey, params.endpointType);
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
+  const response = await fetchWithRetry(url, FEC_FETCH_INIT, {
+    baseDelayMs: FEC_RETRY_BASE_DELAY_MS,
+    label: `fec-recent-${params.endpointType}`,
   });
 
   if (!response.ok) {
@@ -186,9 +173,18 @@ async function fetchAoHistorical(
     });
 
     await sleep(RATE_LIMIT_DELAY_MS);
-    const response = await fetchWithRetry(url, `AO ${dateFrom} p${page + 1}`);
-    if (!response || !response.ok) {
-      if (response) console.error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
+    let response: Response;
+    try {
+      response = await fetchWithRetry(url, FEC_FETCH_INIT, {
+        baseDelayMs: FEC_RETRY_BASE_DELAY_MS,
+        label: `fec-AO-${dateFrom}-p${page + 1}`,
+      });
+    } catch {
+      console.error(`[fec] Network error on AO ${dateFrom} p${page + 1}`);
+      break;
+    }
+    if (!response.ok) {
+      console.error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
       break;
     }
 
@@ -220,9 +216,18 @@ async function fetchMurHistorical(
     });
 
     await sleep(RATE_LIMIT_DELAY_MS);
-    const response = await fetchWithRetry(url, `MUR ${dateFrom} p${page + 1}`);
-    if (!response || !response.ok) {
-      if (response) console.error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
+    let response: Response;
+    try {
+      response = await fetchWithRetry(url, FEC_FETCH_INIT, {
+        baseDelayMs: FEC_RETRY_BASE_DELAY_MS,
+        label: `fec-MUR-${dateFrom}-p${page + 1}`,
+      });
+    } catch {
+      console.error(`[fec] Network error on MUR ${dateFrom} p${page + 1}`);
+      break;
+    }
+    if (!response.ok) {
+      console.error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
       break;
     }
 

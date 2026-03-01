@@ -52,6 +52,7 @@
     "purge:cl-noise": "tsx lib/cron/purge-cl-noise.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "retry:signals": "tsx lib/cron/retry-failed-signals.ts",
+    "embed:missing": "tsx lib/cron/embed-missing.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "prepare": "husky"
   },

@@ -13,7 +13,7 @@ export class OpenAIProvider implements AIProvider, AIEmbeddingProvider {
 
   private getClient(): OpenAI {
     if (!this.client) {
-      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 3 });
     }
     return this.client;
   }
