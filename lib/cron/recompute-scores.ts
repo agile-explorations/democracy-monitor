@@ -130,7 +130,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
       .select()
       .from(documents)
       .where(whereClause)
-      .orderBy(desc(documents.publishedAt))
+      .orderBy(desc(documents.publishedAt), documents.id)
       .limit(batchSize)
       .offset(offset);
 
