@@ -161,7 +161,7 @@ async function backfillCategory(
 
   // Embed unprocessed documents for this category after all weeks
   try {
-    const embedded = await embedUnprocessedDocuments(EMBED_BATCH_SIZE);
+    const embedded = await embedUnprocessedDocuments(EMBED_BATCH_SIZE, categoryKey);
     if (embedded > 0) console.log(`  [${categoryKey}] Embedded ${embedded} documents`);
   } catch (err) {
     console.warn(`  [${categoryKey}] Embedding skipped: ${formatError(err)}`);
