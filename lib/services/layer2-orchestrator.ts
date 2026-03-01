@@ -1,5 +1,8 @@
+import { and, eq, sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
+import { getDb } from '@/lib/db';
+import { aiDocumentAssessments, documents } from '@/lib/db/schema';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
@@ -210,4 +213,81 @@ async function runPass2Phase(
 
   console.log(`[layer2] Pass 2: ${results.length} assessed (${auditUrls.size} audit samples)`);
   return results;
+}
+
+/**
+ * Retry Pass 2 for flagged docs in a category-week that are missing Pass 2.
+ * Returns the number of successfully retried assessments.
+ */
+export async function retryMissingPass2(
+  categoryKey: string,
+  weekOf: string,
+  options?: Layer2Options,
+): Promise<number> {
+  const resolved = resolveOptions(options);
+  if (!resolved) return 0;
+
+  const category = CATEGORIES.find((c) => c.key === categoryKey);
+  if (!category) return 0;
+
+  const gaps = await findPass2Gaps(categoryKey, weekOf);
+  if (gaps.length === 0) return 0;
+
+  console.log(`[layer2] Retrying ${gaps.length} missing Pass 2 for ${categoryKey} / ${weekOf}`);
+  let success = 0;
+
+  for (const gap of gaps) {
+    const doc: ContentItem = { title: gap.title ?? '', summary: gap.content ?? '', link: gap.url };
+    const result = await assessPass2(
+      doc,
+      gap.signals,
+      gap.erosionType,
+      category.description,
+      resolved.p2Provider,
+      false,
+      resolved.p2Model,
+    );
+
+    if (result && !resolved.dryRun) {
+      await storePass2Assessment(result, categoryKey, weekOf);
+      success++;
+    }
+    await sleep(RATE_LIMIT_DELAY_MS);
+  }
+
+  return success;
+}
+
+interface Pass2Gap {
+  url: string;
+  signals: string[];
+  erosionType: string;
+  title: string | null;
+  content: string | null;
+}
+
+async function findPass2Gaps(category: string, weekOf: string): Promise<Pass2Gap[]> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT a1.url, a1.signals, a1.erosion_type, d.title, d.content
+    FROM ${aiDocumentAssessments} a1
+    JOIN ${documents} d ON d.url = a1.url AND d.category = a1.category
+    WHERE a1.pass = 1
+      AND a1.relevant = true
+      AND a1.category = ${category}
+      AND a1.week_of = ${weekOf}
+      AND NOT EXISTS (
+        SELECT 1 FROM ${aiDocumentAssessments} a2
+        WHERE a2.url = a1.url AND a2.category = a1.category
+          AND a2.pass = 2 AND a2.is_audit_sample = false
+      )
+  `);
+
+  return (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+    url: r.url as string,
+    signals: (r.signals as string[]) ?? [],
+    erosionType: (r.erosion_type as string) ?? 'unknown',
+    title: r.title as string | null,
+    content: r.content as string | null,
+  }));
 }

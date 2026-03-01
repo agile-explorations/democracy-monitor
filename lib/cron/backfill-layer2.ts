@@ -13,7 +13,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { Layer2Options } from '@/lib/services/layer2-orchestrator';
-import { runLayer2Assessment } from '@/lib/services/layer2-orchestrator';
+import { runLayer2Assessment, retryMissingPass2 } from '@/lib/services/layer2-orchestrator';
 import { getPass1Count } from '@/lib/services/layer2-store';
 import type { ContentItem } from '@/lib/types';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
@@ -126,6 +126,7 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   let totalDocs = 0;
   let totalFlagged = 0;
   let skipped = 0;
+  let p2Retried = 0;
 
   for (const cat of categories) {
     for (const weekOf of weeks) {
@@ -135,6 +136,7 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
       const existing = await getPass1Count(cat.key, weekOf);
       if (existing >= items.length) {
         skipped += items.length;
+        p2Retried += await retryMissingPass2(cat.key, weekOf, options);
         continue;
       }
 
@@ -150,7 +152,8 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
 
   console.log(
     `[backfill-l2] Complete: ${totalDocs} docs assessed, ${totalFlagged} flagged` +
-      (skipped > 0 ? `, ${skipped} skipped (already processed)` : ''),
+      (skipped > 0 ? `, ${skipped} skipped (already processed)` : '') +
+      (p2Retried > 0 ? `, ${p2Retried} Pass 2 retried` : ''),
   );
 }
 
