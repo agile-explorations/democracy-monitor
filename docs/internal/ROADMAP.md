@@ -785,6 +785,17 @@ Work items:
 #### Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
 
 > **Actual:** Phase 1 delivered (7 issues, #184-#190). Fixed backfill skip logic (score/aggregate/embed always run), removed dead CLI flags + 3 deleted files (~580 lines removed), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. Phase 2 items (LegiScan, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT `--source` options) deferred to R-S1f. Net: +425 lines (1174 added, 749 removed), 1532 tests across 124 files.
+>
+> **Post-sprint follow-up (2026-02-28):**
+>
+> - Fixed `embedUnprocessedDocuments()` to loop until done and filter by category (was single-batch, no filter)
+> - Added FR period coverage check to `backfill:verify` (per-category × 5 baseline periods)
+> - Added GDELT cross-feed coverage check to `backfill:verify` (per-category doc counts)
+> - Fixed CL pagination cap from 20 → 300 (actual `maxPages=15 × pageSize=20`)
+> - Added 22 tests for backfill-verify (12) and verification service (10)
+> - Fixed `recompute-scores` OFFSET pagination skip: added `documents.id` tiebreaker (reduced missing scores from 8,583 → 3 out of 337,494)
+> - Ran `recompute-scores` across all categories: 337,491/337,494 scored, 3,665 weekly aggregates
+> - Final verify state: 3 missing scores, 0 missing aggregates, baselines 4/4 × 14/14 complete
 
 **Absorbed:** Original R-S1e scope (incremental snapshot, LegiScan integration, cron locks) folded into the pipeline redesign. See `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` for the complete proposal.
 
