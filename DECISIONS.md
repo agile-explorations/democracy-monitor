@@ -10,6 +10,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
+
+**Status: Done.** Fixed backfill skip logic (score/aggregate/embed always run even when ingest is skipped), removed dead CLI flags and 3 files (~580 lines), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. 1532 tests across 124 files. Phase 2 deferred to R-S1f.
+
+**Scope vs. Actual:**
+
+- Planned (7 issues): Fix backfill skip logic (#184), remove dead CLI flags (#185), recompute-scores always re-aggregate (#186), compute-baseline-stats command (#187), remove build-baseline command (#188), backfill:verify completeness check (#189), incremental snapshot (#190)
+- Actual: All 7 issues delivered. No scope changes. Issues 1 and 2 implemented together (combined commit) since removing flags depended on the backfill rewrite.
+
+**Key Decisions:**
+
+1. **`skipIngest` flag instead of separate `ingestWeek()`/`processWeek()`**: Merged the two functions into a single `processWeek()` with a `skipIngest` boolean. When `fetch_log` marks a week complete, `skipIngest=true` — the function loads docs from DB via `getDocumentsForWeek()` and still runs score+aggregate. Simpler control flow than two separate functions.
+2. **Embedding at category level, not week level**: `embedUnprocessedDocuments()` runs once per category after all weeks are processed (not per-week). This batches the embedding work and avoids repeated model loading.
+3. **Incremental fetch: API vs RSS split**: API signals (FR, CL, DOJ, GovInfo, FEC) use historical fetchers with `dateFrom=lastStoredDate`. RSS/HTML/JSON signals keep existing latest-N behavior (no historical API available). The `groupSignals()` function routes signals to the correct path.
+4. **`getLastDocumentDate()` fallback**: When no stored documents exist for a category, the snapshot falls back to the existing `fetchCategoryFeedsWithMetadata()` (latest-N). This handles fresh deployments and new categories.
+5. **backfill:verify exit codes**: Returns exit code 1 when warnings exist, 0 when all checks pass. Enables CI integration (future sprint).
+6. **`fetchWhArchiveHistorical` export kept**: The export in `rhetoric-fetcher.ts` became unused after deleting `backfill-baseline.ts`, but it's kept for Phase 2 (R-S1f source unification) where WH will be a `--source` option.
+
+**Lessons Learned:**
+
+- **Mock return values must be valid for always-on code paths**: After making `recompute-scores` always aggregate (removing the `if (options.aggregate)` guard), the mock for `computeAllWeeklyAggregates` needed to return `{}` instead of `undefined`. `Object.entries(undefined)` throws — the guard was masking the invalid mock.
+- **OpenGrep `no-mock-call-assertions` applies consistently**: New test files can't use `toHaveBeenCalledWith()` assertions. Testing output values instead (e.g., checking `result.items` contains expected documents) produces better tests that survive refactoring.
+
+**Spec Deviations:**
+
+- Phase 2 items deferred to R-S1f: LegiScan integration, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT as `--source` options. Phase 1 focused on data quality fixes and essential commands.
+
+---
+
 ## Sprint R-S1d: Backfill Verification Fixes ✅
 
 **Status: Done.** Fixed FEC pagination, DOJ binary search, cl_first_amendment query, CourtListener maxPages, and added immigrationEnforcement category. Removed 246 lines of dead code from 4 service files. Made OpenGrep checks blocking. FR backfills completed for 4 new categories across all baseline periods. cl_first_amendment data purge and FCC RSS verification deferred to pipeline redesign sprint.

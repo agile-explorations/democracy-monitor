@@ -782,7 +782,9 @@ Work items:
 
 **Not a fix — GovInfo Trump T2 delta (-7):** Self-corrects on next backfill run. No action needed.
 
-#### Sprint R-S1e: Backfill Pipeline Redesign
+#### Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
+
+> **Actual:** Phase 1 delivered (7 issues, #184-#190). Fixed backfill skip logic (score/aggregate/embed always run), removed dead CLI flags + 3 deleted files (~580 lines removed), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. Phase 2 items (LegiScan, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT `--source` options) deferred to R-S1f. Net: +425 lines (1174 added, 749 removed), 1532 tests across 124 files.
 
 **Absorbed:** Original R-S1e scope (incremental snapshot, LegiScan integration, cron locks) folded into the pipeline redesign. See `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` for the complete proposal.
 
