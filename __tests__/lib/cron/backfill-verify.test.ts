@@ -14,11 +14,7 @@ const mockGetStageCompleteness = vi.fn().mockResolvedValue({
   missingAggregates: 0,
 });
 const mockGetBaselineCompleteness = vi.fn().mockResolvedValue([]);
-const mockGetLayer2Completeness = vi.fn().mockResolvedValue({
-  totalT2Documents: 50,
-  missingPass1: 0,
-  missingPass2: 0,
-});
+const mockGetLayer2Completeness = vi.fn().mockResolvedValue([]);
 const mockGetPaginationFitness = vi.fn().mockResolvedValue([]);
 const mockGetFrPeriodCoverage = vi.fn().mockResolvedValue([]);
 const mockGetGdeltCrossfeedCoverage = vi.fn().mockResolvedValue([]);
@@ -212,14 +208,28 @@ describe('backfill-verify', () => {
     const { isDbAvailable } = await import('@/lib/db');
     vi.mocked(isDbAvailable).mockReturnValue(true);
 
-    mockGetLayer2Completeness.mockResolvedValue({
-      totalT2Documents: 50,
-      missingPass1: 12,
-      missingPass2: 0,
-    });
+    mockGetLayer2Completeness.mockResolvedValue([
+      {
+        period: 'trump_t2',
+        label: 'Trump T2 (2025–)',
+        totalDocuments: 50,
+        pass1Assessed: 38,
+        missingPass1: 12,
+        pass1Flagged: 5,
+        pass2Flagged: 5,
+        missingPass2: 0,
+        auditSampled: 10,
+        auditFalseNegatives: 1,
+      },
+    ]);
 
     const report = await runVerify({});
-    expect(report.warnings).toContainEqual(expect.stringContaining('12 T2 docs missing L2 Pass 1'));
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('trump_t2: 12 docs missing L2 Pass 1'),
+    );
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('trump_t2: 1/10 audit false negatives (10.0%)'),
+    );
   });
 
   it('category filter limits FR warnings to filtered category only', async () => {

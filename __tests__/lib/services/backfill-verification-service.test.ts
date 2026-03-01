@@ -96,13 +96,7 @@ describe('backfill-verification-service', () => {
       missingAggregates: 0,
     });
     expect(await getBaselineCompleteness()).toEqual([]);
-    expect(await getLayer2Completeness()).toEqual({
-      totalT2Documents: 0,
-      missingPass1: 0,
-      pass1Flagged: 0,
-      pass2Assessed: 0,
-      missingPass2: 0,
-    });
+    expect(await getLayer2Completeness()).toEqual([]);
     expect(await getPaginationFitness()).toEqual([]);
     expect(await getFrPeriodCoverage()).toEqual([]);
     expect(await getGdeltCrossfeedCoverage()).toEqual([]);
@@ -181,31 +175,41 @@ describe('backfill-verification-service', () => {
   });
 
   describe('getLayer2Completeness', () => {
-    it('computes missing pass counts from document total', async () => {
+    it('returns per-period stats with correct pass calculations', async () => {
       const { isDbAvailable } = await import('@/lib/db');
       vi.mocked(isDbAvailable).mockReturnValue(true);
 
-      const results = [
-        [{ total: '50' }], // docCount
-        [{ total: '45', flagged: '10' }], // pass1Stats (45 assessed, 10 flagged)
-        [{ total: '8' }], // pass2Stats (8 assessed)
+      // 5 periods × 4 queries each = 20 select calls
+      // Each period: docCount, pass1Stats, pass2Flagged, pass2Audit
+      const perPeriod = [
+        { total: '50' },
+        { total: '45', flagged: '10' },
+        { total: '8' },
+        { sampled: '30', falseNegatives: '2' },
       ];
+      const allResults = Array.from({ length: 5 }, () => perPeriod).flat();
       let callIdx = 0;
       const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable(results[callIdx++] || []);
+        return createChainable([allResults[callIdx++]] || []);
       });
 
       const { getDb } = await import('@/lib/db');
       vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
 
       const result = await getLayer2Completeness();
-      expect(result).toEqual({
-        totalT2Documents: 50,
+      expect(result).toHaveLength(5);
+      expect(result[0]).toMatchObject({
+        period: 'biden_2022',
+        totalDocuments: 50,
+        pass1Assessed: 45,
         missingPass1: 5,
         pass1Flagged: 10,
-        pass2Assessed: 8,
-        missingPass2: 2, // 10 flagged - 8 assessed
+        pass2Flagged: 8,
+        missingPass2: 2,
+        auditSampled: 30,
+        auditFalseNegatives: 2,
       });
+      expect(result[4]).toMatchObject({ period: 'trump_t2' });
     });
   });
 

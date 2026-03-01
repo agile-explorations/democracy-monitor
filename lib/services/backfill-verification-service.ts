@@ -1,6 +1,8 @@
 /** Pure query functions for backfill completeness verification. */
 
-import { eq, sql, isNull, and } from 'drizzle-orm';
+import { eq, sql, isNull, and, gte, lt, inArray } from 'drizzle-orm';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
+import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import {
   documents,
@@ -30,13 +32,20 @@ export interface BaselineCompleteness {
   hasStats: boolean;
 }
 
-export interface Layer2Completeness {
-  totalT2Documents: number;
+export interface Layer2PeriodStats {
+  period: string;
+  label: string;
+  totalDocuments: number;
+  pass1Assessed: number;
   missingPass1: number;
   pass1Flagged: number;
-  pass2Assessed: number;
+  pass2Flagged: number;
   missingPass2: number;
+  auditSampled: number;
+  auditFalseNegatives: number;
 }
+
+export type Layer2Completeness = Layer2PeriodStats[];
 
 export interface PaginationFitness {
   category: string;
@@ -55,9 +64,7 @@ export async function getDocumentCoverage(category?: string): Promise<DocumentCo
   if (!isDbAvailable()) return [];
   const db = getDb();
 
-  const conditions = category ? [eq(documents.category, category)] : [];
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
+  const catFilter = category ? eq(documents.category, category) : undefined;
   const rows = await db
     .select({
       category: documents.category,
@@ -65,7 +72,7 @@ export async function getDocumentCoverage(category?: string): Promise<DocumentCo
       count: sql<number>`count(*)::int`,
     })
     .from(documents)
-    .where(whereClause)
+    .where(catFilter)
     .groupBy(documents.category, documents.sourceOrigin)
     .orderBy(documents.category, documents.sourceOrigin);
 
@@ -87,7 +94,6 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
     };
   }
   const db = getDb();
-
   const catFilter = category ? eq(documents.category, category) : undefined;
 
   const [docStats] = await db
@@ -98,7 +104,6 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
     .from(documents)
     .where(catFilter);
 
-  // Documents missing scores: documents with no matching document_scores row
   const [scoreStats] = await db
     .select({
       missingScores: sql<number>`count(*)::int`,
@@ -107,10 +112,8 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
     .leftJoin(documentScores, eq(documents.url, documentScores.url))
     .where(catFilter ? and(catFilter, isNull(documentScores.id)) : isNull(documentScores.id));
 
-  // Weeks with scores but no aggregates
   const scoreCatFilter = category ? eq(documentScores.category, category) : undefined;
   const aggCatFilter = category ? eq(weeklyAggregates.category, category) : undefined;
-
   const [weekStats] = await db
     .select({
       totalWeeks: sql<number>`count(distinct (${documentScores.category}, ${documentScores.weekOf}))::int`,
@@ -136,9 +139,7 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
 
 export async function getBaselineCompleteness(): Promise<BaselineCompleteness[]> {
   if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const rows = await db
+  const rows = await getDb()
     .select({
       baselineId: baselines.baselineId,
       category: baselines.category,
@@ -153,57 +154,97 @@ export async function getBaselineCompleteness(): Promise<BaselineCompleteness[]>
   }));
 }
 
-export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
-  if (!isDbAvailable()) {
-    return {
-      totalT2Documents: 0,
-      missingPass1: 0,
-      pass1Flagged: 0,
-      pass2Assessed: 0,
-      missingPass2: 0,
-    };
-  }
-  const db = getDb();
+const L2_PERIODS = [
+  ...BASELINE_CONFIGS.map((c) => ({ id: c.id, label: c.label, from: c.from, to: c.to })),
+  { id: 'trump_t2', label: 'Trump T2 (2025–)', from: '2025-01-20', to: '2030-01-01' },
+];
 
-  // T2 documents (from 2025-01-20 onward)
-  const t2Filter = sql`${documents.publishedAt} >= '2025-01-20'`;
-  const catFilter = category ? eq(documents.category, category) : undefined;
-  const where = catFilter ? and(t2Filter, catFilter) : t2Filter;
+const MONITORING_KEYS = CATEGORIES.map((c) => c.key);
+
+function buildL2Filters(from: string, to: string, category?: string) {
+  const catDocFilter = category
+    ? eq(documents.category, category)
+    : inArray(documents.category, MONITORING_KEYS);
+  const dateFilter = and(
+    gte(documents.publishedAt, new Date(from)),
+    lt(documents.publishedAt, new Date(to)),
+  );
+  const catAiFilter = category
+    ? eq(aiDocumentAssessments.category, category)
+    : inArray(aiDocumentAssessments.category, MONITORING_KEYS);
+  const aiDateFilter = and(
+    sql`${aiDocumentAssessments.weekOf} >= ${from}`,
+    sql`${aiDocumentAssessments.weekOf} < ${to}`,
+  );
+  return { catDocFilter, dateFilter, catAiFilter, aiDateFilter };
+}
+
+async function getLayer2PeriodStats(from: string, to: string, category?: string) {
+  const db = getDb();
+  const { catDocFilter, dateFilter, catAiFilter, aiDateFilter } = buildL2Filters(
+    from,
+    to,
+    category,
+  );
 
   const [docCount] = await db
     .select({ total: sql<number>`count(*)::int` })
     .from(documents)
-    .where(where);
+    .where(and(dateFilter, catDocFilter));
 
-  // Pass 1 coverage + flagged count
-  const p1Base = eq(aiDocumentAssessments.pass, 1);
-  const p1Filter = category ? and(p1Base, eq(aiDocumentAssessments.category, category)) : p1Base;
-  const [pass1Stats] = await db
+  const [p1] = await db
     .select({
       total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
       flagged: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.relevant} = true)::int`,
     })
     .from(aiDocumentAssessments)
-    .where(p1Filter);
+    .where(and(eq(aiDocumentAssessments.pass, 1), aiDateFilter, catAiFilter));
 
-  // Pass 2 coverage (only expected for Pass 1 flagged docs + audit samples)
-  const p2Base = eq(aiDocumentAssessments.pass, 2);
-  const p2Filter = category ? and(p2Base, eq(aiDocumentAssessments.category, category)) : p2Base;
-  const [pass2Stats] = await db
+  const p2Base = and(eq(aiDocumentAssessments.pass, 2), aiDateFilter, catAiFilter);
+
+  const [p2Flagged] = await db
     .select({ total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
     .from(aiDocumentAssessments)
-    .where(p2Filter);
+    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, false)));
 
-  const total = Number(docCount.total);
-  const flagged = Number(pass1Stats.flagged);
-  const pass2Count = Number(pass2Stats.total);
+  const [p2Audit] = await db
+    .select({
+      sampled: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
+      falseNegatives: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.assessment} in ('potentially_concerning', 'clearly_concerning'))::int`,
+    })
+    .from(aiDocumentAssessments)
+    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, true)));
+
   return {
-    totalT2Documents: total,
-    missingPass1: Math.max(0, total - Number(pass1Stats.total)),
-    pass1Flagged: flagged,
-    pass2Assessed: pass2Count,
-    missingPass2: Math.max(0, flagged - pass2Count),
+    totalDocs: Number(docCount.total),
+    p1Total: Number(p1.total),
+    p1Flagged: Number(p1.flagged),
+    p2Flagged: Number(p2Flagged.total),
+    auditSampled: Number(p2Audit.sampled),
+    auditFalseNeg: Number(p2Audit.falseNegatives),
   };
+}
+
+export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
+  if (!isDbAvailable()) return [];
+
+  const results: Layer2PeriodStats[] = [];
+  for (const period of L2_PERIODS) {
+    const stats = await getLayer2PeriodStats(period.from, period.to, category);
+    results.push({
+      period: period.id,
+      label: period.label,
+      totalDocuments: stats.totalDocs,
+      pass1Assessed: stats.p1Total,
+      missingPass1: Math.max(0, stats.totalDocs - stats.p1Total),
+      pass1Flagged: stats.p1Flagged,
+      pass2Flagged: stats.p2Flagged,
+      missingPass2: Math.max(0, stats.p1Flagged - stats.p2Flagged),
+      auditSampled: stats.auditSampled,
+      auditFalseNegatives: stats.auditFalseNeg,
+    });
+  }
+  return results;
 }
 
 export async function getPaginationFitness(category?: string): Promise<PaginationFitness[]> {
@@ -241,7 +282,6 @@ export async function getPaginationFitness(category?: string): Promise<Paginatio
   }));
 }
 
-/** FR document counts per category per baseline period. */
 export async function getFrPeriodCoverage(category?: string): Promise<SourcePeriodCoverage[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
@@ -275,7 +315,6 @@ export async function getFrPeriodCoverage(category?: string): Promise<SourcePeri
   }));
 }
 
-/** GDELT cross-feed document counts per category (excluding 'intent'). */
 export async function getGdeltCrossfeedCoverage(
   category?: string,
 ): Promise<SourcePeriodCoverage[]> {

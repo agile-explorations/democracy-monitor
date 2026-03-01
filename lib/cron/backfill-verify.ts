@@ -21,6 +21,7 @@ import type {
   StageCompleteness,
   BaselineCompleteness,
   Layer2Completeness,
+  Layer2PeriodStats,
   PaginationFitness,
   SourcePeriodCoverage,
 } from '@/lib/services/backfill-verification-service';
@@ -106,14 +107,19 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
     warnings.push(`Categories missing GDELT cross-feed: ${missingGdelt.join(', ')}`);
   }
 
-  const { layer2Completeness: l2 } = report;
-  if (l2.missingPass1 > 0) {
-    warnings.push(`${l2.missingPass1} T2 docs missing L2 Pass 1 (run: pnpm layer2:backfill)`);
-  }
-  if (l2.missingPass2 > 0) {
-    warnings.push(
-      `${l2.missingPass2} Pass 1 flagged docs missing L2 Pass 2 (run: pnpm layer2:backfill)`,
-    );
+  for (const p of report.layer2Completeness) {
+    if (p.missingPass1 > 0) {
+      warnings.push(`${p.period}: ${p.missingPass1} docs missing L2 Pass 1`);
+    }
+    if (p.missingPass2 > 0) {
+      warnings.push(`${p.period}: ${p.missingPass2} flagged docs missing L2 Pass 2`);
+    }
+    if (p.auditFalseNegatives > 0) {
+      const rate = ((p.auditFalseNegatives / p.auditSampled) * 100).toFixed(1);
+      warnings.push(
+        `${p.period}: ${p.auditFalseNegatives}/${p.auditSampled} audit false negatives (${rate}%)`,
+      );
+    }
   }
 
   return warnings;
@@ -163,6 +169,37 @@ function printDocumentCoverage(coverage: DocumentCoverage[]): void {
   }
 }
 
+function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
+  console.log('\n=== Layer 2 Completeness ===');
+  const hdr =
+    `  ${'Period'.padEnd(22)}` +
+    `${'Docs'.padStart(8)}` +
+    `${'Pass 1'.padStart(10)}` +
+    `${'P1 Miss'.padStart(10)}` +
+    `${'P1 Flag'.padStart(10)}` +
+    `${'Pass 2'.padStart(10)}` +
+    `${'P2 Miss'.padStart(10)}` +
+    `${'Audited'.padStart(10)}` +
+    `${'False Neg'.padStart(12)}`;
+  console.log(hdr);
+  for (const p of periods) {
+    const p1ok = p.missingPass1 === 0 ? '\u2713' : '\u26A0';
+    const p2ok = p.missingPass2 === 0 ? '\u2713' : '\u26A0';
+    const fnMark = p.auditFalseNegatives > 0 ? '\u26A0' : '';
+    console.log(
+      `  ${p.label.padEnd(22)}` +
+        `${String(p.totalDocuments).padStart(8)}` +
+        `${String(p.pass1Assessed).padStart(10)}` +
+        `${String(p.missingPass1).padStart(8)} ${p1ok} ` +
+        `${String(p.pass1Flagged).padStart(8)}` +
+        `${String(p.pass2Flagged).padStart(10)}` +
+        `${String(p.missingPass2).padStart(8)} ${p2ok} ` +
+        `${String(p.auditSampled).padStart(8)}` +
+        `${String(p.auditFalseNegatives).padStart(10)}${fnMark ? ` ${fnMark}` : ''}`,
+    );
+  }
+}
+
 function printReport(report: VerifyReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
@@ -186,13 +223,7 @@ function printReport(report: VerifyReport, categoryFilter?: string): void {
     console.log(`  ${config.id}: ${bCats.length} / ${CATEGORIES.length} categories`);
   }
 
-  console.log('\n=== Layer 2 Completeness ===');
-  const l2 = report.layer2Completeness;
-  console.log(`  T2 documents:   ${l2.totalT2Documents}`);
-  console.log(`  Missing Pass 1: ${l2.missingPass1}`);
-  console.log(`  Pass 1 flagged: ${l2.pass1Flagged}`);
-  console.log(`  Pass 2 assessed: ${l2.pass2Assessed} / ${l2.pass1Flagged} flagged`);
-  console.log(`  Missing Pass 2: ${l2.missingPass2}`);
+  printLayer2Completeness(report.layer2Completeness);
 
   if (report.paginationFitness.length > 0) {
     console.log(`\n=== Pagination Fitness (CourtListener, cap=${CL_PAGINATION_CAP}) ===`);
