@@ -99,6 +99,8 @@ describe('backfill-verification-service', () => {
     expect(await getLayer2Completeness()).toEqual({
       totalT2Documents: 0,
       missingPass1: 0,
+      pass1Flagged: 0,
+      pass2Assessed: 0,
       missingPass2: 0,
     });
     expect(await getPaginationFitness()).toEqual([]);
@@ -185,8 +187,8 @@ describe('backfill-verification-service', () => {
 
       const results = [
         [{ total: '50' }], // docCount
-        [{ count: '45' }], // pass1
-        [{ count: '30' }], // pass2
+        [{ total: '45', flagged: '10' }], // pass1Stats (45 assessed, 10 flagged)
+        [{ total: '8' }], // pass2Stats (8 assessed)
       ];
       let callIdx = 0;
       const selectFn = vi.fn().mockImplementation(() => {
@@ -200,7 +202,9 @@ describe('backfill-verification-service', () => {
       expect(result).toEqual({
         totalT2Documents: 50,
         missingPass1: 5,
-        missingPass2: 20,
+        pass1Flagged: 10,
+        pass2Assessed: 8,
+        missingPass2: 2, // 10 flagged - 8 assessed
       });
     });
   });

@@ -33,6 +33,8 @@ export interface BaselineCompleteness {
 export interface Layer2Completeness {
   totalT2Documents: number;
   missingPass1: number;
+  pass1Flagged: number;
+  pass2Assessed: number;
   missingPass2: number;
 }
 
@@ -153,7 +155,13 @@ export async function getBaselineCompleteness(): Promise<BaselineCompleteness[]>
 
 export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
   if (!isDbAvailable()) {
-    return { totalT2Documents: 0, missingPass1: 0, missingPass2: 0 };
+    return {
+      totalT2Documents: 0,
+      missingPass1: 0,
+      pass1Flagged: 0,
+      pass2Assessed: 0,
+      missingPass2: 0,
+    };
   }
   const db = getDb();
 
@@ -167,25 +175,34 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
     .from(documents)
     .where(where);
 
-  // Pass 1 coverage
-  const p1Filter = eq(aiDocumentAssessments.pass, 1);
-  const [pass1] = await db
-    .select({ count: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
+  // Pass 1 coverage + flagged count
+  const p1Base = eq(aiDocumentAssessments.pass, 1);
+  const p1Filter = category ? and(p1Base, eq(aiDocumentAssessments.category, category)) : p1Base;
+  const [pass1Stats] = await db
+    .select({
+      total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
+      flagged: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.relevant} = true)::int`,
+    })
     .from(aiDocumentAssessments)
-    .where(category ? and(p1Filter, eq(aiDocumentAssessments.category, category)) : p1Filter);
+    .where(p1Filter);
 
-  // Pass 2 coverage
-  const p2Filter = eq(aiDocumentAssessments.pass, 2);
-  const [pass2] = await db
-    .select({ count: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
+  // Pass 2 coverage (only expected for Pass 1 flagged docs + audit samples)
+  const p2Base = eq(aiDocumentAssessments.pass, 2);
+  const p2Filter = category ? and(p2Base, eq(aiDocumentAssessments.category, category)) : p2Base;
+  const [pass2Stats] = await db
+    .select({ total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
     .from(aiDocumentAssessments)
-    .where(category ? and(p2Filter, eq(aiDocumentAssessments.category, category)) : p2Filter);
+    .where(p2Filter);
 
   const total = Number(docCount.total);
+  const flagged = Number(pass1Stats.flagged);
+  const pass2Count = Number(pass2Stats.total);
   return {
     totalT2Documents: total,
-    missingPass1: Math.max(0, total - Number(pass1.count)),
-    missingPass2: Math.max(0, total - Number(pass2.count)),
+    missingPass1: Math.max(0, total - Number(pass1Stats.total)),
+    pass1Flagged: flagged,
+    pass2Assessed: pass2Count,
+    missingPass2: Math.max(0, flagged - pass2Count),
   };
 }
 

@@ -111,7 +111,9 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
     warnings.push(`${l2.missingPass1} T2 docs missing L2 Pass 1 (run: pnpm layer2:backfill)`);
   }
   if (l2.missingPass2 > 0) {
-    warnings.push(`${l2.missingPass2} T2 docs missing L2 Pass 2 (run: pnpm layer2:backfill)`);
+    warnings.push(
+      `${l2.missingPass2} Pass 1 flagged docs missing L2 Pass 2 (run: pnpm layer2:backfill)`,
+    );
   }
 
   return warnings;
@@ -186,8 +188,10 @@ function printReport(report: VerifyReport, categoryFilter?: string): void {
 
   console.log('\n=== Layer 2 Completeness ===');
   const l2 = report.layer2Completeness;
-  console.log(`  T2 documents:  ${l2.totalT2Documents}`);
+  console.log(`  T2 documents:   ${l2.totalT2Documents}`);
   console.log(`  Missing Pass 1: ${l2.missingPass1}`);
+  console.log(`  Pass 1 flagged: ${l2.pass1Flagged}`);
+  console.log(`  Pass 2 assessed: ${l2.pass2Assessed} / ${l2.pass1Flagged} flagged`);
   console.log(`  Missing Pass 2: ${l2.missingPass2}`);
 
   if (report.paginationFitness.length > 0) {
