@@ -24,6 +24,7 @@ interface BackfillOptions {
   category?: string;
   dryRun?: boolean;
   source?: string;
+  force?: boolean;
 }
 
 const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
@@ -140,6 +141,7 @@ async function backfillCategory(
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
   sourceSignalType?: string,
+  force?: boolean,
 ): Promise<{ docs: number; apiCalls: number }> {
   const signalGroups = buildSignalGroups(signals, sourceSignalType);
   const totalSignals = Object.values(signalGroups).reduce((sum, g) => sum + g.length, 0);
@@ -149,9 +151,10 @@ async function backfillCategory(
   }
 
   const sourceOrigin = sourceSignalType?.replace('_json', '');
-  const completedWeeks = sourceOrigin
-    ? await getCompletedWeekStarts(sourceOrigin, categoryKey)
-    : new Set<string>();
+  const completedWeeks =
+    sourceOrigin && !force
+      ? await getCompletedWeekStarts(sourceOrigin, categoryKey)
+      : new Set<string>();
   let totalDocs = 0;
   let reprocessed = 0;
   const counts = { complete: 0, partial: 0, failed: 0, skipped: 0 };
@@ -207,6 +210,7 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
     console.log(
       `[backfill] Source filter: ${options.source}${sourceSignalType ? ` (${sourceSignalType})` : ''}`,
     );
+  if (options.force) console.log('[backfill] Force mode: re-fetching all weeks');
 
   const weeks = getWeekRanges(from, to);
   console.log(`[backfill] ${weeks.length} weeks to process`);
@@ -223,7 +227,14 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   if (!isSpecialSource) {
     for (const cat of cats) {
       console.log(`\n[backfill] === ${cat.key} (${cat.signals.length} signals) ===`);
-      const r = await backfillCategory(cat.key, cat.signals, weeks, dryRun, sourceSignalType);
+      const r = await backfillCategory(
+        cat.key,
+        cat.signals,
+        weeks,
+        dryRun,
+        sourceSignalType,
+        options.force,
+      );
       totalDocs += r.docs;
       totalApiCalls += r.apiCalls;
     }
@@ -256,6 +267,7 @@ function parseCliArgs(args: string[]): BackfillOptions {
     else if (arg === '--category') opts.category = args[++i];
     else if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--source') opts.source = args[++i];
+    else if (arg === '--force') opts.force = true;
   }
   return opts;
 }

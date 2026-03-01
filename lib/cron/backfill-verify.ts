@@ -44,7 +44,7 @@ interface VerifyReport {
 }
 
 const EXPECTED_PERIODS = ['biden_2022', 'biden_2021', 'trump_2017', 'trump_2018', 'trump_t2'];
-const CL_PAGINATION_CAP = 300;
+const CL_PAGINATION_CAP = 900;
 
 function checkFrCoverage(frCoverage: SourcePeriodCoverage[], cats: Category[]): string[] {
   const warnings: string[] = [];

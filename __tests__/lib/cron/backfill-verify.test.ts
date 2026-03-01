@@ -131,12 +131,12 @@ describe('backfill-verify', () => {
     vi.mocked(isDbAvailable).mockReturnValue(true);
 
     mockGetPaginationFitness.mockResolvedValue([
-      { category: 'civilLiberties', sourceOrigin: 'courtlistener', peakWeeklyCount: 350 },
+      { category: 'civilLiberties', sourceOrigin: 'courtlistener', peakWeeklyCount: 950 },
     ]);
 
     const report = await runVerify({});
     expect(report.warnings).toContainEqual(
-      expect.stringContaining('civilLiberties CourtListener peak=350 hits pagination cap 300'),
+      expect.stringContaining('civilLiberties CourtListener peak=950 hits pagination cap 900'),
     );
   });
 

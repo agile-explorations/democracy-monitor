@@ -705,9 +705,9 @@ Build in order of category coverage breadth and implementation simplicity:
 
 #### Sprint R-S1d: Backfill Verification Fixes ✅
 
-**Actual:** Code fixes (#178-181) delivered. FR backfills complete for 4 new categories across all baseline periods. Also fixed FEC pagination (offset-based) and DOJ binary search (off-by-one), made OpenGrep blocking, removed 246 lines dead code. cl_first_amendment purge (#182) deferred to pipeline redesign — ~41K noise docs identified but purge needs downstream recomputation. FCC RSS (#183) deferred — gov shutdown. Pipeline redesign proposal drafted (BACKFILL_PIPELINE_REDESIGN.md).
+**Actual:** All 4 fixes complete. Code fixes (#178-181) delivered. FR backfills complete for 4 new categories across all baseline periods. FEC pagination (offset-based) and DOJ binary search (off-by-one) fixed, OpenGrep made blocking, 246 lines dead code removed. cl_first_amendment query rewritten to scoped variant + `purge:cl-noise` tool built (R-S1f). FR backfills for lawEnforcement, civilLiberties, mediaFreedom completed. NOS maxPages bumped 10→15→45 (R-S1g). immigrationEnforcement category added with 2 FR signals + GDELT cross-feed. FCC RSS (#183) deferred — gov shutdown. Pipeline redesign proposal drafted (BACKFILL_PIPELINE_REDESIGN.md).
 
-**Source:** Backfill verification audit (2026-02-28). API-vs-DB count comparison across all source types and baseline periods. FEC perfect match, GovInfo near-perfect, DOJ structurally verified. CourtListener and FR require fixes before Phase 2 baseline computation.
+**Source:** Backfill verification audit (2026-02-28). API-vs-DB count comparison across all source types and baseline periods. FEC perfect match, GovInfo near-perfect, DOJ structurally verified.
 
 **Fix 1 — `cl_first_amendment` query rewrite + re-backfill (HIGH PRIORITY)**
 
@@ -938,21 +938,15 @@ _Depends on: (a) R-S1d data quality fixes landed (cl_first_amendment query scope
 - CBO reports pipeline (fiscal — low-volume supplementary signal)
 - DHS/ICE/CBP monthly statistical tables for immigrationEnforcement (encounters, detention, removals — Excel/PDF download, quarterly batch, no API)
 
-#### Sprint R-S1g: CourtListener Pagination & Deduplication
+#### Sprint R-S1g: CourtListener Pagination Fix ✅
 
 **Source:** `backfill:verify` pagination fitness warnings (2026-03-01). Analysis of weekly CL volume distributions revealed systemic truncation across civilLiberties and lawEnforcement.
+
+**Actual:** maxPages bumped 15→45 (CL_BACKFILL_MAX_PAGES named constant), verification cap 300→900, `--force` flag added to backfill for re-fetching completed weeks. Re-backfilled all CL baseline periods + T2. Baselines recomputed for civilLiberties and lawEnforcement. Deduplication (NOS 440 shared between categories) deferred as future optimization — daily double-fetch is negligible (~4 extra 1-page API calls/day) and restructuring backfill from category-major to week-major is a larger change.
 
 **Problem:** civilLiberties and lawEnforcement CourtListener signals both query NOS 440 (civil rights). With `maxPages=15` (300 results), 37% of all weeks exceed the cap (101/272 for civilLiberties, 102/272 for lawEnforcement). Trump T1 (2017–2018) averages 430–530 docs/week — every week is truncated. 51,774 URLs (72% of civilLiberties CL corpus) are shared between the two categories, meaning the same documents are fetched twice via separate queries.
 
 **Key constraint:** Baselines and monitoring must use the same pagination cap. Current baselines are computed from truncated data. Fixing forward monitoring without re-backfilling baselines would create false volume anomalies (500 docs/week vs baseline computed from 300 docs/week).
-
-**Approach:**
-
-1. Deduplicate NOS 440 ingestion: fetch once, route to both categories via `(url, category)` composite unique. Halves API budget for shared NOS codes.
-2. Bump `maxPages` to cover observed peaks (lawEnforcement peak=838, needs ~42 pages). Single deduplicated query makes this affordable.
-3. Re-backfill Trump T1 CourtListener data with corrected pagination.
-4. Recompute baselines for affected categories.
-5. Update TEST_SPECIFICATION ship gate: "maxPages sufficient for observed peak volume per NOS code" (NOS codes can't be scoped tighter without losing signal).
 
 **Volume profile (weekly docs, courtlistener):**
 

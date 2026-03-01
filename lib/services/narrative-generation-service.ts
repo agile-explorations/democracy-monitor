@@ -85,7 +85,8 @@ function formatConvergenceContext(data: NarrativeLayerData): string {
     lines.push(`Status: ${d.status}`);
     lines.push(`Layers elevated: ${d.layersElevated} of 3`);
     lines.push(`Pattern: ${d.pattern}`);
-    if (d.bootstrap) lines.push('Note: Layer 3 (thematic) is in bootstrap mode (reduced confidence).');
+    if (d.bootstrap)
+      lines.push('Note: Layer 3 (thematic) is in bootstrap mode (reduced confidence).');
   } else {
     lines.push('No convergence data available.');
   }

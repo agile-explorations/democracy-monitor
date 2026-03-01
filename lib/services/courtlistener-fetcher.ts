@@ -6,6 +6,8 @@ const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
 const RATE_LIMIT_DELAY_MS = 750;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
+/** Default max pages for historical backfill (45 × 20 results/page = 900). */
+export const CL_BACKFILL_MAX_PAGES = 45;
 
 /** Fields returned by CourtListener V4 search API (RECAP type=r). */
 interface ClDocketEntry {
@@ -161,7 +163,7 @@ async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<
 export async function fetchCourtListenerHistorical(
   params: ClParams & { dateFrom: string; dateTo: string; maxPages?: number },
 ): Promise<ContentItem[]> {
-  const { dateFrom, dateTo, maxPages = 15 } = params;
+  const { dateFrom, dateTo, maxPages = CL_BACKFILL_MAX_PAGES } = params;
   const expanded = expandNosParams(params);
   const allItems: ContentItem[] = [];
 
