@@ -5,20 +5,31 @@ import {
   getBaselineCompleteness,
   getLayer2Completeness,
   getPaginationFitness,
+  getFrPeriodCoverage,
+  getGdeltCrossfeedCoverage,
 } from '@/lib/services/backfill-verification-service';
 
-const mockSelect = vi.fn().mockReturnThis();
-const mockFrom = vi.fn().mockReturnThis();
-const mockWhere = vi.fn().mockReturnThis();
-const mockGroupBy = vi.fn().mockReturnThis();
-const mockOrderBy = vi.fn().mockReturnThis();
-const mockLeftJoin = vi.fn().mockReturnThis();
+// A chainable mock that also resolves when awaited (thenable).
+// Each chain method returns the same object, and `await` resolves to `defaultValue`.
+function createChainable(defaultValue: unknown = []) {
+  const obj: Record<string, unknown> = {};
+  for (const method of ['select', 'from', 'where', 'groupBy', 'orderBy', 'leftJoin']) {
+    obj[method] = vi.fn().mockReturnValue(obj);
+  }
+  obj.then = (resolve: (v: unknown) => void) => Promise.resolve(defaultValue).then(resolve);
+  return obj;
+}
+
+let chainable: ReturnType<typeof createChainable>;
 const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
 
 vi.mock('@/lib/db', () => ({
   isDbAvailable: vi.fn().mockReturnValue(true),
   getDb: vi.fn(() => ({
-    select: mockSelect,
+    select: (...args: unknown[]) => {
+      (chainable.select as ReturnType<typeof vi.fn>)(...args);
+      return chainable;
+    },
     execute: mockExecute,
   })),
 }));
@@ -53,32 +64,26 @@ vi.mock('@/lib/db/schema', () => ({
 }));
 
 describe('backfill-verification-service', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    // Reset chain to return empty arrays by default
-    mockSelect.mockReturnThis();
-    mockFrom.mockReturnThis();
-    mockWhere.mockReturnThis();
-    mockGroupBy.mockReturnThis();
-    mockOrderBy.mockResolvedValue([]);
-    mockLeftJoin.mockReturnThis();
-    // Make the chain work
-    mockSelect.mockReturnValue({
-      from: mockFrom.mockReturnValue({
-        where: mockWhere.mockReturnValue({
-          groupBy: mockGroupBy.mockReturnValue({
-            orderBy: mockOrderBy,
-          }),
-        }),
-        leftJoin: mockLeftJoin.mockReturnValue({
-          where: mockWhere,
-        }),
-        orderBy: mockOrderBy,
-      }),
-    });
+    chainable = createChainable([]);
+    mockExecute.mockResolvedValue({ rows: [] });
+
+    // Restore getDb to the default factory (tests that override it pollute state)
+    const { getDb } = await import('@/lib/db');
+    vi.mocked(getDb).mockImplementation(
+      () =>
+        ({
+          select: (...args: unknown[]) => {
+            (chainable.select as ReturnType<typeof vi.fn>)(...args);
+            return chainable;
+          },
+          execute: mockExecute,
+        }) as never,
+    );
   });
 
-  it('returns empty arrays when DB is unavailable', async () => {
+  it('returns empty/zero defaults when DB is unavailable', async () => {
     const { isDbAvailable } = await import('@/lib/db');
     vi.mocked(isDbAvailable).mockReturnValue(false);
 
@@ -97,5 +102,182 @@ describe('backfill-verification-service', () => {
       missingPass2: 0,
     });
     expect(await getPaginationFitness()).toEqual([]);
+    expect(await getFrPeriodCoverage()).toEqual([]);
+    expect(await getGdeltCrossfeedCoverage()).toEqual([]);
+  });
+
+  describe('getDocumentCoverage', () => {
+    it('maps rows to DocumentCoverage objects', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      chainable = createChainable([
+        { category: 'executiveActions', sourceOrigin: 'federal_register', count: '42' },
+        { category: 'civilService', sourceOrigin: 'courtlistener', count: '18' },
+      ]);
+
+      const result = await getDocumentCoverage();
+      expect(result).toEqual([
+        { category: 'executiveActions', sourceOrigin: 'federal_register', count: 42 },
+        { category: 'civilService', sourceOrigin: 'courtlistener', count: 18 },
+      ]);
+    });
+
+    it('applies category filter', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      chainable = createChainable([]);
+
+      await getDocumentCoverage('civilService');
+      expect(chainable.where).toHaveBeenCalled();
+    });
+  });
+
+  describe('getStageCompleteness', () => {
+    it('returns stage counts from multiple queries', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+
+      // The function runs 4 sequential selects. Each resolves the chainable.
+      // We need to return different values for each select call.
+      const results = [
+        [{ total: '100', missingEmbeddings: '5' }], // docStats
+        [{ missingScores: '3' }], // scoreStats
+        [{ totalWeeks: '20' }], // weekStats
+        [{ aggWeeks: '18' }], // aggStats
+      ];
+      let callIdx = 0;
+      const selectFn = vi.fn().mockImplementation(() => {
+        const c = createChainable(results[callIdx++] || []);
+        return c;
+      });
+
+      const { getDb } = await import('@/lib/db');
+      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
+
+      const result = await getStageCompleteness();
+      expect(result).toEqual({
+        totalDocuments: 100,
+        missingScores: 3,
+        missingEmbeddings: 5,
+        totalWeeks: 20,
+        missingAggregates: 2,
+      });
+    });
+  });
+
+  describe('getBaselineCompleteness', () => {
+    it('maps rows with hasStats=true', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      chainable = createChainable([{ baselineId: 'biden_2022', category: 'executiveActions' }]);
+
+      const result = await getBaselineCompleteness();
+      expect(result).toEqual([
+        { baselineId: 'biden_2022', category: 'executiveActions', hasStats: true },
+      ]);
+    });
+  });
+
+  describe('getLayer2Completeness', () => {
+    it('computes missing pass counts from document total', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+
+      const results = [
+        [{ total: '50' }], // docCount
+        [{ count: '45' }], // pass1
+        [{ count: '30' }], // pass2
+      ];
+      let callIdx = 0;
+      const selectFn = vi.fn().mockImplementation(() => {
+        return createChainable(results[callIdx++] || []);
+      });
+
+      const { getDb } = await import('@/lib/db');
+      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
+
+      const result = await getLayer2Completeness();
+      expect(result).toEqual({
+        totalT2Documents: 50,
+        missingPass1: 5,
+        missingPass2: 20,
+      });
+    });
+  });
+
+  describe('getPaginationFitness', () => {
+    it('maps raw execute rows to PaginationFitness', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      mockExecute.mockResolvedValue({
+        rows: [
+          { category: 'civilLiberties', source_origin: 'courtlistener', peak_weekly_count: 250 },
+        ],
+      });
+
+      const result = await getPaginationFitness();
+      expect(result).toEqual([
+        { category: 'civilLiberties', sourceOrigin: 'courtlistener', peakWeeklyCount: 250 },
+      ]);
+    });
+  });
+
+  describe('getFrPeriodCoverage', () => {
+    it('maps raw rows to SourcePeriodCoverage with sourceOrigin=federal_register', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+
+      mockExecute.mockResolvedValue({
+        rows: [
+          { category: 'executiveActions', period: 'biden_2022', count: 42 },
+          { category: 'executiveActions', period: 'trump_t2', count: 18 },
+        ],
+      });
+
+      const result = await getFrPeriodCoverage();
+      expect(result).toEqual([
+        {
+          category: 'executiveActions',
+          sourceOrigin: 'federal_register',
+          period: 'biden_2022',
+          count: 42,
+        },
+        {
+          category: 'executiveActions',
+          sourceOrigin: 'federal_register',
+          period: 'trump_t2',
+          count: 18,
+        },
+      ]);
+    });
+
+    it('passes category filter when provided', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      mockExecute.mockResolvedValue({ rows: [] });
+
+      await getFrPeriodCoverage('civilService');
+      expect(mockExecute).toHaveBeenCalled();
+    });
+  });
+
+  describe('getGdeltCrossfeedCoverage', () => {
+    it('maps raw rows to SourcePeriodCoverage with sourceOrigin=gdelt and period=all', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+
+      mockExecute.mockResolvedValue({
+        rows: [
+          { category: 'civilService', count: 55 },
+          { category: 'mediaFreedom', count: 30 },
+        ],
+      });
+
+      const result = await getGdeltCrossfeedCoverage();
+      expect(result).toEqual([
+        { category: 'civilService', sourceOrigin: 'gdelt', period: 'all', count: 55 },
+        { category: 'mediaFreedom', sourceOrigin: 'gdelt', period: 'all', count: 30 },
+      ]);
+    });
   });
 });
