@@ -236,7 +236,7 @@ pnpm backfill:verify
 ## Signal gap findings (resolved in Sprint 20)
 
 - FR API boolean search: pipe `|` for OR, space for AND, `""` for phrases. All 18 affected queries fixed.
-- GDELT DOC 2.0 API: `sourcecountry:US` filter added to all 5 queries. 3-month rolling window means old data can't be re-fetched.
+- GDELT DOC 2.0 API: `sourcecountry:US` filter added to all 5 queries. Historical data is accessible via `startdatetime`/`enddatetime` parameters (DB contains GDELT data from 2017 onward).
 - `oversightGovDown` dead config removed; oversight.gov signal name restored
 - FR `subtype` now threaded through ContentItem → document-classifier for presidential document classification
 - `docs/internal/SIGNAL_GAP_REMEDIATION.md` = peer spec for Sprints 20-22 (erosion types A/B/C framework)

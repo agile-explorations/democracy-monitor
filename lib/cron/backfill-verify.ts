@@ -110,6 +110,9 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
   if (l2.missingPass1 > 0) {
     warnings.push(`${l2.missingPass1} T2 docs missing L2 Pass 1 (run: pnpm layer2:backfill)`);
   }
+  if (l2.missingPass2 > 0) {
+    warnings.push(`${l2.missingPass2} T2 docs missing L2 Pass 2 (run: pnpm layer2:backfill)`);
+  }
 
   return warnings;
 }

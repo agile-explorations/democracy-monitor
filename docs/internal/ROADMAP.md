@@ -1061,7 +1061,17 @@ Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceAppa
 
 ### Added During Implementation
 
-_(Items added as work progresses — append here with date and source)_
+#### `document_scores` unique constraint mismatch (2026-03-01)
+
+**Source**: GDELT re-cross-feed implementation · **Layer**: Schema · **Effort**: Medium (migration + recompute)
+
+`document_scores` has a unique constraint on `url` alone, while `documents` uses `(url, category)`. This means cross-fed documents (same URL under multiple categories) share a single score row — whichever category is scored last overwrites the others. Consequences:
+
+- `backfill:verify` can't detect unscored cross-fed documents (the LEFT JOIN on `url` always finds the original score row)
+- Weekly aggregates may pull scores computed under a different category's rules
+- `recompute-scores` upserts on `url`, so only one category "wins" per URL
+
+**Fix**: Migrate `document_scores` unique constraint from `(url)` to `(url, category)`, update the upsert in `document-scorer.ts`, update the `getStageCompleteness` JOIN in `backfill-verification-service.ts` to match on both `url` and `category`, then run `pnpm recompute-scores` to populate per-category score rows.
 
 ---
 
