@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!requireDb(res)) return;
 
   try {
-    const weeks = Number(req.query.weeks) || 16;
+    const weeks = req.query.weeks ? Number(req.query.weeks) : undefined;
     const summary = await getOverviewSummary(weeks);
     res.setHeader('Cache-Control', 'public, s-maxage=300');
     return res.status(200).json(summary);

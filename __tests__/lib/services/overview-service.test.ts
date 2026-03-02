@@ -39,9 +39,9 @@ describe('buildOverviewFromRows', () => {
     expect(csHeatmap!.weeks[0]).toEqual({ week: '2026-01-06', score: 0.5 });
     expect(csHeatmap!.weeks[1]).toEqual({ week: '2026-01-13', score: 0.8 });
 
-    // null convergence_score defaults to 0
+    // null convergence_score stays null (not converted to 0)
     const fiscalHeatmap = result.heatmap.find((r) => r.category === 'fiscal');
-    expect(fiscalHeatmap!.weeks[1].score).toBe(0);
+    expect(fiscalHeatmap!.weeks[1].score).toBeNull();
   });
 
   it('parses status from convergenceDetail JSONB', () => {
@@ -59,7 +59,7 @@ describe('buildOverviewFromRows', () => {
     expect(milTimeline!.segments[0].status).toBe('ConfirmedConcern');
   });
 
-  it('defaults to Stable when convergenceDetail is null or invalid', () => {
+  it('returns null when convergenceDetail is null or missing status', () => {
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, null),
       makeRow('fiscal', '2026-01-06', 0.1, { foo: 'bar' }),
@@ -67,7 +67,10 @@ describe('buildOverviewFromRows', () => {
     const result = buildOverviewFromRows(rows);
 
     const csTimeline = result.statusTimeline.find((r) => r.category === 'civilService');
-    expect(csTimeline!.segments[0].status).toBe('Stable');
+    expect(csTimeline!.segments[0].status).toBeNull();
+
+    const fiscalTimeline = result.statusTimeline.find((r) => r.category === 'fiscal');
+    expect(fiscalTimeline!.segments[0].status).toBeNull();
   });
 
   it('counts synchrony (elevated+ categories per week)', () => {
@@ -82,6 +85,16 @@ describe('buildOverviewFromRows', () => {
     expect(result.synchrony[0].elevatedCount).toBe(2); // Elevated + Divergent
   });
 
+  it('does not count null status as elevated', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, null),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Elevated' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    expect(result.synchrony[0].elevatedCount).toBe(1);
+  });
+
   it('counts status distribution for latest week only', () => {
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, { status: 'Elevated' }),
@@ -92,7 +105,7 @@ describe('buildOverviewFromRows', () => {
     const result = buildOverviewFromRows(rows);
 
     // Latest week is 2026-01-13
-    // civilService=Stable, fiscal=Divergent, rest=Stable (12 more)
+    // civilService=Stable, fiscal=Divergent, rest=Stable (12 more, null->Stable fallback)
     expect(result.statusCounts.Stable).toBe(13);
     expect(result.statusCounts.Divergent).toBe(1);
     expect(result.statusCounts.Elevated).toBe(0);
@@ -109,7 +122,7 @@ describe('buildOverviewFromRows', () => {
     ];
     const result = buildOverviewFromRows(rows);
 
-    // fiscal has higher drift → should be sorted first among the categories that have data
+    // fiscal has higher drift -> should be sorted first among the categories that have data
     const fiscalIdx = result.heatmap.findIndex((r) => r.category === 'fiscal');
     const csIdx = result.heatmap.findIndex((r) => r.category === 'civilService');
     expect(fiscalIdx).toBeLessThan(csIdx);
@@ -122,10 +135,10 @@ describe('buildOverviewFromRows', () => {
     expect(result.heatmap).toHaveLength(14);
     expect(result.statusTimeline).toHaveLength(14);
 
-    // Categories without data still get entries
+    // Categories without data still get entries with null score
     const fiscal = result.heatmap.find((r) => r.category === 'fiscal');
     expect(fiscal).toBeDefined();
     expect(fiscal!.weeks).toHaveLength(1);
-    expect(fiscal!.weeks[0].score).toBe(0);
+    expect(fiscal!.weeks[0].score).toBeNull();
   });
 });

@@ -11,7 +11,14 @@ import type {
 } from '@/lib/types/overview';
 import type { ConvergenceSynthesis } from '@/lib/types/structural';
 
-const DEFAULT_WEEKS = 16;
+/** Weeks since inauguration (Jan 20, 2025) — used as default overview window. */
+const ADMIN_START = new Date('2025-01-20T00:00:00Z');
+function weeksSinceAdminStart(): number {
+  const now = new Date();
+  const diffMs = now.getTime() - ADMIN_START.getTime();
+  return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+}
+
 const ELEVATED_STATUSES = new Set<ConvergenceStatus>(['Elevated', 'Divergent', 'ConfirmedConcern']);
 
 interface AggregateRow {
@@ -51,13 +58,14 @@ async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
   }));
 }
 
-/** Extract convergence status from JSONB detail, defaulting to Stable. */
-function parseStatus(detail: unknown): ConvergenceStatus {
-  if (!detail || typeof detail !== 'object') return 'Stable';
+/** Extract convergence status from JSONB detail, returning null when not computed. */
+function parseStatus(detail: unknown): ConvergenceStatus | null {
+  if (!detail || typeof detail !== 'object') return null;
   const d = detail as Partial<ConvergenceSynthesis>;
   const s = d.status;
   if (s === 'Elevated' || s === 'Divergent' || s === 'ConfirmedConcern') return s;
-  return 'Stable';
+  if (s === 'Stable') return 'Stable';
+  return null;
 }
 
 /** Build per-category heatmap/timeline rows and accumulate elevated counts. */
@@ -85,7 +93,7 @@ function buildCategoryRows(
 
     const weeks = allWeeks.map((w) => ({
       week: w,
-      score: weekMap.get(w)?.convergence_score ?? 0,
+      score: weekMap.get(w)?.convergence_score ?? null,
     }));
     heatmap.push({ category: cat.key, title: cat.title, weeks });
 
@@ -96,12 +104,12 @@ function buildCategoryRows(
     statusTimeline.push({ category: cat.key, title: cat.title, segments });
 
     for (const seg of segments) {
-      if (ELEVATED_STATUSES.has(seg.status)) {
+      if (seg.status && ELEVATED_STATUSES.has(seg.status)) {
         weekElevatedCounts.set(seg.week, (weekElevatedCounts.get(seg.week) ?? 0) + 1);
       }
     }
 
-    const latestStatus = parseStatus(weekMap.get(latestWeek)?.convergence_detail);
+    const latestStatus = parseStatus(weekMap.get(latestWeek)?.convergence_detail) ?? 'Stable';
     statusCounts[latestStatus]++;
   }
 
@@ -158,7 +166,7 @@ function buildDriftSortOrder(
 }
 
 /** Fetch overview summary from DB. */
-export async function getOverviewSummary(weeks = DEFAULT_WEEKS): Promise<OverviewSummary> {
+export async function getOverviewSummary(weeks = weeksSinceAdminStart()): Promise<OverviewSummary> {
   const rows = await fetchRecentAggregates(weeks);
   const result = buildOverviewFromRows(rows);
 

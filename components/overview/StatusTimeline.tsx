@@ -54,6 +54,7 @@ export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelinePro
           <TimelineRow
             key={entry.category}
             entry={entry}
+            mode={mode}
             colors={colors}
             onCellClick={onCellClick}
           />
@@ -65,10 +66,12 @@ export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelinePro
 
 function TimelineRow({
   entry,
+  mode,
   colors,
   onCellClick,
 }: {
   entry: StatusTimelineEntry;
+  mode: 'light' | 'dark';
   colors: Record<string, string>;
   onCellClick?: (category: string, week: string) => void;
 }) {
@@ -81,16 +84,27 @@ function TimelineRow({
       >
         {entry.title}
       </div>
-      {entry.segments.map((seg) => (
-        <div
-          key={seg.week}
-          className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
-          style={{ backgroundColor: colors[seg.status] }}
-          title={`${entry.title} — ${formatWeekLabel(seg.week)}: ${STATUS_LABELS[seg.status]}`}
-          role="cell"
-          onClick={onCellClick ? () => onCellClick(entry.category, seg.week) : undefined}
-        />
-      ))}
+      {entry.segments.map((seg) => {
+        const isNoData = seg.status === null;
+        const statusLabel = seg.status ? STATUS_LABELS[seg.status] : 'No data';
+
+        return (
+          <div
+            key={seg.week}
+            className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
+            style={
+              isNoData
+                ? {
+                    background: `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='6' height='6'><rect width='6' height='6' fill='${mode === 'dark' ? '%231e293b' : '%23f1f5f9'}'/><path d='M0 6L6 0' stroke='${mode === 'dark' ? '%23334155' : '%23e2e8f0'}' stroke-width='1'/></svg>`)}")`,
+                  }
+                : { backgroundColor: colors[seg.status!] }
+            }
+            title={`${entry.title} \u2014 ${formatWeekLabel(seg.week)}: ${statusLabel}`}
+            role="cell"
+            onClick={onCellClick ? () => onCellClick(entry.category, seg.week) : undefined}
+          />
+        );
+      })}
     </>
   );
 }

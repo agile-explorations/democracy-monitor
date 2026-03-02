@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useState } from 'react';
-import { CategoryCard } from '@/components/landing/CategoryCard';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
 import { SourceHealthBar } from '@/components/landing/SourceHealthBar';
@@ -9,6 +9,8 @@ import { CategoryDriftHeatmap } from '@/components/overview/CategoryDriftHeatmap
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
+import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
+import { TimeRangeSelector, presetToWeekCount } from '@/components/overview/TimeRangeSelector';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
@@ -31,6 +33,10 @@ export default function Home() {
   const [healthSummary, setHealthSummary] = useState<SourceHealthSummary | null>(null);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Time range state
+  const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
+  const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -66,6 +72,54 @@ export default function Home() {
     }
     loadData();
   }, []);
+
+  // Compute brush indices from preset
+  const totalWeeks = overview?.synchrony.length ?? 0;
+  const presetBrushIndices = useMemo(() => {
+    if (!totalWeeks) return null;
+    const weeksToShow = presetToWeekCount(rangePreset, totalWeeks);
+    const start = Math.max(0, totalWeeks - weeksToShow);
+    return { start, end: totalWeeks - 1 };
+  }, [rangePreset, totalWeeks]);
+
+  // Active range: brush overrides preset
+  const activeRange = brushRange ?? presetBrushIndices;
+
+  // Filter overview data by active range
+  const filteredOverview = useMemo(() => {
+    if (!overview || !activeRange) return overview;
+    const { start, end } = activeRange;
+
+    return {
+      ...overview,
+      heatmap: overview.heatmap.map((row) => ({
+        ...row,
+        weeks: row.weeks.slice(start, end + 1),
+      })),
+      statusTimeline: overview.statusTimeline.map((entry) => ({
+        ...entry,
+        segments: entry.segments.slice(start, end + 1),
+      })),
+    };
+  }, [overview, activeRange]);
+
+  const handlePresetChange = useCallback((preset: TimeRangePreset) => {
+    setRangePreset(preset);
+    setBrushRange(null); // Reset brush when preset changes
+  }, []);
+
+  const handleBrushChange = useCallback(
+    (startIndex: number, endIndex: number) => {
+      setBrushRange({ start: startIndex, end: endIndex });
+      // Clear preset highlight if brush differs from any preset
+      if (presetBrushIndices) {
+        const matches =
+          startIndex === presetBrushIndices.start && endIndex === presetBrushIndices.end;
+        if (!matches) setRangePreset('all');
+      }
+    },
+    [presetBrushIndices],
+  );
 
   const lastUpdated = categories.find((c) => c.assessedAt)?.assessedAt ?? null;
 
@@ -136,15 +190,26 @@ export default function Home() {
               <OverviewStatusSummary statusCounts={overview.statusCounts} />
             </section>
 
-            {/* Synchrony chart */}
+            {/* Time range controls + synchrony chart */}
             <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
-                Cross-Category Synchrony
-              </h2>
-              <p className="text-[11px] text-dm-muted mb-3">
-                Number of categories at Elevated or above per week
-              </p>
-              <SynchronyChart data={overview.synchrony} mode={resolvedMode} />
+              <div className="flex items-center justify-between mb-1">
+                <div>
+                  <h2 className="text-sm font-semibold text-dm-text-primary">
+                    Cross-Category Synchrony
+                  </h2>
+                  <p className="text-[11px] text-dm-muted mt-0.5">
+                    Number of categories at Elevated or above per week
+                  </p>
+                </div>
+                <TimeRangeSelector selected={rangePreset} onChange={handlePresetChange} />
+              </div>
+              <SynchronyChart
+                data={overview.synchrony}
+                mode={resolvedMode}
+                brushStartIndex={activeRange?.start}
+                brushEndIndex={activeRange?.end}
+                onRangeChange={handleBrushChange}
+              />
             </section>
 
             {/* Drift heatmap */}
@@ -156,7 +221,7 @@ export default function Home() {
                 Warmer colors indicate higher convergence scores across detection layers
               </p>
               <CategoryDriftHeatmap
-                rows={overview.heatmap}
+                rows={filteredOverview?.heatmap ?? []}
                 mode={resolvedMode}
                 onCellClick={handleCellClick}
               />
@@ -169,7 +234,7 @@ export default function Home() {
                 Convergence status per category over time
               </p>
               <StatusTimeline
-                entries={overview.statusTimeline}
+                entries={filteredOverview?.statusTimeline ?? []}
                 mode={resolvedMode}
                 onCellClick={handleCellClick}
               />
@@ -177,41 +242,22 @@ export default function Home() {
           </div>
         )}
 
-        {/* Category grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: CATEGORIES.length }, (_, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-dm-border bg-dm-card p-6 animate-pulse h-64"
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map((cat) => (
-              <CategoryCard
-                key={cat.category}
-                category={cat.category}
-                title={cat.title}
-                status={cat.status}
-                insufficientData={cat.insufficientData}
-                decayWeightedScore={cat.decayWeightedScore}
-                baselineAvg={cat.baselineAvg}
-                baselineStdDev={cat.baselineStdDev}
-                sparklineData={cat.sparklineData}
-                documentCount={cat.documentCount}
-                flaggedCount={cat.flaggedCount}
-                summary={cat.summary}
-                readingLevel={readingLevel}
-                convergenceStatus={cat.convergenceStatus}
-                structuralElevated={cat.structuralElevated}
-                aiElevated={cat.aiElevated}
-                thematicElevated={cat.thematicElevated}
-              />
-            ))}
-          </div>
-        )}
+        {/* Category table */}
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-dm-text-primary mb-3">Categories</h2>
+          {loading ? (
+            <div className="space-y-2">
+              {Array.from({ length: CATEGORIES.length }, (_, i) => (
+                <div
+                  key={i}
+                  className="rounded border border-dm-border bg-dm-card h-10 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <CategoryTable categories={categories} readingLevel={readingLevel} />
+          )}
+        </section>
 
         <MethodologyFooter />
       </main>

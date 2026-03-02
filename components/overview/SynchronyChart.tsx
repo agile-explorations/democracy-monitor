@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import {
   Area,
   AreaChart,
+  Brush,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -15,6 +16,9 @@ import { formatWeekLabel } from '@/lib/utils/date-utils';
 export interface SynchronyChartProps {
   data: SynchronyPoint[];
   mode: 'light' | 'dark';
+  brushStartIndex?: number;
+  brushEndIndex?: number;
+  onRangeChange?: (startIndex: number, endIndex: number) => void;
 }
 
 function SynchronyTooltip({
@@ -36,7 +40,13 @@ function SynchronyTooltip({
   );
 }
 
-export function SynchronyChart({ data, mode }: SynchronyChartProps) {
+export function SynchronyChart({
+  data,
+  mode,
+  brushStartIndex,
+  brushEndIndex,
+  onRangeChange,
+}: SynchronyChartProps) {
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
 
   if (data.length === 0) {
@@ -44,7 +54,7 @@ export function SynchronyChart({ data, mode }: SynchronyChartProps) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={250}>
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
         <defs>
           <linearGradient id="synchronyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -75,6 +85,28 @@ export function SynchronyChart({ data, mode }: SynchronyChartProps) {
           stroke={colors.accent}
           strokeWidth={2}
           fill="url(#synchronyGradient)"
+        />
+        <Brush
+          dataKey="week"
+          height={30}
+          stroke={colors.accent}
+          fill={mode === 'dark' ? '#1e293b' : '#f8fafc'}
+          tickFormatter={formatWeekLabel}
+          startIndex={brushStartIndex}
+          endIndex={brushEndIndex}
+          onChange={
+            onRangeChange
+              ? (range) => {
+                  if (
+                    range &&
+                    typeof range.startIndex === 'number' &&
+                    typeof range.endIndex === 'number'
+                  ) {
+                    onRangeChange(range.startIndex, range.endIndex);
+                  }
+                }
+              : undefined
+          }
         />
       </AreaChart>
     </ResponsiveContainer>

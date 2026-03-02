@@ -1,8 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { ReadingLevelToggle } from '@/components/landing/ReadingLevelToggle';
-import { ThemeToggle } from '@/components/landing/ThemeToggle';
+import { DisplaySettings } from '@/components/layout/DisplaySettings';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
 export function SiteHeader() {
@@ -44,8 +43,7 @@ export function SiteHeader() {
             </span>
           </div>
           <div className="flex items-center gap-3 pb-1">
-            <ReadingLevelToggle />
-            <ThemeToggle />
+            <DisplaySettings />
           </div>
         </div>
       </div>

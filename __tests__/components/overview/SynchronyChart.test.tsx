@@ -29,6 +29,9 @@ vi.mock('recharts', () => ({
   Tooltip: function MockTooltip() {
     return null;
   },
+  Brush: function MockBrush() {
+    return null;
+  },
 }));
 
 const sampleData: SynchronyPoint[] = [
