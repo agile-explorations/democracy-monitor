@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react';
 import type { CategorySummary } from '@/lib/services/category-summary-service';
 import type { MetaAssessment } from '@/lib/services/meta-assessment-service';
 import type { SourceHealthCheck, SourceHealthSummary } from '@/lib/services/source-health-service';
-import type { OverviewSummary } from '@/lib/types/overview';
+import type { FetchWeekHealth, OverviewSummary } from '@/lib/types/overview';
 
 export interface DashboardData {
   categories: CategorySummary[];
   overview: OverviewSummary | null;
   meta: MetaAssessment | null;
   healthSummary: SourceHealthSummary | null;
+  fetchTimeline: FetchWeekHealth[];
   lastCheckedAt: string | null;
   loading: boolean;
 }
@@ -19,21 +20,24 @@ export function useDashboardData(): DashboardData {
   const [overview, setOverview] = useState<OverviewSummary | null>(null);
   const [meta, setMeta] = useState<MetaAssessment | null>(null);
   const [healthSummary, setHealthSummary] = useState<SourceHealthSummary | null>(null);
+  const [fetchTimeline, setFetchTimeline] = useState<FetchWeekHealth[]>([]);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [catRes, overviewRes, metaRes, srcRes] = await Promise.all([
+        const [catRes, overviewRes, metaRes, srcRes, timelineRes] = await Promise.all([
           fetch('/api/categories/summary'),
           fetch('/api/overview/summary'),
           fetch('/api/health/meta'),
           fetch('/api/health/sources'),
+          fetch('/api/health/fetch-timeline'),
         ]);
         if (catRes.ok) setCategories(await catRes.json());
         if (overviewRes.ok) setOverview(await overviewRes.json());
         if (metaRes.ok) setMeta(await metaRes.json());
+        if (timelineRes.ok) setFetchTimeline(await timelineRes.json());
         if (srcRes.ok) {
           const srcData = await srcRes.json();
           if (srcData.summary) setHealthSummary(srcData.summary);
@@ -54,5 +58,5 @@ export function useDashboardData(): DashboardData {
     loadData();
   }, []);
 
-  return { categories, overview, meta, healthSummary, lastCheckedAt, loading };
+  return { categories, overview, meta, healthSummary, fetchTimeline, lastCheckedAt, loading };
 }

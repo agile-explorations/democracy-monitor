@@ -30,6 +30,12 @@ export const CATEGORY_COLORS: Record<string, string> = {
   immigrationEnforcement: '#0284c7',
 };
 
+/** Per-mode colors for the source health timeline strip. */
+export const HEALTH_STRIP_COLORS = {
+  light: { complete: '#22c55e', partial: '#f59e0b', failed: '#ef4444' },
+  dark: { complete: '#4ade80', partial: '#fbbf24', failed: '#f87171' },
+} as const;
+
 /** Per-convergence-status colors for heatmap/timeline visualizations. */
 export const CONVERGENCE_STATUS_COLORS = {
   light: {

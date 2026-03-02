@@ -152,6 +152,26 @@ export async function getIncompleteWeeks(
   return rows;
 }
 
+/** Aggregate fetch health per week for the timeline strip. */
+export async function getWeeklyFetchHealth() {
+  if (!isDbAvailable()) return [];
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      week: fetchLog.weekStart,
+      total: sql<number>`count(*)::int`,
+      complete: sql<number>`count(*) filter (where ${fetchLog.status} = 'complete')::int`,
+      partial: sql<number>`count(*) filter (where ${fetchLog.status} = 'partial')::int`,
+      failed: sql<number>`count(*) filter (where ${fetchLog.status} = 'failed')::int`,
+    })
+    .from(fetchLog)
+    .groupBy(fetchLog.weekStart)
+    .orderBy(fetchLog.weekStart);
+
+  return rows;
+}
+
 /** Record RSS/HTML/JSON/FR signal results in fetch_log for gap visibility. */
 export async function recordSnapshotSignalResults(
   category: string,

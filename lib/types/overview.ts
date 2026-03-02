@@ -17,6 +17,14 @@ export interface SynchronyPoint {
   elevatedCount: number;
 }
 
+export interface FetchWeekHealth {
+  week: string;
+  total: number;
+  complete: number;
+  partial: number;
+  failed: number;
+}
+
 export interface OverviewSummary {
   heatmap: HeatmapRow[];
   statusTimeline: StatusTimelineEntry[];

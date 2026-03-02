@@ -1,4 +1,5 @@
 import { and, count, eq, inArray, sql } from 'drizzle-orm';
+import type { Pass1Response } from '@/lib/ai/schemas/layer2-response';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { aiDocumentAssessments, documents } from '@/lib/db/schema';
 import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
@@ -165,7 +166,7 @@ export async function loadStoredPass1Results(
         response: {
           relevant: r.relevant ?? false,
           confidence: r.confidence ?? 0,
-          erosionType: r.erosionType ?? undefined,
+          erosionType: (r.erosionType ?? 'unclear') as Pass1Response['erosionType'],
           signals: (r.signals as string[]) ?? [],
         },
         meta: {

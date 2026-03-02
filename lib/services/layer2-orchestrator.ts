@@ -159,7 +159,7 @@ async function runPass1Phase(
     existingUrls.size > 0 ? await loadStoredPass1Results(existingUrls, categoryKey) : [];
   results.push(...existingResults);
 
-  const newItems = items.filter((i) => !existingUrls.has(i.link || i.title));
+  const newItems = items.filter((i) => !existingUrls.has(i.link ?? i.title ?? ''));
 
   for (const item of newItems) {
     const result = await assessPass1(item, categoryDescription, provider, model);

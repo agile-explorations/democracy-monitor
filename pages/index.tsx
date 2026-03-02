@@ -4,13 +4,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
-import { SourceHealthBar } from '@/components/landing/SourceHealthBar';
+import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
+import { SourceHealthTimeline } from '@/components/overview/SourceHealthTimeline';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
-import { TimeRangeSelector, presetToWeekCount } from '@/components/overview/TimeRangeSelector';
+import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
@@ -27,7 +28,8 @@ export default function Home() {
     (category: string, week: string) => router.push(`/category/${category}/week/${week}`),
     [router],
   );
-  const { categories, overview, meta, healthSummary, lastCheckedAt, loading } = useDashboardData();
+  const { categories, overview, meta, healthSummary, fetchTimeline, lastCheckedAt, loading } =
+    useDashboardData();
 
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
@@ -166,44 +168,25 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Source health summary bar */}
-        {healthSummary && healthSummary.totalSources > 0 && (
-          <SourceHealthBar
-            healthySources={healthSummary.healthySources}
-            degradedSources={healthSummary.degradedSources}
-            unavailableSources={healthSummary.unavailableSources}
-            silentSources={healthSummary.silentSources}
-            totalSources={healthSummary.totalSources}
-            lastCheckedAt={lastCheckedAt}
-          />
-        )}
-
         {/* Overview section — only shown when overview data is available */}
         {overview && (
           <div className="space-y-8 mb-8">
-            {/* Status distribution */}
-            <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
-                Status Distribution
-              </h2>
-              {statusRangeLabel && (
-                <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
-              )}
-              <OverviewStatusSummary statusCounts={filteredStatusCounts} />
-            </section>
+            {/* Global time range bar */}
+            <TimeRangeBar
+              rangeLabel={statusRangeLabel}
+              selected={rangePreset}
+              onChange={handlePresetChange}
+            />
 
-            {/* Time range controls + elevated categories chart */}
+            {/* Elevated categories chart */}
             <section>
-              <div className="flex items-center justify-between mb-1">
-                <div>
-                  <h2 className="text-sm font-semibold text-dm-text-primary">
-                    Elevated Categories Over Time
-                  </h2>
-                  <p className="text-[11px] text-dm-muted mt-0.5">
-                    Number of categories at Elevated or above per week
-                  </p>
-                </div>
-                <TimeRangeSelector selected={rangePreset} onChange={handlePresetChange} />
+              <div className="mb-1">
+                <h2 className="text-sm font-semibold text-dm-text-primary">
+                  Elevated Categories Over Time
+                </h2>
+                <p className="text-[11px] text-dm-muted mt-0.5">
+                  Number of categories at Elevated or above per week
+                </p>
               </div>
               <SynchronyChart
                 data={overview.synchrony}
@@ -215,6 +198,25 @@ export default function Home() {
                 onWeekClick={handleWeekChange}
               />
             </section>
+
+            {/* Status distribution */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                Status Distribution
+              </h2>
+              {statusRangeLabel && (
+                <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
+              )}
+              <OverviewStatusSummary statusCounts={filteredStatusCounts} />
+            </section>
+
+            {/* Source fetch health timeline */}
+            <SourceHealthTimeline
+              data={fetchTimeline}
+              mode={resolvedMode}
+              brushStartIndex={activeRange?.start}
+              brushEndIndex={activeRange?.end}
+            />
 
             {/* Status heatmap */}
             <section>
