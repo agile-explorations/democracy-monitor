@@ -28,7 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const summaries = await getCategorySummaries();
+    const weekParam = typeof req.query.week === 'string' ? req.query.week : undefined;
+    const weekOf = weekParam && /^\d{4}-\d{2}-\d{2}$/.test(weekParam) ? weekParam : undefined;
+    const summaries = await getCategorySummaries(weekOf);
     res.setHeader('Cache-Control', 'public, s-maxage=300');
     return res.status(200).json(summaries);
   } catch (err) {

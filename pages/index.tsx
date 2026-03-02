@@ -1,10 +1,11 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
 import { SourceHealthBar } from '@/components/landing/SourceHealthBar';
+import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
@@ -13,11 +14,9 @@ import { TimeRangeSelector, presetToWeekCount } from '@/components/overview/Time
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { CategorySummary } from '@/lib/services/category-summary-service';
-import type { MetaAssessment } from '@/lib/services/meta-assessment-service';
-import type { SourceHealthCheck, SourceHealthSummary } from '@/lib/services/source-health-service';
+import { useDashboardData } from '@/lib/hooks/useDashboardData';
+import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
 import type { ConvergenceStatus } from '@/lib/types';
-import type { OverviewSummary } from '@/lib/types/overview';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export default function Home() {
@@ -28,51 +27,10 @@ export default function Home() {
     (category: string, week: string) => router.push(`/category/${category}/week/${week}`),
     [router],
   );
-  const [categories, setCategories] = useState<CategorySummary[]>([]);
-  const [overview, setOverview] = useState<OverviewSummary | null>(null);
-  const [meta, setMeta] = useState<MetaAssessment | null>(null);
-  const [healthSummary, setHealthSummary] = useState<SourceHealthSummary | null>(null);
-  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { categories, overview, meta, healthSummary, lastCheckedAt, loading } = useDashboardData();
 
-  // Time range state
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [catRes, overviewRes, metaRes, srcRes] = await Promise.all([
-          fetch('/api/categories/summary'),
-          fetch('/api/overview/summary'),
-          fetch('/api/health/meta'),
-          fetch('/api/health/sources'),
-        ]);
-        if (catRes.ok) {
-          const data: CategorySummary[] = await catRes.json();
-          setCategories(data);
-        }
-        if (overviewRes.ok) setOverview(await overviewRes.json());
-        if (metaRes.ok) setMeta(await metaRes.json());
-        if (srcRes.ok) {
-          const srcData = await srcRes.json();
-          if (srcData.summary) setHealthSummary(srcData.summary);
-          if (srcData.sources?.length) {
-            const latest = (srcData.sources as SourceHealthCheck[]).reduce(
-              (max: string, s: SourceHealthCheck) => (s.checkedAt > max ? s.checkedAt : max),
-              srcData.sources[0].checkedAt,
-            );
-            setLastCheckedAt(latest);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
 
   // Compute brush indices from preset
   const totalWeeks = overview?.synchrony.length ?? 0;
@@ -128,6 +86,21 @@ export default function Home() {
     if (!first || !last) return '';
     return `${formatWeekLabel(first)} \u2013 ${formatWeekLabel(last)}`;
   }, [filteredOverview]);
+
+  // Week selection (available weeks derived from filtered heatmap)
+  const filteredWeeks = useMemo(() => {
+    if (!filteredOverview?.statusTimeline.length) return [];
+    return filteredOverview.statusTimeline[0].segments.map((s) => s.week);
+  }, [filteredOverview]);
+
+  const {
+    selectedWeek,
+    weekLoading,
+    displayedCategories,
+    availableWeeks,
+    handleWeekHeaderClick,
+    handleWeekChange,
+  } = useWeekSelection(categories, filteredWeeks);
 
   const handlePresetChange = useCallback((preset: TimeRangePreset) => {
     setRangePreset(preset);
@@ -238,6 +211,8 @@ export default function Home() {
                 brushStartIndex={activeRange?.start}
                 brushEndIndex={activeRange?.end}
                 onRangeChange={handleBrushChange}
+                selectedWeek={selectedWeek}
+                onWeekClick={handleWeekChange}
               />
             </section>
 
@@ -251,6 +226,8 @@ export default function Home() {
                 entries={filteredOverview?.statusTimeline ?? []}
                 mode={resolvedMode}
                 onCellClick={handleCellClick}
+                onWeekHeaderClick={handleWeekHeaderClick}
+                selectedWeek={selectedWeek}
               />
             </section>
           </div>
@@ -258,11 +235,24 @@ export default function Home() {
 
         {/* Category table */}
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Categories</h2>
-          <p className="text-[11px] text-dm-muted mb-3">
-            Latest week scores and 8-week sparkline trends
-          </p>
-          {loading ? (
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h2 className="text-sm font-semibold text-dm-text-primary">Categories</h2>
+              <p className="text-[11px] text-dm-muted mt-0.5">
+                {selectedWeek
+                  ? `Week of ${formatWeekLabel(selectedWeek)}`
+                  : 'Latest week scores and 8-week sparkline trends'}
+              </p>
+            </div>
+            {availableWeeks.length > 0 && (
+              <WeekNavigator
+                availableWeeks={availableWeeks}
+                selectedWeek={selectedWeek}
+                onWeekChange={handleWeekChange}
+              />
+            )}
+          </div>
+          {loading || weekLoading ? (
             <div className="space-y-2">
               {Array.from({ length: CATEGORIES.length }, (_, i) => (
                 <div
@@ -272,7 +262,11 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <CategoryTable categories={categories} readingLevel={readingLevel} />
+            <CategoryTable
+              categories={displayedCategories}
+              readingLevel={readingLevel}
+              highlightWeek={selectedWeek}
+            />
           )}
         </section>
 

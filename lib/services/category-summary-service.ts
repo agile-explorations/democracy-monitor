@@ -8,6 +8,30 @@ import type { ConvergenceStatus, ConvergenceSynthesis } from '@/lib/types/struct
 
 const SPARKLINE_WEEKS = 8;
 
+interface AssessmentRow {
+  status: string;
+  reason: string;
+  assessedAt: Date;
+  matches: unknown;
+  insufficientData: boolean;
+}
+
+function parseAssessmentRows(rows: { rows: unknown[] }): Record<string, AssessmentRow> {
+  const result: Record<string, AssessmentRow> = {};
+  for (const row of rows.rows) {
+    const r = row as Record<string, unknown>;
+    const detail = r.detail as Record<string, unknown> | null;
+    result[r.category as string] = {
+      status: r.status as string,
+      reason: r.reason as string,
+      assessedAt: new Date(r.assessed_at as string),
+      matches: r.matches,
+      insufficientData: detail?.insufficientData === true,
+    };
+  }
+  return result;
+}
+
 export interface CategorySummary {
   category: string;
   title: string;
@@ -27,47 +51,25 @@ export interface CategorySummary {
   thematicElevated: boolean;
 }
 
-/** Fetch latest assessment status per category via DISTINCT ON. */
-async function fetchLatestAssessments(db: ReturnType<typeof getDb>): Promise<
-  Record<
-    string,
-    {
-      status: string;
-      reason: string;
-      assessedAt: Date;
-      matches: unknown;
-      insufficientData: boolean;
-    }
-  >
-> {
-  const rows = await db.execute(sql`
-    SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
-    FROM assessments
-    ORDER BY category, assessed_at DESC
-  `);
-
-  const result: Record<
-    string,
-    {
-      status: string;
-      reason: string;
-      assessedAt: Date;
-      matches: unknown;
-      insufficientData: boolean;
-    }
-  > = {};
-  for (const row of rows.rows) {
-    const r = row as Record<string, unknown>;
-    const detail = r.detail as Record<string, unknown> | null;
-    result[r.category as string] = {
-      status: r.status as string,
-      reason: r.reason as string,
-      assessedAt: new Date(r.assessed_at as string),
-      matches: r.matches,
-      insufficientData: detail?.insufficientData === true,
-    };
-  }
-  return result;
+/** Fetch assessment status per category. When weekOf is provided, prefer assessments within that week. */
+async function fetchLatestAssessments(
+  db: ReturnType<typeof getDb>,
+  weekOf?: string,
+): Promise<Record<string, AssessmentRow>> {
+  const rows = weekOf
+    ? await db.execute(sql`
+        SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
+        FROM assessments
+        WHERE assessed_at >= ${weekOf}::date
+          AND assessed_at < (${weekOf}::date + interval '7 days')
+        ORDER BY category, assessed_at DESC
+      `)
+    : await db.execute(sql`
+        SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
+        FROM assessments
+        ORDER BY category, assessed_at DESC
+      `);
+  return parseAssessmentRows(rows);
 }
 
 /** Fetch baseline avg/stddev per category for the primary baseline. */
@@ -90,9 +92,10 @@ async function fetchBaselines(
   return result;
 }
 
-/** Fetch last N weeks of weekly aggregates per category. */
+/** Fetch N weeks of weekly aggregates per category. When weekOf is provided, the trailing window ends at that week. */
 async function fetchSparklineData(
   db: ReturnType<typeof getDb>,
+  weekOf?: string,
 ): Promise<Record<string, Array<{ week: string; score: number; docCount: number }>>> {
   const rows = await db.execute(sql`
     SELECT category, week_of, total_severity, document_count
@@ -101,6 +104,7 @@ async function fetchSparklineData(
         PARTITION BY category ORDER BY week_of DESC
       ) AS rn
       FROM weekly_aggregates
+      ${weekOf ? sql`WHERE week_of <= ${weekOf}` : sql``}
     ) sub
     WHERE rn <= ${SPARKLINE_WEEKS}
     ORDER BY category, week_of ASC
@@ -120,16 +124,25 @@ async function fetchSparklineData(
   return result;
 }
 
-/** Fetch latest convergence synthesis per category via DISTINCT ON. */
+/** Fetch convergence synthesis per category. When weekOf is provided, use that specific week. */
 async function fetchLatestConvergence(
   db: ReturnType<typeof getDb>,
+  weekOf?: string,
 ): Promise<Record<string, ConvergenceSynthesis>> {
-  const rows = await db.execute(sql`
-    SELECT DISTINCT ON (category) category, convergence_detail
-    FROM weekly_aggregates
-    WHERE convergence_detail IS NOT NULL
-    ORDER BY category, week_of DESC
-  `);
+  const rows = weekOf
+    ? await db.execute(sql`
+        SELECT category, convergence_detail
+        FROM weekly_aggregates
+        WHERE convergence_detail IS NOT NULL
+          AND week_of = ${weekOf}
+        ORDER BY category
+      `)
+    : await db.execute(sql`
+        SELECT DISTINCT ON (category) category, convergence_detail
+        FROM weekly_aggregates
+        WHERE convergence_detail IS NOT NULL
+        ORDER BY category, week_of DESC
+      `);
 
   const result: Record<string, ConvergenceSynthesis> = {};
   for (const row of rows.rows) {
@@ -143,17 +156,18 @@ async function fetchLatestConvergence(
 }
 
 /**
- * Build category summaries combining static metadata, latest assessments,
+ * Build category summaries combining static metadata, assessments,
  * baselines, and sparkline data.
+ * When weekOf is provided, data is scoped to that specific week.
  */
-export async function getCategorySummaries(): Promise<CategorySummary[]> {
+export async function getCategorySummaries(weekOf?: string): Promise<CategorySummary[]> {
   const db = getDb();
 
   const [latestAssessments, baselineData, sparklineData, convergenceData] = await Promise.all([
-    fetchLatestAssessments(db),
+    fetchLatestAssessments(db, weekOf),
     fetchBaselines(db),
-    fetchSparklineData(db),
-    fetchLatestConvergence(db),
+    fetchSparklineData(db, weekOf),
+    fetchLatestConvergence(db, weekOf),
   ]);
 
   return CATEGORIES.map((cat) => {

@@ -8,6 +8,8 @@ export interface StatusTimelineProps {
   entries: StatusTimelineEntry[];
   mode: 'light' | 'dark';
   onCellClick?: (category: string, week: string) => void;
+  onWeekHeaderClick?: (week: string) => void;
+  selectedWeek?: string | null;
 }
 
 const STATUS_LABELS: Record<ConvergenceStatus, string> = {
@@ -56,7 +58,13 @@ function TimelineLegend({
   );
 }
 
-export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelineProps) {
+export function StatusTimeline({
+  entries,
+  mode,
+  onCellClick,
+  onWeekHeaderClick,
+  selectedWeek,
+}: StatusTimelineProps) {
   const colors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
 
   if (entries.length === 0) {
@@ -80,15 +88,24 @@ export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelinePro
         >
           {/* Header row */}
           <div className="text-[10px] text-dm-muted font-medium px-1 py-1" role="columnheader" />
-          {weeks.map((week, i) => (
-            <div
-              key={week}
-              className="text-[10px] text-dm-muted text-center py-1"
-              role="columnheader"
-            >
-              {i % labelInterval === 0 ? formatWeekLabel(week) : ''}
-            </div>
-          ))}
+          {weeks.map((week, i) => {
+            const isSelected = selectedWeek === week;
+            const label = i % labelInterval === 0 ? formatWeekLabel(week) : '';
+            return (
+              <div
+                key={week}
+                className={`text-[10px] text-center pt-1 pb-0.5 flex flex-col items-center ${isSelected ? 'text-dm-accent font-semibold' : 'text-dm-muted'}${onWeekHeaderClick ? ' cursor-pointer hover:text-dm-accent transition-colors' : ''}`}
+                role="columnheader"
+                title={formatWeekLabel(week)}
+                onClick={onWeekHeaderClick ? () => onWeekHeaderClick(week) : undefined}
+              >
+                {label && <span>{label}</span>}
+                <span
+                  className={`block w-full mt-auto rounded-sm ${isSelected ? 'h-1.5 bg-dm-accent' : 'h-1.5 border border-dm-muted/30'}${onWeekHeaderClick ? ' hover:border-dm-accent hover:bg-dm-accent/20' : ''}`}
+                />
+              </div>
+            );
+          })}
 
           {/* Rows */}
           {entries.map((entry) => (
@@ -98,6 +115,7 @@ export function StatusTimeline({ entries, mode, onCellClick }: StatusTimelinePro
               mode={mode}
               colors={colors}
               onCellClick={onCellClick}
+              selectedWeek={selectedWeek}
             />
           ))}
         </div>
@@ -111,11 +129,13 @@ function TimelineRow({
   mode,
   colors,
   onCellClick,
+  selectedWeek,
 }: {
   entry: StatusTimelineEntry;
   mode: 'light' | 'dark';
   colors: Record<string, string>;
   onCellClick?: (category: string, week: string) => void;
+  selectedWeek?: string | null;
 }) {
   return (
     <>
@@ -129,11 +149,12 @@ function TimelineRow({
       {entry.segments.map((seg) => {
         const isNoData = seg.status === null;
         const statusLabel = seg.status ? STATUS_LABELS[seg.status] : 'No data';
+        const isSelected = selectedWeek === seg.week;
 
         return (
           <div
             key={seg.week}
-            className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
+            className={`rounded-sm min-h-[24px]${isSelected ? ' ring-2 ring-dm-accent' : ''}${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
             style={
               isNoData ? { background: noDataBg(mode) } : { backgroundColor: colors[seg.status!] }
             }

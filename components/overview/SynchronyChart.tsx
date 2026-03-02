@@ -4,6 +4,7 @@ import {
   AreaChart,
   Brush,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,6 +20,8 @@ export interface SynchronyChartProps {
   brushStartIndex?: number;
   brushEndIndex?: number;
   onRangeChange?: (startIndex: number, endIndex: number) => void;
+  selectedWeek?: string | null;
+  onWeekClick?: (week: string) => void;
 }
 
 function SynchronyTooltip({
@@ -46,6 +49,8 @@ export function SynchronyChart({
   brushStartIndex,
   brushEndIndex,
   onRangeChange,
+  selectedWeek,
+  onWeekClick,
 }: SynchronyChartProps) {
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
 
@@ -66,7 +71,21 @@ export function SynchronyChart({
   return (
     <div>
       <ResponsiveContainer width="100%" height={250}>
-        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+        <AreaChart
+          data={data}
+          margin={{ top: 8, right: 58, bottom: 4, left: 28 }}
+          onClick={
+            onWeekClick
+              ? (state) => {
+                  const week = state?.activeLabel;
+                  if (typeof week === 'string' && week) {
+                    onWeekClick(week);
+                  }
+                }
+              : undefined
+          }
+          style={onWeekClick ? { cursor: 'pointer' } : undefined}
+        >
           <defs>
             <linearGradient id="synchronyGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={colors.accent} stopOpacity={0.3} />
@@ -97,9 +116,19 @@ export function SynchronyChart({
             strokeWidth={2}
             fill="url(#synchronyGradient)"
           />
+          {selectedWeek && (
+            <ReferenceLine
+              x={selectedWeek}
+              stroke={colors.accent}
+              strokeWidth={2}
+              strokeDasharray="4 2"
+            />
+          )}
           <Brush
             dataKey="week"
+            tickFormatter={formatWeekLabel}
             height={30}
+            fontSize={10}
             stroke={colors.accent}
             fill={mode === 'dark' ? '#1e293b' : '#f8fafc'}
             startIndex={brushStartIndex}

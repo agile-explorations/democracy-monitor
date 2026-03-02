@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, it, expect } from 'vitest';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import type { StatusTimelineEntry } from '@/lib/types/overview';
@@ -49,5 +50,40 @@ describe('StatusTimeline', () => {
   it('renders in dark mode without errors', () => {
     render(<StatusTimeline entries={sampleEntries} mode="dark" />);
     expect(screen.getByTitle('Government Worker Protections')).toBeDefined();
+  });
+
+  it('highlights header after clicking a week column', () => {
+    function Wrapper() {
+      const [selected, setSelected] = useState<string | null>(null);
+      return (
+        <StatusTimeline
+          entries={sampleEntries}
+          mode="light"
+          selectedWeek={selected}
+          onWeekHeaderClick={setSelected}
+        />
+      );
+    }
+    render(<Wrapper />);
+    // Before click — header should have muted text (not selected)
+    const headerBefore = screen.getByTitle('Jan 6');
+    expect(headerBefore.className).toContain('text-dm-muted');
+    // Click the header
+    fireEvent.click(headerBefore);
+    // After click — header should show accent text and font-semibold (selected state)
+    expect(headerBefore.className).toContain('font-semibold');
+    expect(headerBefore.className).not.toContain('text-dm-muted');
+  });
+
+  it('adds ring to data cells in selected week column', () => {
+    const { container } = render(
+      <StatusTimeline entries={sampleEntries} mode="light" selectedWeek="2026-01-13" />,
+    );
+    const cells = container.querySelectorAll('[role="cell"]');
+    // Cells for week 2026-01-13 are at indices 1 and 3 (2nd cell per row)
+    expect(cells[1].className).toContain('ring-2');
+    expect(cells[3].className).toContain('ring-2');
+    // Cells for 2026-01-06 should NOT have ring-2
+    expect(cells[0].className).not.toContain('ring-2');
   });
 });

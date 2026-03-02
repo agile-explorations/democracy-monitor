@@ -10,6 +10,7 @@ import type { CategorySummary } from '@/lib/services/category-summary-service';
 export interface CategoryTableProps {
   categories: CategorySummary[];
   readingLevel: ReadingLevel;
+  highlightWeek?: string | null;
 }
 
 function formatRatio(score: number, baseline: number): string {
@@ -17,7 +18,7 @@ function formatRatio(score: number, baseline: number): string {
   return `${(score / baseline).toFixed(1)}\u00d7`;
 }
 
-export function CategoryTable({ categories, readingLevel }: CategoryTableProps) {
+export function CategoryTable({ categories, readingLevel, highlightWeek }: CategoryTableProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const descriptionMap = new Map(CATEGORIES.map((c) => [c.key, c.description]));
@@ -48,6 +49,7 @@ export function CategoryTable({ categories, readingLevel }: CategoryTableProps) 
                 description={description}
                 isExpanded={isExpanded}
                 readingLevel={readingLevel}
+                highlightWeek={highlightWeek}
                 onToggle={() => setExpandedKey(isExpanded ? null : cat.category)}
               />
             );
@@ -63,12 +65,14 @@ function CategoryRow({
   description,
   isExpanded,
   readingLevel,
+  highlightWeek,
   onToggle,
 }: {
   cat: CategorySummary;
   description: string;
   isExpanded: boolean;
   readingLevel: ReadingLevel;
+  highlightWeek?: string | null;
   onToggle: () => void;
 }) {
   return (
@@ -120,6 +124,7 @@ function CategoryRow({
               baselineStdDev={cat.baselineStdDev}
               width={120}
               height={28}
+              highlightWeek={highlightWeek ?? undefined}
             />
           </div>
         </td>
