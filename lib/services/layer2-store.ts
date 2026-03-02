@@ -93,10 +93,14 @@ export async function getPass1Count(category: string, weekOf: string): Promise<n
 }
 
 /**
- * Get URLs that already have Pass 1 assessments (any category, same model).
+ * Get URLs that already have Pass 1 assessments for a specific category and model.
  * Used to skip redundant API calls during backfill.
  */
-export async function getExistingPass1Urls(urls: string[], model: string): Promise<Set<string>> {
+export async function getExistingPass1Urls(
+  urls: string[],
+  model: string,
+  category: string,
+): Promise<Set<string>> {
   if (!isDbAvailable() || urls.length === 0) return new Set();
   const db = getDb();
 
@@ -112,6 +116,7 @@ export async function getExistingPass1Urls(urls: string[], model: string): Promi
           inArray(aiDocumentAssessments.url, batch),
           eq(aiDocumentAssessments.pass, 1),
           eq(aiDocumentAssessments.model, model),
+          eq(aiDocumentAssessments.category, category),
         ),
       );
     for (const r of rows) found.add(r.url);
@@ -120,10 +125,13 @@ export async function getExistingPass1Urls(urls: string[], model: string): Promi
 }
 
 /**
- * Load stored Pass 1 results for a set of URLs.
+ * Load stored Pass 1 results for a set of URLs in a specific category.
  * Returns synthetic Pass1Result objects with zero token/latency metadata.
  */
-export async function loadStoredPass1Results(urls: Set<string>): Promise<Pass1Result[]> {
+export async function loadStoredPass1Results(
+  urls: Set<string>,
+  category: string,
+): Promise<Pass1Result[]> {
   if (!isDbAvailable() || urls.size === 0) return [];
   const db = getDb();
   const BATCH = 500;
@@ -143,7 +151,13 @@ export async function loadStoredPass1Results(urls: Set<string>): Promise<Pass1Re
         provider: aiDocumentAssessments.provider,
       })
       .from(aiDocumentAssessments)
-      .where(and(inArray(aiDocumentAssessments.url, batch), eq(aiDocumentAssessments.pass, 1)));
+      .where(
+        and(
+          inArray(aiDocumentAssessments.url, batch),
+          eq(aiDocumentAssessments.pass, 1),
+          eq(aiDocumentAssessments.category, category),
+        ),
+      );
 
     for (const r of rows) {
       results.push({

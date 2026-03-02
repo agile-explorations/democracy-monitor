@@ -150,10 +150,13 @@ async function runPass1Phase(
 ): Promise<Pass1Result[]> {
   const results: Pass1Result[] = [];
 
-  // Skip URLs that already have Pass 1 assessments (any category, same model)
+  // Skip URLs that already have Pass 1 assessments for this category + model
   const itemUrls = items.map((i) => i.link || i.title).filter(Boolean) as string[];
-  const existingUrls = dryRun ? new Set<string>() : await getExistingPass1Urls(itemUrls, model);
-  const existingResults = existingUrls.size > 0 ? await loadStoredPass1Results(existingUrls) : [];
+  const existingUrls = dryRun
+    ? new Set<string>()
+    : await getExistingPass1Urls(itemUrls, model, categoryKey);
+  const existingResults =
+    existingUrls.size > 0 ? await loadStoredPass1Results(existingUrls, categoryKey) : [];
   results.push(...existingResults);
 
   const newItems = items.filter((i) => !existingUrls.has(i.link || i.title));

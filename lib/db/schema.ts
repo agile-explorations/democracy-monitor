@@ -241,7 +241,12 @@ export const aiDocumentAssessments = pgTable(
   (table) => [
     index('idx_ai_doc_assess_category_week').on(table.category, table.weekOf),
     index('idx_ai_doc_assess_url').on(table.url),
-    unique('uq_ai_doc_assess_url_pass_model').on(table.url, table.pass, table.model),
+    unique('uq_ai_doc_assess_url_cat_pass_model').on(
+      table.url,
+      table.category,
+      table.pass,
+      table.model,
+    ),
   ],
 );
 

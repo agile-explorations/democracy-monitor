@@ -1,0 +1,2 @@
+ALTER TABLE "ai_document_assessments" DROP CONSTRAINT "uq_ai_doc_assess_url_pass_model";--> statement-breakpoint
+ALTER TABLE "ai_document_assessments" ADD CONSTRAINT "uq_ai_doc_assess_url_cat_pass_model" UNIQUE("url","category","pass","model");
