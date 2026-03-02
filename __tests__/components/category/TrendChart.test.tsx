@@ -45,59 +45,26 @@ const sampleData = [
 
 describe('TrendChart', () => {
   it('shows empty message when no data', () => {
-    render(<TrendChart data={[]} baselineAvg={0.3} baselineStdDev={0.1} readingLevel="summary" />);
+    render(<TrendChart data={[]} baselineAvg={0.3} baselineStdDev={0.1} />);
     expect(screen.getByText('No trend data available.')).toBeDefined();
   });
 
   it('renders the chart container with data', () => {
-    render(
-      <TrendChart
-        data={sampleData}
-        baselineAvg={0.3}
-        baselineStdDev={0.1}
-        readingLevel="summary"
-      />,
-    );
+    render(<TrendChart data={sampleData} baselineAvg={0.3} baselineStdDev={0.1} />);
     expect(screen.getByTestId('responsive-container')).toBeDefined();
     expect(screen.getByTestId('composed-chart')).toBeDefined();
   });
 
-  it('shows legend in detailed mode', () => {
-    render(
-      <TrendChart
-        data={sampleData}
-        baselineAvg={0.3}
-        baselineStdDev={0.1}
-        readingLevel="detailed"
-      />,
-    );
+  it('always shows legend', () => {
+    render(<TrendChart data={sampleData} baselineAvg={0.3} baselineStdDev={0.1} />);
     expect(screen.getByText('Decay-weighted score')).toBeDefined();
     expect(screen.getByText('Baseline avg')).toBeDefined();
-  });
-
-  it('hides legend in summary mode', () => {
-    render(
-      <TrendChart
-        data={sampleData}
-        baselineAvg={0.3}
-        baselineStdDev={0.1}
-        readingLevel="summary"
-      />,
-    );
-    expect(screen.queryByText('Decay-weighted score')).toBeNull();
   });
 
   it('hides cycle annotation when cycle year matches baseline', () => {
     // getCurrentCycleYear() returns 2 for Feb 2026, PRIMARY_BASELINE_CYCLE_YEAR = 2
     // They match, so annotation should not show.
-    render(
-      <TrendChart
-        data={sampleData}
-        baselineAvg={0.3}
-        baselineStdDev={0.1}
-        readingLevel="summary"
-      />,
-    );
+    render(<TrendChart data={sampleData} baselineAvg={0.3} baselineStdDev={0.1} />);
     expect(screen.queryByText(/Cycle context/)).toBeNull();
   });
 });

@@ -35,13 +35,13 @@ export const CONVERGENCE_STATUS_COLORS = {
   light: {
     Stable: '#94a3b8',
     Elevated: '#6366f1',
-    Divergent: '#8b5cf6',
+    Divergent: '#f59e0b',
     ConfirmedConcern: '#ef4444',
   },
   dark: {
     Stable: '#64748b',
     Elevated: '#818cf8',
-    Divergent: '#a78bfa',
+    Divergent: '#fbbf24',
     ConfirmedConcern: '#f87171',
   },
 } as const;

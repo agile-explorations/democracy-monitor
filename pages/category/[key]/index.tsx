@@ -198,7 +198,6 @@ export default function CategoryDetailPage() {
           data={weeklyData}
           baselineAvg={detail.baseline.avg}
           baselineStdDev={detail.baseline.stddev}
-          readingLevel={readingLevel}
           onWeekClick={(week) => router.push(`/category/${key}/week/${week}`)}
         />
       </div>

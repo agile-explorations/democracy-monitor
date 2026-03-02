@@ -25,7 +25,6 @@ export interface TrendChartProps {
   data: TrendDataPoint[];
   baselineAvg: number;
   baselineStdDev: number;
-  readingLevel: 'summary' | 'detailed';
   onWeekClick?: (week: string) => void;
 }
 
@@ -68,13 +67,7 @@ function ChartTooltip({
   );
 }
 
-export function TrendChart({
-  data,
-  baselineAvg,
-  baselineStdDev,
-  readingLevel,
-  onWeekClick,
-}: TrendChartProps) {
+export function TrendChart({ data, baselineAvg, baselineStdDev, onWeekClick }: TrendChartProps) {
   const { resolvedMode } = useTheme();
   const colors = useMemo(() => CHART_COLORS[resolvedMode], [resolvedMode]);
 
@@ -96,22 +89,21 @@ export function TrendChart({
 
   return (
     <div>
-      {readingLevel === 'detailed' && (
-        <div className="flex items-center gap-4 mb-3 text-[11px] text-dm-text-secondary">
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-0.5 bg-dm-accent rounded" />
-            Decay-weighted score
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-0.5 border-t border-dashed border-slate-400" />
-            Baseline avg
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-sm" />
-            Baseline ±1σ
-          </span>
-        </div>
-      )}
+      {/* Legend — always visible regardless of reading level */}
+      <div className="flex items-center gap-4 mb-3 text-[11px] text-dm-text-secondary">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-0.5 bg-dm-accent rounded" />
+          Decay-weighted score
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-0.5 border-t border-dashed border-slate-400" />
+          Baseline avg
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-2 bg-slate-200 dark:bg-slate-700 rounded-sm" />
+          Baseline ±1σ
+        </span>
+      </div>
 
       <ResponsiveContainer width="100%" height={280}>
         <ComposedChart

@@ -5,7 +5,6 @@ import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
 import { SourceHealthBar } from '@/components/landing/SourceHealthBar';
-import { CategoryDriftHeatmap } from '@/components/overview/CategoryDriftHeatmap';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
@@ -92,10 +91,6 @@ export default function Home() {
 
     return {
       ...overview,
-      heatmap: overview.heatmap.map((row) => ({
-        ...row,
-        weeks: row.weeks.slice(start, end + 1),
-      })),
       statusTimeline: overview.statusTimeline.map((entry) => ({
         ...entry,
         segments: entry.segments.slice(start, end + 1),
@@ -212,24 +207,9 @@ export default function Home() {
               />
             </section>
 
-            {/* Drift heatmap */}
-            <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
-                Convergence Score Heatmap
-              </h2>
-              <p className="text-[11px] text-dm-muted mb-3">
-                Warmer colors indicate higher convergence scores across detection layers
-              </p>
-              <CategoryDriftHeatmap
-                rows={filteredOverview?.heatmap ?? []}
-                mode={resolvedMode}
-                onCellClick={handleCellClick}
-              />
-            </section>
-
             {/* Status timeline */}
             <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Status Timeline</h2>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Status Heatmap</h2>
               <p className="text-[11px] text-dm-muted mb-3">
                 Convergence status per category over time
               </p>
