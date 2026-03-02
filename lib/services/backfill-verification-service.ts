@@ -188,7 +188,7 @@ async function getLayer2PeriodStats(from: string, to: string, category?: string)
   );
 
   const [docCount] = await db
-    .select({ total: sql<number>`count(*)::int` })
+    .select({ total: sql<number>`count(distinct ${documents.url})::int` })
     .from(documents)
     .where(and(dateFilter, catDocFilter));
 
