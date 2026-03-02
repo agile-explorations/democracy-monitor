@@ -19,14 +19,17 @@ const mockGetPaginationFitness = vi.fn().mockResolvedValue([]);
 const mockGetFrPeriodCoverage = vi.fn().mockResolvedValue([]);
 const mockGetGdeltCrossfeedCoverage = vi.fn().mockResolvedValue([]);
 
+vi.mock('@/lib/services/backfill-source-coverage', () => ({
+  getPaginationFitness: (...args: unknown[]) => mockGetPaginationFitness(...args),
+  getFrPeriodCoverage: (...args: unknown[]) => mockGetFrPeriodCoverage(...args),
+  getGdeltCrossfeedCoverage: (...args: unknown[]) => mockGetGdeltCrossfeedCoverage(...args),
+}));
+
 vi.mock('@/lib/services/backfill-verification-service', () => ({
   getDocumentCoverage: (...args: unknown[]) => mockGetDocumentCoverage(...args),
   getStageCompleteness: (...args: unknown[]) => mockGetStageCompleteness(...args),
   getBaselineCompleteness: (...args: unknown[]) => mockGetBaselineCompleteness(...args),
   getLayer2Completeness: (...args: unknown[]) => mockGetLayer2Completeness(...args),
-  getPaginationFitness: (...args: unknown[]) => mockGetPaginationFitness(...args),
-  getFrPeriodCoverage: (...args: unknown[]) => mockGetFrPeriodCoverage(...args),
-  getGdeltCrossfeedCoverage: (...args: unknown[]) => mockGetGdeltCrossfeedCoverage(...args),
 }));
 
 describe('backfill-verify', () => {

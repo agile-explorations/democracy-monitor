@@ -8,13 +8,15 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import {
+  getPaginationFitness,
+  getFrPeriodCoverage,
+  getGdeltCrossfeedCoverage,
+} from '@/lib/services/backfill-source-coverage';
+import {
   getDocumentCoverage,
   getStageCompleteness,
   getBaselineCompleteness,
   getLayer2Completeness,
-  getPaginationFitness,
-  getFrPeriodCoverage,
-  getGdeltCrossfeedCoverage,
 } from '@/lib/services/backfill-verification-service';
 import type {
   DocumentCoverage,

@@ -162,67 +162,96 @@ const L2_PERIODS = [
 const MONITORING_KEYS = CATEGORIES.map((c) => c.key);
 
 function buildL2Filters(from: string, to: string, category?: string) {
-  const catDocFilter = category
-    ? eq(documents.category, category)
-    : inArray(documents.category, MONITORING_KEYS);
-  const dateFilter = and(
-    gte(documents.publishedAt, new Date(from)),
-    lt(documents.publishedAt, new Date(to)),
-  );
-  const catAiFilter = category
-    ? eq(aiDocumentAssessments.category, category)
-    : inArray(aiDocumentAssessments.category, MONITORING_KEYS);
-  const aiDateFilter = and(
-    sql`${aiDocumentAssessments.weekOf} >= ${from}`,
-    sql`${aiDocumentAssessments.weekOf} < ${to}`,
-  );
-  return { catDocFilter, dateFilter, catAiFilter, aiDateFilter };
+  return {
+    dateFilter: and(
+      gte(documents.publishedAt, new Date(from)),
+      lt(documents.publishedAt, new Date(to)),
+    ),
+    aiDateFilter: and(
+      sql`${aiDocumentAssessments.weekOf} >= ${from}`,
+      sql`${aiDocumentAssessments.weekOf} < ${to}`,
+    ),
+    catFilter: category
+      ? eq(documents.category, category)
+      : inArray(documents.category, MONITORING_KEYS),
+    catAiFilter: category
+      ? eq(aiDocumentAssessments.category, category)
+      : inArray(aiDocumentAssessments.category, MONITORING_KEYS),
+  };
 }
 
-async function getLayer2PeriodStats(from: string, to: string, category?: string) {
+/** Query per-category L2 counts for a date range, returned as Maps keyed by category. */
+async function queryL2CountsByCategory(from: string, to: string, category?: string) {
   const db = getDb();
-  const { catDocFilter, dateFilter, catAiFilter, aiDateFilter } = buildL2Filters(
-    from,
-    to,
-    category,
-  );
+  const { dateFilter, aiDateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
 
-  const [docCount] = await db
-    .select({ total: sql<number>`count(distinct ${documents.url})::int` })
-    .from(documents)
-    .where(and(dateFilter, catDocFilter));
-
-  const [p1] = await db
+  const docRows = await db
     .select({
+      category: documents.category,
+      total: sql<number>`count(distinct ${documents.url})::int`,
+    })
+    .from(documents)
+    .where(and(dateFilter, catFilter))
+    .groupBy(documents.category);
+
+  const p1Rows = await db
+    .select({
+      category: aiDocumentAssessments.category,
       total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
       flagged: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.relevant} = true)::int`,
     })
     .from(aiDocumentAssessments)
-    .where(and(eq(aiDocumentAssessments.pass, 1), aiDateFilter, catAiFilter));
+    .where(and(eq(aiDocumentAssessments.pass, 1), aiDateFilter, catAiFilter))
+    .groupBy(aiDocumentAssessments.category);
 
   const p2Base = and(eq(aiDocumentAssessments.pass, 2), aiDateFilter, catAiFilter);
-
-  const [p2Flagged] = await db
-    .select({ total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
-    .from(aiDocumentAssessments)
-    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, false)));
-
-  const [p2Audit] = await db
+  const p2FlagRows = await db
     .select({
+      category: aiDocumentAssessments.category,
+      total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
+    })
+    .from(aiDocumentAssessments)
+    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, false)))
+    .groupBy(aiDocumentAssessments.category);
+
+  const p2AuditRows = await db
+    .select({
+      category: aiDocumentAssessments.category,
       sampled: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
       falseNegatives: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.assessment} in ('potentially_concerning', 'clearly_concerning'))::int`,
     })
     .from(aiDocumentAssessments)
-    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, true)));
+    .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, true)))
+    .groupBy(aiDocumentAssessments.category);
 
   return {
-    totalDocs: Number(docCount.total),
-    p1Total: Number(p1.total),
-    p1Flagged: Number(p1.flagged),
-    p2Flagged: Number(p2Flagged.total),
-    auditSampled: Number(p2Audit.sampled),
-    auditFalseNeg: Number(p2Audit.falseNegatives),
+    docs: new Map(docRows.map((r) => [r.category, Number(r.total)])),
+    p1: new Map(p1Rows.map((r) => [r.category, r])),
+    p2Flag: new Map(p2FlagRows.map((r) => [r.category, Number(r.total)])),
+    p2Audit: new Map(p2AuditRows.map((r) => [r.category, r])),
   };
+}
+
+/** Sum per-category L2 counts into aggregate totals for a period. */
+async function getLayer2PeriodStats(from: string, to: string, category?: string) {
+  const maps = await queryL2CountsByCategory(from, to, category);
+  const cats = category ? [category] : MONITORING_KEYS;
+
+  let totalDocs = 0,
+    p1Total = 0,
+    p1Flagged = 0,
+    p2Flagged = 0,
+    auditSampled = 0,
+    auditFalseNeg = 0;
+  for (const cat of cats) {
+    totalDocs += maps.docs.get(cat) ?? 0;
+    p1Total += Number(maps.p1.get(cat)?.total ?? 0);
+    p1Flagged += Number(maps.p1.get(cat)?.flagged ?? 0);
+    p2Flagged += maps.p2Flag.get(cat) ?? 0;
+    auditSampled += Number(maps.p2Audit.get(cat)?.sampled ?? 0);
+    auditFalseNeg += Number(maps.p2Audit.get(cat)?.falseNegatives ?? 0);
+  }
+  return { totalDocs, p1Total, p1Flagged, p2Flagged, auditSampled, auditFalseNeg };
 }
 
 export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
@@ -245,100 +274,4 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
     });
   }
   return results;
-}
-
-export async function getPaginationFitness(category?: string): Promise<PaginationFitness[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const catFilter = category ? sql`d.category = ${category}` : sql`1=1`;
-
-  const rows = await db.execute(sql`
-    select
-      d.category,
-      coalesce(d.source_origin, 'unknown') as source_origin,
-      max(weekly_count)::int as peak_weekly_count
-    from (
-      select
-        category,
-        source_origin,
-        date_trunc('week', published_at) as week,
-        count(*) as weekly_count
-      from documents d
-      where source_origin = 'courtlistener'
-        and ${catFilter}
-      group by category, source_origin, date_trunc('week', published_at)
-    ) d
-    group by d.category, d.source_origin
-    order by d.category
-  `);
-
-  return (
-    rows.rows as Array<{ category: string; source_origin: string; peak_weekly_count: number }>
-  ).map((r) => ({
-    category: r.category,
-    sourceOrigin: r.source_origin,
-    peakWeeklyCount: Number(r.peak_weekly_count),
-  }));
-}
-
-export async function getFrPeriodCoverage(category?: string): Promise<SourcePeriodCoverage[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const catFilter = category ? sql`category = ${category}` : sql`1=1`;
-
-  const rows = await db.execute(sql`
-    select
-      category,
-      case
-        when published_at >= '2022-01-20' and published_at < '2023-01-20' then 'biden_2022'
-        when published_at >= '2021-01-20' and published_at < '2022-01-20' then 'biden_2021'
-        when published_at >= '2017-01-20' and published_at < '2018-01-20' then 'trump_2017'
-        when published_at >= '2018-01-20' and published_at < '2019-01-20' then 'trump_2018'
-        when published_at >= '2025-01-20' then 'trump_t2'
-        else 'other'
-      end as period,
-      count(*)::int as count
-    from documents
-    where source_origin = 'federal_register'
-      and ${catFilter}
-    group by category, period
-    order by category, period
-  `);
-
-  return (rows.rows as Array<{ category: string; period: string; count: number }>).map((r) => ({
-    category: r.category,
-    sourceOrigin: 'federal_register',
-    period: r.period,
-    count: Number(r.count),
-  }));
-}
-
-export async function getGdeltCrossfeedCoverage(
-  category?: string,
-): Promise<SourcePeriodCoverage[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const catFilter = category ? sql`category = ${category}` : sql`1=1`;
-
-  const rows = await db.execute(sql`
-    select
-      category,
-      count(*)::int as count
-    from documents
-    where source_origin = 'gdelt'
-      and category != 'intent'
-      and ${catFilter}
-    group by category
-    order by category
-  `);
-
-  return (rows.rows as Array<{ category: string; count: number }>).map((r) => ({
-    category: r.category,
-    sourceOrigin: 'gdelt',
-    period: 'all',
-    count: Number(r.count),
-  }));
 }

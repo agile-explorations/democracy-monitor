@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  getPaginationFitness,
+  getFrPeriodCoverage,
+  getGdeltCrossfeedCoverage,
+} from '@/lib/services/backfill-source-coverage';
+import {
   getDocumentCoverage,
   getStageCompleteness,
   getBaselineCompleteness,
   getLayer2Completeness,
-  getPaginationFitness,
-  getFrPeriodCoverage,
-  getGdeltCrossfeedCoverage,
 } from '@/lib/services/backfill-verification-service';
 
 // A chainable mock that also resolves when awaited (thenable).
@@ -179,18 +181,30 @@ describe('backfill-verification-service', () => {
       const { isDbAvailable } = await import('@/lib/db');
       vi.mocked(isDbAvailable).mockReturnValue(true);
 
-      // 5 periods × 4 queries each = 20 select calls
-      // Each period: docCount, pass1Stats, pass2Flagged, pass2Audit
+      // 5 periods × 4 grouped queries each = 20 select calls
+      // Each period: docsByCategory, p1ByCategory, p2FlaggedByCategory, p2AuditByCategory
       const perPeriod = [
-        { total: '50' },
-        { total: '45', flagged: '10' },
-        { total: '8' },
-        { sampled: '30', falseNegatives: '2' },
+        [
+          { category: 'fiscal', total: '30' },
+          { category: 'military', total: '20' },
+        ],
+        [
+          { category: 'fiscal', total: '25', flagged: '6' },
+          { category: 'military', total: '20', flagged: '4' },
+        ],
+        [
+          { category: 'fiscal', total: '5' },
+          { category: 'military', total: '3' },
+        ],
+        [
+          { category: 'fiscal', sampled: '15', falseNegatives: '1' },
+          { category: 'military', sampled: '15', falseNegatives: '1' },
+        ],
       ];
       const allResults = Array.from({ length: 5 }, () => perPeriod).flat();
       let callIdx = 0;
       const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable([allResults[callIdx++]] || []);
+        return createChainable(allResults[callIdx++] || []);
       });
 
       const { getDb } = await import('@/lib/db');
