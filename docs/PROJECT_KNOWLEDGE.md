@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-02-28)
+## Current state (as of 2026-03-01)
 
 ### Categories & baselines
 
@@ -84,7 +84,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 ### Source fetchers
 
 - Fetcher module pattern: `parseParams()` + `toContentItem()` (pure, tested) + `fetchRecent()` + `fetchHistorical()` (I/O, excluded from coverage). All 4 source fetchers follow this.
-- CourtListener fetcher: `lib/services/courtlistener-fetcher.ts`, REST API v4, `COURTLISTENER_API_TOKEN` env var, 750ms rate limit, pseudo-URL `courtlistener://recap?nos=440`
+- CourtListener fetcher: `lib/services/courtlistener-fetcher.ts`, REST API v4, `COURTLISTENER_API_TOKEN` env var, 750ms rate limit, pseudo-URL `courtlistener://recap?nos=440`. `CL_BACKFILL_MAX_PAGES = 45` (900 results) — peak weekly volume is 842 (lawEnforcement, Trump T1)
 - DOJ fetcher: `lib/services/doj-fetcher.ts`, `https://www.justice.gov/api/v1/press_releases.json`, open API, pseudo-URL `doj://press?component=criminal-division`
 - DOJ frozen taxonomy: `lib/data/doj-taxonomy.ts`, 15 `DojInternalBucket` values, `classifyDojRelease()` first-match-wins, `DOJ_BUCKET_TO_CATEGORIES` maps to DM categories
 - GovInfo fetcher: `lib/services/govinfo-fetcher.ts`, REST API, `GOVINFO_API_KEY` env var, pseudo-URL `govinfo://collection?collection=GAOREPORTS`. 3 collection types: GAO_REPORTS, CRPT, PLAW.
@@ -112,12 +112,12 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Cron scripts: loadEnvConfig moved to CLI entry blocks for testability; process.exit→throw in exported functions
 - Shared utils: lib/utils/async.ts (sleep), lib/utils/collections.ts (deduplicateByUrl), lib/types/category-card.ts (AutoStatus, EnhancedData)
 - AIProvider.complete() signature: (prompt: string, options?: AICompletionOptions) → result.content (not result.text)
-- ESLint max-lines (300) + max-lines-per-function (50) enforced; data/schema/test/demo/seed/hooks/component files exempt
+- ESLint max-lines (300) + max-lines-per-function (50) enforced; data/schema/test/demo/seed/hooks/component/cron files exempt
 - OFFSET pagination tiebreaker: always add a unique column (e.g. `documents.id`) to ORDER BY when using OFFSET — without it, rows sharing the same sort value get skipped at batch boundaries (caused 8,583 missing scores before fix in `recompute-scores.ts`)
 
 ### Testing & coverage
 
-- 1525 tests across 124 test files
+- 1526 tests across 124 test files
 - Coverage thresholds: statements 73.74%, branches 69.74%, functions 75.82%, lines 74.39%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable. `autoUpdate: true` only ratchets UP thresholds — manual lowering needed when deleting test files or adding uncovered I/O paths.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
@@ -212,7 +212,7 @@ pnpm backfill --source doj --from 2025-01-20
 
 All pipeline commands are idempotent — safe to re-run on existing data:
 
-- `pnpm backfill`: skips completed ingest via `fetch_log`, always re-scores/aggregates, skips already-embedded docs
+- `pnpm backfill`: skips completed ingest via `fetch_log`, always re-scores/aggregates, skips already-embedded docs. Use `--force` to bypass `fetch_log` and re-fetch all weeks (needed after pagination cap changes)
 - `pnpm layer2:backfill`: skips weeks where Pass 1 count >= document count
 - `pnpm recompute-scores`: re-scores from `documents` table and re-aggregates (no API calls)
 - `pnpm compute-baseline-stats`: recomputes from existing aggregates/embeddings
@@ -302,4 +302,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-S1d: Backfill verification fixes — cl_first_amendment query rewrite (unquoted→quoted + qualifying terms), CourtListener NOS maxPages 10→15, immigrationEnforcement category (2 FR signals + SUPPLEMENTAL_TERMS), FEC pagination fix (offset-based), DOJ binary search off-by-one fix, OpenGrep blocking enforcement, dead code removal (246 lines from 4 services). FR backfills complete for 4 new categories. cl_first_amendment purge + FCC RSS verification deferred to pipeline redesign. Pipeline redesign proposal (BACKFILL_PIPELINE_REDESIGN.md). 1 new test (1527 total).
 - Sprint R-S1e: Backfill pipeline redesign Phase 1 — fix skip logic (score/aggregate/embed always run even when ingest skipped), incremental snapshot (API signals use historical fetchers from last stored date), compute-baseline-stats command, backfill:verify completeness check (9 checks). Removed: build-baseline command, assess-week.ts, --ingest-only/--skip-ai/--model/--no-rhetoric flags, backfillGdelt/fetchWhDocs/backfillRhetoric dead functions. recompute-scores always re-aggregates. ~580 lines removed, 4 new files, 3 new test files. Issues #184-#190. 5 new tests (1532 total). Post-sprint: added FR period coverage + GDELT cross-feed checks to backfill:verify, fixed OFFSET pagination tiebreaker in recompute-scores (59K→3 missing scores), 22 additional tests for verify/service, ran full data repair (recompute-scores + backfill embedding).
 - Sprint R-S1f: Backfill pipeline redesign Phase 2 — unified WH/GDELT/LegiScan as `--source` options, cron overlap protection (PostgreSQL advisory locks via cron_locks table), `snapshot --from/--to` for retroactive assessment, `purge:cl-noise` command for CL noise document cleanup. Removed dead fetchWhArchiveHistorical (~94 lines). Issues #191-#195. 8 new tests (1561 total across 126 files).
+- Sprint R-S1g: CourtListener pagination fix — CL maxPages 15→45 (cap 300→900), `--force` backfill flag, re-backfill all CL periods (155K docs), recomputed civilLiberties + lawEnforcement baselines. `backfill:verify` document coverage subtotals. LegiScan Pass 1 sensitivity gap documented in ARCHITECTURE_PROPOSAL.md. `pnpm format:check` added to pre-push hook. Issues #196-#199. 1526 tests across 124 files.
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

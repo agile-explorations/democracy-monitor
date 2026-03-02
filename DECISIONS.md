@@ -38,6 +38,36 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-S1g: CourtListener Pagination Fix ✅
+
+**Status: Done.** Bumped CL maxPages 15→45 (cap 300→900), added `--force` backfill flag, re-backfilled all CL periods (155K docs), recomputed baselines for civilLiberties and lawEnforcement. Document coverage subtotals added to `backfill:verify`. LegiScan Pass 1 sensitivity gap documented in architecture proposal. Issues #196-#199.
+
+**Scope vs. Actual:**
+
+- Planned (4 issues): maxPages bump (#196), verification cap update (#197), `--force` flag (#198), ROADMAP update (#199)
+- Actual: All 4 issues delivered plus 3 unplanned additions: (a) `backfill:verify` document coverage subtotals/totals with ANSI bold formatting, (b) ARCHITECTURE_PROPOSAL.md LegiScan sensitivity gap documentation, (c) `pnpm format:check` added to `.husky/pre-push` (CI parity fix)
+- Dedup of shared CL documents between civilLiberties/lawEnforcement deferred (requires week-major backfill restructuring, daily cost negligible)
+
+**Key Decisions:**
+
+1. **maxPages=45 (900 results)**: Peak weekly CL volume is 842 (lawEnforcement, Trump T1). 900 provides 7% headroom. Higher values (e.g., 60) would add unnecessary API calls for most weeks. The constant `CL_BACKFILL_MAX_PAGES` is exported from courtlistener-fetcher.ts so backfill-verify can reference the same value if needed.
+2. **`--force` bypasses fetch_log, not score/aggregate**: Force mode skips the `getCompletedWeekStarts()` check so all weeks are re-fetched, but does NOT bypass scoring, aggregation, or embedding. This is correct — the goal is re-fetching with higher pagination, not re-processing.
+3. **ANSI bold for terminal subtotals**: Used `\x1b[1m...\x1b[0m` escape codes for bold subtotals/totals in `printDocumentCoverage()`. Lightweight, no dependency, works in all modern terminals. Right-aligned with `padStart(8)` to match source count column.
+4. **`lib/cron/**`ESLint max-lines override**:`backfill-verify.ts`was already 332 lines (above 300 limit) before this sprint. CLI scripts naturally exceed 300 lines due to sequential orchestration + output formatting. Added`lib/cron/**`to the existing overrides alongside`lib/data/**`, `lib/seed/\*\*`, etc.
+5. **CI format:check parity**: CI runs `pnpm format:check` (whole-repo) but pre-commit only runs lint-staged (staged files only). Pre-existing formatting issues in `functional-classifier.ts` and `narrative-generation-service.ts` passed locally but failed CI. Added `pnpm format:check` to `.husky/pre-push` to match CI behavior.
+
+**Lessons Learned:**
+
+- **Re-backfill timing**: CL backfill for all periods (Trump T1 + Biden + Trump T2, ~155K docs) took ~2 hours total. Plan accordingly when pagination changes require full re-backfill.
+- **Terminal alignment with special characters**: Unicode checkmarks (✓/✗) and ANSI bold sequences render at different widths across terminals. Alignment required multiple iterations — test with screenshots, not just terminal output.
+- **Layer 2 false-negative clustering**: Trump T2 audit found 7/12 false negatives cluster in lawEnforcement, all LegiScan bills with `formal_override` erosion type. Source-type-specific sensitivity gaps are a real concern for Layer 2, not just Layers 1 and 3. Documented in ARCHITECTURE_PROPOSAL.md for R3 prompt development.
+
+**Spec Deviations:**
+
+- None vs. plan. The subtotals, CI fix, and sensitivity gap documentation were additive (not in original plan but requested during sprint).
+
+---
+
 ## Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
 
 **Status: Done.** Fixed backfill skip logic (score/aggregate/embed always run even when ingest is skipped), removed dead CLI flags and 3 files (~580 lines), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. 1532 tests across 124 files. Phase 2 deferred to R-S1f.
