@@ -111,21 +111,14 @@ describe('buildOverviewFromRows', () => {
     expect(result.statusCounts.Elevated).toBe(0);
   });
 
-  it('sorts heatmap/timeline by long-horizon drift descending', () => {
-    const rows = [
-      makeRow('civilService', '2026-01-06', 0.2, null, {
-        longHorizon: { cumulativeDeviation: 5.0 },
-      }),
-      makeRow('fiscal', '2026-01-06', 0.8, null, {
-        longHorizon: { cumulativeDeviation: 10.0 },
-      }),
-    ];
+  it('preserves canonical CATEGORIES order in heatmap/timeline', () => {
+    const rows = [makeRow('fiscal', '2026-01-06', 0.8), makeRow('civilService', '2026-01-06', 0.2)];
     const result = buildOverviewFromRows(rows);
 
-    // fiscal has higher drift -> should be sorted first among the categories that have data
-    const fiscalIdx = result.heatmap.findIndex((r) => r.category === 'fiscal');
+    // civilService comes before fiscal in canonical CATEGORIES array
     const csIdx = result.heatmap.findIndex((r) => r.category === 'civilService');
-    expect(fiscalIdx).toBeLessThan(csIdx);
+    const fiscalIdx = result.heatmap.findIndex((r) => r.category === 'fiscal');
+    expect(csIdx).toBeLessThan(fiscalIdx);
   });
 
   it('includes all 14 categories even when DB has no rows for some', () => {

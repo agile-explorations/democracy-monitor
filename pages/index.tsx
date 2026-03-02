@@ -48,7 +48,7 @@ export default function Home() {
         ]);
         if (catRes.ok) {
           const data: CategorySummary[] = await catRes.json();
-          setCategories([...data].sort((a, b) => b.decayWeightedScore - a.decayWeightedScore));
+          setCategories(data);
         }
         if (overviewRes.ok) setOverview(await overviewRes.json());
         if (metaRes.ok) setMeta(await metaRes.json());

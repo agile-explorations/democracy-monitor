@@ -141,28 +141,7 @@ export function buildOverviewFromRows(rows: AggregateRow[]): Omit<OverviewSummar
     elevatedCount: weekElevatedCounts.get(w) ?? 0,
   }));
 
-  const driftOrder = buildDriftSortOrder(byCat, latestWeek);
-  heatmap.sort((a, b) => (driftOrder.get(b.category) ?? 0) - (driftOrder.get(a.category) ?? 0));
-  statusTimeline.sort(
-    (a, b) => (driftOrder.get(b.category) ?? 0) - (driftOrder.get(a.category) ?? 0),
-  );
-
   return { heatmap, statusTimeline, synchrony, statusCounts };
-}
-
-/** Extract longHorizon.cumulativeDeviation from structuralDetail for sorting. */
-function buildDriftSortOrder(
-  byCat: Map<string, AggregateRow[]>,
-  latestWeek: string,
-): Map<string, number> {
-  const order = new Map<string, number>();
-  for (const [cat, rows] of byCat) {
-    const latest = rows.find((r) => r.week_of === latestWeek);
-    const detail = latest?.structural_detail as Record<string, unknown> | null;
-    const longHorizon = detail?.longHorizon as Record<string, unknown> | null;
-    order.set(cat, Number(longHorizon?.cumulativeDeviation ?? 0));
-  }
-  return order;
 }
 
 /** Fetch overview summary from DB. */
