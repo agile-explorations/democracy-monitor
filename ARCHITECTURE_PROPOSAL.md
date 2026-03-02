@@ -704,7 +704,7 @@ The structural score computation is a pure function: `computeStructuralScore(cur
 
 **Objective**: "Could this document be relevant to concerns about [category description]? When in doubt, say yes."
 
-**Input**: Document title, abstract/first 500 characters, document type, publishing agency, publication date, category description.
+**Input**: Document title, abstract/first 500 characters, document type, publishing agency, publication date, category description. For LegiScan bills: also include subject tags, bill status/progress, and sponsor party (compensates for shorter bill descriptions — see §Source-type sensitivity gap below).
 
 **Output** (structured JSON, temperature 0):
 
@@ -727,6 +727,8 @@ The structural score computation is a pure function: `computeStructuralScore(cur
 - The `erosionType` field classifies into the A/B/C framework: `formal_override`, `operational_hollowing`, `noncompliance_refusal`, `routine`, `unclear`
 - Temperature 0 for maximum reproducibility
 - The prompt does NOT reference specific keywords, current events, or administration-specific context. It describes the category's concerns in general terms ("actions that could affect the independence and professional integrity of the federal civil service"). This prevents prompt-tuning from becoming the new keyword-tuning treadmill.
+
+**Source-type sensitivity gap — LegiScan bills (validated 2026-03-01):** Pass 1 false-negative audit (Trump T2) found 7 of 12 false negatives cluster in lawEnforcement, all LegiScan bills, all `formal_override` erosion type — bills that create enforcement exemptions, parallel enforcement systems, or shield entities from prosecution (e.g., regulatory sandbox programs, AG discovery shields, CFPB authority restrictions). Pass 1 sees "bill" with a short procedural title and marks it routine; Pass 2 reads the substance and recognizes formal restructuring of enforcement power. The 2.8% false-negative rate for lawEnforcement is in the "monitor" zone (1-3%), not yet requiring prompt revision. Root cause: bill descriptions are shorter and more procedurally worded than FR documents or DOJ press releases — the same enforcement-constraining substance reads differently in legislative language. Two mitigations for Sprint R3 prompt development: (a) add prompt guidance for legislative bills specifically ("pay attention to provisions creating exemptions, immunities, sandbox programs, or parallel enforcement structures"), and (b) include LegiScan subject tags and bill status/progress metadata in Pass 1 input to compensate for shorter text. This is the first empirical evidence that source-type differences affect Layer 2, not just Layers 1 and 3 where the architecture already assumes source-type-specific handling.
 
 **Baseline flag rate**: Run Pass 1 against all four baseline periods. Record the flag rate per category (e.g., "during Biden 2022, Pass 1 flagged 3.2% of civilService documents as relevant"). This becomes the reference for "normal flag rate." Elevated flag rates relative to baseline are themselves a signal.
 
