@@ -1,8 +1,5 @@
-import { and, eq, sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
-import { getDb } from '@/lib/db';
-import { aiDocumentAssessments, documents } from '@/lib/db/schema';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
@@ -14,7 +11,14 @@ import {
   selectAuditSample,
   computeAIAssessmentSummary,
 } from './layer2-assessment-service';
-import { storePass1Assessment, storePass2Assessment, getBaselineAIFlagRate } from './layer2-store';
+import {
+  storePass1Assessment,
+  storePass2Assessment,
+  getBaselineAIFlagRate,
+  getExistingPass1Urls,
+  loadStoredPass1Results,
+  findPass2Gaps,
+} from './layer2-store';
 
 export interface Layer2Options {
   pass1Provider?: 'openai' | 'anthropic';
@@ -146,7 +150,15 @@ async function runPass1Phase(
 ): Promise<Pass1Result[]> {
   const results: Pass1Result[] = [];
 
-  for (const item of items) {
+  // Skip URLs that already have Pass 1 assessments (any category, same model)
+  const itemUrls = items.map((i) => i.link || i.title).filter(Boolean) as string[];
+  const existingUrls = dryRun ? new Set<string>() : await getExistingPass1Urls(itemUrls, model);
+  const existingResults = existingUrls.size > 0 ? await loadStoredPass1Results(existingUrls) : [];
+  results.push(...existingResults);
+
+  const newItems = items.filter((i) => !existingUrls.has(i.link || i.title));
+
+  for (const item of newItems) {
     const result = await assessPass1(item, categoryDescription, provider, model);
     if (result) {
       results.push(result);
@@ -159,9 +171,13 @@ async function runPass1Phase(
     await sleep(RATE_LIMIT_DELAY_MS);
   }
 
+  const skipped = existingResults.length;
+  const assessed = results.length - skipped;
+  const flagged = results.filter((r) => r.response.relevant).length;
   console.log(
-    `[layer2] Pass 1: ${results.length}/${items.length} assessed, ` +
-      `${results.filter((r) => r.response.relevant).length} flagged`,
+    `[layer2] Pass 1: ${assessed}/${items.length} assessed` +
+      (skipped > 0 ? `, ${skipped} cached` : '') +
+      `, ${flagged} flagged`,
   );
   return results;
 }
@@ -256,38 +272,4 @@ export async function retryMissingPass2(
   }
 
   return success;
-}
-
-interface Pass2Gap {
-  url: string;
-  signals: string[];
-  erosionType: string;
-  title: string | null;
-  content: string | null;
-}
-
-async function findPass2Gaps(category: string, weekOf: string): Promise<Pass2Gap[]> {
-  const db = getDb();
-  const rows = await db.execute(sql`
-    SELECT a1.url, a1.signals, a1.erosion_type, d.title, d.content
-    FROM ${aiDocumentAssessments} a1
-    JOIN ${documents} d ON d.url = a1.url AND d.category = a1.category
-    WHERE a1.pass = 1
-      AND a1.relevant = true
-      AND a1.category = ${category}
-      AND a1.week_of = ${weekOf}
-      AND NOT EXISTS (
-        SELECT 1 FROM ${aiDocumentAssessments} a2
-        WHERE a2.url = a1.url AND a2.category = a1.category
-          AND a2.pass = 2 AND a2.is_audit_sample = false
-      )
-  `);
-
-  return (rows.rows as Array<Record<string, unknown>>).map((r) => ({
-    url: r.url as string,
-    signals: (r.signals as string[]) ?? [],
-    erosionType: (r.erosion_type as string) ?? 'unknown',
-    title: r.title as string | null,
-    content: r.content as string | null,
-  }));
 }
