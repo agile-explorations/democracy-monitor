@@ -59,9 +59,8 @@ describe('SourceHealthBar', () => {
     expect(text).toContain('2 impaired');
   });
 
-  it('links to /health page', () => {
+  it('does not render a details link', () => {
     render(<SourceHealthBar {...makeProps()} />);
-    const link = screen.getByText(/Details/);
-    expect(link.closest('a')?.getAttribute('href')).toBe('/health');
+    expect(screen.queryByText(/Details/)).toBeNull();
   });
 });

@@ -16,7 +16,9 @@ import { CATEGORIES } from '@/lib/data/categories';
 import type { CategorySummary } from '@/lib/services/category-summary-service';
 import type { MetaAssessment } from '@/lib/services/meta-assessment-service';
 import type { SourceHealthCheck, SourceHealthSummary } from '@/lib/services/source-health-service';
+import type { ConvergenceStatus } from '@/lib/types';
 import type { OverviewSummary } from '@/lib/types/overview';
+import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export default function Home() {
   const router = useRouter();
@@ -97,6 +99,35 @@ export default function Home() {
       })),
     };
   }, [overview, activeRange]);
+
+  // Aggregate status counts across all category-weeks in the filtered range
+  const filteredStatusCounts = useMemo(() => {
+    const counts: Record<ConvergenceStatus, number> = {
+      Stable: 0,
+      Elevated: 0,
+      Divergent: 0,
+      ConfirmedConcern: 0,
+    };
+    if (!filteredOverview) return counts;
+
+    for (const entry of filteredOverview.statusTimeline) {
+      for (const seg of entry.segments) {
+        const status = seg.status ?? 'Stable';
+        counts[status]++;
+      }
+    }
+    return counts;
+  }, [filteredOverview]);
+
+  // Date range label for the status distribution heading
+  const statusRangeLabel = useMemo(() => {
+    if (!filteredOverview?.statusTimeline.length) return '';
+    const segs = filteredOverview.statusTimeline[0].segments;
+    const first = segs[0]?.week;
+    const last = segs[segs.length - 1]?.week;
+    if (!first || !last) return '';
+    return `${formatWeekLabel(first)} \u2013 ${formatWeekLabel(last)}`;
+  }, [filteredOverview]);
 
   const handlePresetChange = useCallback((preset: TimeRangePreset) => {
     setRangePreset(preset);
@@ -179,18 +210,21 @@ export default function Home() {
           <div className="space-y-8 mb-8">
             {/* Status distribution */}
             <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-3">
-                Current Status Distribution
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                Status Distribution
               </h2>
-              <OverviewStatusSummary statusCounts={overview.statusCounts} />
+              {statusRangeLabel && (
+                <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
+              )}
+              <OverviewStatusSummary statusCounts={filteredStatusCounts} />
             </section>
 
-            {/* Time range controls + synchrony chart */}
+            {/* Time range controls + elevated categories chart */}
             <section>
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <h2 className="text-sm font-semibold text-dm-text-primary">
-                    Cross-Category Synchrony
+                    Elevated Categories Over Time
                   </h2>
                   <p className="text-[11px] text-dm-muted mt-0.5">
                     Number of categories at Elevated or above per week
@@ -207,7 +241,7 @@ export default function Home() {
               />
             </section>
 
-            {/* Status timeline */}
+            {/* Status heatmap */}
             <section>
               <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Status Heatmap</h2>
               <p className="text-[11px] text-dm-muted mb-3">
@@ -224,7 +258,10 @@ export default function Home() {
 
         {/* Category table */}
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-dm-text-primary mb-3">Categories</h2>
+          <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Categories</h2>
+          <p className="text-[11px] text-dm-muted mb-3">
+            Latest week scores and 8-week sparkline trends
+          </p>
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: CATEGORIES.length }, (_, i) => (

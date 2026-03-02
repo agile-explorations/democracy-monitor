@@ -49,66 +49,78 @@ export function SynchronyChart({
 }: SynchronyChartProps) {
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
 
+  const startIdx = brushStartIndex ?? 0;
+  const endIdx = brushEndIndex ?? data.length - 1;
+  const rangeLabel = useMemo(() => {
+    if (data.length === 0) return '';
+    const startWeek = data[startIdx]?.week;
+    const endWeek = data[endIdx]?.week;
+    if (!startWeek || !endWeek) return '';
+    return `${formatWeekLabel(startWeek)} \u2013 ${formatWeekLabel(endWeek)}`;
+  }, [data, startIdx, endIdx]);
+
   if (data.length === 0) {
     return <p className="text-sm text-dm-text-secondary py-4">No synchrony data available.</p>;
   }
 
   return (
-    <ResponsiveContainer width="100%" height={250}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
-        <defs>
-          <linearGradient id="synchronyGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={colors.accent} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={colors.accent} stopOpacity={0.05} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke={colors.border} opacity={0.5} />
-        <XAxis
-          dataKey="week"
-          tickFormatter={formatWeekLabel}
-          tick={{ fontSize: 11, fill: colors.textSecondary }}
-          tickLine={false}
-          axisLine={{ stroke: colors.border }}
-        />
-        <YAxis
-          tick={{ fontSize: 11, fill: colors.textSecondary }}
-          tickLine={false}
-          axisLine={false}
-          width={30}
-          allowDecimals={false}
-          domain={[0, 'auto']}
-        />
-        <Tooltip content={<SynchronyTooltip />} />
-        <Area
-          type="monotone"
-          dataKey="elevatedCount"
-          stroke={colors.accent}
-          strokeWidth={2}
-          fill="url(#synchronyGradient)"
-        />
-        <Brush
-          dataKey="week"
-          height={30}
-          stroke={colors.accent}
-          fill={mode === 'dark' ? '#1e293b' : '#f8fafc'}
-          tickFormatter={formatWeekLabel}
-          startIndex={brushStartIndex}
-          endIndex={brushEndIndex}
-          onChange={
-            onRangeChange
-              ? (range) => {
-                  if (
-                    range &&
-                    typeof range.startIndex === 'number' &&
-                    typeof range.endIndex === 'number'
-                  ) {
-                    onRangeChange(range.startIndex, range.endIndex);
+    <div>
+      <ResponsiveContainer width="100%" height={250}>
+        <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: 0 }}>
+          <defs>
+            <linearGradient id="synchronyGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={colors.accent} stopOpacity={0.3} />
+              <stop offset="95%" stopColor={colors.accent} stopOpacity={0.05} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke={colors.border} opacity={0.5} />
+          <XAxis
+            dataKey="week"
+            tickFormatter={formatWeekLabel}
+            tick={{ fontSize: 11, fill: colors.textSecondary }}
+            tickLine={false}
+            axisLine={{ stroke: colors.border }}
+          />
+          <YAxis
+            tick={{ fontSize: 11, fill: colors.textSecondary }}
+            tickLine={false}
+            axisLine={false}
+            width={30}
+            allowDecimals={false}
+            domain={[0, 'auto']}
+          />
+          <Tooltip content={<SynchronyTooltip />} />
+          <Area
+            type="monotone"
+            dataKey="elevatedCount"
+            stroke={colors.accent}
+            strokeWidth={2}
+            fill="url(#synchronyGradient)"
+          />
+          <Brush
+            dataKey="week"
+            height={30}
+            stroke={colors.accent}
+            fill={mode === 'dark' ? '#1e293b' : '#f8fafc'}
+            startIndex={brushStartIndex}
+            endIndex={brushEndIndex}
+            onChange={
+              onRangeChange
+                ? (range) => {
+                    if (
+                      range &&
+                      typeof range.startIndex === 'number' &&
+                      typeof range.endIndex === 'number'
+                    ) {
+                      onRangeChange(range.startIndex, range.endIndex);
+                    }
                   }
-                }
-              : undefined
-          }
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+                : undefined
+            }
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+      {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
+    </div>
   );
 }

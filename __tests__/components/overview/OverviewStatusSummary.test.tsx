@@ -4,32 +4,33 @@ import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSumma
 import type { ConvergenceStatus } from '@/lib/types';
 
 describe('OverviewStatusSummary', () => {
-  it('renders badges for non-zero counts', () => {
+  it('renders stacked bar and legend for all statuses', () => {
     const statusCounts: Record<ConvergenceStatus, number> = {
-      Stable: 5,
-      Elevated: 3,
-      Divergent: 2,
-      ConfirmedConcern: 1,
+      Stable: 500,
+      Elevated: 65,
+      Divergent: 20,
+      ConfirmedConcern: 5,
     };
     render(<OverviewStatusSummary statusCounts={statusCounts} />);
-    expect(screen.getByText(/5 Stable/)).toBeDefined();
-    expect(screen.getByText(/3 Elevated/)).toBeDefined();
-    expect(screen.getByText(/2 Divergent/)).toBeDefined();
-    expect(screen.getByText(/1 Confirmed Concern/)).toBeDefined();
+    expect(screen.getByText('Stable: 500')).toBeDefined();
+    expect(screen.getByText('Elevated: 65')).toBeDefined();
+    expect(screen.getByText('Divergent: 20')).toBeDefined();
+    expect(screen.getByText('Confirmed Concern: 5')).toBeDefined();
+    expect(screen.getByText('590 total category-weeks')).toBeDefined();
   });
 
-  it('hides badges for zero counts', () => {
+  it('shows zero-count statuses in legend', () => {
     const statusCounts: Record<ConvergenceStatus, number> = {
-      Stable: 11,
+      Stable: 100,
       Elevated: 0,
       Divergent: 0,
       ConfirmedConcern: 0,
     };
     render(<OverviewStatusSummary statusCounts={statusCounts} />);
-    expect(screen.getByText(/11 Stable/)).toBeDefined();
-    expect(screen.queryByText(/Elevated/)).toBeNull();
-    expect(screen.queryByText(/Divergent/)).toBeNull();
-    expect(screen.queryByText(/Confirmed Concern/)).toBeNull();
+    expect(screen.getByText('Stable: 100')).toBeDefined();
+    expect(screen.getByText('Elevated: 0')).toBeDefined();
+    expect(screen.getByText('Divergent: 0')).toBeDefined();
+    expect(screen.getByText('Confirmed Concern: 0')).toBeDefined();
   });
 
   it('renders group with aria-label', () => {
@@ -43,5 +44,16 @@ describe('OverviewStatusSummary', () => {
     const group = container.querySelector('[role="group"]');
     expect(group).toBeDefined();
     expect(group?.getAttribute('aria-label')).toBe('Status distribution');
+  });
+
+  it('shows empty message when total is zero', () => {
+    const statusCounts: Record<ConvergenceStatus, number> = {
+      Stable: 0,
+      Elevated: 0,
+      Divergent: 0,
+      ConfirmedConcern: 0,
+    };
+    render(<OverviewStatusSummary statusCounts={statusCounts} />);
+    expect(screen.getByText('No status data available.')).toBeDefined();
   });
 });

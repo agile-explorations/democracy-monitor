@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 export interface SourceHealthBarProps {
   healthySources: number;
   degradedSources: number;
@@ -75,9 +73,6 @@ export function SourceHealthBar({
           <span className="text-dm-muted"> &middot; checked {formatCheckedAt(lastCheckedAt)}</span>
         )}
       </span>
-      <Link href="/health" className="ml-auto text-dm-accent hover:underline shrink-0">
-        Details &rarr;
-      </Link>
     </div>
   );
 }
