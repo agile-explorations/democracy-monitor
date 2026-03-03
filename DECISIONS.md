@@ -402,42 +402,14 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprints 11-12 (condensed)
+## Sprints 11-15.1 (condensed)
 
-Sprints 11, 12, and 12.1 built the seed data pipeline: import/export framework, Biden 2024 baseline backfill with AI Skeptic, review report, interactive CLI review, and DB-centric review flow. Key decisions that remain relevant:
+Sprints 11-15.1 built the seed data pipeline, keyword tuning pipeline, and cycle-aware baselines. Key surviving decisions:
 
-- **DB-centric review flow** (Sprint 12.1): `alerts` table is the single source of truth for review state. Both CLI and future UI read/write through `review-queue.ts`. JSON export is for audit only.
-- **UI Spec §10A deviation**: Changed from JSON-as-primary-store to DB-centric flow. Interactive CLI mirrors planned UI review page using the same `getPendingReviews()` / `resolveReview()` API.
-- **`reviewedDocuments` on EnhancedAssessment** (not in original spec): Stores top 10 source documents at assessment time. Essential for human reviewers.
-- **ReviewFeedbackSchema**: Shared contract (CLI, UI, `apply-decisions.ts`) with 4 feedback types: `falsePositiveKeywords`, `missingKeywords`, `suppressionSuggestions`, `tierChanges`.
-
----
-
-## Sprints 13-14.1 (condensed)
-
-Sprints 13, 14, and 14.1 built the keyword tuning pipeline: AI Skeptic structured feedback, `apply-decisions.ts`, and Biden 2022 baseline calibration (3 iterations, 42→8 alerts). Rhetoric gap analysis found zero keyword additions needed. Key decisions that remain relevant:
-
-- **`indices` → `executiveActions` rename** (Sprint 14): The `indices` key was misleading — category tracks executive action volume/tempo. DB migration applied to 9 tables. Later fully renamed in Sprint R3.3.
-- **Signal tightening over keyword removal** (Sprint 14): fiscal/elections had broad FR signal queries. Fixed at signal level (narrower queries) rather than adding suppressions.
-- **Volume thresholds**: drift 3→5, capture 2→3. Keyword hallucination filter added to AI assessment.
-- **Light fixtures strategy** (Sprint 14): Export calibrated outputs (~29MB) + document manifest, not raw documents. Raw docs reproducible via `pnpm backfill`.
-- **`source_type` inconsistency (#28)** (Sprint 14.1): Three specs define `source_type` differently. Tracked as #28, must be fixed before Sprint L (Search Infrastructure).
-
----
-
-### Baseline strategy (Sprints 14-15.1, completed)
-
-- 4 baselines: Biden 2022 (primary, Year 2), Biden 2021 (Year 1), Trump 2017 (Year 1), Trump 2018 (Year 2). All have uniform FR + GDELT + WH coverage. All re-run with AI (gpt-4o-mini) in Sprint 15.1.
-- Obama 2013 dropped (FR-only source coverage would confound comparisons).
-- Keyword refinement cycle complete: zero additions needed — dictionaries well-calibrated.
-- **Pre-Sprint L:** Normalize `source_type` values (#28)
-
-### Sprint 15 (condensed)
-
-Key decisions that remain relevant:
-
-- **Trump WH archive scraper**: `parseWhArchiveArticles` with WordPress-specific selectors. `WhArchiveConfig` interface on `BaselineConfig`. Only Trump 2017/2018 use it. _(Removed in R-S1f — dead code after monitoring-period fetcher used instead.)_
-- **Weekly aggregator date mismatch bug** (fixed): `eq(weekOf)` → range query `gte/lt` with 7-day window. Root cause: `getWeekOf()` (Monday-based) vs `getWeekRanges()` (config-date-based) — systemic mismatch, range query is a workaround.
+- **DB-centric review flow** (Sprint 12.1): `alerts` table is single source of truth. `getPendingReviews()` / `resolveReview()` API shared by CLI and future UI.
+- **4 baselines**: Biden 2022 (primary, Year 2), Biden 2021 (Year 1), Trump 2017 (Year 1), Trump 2018 (Year 2). All re-run with AI (gpt-4o-mini) in Sprint 15.1.
+- **Signal tightening over keyword removal** (Sprint 14): Fix broad queries at signal level, not via suppressions.
+- **`source_type` inconsistency (#28)**: Still tracked, must be fixed before Sprint L (Search Infrastructure).
 
 ---
 
@@ -586,71 +558,17 @@ Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US
 
 ---
 
-## Sprint 21: Signal Gap Remediation — Keyword Expansion + Baseline Regeneration (Code Work)
+## Sprint 21: Signal Gap Remediation — Keyword Expansion (Code Work)
 
-**Planned:** Add 56 operational-language keywords (Type B erosion), create admin-specific keyword overlay with date-filtered merge, add 4 new FR signal queries, add suppression rules, integrate overlay merge into assessment pipeline. Baseline regeneration deferred to run work phase.
-
-**Actual:** Code work items WI1–WI6 delivered as planned. 6 files changed (4 modified, 2 new), 17 new tests (1044 total). Run work (WI7–11: baseline regeneration, validation, export) deferred to subsequent session.
-
-**Key decisions:**
-
-- **56 keywords across 5 categories**: civilService +17, fiscal +14, igs +10, military +8, courts +7. All at warning/drift tier — operational language is inherently ambiguous, so enters at lower tier and relies on AI Skeptic for disambiguation per Phase 18.1 design principle.
-- **`getEffectiveKeywords()` in separate file**: Merge function lives in `admin-specific-keywords.ts` (not assessment-service.ts). Keeps overlay data + merge logic co-located. Assessment service imports and calls it — single line to build effective rules per category.
-- **`deriveDocumentDate()` returns first available date**: Items in a weekly batch are from the same period, so first non-null date is representative. No need to scan all items for max date.
-- **Admin overlay date comparison uses ISO string ordering**: `documentDate >= o.applicableFrom` works because ISO date strings (`YYYY-MM-DD`) sort lexicographically in date order. No `Date` object construction needed.
-- **No admin overlay when `documentDate` is undefined**: Baseline assessments don't pass document dates → only core keywords used. This ensures admin-specific terms (DOGE, "fork in the road") never affect baseline scores.
-- **4 suppression rules preemptive**: Rules for "reduction in force" (OPM guidance), "hiring freeze" (budget justification), "agency restructuring" (OMB A-11), "spending freeze" (CR notices). These anticipate false positives from expanded operational keywords in routine government documents. Will be validated during baseline regeneration.
-- **4 new FR signal queries**: `fr_workforce`, `fr_restructuring` (civilService), `fr_spending` (fiscal), `fr_ig_personnel` (igs). All use pipe-OR syntax with quoted phrases. `fr_ig_personnel` uses grouping syntax: `"inspector general" (removal | vacancy | acting | appointment)`.
-
-**Spec deviations:**
-
-- None. SIGNAL_GAP_REMEDIATION.md Phases 18 and 20.3 are the authoritative spec. All code work items delivered per spec.
-
-**What remains (run work, WI7–11):** ~~Superseded by architecture redesign.~~ Under the three-layer architecture, keyword-based baseline regeneration is unnecessary — keywords are annotations only and don't affect detection or baselines. The Sprint 21 code work (keywords, admin overlay, `getEffectiveKeywords()`) remains as annotation infrastructure. Baselines are regenerated differently in Sprints R2 (structural distributions + embeddings) and R3 (AI flag rates).
+Added 56 operational-language keywords (Type B erosion) across 5 categories, admin-specific keyword overlay with date-filtered merge (`getEffectiveKeywords()` in `admin-specific-keywords.ts`), 4 new FR signal queries, 4 suppression rules. Run work (WI7-11) superseded by architecture redesign — keywords are now annotations only.
 
 ---
 
 ## Architecture Redesign Decision (2026-02-22)
 
-**Context:** Signal gap analysis + keyword expansion efforts (Sprints 20-21) revealed a structural problem: keyword-based detection requires anticipating the specific language an administration will use. When language shifts — from formal legal terminology to operational euphemisms, branding, or novel constructs — keyword detection collapses. Expanding keywords reactively creates a treadmill where the system confirms what was already known rather than independently detecting signals.
+Replaced keyword-driven detection with three-layer triangulated architecture (Layer 1: structural anomaly, Layer 2: AI two-pass, Layer 3: thematic drift). Keywords became UI annotations only. Full design in `ARCHITECTURE_PROPOSAL.md`. Now fully implemented as of Sprint R-CAL1.
 
-**Decision:** Replace keyword-driven detection with three-layer triangulated architecture:
-
-1. **Layer 1 — Structural Anomaly Detection** (deterministic, language-immune): Statistical comparison of document metadata against baseline distributions. Volume, type composition, functional distribution, agency activity, publication tempo, source convergence, long-horizon drift.
-2. **Layer 2 — AI Two-Pass Assessment** (meaning-sensitive, every document): Pass 1 (cheap model, high recall) → Pass 2 (reasoning model, high precision on flags). Runs on ALL documents, not gated by keywords.
-3. **Layer 3 — Thematic Drift Detection** (embedding-based, language-resilient): Intra-administration rolling window detects semantic content shifts. Cross-admin comparison is secondary context only.
-
-**Convergence Synthesis:** Status = Stable / Elevated / Divergent / Confirmed Concern, based on how many independent layers agree something is unusual.
-
-**Keywords:** Exit detection pipeline entirely. Become UI annotations and research artifacts. Keyword changes trigger zero re-runs.
-
-**What this supersedes:**
-
-- Sprint 21 run work (WI7–11: keyword-based baseline regeneration)
-- Sprint 22 (rhetoric cross-feed) → absorbed into Sprint R1
-- Sprints 23-29 (UI + features) → restructured as R4 + Post-R5
-- V3 Addendum feedback learning / novel threat detection → restructured under Layers 2 and 3
-- Keyword-severity scoring as the primary detection method
-
-**What survives unchanged:**
-
-- Sprint 21 code work (keywords, admin overlay as annotation infrastructure)
-- Sprints 1-20 infrastructure (baselines, schema, embedding pipeline, UI components)
-- Source health monitoring (Sprint 17)
-- Cycle-aware adjustments (Sprint 15.1)
-- All 4 baselines (reused with extended structural distributions)
-
-**Key validation:** Spike investigation (2026-02-22) confirmed structural signals already visible in existing data:
-
-- Presidential Documents tripled in civilService (3.5% → 10.4%)
-- Excepted Service notices disappeared (18 → 0)
-- Proposed Rules declined in fiscal (11.6% → 8.5%)
-- These signals are invisible to keyword matching
-
-**Sprint sequence:** R1 (document corpus fixes) → R2 (Layer 1 + Layer 3, ~$4-7) → R3 (Layer 2, ~$47-97) → R4 (narrative + dashboard) → R5 (immigration + validation)
-
-**Full design:** `ARCHITECTURE_PROPOSAL.md` (924 lines)
-**Feasibility investigation:** `ARCHITECTURE_FEASIBILITY_ANSWERS.md`, `SPIKE_FUNCTIONAL_CLASSIFICATION_FINDINGS.md`
+Sprint 21 code work (keywords, admin overlay) survives as annotation infrastructure. Sprints 22-29 were restructured as R1-R5.
 
 ---
 
@@ -834,3 +752,32 @@ Signal gap remediation: 18 FR queries fixed (AND→OR), 5 GDELT sourcecountry:US
 - **Check DB schema before assuming column names**: `intent_weekly` has `policy_area`, not `category`. `p2025_proposals` has `dashboard_category`. Always verify against `schema.ts` before writing migration scripts.
 - **`sql.raw()` for data migrations**: Drizzle's `sql.raw()` works well for UPDATE statements. No need for raw pg client.
 - **Regenerate fixtures after DB rename**: `pnpm seed:export` after the migration script produces fixtures with correct category keys. No manual JSON editing needed for large fixture files.
+
+---
+
+## Sprint R-CL1: CourtListener Opinion Ingestion
+
+**Planned:** 12 work items: schema migration (case_id column), ContentItem type update, document-store persistence, CL fetcher (extractDocketId, fetchOpinionText, buildOpinionContentItem), document-classifier mapping, Layer 1 volume dedup, backfill-opinions script, forward pipeline integration, backfill-verify coverage, ROADMAP update, package.json script, tests.
+
+**Actual:** All 12 work items delivered. 19 files changed (15 modified, 4 new), 16 new tests (1569 total across 129 files). Migration 0028 applied. 164,494 existing CL rows backfilled with case_id. Test run: 1 opinion stored from 50 dockets (~2% for low-ID dockets), correct dates, distinct URLs, resumability verified.
+
+**Spec deviations:**
+
+- **Exclusion set over inclusion set for opinion types**: Plan assumed a whitelist of substantive types. Live testing revealed CL's `100trialcourt` label is misleading — district court opinions contain full judicial reasoning (22K chars). Switched to a small exclusion set (`050addendum`, `060remittitur`, `090onmotiontostrike`) so new CL types are included by default.
+- **Multi-opinion concatenation added (not in original plan)**: User feedback (via Claude.ai analysis) identified that taking only `sub_opinions[0]` misses dissents that may signal stronger erosion. Implemented concatenation of all substantive sub_opinions with type labels (e.g., `[DISSENT]`). In practice most CL opinions are `010combined` (already merged), so multi-opinion clusters are rare — but the implementation handles them correctly.
+- **Two-step API approach (not in original plan)**: Plan specified a single opinions endpoint call. Live testing revealed `opinion.date_created` is a CL database timestamp, not the opinion date. Switched to clusters endpoint (for `date_filed`) → opinions endpoint (for text). This adds one extra API call per docket but gets the correct date.
+- **Sanity check for CL data mislinkage (not in original plan)**: Small docket IDs (<100K) had opinion clusters linked to completely different cases (e.g., docket "Biel v St James" → opinion "Weyhrich v Nooth" from 2013). Added `opinion.dateFiled >= docket.filedDate` guard in both backfill-opinions and forward pipeline.
+
+**Key decisions:**
+
+- **Option B: opinions as new documents, not content updates**: Filings and opinions are distinct events at different timestamps with different analytical meaning ("case filed" vs. "case decided"). They belong on different weeks. Linked by `case_id` column (format: `cl:{docket_id}`).
+- **Layer 1 dedup by case_id, Layers 2/3 see both**: `buildWeekMetadata()` deduplicates by `Set(caseId ?? title)` for volume counts. Document scores and AI assessment see docket and opinion as separate items (correct — different content, different keywords).
+- **`fetchSingleOpinion` extracted as helper**: Each sub_opinion needs its own API call (type + text). Extracted for clarity and to enable the multi-opinion loop.
+- **Rate-limit delay only for multi-opinion clusters**: Single-opinion clusters (vast majority) make one API call. Multi-opinion clusters add `RATE_LIMIT_DELAY_MS` between sub_opinion fetches.
+
+**Lessons learned:**
+
+- **Always test against the live API before marking implementation complete**: The plan's API assumptions were wrong in two ways (date_created vs date_filed, data mislinkage). Both bugs were only discovered during `--limit 50` test runs, not from reading documentation.
+- **CL's opinion type enum includes misleading labels**: `100trialcourt` ("Trial Court Document") contains full district court opinions with substantive reasoning. An inclusion-set approach would have silently dropped all district court opinions. Exclusion sets are safer for enum values you don't control.
+- **CL `date_created` is a database timestamp, not a court date**: The opinions endpoint's `date_created` field reflects when CL ingested the opinion, not when the court issued it. The clusters endpoint's `date_filed` is the actual opinion date. This is not documented in CL's API docs.
+- **for...of loop mutation hazard**: `fillClOpinions` pushes new items into the array it iterates. `for...of` would iterate the new items too. Fixed with index-based loop + `const docketCount = items.length` snapshot.
