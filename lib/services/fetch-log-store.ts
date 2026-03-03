@@ -152,24 +152,77 @@ export async function getIncompleteWeeks(
   return rows;
 }
 
-/** Aggregate fetch health per week for the timeline strip. */
-export async function getWeeklyFetchHealth() {
+interface FetchLogRow {
+  weekStart: string;
+  sourceOrigin: string;
+  category: string;
+  status: string;
+  itemsFetched: number;
+  errors: string[] | null;
+}
+
+interface WeekEntry {
+  total: number;
+  complete: number;
+  partial: number;
+  failed: number;
+  sources: Array<{
+    sourceOrigin: string;
+    category: string;
+    status: string;
+    itemsFetched: number;
+    errors: string[] | null;
+  }>;
+}
+
+/** Group flat fetch_log rows into per-week summaries with source detail. */
+function groupByWeek(rows: FetchLogRow[]) {
+  const weekMap = new Map<string, WeekEntry>();
+
+  for (const row of rows) {
+    let entry = weekMap.get(row.weekStart);
+    if (!entry) {
+      entry = { total: 0, complete: 0, partial: 0, failed: 0, sources: [] };
+      weekMap.set(row.weekStart, entry);
+    }
+    entry.total++;
+    if (row.status === 'complete') entry.complete++;
+    else if (row.status === 'partial') entry.partial++;
+    else if (row.status === 'failed') entry.failed++;
+
+    entry.sources.push({
+      sourceOrigin: row.sourceOrigin,
+      category: row.category,
+      status: row.status,
+      itemsFetched: row.itemsFetched,
+      errors: row.errors,
+    });
+  }
+
+  return Array.from(weekMap.entries()).map(([week, entry]) => ({
+    week,
+    ...entry,
+  }));
+}
+
+/** Fetch health per week with per-source detail rows included. */
+export async function getWeeklyFetchHealthDetailed() {
   if (!isDbAvailable()) return [];
 
   const db = getDb();
   const rows = await db
     .select({
-      week: fetchLog.weekStart,
-      total: sql<number>`count(*)::int`,
-      complete: sql<number>`count(*) filter (where ${fetchLog.status} = 'complete')::int`,
-      partial: sql<number>`count(*) filter (where ${fetchLog.status} = 'partial')::int`,
-      failed: sql<number>`count(*) filter (where ${fetchLog.status} = 'failed')::int`,
+      weekStart: fetchLog.weekStart,
+      sourceOrigin: fetchLog.sourceOrigin,
+      category: fetchLog.category,
+      status: fetchLog.status,
+      itemsFetched: fetchLog.itemsFetched,
+      errors: fetchLog.errors,
     })
     .from(fetchLog)
-    .groupBy(fetchLog.weekStart)
-    .orderBy(fetchLog.weekStart);
+    .orderBy(fetchLog.weekStart, fetchLog.category, fetchLog.sourceOrigin);
 
-  return rows;
+  return groupByWeek(rows);
 }
 
 /** Record RSS/HTML/JSON/FR signal results in fetch_log for gap visibility. */

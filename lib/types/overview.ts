@@ -17,12 +17,21 @@ export interface SynchronyPoint {
   elevatedCount: number;
 }
 
+export interface FetchSourceDetail {
+  sourceOrigin: string;
+  category: string;
+  status: 'complete' | 'partial' | 'failed';
+  itemsFetched: number;
+  errors: string[] | null;
+}
+
 export interface FetchWeekHealth {
   week: string;
   total: number;
   complete: number;
   partial: number;
   failed: number;
+  sources?: FetchSourceDetail[];
 }
 
 export interface OverviewSummary {

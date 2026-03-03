@@ -41,6 +41,12 @@ export function formatWeekLabel(week: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+/** "Mar 2, 2025" — includes year for tooltip disambiguation. */
+export function formatWeekLabelWithYear(week: string): string {
+  const d = new Date(week + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 /** Split a date range into week-sized chunks (Monday-aligned). */
 export function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = [];
