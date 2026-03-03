@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-01)
+## Current state (as of 2026-03-02)
 
 ### Categories & baselines
 
@@ -110,14 +110,14 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `buildMetadata(item)` in document-store.ts: pure function returning `{agency?, action?, subtype?}` or null; replaces inline `{agency}` construction
 - Extracted services: convergence-service, proxy-parser, tracker-service, intent-orchestrator
 - Cron scripts: loadEnvConfig moved to CLI entry blocks for testability; process.exit→throw in exported functions
-- Shared utils: lib/utils/async.ts (sleep), lib/utils/collections.ts (deduplicateByUrl), lib/types/category-card.ts (AutoStatus, EnhancedData)
+- Shared utils: lib/utils/async.ts (sleep, mapConcurrent), lib/utils/collections.ts (deduplicateByUrl), lib/types/category-card.ts (AutoStatus, EnhancedData)
 - AIProvider.complete() signature: (prompt: string, options?: AICompletionOptions) → result.content (not result.text)
 - ESLint max-lines (300) + max-lines-per-function (50) enforced; data/schema/test/demo/seed/hooks/component/cron files exempt
 - OFFSET pagination tiebreaker: always add a unique column (e.g. `documents.id`) to ORDER BY when using OFFSET — without it, rows sharing the same sort value get skipped at batch boundaries (caused 8,583 missing scores before fix in `recompute-scores.ts`)
 
 ### Testing & coverage
 
-- 1526 tests across 124 test files
+- 1544 tests across 127 test files
 - Coverage thresholds: statements 73.74%, branches 69.74%, functions 75.82%, lines 74.39%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable. `autoUpdate: true` only ratchets UP thresholds — manual lowering needed when deleting test files or adding uncovered I/O paths.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
@@ -303,4 +303,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-S1e: Backfill pipeline redesign Phase 1 — fix skip logic (score/aggregate/embed always run even when ingest skipped), incremental snapshot (API signals use historical fetchers from last stored date), compute-baseline-stats command, backfill:verify completeness check (9 checks). Removed: build-baseline command, assess-week.ts, --ingest-only/--skip-ai/--model/--no-rhetoric flags, backfillGdelt/fetchWhDocs/backfillRhetoric dead functions. recompute-scores always re-aggregates. ~580 lines removed, 4 new files, 3 new test files. Issues #184-#190. 5 new tests (1532 total). Post-sprint: added FR period coverage + GDELT cross-feed checks to backfill:verify, fixed OFFSET pagination tiebreaker in recompute-scores (59K→3 missing scores), 22 additional tests for verify/service, ran full data repair (recompute-scores + backfill embedding).
 - Sprint R-S1f: Backfill pipeline redesign Phase 2 — unified WH/GDELT/LegiScan as `--source` options, cron overlap protection (PostgreSQL advisory locks via cron_locks table), `snapshot --from/--to` for retroactive assessment, `purge:cl-noise` command for CL noise document cleanup. Removed dead fetchWhArchiveHistorical (~94 lines). Issues #191-#195. 8 new tests (1561 total across 126 files).
 - Sprint R-S1g: CourtListener pagination fix — CL maxPages 15→45 (cap 300→900), `--force` backfill flag, re-backfill all CL periods (155K docs), recomputed civilLiberties + lawEnforcement baselines. `backfill:verify` document coverage subtotals. LegiScan Pass 1 sensitivity gap documented in ARCHITECTURE_PROPOSAL.md. `pnpm format:check` added to pre-push hook. Issues #196-#199. 1526 tests across 124 files.
+- Sprint R-OPS1: Source Health detail + Layer 2 performance — per-source detail panel in Source Fetch Health timeline (click-to-reveal with status badges, category labels, error indicators). `mapConcurrent()` bounded-concurrency utility in lib/utils/async.ts. Layer 2 backfill parallelized (Pass 1: 5, Pass 2: 3, Retry: 3). Null-content retry skip in `retryMissingPass2()`. `formatWeekLabelWithYear()` date utility. Code review: FetchStatus type narrowing, fire-and-forget DB write elimination, mapConcurrent test suite. 5 new tests (1544 total across 127 files).
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

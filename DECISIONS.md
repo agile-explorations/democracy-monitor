@@ -10,6 +10,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-OPS1: Source Health Detail + Layer 2 Performance ✅
+
+**Status: Done.** Added per-source detail panel to Source Fetch Health timeline (click-to-reveal with status badges, category labels, error indicators). Parallelized Layer 2 backfill pipeline via `mapConcurrent()` bounded-concurrency utility. Fixed infinite retry loop caused by null-content documents. 3 commits, 8 files changed, 5 new tests (1544 total across 127 files).
+
+**Scope vs. Actual:**
+
+- Planned: 3 work streams (Source Health UI, Layer 2 parallelization, null-content fix)
+- Actual: All delivered plus code review fixes (mapConcurrent test suite, FetchStatus type narrowing, fire-and-forget DB write elimination)
+
+**Key Decisions:**
+
+1. **Click-to-reveal panel over expandable table**: Initial implementation used expandable table rows for per-source detail; user rejected ("I still don't see which sources were successful"). Switched to clickable heatmap cells with a detail panel below the strip. Non-selected weeks dim to 0.4 opacity; selected week gets outline. Close via × button or click same cell again.
+2. **Single query, client-side grouping**: `getWeeklyFetchHealthDetailed()` fetches all `fetch_log` rows ordered by `(week_start, category, source_origin)`, then `groupByWeek()` groups client-side into per-week summaries with source arrays. ~1,840 rows (20 sources × 92 weeks) — manageable without server-side aggregation.
+3. **Worker-pool concurrency pattern**: `mapConcurrent()` in `lib/utils/async.ts` uses a shared `nextIndex` counter across N workers. Each worker pulls the next item, preserving input order via pre-allocated results array. Simpler than `Promise.allSettled` batching and naturally handles uneven task durations.
+4. **Skip null-content docs rather than retry**: 215 docs flagged in Pass 1 but missing Pass 2 had `content = NULL` in the documents table. Rather than attempting to fetch content, skip them — they're title-only docs that will always fail Pass 2. Logged as warning with count.
+
+**Lessons Learned:**
+
+- **Null content blocks Layer 2 Pass 2 silently**: When `retryMissingPass2()` constructs a `ContentItem` with `summary: ''`, `assessPass2()` returns null (AI can't assess empty content). The retry loop ran indefinitely on the same 215 items. Always check for data prerequisites before retrying.
+- **TypeScript literal type inference on reduce**: `return 1` / `return 0` branches cause TS to infer `0 | 1` literal union, which breaks `reduce()` overload resolution. Fix: explicit type parameter `reduce<number>(...)`.
+- **Fire-and-forget DB writes hide failures**: Code review caught `.catch(() => {})` patterns on store calls in the orchestrator. Failed writes silently lost data. Switching to `await` surfaces errors properly.
+- **UX iteration is cheaper than getting it right first time**: Three iterations (expandable table → click panel → add close button + date tooltip) took less time than extensive upfront UX design. Ship, get feedback, iterate.
+
+**Spec Deviations:**
+
+- None. Ad-hoc operational improvement work, not driven by a spec.
+
+---
+
 ## Sprint R-S1f: Backfill Pipeline Redesign (Phase 2) ✅
 
 **Status: Done.** Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL locks), added `snapshot --from/--to` for retroactive assessment, created `purge:cl-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
