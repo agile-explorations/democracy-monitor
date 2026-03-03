@@ -901,7 +901,7 @@ Source silence detection (>2× expected cadence) uses `fetchedCount` — a sourc
 
 **Phase 2 — Historical re-processing (~1 week, mostly compute time):**
 
-_Depends on: (a) R-S1d data quality fixes landed ✅, (b) R-S1e incremental snapshot deployed ✅, (c) fetch_log-based verification passes ✅, (d) Sprint R-CL1 opinion ingestion complete ✅, and (e) Sprint R-P2 data quality fixes (document_scores composite unique, GDELT metadata_only cleanup, content backfill, fresh L2 rerun). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
+_Depends on: (a) R-S1d data quality fixes landed ✅, (b) R-S1e incremental snapshot deployed ✅, (c) fetch_log-based verification passes ✅, (d) Sprint R-CL1 opinion ingestion complete ✅, and (e) Sprint R-P2 data quality fixes ✅ (document_scores composite unique, GDELT metadata_only cleanup, content backfill, fresh L2 rerun). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
 
 **Decisions (Sprint R-P2, 2026-03-03):**
 

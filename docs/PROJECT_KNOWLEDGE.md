@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-03)
+## Current state (as of 2026-03-04)
 
 ### Categories & baselines
 
@@ -118,8 +118,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Testing & coverage
 
-- 1544 tests across 127 test files
-- Coverage thresholds: statements 73.74%, branches 69.74%, functions 75.82%, lines 74.39%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable. `autoUpdate: true` only ratchets UP thresholds — manual lowering needed when deleting test files or adding uncovered I/O paths.
+- 1587 tests across 132 test files
+- Coverage thresholds: statements 72.5%, branches 67%, functions 74.5%, lines 73%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable. `autoUpdate: true` only ratchets UP thresholds — manual lowering needed when deleting test files or adding uncovered I/O paths.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
 ### Infrastructure
@@ -137,7 +137,9 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `documents` table unique constraint: `(url, category)` composite (not `url` alone) — allows same URL under multiple categories for rhetoric cross-feed
 - Weekly aggregator date mismatch fixed: range query (gte/lt 7-day window) replaces exact eq() match — document_scores use Monday-based weeks, weekly_aggregates used config-start-date-based weeks
 - `intent` category: exists in `documents` and `baselines` tables but is NOT a monitoring category (not in `CATEGORIES` array). It's a special data pipeline for rhetoric docs. Filter it out when displaying monitoring-category counts (e.g., `backfill:verify` baseline completeness).
-- `document_scores.document_id` NULL: fixed via post-store `resolveDocumentIds()` UPDATE joining on URL
+- `document_scores` unique constraint: `(url, category)` composite (not `url` alone) — allows per-category score rows for cross-fed documents. Upsert targets `[url, category]`, `resolveDocumentIds` JOINs on both
+- `documents.content_type` column: `full_text` (default) or `metadata_only` (GDELT). Metadata-only docs excluded from embedding and Layer 2 pipelines
+- `document_scores.document_id` NULL: fixed via post-store `resolveDocumentIds()` UPDATE joining on URL + category
 
 ## Known data issues
 
@@ -308,4 +310,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-CB1: Content backfill (Presidential Documents + Congressional Reports) — `pnpm backfill:content` CLI (--source fr|govinfo, --dry-run, --limit N), FR `fetchFrRawText()` + `raw_text_url` in metadata, GovInfo `fetchGovInfoText()`, forward pipeline content fill in backfill-fetchers.ts, `backfill:verify` content completeness check. CL opinion ingestion documented in ROADMAP. Issues #200-#205. 2 new tests (1546 total across 127 files).
 - Sprint R-CAL1: Layer 2 P1 calibration for civilLiberties — erosion type framework added to P1 prompt (global), civilLiberties description tightened from topic-area to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation rate 1.5% → 20.3%, audit FN rate 0.7% (1/147). 22 weeks backfilled (4,947 docs, 154 flagged). 7 new tests (1553 total across 128 files).
 - Sprint R-CL1: CourtListener opinion ingestion — `case_id` column + migration (0028), `fetchOpinionText` (two-step clusters→opinions API, concatenates all substantive sub_opinions with type labels), `buildOpinionContentItem`, `extractDocketId`, `backfill:opinions` CLI, forward pipeline auto-ingestion via `fillClOpinions`, Layer 1 volume dedup by case_id, `backfill:verify` CL opinion coverage. 164K existing rows backfilled with case_id. Issues #206-#215. 16 new tests (1569 total across 129 files).
+- Sprint R-P2: Phase 2 data reprocessing prep — `document_scores` composite unique `(url, category)` (migration 0029), `content_type` column (`full_text`/`metadata_only`) for GDELT discrimination, embedding + Layer 2 pipelines exclude `metadata_only`, WH content backfill source (`pnpm backfill:content --source wh`), `--fresh --confirm` flag for full L2 rerun, verification reporting for metadata-only counts + origin-based content completeness. Extracted `backfill-verification-layer2.ts` (fixed pre-existing lint warnings). Issues #216-#222. 18 new tests (1587 total across 132 files).
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

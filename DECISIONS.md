@@ -10,6 +10,36 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-P2: Phase 2 Data Reprocessing Prep ✅
+
+**Status: Done.** Fixed `document_scores` composite unique constraint, added `content_type` column for GDELT metadata-only discrimination, excluded metadata-only docs from embedding and Layer 2 pipelines, added WH content backfill source, added `--fresh` flag for full L2 rerun, updated verification reporting. Extracted `backfill-verification-layer2.ts` to fix pre-existing lint warnings. 1 commit, 15 files changed (13 modified, 2 new), 1587 tests across 132 files.
+
+**Scope vs. Actual:**
+
+- Planned (9 changes, 7 issues #216-#222): schema fixes (#216), document-scorer upsert (#217), backfill-verification JOIN + metadata_only (#218), embedder exclusion (#219), Layer 2 exclusion + `--fresh` flag (#220), WH content backfill (#221), ROADMAP update (#222)
+- Actual: All 7 issues delivered. Additionally fixed 2 pre-existing ESLint lint warnings by extracting `backfill-verification-layer2.ts` (Layer 2 + CL opinion queries) and `getAggregateGap()` helper from `getStageCompleteness()`. No scope changes.
+
+**Key Decisions:**
+
+1. **Composite unique `(url, category)` on `document_scores`**: The old `(url)` unique meant cross-fed documents (same URL appearing under multiple categories) shared one score row — last category scored wins, corrupting all but one. Migration 0029 drops the old constraint and adds composite unique. Upsert target and `resolveDocumentIds` JOIN both updated to match on `(url, category)`.
+2. **`content_type` column with `full_text` / `metadata_only` values**: GDELT documents are title+tone metadata only — no article body. The 60K stale GDELT embeddings polluted Layer 3 centroids. New column discriminates content completeness at the schema level. Post-migration SQL marks all GDELT docs as `metadata_only` and clears their embeddings.
+3. **Full L2 rerun via `--fresh --confirm`**: Engineering cost of selective re-assessment (identify stale rows, skip good ones) exceeds the ~$35-50 API cost of redoing everything. The `--fresh` flag deletes all `ai_document_assessments` rows before running. Requires `--confirm` as a safety gate.
+4. **WH content via regex-based HTML extraction**: Rather than adding a cheerio dependency for one source, `extractWhBody()` uses regex with CSS class selectors (`.page-content`, `.entry-content`, `article`, `main`). Backreference pattern `<(div|section)...>([\s\S]*?)</\1>` matches the correct closing tag. Handles both `whitehouse.gov` and `trumpwhitehouse.archives.gov` WordPress structures.
+5. **Verification service split**: `backfill-verification-service.ts` had grown to 386 lines (300 limit). Layer 2 completeness and CL opinion coverage queries are logically distinct from general pipeline stats. Extracted to `backfill-verification-layer2.ts` with re-exports from the original module — consumers unchanged.
+
+**Lessons Learned:**
+
+- **Drizzle constraint names may differ from schema names**: `db:generate` created `DROP CONSTRAINT "document_scores_url_unique"` but PostgreSQL named the actual constraint `document_scores_url_key`. Always query `pg_constraint` to find the real name before editing generated migration SQL. `SELECT conname FROM pg_constraint WHERE conrelid = 'document_scores'::regclass;`
+- **`git stash && cmd && git stash pop` with `&&` chaining is dangerous**: If `cmd` returns non-zero (e.g., `grep` finds no matches), `&&` prevents `git stash pop` from executing, leaving all changes stranded in the stash. Use `;` instead of `&&` before `git stash pop`, or use subshells.
+- **Regex backreferences for matching HTML tags**: A naive `</[a-z]+>` closing tag pattern matches the first closing tag inside the element (e.g., `</h1>` inside a `<div>`). Using `<(div|section)...>([\s\S]*?)</\1>` with a backreference ensures the closing tag matches the opening tag name.
+- **`vi.clearAllMocks()` does NOT reset `mockResolvedValue`**: It clears call history but mock implementations persist. Tests that override return values can leak state to subsequent tests. Use explicit `beforeEach` blocks that re-establish all mock return values.
+
+**Spec Deviations:**
+
+- None. Ad-hoc data quality sprint, not driven by a spec. All changes align with the Phase 2 reprocessing prerequisites documented in ROADMAP.md.
+
+---
+
 ## Sprint R-CAL1: Layer 2 P1 Calibration for civilLiberties ✅
 
 **Status: Done.** Fixed civilLiberties Pass 1 flag rate (73% → 3.1%) and Pass 2 confirmation rate (1.5% → 20.3%) by adding erosion type framework to P1 prompt and tightening the civilLiberties category description from topic-area to threat-vector framing. Full backfill of 22 weeks (4,947 docs assessed, 154 flagged). Audit false-negative rate 0.7% (1/147). 1 commit, 3 files changed, 7 new tests (1553 total across 128 files).
