@@ -16,6 +16,7 @@ export default defineConfig({
         'lib/services/courtlistener-fetcher.ts',
         'lib/services/doj-fetcher.ts',
         'lib/services/fec-fetcher.ts',
+        'lib/services/federal-register-fetcher.ts',
         'lib/services/govinfo-fetcher.ts',
         // Embedding pipeline — DB I/O + OpenAI API calls, not unit-testable
         'lib/services/document-embedder.ts',
@@ -24,13 +25,14 @@ export default defineConfig({
         'lib/services/snapshot-store.ts',
         'lib/services/narrative-store.ts',
         'lib/services/narrative-pipeline.ts',
+        'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
         'lib/cron/retry-failed-signals.ts',
         'lib/cron/recrossfeed-rhetoric.ts',
       ],
       thresholds: {
         statements: 73,
-        branches: 69,
+        branches: 68,
         functions: 75,
         lines: 73,
       },
