@@ -171,7 +171,7 @@ export async function fetchGovInfoText(packageId: string): Promise<string | null
     });
     if (!response.ok) return null;
     const html = await response.text();
-    const text = stripHtml(html).trim();
+    const text = stripHtml(html).replace(/\0/g, '').trim();
     return text.length > MAX_CONTENT_LENGTH
       ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
       : text || null;

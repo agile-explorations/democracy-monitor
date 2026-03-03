@@ -67,7 +67,7 @@ async function fetchRawText(rawTextUrl: string): Promise<string | null> {
     });
     if (!response.ok) return null;
     const html = await response.text();
-    const text = stripHtml(html).trim();
+    const text = stripHtml(html).replace(/\0/g, '').trim();
     return text ? truncateContent(text) : null;
   } catch {
     return null;
