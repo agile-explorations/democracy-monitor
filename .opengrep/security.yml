@@ -96,6 +96,7 @@ rules:
         # CLI entry pattern: loadEnvConfig() called in `if (require.main === module)` block
         # at the bottom, but getDb() appears in function bodies above. Rule can't trace across
         # function boundaries — these files correctly load env before calling exported functions.
+        - lib/cron/backfill-content.ts
         - lib/cron/backfill-layer2.ts
         - lib/cron/legiscan-bulk.ts
 

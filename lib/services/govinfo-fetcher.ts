@@ -1,3 +1,4 @@
+import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
@@ -6,6 +7,7 @@ const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const RATE_LIMIT_DELAY_MS = 200;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
+const MAX_CONTENT_LENGTH = 8_000;
 
 /** Collection codes supported by the GovInfo fetcher. */
 type GovInfoCollection = 'GAOREPORTS' | 'CRPT' | 'PLAW';
@@ -151,6 +153,32 @@ async function searchGovInfo(
   }
 
   return response.json();
+}
+
+/**
+ * Fetch the full HTML text for a GovInfo package and return stripped plaintext.
+ * Used for Congressional Reports where the search result has no summary.
+ */
+export async function fetchGovInfoText(packageId: string): Promise<string | null> {
+  const apiKey = getApiKey();
+  if (!apiKey) return null;
+
+  try {
+    const url = `${GOVINFO_API_BASE}/packages/${packageId}/htm?api_key=${apiKey}`;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const text = stripHtml(html).trim();
+    return text.length > MAX_CONTENT_LENGTH
+      ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
+      : text || null;
+  } catch (err) {
+    console.warn(`[govinfo-fetcher] Failed to fetch text for package ${packageId}:`, err);
+    return null;
+  }
 }
 
 /** Fetch recent GovInfo documents for the snapshot pipeline. */

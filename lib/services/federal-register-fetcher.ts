@@ -3,6 +3,8 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
 const MAX_SUMMARY_LENGTH = 800;
+const MAX_CONTENT_LENGTH = 8_000;
+const FETCH_TIMEOUT_MS = 30_000;
 
 function truncate(text: string): string {
   return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '\u2026' : text;
@@ -40,9 +42,13 @@ interface FrApiDocument {
   subtype?: string;
   action?: string;
   abstract?: string;
+  raw_text_url?: string;
 }
 
 export function toContentItem(doc: FrApiDocument): ContentItem {
+  const metadata: Record<string, unknown> = {};
+  if (doc.raw_text_url) metadata.raw_text_url = doc.raw_text_url;
+
   return {
     title: doc.title || '(document)',
     link: doc.html_url,
@@ -53,7 +59,30 @@ export function toContentItem(doc: FrApiDocument): ContentItem {
     subtype: doc.subtype,
     action: doc.action,
     sourceOrigin: 'federal_register',
+    ...(Object.keys(metadata).length > 0 && { metadata }),
   };
+}
+
+/**
+ * Fetch the raw text content for a Federal Register document.
+ * Used for Presidential Documents where `abstract` is null but `raw_text_url` is available.
+ */
+export async function fetchFrRawText(rawTextUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(rawTextUrl, {
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    const text = stripHtml(html).trim();
+    return text.length > MAX_CONTENT_LENGTH
+      ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
+      : text || null;
+  } catch (err) {
+    console.warn(`[fr-fetcher] Failed to fetch raw text from ${rawTextUrl}:`, err);
+    return null;
+  }
 }
 
 /**

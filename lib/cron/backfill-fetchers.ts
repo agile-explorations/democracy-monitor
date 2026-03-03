@@ -6,9 +6,14 @@ import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fet
 import { fetchFecHistorical, parseFecParams } from '@/lib/services/fec-fetcher';
 import {
   fetchFederalRegisterHistorical,
+  fetchFrRawText,
   parseSignalParams,
 } from '@/lib/services/federal-register-fetcher';
-import { fetchGovInfoHistorical, parseGovInfoParams } from '@/lib/services/govinfo-fetcher';
+import {
+  fetchGovInfoHistorical,
+  fetchGovInfoText,
+  parseGovInfoParams,
+} from '@/lib/services/govinfo-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
@@ -70,6 +75,28 @@ async function fetchSignalWithRetry(
   return { items: [], error: null };
 }
 
+/** Fill content for FR items that have a raw_text_url but no summary. */
+async function fillFrContent(items: ContentItem[]): Promise<void> {
+  for (const item of items) {
+    if (item.summary) continue;
+    const rawTextUrl = item.metadata?.raw_text_url as string | undefined;
+    if (!rawTextUrl) continue;
+    const text = await fetchFrRawText(rawTextUrl);
+    if (text) item.summary = text;
+  }
+}
+
+/** Fill content for GovInfo items that have a packageId but no summary. */
+async function fillGovInfoContent(items: ContentItem[]): Promise<void> {
+  for (const item of items) {
+    if (item.summary) continue;
+    const packageId = item.metadata?.packageId as string | undefined;
+    if (!packageId) continue;
+    const text = await fetchGovInfoText(packageId);
+    if (text) item.summary = text;
+  }
+}
+
 export async function fetchWeekItemsFr(
   frSignals: Array<{ url: string; type: string }>,
   week: WeekRange,
@@ -96,6 +123,8 @@ export async function fetchWeekItemsFr(
     items.push(...result.items);
     if (result.error) errors.push(result.error);
   }
+
+  await fillFrContent(items);
 
   return { items, errors };
 }
@@ -165,6 +194,8 @@ export async function fetchWeekItemsGovInfo(
     items.push(...result.items);
     if (result.error) errors.push(result.error);
   }
+
+  await fillGovInfoContent(items);
 
   return { items, errors };
 }

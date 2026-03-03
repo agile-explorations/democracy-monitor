@@ -5,6 +5,7 @@ vi.mock('@/lib/db', () => ({
   isDbAvailable: vi.fn().mockReturnValue(true),
 }));
 
+const mockGetContentCompleteness = vi.fn().mockResolvedValue([]);
 const mockGetDocumentCoverage = vi.fn().mockResolvedValue([]);
 const mockGetStageCompleteness = vi.fn().mockResolvedValue({
   totalDocuments: 100,
@@ -26,10 +27,12 @@ vi.mock('@/lib/services/backfill-source-coverage', () => ({
 }));
 
 vi.mock('@/lib/services/backfill-verification-service', () => ({
+  getContentCompleteness: (...args: unknown[]) => mockGetContentCompleteness(...args),
   getDocumentCoverage: (...args: unknown[]) => mockGetDocumentCoverage(...args),
   getStageCompleteness: (...args: unknown[]) => mockGetStageCompleteness(...args),
   getBaselineCompleteness: (...args: unknown[]) => mockGetBaselineCompleteness(...args),
   getLayer2Completeness: (...args: unknown[]) => mockGetLayer2Completeness(...args),
+  CONTENT_FIXABLE_TYPES: new Set(['Presidential Document', 'congressional_report']),
 }));
 
 describe('backfill-verify', () => {
@@ -265,5 +268,42 @@ describe('backfill-verify', () => {
     const frWarnings = report.warnings.filter((w) => w.includes('FR documents'));
     expect(frWarnings).toHaveLength(1);
     expect(frWarnings[0]).toContain('executiveActions');
+  });
+
+  it('warns for fixable null-content source types with backfill command', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+
+    mockGetContentCompleteness.mockResolvedValue([
+      { sourceType: 'Presidential Document', total: 5000, nullContent: 2586 },
+      { sourceType: 'congressional_report', total: 3800, nullContent: 3251 },
+    ]);
+
+    const report = await runVerify({});
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('2586 Presidential Document docs have null content'),
+    );
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('pnpm backfill:content --source fr'),
+    );
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('3251 congressional_report docs have null content'),
+    );
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('pnpm backfill:content --source govinfo'),
+    );
+  });
+
+  it('does not warn for non-fixable null-content source types', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+
+    mockGetContentCompleteness.mockResolvedValue([
+      { sourceType: 'docket_entry', total: 160000, nullContent: 23456 },
+    ]);
+
+    const report = await runVerify({});
+    const contentWarnings = report.warnings.filter((w) => w.includes('null content'));
+    expect(contentWarnings).toHaveLength(0);
   });
 });

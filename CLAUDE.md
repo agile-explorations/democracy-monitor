@@ -19,6 +19,7 @@ pnpm db:migrate     # Apply migrations to PostgreSQL
 pnpm snapshot              # Run daily snapshot cron (incremental fetch + full assessment)
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
+pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo, --dry-run, --limit N)
 pnpm backfill:verify       # Completeness check: doc coverage, scores, aggregates, embeddings
 pnpm compute-baseline-stats # Compute baseline statistics from existing aggregates/embeddings
 pnpm recompute-scores      # Re-score all documents + re-aggregate (after rule changes)

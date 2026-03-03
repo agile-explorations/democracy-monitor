@@ -60,6 +60,40 @@ export interface SourcePeriodCoverage {
   count: number;
 }
 
+export interface ContentCompleteness {
+  sourceType: string;
+  total: number;
+  nullContent: number;
+}
+
+/** Source types where content can be backfilled via `pnpm backfill:content`. */
+export const CONTENT_FIXABLE_TYPES = new Set(['Presidential Document', 'congressional_report']);
+
+export async function getContentCompleteness(category?: string): Promise<ContentCompleteness[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const catFilter = category ? eq(documents.category, category) : undefined;
+
+  const rows = await db
+    .select({
+      sourceType: documents.sourceType,
+      total: sql<number>`count(*)::int`,
+      nullContent: sql<number>`count(*) filter (where ${documents.content} is null)::int`,
+    })
+    .from(documents)
+    .where(catFilter)
+    .groupBy(documents.sourceType)
+    .orderBy(sql`count(*) filter (where ${documents.content} is null) desc`);
+
+  return rows
+    .filter((r) => Number(r.nullContent) > 0)
+    .map((r) => ({
+      sourceType: r.sourceType,
+      total: Number(r.total),
+      nullContent: Number(r.nullContent),
+    }));
+}
+
 export async function getDocumentCoverage(category?: string): Promise<DocumentCoverage[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();

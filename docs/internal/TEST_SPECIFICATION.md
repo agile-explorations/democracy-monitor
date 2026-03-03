@@ -171,6 +171,17 @@ These are **gates**: if any item fails, you don't ship that bundle.
   - Concrete test: `SELECT category, COUNT(*) FROM documents WHERE source_origin = 'gdelt' AND category != 'intent' GROUP BY category` returns rows for all 13 categories.
   - Critical for immigrationEnforcement, lawEnforcement, civilLiberties (new categories added after Sprint R1/R3.2 cross-feed was initially validated against 11 categories).
 
+- **Content completeness by source type**
+  - Assert `backfill:verify` reports null-content counts per `source_type`, broken down by fixable vs non-fixable.
+  - For fixable types (`Presidential Document`, `congressional_report`): assert warning is generated with actionable `pnpm backfill:content --source` command.
+  - For non-fixable types (e.g., `docket_entry`): assert displayed in content section but does NOT generate a warning.
+  - Concrete test: after `pnpm backfill:content`, assert `SELECT source_type, COUNT(*) FILTER (WHERE content IS NULL) AS null_count, COUNT(*) AS total FROM documents WHERE source_type IN ('Presidential Document', 'congressional_report') GROUP BY source_type` returns `null_count = 0` for both types.
+
+- **Post-backfill embedding reset**
+  - After `pnpm backfill:content --source fr --limit 5`, assert those 5 documents have `embedded_at IS NULL`.
+  - After `pnpm embed:missing`, assert those 5 documents have `embedded_at IS NOT NULL`.
+  - Concrete test: `SELECT COUNT(*) FROM documents WHERE source_type = 'Presidential Document' AND content IS NOT NULL AND embedded_at IS NULL` returns 0 after full embed cycle.
+
 - **Post-fix re-backfill integrity**
   - After `cl_first_amendment` query rewrite: assert zero documents remain with the old query signature (purge was complete).
   - After FR gap fill: assert lawEnforcement, civilLiberties, mediaFreedom, and immigrationEnforcement each have FR documents in all 4 baseline periods + Trump T2.

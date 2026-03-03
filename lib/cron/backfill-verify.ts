@@ -13,12 +13,15 @@ import {
   getGdeltCrossfeedCoverage,
 } from '@/lib/services/backfill-source-coverage';
 import {
+  getContentCompleteness,
   getDocumentCoverage,
   getStageCompleteness,
   getBaselineCompleteness,
   getLayer2Completeness,
+  CONTENT_FIXABLE_TYPES,
 } from '@/lib/services/backfill-verification-service';
 import type {
+  ContentCompleteness,
   DocumentCoverage,
   StageCompleteness,
   BaselineCompleteness,
@@ -36,6 +39,7 @@ interface VerifyOptions {
 
 interface VerifyReport {
   documentCoverage: DocumentCoverage[];
+  contentCompleteness: ContentCompleteness[];
   stageCompleteness: StageCompleteness;
   baselineCompleteness: BaselineCompleteness[];
   layer2Completeness: Layer2Completeness;
@@ -99,6 +103,15 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
   }
   if (s.missingAggregates > 0) {
     warnings.push(`${s.missingAggregates} weeks need aggregates (run: pnpm backfill)`);
+  }
+
+  for (const cc of report.contentCompleteness) {
+    if (CONTENT_FIXABLE_TYPES.has(cc.sourceType)) {
+      const source = cc.sourceType === 'Presidential Document' ? 'fr' : 'govinfo';
+      warnings.push(
+        `${cc.nullContent} ${cc.sourceType} docs have null content (run: pnpm backfill:content --source ${source})`,
+      );
+    }
   }
 
   const expectedBaselines = BASELINE_CONFIGS.length;
@@ -231,9 +244,25 @@ function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
   }
 }
 
+function printContentCompleteness(content: ContentCompleteness[]): void {
+  if (content.length === 0) return;
+  console.log('\n=== Content Completeness ===');
+  for (const cc of content) {
+    const pct = ((cc.nullContent / cc.total) * 100).toFixed(0);
+    const fixable = CONTENT_FIXABLE_TYPES.has(cc.sourceType);
+    const mark = fixable ? '\u26A0' : '\u2139';
+    const source = cc.sourceType === 'Presidential Document' ? 'fr' : 'govinfo';
+    const hint = fixable ? ` (run: pnpm backfill:content --source ${source})` : '';
+    console.log(
+      `  ${mark} ${cc.sourceType.padEnd(30)} ${String(cc.nullContent).padStart(7)} / ${String(cc.total).padStart(7)} null (${pct}%)${hint}`,
+    );
+  }
+}
+
 function printReport(report: VerifyReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
+  printContentCompleteness(report.contentCompleteness);
 
   console.log('\n=== Stage Completeness ===');
   const s = report.stageCompleteness;
@@ -285,9 +314,10 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
   console.log('[verify] Running completeness checks...');
   if (options.category) console.log(`[verify] Category filter: ${options.category}`);
 
-  const [coverage, completeness, baselineStat, l2, pagination, frPeriod, gdeltCrossfeed] =
+  const [coverage, content, completeness, baselineStat, l2, pagination, frPeriod, gdeltCrossfeed] =
     await Promise.all([
       getDocumentCoverage(options.category),
+      getContentCompleteness(options.category),
       getStageCompleteness(options.category),
       getBaselineCompleteness(),
       getLayer2Completeness(options.category),
@@ -298,6 +328,7 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
 
   const report: VerifyReport = {
     documentCoverage: coverage,
+    contentCompleteness: content,
     stageCompleteness: completeness,
     baselineCompleteness: baselineStat,
     layer2Completeness: l2,

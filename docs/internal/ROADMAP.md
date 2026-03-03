@@ -1093,6 +1093,14 @@ Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceAppa
 
 **Fix**: Migrate `document_scores` unique constraint from `(url)` to `(url, category)`, update the upsert in `document-scorer.ts`, update the `getStageCompleteness` JOIN in `backfill-verification-service.ts` to match on both `url` and `category`, then run `pnpm recompute-scores` to populate per-category score rows.
 
+#### CourtListener opinion ingestion (2026-03-03)
+
+**Source**: Sprint R-CB1 content backfill analysis · **Layer**: Data pipeline · **Effort**: Large (new document type + fetcher + data model)
+
+Current CL documents are RECAP docket entries (case filings). "Content" is NOS codes (~30 chars) even for the 160K that have it. ~23% of dockets have linked opinion clusters with full text (~149KB via `plain_text`). The correct fix is ingesting opinions as _new documents_ via the CL opinions search API (`type=o`) — separate rows, separate embeddings, separate AI assessments. Bolting opinion text onto docket entries conflates two document types.
+
+**Scope**: New `opinion` document type, CL opinions search API integration (`/api/rest/v4/search/?type=o`), opinion-to-docket linking via metadata, new signals for `judicialIndependence` and `civilLiberties` categories. Implications for document counts, category baselines, and structural analyzers — needs its own sprint and spec. Docket entries remain valuable for Layer 1 (structural metadata: NOS codes, filing counts, court levels).
+
 ---
 
 ### Completed
