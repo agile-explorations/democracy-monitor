@@ -10,6 +10,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CB1: Content Backfill (Presidential Documents + Congressional Reports) ✅
+
+**Status: Done.** Backfill CLI for ~5,837 null-content documents (FR Presidential Documents via `raw_text_url`, GovInfo Congressional Reports via `/packages/{id}/htm`). Forward pipeline fix ensures future fetches populate content. Content completeness check added to `backfill:verify`. 2 commits, 12 files changed, 2 new tests (1546 total across 127 files).
+
+**Scope vs. Actual:**
+
+- Planned (6 issues): FR fetcher changes (#200), GovInfo fetcher changes (#201), backfill-content CLI (#202), forward pipeline integration (#203), package.json script (#204), backfill:verify content check (#205)
+- Actual: All 6 issues delivered. #205 was added mid-sprint at user request (not in original plan). CL opinion ingestion documented in ROADMAP as future sprint. Test spec updated.
+
+**Key Decisions:**
+
+1. **Two-step FR backfill (API lookup → raw text fetch)**: Existing documents don't have `raw_text_url` in metadata (wasn't captured when originally fetched). Backfill script must first query FR API per document number to get the URL, then fetch the raw text. Forward pipeline stores `raw_text_url` in metadata via `toContentItem`, so future docs can fetch content directly.
+2. **Reuse `fetchGovInfoText` across backfill and forward pipeline**: Single function in `govinfo-fetcher.ts` serves both the CLI backfill and the `backfill-fetchers.ts` forward pipeline. FR uses the same pattern with `fetchFrRawText`.
+3. **Content truncation at 8,000 chars**: Matches the embedding context window constraints. FR Presidential Documents average ~10KB raw text; Congressional Reports can be much larger. Truncation with ellipsis preserves the most relevant content (front-loaded in both document types).
+4. **Warning only for fixable types in backfill:verify**: Content completeness displays all source types with null content, but only generates actionable warnings (with `pnpm backfill:content --source` command) for `Presidential Document` and `congressional_report`. Non-fixable types (e.g., `docket_entry` with NOS codes) shown with info icon but don't trigger warnings.
+5. **`embedded_at = NULL` reset on content update**: Updated documents get `embedded_at` reset so `pnpm embed:missing` picks them up for re-embedding. Clean separation between content backfill and embedding steps.
+
+**Lessons Learned:**
+
+- **Pre-existing coverage threshold failures**: Branch coverage was already 68.49% vs 69% threshold before the sprint. Adding I/O functions with branches tipped it further. Always check baseline coverage before starting a sprint. I/O-heavy fetcher modules and CLI scripts should be in the coverage exclude list from the start.
+- **OpenGrep `cron-needs-env-config` rule can't trace across function boundaries**: The rule triggers on `getDb()` calls not lexically inside a `loadEnvConfig(...)` block, even when `loadEnvConfig` is called in the CLI entry point before any exported function runs. Exclusion list is the correct fix (same pattern as `backfill-layer2.ts`).
+- **OpenGrep `no-silent-catch` catches intentional fallbacks**: Content fetch functions intentionally return `null` on failure (caller handles gracefully). Adding `console.warn` satisfies the rule while maintaining the intended control flow.
+
+**Spec Deviations:**
+
+- None. Ad-hoc data quality sprint, not driven by a spec.
+
+---
+
 ## Sprint R-OPS1: Source Health Detail + Layer 2 Performance ✅
 
 **Status: Done.** Added per-source detail panel to Source Fetch Health timeline (click-to-reveal with status badges, category labels, error indicators). Parallelized Layer 2 backfill pipeline via `mapConcurrent()` bounded-concurrency utility. Fixed infinite retry loop caused by null-content documents. 3 commits, 8 files changed, 5 new tests (1544 total across 127 files).
