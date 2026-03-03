@@ -166,9 +166,7 @@ async function runPass1Phase(
   const newResults = await mapConcurrent(newItems, PASS1_CONCURRENCY, async (item) => {
     const result = await assessPass1(item, categoryDescription, provider, model);
     if (result && !dryRun) {
-      storePass1Assessment(result, categoryKey, weekOf).catch((err) =>
-        console.warn(`[layer2] Pass 1 store failed for ${result.url}:`, err),
-      );
+      await storePass1Assessment(result, categoryKey, weekOf);
     }
     return result;
   });
@@ -220,9 +218,7 @@ async function runPass2Phase(
       model,
     );
     if (result && !dryRun) {
-      storePass2Assessment(result, categoryKey, weekOf).catch((err) =>
-        console.warn(`[layer2] Pass 2 store failed for ${result.url}:`, err),
-      );
+      await storePass2Assessment(result, categoryKey, weekOf);
     }
     return result;
   });

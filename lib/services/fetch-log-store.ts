@@ -169,7 +169,7 @@ interface WeekEntry {
   sources: Array<{
     sourceOrigin: string;
     category: string;
-    status: string;
+    status: FetchStatus;
     itemsFetched: number;
     errors: string[] | null;
   }>;
@@ -193,7 +193,7 @@ function groupByWeek(rows: FetchLogRow[]) {
     entry.sources.push({
       sourceOrigin: row.sourceOrigin,
       category: row.category,
-      status: row.status,
+      status: (row.status as FetchStatus) ?? 'failed',
       itemsFetched: row.itemsFetched,
       errors: row.errors,
     });
