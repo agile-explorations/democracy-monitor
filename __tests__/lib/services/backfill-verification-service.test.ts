@@ -44,6 +44,8 @@ vi.mock('@/lib/db/schema', () => ({
     embeddedAt: 'documents.embedded_at',
     publishedAt: 'documents.published_at',
     url: 'documents.url',
+    contentType: 'documents.content_type',
+    content: 'documents.content',
   },
   documentScores: {
     id: 'document_scores.id',
@@ -94,6 +96,7 @@ describe('backfill-verification-service', () => {
       totalDocuments: 0,
       missingScores: 0,
       missingEmbeddings: 0,
+      metadataOnlyCount: 0,
       totalWeeks: 0,
       missingAggregates: 0,
     });
@@ -138,7 +141,7 @@ describe('backfill-verification-service', () => {
       // The function runs 4 sequential selects. Each resolves the chainable.
       // We need to return different values for each select call.
       const results = [
-        [{ total: '100', missingEmbeddings: '5' }], // docStats
+        [{ total: '100', missingEmbeddings: '5', metadataOnlyCount: '10' }], // docStats
         [{ missingScores: '3' }], // scoreStats
         [{ totalWeeks: '20' }], // weekStats
         [{ aggWeeks: '18' }], // aggStats
@@ -157,6 +160,7 @@ describe('backfill-verification-service', () => {
         totalDocuments: 100,
         missingScores: 3,
         missingEmbeddings: 5,
+        metadataOnlyCount: 10,
         totalWeeks: 20,
         missingAggregates: 2,
       });

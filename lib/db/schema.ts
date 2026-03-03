@@ -50,6 +50,7 @@ export const documents = pgTable(
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
     metadata: jsonb('metadata'),
     sourceOrigin: varchar('source_origin', { length: 30 }),
+    contentType: varchar('content_type', { length: 20 }).notNull().default('full_text'),
     caseId: varchar('case_id', { length: 100 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
@@ -257,7 +258,7 @@ export const documentScores = pgTable(
   {
     id: serial('id').primaryKey(),
     documentId: integer('document_id'),
-    url: text('url').notNull().unique(),
+    url: text('url').notNull(),
     category: varchar('category', { length: 50 }).notNull(),
     severityScore: real('severity_score').notNull(),
     finalScore: real('final_score').notNull(),
@@ -274,6 +275,7 @@ export const documentScores = pgTable(
     weekOf: date('week_of').notNull(),
   },
   (table) => [
+    unique('uq_document_scores_url_category').on(table.url, table.category),
     index('idx_document_scores_category_week').on(table.category, table.weekOf),
     index('idx_document_scores_document_id').on(table.documentId),
     index('idx_document_scores_url').on(table.url),

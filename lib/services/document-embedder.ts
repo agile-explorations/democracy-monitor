@@ -1,4 +1,4 @@
-import { and, eq, isNull, asc } from 'drizzle-orm';
+import { and, eq, isNull, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
@@ -38,7 +38,10 @@ async function embedIndividually(texts: string[]): Promise<(number[] | null)[]> 
 async function embedOneBatch(batchSize: number, category?: string): Promise<number> {
   const db = getDb();
 
-  const conditions = [isNull(documents.embeddedAt)];
+  const conditions = [
+    isNull(documents.embeddedAt),
+    sql`${documents.contentType} != 'metadata_only'`,
+  ];
   if (category) conditions.push(eq(documents.category, category));
 
   const unembedded = await db

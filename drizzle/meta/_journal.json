@@ -204,6 +204,13 @@
       "when": 1772558295043,
       "tag": "0028_bright_carlie_cooper",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1772573365163,
+      "tag": "0029_charming_whiplash",
+      "breakpoints": true
     }
   ]
 }

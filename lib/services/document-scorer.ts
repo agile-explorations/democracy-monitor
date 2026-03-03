@@ -268,7 +268,7 @@ export async function storeDocumentScores(scores: DocumentScore[]): Promise<numb
         .insert(documentScores)
         .values(buildScoreRow(score))
         .onConflictDoUpdate({
-          target: documentScores.url,
+          target: [documentScores.url, documentScores.category],
           set: {
             severityScore: sql`excluded.severity_score`,
             finalScore: sql`excluded.final_score`,
@@ -304,7 +304,7 @@ async function resolveDocumentIds(db: ReturnType<typeof getDb>): Promise<void> {
       UPDATE document_scores ds
       SET document_id = d.id
       FROM documents d
-      WHERE ds.url = d.url AND ds.document_id IS NULL
+      WHERE ds.url = d.url AND ds.category = d.category AND ds.document_id IS NULL
     `);
   } catch (err) {
     console.error('Failed to resolve document IDs:', err);

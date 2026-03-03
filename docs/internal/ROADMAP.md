@@ -901,17 +901,25 @@ Source silence detection (>2× expected cadence) uses `fetchedCount` — a sourc
 
 **Phase 2 — Historical re-processing (~1 week, mostly compute time):**
 
-_Depends on: (a) R-S1d data quality fixes landed, (b) R-S1e incremental snapshot deployed, (c) fetch_log-based verification passes, and (d) Sprint R-CL1 opinion ingestion complete (case_id backfilled, opinions ingested). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
+_Depends on: (a) R-S1d data quality fixes landed ✅, (b) R-S1e incremental snapshot deployed ✅, (c) fetch_log-based verification passes ✅, (d) Sprint R-CL1 opinion ingestion complete ✅, and (e) Sprint R-P2 data quality fixes (document_scores composite unique, GDELT metadata_only cleanup, content backfill, fresh L2 rerun). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
 
-**7-step re-processing sequence:**
+**Decisions (Sprint R-P2, 2026-03-03):**
 
-1. Content backfill (FR + GovInfo + CL opinions) — all periods (`pnpm backfill:content`, `pnpm backfill:opinions`)
-2. Re-embed all content-updated documents (`pnpm embed:missing`)
-3. Re-score all documents (`pnpm recompute-scores`)
-4. Re-run Layer 2 (P1 for content-updated docs + baseline L2 for 3 missing categories) (`pnpm layer2:backfill`)
-5. Recompute weekly aggregates (via `pnpm backfill`)
-6. Compute baselines from corrected data (`pnpm compute-baseline-stats`)
-7. Compute layer scores (L1/L2/L3) + convergence
+- **`document_scores` fix:** Unique constraint changed from `(url)` to `(url, category)`. Cross-fed documents were sharing one score row (last category scored wins). Upsert target and resolveDocumentIds JOIN updated. Migration 0029.
+- **GDELT stays metadata-only:** GDELT Context 2.0 API has 72-hour lookback — can't backfill historical article text. Adding it to the forward pipeline would create baseline/T2 asymmetry. CREC (Congressional Record) via GovInfo is the better primary-source rhetoric path — separate sprint after Phase 2. New `content_type` column marks GDELT docs as `metadata_only`, excluding them from embedding (~60K stale vectors cleaned) and Layer 2 assessment.
+- **Full L2 rerun:** Delete all `ai_document_assessments` and re-run P1+P2. Cost ~$35-50. Engineering cost of selective re-assessment exceeds API cost. The 11K stale civilLiberties assessments under the old 73%-flag-rate prompt alone justify it.
+- **WH content backfill:** `pnpm backfill:content --source wh` added for ~4K White House docs with null content (both whitehouse.gov and trumpwhitehouse.archives.gov).
+
+**8-step re-processing sequence:**
+
+1. Schema migration + GDELT cleanup — apply migration 0029, mark GDELT as `metadata_only`, clear GDELT embeddings (~5 min)
+2. Content backfill — FR (~24K docs), GovInfo (~20 docs), WH (~4K docs), CL opinions (~25K) (`pnpm backfill:content`, `pnpm backfill:opinions`) (~2-4 hours)
+3. Re-embed all content-updated documents (`pnpm embed:missing`) (~1-2 hours, ~$1-2)
+4. Re-score all documents (`pnpm recompute-scores`) (~30 min)
+5. Full L2 rerun (`pnpm layer2:backfill --fresh --confirm --from 2017-01-20 --to 2026-03-10`) (~$35-50, overnight)
+6. Recompute aggregates + baselines (`pnpm compute-baseline-stats`) (~30 min)
+7. Verify completeness (`pnpm backfill:verify`)
+8. Compute layer scores (L1/L2/L3) + convergence
 
 **Additional prerequisites:**
 
@@ -942,6 +950,7 @@ _Depends on: (a) R-S1d data quality fixes landed, (b) R-S1e incremental snapshot
 
 **Phase 5 — P2 Deferred sources (post-launch):**
 
+- **CREC (Congressional Record) via GovInfo** — Primary-source rhetoric data replacing GDELT metadata-only gap. GovInfo has full CREC text. Would provide actual content for rhetoric analysis. Separate sprint after Phase 2 baseline computation. (Note: GDELT Context 2.0 API has 72-hour lookback only — unusable for historical backfill.)
 - Oversight.gov scraping (all 75 IGs — no API)
 - VRL partnership (calibration dataset for LegiScan AI accuracy)
 - CBO reports pipeline (fiscal — low-volume supplementary signal)

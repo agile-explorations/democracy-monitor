@@ -285,6 +285,27 @@ describe('admin overlay keyword matching', () => {
   });
 });
 
+describe('scoreDocument category isolation', () => {
+  it('produces separate scores for same URL in different categories', () => {
+    const item = {
+      title: 'Executive Order on Regulatory Freeze and Workforce Reduction',
+      link: 'https://www.federalregister.gov/documents/2025/01/22/EO-123/example',
+      pubDate: '2025-01-22T00:00:00Z',
+      type: 'Presidential Document',
+    };
+
+    const civilServiceScore = scoreDocument(item, 'civilService');
+    const rulemakingScore = scoreDocument(item, 'rulemaking');
+
+    // Same URL but separate scores per category
+    expect(civilServiceScore.url).toBe(rulemakingScore.url);
+    expect(civilServiceScore.category).toBe('civilService');
+    expect(rulemakingScore.category).toBe('rulemaking');
+    // Different categories may have different keyword matches
+    expect(civilServiceScore.category).not.toBe(rulemakingScore.category);
+  });
+});
+
 describe('scoreDocumentBatch', () => {
   it('filters out error and warning items', () => {
     const items = [

@@ -7,11 +7,11 @@
  *   pnpm layer2:backfill --from 2025-01-20 --to 2026-02-22 --category civilService
  *   pnpm layer2:backfill --dry-run
  */
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { documents } from '@/lib/db/schema';
+import { documents, aiDocumentAssessments } from '@/lib/db/schema';
 import type { Layer2Options } from '@/lib/services/layer2-orchestrator';
 import { runLayer2Assessment, retryMissingPass2 } from '@/lib/services/layer2-orchestrator';
 import { getPass1Count } from '@/lib/services/layer2-store';
@@ -25,11 +25,13 @@ interface BackfillArgs {
   category?: string;
   pass?: number;
   dryRun: boolean;
+  fresh: boolean;
+  confirm: boolean;
 }
 
 function parseArgs(): BackfillArgs {
   const args = process.argv.slice(2);
-  const result: BackfillArgs = { dryRun: false };
+  const result: BackfillArgs = { dryRun: false, fresh: false, confirm: false };
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -50,6 +52,12 @@ function parseArgs(): BackfillArgs {
         break;
       case '--dry-run':
         result.dryRun = true;
+        break;
+      case '--fresh':
+        result.fresh = true;
+        break;
+      case '--confirm':
+        result.confirm = true;
         break;
     }
   }
@@ -82,6 +90,7 @@ async function getDocumentsForCategoryWeek(
         eq(documents.category, category),
         gte(documents.publishedAt, new Date(weekOf)),
         lt(documents.publishedAt, new Date(weekEnd)),
+        sql`${documents.contentType} != 'metadata_only'`,
       ),
     );
 
@@ -110,6 +119,19 @@ function generateWeeks(from: string, to: string): string[] {
 
 export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   if (!isDbAvailable()) throw new Error('Database not available');
+
+  if (args.fresh) {
+    if (!args.confirm) {
+      console.error(
+        '[backfill-l2] --fresh requires --confirm to delete all ai_document_assessments. Aborting.',
+      );
+      return;
+    }
+    const db = getDb();
+    console.log('[backfill-l2] --fresh: deleting all ai_document_assessments...');
+    await db.delete(aiDocumentAssessments);
+    console.log('[backfill-l2] All ai_document_assessments deleted.');
+  }
 
   const { from, to } = resolveDateRange(args);
   const categories = args.category ? CATEGORIES.filter((c) => c.key === args.category) : CATEGORIES;

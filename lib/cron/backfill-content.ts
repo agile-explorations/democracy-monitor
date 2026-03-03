@@ -1,9 +1,10 @@
 /**
- * CLI: pnpm backfill:content [--source fr|govinfo] [--dry-run] [--limit N]
+ * CLI: pnpm backfill:content [--source fr|govinfo|wh] [--dry-run] [--limit N]
  *
  * Backfills null-content documents with full text:
  * - FR Presidential Documents: fetches raw_text_url from FR API, then raw text
  * - GovInfo Congressional Reports: fetches /packages/{id}/htm from GovInfo API
+ * - WH (whitehouse.gov / trumpwhitehouse.archives.gov): scrapes article body
  *
  * Sets embedded_at = NULL on updated docs so `pnpm embed:missing` re-embeds them.
  */
@@ -17,10 +18,11 @@ import { sleep } from '@/lib/utils/async';
 
 const BATCH_SIZE = 50;
 const RATE_LIMIT_MS = 200;
+const WH_RATE_LIMIT_MS = 500;
 const MAX_CONTENT_LENGTH = 8_000;
 const FR_FETCH_TIMEOUT_MS = 30_000;
 
-type Source = 'fr' | 'govinfo';
+type Source = 'fr' | 'govinfo' | 'wh';
 
 interface BackfillOptions {
   sources: Source[];
@@ -165,6 +167,98 @@ async function backfillGovInfo(options: BackfillOptions): Promise<number> {
   return updated;
 }
 
+/** CSS selectors to try for extracting article body from WH pages (priority order). */
+const WH_BODY_SELECTORS = ['.page-content', '.entry-content', 'article', 'main'];
+
+/**
+ * Extract article body text from a WH HTML page.
+ * Tries progressively broader CSS selectors; falls back to stripping all HTML.
+ */
+export function extractWhBody(html: string): string | null {
+  for (const selector of WH_BODY_SELECTORS) {
+    const regex = selectorToRegex(selector);
+    const match = html.match(regex);
+    if (match) {
+      // Class selectors use a backreference: group 1 = tag, group 2 = content
+      // Tag selectors: group 1 = content
+      const contentGroup = selector.startsWith('.') ? match[2] : match[1];
+      const text = stripHtml(contentGroup).replace(/\0/g, '').trim();
+      if (text.length > 50) return truncateContent(text);
+    }
+  }
+  // Fallback: strip all HTML
+  const text = stripHtml(html).replace(/\0/g, '').trim();
+  return text.length > 50 ? truncateContent(text) : null;
+}
+
+/** Convert a simple CSS selector to a regex that captures inner HTML. */
+function selectorToRegex(selector: string): RegExp {
+  if (selector.startsWith('.')) {
+    const className = selector.slice(1);
+    // Match a div/section with the given class, capturing content up to the closing tag
+    return new RegExp(
+      `<(div|section)[^>]*\\bclass=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)</\\1>`,
+      'i',
+    );
+  }
+  // Tag selector (article, main, etc.)
+  return new RegExp(`<${selector}[^>]*>([\\s\\S]*?)</${selector}>`, 'i');
+}
+
+async function fetchWhPageContent(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+      signal: AbortSignal.timeout(FR_FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const html = await response.text();
+    return extractWhBody(html);
+  } catch {
+    return null;
+  }
+}
+
+async function backfillWh(options: BackfillOptions): Promise<number> {
+  const db = getDb();
+
+  const rows = await db
+    .select({ id: documents.id, url: documents.url })
+    .from(documents)
+    .where(and(eq(documents.sourceOrigin, 'whitehouse'), isNull(documents.content)));
+
+  console.log(`[backfill-content] wh: ${rows.length} White House documents with null content`);
+  if (options.dryRun) return 0;
+
+  const toProcess = options.limit ? rows.slice(0, options.limit) : rows;
+  let updated = 0;
+
+  for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+    const batch = toProcess.slice(i, i + BATCH_SIZE);
+
+    for (const row of batch) {
+      if (!row.url) continue;
+
+      const content = await fetchWhPageContent(row.url);
+      if (content) {
+        await db
+          .update(documents)
+          .set({ content, embeddedAt: sql`NULL` })
+          .where(eq(documents.id, row.id));
+        updated++;
+      }
+
+      await sleep(WH_RATE_LIMIT_MS);
+    }
+
+    console.log(
+      `[backfill-content] wh: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length} processed (${updated} updated)`,
+    );
+  }
+
+  return updated;
+}
+
 async function run(options: BackfillOptions): Promise<void> {
   if (!isDbAvailable()) {
     console.error('[backfill-content] DATABASE_URL not configured');
@@ -178,6 +272,8 @@ async function run(options: BackfillOptions): Promise<void> {
       totalUpdated += await backfillFr(options);
     } else if (source === 'govinfo') {
       totalUpdated += await backfillGovInfo(options);
+    } else if (source === 'wh') {
+      totalUpdated += await backfillWh(options);
     }
   }
 
@@ -202,8 +298,11 @@ if (require.main === module) {
   const dryRun = args.includes('--dry-run');
 
   const sourceArg = sourceIdx !== -1 ? args[sourceIdx + 1] : undefined;
+  const validSources: Source[] = ['fr', 'govinfo', 'wh'];
   const sources: Source[] =
-    sourceArg === 'fr' || sourceArg === 'govinfo' ? [sourceArg] : ['fr', 'govinfo'];
+    sourceArg && validSources.includes(sourceArg as Source)
+      ? [sourceArg as Source]
+      : ['fr', 'govinfo', 'wh'];
 
   const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : null;
 

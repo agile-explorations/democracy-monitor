@@ -11,6 +11,7 @@ const mockGetStageCompleteness = vi.fn().mockResolvedValue({
   totalDocuments: 100,
   missingScores: 0,
   missingEmbeddings: 0,
+  metadataOnlyCount: 0,
   totalWeeks: 10,
   missingAggregates: 0,
 });
@@ -19,6 +20,7 @@ const mockGetLayer2Completeness = vi.fn().mockResolvedValue([]);
 const mockGetPaginationFitness = vi.fn().mockResolvedValue([]);
 const mockGetFrPeriodCoverage = vi.fn().mockResolvedValue([]);
 const mockGetGdeltCrossfeedCoverage = vi.fn().mockResolvedValue([]);
+const mockGetContentCompletenessByOrigin = vi.fn().mockResolvedValue([]);
 const mockGetClOpinionCoverage = vi.fn().mockResolvedValue(null);
 
 vi.mock('@/lib/services/backfill-source-coverage', () => ({
@@ -29,17 +31,38 @@ vi.mock('@/lib/services/backfill-source-coverage', () => ({
 
 vi.mock('@/lib/services/backfill-verification-service', () => ({
   getContentCompleteness: (...args: unknown[]) => mockGetContentCompleteness(...args),
+  getContentCompletenessByOrigin: (...args: unknown[]) =>
+    mockGetContentCompletenessByOrigin(...args),
   getDocumentCoverage: (...args: unknown[]) => mockGetDocumentCoverage(...args),
   getStageCompleteness: (...args: unknown[]) => mockGetStageCompleteness(...args),
   getBaselineCompleteness: (...args: unknown[]) => mockGetBaselineCompleteness(...args),
   getLayer2Completeness: (...args: unknown[]) => mockGetLayer2Completeness(...args),
   getClOpinionCoverage: (...args: unknown[]) => mockGetClOpinionCoverage(...args),
   CONTENT_FIXABLE_TYPES: new Set(['Presidential Document', 'congressional_report']),
+  CONTENT_FIXABLE_ORIGINS: new Map([['whitehouse', 'wh']]),
 }));
 
 describe('backfill-verify', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset all mock return values that tests may override
+    mockGetContentCompleteness.mockResolvedValue([]);
+    mockGetContentCompletenessByOrigin.mockResolvedValue([]);
+    mockGetDocumentCoverage.mockResolvedValue([]);
+    mockGetStageCompleteness.mockResolvedValue({
+      totalDocuments: 100,
+      missingScores: 0,
+      missingEmbeddings: 0,
+      metadataOnlyCount: 0,
+      totalWeeks: 10,
+      missingAggregates: 0,
+    });
+    mockGetBaselineCompleteness.mockResolvedValue([]);
+    mockGetLayer2Completeness.mockResolvedValue([]);
+    mockGetPaginationFitness.mockResolvedValue([]);
+    mockGetFrPeriodCoverage.mockResolvedValue([]);
+    mockGetGdeltCrossfeedCoverage.mockResolvedValue([]);
+    mockGetClOpinionCoverage.mockResolvedValue(null);
   });
 
   it('throws when DB is unavailable', async () => {
@@ -94,6 +117,7 @@ describe('backfill-verify', () => {
       totalDocuments: 100,
       missingScores: 15,
       missingEmbeddings: 0,
+      metadataOnlyCount: 0,
       totalWeeks: 10,
       missingAggregates: 0,
     });
@@ -110,6 +134,7 @@ describe('backfill-verify', () => {
       totalDocuments: 100,
       missingScores: 0,
       missingEmbeddings: 30,
+      metadataOnlyCount: 0,
       totalWeeks: 10,
       missingAggregates: 0,
     });
@@ -126,6 +151,7 @@ describe('backfill-verify', () => {
       totalDocuments: 100,
       missingScores: 0,
       missingEmbeddings: 0,
+      metadataOnlyCount: 0,
       totalWeeks: 10,
       missingAggregates: 3,
     });
@@ -293,6 +319,23 @@ describe('backfill-verify', () => {
     );
     expect(report.warnings).toContainEqual(
       expect.stringContaining('pnpm backfill:content --source govinfo'),
+    );
+  });
+
+  it('warns for WH origin null-content via contentCompletenessByOrigin', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+
+    mockGetContentCompletenessByOrigin.mockResolvedValue([
+      { sourceType: 'whitehouse', total: 4200, nullContent: 3800 },
+    ]);
+
+    const report = await runVerify({});
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('3800 whitehouse docs have null content'),
+    );
+    expect(report.warnings).toContainEqual(
+      expect.stringContaining('pnpm backfill:content --source wh'),
     );
   });
 

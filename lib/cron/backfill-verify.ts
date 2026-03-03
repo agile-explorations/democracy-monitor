@@ -14,12 +14,14 @@ import {
 } from '@/lib/services/backfill-source-coverage';
 import {
   getContentCompleteness,
+  getContentCompletenessByOrigin,
   getDocumentCoverage,
   getStageCompleteness,
   getBaselineCompleteness,
   getLayer2Completeness,
   getClOpinionCoverage,
   CONTENT_FIXABLE_TYPES,
+  CONTENT_FIXABLE_ORIGINS,
 } from '@/lib/services/backfill-verification-service';
 import type {
   ContentCompleteness,
@@ -42,6 +44,7 @@ interface VerifyOptions {
 interface VerifyReport {
   documentCoverage: DocumentCoverage[];
   contentCompleteness: ContentCompleteness[];
+  contentCompletenessByOrigin: ContentCompleteness[];
   stageCompleteness: StageCompleteness;
   baselineCompleteness: BaselineCompleteness[];
   layer2Completeness: Layer2Completeness;
@@ -111,6 +114,15 @@ function collectWarnings(report: VerifyReport, categoryFilter?: string): string[
   for (const cc of report.contentCompleteness) {
     if (CONTENT_FIXABLE_TYPES.has(cc.sourceType)) {
       const source = cc.sourceType === 'Presidential Document' ? 'fr' : 'govinfo';
+      warnings.push(
+        `${cc.nullContent} ${cc.sourceType} docs have null content (run: pnpm backfill:content --source ${source})`,
+      );
+    }
+  }
+
+  for (const cc of report.contentCompletenessByOrigin) {
+    const source = CONTENT_FIXABLE_ORIGINS.get(cc.sourceType);
+    if (source) {
       warnings.push(
         `${cc.nullContent} ${cc.sourceType} docs have null content (run: pnpm backfill:content --source ${source})`,
       );
@@ -247,8 +259,11 @@ function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
   }
 }
 
-function printContentCompleteness(content: ContentCompleteness[]): void {
-  if (content.length === 0) return;
+function printContentCompleteness(
+  content: ContentCompleteness[],
+  contentByOrigin: ContentCompleteness[],
+): void {
+  if (content.length === 0 && contentByOrigin.length === 0) return;
   console.log('\n=== Content Completeness ===');
   for (const cc of content) {
     const pct = ((cc.nullContent / cc.total) * 100).toFixed(0);
@@ -256,6 +271,15 @@ function printContentCompleteness(content: ContentCompleteness[]): void {
     const mark = fixable ? '\u26A0' : '\u2139';
     const source = cc.sourceType === 'Presidential Document' ? 'fr' : 'govinfo';
     const hint = fixable ? ` (run: pnpm backfill:content --source ${source})` : '';
+    console.log(
+      `  ${mark} ${cc.sourceType.padEnd(30)} ${String(cc.nullContent).padStart(7)} / ${String(cc.total).padStart(7)} null (${pct}%)${hint}`,
+    );
+  }
+  for (const cc of contentByOrigin) {
+    const pct = ((cc.nullContent / cc.total) * 100).toFixed(0);
+    const source = CONTENT_FIXABLE_ORIGINS.get(cc.sourceType);
+    const mark = source ? '\u26A0' : '\u2139';
+    const hint = source ? ` (run: pnpm backfill:content --source ${source})` : '';
     console.log(
       `  ${mark} ${cc.sourceType.padEnd(30)} ${String(cc.nullContent).padStart(7)} / ${String(cc.total).padStart(7)} null (${pct}%)${hint}`,
     );
@@ -283,12 +307,17 @@ function printClOpinionCoverage(cl: ClOpinionCoverage | null): void {
 function printReport(report: VerifyReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
-  printContentCompleteness(report.contentCompleteness);
+  printContentCompleteness(report.contentCompleteness, report.contentCompletenessByOrigin);
 
   console.log('\n=== Stage Completeness ===');
   const s = report.stageCompleteness;
   console.log(`  Documents missing scores:      ${s.missingScores} / ${s.totalDocuments}`);
   console.log(`  Documents missing embeddings:  ${s.missingEmbeddings} / ${s.totalDocuments}`);
+  if (s.metadataOnlyCount > 0) {
+    console.log(
+      `  Metadata-only (excluded):      ${s.metadataOnlyCount} (not counted in missing embeddings)`,
+    );
+  }
   console.log(`  Weeks missing aggregates:      ${s.missingAggregates} / ${s.totalWeeks}`);
 
   console.log('\n=== Baseline Completeness ===');
@@ -339,6 +368,7 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
   const [
     coverage,
     content,
+    contentByOrigin,
     completeness,
     baselineStat,
     l2,
@@ -349,6 +379,7 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
   ] = await Promise.all([
     getDocumentCoverage(options.category),
     getContentCompleteness(options.category),
+    getContentCompletenessByOrigin(options.category),
     getStageCompleteness(options.category),
     getBaselineCompleteness(),
     getLayer2Completeness(options.category),
@@ -361,6 +392,7 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
   const report: VerifyReport = {
     documentCoverage: coverage,
     contentCompleteness: content,
+    contentCompletenessByOrigin: contentByOrigin,
     stageCompleteness: completeness,
     baselineCompleteness: baselineStat,
     layer2Completeness: l2,
