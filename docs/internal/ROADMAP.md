@@ -899,14 +899,23 @@ Source silence detection (>2× expected cadence) uses `fetchedCount` — a sourc
 - Integration: snapshot with incremental fetch stores all documents (not just first 20)
 - Integration: LegiScan weekly cron stores bills + runs Layer 2 + records source health
 
-**Phase 2 — Historical backfill (~1 week, mostly compute time):**
+**Phase 2 — Historical re-processing (~1 week, mostly compute time):**
 
-_Depends on: (a) R-S1d data quality fixes landed (cl_first_amendment query scoped, FR gaps filled, immigrationEnforcement added, NOS maxPages bumped), (b) R-S1e incremental snapshot deployed and running (no more silent data loss from 20-item cap), and (c) fetch_log-based verification passes — API-vs-DB counts within tolerance per source type per baseline period. All three conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
+_Depends on: (a) R-S1d data quality fixes landed, (b) R-S1e incremental snapshot deployed, (c) fetch_log-based verification passes, and (d) Sprint R-CL1 opinion ingestion complete (case_id backfilled, opinions ingested). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
 
-- Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
-- All validated sources have 2017+ archives
-- Route documents through category assignment logic with source-type tagging
-- **Re-cross-feed existing GDELT rhetoric corpus to 13 categories.** The Sprint R1/R3.2 cross-feed was built and validated against 11 categories. Three new categories (lawEnforcement, civilLiberties, immigrationEnforcement) have no GDELT cross-feed rows. Re-run `crossfeedRhetoricToCategories()` against the existing ~57K rhetoric documents with the updated `categories.ts` (which now includes all 13 categories and their signals). One-time batch operation. This is required before baseline computation — without it, the 3 new categories have FR-only baselines and source convergence is a no-op for them. For immigrationEnforcement specifically, GDELT is essential (FR volume is only ~5-6/wk).
+**7-step re-processing sequence:**
+
+1. Content backfill (FR + GovInfo + CL opinions) — all periods (`pnpm backfill:content`, `pnpm backfill:opinions`)
+2. Re-embed all content-updated documents (`pnpm embed:missing`)
+3. Re-score all documents (`pnpm recompute-scores`)
+4. Re-run Layer 2 (P1 for content-updated docs + baseline L2 for 3 missing categories) (`pnpm layer2:backfill`)
+5. Recompute weekly aggregates (via `pnpm backfill`)
+6. Compute baselines from corrected data (`pnpm compute-baseline-stats`)
+7. Compute layer scores (L1/L2/L3) + convergence
+
+**Additional prerequisites:**
+
+- Re-cross-feed existing GDELT rhetoric corpus to 13 categories (Sprint R1/R3.2 cross-feed covers 11; lawEnforcement, civilLiberties, immigrationEnforcement need GDELT rows)
 
 **Phase 3 — Per-source-type baseline computation + Layer 2 enhancement:**
 
@@ -1093,18 +1102,17 @@ Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceAppa
 
 **Fix**: Migrate `document_scores` unique constraint from `(url)` to `(url, category)`, update the upsert in `document-scorer.ts`, update the `getStageCompleteness` JOIN in `backfill-verification-service.ts` to match on both `url` and `category`, then run `pnpm recompute-scores` to populate per-category score rows.
 
-#### CourtListener opinion ingestion (2026-03-03)
+#### CourtListener opinion ingestion (2026-03-03) — COMPLETED (Sprint R-CL1)
 
-**Source**: Sprint R-CB1 content backfill analysis · **Layer**: Data pipeline · **Effort**: Large (new document type + fetcher + data model)
+**Decision: Option B** — opinions as new documents (type `judicial_opinion`), linked to parent dockets by `case_id` column on `documents` table. Filings and opinions are distinct events at different moments with different analytical meaning: "case filed" (institutional pushback) vs. "case decided" (judicial constraint). They belong on different weeks because they happened on different weeks.
 
-Current CL documents are RECAP docket entries (case filings). "Content" is NOS codes (~30 chars) even for the 160K that have it. ~23% of dockets have linked opinion clusters with full text (~149KB via `plain_text`). The correct fix is ingesting opinions as _new documents_ via the CL opinions search API (`type=o`) — separate rows, separate embeddings, separate AI assessments. Bolting opinion text onto docket entries conflates two document types.
-
-**Scope**: New `opinion` document type, CL opinions search API integration (`/api/rest/v4/search/?type=o`), opinion-to-docket linking via metadata, new signals for `judicialIndependence` and `civilLiberties` categories. Implications for document counts, category baselines, and structural analyzers — needs its own sprint and spec. Docket entries remain valuable for Layer 1 (structural metadata: NOS codes, filing counts, court levels).
+**Implementation**: `case_id` column on `documents` (format: `cl:{docket_id}`). Opinion text fetched via `GET /api/rest/v4/opinions/?cluster__docket={ID}`. Layer 1 deduplicates by `case_id` for volume counts; Layers 2 and 3 see both documents. Forward pipeline (`backfill-fetchers.ts`) automatically fetches opinions alongside new docket entries. Backfill script: `pnpm backfill:opinions`.
 
 ---
 
 ### Completed
 
+- **CourtListener opinion ingestion** (Sprint R-CL1): Option B — opinions as new `judicial_opinion` documents linked via `case_id`. Schema migration, CL opinions API integration, `backfill:opinions` script, forward pipeline auto-ingestion, Layer 1 volume dedup by `case_id`. 164K existing dockets backfilled with `case_id`.
 - **Layer 2 P1 civilLiberties calibration** (Sprint R-CAL1): Erosion type framework added to P1 prompt, civilLiberties description tightened to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7%. 22 weeks backfilled. Architecture-consistent approach (no per-category prompt fields).
 
 ---

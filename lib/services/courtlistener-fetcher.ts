@@ -3,9 +3,10 @@ import { sleep } from '@/lib/utils/async';
 
 const CL_BASE_URL = 'https://www.courtlistener.com';
 const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
-const RATE_LIMIT_DELAY_MS = 750;
+export const RATE_LIMIT_DELAY_MS = 750;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
+const MAX_OPINION_LENGTH = 8_000;
 /** Default max pages for historical backfill (45 × 20 results/page = 900). */
 export const CL_BACKFILL_MAX_PAGES = 45;
 
@@ -74,6 +75,188 @@ export function toContentItem(doc: ClDocketEntry): ContentItem {
     metadata: {
       docketNumber: doc.docketNumber,
       suitNature: doc.suitNature,
+      caseId: doc.docket_id ? `cl:${doc.docket_id}` : undefined,
+    },
+  };
+}
+
+/** Extract docket ID from a CourtListener docket URL. */
+export function extractDocketId(url: string): number | null {
+  const match = url.match(/\/docket\/(\d+)\//);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/** CL opinion clusters API response shape. */
+interface ClClusterResult {
+  id?: number;
+  case_name?: string;
+  date_filed?: string;
+  sub_opinions?: string[];
+}
+
+interface ClClusterResponse {
+  results?: ClClusterResult[];
+}
+
+/** CL opinions API response shape. */
+interface ClOpinionResult {
+  id?: number;
+  type?: string;
+  plain_text?: string;
+  absolute_url?: string;
+}
+
+/**
+ * CL opinion type values that are purely procedural and should be excluded.
+ * Everything else is treated as substantive judicial reasoning worth ingesting.
+ * Excluded: addendum (supplementary), remittitur (damages reduction),
+ * on-motion-to-strike (cost bill motions).
+ */
+const PROCEDURAL_OPINION_TYPES = new Set(['050addendum', '060remittitur', '090onmotiontostrike']);
+
+/** Human-readable label for opinion type codes, used as section separators. */
+const OPINION_TYPE_LABELS: Record<string, string> = {
+  '010combined': 'OPINION',
+  '015unamimous': 'UNANIMOUS OPINION',
+  '020lead': 'LEAD OPINION',
+  '025plurality': 'PLURALITY OPINION',
+  '030concurrence': 'CONCURRENCE',
+  '035concurrenceinpart': 'CONCURRENCE IN PART',
+  '040dissent': 'DISSENT',
+  '070rehearing': 'REHEARING',
+  '080onthemerits': 'ON THE MERITS',
+  '100trialcourt': 'TRIAL COURT OPINION',
+};
+
+export interface OpinionData {
+  text: string;
+  dateFiled: string;
+  opinionUrl: string;
+}
+
+/** Extract opinion ID from a CL sub_opinions URL like "/api/rest/v4/opinions/12345/". */
+function extractOpinionId(url: string): string | null {
+  return url.match(/\/opinions\/(\d+)\//)?.[1] ?? null;
+}
+
+/** Fetch a single opinion's type, text, and URL. */
+async function fetchSingleOpinion(
+  opinionId: string,
+): Promise<{ type: string; text: string; url: string } | null> {
+  const apiUrl = `${CL_API_V4}/opinions/${opinionId}/?fields=plain_text,id,type,absolute_url`;
+  const res = await fetch(apiUrl, {
+    headers: getAuthHeaders(),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) return null;
+
+  const op: ClOpinionResult = await res.json();
+  const text = op.plain_text?.replace(/\0/g, '');
+  if (!text) return null;
+
+  const url = op.absolute_url
+    ? op.absolute_url.startsWith('http')
+      ? op.absolute_url
+      : `${CL_BASE_URL}${op.absolute_url}`
+    : `${CL_BASE_URL}/opinion/${opinionId}/`;
+
+  return { type: op.type ?? '010combined', text, url };
+}
+
+/**
+ * Fetch the most recent opinion text for a given docket ID.
+ * Uses a two-step approach: clusters endpoint (for date_filed) → opinions endpoint (for text).
+ *
+ * When a cluster has multiple sub_opinions, all substantive opinions (majority,
+ * concurrence, dissent) are concatenated with type labels as separators. This
+ * captures the full judicial reasoning — a dissent may signal stronger erosion
+ * concern than the majority opinion alone.
+ *
+ * CL's opinion.date_created is a database timestamp; cluster.date_filed is the
+ * actual opinion date. Returns null if no opinions found or on API error.
+ */
+export async function fetchOpinionText(docketId: number): Promise<OpinionData | null> {
+  try {
+    // Step 1: Find the most recent opinion cluster for this docket
+    const clusterQs = new URLSearchParams({
+      docket: String(docketId),
+      fields: 'id,case_name,date_filed,sub_opinions',
+      page_size: '1',
+      order_by: '-date_filed',
+    });
+    const clusterUrl = `${CL_API_V4}/clusters/?${clusterQs.toString()}`;
+    const clusterRes = await fetch(clusterUrl, {
+      headers: getAuthHeaders(),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!clusterRes.ok) return null;
+
+    const clusterData: ClClusterResponse = await clusterRes.json();
+    const cluster = clusterData.results?.[0];
+    if (!cluster?.date_filed || !cluster.sub_opinions?.length) return null;
+
+    // Step 2: Fetch all sub_opinions, filter to substantive types, concatenate
+    const opinions: { type: string; text: string; url: string }[] = [];
+    for (const subUrl of cluster.sub_opinions) {
+      const opId = extractOpinionId(subUrl);
+      if (!opId) continue;
+      const op = await fetchSingleOpinion(opId);
+      if (op && !PROCEDURAL_OPINION_TYPES.has(op.type)) {
+        opinions.push(op);
+      }
+      if (cluster.sub_opinions.length > 1) await sleep(RATE_LIMIT_DELAY_MS);
+    }
+
+    if (opinions.length === 0) return null;
+
+    // Use the first opinion's URL as the canonical link
+    const opinionUrl = opinions[0].url;
+
+    // Single opinion: use its text directly. Multiple: concatenate with labels.
+    let combinedText: string;
+    if (opinions.length === 1) {
+      combinedText = opinions[0].text;
+    } else {
+      combinedText = opinions
+        .map((op) => {
+          const label = OPINION_TYPE_LABELS[op.type] ?? op.type;
+          return `[${label}]\n${op.text}`;
+        })
+        .join('\n\n');
+    }
+
+    const text = combinedText.slice(0, MAX_OPINION_LENGTH);
+
+    return { text, dateFiled: cluster.date_filed, opinionUrl };
+  } catch (err) {
+    console.warn(`[courtlistener] fetchOpinionText(${docketId}) failed:`, err);
+    return null;
+  }
+}
+
+/** Build a ContentItem from an opinion API response and its parent docket. */
+export function buildOpinionContentItem(
+  opinion: OpinionData,
+  parentDocket: {
+    caseName: string;
+    court: string;
+    docketId: number;
+    suitNature?: string;
+  },
+): ContentItem {
+  return {
+    title: parentDocket.caseName,
+    summary: opinion.text,
+    link: opinion.opinionUrl,
+    pubDate: opinion.dateFiled,
+    agency: parentDocket.court,
+    type: 'judicial_opinion',
+    sourceOrigin: 'courtlistener',
+    caseId: `cl:${parentDocket.docketId}`,
+    metadata: {
+      caseId: `cl:${parentDocket.docketId}`,
+      suitNature: parentDocket.suitNature,
+      parentDocketUrl: `${CL_BASE_URL}/docket/${parentDocket.docketId}/`,
     },
   };
 }

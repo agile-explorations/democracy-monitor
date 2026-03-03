@@ -46,7 +46,7 @@ export function classifyDocument(item: ContentItem): DocumentClass {
   }
 
   // Direct type mappings for non-FR sources
-  if (item.type === 'court_opinion') return 'court_opinion';
+  if (item.type === 'court_opinion' || item.type === 'judicial_opinion') return 'court_opinion';
   if (item.type === 'press_release') return 'press_release';
   if (item.type === 'gao_report' || item.type === 'congressional_report') return 'report';
   if (item.type === 'advisory_opinion' || item.type === 'enforcement_action') return 'report';

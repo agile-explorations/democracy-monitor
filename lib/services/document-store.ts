@@ -33,7 +33,8 @@ export function inferSourceOrigin(item: ContentItem): string | null {
   const t = item.type ?? '';
   if (FR_DOC_TYPES.has(t)) return 'federal_register';
   if (t === 'press_release') return 'doj';
-  if (t === 'court_opinion' || t === 'docket_entry') return 'courtlistener';
+  if (t === 'court_opinion' || t === 'docket_entry' || t === 'judicial_opinion')
+    return 'courtlistener';
   return null;
 }
 
@@ -63,6 +64,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           fetchedAt: new Date(),
           metadata: buildMetadata(item),
           sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
+          caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
         })
         .onConflictDoUpdate({
           target: [documents.url, documents.category],
@@ -72,6 +74,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
             fetchedAt: sql`excluded.fetched_at`,
             metadata: sql`excluded.metadata`,
             sourceOrigin: sql`excluded.source_origin`,
+            caseId: sql`excluded.case_id`,
           },
         });
       stored++;

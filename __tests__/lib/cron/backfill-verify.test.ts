@@ -19,6 +19,7 @@ const mockGetLayer2Completeness = vi.fn().mockResolvedValue([]);
 const mockGetPaginationFitness = vi.fn().mockResolvedValue([]);
 const mockGetFrPeriodCoverage = vi.fn().mockResolvedValue([]);
 const mockGetGdeltCrossfeedCoverage = vi.fn().mockResolvedValue([]);
+const mockGetClOpinionCoverage = vi.fn().mockResolvedValue(null);
 
 vi.mock('@/lib/services/backfill-source-coverage', () => ({
   getPaginationFitness: (...args: unknown[]) => mockGetPaginationFitness(...args),
@@ -32,6 +33,7 @@ vi.mock('@/lib/services/backfill-verification-service', () => ({
   getStageCompleteness: (...args: unknown[]) => mockGetStageCompleteness(...args),
   getBaselineCompleteness: (...args: unknown[]) => mockGetBaselineCompleteness(...args),
   getLayer2Completeness: (...args: unknown[]) => mockGetLayer2Completeness(...args),
+  getClOpinionCoverage: (...args: unknown[]) => mockGetClOpinionCoverage(...args),
   CONTENT_FIXABLE_TYPES: new Set(['Presidential Document', 'congressional_report']),
 }));
 

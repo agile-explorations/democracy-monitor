@@ -16,6 +16,7 @@ interface DocumentRow {
   action: string | null;
   agency: string | null;
   publishedAt: Date | null;
+  caseId?: string | null;
 }
 
 /**
@@ -37,6 +38,7 @@ export async function extractWeekMetadata(
       action: sql<string | null>`${documents.metadata}->>'action'`,
       agency: sql<string | null>`${documents.metadata}->>'agency'`,
       publishedAt: documents.publishedAt,
+      caseId: documents.caseId,
     })
     .from(documents)
     .where(
@@ -78,10 +80,13 @@ export function buildWeekMetadata(
 
   const sourceConvergenceRatio = computeSourceConvergenceRatio(rows);
 
+  // Deduplicate by case_id for CL documents (docket + opinion = one case)
+  const documentCount = new Set(rows.map((r) => r.caseId ?? r.title)).size;
+
   return {
     category,
     weekOf,
-    documentCount: rows.length,
+    documentCount,
     typeDistribution,
     functionalDistribution,
     agencyDistribution,
@@ -108,6 +113,7 @@ export async function computeBaselineStructuralDistribution(
       action: sql<string | null>`${documents.metadata}->>'action'`,
       agency: sql<string | null>`${documents.metadata}->>'agency'`,
       publishedAt: documents.publishedAt,
+      caseId: documents.caseId,
     })
     .from(documents)
     .where(
@@ -187,6 +193,7 @@ const GOVERNMENT_DOC_TYPES = new Set([
   'notice',
   'court_opinion',
   'docket_entry',
+  'judicial_opinion',
   'press_release',
   'gao_report',
   'congressional_report',

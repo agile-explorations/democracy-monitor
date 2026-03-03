@@ -1,6 +1,9 @@
 import {
   fetchCourtListenerHistorical,
   parseCourtListenerParams,
+  extractDocketId,
+  fetchOpinionText,
+  buildOpinionContentItem,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchFecHistorical, parseFecParams } from '@/lib/services/fec-fetcher';
@@ -86,6 +89,34 @@ async function fillFrContent(items: ContentItem[]): Promise<void> {
   }
 }
 
+/** Fetch opinions for CL docket items and append as new ContentItems. */
+async function fillClOpinions(items: ContentItem[]): Promise<void> {
+  // Snapshot the current length to avoid iterating over newly-added opinion items
+  const docketCount = items.length;
+  for (let i = 0; i < docketCount; i++) {
+    const item = items[i];
+    if (item.type !== 'court_opinion' || !item.link) continue;
+    const docketId = extractDocketId(item.link);
+    if (!docketId) continue;
+
+    const opinion = await fetchOpinionText(docketId);
+    if (!opinion) continue;
+
+    // Sanity check: skip opinions that predate the docket filing (CL data mislinkage)
+    if (item.pubDate && opinion.dateFiled < item.pubDate) continue;
+
+    const meta = item.metadata as Record<string, unknown> | undefined;
+    items.push(
+      buildOpinionContentItem(opinion, {
+        caseName: item.title ?? '(untitled case)',
+        court: item.agency ?? 'Federal Court',
+        docketId,
+        suitNature: (meta?.suitNature as string) ?? undefined,
+      }),
+    );
+  }
+}
+
 /** Fill content for GovInfo items that have a packageId but no summary. */
 async function fillGovInfoContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
@@ -148,6 +179,8 @@ export async function fetchWeekItemsCourtListener(
     items.push(...result.items);
     if (result.error) errors.push(result.error);
   }
+
+  await fillClOpinions(items);
 
   return { items, errors };
 }

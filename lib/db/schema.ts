@@ -50,6 +50,7 @@ export const documents = pgTable(
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
     metadata: jsonb('metadata'),
     sourceOrigin: varchar('source_origin', { length: 30 }),
+    caseId: varchar('case_id', { length: 100 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
   },
@@ -57,6 +58,7 @@ export const documents = pgTable(
     unique('uq_documents_url_category').on(table.url, table.category),
     index('idx_documents_category').on(table.category),
     index('idx_documents_source_origin').on(table.sourceOrigin),
+    index('idx_documents_case_id').on(table.caseId),
   ],
 );
 

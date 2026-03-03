@@ -18,6 +18,7 @@ import {
   getStageCompleteness,
   getBaselineCompleteness,
   getLayer2Completeness,
+  getClOpinionCoverage,
   CONTENT_FIXABLE_TYPES,
 } from '@/lib/services/backfill-verification-service';
 import type {
@@ -29,6 +30,7 @@ import type {
   Layer2PeriodStats,
   PaginationFitness,
   SourcePeriodCoverage,
+  ClOpinionCoverage,
 } from '@/lib/services/backfill-verification-service';
 import type { Category } from '@/lib/types';
 
@@ -46,6 +48,7 @@ interface VerifyReport {
   paginationFitness: PaginationFitness[];
   frPeriodCoverage: SourcePeriodCoverage[];
   gdeltCrossfeedCoverage: SourcePeriodCoverage[];
+  clOpinionCoverage: ClOpinionCoverage | null;
   warnings: string[];
 }
 
@@ -259,6 +262,24 @@ function printContentCompleteness(content: ContentCompleteness[]): void {
   }
 }
 
+function printClOpinionCoverage(cl: ClOpinionCoverage | null): void {
+  if (!cl) return;
+  console.log('\n=== CourtListener Opinion Coverage ===');
+  console.log(`  Docket entries:            ${String(cl.docketEntries).padStart(8)}`);
+  console.log(`  Opinion documents:         ${String(cl.opinionDocuments).padStart(8)}`);
+  console.log(`  Unique cases (by case_id): ${String(cl.uniqueCases).padStart(8)}`);
+  const withPct =
+    cl.uniqueCases > 0 ? ((cl.casesWithOpinion / cl.uniqueCases) * 100).toFixed(1) : '0';
+  const withoutPct =
+    cl.uniqueCases > 0 ? ((cl.casesWithoutOpinion / cl.uniqueCases) * 100).toFixed(1) : '0';
+  console.log(
+    `  Cases with opinion:        ${String(cl.casesWithOpinion).padStart(8)} (${withPct}%)`,
+  );
+  console.log(
+    `  Cases without opinion:     ${String(cl.casesWithoutOpinion).padStart(8)} (${withoutPct}%)`,
+  );
+}
+
 function printReport(report: VerifyReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
@@ -293,6 +314,7 @@ function printReport(report: VerifyReport, categoryFilter?: string): void {
     }
   }
 
+  printClOpinionCoverage(report.clOpinionCoverage);
   printFrPeriodCoverage(report.frPeriodCoverage, cats);
   printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
 
@@ -314,17 +336,27 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
   console.log('[verify] Running completeness checks...');
   if (options.category) console.log(`[verify] Category filter: ${options.category}`);
 
-  const [coverage, content, completeness, baselineStat, l2, pagination, frPeriod, gdeltCrossfeed] =
-    await Promise.all([
-      getDocumentCoverage(options.category),
-      getContentCompleteness(options.category),
-      getStageCompleteness(options.category),
-      getBaselineCompleteness(),
-      getLayer2Completeness(options.category),
-      getPaginationFitness(options.category),
-      getFrPeriodCoverage(options.category),
-      getGdeltCrossfeedCoverage(options.category),
-    ]);
+  const [
+    coverage,
+    content,
+    completeness,
+    baselineStat,
+    l2,
+    pagination,
+    frPeriod,
+    gdeltCrossfeed,
+    clOpinions,
+  ] = await Promise.all([
+    getDocumentCoverage(options.category),
+    getContentCompleteness(options.category),
+    getStageCompleteness(options.category),
+    getBaselineCompleteness(),
+    getLayer2Completeness(options.category),
+    getPaginationFitness(options.category),
+    getFrPeriodCoverage(options.category),
+    getGdeltCrossfeedCoverage(options.category),
+    getClOpinionCoverage(),
+  ]);
 
   const report: VerifyReport = {
     documentCoverage: coverage,
@@ -335,6 +367,7 @@ export async function runVerify(options: VerifyOptions): Promise<VerifyReport> {
     paginationFitness: pagination,
     frPeriodCoverage: frPeriod,
     gdeltCrossfeedCoverage: gdeltCrossfeed,
+    clOpinionCoverage: clOpinions,
     warnings: [],
   };
   report.warnings = collectWarnings(report, options.category);

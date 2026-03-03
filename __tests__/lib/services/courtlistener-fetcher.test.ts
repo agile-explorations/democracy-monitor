@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   expandNosParams,
+  extractDocketId,
+  buildOpinionContentItem,
   parseCourtListenerParams,
   toContentItem,
 } from '@/lib/services/courtlistener-fetcher';
@@ -54,6 +56,7 @@ describe('parseCourtListenerParams', () => {
 describe('toContentItem', () => {
   it('maps CL V4 search fields correctly', () => {
     const item = toContentItem({
+      docket_id: 12345,
       caseName: 'Smith v. United States',
       docket_absolute_url: '/docket/12345/smith-v-united-states/',
       dateFiled: '2025-06-15',
@@ -73,6 +76,7 @@ describe('toContentItem', () => {
     expect(item.metadata).toEqual({
       docketNumber: '1:25-cv-00100',
       suitNature: '440 Civil Rights: Other',
+      caseId: 'cl:12345',
     });
   });
 
@@ -135,5 +139,85 @@ describe('expandNosParams', () => {
     const params = { query: 'first amendment', searchType: 'o' };
     const result = expandNosParams(params);
     expect(result).toEqual([params]);
+  });
+});
+
+describe('extractDocketId', () => {
+  it('parses docket ID from standard CL docket URL', () => {
+    expect(extractDocketId('https://www.courtlistener.com/docket/12345/smith-v-jones/')).toBe(
+      12345,
+    );
+  });
+
+  it('parses docket ID from relative URL', () => {
+    expect(extractDocketId('/docket/67890/doe-v-roe/')).toBe(67890);
+  });
+
+  it('parses large docket IDs', () => {
+    expect(extractDocketId('/docket/99999999/case-name/')).toBe(99999999);
+  });
+
+  it('returns null for non-docket URLs', () => {
+    expect(extractDocketId('https://www.courtlistener.com/opinion/12345/')).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(extractDocketId('')).toBeNull();
+  });
+
+  it('returns null for URL without trailing slash', () => {
+    expect(extractDocketId('/docket/12345')).toBeNull();
+  });
+});
+
+describe('buildOpinionContentItem', () => {
+  const opinion = {
+    text: 'The court hereby rules in favor of the plaintiff...',
+    dateFiled: '2025-09-15',
+    opinionUrl: 'https://www.courtlistener.com/opinion/54321/smith-v-jones/',
+  };
+
+  const parentDocket = {
+    caseName: 'Smith v. Jones',
+    court: 'D.C. Circuit',
+    docketId: 12345,
+    suitNature: '440 Civil Rights: Other',
+  };
+
+  it('produces correct ContentItem from opinion data', () => {
+    const item = buildOpinionContentItem(opinion, parentDocket);
+
+    expect(item.title).toBe('Smith v. Jones');
+    expect(item.summary).toBe('The court hereby rules in favor of the plaintiff...');
+    expect(item.link).toBe('https://www.courtlistener.com/opinion/54321/smith-v-jones/');
+    expect(item.pubDate).toBe('2025-09-15');
+    expect(item.agency).toBe('D.C. Circuit');
+    expect(item.type).toBe('judicial_opinion');
+    expect(item.sourceOrigin).toBe('courtlistener');
+    expect(item.caseId).toBe('cl:12345');
+  });
+
+  it('uses opinion date, not filing date', () => {
+    const item = buildOpinionContentItem(opinion, parentDocket);
+    expect(item.pubDate).toBe('2025-09-15');
+  });
+
+  it('includes caseId and parentDocketUrl in metadata', () => {
+    const item = buildOpinionContentItem(opinion, parentDocket);
+    expect(item.metadata).toEqual({
+      caseId: 'cl:12345',
+      suitNature: '440 Civil Rights: Other',
+      parentDocketUrl: 'https://www.courtlistener.com/docket/12345/',
+    });
+  });
+
+  it('handles missing suitNature', () => {
+    const item = buildOpinionContentItem(opinion, {
+      caseName: 'Doe v. Roe',
+      court: '9th Circuit',
+      docketId: 99999,
+    });
+    expect(item.metadata?.suitNature).toBeUndefined();
+    expect(item.caseId).toBe('cl:99999');
   });
 });

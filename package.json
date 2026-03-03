@@ -46,6 +46,7 @@
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
     "backfill:content": "tsx lib/cron/backfill-content.ts",
+    "backfill:opinions": "tsx lib/cron/backfill-opinions.ts",
     "backfill:gaps": "tsx lib/cron/backfill-gaps.ts",
     "backfill:verify": "tsx lib/cron/backfill-verify.ts",
     "purge:cl-noise": "tsx lib/cron/purge-cl-noise.ts",

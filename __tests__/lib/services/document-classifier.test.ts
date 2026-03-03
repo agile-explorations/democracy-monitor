@@ -146,6 +146,18 @@ describe('classifyDocument', () => {
     });
   });
 
+  describe('direct type mappings', () => {
+    it('classifies judicial_opinion as court_opinion', () => {
+      const item: ContentItem = { type: 'judicial_opinion', title: 'Opinion text' };
+      expect(classifyDocument(item)).toBe('court_opinion');
+    });
+
+    it('classifies court_opinion as court_opinion', () => {
+      const item: ContentItem = { type: 'court_opinion', title: 'Docket entry' };
+      expect(classifyDocument(item)).toBe('court_opinion');
+    });
+  });
+
   describe('fallback', () => {
     it('returns unknown when no heuristic matches', () => {
       const item: ContentItem = { title: 'Some generic document' };

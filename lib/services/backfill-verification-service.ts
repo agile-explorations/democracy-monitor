@@ -53,6 +53,14 @@ export interface PaginationFitness {
   peakWeeklyCount: number;
 }
 
+export interface ClOpinionCoverage {
+  docketEntries: number;
+  opinionDocuments: number;
+  uniqueCases: number;
+  casesWithOpinion: number;
+  casesWithoutOpinion: number;
+}
+
 export interface SourcePeriodCoverage {
   category: string;
   sourceOrigin: string;
@@ -308,4 +316,30 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
     });
   }
   return results;
+}
+
+export async function getClOpinionCoverage(): Promise<ClOpinionCoverage | null> {
+  if (!isDbAvailable()) return null;
+  const db = getDb();
+
+  const [stats] = await db
+    .select({
+      docketEntries: sql<number>`count(*) filter (where ${documents.sourceType} != 'judicial_opinion')::int`,
+      opinionDocuments: sql<number>`count(*) filter (where ${documents.sourceType} = 'judicial_opinion')::int`,
+      uniqueCases: sql<number>`count(distinct ${documents.caseId})::int`,
+      casesWithOpinion: sql<number>`count(distinct case when ${documents.sourceType} = 'judicial_opinion' then ${documents.caseId} end)::int`,
+    })
+    .from(documents)
+    .where(eq(documents.sourceOrigin, 'courtlistener'));
+
+  const uniqueCases = Number(stats.uniqueCases);
+  const casesWithOpinion = Number(stats.casesWithOpinion);
+
+  return {
+    docketEntries: Number(stats.docketEntries),
+    opinionDocuments: Number(stats.opinionDocuments),
+    uniqueCases,
+    casesWithOpinion,
+    casesWithoutOpinion: Math.max(0, uniqueCases - casesWithOpinion),
+  };
 }

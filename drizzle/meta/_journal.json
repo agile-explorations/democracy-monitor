@@ -197,6 +197,13 @@
       "when": 1772429229949,
       "tag": "0027_brainy_hammerhead",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1772558295043,
+      "tag": "0028_bright_carlie_cooper",
+      "breakpoints": true
     }
   ]
 }

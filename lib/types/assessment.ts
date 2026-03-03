@@ -13,6 +13,7 @@ export interface ContentItem {
   subtype?: string;
   action?: string;
   sourceOrigin?: string;
+  caseId?: string;
   isError?: boolean;
   isWarning?: boolean;
   /** Extra metadata to store alongside the document (merged with auto-extracted fields). */
