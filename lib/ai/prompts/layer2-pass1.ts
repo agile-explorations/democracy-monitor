@@ -21,6 +21,17 @@ export function buildPass1Prompt(
   if (summary) parts.push(`  Summary: ${summary.slice(0, 1000)}`);
 
   parts.push('');
+  parts.push('Erosion type framework:');
+  parts.push('  - formal_override: explicit legal/policy changes that remove protections');
+  parts.push(
+    '  - operational_hollowing: staffing cuts, budget reductions, unfilled positions that degrade capacity',
+  );
+  parts.push(
+    '  - noncompliance_refusal: ignoring court orders, defying oversight, refusing information requests',
+  );
+  parts.push('  - routine: normal administrative activity with no erosion signal');
+  parts.push('  - unclear: insufficient information to classify');
+  parts.push('');
   parts.push('Classify this document. Respond with JSON:');
   parts.push('{');
   parts.push('  "relevant": boolean (true if related to institutional erosion concerns),');

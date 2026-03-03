@@ -558,7 +558,7 @@ export const CATEGORIES: Category[] = [
     key: 'civilLiberties',
     title: 'Civil Rights & Liberties',
     description:
-      'Are civil rights and individual liberties being protected? Tracks court cases involving constitutional rights, due process, and equal protection challenges.',
+      'Government actions that reduce civil liberties protections. Tracks policies restricting constitutional rights, rulings narrowing due process or equal protection, expansion of surveillance or detention authority, and termination of civil rights consent decrees.',
     signals: [
       {
         id: 'cl_civil_rights',
