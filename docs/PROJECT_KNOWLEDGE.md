@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-02)
+## Current state (as of 2026-03-03)
 
 ### Categories & baselines
 
@@ -68,6 +68,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - ConvergenceStatus: Stable / Elevated / Divergent / ConfirmedConcern (R3 added ConfirmedConcern — requires 2+ layers elevated AND high AI concern rate)
 - Source convergence: 6th structural dimension, log2((gov+1)/(rhetoric+1)), weight 0.13 in STRUCTURAL_DIMENSION_WEIGHTS
 - All 4 Layer 2 baselines complete (2026-02-24): flag rates 0.34-0.64%, Pass 2 non-concerning 98.4-99.9%, audit FN rate 0.07%
+- civilLiberties P1 calibrated (2026-03-03): flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7% (1/147). Fix: erosion framework in P1 prompt + threat-vector description. Architecture-consistent (no per-category prompt fields)
 - Structural dampening: `DAMPENING_THRESHOLD` and `JSD_Z_SCORE_CAP` in scoring-config.ts — exponential decay for mild z-scores, cap on JSD outliers
 
 ### Source health & coverage
@@ -305,4 +306,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-S1g: CourtListener pagination fix — CL maxPages 15→45 (cap 300→900), `--force` backfill flag, re-backfill all CL periods (155K docs), recomputed civilLiberties + lawEnforcement baselines. `backfill:verify` document coverage subtotals. LegiScan Pass 1 sensitivity gap documented in ARCHITECTURE_PROPOSAL.md. `pnpm format:check` added to pre-push hook. Issues #196-#199. 1526 tests across 124 files.
 - Sprint R-OPS1: Source Health detail + Layer 2 performance — per-source detail panel in Source Fetch Health timeline (click-to-reveal with status badges, category labels, error indicators). `mapConcurrent()` bounded-concurrency utility in lib/utils/async.ts. Layer 2 backfill parallelized (Pass 1: 5, Pass 2: 3, Retry: 3). Null-content retry skip in `retryMissingPass2()`. `formatWeekLabelWithYear()` date utility. Code review: FetchStatus type narrowing, fire-and-forget DB write elimination, mapConcurrent test suite. 5 new tests (1544 total across 127 files).
 - Sprint R-CB1: Content backfill (Presidential Documents + Congressional Reports) — `pnpm backfill:content` CLI (--source fr|govinfo, --dry-run, --limit N), FR `fetchFrRawText()` + `raw_text_url` in metadata, GovInfo `fetchGovInfoText()`, forward pipeline content fill in backfill-fetchers.ts, `backfill:verify` content completeness check. CL opinion ingestion documented in ROADMAP. Issues #200-#205. 2 new tests (1546 total across 127 files).
+- Sprint R-CAL1: Layer 2 P1 calibration for civilLiberties — erosion type framework added to P1 prompt (global), civilLiberties description tightened from topic-area to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation rate 1.5% → 20.3%, audit FN rate 0.7% (1/147). 22 weeks backfilled (4,947 docs, 154 flagged). 7 new tests (1553 total across 128 files).
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

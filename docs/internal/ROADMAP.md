@@ -1105,7 +1105,7 @@ Current CL documents are RECAP docket entries (case filings). "Content" is NOS c
 
 ### Completed
 
-_(Move items here when implemented, with sprint reference)_
+- **Layer 2 P1 civilLiberties calibration** (Sprint R-CAL1): Erosion type framework added to P1 prompt, civilLiberties description tightened to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7%. 22 weeks backfilled. Architecture-consistent approach (no per-category prompt fields).
 
 ---
 

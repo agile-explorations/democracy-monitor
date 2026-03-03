@@ -10,6 +10,44 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CAL1: Layer 2 P1 Calibration for civilLiberties ✅
+
+**Status: Done.** Fixed civilLiberties Pass 1 flag rate (73% → 3.1%) and Pass 2 confirmation rate (1.5% → 20.3%) by adding erosion type framework to P1 prompt and tightening the civilLiberties category description from topic-area to threat-vector framing. Full backfill of 22 weeks (4,947 docs assessed, 154 flagged). Audit false-negative rate 0.7% (1/147). 1 commit, 3 files changed, 7 new tests (1553 total across 128 files).
+
+**Scope vs. Actual:**
+
+- Planned (3 changes): Add erosion framework to P1 prompt, tighten civilLiberties description, add tests
+- Actual: All 3 delivered as planned. Full backfill run for 22 recalibrated weeks (2025-10-06 → 2026-02-28). No scope changes.
+
+**Key Decisions:**
+
+1. **Architecture-consistent approach (description + framework), not per-category tuning**: Rejected the `p1Guidance` per-category field approach in favor of (a) adding erosion type definitions to the P1 prompt template (global improvement — all categories benefit) and (b) tightening the civilLiberties `description` field (same field all categories use). No new Category interface fields, no per-category prompt engineering treadmill.
+2. **Threat-vector framing over topic-area framing**: Old description ("Are civil rights and individual liberties being protected?") matched virtually every civil rights case. New description ("Government actions that reduce civil liberties protections") encodes the erosion focus, giving P1 a filter for distinguishing routine litigation from erosion signals.
+3. **Erosion framework from P2 promoted to P1**: P2 already had 5-line erosion type definitions (formal_override, operational_hollowing, etc.). P1 had only the bare enum values. Adding the same definitions gives P1 the conceptual vocabulary to classify documents consistently with P2.
+4. **Completed weeks left as-is**: 38 weeks (pre-2025-10-06) already had P1+P2 under the old prompt — sunk cost. Only the 22 remaining weeks (2025-10-06 → 2026-02-28) were re-assessed with the calibrated prompt.
+
+**Results:**
+
+| Metric                       | Old (38 weeks)       | New (22 weeks)   |
+| ---------------------------- | -------------------- | ---------------- |
+| P1 flag rate                 | 73.2% (8,125/11,099) | 3.1% (154/4,947) |
+| P2 confirmation rate         | 1.5% (110/7,328)     | 20.3% (25/123)   |
+| Audit false-negative rate    | —                    | 0.7% (1/147)     |
+| Unnecessary P2 calls avoided | —                    | ~7,200           |
+
+**Lessons Learned:**
+
+- **Category descriptions are the primary P1 calibration lever**: The description is injected as "Category concern:" in the P1 prompt. A description that frames the topic area ("Are civil rights being protected?") matches everything topically relevant. A description that frames the threat vector ("Government actions that reduce protections") naturally filters to erosion-relevant documents. This is the architecture-consistent calibration path — no per-category prompt fields needed.
+- **P1 needs the same conceptual framework as P2**: Without erosion type definitions, P1 had no vocabulary to distinguish "relevant to the category topic" from "relevant to erosion concerns within the category." The bare enum values (formal_override, operational_hollowing, etc.) were meaningless without explanations. Adding 5 lines of definitions was the highest-leverage global fix.
+- **Audit false-negative rate stabilizes with sample size**: Initial 2-week test showed 1/12 (8.3%) — above the 3% "investigate" threshold. At 147 samples across 22 weeks, the rate settled to 0.7%. The single catch (Chicago Headline Club v. Noem — press freedom case) was a legitimate edge case, not a systematic blind spot.
+- **Bash `!` in passwords breaks `node -e` inline scripts**: The `!` character triggers bash history expansion even inside single quotes when embedded in `\`...\``escaping. Use`set +H`or write temp script files with`NODE_PATH`pointing to project`node_modules/`.
+
+**Spec Deviations:**
+
+- None. Ad-hoc calibration sprint, not driven by a spec. The approach aligns with the architecture's design principle that P1 gets category description + erosion framework uniformly.
+
+---
+
 ## Sprint R-CB1: Content Backfill (Presidential Documents + Congressional Reports) ✅
 
 **Status: Done.** Backfill CLI for ~5,837 null-content documents (FR Presidential Documents via `raw_text_url`, GovInfo Congressional Reports via `/packages/{id}/htm`). Forward pipeline fix ensures future fetches populate content. Content completeness check added to `backfill:verify`. 2 commits, 12 files changed, 2 new tests (1546 total across 127 files).
