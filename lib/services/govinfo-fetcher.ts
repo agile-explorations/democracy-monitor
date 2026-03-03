@@ -158,19 +158,15 @@ async function searchGovInfo(
 /**
  * Fetch the full HTML text for a GovInfo package and return stripped plaintext.
  * Used for Congressional Reports where the search result has no summary.
+ * Tries package-level /htm first; falls back to granule-level /htm for older reports.
  */
 export async function fetchGovInfoText(packageId: string): Promise<string | null> {
   const apiKey = getApiKey();
   if (!apiKey) return null;
 
   try {
-    const url = `${GOVINFO_API_BASE}/packages/${packageId}/htm?api_key=${apiKey}`;
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
+    const html = await fetchPackageHtml(packageId, apiKey);
+    if (!html) return null;
     const text = stripHtml(html).replace(/\0/g, '').trim();
     return text.length > MAX_CONTENT_LENGTH
       ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
@@ -179,6 +175,38 @@ export async function fetchGovInfoText(packageId: string): Promise<string | null
     console.warn(`[govinfo-fetcher] Failed to fetch text for package ${packageId}:`, err);
     return null;
   }
+}
+
+async function fetchPackageHtml(packageId: string, apiKey: string): Promise<string | null> {
+  // Try package-level HTML first (works for newer reports)
+  const pkgUrl = `${GOVINFO_API_BASE}/packages/${packageId}/htm?api_key=${apiKey}`;
+  const pkgResponse = await fetch(pkgUrl, {
+    headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (pkgResponse.ok) return pkgResponse.text();
+
+  // Fall back to granule-level HTML (older congressional reports)
+  const granulesUrl = `${GOVINFO_API_BASE}/packages/${packageId}/granules?offsetMark=*&pageSize=1&api_key=${apiKey}`;
+  const granulesResponse = await fetch(granulesUrl, {
+    headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!granulesResponse.ok) return null;
+
+  const granulesData = (await granulesResponse.json()) as {
+    granules?: { granuleId?: string }[];
+  };
+  const granuleId = granulesData.granules?.[0]?.granuleId;
+  if (!granuleId) return null;
+
+  const granuleUrl = `${GOVINFO_API_BASE}/packages/${packageId}/granules/${granuleId}/htm?api_key=${apiKey}`;
+  const granuleResponse = await fetch(granuleUrl, {
+    headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!granuleResponse.ok) return null;
+  return granuleResponse.text();
 }
 
 /** Fetch recent GovInfo documents for the snapshot pipeline. */
