@@ -3,7 +3,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
-import { sleep } from '@/lib/utils/async';
+import { mapConcurrent } from '@/lib/utils/async';
 import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
 import {
   assessPass1,
@@ -33,7 +33,9 @@ const DEFAULT_PASS1_PROVIDER = 'openai';
 const DEFAULT_PASS1_MODEL = 'gpt-4o-mini';
 const DEFAULT_PASS2_PROVIDER = 'anthropic';
 const DEFAULT_PASS2_MODEL = 'claude-sonnet-4-5-20250929';
-const RATE_LIMIT_DELAY_MS = 200;
+const PASS1_CONCURRENCY = 5;
+const PASS2_CONCURRENCY = 3;
+const RETRY_CONCURRENCY = 3;
 
 interface ResolvedOptions {
   p1Provider: ReturnType<typeof getProvider>;
@@ -161,17 +163,17 @@ async function runPass1Phase(
 
   const newItems = items.filter((i) => !existingUrls.has(i.link ?? i.title ?? ''));
 
-  for (const item of newItems) {
+  const newResults = await mapConcurrent(newItems, PASS1_CONCURRENCY, async (item) => {
     const result = await assessPass1(item, categoryDescription, provider, model);
-    if (result) {
-      results.push(result);
-      if (!dryRun) {
-        storePass1Assessment(result, categoryKey, weekOf).catch((err) =>
-          console.warn(`[layer2] Pass 1 store failed for ${result.url}:`, err),
-        );
-      }
+    if (result && !dryRun) {
+      storePass1Assessment(result, categoryKey, weekOf).catch((err) =>
+        console.warn(`[layer2] Pass 1 store failed for ${result.url}:`, err),
+      );
     }
-    await sleep(RATE_LIMIT_DELAY_MS);
+    return result;
+  });
+  for (const r of newResults) {
+    if (r) results.push(r);
   }
 
   const skipped = existingResults.length;
@@ -203,11 +205,10 @@ async function runPass2Phase(
 
   const urlsToProcess = [...flaggedUrls, ...auditUrls];
 
-  for (const url of urlsToProcess) {
-    const item = itemByUrl.get(url);
-    const pass1 = pass1ByUrl.get(url);
-    if (!item || !pass1) continue;
-
+  const validUrls = urlsToProcess.filter((url) => itemByUrl.has(url) && pass1ByUrl.has(url));
+  const pass2Results = await mapConcurrent(validUrls, PASS2_CONCURRENCY, async (url) => {
+    const item = itemByUrl.get(url)!;
+    const pass1 = pass1ByUrl.get(url)!;
     const isAudit = auditUrls.has(url);
     const result = await assessPass2(
       item,
@@ -218,16 +219,15 @@ async function runPass2Phase(
       isAudit,
       model,
     );
-
-    if (result) {
-      results.push(result);
-      if (!dryRun) {
-        storePass2Assessment(result, categoryKey, weekOf).catch((err) =>
-          console.warn(`[layer2] Pass 2 store failed for ${result.url}:`, err),
-        );
-      }
+    if (result && !dryRun) {
+      storePass2Assessment(result, categoryKey, weekOf).catch((err) =>
+        console.warn(`[layer2] Pass 2 store failed for ${result.url}:`, err),
+      );
     }
-    await sleep(RATE_LIMIT_DELAY_MS);
+    return result;
+  });
+  for (const r of pass2Results) {
+    if (r) results.push(r);
   }
 
   console.log(`[layer2] Pass 2: ${results.length} assessed (${auditUrls.size} audit samples)`);
@@ -252,10 +252,20 @@ export async function retryMissingPass2(
   const gaps = await findPass2Gaps(categoryKey, weekOf);
   if (gaps.length === 0) return 0;
 
-  console.log(`[layer2] Retrying ${gaps.length} missing Pass 2 for ${categoryKey} / ${weekOf}`);
-  let success = 0;
+  // Skip gaps with no content — these docs only have titles and will always fail Pass 2
+  const viable = gaps.filter((g) => g.content && g.content.length > 0);
+  const skippedNoContent = gaps.length - viable.length;
+  if (skippedNoContent > 0) {
+    console.warn(
+      `[layer2] Skipping ${skippedNoContent}/${gaps.length} gaps with null content ` +
+        `for ${categoryKey} / ${weekOf}`,
+    );
+  }
+  if (viable.length === 0) return 0;
 
-  for (const gap of gaps) {
+  console.log(`[layer2] Retrying ${viable.length} missing Pass 2 for ${categoryKey} / ${weekOf}`);
+
+  const retryResults = await mapConcurrent(viable, RETRY_CONCURRENCY, async (gap) => {
     const doc: ContentItem = { title: gap.title ?? '', summary: gap.content ?? '', link: gap.url };
     const result = await assessPass2(
       doc,
@@ -266,13 +276,12 @@ export async function retryMissingPass2(
       false,
       resolved.p2Model,
     );
-
     if (result && !resolved.dryRun) {
       await storePass2Assessment(result, categoryKey, weekOf);
-      success++;
+      return 1;
     }
-    await sleep(RATE_LIMIT_DELAY_MS);
-  }
+    return 0;
+  });
 
-  return success;
+  return retryResults.reduce<number>((sum, n) => sum + n, 0);
 }
