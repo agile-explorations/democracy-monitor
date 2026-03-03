@@ -1,6 +1,7 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { useMemo } from 'react';
 import { CategoryStatusChart } from '@/components/category/CategoryStatusChart';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
@@ -9,14 +10,23 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
+import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 import type { StatusLevel } from '@/lib/types';
 
 export default function CategoryDetailPage() {
   const router = useRouter();
-  const { key } = router.query;
+  const { key, weekOf, from, to } = router.query;
   const categoryKey = typeof key === 'string' ? key : undefined;
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
+
+  const initialParams = useMemo<CategoryDetailInitialParams | undefined>(() => {
+    const w = typeof weekOf === 'string' ? weekOf : undefined;
+    const f = typeof from === 'string' ? from : undefined;
+    const t = typeof to === 'string' ? to : undefined;
+    if (!w && !f && !t) return undefined;
+    return { weekOf: w, from: f, to: t };
+  }, [weekOf, from, to]);
 
   const {
     weeklyData,
@@ -35,7 +45,7 @@ export default function CategoryDetailPage() {
     setBrushRange,
     selectWeek,
     loading,
-  } = useCategoryDetail(categoryKey);
+  } = useCategoryDetail(categoryKey, initialParams);
 
   if (loading) {
     return (

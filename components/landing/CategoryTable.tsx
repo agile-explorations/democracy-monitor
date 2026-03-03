@@ -11,6 +11,7 @@ export interface CategoryTableProps {
   categories: CategorySummary[];
   readingLevel: ReadingLevel;
   highlightWeek?: string | null;
+  linkParams?: string;
 }
 
 function formatRatio(score: number, baseline: number): string {
@@ -18,7 +19,12 @@ function formatRatio(score: number, baseline: number): string {
   return `${(score / baseline).toFixed(1)}\u00d7`;
 }
 
-export function CategoryTable({ categories, readingLevel, highlightWeek }: CategoryTableProps) {
+export function CategoryTable({
+  categories,
+  readingLevel,
+  highlightWeek,
+  linkParams = '',
+}: CategoryTableProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const descriptionMap = new Map(CATEGORIES.map((c) => [c.key, c.description]));
@@ -50,6 +56,7 @@ export function CategoryTable({ categories, readingLevel, highlightWeek }: Categ
                 isExpanded={isExpanded}
                 readingLevel={readingLevel}
                 highlightWeek={highlightWeek}
+                linkParams={linkParams}
                 onToggle={() => setExpandedKey(isExpanded ? null : cat.category)}
               />
             );
@@ -66,6 +73,7 @@ function CategoryRow({
   isExpanded,
   readingLevel,
   highlightWeek,
+  linkParams,
   onToggle,
 }: {
   cat: CategorySummary;
@@ -73,6 +81,7 @@ function CategoryRow({
   isExpanded: boolean;
   readingLevel: ReadingLevel;
   highlightWeek?: string | null;
+  linkParams: string;
   onToggle: () => void;
 }) {
   return (
@@ -87,7 +96,7 @@ function CategoryRow({
               {isExpanded ? '\u25BE' : '\u25B8'}
             </span>
             <Link
-              href={`/category/${cat.category}`}
+              href={`/category/${cat.category}${linkParams}`}
               onClick={(e) => e.stopPropagation()}
               className="text-dm-text-primary font-medium hover:text-dm-accent transition-colors"
             >

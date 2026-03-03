@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
 import { StatusPill } from '@/components/ui/StatusPill';
-import type { CategorySummary } from '@/lib/hooks/useWeekDetail';
+import type { CategorySummary } from '@/lib/hooks/useWeekOverview';
 import type { StatusLevel } from '@/lib/types';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
@@ -38,7 +38,7 @@ export function WeekCategoryGrid({ summaries, weekOf }: WeekCategoryGridProps) {
       {sorted.map((cat) => (
         <Link
           key={cat.category}
-          href={`/category/${cat.category}/week/${weekOf}`}
+          href={`/category/${cat.category}?weekOf=${weekOf}`}
           className="rounded-lg border border-dm-border bg-dm-card p-4 hover:border-dm-accent/50 transition-colors"
         >
           <div className="flex items-center justify-between gap-2 mb-2">

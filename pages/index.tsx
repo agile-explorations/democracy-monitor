@@ -24,10 +24,6 @@ export default function Home() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
-  const handleCellClick = useCallback(
-    (category: string, week: string) => router.push(`/category/${category}/week/${week}`),
-    [router],
-  );
   const { categories, overview, meta, healthSummary, fetchTimeline, lastCheckedAt, loading } =
     useDashboardData();
 
@@ -121,6 +117,46 @@ export default function Home() {
     },
     [presetBrushIndices],
   );
+
+  // Compute range start/end week dates from the filtered heatmap segments
+  const rangeDates = useMemo(() => {
+    if (!filteredOverview?.statusTimeline.length) return null;
+    const segs = filteredOverview.statusTimeline[0].segments;
+    const first = segs[0]?.week;
+    const last = segs[segs.length - 1]?.week;
+    if (!first || !last) return null;
+    return { from: first, to: last };
+  }, [filteredOverview]);
+
+  // Heatmap cell click → category page with context
+  const handleCellClick = useCallback(
+    (category: string, week: string) => {
+      const params = new URLSearchParams({ weekOf: week });
+      if (rangeDates) {
+        params.set('from', rangeDates.from);
+        params.set('to', rangeDates.to);
+      }
+      router.push(`/category/${category}?${params.toString()}`);
+    },
+    [router, rangeDates],
+  );
+
+  // Query string for category table links
+  const linkParams = useMemo(() => {
+    const params = new URLSearchParams();
+    const displayWeek = selectedWeek ?? filteredWeeks[filteredWeeks.length - 1];
+    if (displayWeek) params.set('weekOf', displayWeek);
+    if (rangeDates) {
+      params.set('from', rangeDates.from);
+      params.set('to', rangeDates.to);
+    }
+    const qs = params.toString();
+    return qs ? `?${qs}` : '';
+  }, [selectedWeek, filteredWeeks, rangeDates]);
+
+  // Week detail href for the WeekNavigator
+  const displayedWeek = selectedWeek ?? filteredWeeks[filteredWeeks.length - 1];
+  const weekDetailHref = displayedWeek ? `/week/${displayedWeek}` : undefined;
 
   const lastUpdated = categories.find((c) => c.assessedAt)?.assessedAt ?? null;
 
@@ -251,6 +287,7 @@ export default function Home() {
                 availableWeeks={availableWeeks}
                 selectedWeek={selectedWeek}
                 onWeekChange={handleWeekChange}
+                weekDetailHref={weekDetailHref}
               />
             )}
           </div>
@@ -268,6 +305,7 @@ export default function Home() {
               categories={displayedCategories}
               readingLevel={readingLevel}
               highlightWeek={selectedWeek}
+              linkParams={linkParams}
             />
           )}
         </section>

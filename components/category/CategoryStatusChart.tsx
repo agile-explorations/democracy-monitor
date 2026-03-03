@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
+import type { ReactElement } from 'react';
 import {
   Area,
   Bar,
   Brush,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Line,
   ReferenceLine,
@@ -38,6 +38,8 @@ interface ChartPoint {
   statusValue: number;
   baselineBand: [number, number];
   baselineAvg: number;
+  statusFill: string;
+  statusOpacity: number;
 }
 
 const STATUS_ORDER: Record<ConvergenceStatus, number> = {
@@ -46,6 +48,29 @@ const STATUS_ORDER: Record<ConvergenceStatus, number> = {
   Divergent: 3,
   ConfirmedConcern: 4,
 };
+
+/** Stable shape renderer for status bars — avoids Cell+Brush index misalignment */
+function StatusBarShape(props: unknown): ReactElement | null {
+  const { x, y, width, height, payload } = props as {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    payload: ChartPoint;
+  };
+  if (!width || !height) return null;
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      rx={2}
+      fill={payload.statusFill}
+      opacity={payload.statusOpacity}
+    />
+  );
+}
 
 function StatusTooltip({
   active,
@@ -105,9 +130,11 @@ export function CategoryStatusChart({
         statusValue: status ? STATUS_ORDER[status] : 0,
         baselineBand: [bandLower, bandUpper] as [number, number],
         baselineAvg,
+        statusFill: status ? statusColors[status] : 'transparent',
+        statusOpacity: status ? 0.7 : 0,
       };
     });
-  }, [data, baselineAvg, baselineStdDev]);
+  }, [data, baselineAvg, baselineStdDev, statusColors]);
 
   if (data.length === 0) {
     return (
@@ -187,17 +214,14 @@ export function CategoryStatusChart({
             strokeWidth={1}
           />
 
-          {/* Status bars */}
-          <Bar yAxisId="status" dataKey="statusValue" barSize={6} isAnimationActive={false}>
-            {chartData.map((point) => (
-              <Cell
-                key={point.week}
-                fill={point.status ? statusColors[point.status] : 'transparent'}
-                opacity={point.status ? 0.7 : 0}
-                radius={2}
-              />
-            ))}
-          </Bar>
+          {/* Status bars — uses shape prop instead of Cell to avoid Brush index misalignment */}
+          <Bar
+            yAxisId="status"
+            dataKey="statusValue"
+            barSize={6}
+            isAnimationActive={false}
+            shape={StatusBarShape}
+          />
 
           {/* Score line */}
           <Line
