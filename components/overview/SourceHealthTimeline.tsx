@@ -103,7 +103,7 @@ export function SourceHealthTimeline({
         {visible.map((week) => (
           <div
             key={week.week}
-            className="flex-1 h-2 rounded-sm min-w-[3px]"
+            className="flex-1 h-7 rounded-sm min-w-[3px]"
             style={{ backgroundColor: cellColor(week, mode) }}
             title={cellTooltip(week)}
           />

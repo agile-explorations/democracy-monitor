@@ -1,24 +1,18 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
 import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
 import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
 import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
-import { Sparkline } from '@/components/ui/Sparkline';
+import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { DocumentTable } from '@/components/week/DocumentTable';
-import { KeywordMatchesSection } from '@/components/week/KeywordMatchesSection';
+import { WeekCategoryGrid } from '@/components/week/WeekCategoryGrid';
 import { WeekSummaryCards } from '@/components/week/WeekSummaryCards';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
+import { useWeekDetail } from '@/lib/hooks/useWeekDetail';
 import type { WeekExplanation } from '@/lib/types/explanation';
-
-interface WeeklyRow {
-  weekOf: string;
-  totalSeverity: number;
-}
 
 function formatWeekDate(date: string): string {
   const d = new Date(date + 'T00:00:00');
@@ -42,55 +36,23 @@ function computeTierCounts(explanation: WeekExplanation) {
 export default function WeekDetailPage() {
   const router = useRouter();
   const { key, date } = router.query;
+  const categoryKey = typeof key === 'string' ? key : undefined;
+  const weekDate = typeof date === 'string' ? date : undefined;
   const { readingLevel } = useReadingLevel();
-  const [explanation, setExplanation] = useState<WeekExplanation | null>(null);
-  const [sparklineData, setSparklineData] = useState<Array<{ week: string; score: number }>>([]);
-  const [baselineAvg, setBaselineAvg] = useState(0);
-  const [baselineStdDev, setBaselineStdDev] = useState(0);
-  const [weekLayers, setWeekLayers] = useState<CategoryDetailLatestWeek | null>(null);
-  const [loading, setLoading] = useState(true);
 
   const category = CATEGORIES.find((c) => c.key === key);
   const title = category?.title ?? String(key ?? '');
 
-  useEffect(() => {
-    if (!key || !date || typeof key !== 'string' || typeof date !== 'string') return;
-
-    async function loadData() {
-      try {
-        const [explainRes, weeklyRes, catRes] = await Promise.all([
-          fetch(`/api/explain/week?category=${key}&weekOf=${date}&top=200`),
-          fetch(`/api/history/weekly-scores?category=${key}`),
-          fetch(`/api/category/${key}?weekOf=${date}`),
-        ]);
-
-        if (explainRes.ok) setExplanation(await explainRes.json());
-        if (weeklyRes.ok) {
-          const rows: WeeklyRow[] = await weeklyRes.json();
-          setSparklineData(rows.map((r) => ({ week: r.weekOf, score: Number(r.totalSeverity) })));
-        }
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          setBaselineAvg(catData.baseline?.avg ?? 0);
-          setBaselineStdDev(catData.baseline?.stddev ?? 0);
-          setWeekLayers(catData.latestWeek ?? null);
-        }
-      } catch (err) {
-        console.error('Failed to load week detail:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [key, date]);
+  const { categorySummaries, overviewNarrative, explanation, layers, baseline, loading } =
+    useWeekDetail(categoryKey, weekDate);
 
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-4 w-48 bg-dm-border/50 rounded" />
         <div className="h-8 w-64 bg-dm-border/50 rounded" />
-        <div className="grid grid-cols-4 gap-3">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
             <div key={i} className="h-20 bg-dm-border/30 rounded-lg" />
           ))}
         </div>
@@ -98,18 +60,7 @@ export default function WeekDetailPage() {
     );
   }
 
-  if (!explanation) {
-    return (
-      <>
-        <Link href={`/category/${key}`} className="text-xs text-dm-accent hover:underline">
-          &larr; Back to {title}
-        </Link>
-        <p className="mt-8 text-sm text-dm-text-secondary">No data found for this week.</p>
-      </>
-    );
-  }
-
-  const tierCounts = computeTierCounts(explanation);
+  const tierCounts = explanation ? computeTierCounts(explanation) : null;
 
   return (
     <>
@@ -135,96 +86,64 @@ export default function WeekDetailPage() {
         </p>
       </header>
 
-      {/* Convergence header */}
-      <ConvergenceHeader synthesis={weekLayers?.convergenceDetail ?? null} />
+      {/* Category status grid */}
+      {categorySummaries.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
+            All Categories This Week
+          </h3>
+          <WeekCategoryGrid summaries={categorySummaries} weekOf={String(date)} />
+        </div>
+      )}
+
+      {/* Overview narrative */}
+      <div className="mb-6">
+        <NarrativeSection narrative={overviewNarrative} readingLevel={readingLevel} />
+      </div>
+
+      {/* Convergence header for this category */}
+      <ConvergenceHeader synthesis={layers?.convergenceDetail ?? null} />
 
       {/* Summary cards */}
-      <div className="mb-6">
-        <WeekSummaryCards
-          totalScore={explanation.totalSeverity}
-          documentCount={explanation.documentCount}
-          captureCount={tierCounts.capture}
-          driftCount={tierCounts.drift}
-          warningCount={tierCounts.warning}
-          baselineAvg={baselineAvg}
-        />
-      </div>
-
-      {/* Three-layer panels */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <StructuralSignaturePanel
-          score={weekLayers?.structuralDetail ?? null}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <AIAssessmentPanel summary={weekLayers?.aiDetail ?? null} readingLevel={readingLevel} />
-      </div>
-
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <ThematicDriftPanel
-          drift={weekLayers?.thematicDetail ?? null}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      {/* Position in context sparkline */}
-      {sparklineData.length > 0 && (
-        <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-            Position in Context
-          </h3>
-          <Sparkline
-            data={sparklineData}
-            baselineAvg={baselineAvg}
-            baselineStdDev={baselineStdDev}
-            highlightWeek={String(date)}
-            width={800}
-            height={120}
+      {explanation && tierCounts && (
+        <div className="mb-6">
+          <WeekSummaryCards
+            totalScore={explanation.totalSeverity}
+            documentCount={explanation.documentCount}
+            captureCount={tierCounts.capture}
+            driftCount={tierCounts.drift}
+            warningCount={tierCounts.warning}
+            baselineAvg={baseline.avg}
           />
         </div>
       )}
 
-      {/* Top keyword matches */}
+      {/* Three-layer panels */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-          Keyword Annotations
-        </h3>
-        <p className="text-[11px] text-dm-muted mb-3">
-          Keywords provide context but do not drive the assessment.
-        </p>
-        <KeywordMatchesSection documents={explanation.topDocuments} readingLevel={readingLevel} />
-      </div>
-
-      {/* Suppressed matches (detailed mode only) */}
-      {readingLevel === 'detailed' &&
-        explanation.topDocuments.some((d) => d.suppressed.length > 0) && (
-          <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-              Suppressed Matches
-            </h3>
-            <ul className="space-y-1">
-              {explanation.topDocuments.flatMap((doc) =>
-                doc.suppressed.map((s) => (
-                  <li key={`${doc.url}-${s.keyword}`} className="text-xs text-dm-text-secondary">
-                    &ldquo;{s.keyword}&rdquo;
-                    <span className="text-dm-muted ml-1">&mdash; {s.reason}</span>
-                  </li>
-                )),
-              )}
-            </ul>
-          </div>
-        )}
-
-      {/* Document table */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <DocumentTable
-          documents={explanation.topDocuments}
-          category={String(key)}
-          weekOf={String(date)}
+        <StructuralSignaturePanel
+          score={layers?.structuralDetail ?? null}
+          readingLevel={readingLevel}
         />
       </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <AIAssessmentPanel summary={layers?.aiDetail ?? null} readingLevel={readingLevel} />
+      </div>
+
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+        <ThematicDriftPanel drift={layers?.thematicDetail ?? null} readingLevel={readingLevel} />
+      </div>
+
+      {/* Document table */}
+      {explanation && (
+        <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
+          <DocumentTable
+            documents={explanation.topDocuments}
+            category={String(key)}
+            weekOf={String(date)}
+          />
+        </div>
+      )}
     </>
   );
 }

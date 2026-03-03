@@ -1,83 +1,53 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
-import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
-import { AiReviewerNotes } from '@/components/category/AiReviewerNotes';
-import { AssessmentSummary } from '@/components/category/AssessmentSummary';
-import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
-import { EvidencePanel } from '@/components/category/EvidencePanel';
-import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
-import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
-import { TrendChart } from '@/components/category/TrendChart';
-import type { TrendDataPoint } from '@/components/category/TrendChart';
+import { CategoryStatusChart } from '@/components/category/CategoryStatusChart';
+import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
+import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
+import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
-import type { EnhancedAssessment, StatusLevel } from '@/lib/types';
-import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
-
-interface CategoryDetail {
-  category: string;
-  title: string;
-  assessment: EnhancedAssessment | null;
-  baseline: { avg: number; stddev: number };
-  latestWeek: CategoryDetailLatestWeek | null;
-}
-
-interface WeeklyRow {
-  weekOf: string;
-  totalSeverity: number;
-  documentCount: number;
-}
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
+import type { StatusLevel } from '@/lib/types';
 
 export default function CategoryDetailPage() {
   const router = useRouter();
   const { key } = router.query;
+  const categoryKey = typeof key === 'string' ? key : undefined;
   const { readingLevel } = useReadingLevel();
-  const [detail, setDetail] = useState<CategoryDetail | null>(null);
-  const [weeklyData, setWeeklyData] = useState<TrendDataPoint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { resolvedMode } = useTheme();
 
-  useEffect(() => {
-    if (!key || typeof key !== 'string') return;
-
-    async function loadData() {
-      try {
-        const [detailRes, weeklyRes] = await Promise.all([
-          fetch(`/api/category/${key}`),
-          fetch(`/api/history/weekly-scores?category=${key}`),
-        ]);
-        if (detailRes.ok) setDetail(await detailRes.json());
-        if (weeklyRes.ok) {
-          const rows: WeeklyRow[] = await weeklyRes.json();
-          setWeeklyData(
-            rows.map((r) => ({
-              week: r.weekOf,
-              score: Number(r.totalSeverity),
-              documentCount: Number(r.documentCount),
-            })),
-          );
-        }
-      } catch (err) {
-        console.error('Failed to load category detail:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, [key]);
+  const {
+    weeklyData,
+    baseline,
+    title,
+    convergenceStatus,
+    dataCoverage,
+    rangePreset,
+    brushStartIndex,
+    brushEndIndex,
+    rangeLabel,
+    selectedWeek,
+    weekData,
+    weekLoading,
+    setRangePreset,
+    setBrushRange,
+    selectWeek,
+    loading,
+  } = useCategoryDetail(categoryKey);
 
   if (loading) {
     return (
       <div className="animate-pulse space-y-6">
         <div className="h-8 w-64 bg-dm-border/50 rounded" />
-        <div className="h-64 bg-dm-border/30 rounded-lg" />
+        <div className="h-[320px] bg-dm-border/30 rounded-lg" />
         <div className="h-32 bg-dm-border/30 rounded-lg" />
       </div>
     );
   }
 
-  if (!detail) {
+  if (!title) {
     return (
       <>
         <Link href="/" className="text-xs text-dm-accent hover:underline">
@@ -88,31 +58,20 @@ export default function CategoryDetailPage() {
     );
   }
 
-  const assessment = detail.assessment;
-  const convergence = detail.latestWeek?.convergenceDetail ?? null;
-  const status: StatusLevel = assessment?.status ?? 'Stable';
-  const insufficientData = assessment?.keywordResult?.detail?.insufficientData === true;
-  const docCount = weeklyData[weeklyData.length - 1]?.documentCount ?? 0;
-  const assessedAt = assessment?.assessedAt
-    ? new Date(assessment.assessedAt).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : null;
-
-  const suppressedKeywords = assessment?.keywordReview
-    ?.filter((kr) => kr.assessment === 'false_positive')
-    .map((kr) => ({
-      keyword: kr.keyword,
-      assessment: kr.assessment,
-      reasoning: kr.reasoning,
-    }));
+  const latestRow = weeklyData[weeklyData.length - 1];
+  const status: StatusLevel =
+    convergenceStatus?.status === 'ConfirmedConcern'
+      ? 'Capture'
+      : convergenceStatus?.status === 'Divergent'
+        ? 'Drift'
+        : convergenceStatus?.status === 'Elevated'
+          ? 'Warning'
+          : 'Stable';
 
   return (
     <>
       <Head>
-        <title>{detail.title} — Democracy Monitor</title>
+        <title>{title} — Democracy Monitor</title>
       </Head>
 
       {/* Back link */}
@@ -120,113 +79,74 @@ export default function CategoryDetailPage() {
         &larr; Back to overview
       </Link>
 
-      {/* Page header */}
+      {/* Header */}
       <header className="mt-4 mb-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-dm-text-primary">{detail.title}</h2>
+            <h2 className="text-lg font-bold text-dm-text-primary">{title}</h2>
             <p className="text-xs text-dm-text-secondary mt-1">
-              {readingLevel === 'detailed' && (
-                <span className="font-mono mr-2">{detail.category}</span>
-              )}
-              {assessedAt && <>Last assessed: {assessedAt}</>}
-              {docCount > 0 && <> &middot; {docCount} docs this week</>}
+              {readingLevel === 'detailed' && <span className="font-mono mr-2">{categoryKey}</span>}
+              {latestRow && <>{Number(latestRow.documentCount)} docs latest week</>}
             </p>
           </div>
-          {insufficientData ? (
-            <span
-              role="status"
-              aria-label="Status: No Data. Insufficient evidence to assess this category."
-              title="Insufficient evidence to assess this category"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold bg-dm-border/20 text-dm-muted border-dm-border"
-            >
-              No Data
-            </span>
-          ) : (
-            <StatusPill level={status} />
-          )}
+          <StatusPill level={status} />
         </div>
-
-        {/* Data coverage */}
-        {assessment?.dataCoverage !== undefined && (
+        {dataCoverage !== null && (
           <p className="mt-2 text-[11px] text-dm-muted">
-            Data coverage: {(assessment.dataCoverage * 100).toFixed(0)}%
+            Data coverage: {(dataCoverage * 100).toFixed(0)}%
           </p>
         )}
       </header>
 
-      {/* Convergence header */}
-      <ConvergenceHeader synthesis={convergence} />
+      {/* Time range bar */}
+      <TimeRangeBar rangeLabel={rangeLabel} selected={rangePreset} onChange={setRangePreset} />
 
-      {/* Assessment summary */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <AssessmentSummary
-          reason={assessment?.reason ?? 'No assessment data available.'}
-          howWeCouldBeWrong={assessment?.howWeCouldBeWrong ?? []}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      {/* Three-layer panels */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <StructuralSignaturePanel
-          score={detail.latestWeek?.structuralDetail ?? null}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <AIAssessmentPanel
-          summary={detail.latestWeek?.aiDetail ?? null}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <ThematicDriftPanel
-          drift={detail.latestWeek?.thematicDetail ?? null}
-          readingLevel={readingLevel}
-        />
-      </div>
-
-      {/* Trend chart */}
+      {/* Status-over-time chart */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-          Trend
+          Status Over Time
         </h2>
-        <TrendChart
+        <CategoryStatusChart
           data={weeklyData}
-          baselineAvg={detail.baseline.avg}
-          baselineStdDev={detail.baseline.stddev}
-          onWeekClick={(week) => router.push(`/category/${key}/week/${week}`)}
+          baselineAvg={baseline.avg}
+          baselineStdDev={baseline.stddev}
+          mode={resolvedMode}
+          brushStartIndex={brushStartIndex}
+          brushEndIndex={brushEndIndex}
+          onRangeChange={setBrushRange}
+          selectedWeek={selectedWeek}
+          onWeekClick={selectWeek}
         />
       </div>
 
-      {/* Evidence panel — keyword annotations */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <EvidencePanel
-          matches={assessment?.matches ?? []}
-          keywordMatches={undefined}
-          reviewedDocuments={assessment?.reviewedDocuments}
-          suppressedKeywords={suppressedKeywords}
-          readingLevel={readingLevel}
-          annotationMode={true}
-        />
-      </div>
+      {/* Range summary */}
+      {weeklyData.length > 0 && (
+        <div className="mb-6">
+          <RangeSummaryPanel
+            weeklyData={weeklyData}
+            startIndex={brushStartIndex ?? 0}
+            endIndex={brushEndIndex ?? weeklyData.length - 1}
+            baseline={baseline}
+            latestConvergence={convergenceStatus}
+          />
+        </div>
+      )}
 
-      {/* Legacy AI reviewer notes */}
-      <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-        <AiReviewerNotes
-          aiResult={assessment?.aiResult}
-          keywordReview={assessment?.keywordReview}
-          evidenceFor={assessment?.evidenceFor}
-          evidenceAgainst={assessment?.evidenceAgainst}
-          whatWouldChangeMind={assessment?.whatWouldChangeMind}
-          keywordStatus={assessment?.keywordResult?.status ?? 'Stable'}
-          readingLevel={readingLevel}
-          legacy={true}
-        />
-      </div>
+      {/* Week detail — shown when a week is selected */}
+      {selectedWeek && categoryKey && (
+        <div className="mt-8 pt-6 border-t border-dm-border">
+          <WeekDetailPanel
+            weekOf={selectedWeek}
+            categoryKey={categoryKey}
+            layers={weekData?.layers ?? null}
+            explanation={weekData?.explanation ?? null}
+            narrative={weekData?.narrative ?? null}
+            readingLevel={readingLevel}
+            loading={weekLoading}
+            onClose={() => selectWeek(null)}
+          />
+        </div>
+      )}
     </>
   );
 }
