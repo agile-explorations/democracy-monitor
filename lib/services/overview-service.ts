@@ -21,6 +21,13 @@ function weeksSinceAdminStart(): number {
 
 const ELEVATED_STATUSES = new Set<ConvergenceStatus>(['Elevated', 'Divergent', 'ConfirmedConcern']);
 
+const STATUS_WEIGHT: Record<ConvergenceStatus, number> = {
+  Stable: 0,
+  Elevated: 1,
+  Divergent: 2,
+  ConfirmedConcern: 3,
+};
+
 interface AggregateRow {
   category: string;
   week_of: string;
@@ -68,6 +75,23 @@ function parseStatus(detail: unknown): ConvergenceStatus | null {
   return null;
 }
 
+type ElevatedStatus = 'Elevated' | 'Divergent' | 'ConfirmedConcern';
+
+/** Accumulate elevated and per-status counts from a category's segments. */
+function accumulateSegmentCounts(
+  segments: Array<{ week: string; status: ConvergenceStatus | null }>,
+  weekElevatedCounts: Map<string, number>,
+  weekStatusCounts: Map<string, Record<ElevatedStatus, number>>,
+) {
+  for (const seg of segments) {
+    if (seg.status && ELEVATED_STATUSES.has(seg.status)) {
+      weekElevatedCounts.set(seg.week, (weekElevatedCounts.get(seg.week) ?? 0) + 1);
+      const counts = weekStatusCounts.get(seg.week);
+      if (counts && seg.status !== 'Stable') counts[seg.status as ElevatedStatus]++;
+    }
+  }
+}
+
 /** Build per-category heatmap/timeline rows and accumulate elevated counts. */
 function buildCategoryRows(
   byCat: Map<string, AggregateRow[]>,
@@ -77,7 +101,14 @@ function buildCategoryRows(
   const heatmap: HeatmapRow[] = [];
   const statusTimeline: StatusTimelineEntry[] = [];
   const weekElevatedCounts = new Map<string, number>();
-  for (const week of allWeeks) weekElevatedCounts.set(week, 0);
+  const weekStatusCounts = new Map<
+    string,
+    Record<'Elevated' | 'Divergent' | 'ConfirmedConcern', number>
+  >();
+  for (const week of allWeeks) {
+    weekElevatedCounts.set(week, 0);
+    weekStatusCounts.set(week, { Elevated: 0, Divergent: 0, ConfirmedConcern: 0 });
+  }
 
   const statusCounts: Record<ConvergenceStatus, number> = {
     Stable: 0,
@@ -103,17 +134,13 @@ function buildCategoryRows(
     }));
     statusTimeline.push({ category: cat.key, title: cat.title, segments });
 
-    for (const seg of segments) {
-      if (seg.status && ELEVATED_STATUSES.has(seg.status)) {
-        weekElevatedCounts.set(seg.week, (weekElevatedCounts.get(seg.week) ?? 0) + 1);
-      }
-    }
+    accumulateSegmentCounts(segments, weekElevatedCounts, weekStatusCounts);
 
     const latestStatus = parseStatus(weekMap.get(latestWeek)?.convergence_detail) ?? 'Stable';
     statusCounts[latestStatus]++;
   }
 
-  return { heatmap, statusTimeline, weekElevatedCounts, statusCounts };
+  return { heatmap, statusTimeline, weekElevatedCounts, weekStatusCounts, statusCounts };
 }
 
 /** Build heatmap, timeline, synchrony, and statusCounts from raw rows. */
@@ -130,16 +157,23 @@ export function buildOverviewFromRows(rows: AggregateRow[]): Omit<OverviewSummar
   const allWeeks = Array.from(weekSet).sort();
   const latestWeek = allWeeks[allWeeks.length - 1] ?? '';
 
-  const { heatmap, statusTimeline, weekElevatedCounts, statusCounts } = buildCategoryRows(
-    byCat,
-    allWeeks,
-    latestWeek,
-  );
+  const { heatmap, statusTimeline, weekElevatedCounts, weekStatusCounts, statusCounts } =
+    buildCategoryRows(byCat, allWeeks, latestWeek);
 
-  const synchrony: SynchronyPoint[] = allWeeks.map((w) => ({
-    week: w,
-    elevatedCount: weekElevatedCounts.get(w) ?? 0,
-  }));
+  const synchrony: SynchronyPoint[] = allWeeks.map((w) => {
+    const counts = weekStatusCounts.get(w) ?? { Elevated: 0, Divergent: 0, ConfirmedConcern: 0 };
+    const elevatedWeighted = counts.Elevated * STATUS_WEIGHT.Elevated;
+    const divergentWeighted = counts.Divergent * STATUS_WEIGHT.Divergent;
+    const confirmedWeighted = counts.ConfirmedConcern * STATUS_WEIGHT.ConfirmedConcern;
+    return {
+      week: w,
+      elevatedCount: weekElevatedCounts.get(w) ?? 0,
+      weightedScore: elevatedWeighted + divergentWeighted + confirmedWeighted,
+      elevatedWeighted,
+      divergentWeighted,
+      confirmedWeighted,
+    };
+  });
 
   return { heatmap, statusTimeline, synchrony, statusCounts };
 }

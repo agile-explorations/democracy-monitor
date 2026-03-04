@@ -10,6 +10,15 @@ export function mean(values: number[]): number {
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
+/** Simple moving average. Uses partial windows at the start so output length equals input length. */
+export function movingAverage(values: number[], window: number): number[] {
+  return values.map((_, i) => {
+    const start = Math.max(0, i - window + 1);
+    const slice = values.slice(start, i + 1);
+    return slice.reduce((sum, v) => sum + v, 0) / slice.length;
+  });
+}
+
 /** Sample standard deviation (N-1 denominator). Returns 0 for fewer than 2 values. */
 export function stddev(values: number[]): number {
   if (values.length < 2) return 0;

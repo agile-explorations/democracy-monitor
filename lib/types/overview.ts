@@ -15,6 +15,10 @@ export interface StatusTimelineEntry {
 export interface SynchronyPoint {
   week: string;
   elevatedCount: number;
+  weightedScore: number;
+  elevatedWeighted: number;
+  divergentWeighted: number;
+  confirmedWeighted: number;
 }
 
 export interface FetchSourceDetail {

@@ -214,19 +214,20 @@ export default function Home() {
               onChange={handlePresetChange}
             />
 
-            {/* Elevated categories chart */}
+            {/* Cumulative concern chart */}
             <section>
               <div className="mb-1">
-                <h2 className="text-sm font-semibold text-dm-text-primary">
-                  Elevated Categories Over Time
-                </h2>
+                <h2 className="text-sm font-semibold text-dm-text-primary">Cumulative Concern</h2>
                 <p className="text-[11px] text-dm-muted mt-0.5">
-                  Number of categories at Elevated or above per week
+                  {readingLevel === 'summary'
+                    ? 'Weighted concern score across all categories per week'
+                    : 'Concern score stacked by severity: categories at Elevated (1 point each), Divergent (2 points), or Confirmed Concern (3 points)'}
                 </p>
               </div>
               <SynchronyChart
                 data={overview.synchrony}
                 mode={resolvedMode}
+                readingLevel={readingLevel}
                 brushStartIndex={activeRange?.start}
                 brushEndIndex={activeRange?.end}
                 onRangeChange={handleBrushChange}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { roundTo, mean, stddev } from '@/lib/utils/math';
+import { roundTo, mean, movingAverage, stddev } from '@/lib/utils/math';
 
 describe('roundTo', () => {
   it('rounds to 0 decimal places', () => {
@@ -42,6 +42,37 @@ describe('mean', () => {
 
   it('handles decimal values', () => {
     expect(mean([1.5, 2.5])).toBe(2);
+  });
+});
+
+describe('movingAverage', () => {
+  it('returns empty array for empty input', () => {
+    expect(movingAverage([], 4)).toEqual([]);
+  });
+
+  it('returns the same values for window of 1', () => {
+    expect(movingAverage([3, 5, 7], 1)).toEqual([3, 5, 7]);
+  });
+
+  it('uses partial windows at start', () => {
+    const result = movingAverage([2, 4, 6, 8], 3);
+    expect(result[0]).toBeCloseTo(2); // avg(2)
+    expect(result[1]).toBeCloseTo(3); // avg(2,4)
+    expect(result[2]).toBeCloseTo(4); // avg(2,4,6)
+    expect(result[3]).toBeCloseTo(6); // avg(4,6,8)
+  });
+
+  it('produces output same length as input', () => {
+    const input = [1, 2, 3, 4, 5, 6];
+    expect(movingAverage(input, 4)).toHaveLength(6);
+  });
+
+  it('averages correctly with full window', () => {
+    const result = movingAverage([10, 20, 30, 40, 50], 4);
+    // index 3: avg(10,20,30,40) = 25
+    expect(result[3]).toBeCloseTo(25);
+    // index 4: avg(20,30,40,50) = 35
+    expect(result[4]).toBeCloseTo(35);
   });
 });
 

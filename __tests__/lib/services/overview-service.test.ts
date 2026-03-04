@@ -85,6 +85,36 @@ describe('buildOverviewFromRows', () => {
     expect(result.synchrony[0].elevatedCount).toBe(2); // Elevated + Divergent
   });
 
+  it('computes weighted score from per-status counts', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, { status: 'Elevated' }),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Divergent' }),
+      makeRow('military', '2026-01-06', 0.9, { status: 'ConfirmedConcern' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+    const pt = result.synchrony[0];
+
+    // Elevated=1×1, Divergent=1×2, ConfirmedConcern=1×3 = 6
+    expect(pt.elevatedWeighted).toBe(1);
+    expect(pt.divergentWeighted).toBe(2);
+    expect(pt.confirmedWeighted).toBe(3);
+    expect(pt.weightedScore).toBe(6);
+  });
+
+  it('returns zero weighted fields when all statuses are Stable', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.2, { status: 'Stable' }),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Stable' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+    const pt = result.synchrony[0];
+
+    expect(pt.weightedScore).toBe(0);
+    expect(pt.elevatedWeighted).toBe(0);
+    expect(pt.divergentWeighted).toBe(0);
+    expect(pt.confirmedWeighted).toBe(0);
+  });
+
   it('does not count null status as elevated', () => {
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, null),

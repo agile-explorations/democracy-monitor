@@ -11,11 +11,14 @@ vi.mock('recharts', () => ({
   }) {
     return <div data-testid="responsive-container">{children}</div>;
   },
-  AreaChart: function MockAreaChart({ children }: { children: React.ReactNode }) {
-    return <div data-testid="area-chart">{children}</div>;
+  ComposedChart: function MockComposedChart({ children }: { children: React.ReactNode }) {
+    return <div data-testid="composed-chart">{children}</div>;
   },
-  Area: function MockArea() {
-    return <div data-testid="area" />;
+  Area: function MockArea({ dataKey }: { dataKey: string }) {
+    return <div data-testid={`area-${dataKey}`} />;
+  },
+  Line: function MockLine({ dataKey }: { dataKey: string }) {
+    return <div data-testid={`line-${dataKey}`} />;
   },
   XAxis: function MockXAxis() {
     return null;
@@ -32,28 +35,77 @@ vi.mock('recharts', () => ({
   Brush: function MockBrush() {
     return null;
   },
+  ReferenceLine: function MockReferenceLine() {
+    return null;
+  },
 }));
 
 const sampleData: SynchronyPoint[] = [
-  { week: '2026-01-06', elevatedCount: 2 },
-  { week: '2026-01-13', elevatedCount: 4 },
-  { week: '2026-01-20', elevatedCount: 1 },
+  {
+    week: '2026-01-06',
+    elevatedCount: 2,
+    weightedScore: 3,
+    elevatedWeighted: 1,
+    divergentWeighted: 2,
+    confirmedWeighted: 0,
+  },
+  {
+    week: '2026-01-13',
+    elevatedCount: 4,
+    weightedScore: 7,
+    elevatedWeighted: 1,
+    divergentWeighted: 0,
+    confirmedWeighted: 6,
+  },
+  {
+    week: '2026-01-20',
+    elevatedCount: 1,
+    weightedScore: 1,
+    elevatedWeighted: 1,
+    divergentWeighted: 0,
+    confirmedWeighted: 0,
+  },
 ];
 
 describe('SynchronyChart', () => {
   it('renders empty message when no data', () => {
-    render(<SynchronyChart data={[]} mode="light" />);
-    expect(screen.getByText('No synchrony data available.')).toBeDefined();
+    render(<SynchronyChart data={[]} mode="light" readingLevel="summary" />);
+    expect(screen.getByText('No concern data available.')).toBeDefined();
   });
 
-  it('renders chart container with data', () => {
-    render(<SynchronyChart data={sampleData} mode="light" />);
+  it('renders composed chart with data in summary mode', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
     expect(screen.getByTestId('responsive-container')).toBeDefined();
-    expect(screen.getByTestId('area-chart')).toBeDefined();
+    expect(screen.getByTestId('composed-chart')).toBeDefined();
+    // Summary shows single weightedScore area + trend line
+    expect(screen.getByTestId('area-weightedScore')).toBeDefined();
+    expect(screen.getByTestId('line-trend')).toBeDefined();
+  });
+
+  it('renders stacked areas in detailed mode', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
+    expect(screen.getByTestId('area-elevatedWeighted')).toBeDefined();
+    expect(screen.getByTestId('area-divergentWeighted')).toBeDefined();
+    expect(screen.getByTestId('area-confirmedWeighted')).toBeDefined();
+    expect(screen.getByTestId('line-trend')).toBeDefined();
+  });
+
+  it('renders legend with Concern Score in summary mode', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
+    expect(screen.getByText('Concern Score')).toBeDefined();
+    expect(screen.getByText('Trend')).toBeDefined();
+  });
+
+  it('renders legend with status levels in detailed mode', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
+    expect(screen.getByText('Confirmed')).toBeDefined();
+    expect(screen.getByText('Divergent')).toBeDefined();
+    expect(screen.getByText('Elevated')).toBeDefined();
+    expect(screen.getByText('Trend')).toBeDefined();
   });
 
   it('renders in dark mode without errors', () => {
-    render(<SynchronyChart data={sampleData} mode="dark" />);
-    expect(screen.getByTestId('area-chart')).toBeDefined();
+    render(<SynchronyChart data={sampleData} mode="dark" readingLevel="summary" />);
+    expect(screen.getByTestId('composed-chart')).toBeDefined();
   });
 });
