@@ -246,28 +246,34 @@ export default function Home() {
               <OverviewStatusSummary statusCounts={filteredStatusCounts} />
             </section>
 
-            {/* Source fetch health timeline */}
-            <SourceHealthTimeline
-              data={fetchTimeline}
-              mode={resolvedMode}
-              brushStartIndex={activeRange?.start}
-              brushEndIndex={activeRange?.end}
-            />
+            {readingLevel === 'detailed' && (
+              <>
+                {/* Source fetch health timeline */}
+                <SourceHealthTimeline
+                  data={fetchTimeline}
+                  mode={resolvedMode}
+                  brushStartIndex={activeRange?.start}
+                  brushEndIndex={activeRange?.end}
+                />
 
-            {/* Status heatmap */}
-            <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">Status Heatmap</h2>
-              <p className="text-[11px] text-dm-muted mb-3">
-                Convergence status per category over time
-              </p>
-              <StatusTimeline
-                entries={filteredOverview?.statusTimeline ?? []}
-                mode={resolvedMode}
-                onCellClick={handleCellClick}
-                onWeekHeaderClick={handleWeekHeaderClick}
-                selectedWeek={selectedWeek}
-              />
-            </section>
+                {/* Status heatmap */}
+                <section>
+                  <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                    Status Heatmap
+                  </h2>
+                  <p className="text-[11px] text-dm-muted mb-3">
+                    Convergence status per category over time
+                  </p>
+                  <StatusTimeline
+                    entries={filteredOverview?.statusTimeline ?? []}
+                    mode={resolvedMode}
+                    onCellClick={handleCellClick}
+                    onWeekHeaderClick={handleWeekHeaderClick}
+                    selectedWeek={selectedWeek}
+                  />
+                </section>
+              </>
+            )}
           </div>
         )}
 
