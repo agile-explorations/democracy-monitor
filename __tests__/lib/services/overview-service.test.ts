@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { buildOverviewFromRows } from '@/lib/services/overview-service';
+import {
+  buildOverviewFromRows,
+  computeWeeklyWeightedScores,
+} from '@/lib/services/overview-service';
 
 function makeRow(
   category: string,
@@ -163,5 +166,64 @@ describe('buildOverviewFromRows', () => {
     expect(fiscal).toBeDefined();
     expect(fiscal!.weeks).toHaveLength(1);
     expect(fiscal!.weeks[0].score).toBeNull();
+  });
+});
+
+describe('computeWeeklyWeightedScores', () => {
+  it('returns empty map for empty input', () => {
+    const result = computeWeeklyWeightedScores([], '2017-01-20');
+    expect(result.size).toBe(0);
+  });
+
+  it('groups by week and computes weighted scores', () => {
+    const rows = [
+      makeRow('civilService', '2017-01-23', 0.5, { status: 'Elevated' }),
+      makeRow('fiscal', '2017-01-23', 0.1, { status: 'Divergent' }),
+      makeRow('civilService', '2017-01-30', 0.3, { status: 'Stable' }),
+      makeRow('fiscal', '2017-01-30', 0.8, { status: 'ConfirmedConcern' }),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+
+    // Week 2017-01-23: offset ≈ 0 (3 days / 7 rounds to 0)
+    // Elevated(1) + Divergent(2) = 3
+    expect(result.get(0)).toBe(3);
+
+    // Week 2017-01-30: offset ≈ 1 (10 days / 7 rounds to 1)
+    // Stable(0) + ConfirmedConcern(3) = 3
+    expect(result.get(1)).toBe(3);
+  });
+
+  it('indexes by week offset from period start', () => {
+    const rows = [
+      makeRow('civilService', '2021-02-01', 0.5, { status: 'Elevated' }),
+      makeRow('civilService', '2021-03-01', 0.5, { status: 'Elevated' }),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2021-01-20');
+
+    // 2021-02-01 is 12 days after 2021-01-20 → round(12/7) = round(1.71) = 2
+    expect(result.has(2)).toBe(true);
+    // 2021-03-01 is 39 days after 2021-01-20 → round(39/7) = round(5.57) = 6
+    expect(result.has(6)).toBe(true);
+  });
+
+  it('treats null convergence_detail as Stable (weight 0)', () => {
+    const rows = [
+      makeRow('civilService', '2017-01-23', 0.5, null),
+      makeRow('fiscal', '2017-01-23', 0.1, null),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+    // null status → Stable → weight 0
+    expect(result.get(0)).toBe(0);
+  });
+
+  it('sums weights across all categories in a week', () => {
+    const rows = [
+      makeRow('civilService', '2017-01-23', 0.5, { status: 'ConfirmedConcern' }),
+      makeRow('fiscal', '2017-01-23', 0.1, { status: 'ConfirmedConcern' }),
+      makeRow('military', '2017-01-23', 0.3, { status: 'Elevated' }),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+    // 3 + 3 + 1 = 7
+    expect(result.get(0)).toBe(7);
   });
 });

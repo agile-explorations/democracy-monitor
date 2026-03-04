@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Area,
   Brush,
@@ -12,18 +12,18 @@ import {
   YAxis,
 } from 'recharts';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
-import { CHART_COLORS, CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import {
+  CHART_COLORS,
+  COMPARISON_COLORS,
+  CONVERGENCE_STATUS_COLORS,
+} from '@/lib/data/chart-colors';
 import type { SynchronyPoint } from '@/lib/types/overview';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
+import type { StatusColorMap, TrendPoint } from './SynchronyChartParts';
+import { ChartLegend, DetailedTooltip, SummaryTooltip } from './SynchronyChartParts';
 
 const TREND_WINDOW = 4;
-
-type StatusColorMap = Record<'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConcern', string>;
-
-interface TrendPoint extends SynchronyPoint {
-  trend: number;
-}
 
 export interface SynchronyChartProps {
   data: SynchronyPoint[];
@@ -36,99 +36,6 @@ export interface SynchronyChartProps {
   onWeekClick?: (week: string) => void;
 }
 
-type TooltipPayload = Array<{ payload: TrendPoint }>;
-
-function SummaryTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="rounded-md border border-dm-border bg-dm-card px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-dm-text-primary">{formatWeekLabel(d.week)}</p>
-      <p className="text-dm-text-secondary mt-1">Concern score: {d.weightedScore}</p>
-      <p className="text-dm-text-secondary">Trend: {d.trend.toFixed(1)}</p>
-    </div>
-  );
-}
-
-function DetailedTooltip({
-  active,
-  payload,
-  statusColors,
-}: {
-  active?: boolean;
-  payload?: TooltipPayload;
-  statusColors: StatusColorMap;
-}) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="rounded-md border border-dm-border bg-dm-card px-3 py-2 shadow-md text-xs">
-      <p className="font-medium text-dm-text-primary">{formatWeekLabel(d.week)}</p>
-      <div className="mt-1 space-y-0.5">
-        {d.confirmedWeighted > 0 && (
-          <p style={{ color: statusColors.ConfirmedConcern }}>
-            Confirmed Concern: {d.confirmedWeighted}
-          </p>
-        )}
-        {d.divergentWeighted > 0 && (
-          <p style={{ color: statusColors.Divergent }}>Divergent: {d.divergentWeighted}</p>
-        )}
-        {d.elevatedWeighted > 0 && (
-          <p style={{ color: statusColors.Elevated }}>Elevated: {d.elevatedWeighted}</p>
-        )}
-      </div>
-      <p className="text-dm-text-secondary mt-1">Total: {d.weightedScore}</p>
-      <p className="text-dm-text-secondary">Trend: {d.trend.toFixed(1)}</p>
-    </div>
-  );
-}
-
-function Swatch({ color, opacity }: { color: string; opacity?: number }) {
-  return (
-    <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: color, opacity }} />
-  );
-}
-
-function ChartLegend({
-  readingLevel,
-  statusColors,
-  trendColor,
-}: {
-  readingLevel: ReadingLevel;
-  statusColors: StatusColorMap;
-  trendColor: string;
-}) {
-  return (
-    <div className="flex items-center gap-4 text-[11px] text-dm-text-secondary mb-1">
-      {readingLevel === 'summary' ? (
-        <span className="flex items-center gap-1">
-          <Swatch color={statusColors.Elevated} opacity={0.5} />
-          Concern Score
-        </span>
-      ) : (
-        <>
-          <span className="flex items-center gap-1">
-            <Swatch color={statusColors.ConfirmedConcern} /> Confirmed
-          </span>
-          <span className="flex items-center gap-1">
-            <Swatch color={statusColors.Divergent} /> Divergent
-          </span>
-          <span className="flex items-center gap-1">
-            <Swatch color={statusColors.Elevated} /> Elevated
-          </span>
-        </>
-      )}
-      <span className="flex items-center gap-1">
-        <span
-          className="inline-block w-3 h-0.5"
-          style={{ backgroundColor: trendColor, borderTop: `2px dashed ${trendColor}` }}
-        />
-        Trend
-      </span>
-    </div>
-  );
-}
-
 export function SynchronyChart({
   data,
   mode,
@@ -139,9 +46,15 @@ export function SynchronyChart({
   selectedWeek,
   onWeekClick,
 }: SynchronyChartProps) {
+  const [showComparison, setShowComparison] = useState(false);
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
   const statusColors: StatusColorMap = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
+  const comparisonColors = useMemo(() => COMPARISON_COLORS[mode], [mode]);
   const trendColor = mode === 'dark' ? '#f1f5f9' : '#334155';
+  const hasComparison = useMemo(
+    () => data.some((d) => d.trumpT1Trend != null || d.bidenT1Trend != null),
+    [data],
+  );
 
   const trendData: TrendPoint[] = useMemo(() => {
     const scores = data.map((d) => d.weightedScore);
@@ -169,6 +82,10 @@ export function SynchronyChart({
         readingLevel={readingLevel}
         statusColors={statusColors}
         trendColor={trendColor}
+        showComparison={showComparison}
+        comparisonColors={comparisonColors}
+        hasComparison={hasComparison}
+        onToggleComparison={() => setShowComparison((v) => !v)}
       />
       <ResponsiveContainer width="100%" height={250}>
         <ComposedChart
@@ -220,7 +137,14 @@ export function SynchronyChart({
           />
           {readingLevel === 'summary' ? (
             <>
-              <Tooltip content={<SummaryTooltip />} />
+              <Tooltip
+                content={
+                  <SummaryTooltip
+                    showComparison={showComparison}
+                    comparisonColors={comparisonColors}
+                  />
+                }
+              />
               <Area
                 type="monotone"
                 dataKey="weightedScore"
@@ -231,7 +155,15 @@ export function SynchronyChart({
             </>
           ) : (
             <>
-              <Tooltip content={<DetailedTooltip statusColors={statusColors} />} />
+              <Tooltip
+                content={
+                  <DetailedTooltip
+                    statusColors={statusColors}
+                    showComparison={showComparison}
+                    comparisonColors={comparisonColors}
+                  />
+                }
+              />
               <Area
                 type="monotone"
                 dataKey="confirmedWeighted"
@@ -267,6 +199,30 @@ export function SynchronyChart({
             dot={false}
             isAnimationActive={false}
           />
+          {showComparison && (
+            <Line
+              type="monotone"
+              dataKey="trumpT1Trend"
+              stroke={comparisonColors.trumpT1}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
+          {showComparison && (
+            <Line
+              type="monotone"
+              dataKey="bidenT1Trend"
+              stroke={comparisonColors.bidenT1}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          )}
           {selectedWeek && (
             <ReferenceLine
               x={selectedWeek}

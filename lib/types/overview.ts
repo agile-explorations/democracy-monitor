@@ -19,6 +19,8 @@ export interface SynchronyPoint {
   elevatedWeighted: number;
   divergentWeighted: number;
   confirmedWeighted: number;
+  trumpT1Trend?: number | null;
+  bidenT1Trend?: number | null;
 }
 
 export interface FetchSourceDetail {

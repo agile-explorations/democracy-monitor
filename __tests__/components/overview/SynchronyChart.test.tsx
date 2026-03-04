@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { SynchronyPoint } from '@/lib/types/overview';
@@ -98,14 +98,51 @@ describe('SynchronyChart', () => {
 
   it('renders legend with status levels in detailed mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
-    expect(screen.getByText('Confirmed')).toBeDefined();
-    expect(screen.getByText('Divergent')).toBeDefined();
     expect(screen.getByText('Elevated')).toBeDefined();
+    expect(screen.getByText('Divergent')).toBeDefined();
+    expect(screen.getByText('Confirmed')).toBeDefined();
     expect(screen.getByText('Trend')).toBeDefined();
   });
 
   it('renders in dark mode without errors', () => {
     render(<SynchronyChart data={sampleData} mode="dark" readingLevel="summary" />);
     expect(screen.getByTestId('composed-chart')).toBeDefined();
+  });
+
+  it('does not render comparison lines by default', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
+    expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
+    expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
+  });
+
+  it('does not show Compare button when no comparison data exists', () => {
+    render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
+    expect(screen.queryByText('Compare Previous Administrations')).toBeNull();
+  });
+
+  it('shows Compare button and renders comparison lines when toggled', () => {
+    const dataWithComparison: SynchronyPoint[] = sampleData.map((d, i) => ({
+      ...d,
+      trumpT1Trend: i + 1,
+      bidenT1Trend: i + 2,
+    }));
+    render(<SynchronyChart data={dataWithComparison} mode="light" readingLevel="summary" />);
+
+    // Compare button should be visible
+    const compareBtn = screen.getByText('Compare Previous Administrations');
+    expect(compareBtn).toBeDefined();
+
+    // Comparison lines not rendered yet
+    expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
+    expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
+
+    // Toggle comparison on
+    fireEvent.click(compareBtn);
+    expect(screen.getByTestId('line-trumpT1Trend')).toBeDefined();
+    expect(screen.getByTestId('line-bidenT1Trend')).toBeDefined();
+
+    // Legend shows comparison labels
+    expect(screen.getByText('Trump T1')).toBeDefined();
+    expect(screen.getByText('Biden T1')).toBeDefined();
   });
 });
