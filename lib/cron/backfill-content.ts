@@ -176,33 +176,64 @@ const WH_BODY_SELECTORS = ['.page-content', '.entry-content', 'article', 'main']
  */
 export function extractWhBody(html: string): string | null {
   for (const selector of WH_BODY_SELECTORS) {
-    const regex = selectorToRegex(selector);
-    const match = html.match(regex);
-    if (match) {
-      // Class selectors use a backreference: group 1 = tag, group 2 = content
-      // Tag selectors: group 1 = content
-      const contentGroup = selector.startsWith('.') ? match[2] : match[1];
-      const text = stripHtml(contentGroup).replace(/\0/g, '').trim();
-      if (text.length > 50) return truncateContent(text);
-    }
+    const inner = extractBySelector(html, selector);
+    if (!inner) continue;
+    const text = stripHtml(inner).replace(/\0/g, '').trim();
+    if (text.length > 50) return truncateContent(text);
   }
   // Fallback: strip all HTML
   const text = stripHtml(html).replace(/\0/g, '').trim();
   return text.length > 50 ? truncateContent(text) : null;
 }
 
-/** Convert a simple CSS selector to a regex that captures inner HTML. */
-function selectorToRegex(selector: string): RegExp {
+/**
+ * Extract inner HTML for a CSS selector, handling nested tags via depth counting.
+ * Class selectors (`.foo`) match any div/section with that class.
+ * Tag selectors (`article`) match the tag directly.
+ */
+function extractBySelector(html: string, selector: string): string | null {
+  let openPattern: RegExp;
+  let tagName: string;
+
   if (selector.startsWith('.')) {
     const className = selector.slice(1);
-    // Match a div/section with the given class, capturing content up to the closing tag
-    return new RegExp(
-      `<(div|section)[^>]*\\bclass=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>([\\s\\S]*?)</\\1>`,
+    openPattern = new RegExp(
+      `<(div|section)[^>]*\\bclass=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>`,
       'i',
     );
+    const openMatch = openPattern.exec(html);
+    if (!openMatch) return null;
+    tagName = openMatch[1].toLowerCase();
+    return extractBalancedContent(html, tagName, openMatch.index + openMatch[0].length);
   }
-  // Tag selector (article, main, etc.)
-  return new RegExp(`<${selector}[^>]*>([\\s\\S]*?)</${selector}>`, 'i');
+
+  openPattern = new RegExp(`<${selector}[^>]*>`, 'i');
+  const openMatch = openPattern.exec(html);
+  if (!openMatch) return null;
+  tagName = selector;
+  return extractBalancedContent(html, tagName, openMatch.index + openMatch[0].length);
+}
+
+/** Find balanced closing tag by counting open/close depth from a start offset. */
+function extractBalancedContent(html: string, tag: string, contentStart: number): string | null {
+  const openRe = new RegExp(`<${tag}[\\s>]`, 'gi');
+  const closeRe = new RegExp(`</${tag}\\s*>`, 'gi');
+  const events: Array<{ pos: number; isOpen: boolean }> = [];
+
+  openRe.lastIndex = contentStart;
+  closeRe.lastIndex = contentStart;
+
+  let m: RegExpExecArray | null;
+  while ((m = openRe.exec(html))) events.push({ pos: m.index, isOpen: true });
+  while ((m = closeRe.exec(html))) events.push({ pos: m.index, isOpen: false });
+  events.sort((a, b) => a.pos - b.pos);
+
+  let depth = 1;
+  for (const ev of events) {
+    depth += ev.isOpen ? 1 : -1;
+    if (depth === 0) return html.slice(contentStart, ev.pos);
+  }
+  return null;
 }
 
 async function fetchWhPageContent(url: string): Promise<string | null> {

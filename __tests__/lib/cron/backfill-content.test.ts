@@ -73,6 +73,30 @@ describe('extractWhBody', () => {
     expect(result).toContain('paragraph content');
   });
 
+  it('extracts content from .page-content with nested divs (Trump archive)', () => {
+    const html = `
+      <html><body>
+        <nav>Navigation</nav>
+        <div class="page-content">
+          <div class="page-content__wrap">
+            <div class="page-content__content editor">
+              <aside class="editor__module"><div class="share">Share</div></aside>
+              <h2>Statement from the President</h2>
+              <p>The President today announced new actions to protect American workers and strengthen the economy.</p>
+              <p>These measures will take effect immediately and apply to all federal agencies.</p>
+            </div>
+          </div>
+        </div>
+        <footer>Footer</footer>
+      </body></html>
+    `;
+    const result = extractWhBody(html);
+    expect(result).toContain('protect American workers');
+    expect(result).toContain('federal agencies');
+    expect(result).not.toContain('Navigation');
+    expect(result).not.toContain('Footer');
+  });
+
   it('returns null for very short extracted text', () => {
     const html = '<html><body><p>Hi</p></body></html>';
     const result = extractWhBody(html);
