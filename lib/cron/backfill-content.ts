@@ -236,15 +236,35 @@ function extractBalancedContent(html: string, tag: string, contentStart: number)
   return null;
 }
 
+/** Archive domains for prior administration pages that 404 on current whitehouse.gov. */
+const WH_ARCHIVE_HOSTS = ['trumpwhitehouse.archives.gov', 'bidenwhitehouse.archives.gov'];
+
 async function fetchWhPageContent(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, {
       headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
       signal: AbortSignal.timeout(FR_FETCH_TIMEOUT_MS),
     });
-    if (!response.ok) return null;
-    const html = await response.text();
-    return extractWhBody(html);
+    if (response.ok) {
+      const html = await response.text();
+      return extractWhBody(html);
+    }
+    // Fallback: try archive domains for whitehouse.gov 404s
+    if (response.status === 404 && url.includes('www.whitehouse.gov')) {
+      for (const archiveHost of WH_ARCHIVE_HOSTS) {
+        const archiveUrl = url.replace('www.whitehouse.gov', archiveHost);
+        const archiveRes = await fetch(archiveUrl, {
+          headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
+          signal: AbortSignal.timeout(FR_FETCH_TIMEOUT_MS),
+        });
+        if (archiveRes.ok) {
+          const html = await archiveRes.text();
+          const content = extractWhBody(html);
+          if (content) return content;
+        }
+      }
+    }
+    return null;
   } catch {
     return null;
   }
