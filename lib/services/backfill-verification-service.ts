@@ -32,8 +32,9 @@ export interface Layer2PeriodStats {
   pass1Assessed: number;
   missingPass1: number;
   pass1Flagged: number;
-  pass2Flagged: number;
+  pass2Assessed: number;
   missingPass2: number;
+  pass2Flagged: number;
   auditSampled: number;
   auditFalseNegatives: number;
 }

@@ -238,6 +238,7 @@ function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
     `${'P1 Flag'.padStart(10)}` +
     `${'Pass 2'.padStart(10)}` +
     `${'P2 Miss'.padStart(10)}` +
+    `${'P2 Flag'.padStart(10)}` +
     `${'Audited'.padStart(10)}` +
     `${'False Neg'.padStart(12)}`;
   console.log(hdr);
@@ -251,8 +252,9 @@ function printLayer2Completeness(periods: Layer2PeriodStats[]): void {
         `${String(p.pass1Assessed).padStart(10)}` +
         `${String(p.missingPass1).padStart(8)} ${p1ok} ` +
         `${String(p.pass1Flagged).padStart(8)}` +
-        `${String(p.pass2Flagged).padStart(10)}` +
+        `${String(p.pass2Assessed).padStart(10)}` +
         `${String(p.missingPass2).padStart(8)} ${p2ok} ` +
+        `${String(p.pass2Flagged).padStart(10)}` +
         `${String(p.auditSampled).padStart(8)}` +
         `${String(p.auditFalseNegatives).padStart(10)}${fnMark ? ` ${fnMark}` : ''}`,
     );

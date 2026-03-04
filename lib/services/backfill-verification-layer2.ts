@@ -62,10 +62,11 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
     .groupBy(aiDocumentAssessments.category);
 
   const p2Base = and(eq(aiDocumentAssessments.pass, 2), aiDateFilter, catAiFilter);
-  const p2FlagRows = await db
+  const p2FlagRouteRows = await db
     .select({
       category: aiDocumentAssessments.category,
       total: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
+      concerning: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.assessment} in ('potentially_concerning', 'clearly_concerning'))::int`,
     })
     .from(aiDocumentAssessments)
     .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, false)))
@@ -84,7 +85,7 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
   return {
     docs: new Map(docRows.map((r) => [r.category, Number(r.total)])),
     p1: new Map(p1Rows.map((r) => [r.category, r])),
-    p2Flag: new Map(p2FlagRows.map((r) => [r.category, Number(r.total)])),
+    p2FlagRoute: new Map(p2FlagRouteRows.map((r) => [r.category, r])),
     p2Audit: new Map(p2AuditRows.map((r) => [r.category, r])),
   };
 }
@@ -97,18 +98,21 @@ async function getLayer2PeriodStats(from: string, to: string, category?: string)
   let totalDocs = 0,
     p1Total = 0,
     p1Flagged = 0,
-    p2Flagged = 0,
+    p2FlagRoute = 0,
+    p2Concerning = 0,
     auditSampled = 0,
     auditFalseNeg = 0;
   for (const cat of cats) {
     totalDocs += maps.docs.get(cat) ?? 0;
     p1Total += Number(maps.p1.get(cat)?.total ?? 0);
     p1Flagged += Number(maps.p1.get(cat)?.flagged ?? 0);
-    p2Flagged += maps.p2Flag.get(cat) ?? 0;
+    const p2fr = maps.p2FlagRoute.get(cat);
+    p2FlagRoute += Number(p2fr?.total ?? 0);
+    p2Concerning += Number(p2fr?.concerning ?? 0);
     auditSampled += Number(maps.p2Audit.get(cat)?.sampled ?? 0);
     auditFalseNeg += Number(maps.p2Audit.get(cat)?.falseNegatives ?? 0);
   }
-  return { totalDocs, p1Total, p1Flagged, p2Flagged, auditSampled, auditFalseNeg };
+  return { totalDocs, p1Total, p1Flagged, p2FlagRoute, p2Concerning, auditSampled, auditFalseNeg };
 }
 
 export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
@@ -124,8 +128,9 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
       pass1Assessed: stats.p1Total,
       missingPass1: Math.max(0, stats.totalDocs - stats.p1Total),
       pass1Flagged: stats.p1Flagged,
-      pass2Flagged: stats.p2Flagged,
-      missingPass2: Math.max(0, stats.p1Flagged - stats.p2Flagged),
+      pass2Assessed: stats.p2FlagRoute + stats.auditSampled,
+      missingPass2: Math.max(0, stats.p1Flagged - stats.p2FlagRoute),
+      pass2Flagged: stats.p2Concerning + stats.auditFalseNeg,
       auditSampled: stats.auditSampled,
       auditFalseNegatives: stats.auditFalseNeg,
     });

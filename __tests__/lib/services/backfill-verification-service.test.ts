@@ -186,7 +186,7 @@ describe('backfill-verification-service', () => {
       vi.mocked(isDbAvailable).mockReturnValue(true);
 
       // 5 periods × 4 grouped queries each = 20 select calls
-      // Each period: docsByCategory, p1ByCategory, p2FlaggedByCategory, p2AuditByCategory
+      // Each period: docsByCategory, p1ByCategory, p2FlagRouteByCategory, p2AuditByCategory
       const perPeriod = [
         [
           { category: 'fiscal', total: '30' },
@@ -197,8 +197,8 @@ describe('backfill-verification-service', () => {
           { category: 'military', total: '20', flagged: '4' },
         ],
         [
-          { category: 'fiscal', total: '5' },
-          { category: 'military', total: '3' },
+          { category: 'fiscal', total: '5', concerning: '2' },
+          { category: 'military', total: '3', concerning: '1' },
         ],
         [
           { category: 'fiscal', sampled: '15', falseNegatives: '1' },
@@ -222,8 +222,9 @@ describe('backfill-verification-service', () => {
         pass1Assessed: 45,
         missingPass1: 5,
         pass1Flagged: 10,
-        pass2Flagged: 8,
+        pass2Assessed: 38,
         missingPass2: 2,
+        pass2Flagged: 5,
         auditSampled: 30,
         auditFalseNegatives: 2,
       });
