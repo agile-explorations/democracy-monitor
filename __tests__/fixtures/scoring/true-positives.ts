@@ -126,4 +126,70 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     expectedKeyword: 'democracy downgrade',
     expectedTier: 'capture',
   },
+  {
+    name: 'Selective prosecution by DOJ',
+    item: {
+      title: 'DOJ Accused of Selective Prosecution Against Political Opponents',
+      summary:
+        'Critics allege a pattern of selective prosecution targeting opposition figures while declining to pursue similar cases against allies.',
+    },
+    category: 'lawEnforcement',
+    expectedKeyword: 'selective prosecution',
+    expectedTier: 'capture',
+  },
+  {
+    name: 'DOJ leadership overrules career prosecutors',
+    item: {
+      title: 'Senior DOJ Officials Override Career Prosecutors on Sentencing',
+      summary:
+        'In a rare move, doj leadership overruled career staff on the recommended sentence, prompting resignations from the trial team.',
+    },
+    category: 'lawEnforcement',
+    expectedKeyword: 'doj leadership overruled career staff',
+    expectedTier: 'drift',
+  },
+  {
+    name: 'Mass detention without charge',
+    item: {
+      title: 'Reports of Mass Detention Without Charge at Border Facilities',
+      summary:
+        'Advocacy groups documented mass detention without charge of hundreds of individuals held beyond statutory time limits.',
+    },
+    category: 'civilLiberties',
+    expectedKeyword: 'mass detention without charge',
+    expectedTier: 'capture',
+  },
+  {
+    name: 'Consent decree terminated',
+    item: {
+      title: 'DOJ Moves to Terminate Police Reform Consent Decrees',
+      summary:
+        'The Department of Justice filed motions to end oversight of several police departments, seeking to have each consent decree terminated early.',
+    },
+    category: 'civilLiberties',
+    expectedKeyword: 'consent decree terminated',
+    expectedTier: 'drift',
+  },
+  {
+    name: 'Mass deportation operation',
+    item: {
+      title: 'Administration Launches Largest Mass Deportation Operation in Decades',
+      summary:
+        'Federal authorities initiated a mass deportation campaign targeting multiple cities with coordinated raids and removal flights.',
+    },
+    category: 'immigrationEnforcement',
+    expectedKeyword: 'mass deportation',
+    expectedTier: 'capture',
+  },
+  {
+    name: 'Asylum restrictions tightened',
+    item: {
+      title: 'New Rule Dramatically Limits Asylum Eligibility',
+      summary:
+        'The administration issued a final rule under which asylum restrictions tightened to bar most claims from individuals who transited through third countries.',
+    },
+    category: 'immigrationEnforcement',
+    expectedKeyword: 'asylum restrictions tightened',
+    expectedTier: 'drift',
+  },
 ];
