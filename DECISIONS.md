@@ -10,6 +10,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-VAL1: Validation Command Refactor ✅
+
+**Status: Done.** Replaced monolithic `backfill:verify` + standalone `validate:events` with three semantically distinct, non-overlapping validation commands: `validate:ingest`, `validate:data`, `validate:detection`.
+
+**Scope vs. Actual:**
+
+- Planned (5 issues #234-#238): ingest validation service (#234), data validation service (#235), CLI scripts (#236), cleanup old files (#237), tests (#238)
+- Actual: All 5 issues delivered. Two new data quality checks added beyond what existed in `backfill:verify`: `getLayerScorePopulation` (checks non-null layer scores in weekly_aggregates per period) and `getMetadataOnlyClassification` (checks CL stubs and GDELT rhetoric are properly marked). Stale markdown references updated across 4 active docs.
+
+**Key Decisions:**
+
+1. **Three-command split**: `validate:ingest` ("Did we get the data we expected?"), `validate:data` ("Is the data ready for analysis?"), `validate:detection` ("Does the system produce correct results?"). Each has a service module (orchestration + warnings), a queries module (DB I/O), and a CLI module (terminal formatting).
+2. **Service/query/CLI separation**: Queries files contain raw DB I/O and are excluded from coverage. Service files orchestrate queries and produce typed reports with warnings. CLI files format reports for terminal display. Website can import services directly for JSON output.
+3. **Non-zero exit on warnings**: All three commands exit with code 1 when warnings exist, 0 when all checks pass. Enables CI integration.
+4. **`validate:detection` is a thin rename**: The event-validation service/checks/queries modules were already well-structured from their original sprint. Only the CLI runner was renamed from `validate-events.ts` to `validate-detection.ts` with updated log prefix.
+5. **DECISIONS.md historical references preserved**: Sprint retrospectives that mention `backfill:verify` or `validate:events` are left as-is (they're historical records). Only active docs (PROJECT_KNOWLEDGE.md, BACKFILL_PIPELINE_REDESIGN.md, TEST_SPECIFICATION.md, ARCHITECTURE_PROPOSAL.md) were updated.
+
+**Lessons Learned:**
+
+1. **`collectWarnings` functions need careful "clean" test design**: An empty report isn't "clean" — it triggers FR coverage warnings (no FR data) and baseline warnings (no baselines). Tests for "no warnings" must specify what aspect is clean, not assert globally empty warnings.
+2. **Prettier catches markdown changes too**: `replace_all` edits in `.md` files (e.g., `backfill:verify` → `validate:ingest && validate:data`) can introduce formatting issues that prettier flags during commit hooks.
+
+---
+
 ## Sprint R-AP1: Analysis Period Safeguards ✅
 
 **Status: Done.** All pipeline commands now default to defined analysis periods (4 baselines + T2). Processing gap-year documents requires explicit `--all-dates` opt-in.
@@ -25,7 +49,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 2. **`--all-dates` as opt-in override**: Prints a warning when used. Deliberately friction-ful to prevent accidental gap-year processing.
 3. **`layer2:backfill` no longer throws without args**: Previously required `--baseline` or `--from/--to`. Now defaults to iterating all analysis periods — consistent with the other commands.
 4. **`backfill.ts` embed step filtered**: The `embedUnprocessedDocuments()` call within `backfillCategory()` now passes an analysis-period date condition, preventing embedding of stray gap-year docs during backfill runs.
-5. **Scripts left unchanged after audit**: `backtest`, `validate:events`, `seed:review`, `backfill:content/opinions/gaps/verify`, `cl:purge-noise`, `legiscan:bulk`, `signals:retry`, `crossfeed:rerun` — all either read-only diagnostics, already date-scoped, or not time-series processors.
+5. **Scripts left unchanged after audit**: `backtest`, `validate:detection`, `seed:review`, `backfill:content/opinions/gaps`, `validate:ingest`, `validate:data`, `cl:purge-noise`, `legiscan:bulk`, `signals:retry`, `crossfeed:rerun` — all either read-only diagnostics, already date-scoped, or not time-series processors.
 
 **Lessons Learned:**
 
