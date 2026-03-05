@@ -173,7 +173,7 @@ Requires updating:
 | Biden Year 2 | 2022-01-20 → 2023-01-19 | Baseline          |
 | Trump T2     | 2025-01-20 → present    | Active monitoring |
 
-Gap years (2019–2020, 2023–2024) are intentionally excluded.
+Gap years (2019–2020, 2023–2024) are intentionally excluded. Pipeline commands default to these periods only via `lib/data/analysis-periods.ts`. Use `--all-dates` to process gap-year documents.
 
 ### Backfill commands (R-S1e redesign)
 
@@ -311,4 +311,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-CAL1: Layer 2 P1 calibration for civilLiberties — erosion type framework added to P1 prompt (global), civilLiberties description tightened from topic-area to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation rate 1.5% → 20.3%, audit FN rate 0.7% (1/147). 22 weeks backfilled (4,947 docs, 154 flagged). 7 new tests (1553 total across 128 files).
 - Sprint R-CL1: CourtListener opinion ingestion — `case_id` column + migration (0028), `fetchOpinionText` (two-step clusters→opinions API, concatenates all substantive sub_opinions with type labels), `buildOpinionContentItem`, `extractDocketId`, `backfill:opinions` CLI, forward pipeline auto-ingestion via `fillClOpinions`, Layer 1 volume dedup by case_id, `backfill:verify` CL opinion coverage. 164K existing rows backfilled with case_id. Issues #206-#215. 16 new tests (1569 total across 129 files).
 - Sprint R-P2: Phase 2 data reprocessing prep — `document_scores` composite unique `(url, category)` (migration 0029), `content_type` column (`full_text`/`metadata_only`) for GDELT discrimination, embedding + Layer 2 pipelines exclude `metadata_only`, WH content backfill source (`pnpm backfill:content --source wh`), `--fresh --confirm` flag for full L2 rerun, verification reporting for metadata-only counts + origin-based content completeness. Extracted `backfill-verification-layer2.ts` (fixed pre-existing lint warnings). Issues #216-#222. 18 new tests (1587 total across 132 files).
+- Sprint R-AP1: Analysis period safeguards — `lib/data/analysis-periods.ts` single source of truth (BASELINE_CONFIGS + T2). Pipeline commands (`recompute-scores`, `embed:missing`, `enrich-layers`, `layer2:backfill`) default to analysis periods only; `--all-dates` override for gap years. `backfill.ts` embed step filtered. 12 new tests (1683 total across 135 files).
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

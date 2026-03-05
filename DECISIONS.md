@@ -10,6 +10,33 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-AP1: Analysis Period Safeguards ✅
+
+**Status: Done.** All pipeline commands now default to defined analysis periods (4 baselines + T2). Processing gap-year documents requires explicit `--all-dates` opt-in.
+
+**Scope vs. Actual:**
+
+- Planned (6 issues #228-#233): analysis-periods module, recompute-scores default, embed:missing + embedder filter, layer2:backfill default, backfill embed step filter, tests
+- Actual: All 6 issues delivered plus enrich-layers (same pattern as recompute-scores, identified during code review audit of all 24 CLI scripts)
+
+**Key Decisions:**
+
+1. **Single source of truth in `lib/data/analysis-periods.ts`**: Reads from `BASELINE_CONFIGS` + T2 inauguration-to-present. All commands use `getAnalysisPeriods()` or `buildAnalysisPeriodCondition()`. When a new baseline is added to `BASELINE_CONFIGS`, all commands automatically include it.
+2. **`--all-dates` as opt-in override**: Prints a warning when used. Deliberately friction-ful to prevent accidental gap-year processing.
+3. **`layer2:backfill` no longer throws without args**: Previously required `--baseline` or `--from/--to`. Now defaults to iterating all analysis periods — consistent with the other commands.
+4. **`backfill.ts` embed step filtered**: The `embedUnprocessedDocuments()` call within `backfillCategory()` now passes an analysis-period date condition, preventing embedding of stray gap-year docs during backfill runs.
+5. **Scripts left unchanged after audit**: `backtest`, `validate:events`, `seed:review`, `backfill:content/opinions/gaps/verify`, `purge:cl-noise`, `legiscan:bulk`, `retry:signals`, `recrossfeed` — all either read-only diagnostics, already date-scoped, or not time-series processors.
+
+**Lessons Learned:**
+
+- CourtListener backfills span all years in the `--from/--to` range regardless of whether other sources have data for those years. This created ~4,300 orphan docs in 2019-2020 and 2023-2024 gap years. The architectural fix (period-default) is better than deleting the docs, since they may be useful if those periods are later added as baselines.
+
+**Spec Deviations:**
+
+- None. Ad-hoc data integrity sprint, not driven by a spec.
+
+---
+
 ## Sprint R-P2: Phase 2 Data Reprocessing Prep ✅
 
 **Status: Done.** Fixed `document_scores` composite unique constraint, added `content_type` column for GDELT metadata-only discrimination, excluded metadata-only docs from embedding and Layer 2 pipelines, added WH content backfill source, added `--fresh` flag for full L2 rerun, updated verification reporting. Extracted `backfill-verification-layer2.ts` to fix pre-existing lint warnings. 1 commit, 15 files changed (13 modified, 2 new), 1587 tests across 132 files.
