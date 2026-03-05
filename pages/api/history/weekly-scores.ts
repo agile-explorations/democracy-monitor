@@ -1,8 +1,9 @@
-import { and, asc, eq, gte, lte } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, lte } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
 import { requireMethod, requireDb } from '@/lib/utils/api-helpers';
+import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!requireMethod(req, res, 'GET')) return;
@@ -19,7 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const db = getDb();
 
-    const conditions = [eq(weeklyAggregates.category, category)];
+    const conditions = [
+      eq(weeklyAggregates.category, category),
+      isNotNull(weeklyAggregates.convergenceDetail),
+      lte(weeklyAggregates.weekOf, latestCompleteWeek()),
+    ];
     if (from) conditions.push(gte(weeklyAggregates.weekOf, from));
     if (to) conditions.push(lte(weeklyAggregates.weekOf, to));
 

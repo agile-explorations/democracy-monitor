@@ -118,8 +118,6 @@ export default function CategoryDetailPage() {
         </h2>
         <CategoryStatusChart
           data={weeklyData}
-          baselineAvg={baseline.avg}
-          baselineStdDev={baseline.stddev}
           mode={resolvedMode}
           brushStartIndex={brushStartIndex}
           brushEndIndex={brushEndIndex}
@@ -137,7 +135,6 @@ export default function CategoryDetailPage() {
             startIndex={brushStartIndex ?? 0}
             endIndex={brushEndIndex ?? weeklyData.length - 1}
             baseline={baseline}
-            latestConvergence={convergenceStatus}
           />
         </div>
       )}

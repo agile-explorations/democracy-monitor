@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useMemo } from 'react';
 import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
 import type { ConvergenceStatus } from '@/lib/types';
@@ -10,6 +11,7 @@ export interface StatusTimelineProps {
   onCellClick?: (category: string, week: string) => void;
   onWeekHeaderClick?: (week: string) => void;
   selectedWeek?: string | null;
+  linkParams?: string;
 }
 
 const STATUS_LABELS: Record<ConvergenceStatus, string> = {
@@ -64,6 +66,7 @@ export function StatusTimeline({
   onCellClick,
   onWeekHeaderClick,
   selectedWeek,
+  linkParams = '',
 }: StatusTimelineProps) {
   const colors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
 
@@ -116,6 +119,7 @@ export function StatusTimeline({
               colors={colors}
               onCellClick={onCellClick}
               selectedWeek={selectedWeek}
+              linkParams={linkParams}
             />
           ))}
         </div>
@@ -130,12 +134,14 @@ function TimelineRow({
   colors,
   onCellClick,
   selectedWeek,
+  linkParams,
 }: {
   entry: StatusTimelineEntry;
   mode: 'light' | 'dark';
   colors: Record<string, string>;
   onCellClick?: (category: string, week: string) => void;
   selectedWeek?: string | null;
+  linkParams?: string;
 }) {
   return (
     <>
@@ -144,7 +150,12 @@ function TimelineRow({
         role="rowheader"
         title={entry.title}
       >
-        {entry.title}
+        <Link
+          href={`/category/${entry.category}${linkParams}`}
+          className="hover:text-dm-accent transition-colors"
+        >
+          {entry.title}
+        </Link>
       </div>
       {entry.segments.map((seg) => {
         const isNoData = seg.status === null;

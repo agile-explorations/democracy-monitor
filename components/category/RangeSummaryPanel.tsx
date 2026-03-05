@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
-import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
 import type { WeeklyRow } from '@/lib/hooks/useCategoryDetail';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
 
 export interface RangeSummaryPanelProps {
   weeklyData: WeeklyRow[];
   startIndex: number;
   endIndex: number;
   baseline: { avg: number; stddev: number };
-  latestConvergence: ConvergenceSynthesis | null;
 }
 
 function formatRatio(value: number, baseline: number): string {
@@ -23,7 +20,6 @@ export function RangeSummaryPanel({
   startIndex,
   endIndex,
   baseline,
-  latestConvergence,
 }: RangeSummaryPanelProps) {
   const rangeStats = useMemo(() => {
     const rangeRows = weeklyData.slice(startIndex, endIndex + 1);
@@ -47,8 +43,6 @@ export function RangeSummaryPanel({
 
   return (
     <div className="space-y-4">
-      <ConvergenceHeader synthesis={latestConvergence} />
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-lg border border-dm-border bg-dm-card p-4">
           <p className="text-[11px] uppercase tracking-wider text-dm-text-secondary mb-1">

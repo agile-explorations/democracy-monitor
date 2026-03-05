@@ -1,16 +1,21 @@
 import Link from 'next/link';
 import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
+import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import { Sparkline } from '@/components/ui/Sparkline';
-import { StatusPill } from '@/components/ui/StatusPill';
-import type { StatusLevel } from '@/lib/types';
+import {
+  AI_FLAG_RATE_THRESHOLD,
+  STRUCTURAL_ANOMALY_THRESHOLD,
+  THEMATIC_DRIFT_ELEVATED,
+} from '@/lib/methodology/scoring-config';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
 export interface CategoryCardProps {
   category: string;
   title: string;
-  status: StatusLevel;
   insufficientData?: boolean;
-  decayWeightedScore: number;
+  structuralScore: number | null;
+  aiScore: number | null;
+  thematicScore: number | null;
   baselineAvg: number;
   baselineStdDev: number;
   sparklineData: Array<{ week: string; score: number }>;
@@ -26,18 +31,20 @@ export interface CategoryCardProps {
   thematicElevated?: boolean;
 }
 
-function formatRatio(score: number, baseline: number): string {
-  if (baseline <= 0) return '';
-  const ratio = score / baseline;
-  return `(${ratio.toFixed(1)}\u00d7 baseline)`;
-}
+const LAYER_LABELS = ['L1', 'L2', 'L3'] as const;
+const LAYER_THRESHOLDS = [
+  STRUCTURAL_ANOMALY_THRESHOLD,
+  AI_FLAG_RATE_THRESHOLD,
+  THEMATIC_DRIFT_ELEVATED,
+] as const;
 
 export function CategoryCard({
   category,
   title,
-  status,
   insufficientData,
-  decayWeightedScore,
+  structuralScore,
+  aiScore,
+  thematicScore,
   baselineAvg,
   baselineStdDev,
   sparklineData,
@@ -52,6 +59,7 @@ export function CategoryCard({
   aiElevated = false,
   thematicElevated = false,
 }: CategoryCardProps) {
+  const layerScores = [structuralScore, aiScore, thematicScore];
   return (
     <Link
       href={`${linkBase}/${category}`}
@@ -69,8 +77,10 @@ export function CategoryCard({
           >
             No Data
           </span>
+        ) : convergenceStatus ? (
+          <ConvergenceStatusPill status={convergenceStatus} />
         ) : (
-          <StatusPill level={status} />
+          <span className="text-[10px] text-dm-muted">{'\u2014'}</span>
         )}
       </div>
 
@@ -81,6 +91,7 @@ export function CategoryCard({
             structural={structuralElevated}
             ai={aiElevated}
             thematic={thematicElevated}
+            scores={{ structural: structuralScore, ai: aiScore, thematic: thematicScore }}
           />
           <span className="text-[10px] text-dm-text-secondary">{convergenceStatus}</span>
         </div>
@@ -96,17 +107,17 @@ export function CategoryCard({
         <Sparkline data={sparklineData} baselineAvg={baselineAvg} baselineStdDev={baselineStdDev} />
       </div>
 
-      {/* Score vs baseline */}
-      <div className="flex items-baseline gap-2 mt-2 text-xs">
-        <span className="text-dm-text-primary font-medium">
-          Current: {decayWeightedScore.toFixed(1)}
-        </span>
-        <span className="text-dm-text-secondary">Baseline avg: {baselineAvg.toFixed(1)}</span>
-        {baselineAvg > 0 && (
-          <span className="text-dm-text-secondary">
-            {formatRatio(decayWeightedScore, baselineAvg)}
-          </span>
-        )}
+      {/* Layer z-scores */}
+      <div className="flex items-baseline gap-3 mt-2 text-xs">
+        {LAYER_LABELS.map((label, i) => {
+          const score = layerScores[i];
+          const elevated = score != null && score >= LAYER_THRESHOLDS[i];
+          return (
+            <span key={label} className={elevated ? 'text-dm-accent font-medium' : 'text-dm-muted'}>
+              {label}: {score != null ? score.toFixed(1) : '\u2014'}
+            </span>
+          );
+        })}
       </div>
 
       {/* Summary text */}

@@ -28,6 +28,18 @@ export function getMonday(date: Date): string {
   return toDateString(d);
 }
 
+/**
+ * The latest week with complete data (previous Monday).
+ * The current in-progress week is excluded because convergence hasn't run yet.
+ */
+export function latestCompleteWeek(): string {
+  const now = new Date();
+  const thisMonday = getMonday(now);
+  const d = new Date(thisMonday + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 7);
+  return toDateString(d);
+}
+
 /** Add days to a date string. Returns YYYY-MM-DD. */
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);

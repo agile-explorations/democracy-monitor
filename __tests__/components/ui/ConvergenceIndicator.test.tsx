@@ -36,4 +36,34 @@ describe('ConvergenceIndicator', () => {
     const dots = container.querySelectorAll('span.inline-block');
     expect(dots).toHaveLength(3);
   });
+
+  it('includes numeric scores in title attributes when provided', () => {
+    const { container } = render(
+      <ConvergenceIndicator
+        structural={true}
+        ai={false}
+        thematic={true}
+        scores={{ structural: 3.2, ai: 0.8, thematic: 4.1 }}
+      />,
+    );
+    const dots = container.querySelectorAll('span.inline-block');
+    expect(dots[0].getAttribute('title')).toBe('L1 Structural: elevated (3.2)');
+    expect(dots[1].getAttribute('title')).toBe('L2 AI: normal (0.8)');
+    expect(dots[2].getAttribute('title')).toBe('L3 Thematic: elevated (4.1)');
+  });
+
+  it('omits score suffix when scores are null', () => {
+    const { container } = render(
+      <ConvergenceIndicator
+        structural={false}
+        ai={false}
+        thematic={false}
+        scores={{ structural: null, ai: null, thematic: null }}
+      />,
+    );
+    const dots = container.querySelectorAll('span.inline-block');
+    expect(dots[0].getAttribute('title')).toBe('L1 Structural: normal');
+    expect(dots[1].getAttribute('title')).toBe('L2 AI: normal');
+    expect(dots[2].getAttribute('title')).toBe('L3 Thematic: normal');
+  });
 });

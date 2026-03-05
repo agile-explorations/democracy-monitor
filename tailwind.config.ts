@@ -27,6 +27,12 @@ const config: Config = {
           drift: 'var(--color-status-drift)',
           capture: 'var(--color-status-capture)',
         },
+        convergence: {
+          stable: 'var(--color-convergence-stable)',
+          elevated: 'var(--color-convergence-elevated)',
+          divergent: 'var(--color-convergence-divergent)',
+          confirmed: 'var(--color-convergence-confirmed)',
+        },
         source: {
           healthy: 'var(--color-source-healthy)',
           degraded: 'var(--color-source-degraded)',

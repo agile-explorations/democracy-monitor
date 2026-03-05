@@ -214,7 +214,7 @@ export function useCategoryDetail(
       setWeekLoading(true);
       Promise.all([
         fetch(`/api/category/${key}?weekOf=${week}`).then((r) => (r.ok ? r.json() : null)),
-        fetch(`/api/explain/week?category=${key}&weekOf=${week}&top=200`).then((r) =>
+        fetch(`/api/explain/week?category=${key}&weekOf=${week}&top=20`).then((r) =>
           r.ok ? r.json() : null,
         ),
         fetch(`/api/narratives/${key}?weekOf=${week}`).then((r) => (r.ok ? r.json() : null)),

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
 import {
-  Area,
   Bar,
   Brush,
   CartesianGrid,
@@ -17,11 +16,10 @@ import { CHART_COLORS, CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors
 import type { WeeklyRow } from '@/lib/hooks/useCategoryDetail';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { movingAverage } from '@/lib/utils/math';
 
 export interface CategoryStatusChartProps {
   data: WeeklyRow[];
-  baselineAvg: number;
-  baselineStdDev: number;
   mode: 'light' | 'dark';
   brushStartIndex?: number;
   brushEndIndex?: number;
@@ -30,14 +28,15 @@ export interface CategoryStatusChartProps {
   onWeekClick: (week: string) => void;
 }
 
+const TREND_WINDOW = 4;
+
 interface ChartPoint {
   week: string;
-  score: number;
+  convergenceScore: number | null;
+  trend: number | null;
   documentCount: number;
   status: ConvergenceStatus | null;
   statusValue: number;
-  baselineBand: [number, number];
-  baselineAvg: number;
   statusFill: string;
   statusOpacity: number;
 }
@@ -90,22 +89,21 @@ function StatusTooltip({
       <p className="font-medium text-dm-text-primary">{formatWeekLabel(d.week)}</p>
       {d.status && (
         <p className="mt-1" style={{ color: statusColors[d.status] }}>
-          {d.status}
+          {d.status === 'ConfirmedConcern' ? 'Confirmed Concern' : d.status}
         </p>
       )}
-      <p className="text-dm-text-secondary mt-1">
-        Score: <span className="font-medium text-dm-text-primary">{d.score.toFixed(2)}</span>
-      </p>
+      {d.trend != null && (
+        <p className="text-dm-text-secondary mt-1">
+          Trend: <span className="font-medium text-dm-text-primary">{d.trend.toFixed(1)}</span>
+        </p>
+      )}
       <p className="text-dm-text-secondary">{d.documentCount} documents</p>
-      <p className="text-dm-muted mt-1">Baseline: {d.baselineAvg.toFixed(2)}</p>
     </div>
   );
 }
 
 export function CategoryStatusChart({
   data,
-  baselineAvg,
-  baselineStdDev,
   mode,
   brushStartIndex,
   brushEndIndex,
@@ -116,25 +114,34 @@ export function CategoryStatusChart({
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
   const statusColors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
 
-  const chartData: ChartPoint[] = useMemo(() => {
-    const bandUpper = baselineAvg + baselineStdDev;
-    const bandLower = Math.max(0, baselineAvg - baselineStdDev);
+  const startIdx = brushStartIndex ?? 0;
+  const endIdx = brushEndIndex ?? data.length - 1;
+  const rangeLabel = useMemo(() => {
+    if (data.length === 0) return '';
+    const startWeek = data[startIdx]?.weekOf;
+    const endWeek = data[endIdx]?.weekOf;
+    if (!startWeek || !endWeek) return '';
+    return `${formatWeekLabel(startWeek)} \u2013 ${formatWeekLabel(endWeek)}`;
+  }, [data, startIdx, endIdx]);
 
-    return data.map((row) => {
+  const chartData: ChartPoint[] = useMemo(() => {
+    const scores = data.map((r) => r.convergenceScore ?? 0);
+    const smoothed = movingAverage(scores, TREND_WINDOW);
+
+    return data.map((row, i) => {
       const status = row.convergenceDetail?.status ?? null;
       return {
         week: row.weekOf,
-        score: Number(row.totalSeverity),
+        convergenceScore: row.convergenceScore,
+        trend: row.convergenceScore != null ? smoothed[i] : null,
         documentCount: Number(row.documentCount),
         status,
         statusValue: status ? STATUS_ORDER[status] : 0,
-        baselineBand: [bandLower, bandUpper] as [number, number],
-        baselineAvg,
         statusFill: status ? statusColors[status] : 'transparent',
         statusOpacity: status ? 0.7 : 0,
       };
     });
-  }, [data, baselineAvg, baselineStdDev, statusColors]);
+  }, [data, statusColors]);
 
   if (data.length === 0) {
     return (
@@ -147,12 +154,11 @@ export function CategoryStatusChart({
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mb-3 text-[11px] text-dm-text-secondary">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 h-0.5 bg-dm-accent rounded" />
-          Score
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 h-0.5 border-t border-dashed border-slate-400" />
-          Baseline
+          <span
+            className="inline-block w-4 h-0.5 border-t-2 border-dashed"
+            style={{ borderColor: colors.textSecondary }}
+          />
+          Trend
         </span>
         {(['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'] as ConvergenceStatus[]).map(
           (s) => (
@@ -170,7 +176,7 @@ export function CategoryStatusChart({
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 8, right: 8, bottom: 4, left: 0 }}
+          margin={{ top: 8, right: 58, bottom: 4, left: 28 }}
           onClick={(state) => {
             const week = state?.activeLabel;
             if (typeof week === 'string' && week) onWeekClick(week);
@@ -191,28 +197,11 @@ export function CategoryStatusChart({
             tickLine={false}
             axisLine={false}
             width={40}
+            domain={[0, 3]}
+            ticks={[0, 1, 2, 3]}
           />
           <YAxis yAxisId="status" hide domain={[0, 5]} />
           <Tooltip content={<StatusTooltip mode={mode} />} />
-
-          {/* Baseline band */}
-          <Area
-            yAxisId="score"
-            dataKey="baselineBand"
-            fill={colors.border}
-            stroke="none"
-            opacity={0.3}
-            isAnimationActive={false}
-          />
-
-          {/* Baseline average */}
-          <ReferenceLine
-            yAxisId="score"
-            y={baselineAvg}
-            stroke={colors.textSecondary}
-            strokeDasharray="4 4"
-            strokeWidth={1}
-          />
 
           {/* Status bars — uses shape prop instead of Cell to avoid Brush index misalignment */}
           <Bar
@@ -223,15 +212,17 @@ export function CategoryStatusChart({
             shape={StatusBarShape}
           />
 
-          {/* Score line */}
+          {/* Trend line (moving average of convergence score) */}
           <Line
             yAxisId="score"
             type="monotone"
-            dataKey="score"
-            stroke={colors.accent}
+            dataKey="trend"
+            stroke={colors.textSecondary}
             strokeWidth={2}
-            dot={{ r: 3, fill: colors.accent }}
-            activeDot={{ r: 5, cursor: 'pointer' }}
+            strokeDasharray="6 3"
+            dot={false}
+            activeDot={{ r: 4, cursor: 'pointer' }}
+            connectNulls
           />
 
           {/* Selected week indicator */}
@@ -266,6 +257,7 @@ export function CategoryStatusChart({
           />
         </ComposedChart>
       </ResponsiveContainer>
+      {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
     </div>
   );
 }

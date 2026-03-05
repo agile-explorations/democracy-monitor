@@ -5,6 +5,7 @@ import { baselines, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
 import type { StatusLevel } from '@/lib/types';
 import type { ConvergenceStatus, ConvergenceSynthesis } from '@/lib/types/structural';
+import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
 const SPARKLINE_WEEKS = 8;
 
@@ -37,7 +38,9 @@ export interface CategorySummary {
   title: string;
   status: StatusLevel;
   insufficientData: boolean;
-  decayWeightedScore: number;
+  structuralScore: number | null;
+  aiScore: number | null;
+  thematicScore: number | null;
   baselineAvg: number;
   baselineStdDev: number;
   sparklineData: Array<{ week: string; score: number }>;
@@ -98,13 +101,14 @@ async function fetchSparklineData(
   weekOf?: string,
 ): Promise<Record<string, Array<{ week: string; score: number; docCount: number }>>> {
   const rows = await db.execute(sql`
-    SELECT category, week_of, total_severity, document_count
+    SELECT category, week_of, convergence_score, document_count
     FROM (
       SELECT *, ROW_NUMBER() OVER (
         PARTITION BY category ORDER BY week_of DESC
       ) AS rn
       FROM weekly_aggregates
-      ${weekOf ? sql`WHERE week_of <= ${weekOf}` : sql``}
+      WHERE convergence_detail IS NOT NULL
+        AND week_of <= ${weekOf ?? latestCompleteWeek()}
     ) sub
     WHERE rn <= ${SPARKLINE_WEEKS}
     ORDER BY category, week_of ASC
@@ -117,39 +121,52 @@ async function fetchSparklineData(
     if (!result[cat]) result[cat] = [];
     result[cat].push({
       week: r.week_of as string,
-      score: Number(r.total_severity),
+      score: Number(r.convergence_score ?? 0),
       docCount: Number(r.document_count),
     });
   }
   return result;
 }
 
-/** Fetch convergence synthesis per category. When weekOf is provided, use that specific week. */
+interface ConvergenceRow {
+  synthesis: ConvergenceSynthesis;
+  structuralScore: number | null;
+  aiScore: number | null;
+  thematicScore: number | null;
+}
+
+/** Fetch convergence synthesis + layer scores per category. When weekOf is provided, use that specific week. */
 async function fetchLatestConvergence(
   db: ReturnType<typeof getDb>,
   weekOf?: string,
-): Promise<Record<string, ConvergenceSynthesis>> {
+): Promise<Record<string, ConvergenceRow>> {
   const rows = weekOf
     ? await db.execute(sql`
-        SELECT category, convergence_detail
+        SELECT category, convergence_detail, structural_score, ai_score, thematic_score
         FROM weekly_aggregates
         WHERE convergence_detail IS NOT NULL
           AND week_of = ${weekOf}
         ORDER BY category
       `)
     : await db.execute(sql`
-        SELECT DISTINCT ON (category) category, convergence_detail
+        SELECT DISTINCT ON (category) category, convergence_detail, structural_score, ai_score, thematic_score
         FROM weekly_aggregates
         WHERE convergence_detail IS NOT NULL
+          AND week_of <= ${latestCompleteWeek()}
         ORDER BY category, week_of DESC
       `);
 
-  const result: Record<string, ConvergenceSynthesis> = {};
+  const result: Record<string, ConvergenceRow> = {};
   for (const row of rows.rows) {
     const r = row as Record<string, unknown>;
     const detail = r.convergence_detail as ConvergenceSynthesis | null;
     if (detail) {
-      result[r.category as string] = detail;
+      result[r.category as string] = {
+        synthesis: detail,
+        structuralScore: r.structural_score != null ? Number(r.structural_score) : null,
+        aiScore: r.ai_score != null ? Number(r.ai_score) : null,
+        thematicScore: r.thematic_score != null ? Number(r.thematic_score) : null,
+      };
     }
   }
   return result;
@@ -174,7 +191,8 @@ export async function getCategorySummaries(weekOf?: string): Promise<CategorySum
     const assessment = latestAssessments[cat.key];
     const baseline = baselineData[cat.key] ?? { avg: 0, stddev: 0 };
     const sparkline = sparklineData[cat.key] ?? [];
-    const convergence = convergenceData[cat.key] ?? null;
+    const convergenceRow = convergenceData[cat.key] ?? null;
+    const convergence = convergenceRow?.synthesis ?? null;
 
     const latestWeek = sparkline[sparkline.length - 1];
     const matches = assessment?.matches;
@@ -185,7 +203,9 @@ export async function getCategorySummaries(weekOf?: string): Promise<CategorySum
       title: cat.title,
       status: (assessment?.status ?? 'Stable') as StatusLevel,
       insufficientData: assessment?.insufficientData ?? false,
-      decayWeightedScore: latestWeek?.score ?? 0,
+      structuralScore: convergenceRow?.structuralScore ?? null,
+      aiScore: convergenceRow?.aiScore ?? null,
+      thematicScore: convergenceRow?.thematicScore ?? null,
       baselineAvg: baseline.avg,
       baselineStdDev: baseline.stddev,
       sparklineData: sparkline.map((s) => ({ week: s.week, score: s.score })),

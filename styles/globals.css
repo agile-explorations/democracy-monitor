@@ -4,11 +4,17 @@
 
 @layer base {
   :root {
-    /* Status scale — slate to indigo progression */
+    /* Status scale — legacy keyword-based (Stable/Warning/Drift/Capture) */
     --color-status-stable: #94a3b8;
     --color-status-warning: #818cf8;
     --color-status-drift: #6366f1;
     --color-status-capture: #4338ca;
+
+    /* Convergence status scale (Stable/Elevated/Divergent/ConfirmedConcern) */
+    --color-convergence-stable: #94a3b8;
+    --color-convergence-elevated: #6366f1;
+    --color-convergence-divergent: #f59e0b;
+    --color-convergence-confirmed: #ef4444;
 
     /* Light mode supporting colors */
     --color-bg: #fafbfc;
@@ -37,6 +43,11 @@
     --color-muted: #94a3b8;
     --color-baseline-fill: #1e293b;
     --color-baseline-border: #334155;
+
+    --color-convergence-stable: #64748b;
+    --color-convergence-elevated: #818cf8;
+    --color-convergence-divergent: #fbbf24;
+    --color-convergence-confirmed: #f87171;
 
     --color-source-healthy: #4ade80;
     --color-source-degraded: #fbbf24;

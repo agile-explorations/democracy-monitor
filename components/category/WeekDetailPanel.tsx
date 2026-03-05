@@ -50,10 +50,16 @@ function CollapsiblePanel({
 
 function WeekDetailSkeleton() {
   return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-16 bg-dm-border/30 rounded-lg" />
-      <div className="h-24 bg-dm-border/30 rounded-lg" />
-      <div className="h-12 bg-dm-border/30 rounded-lg" />
+    <div className="space-y-4">
+      <p className="text-xs text-dm-muted flex items-center gap-2">
+        <span className="inline-block w-3 h-3 border-2 border-dm-muted/50 border-t-dm-accent rounded-full animate-spin" />
+        Loading week data&hellip;
+      </p>
+      <div className="animate-pulse space-y-4">
+        <div className="h-16 bg-dm-border/30 rounded-lg" />
+        <div className="h-24 bg-dm-border/30 rounded-lg" />
+        <div className="h-12 bg-dm-border/30 rounded-lg" />
+      </div>
     </div>
   );
 }

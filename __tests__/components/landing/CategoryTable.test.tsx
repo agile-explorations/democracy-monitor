@@ -15,7 +15,9 @@ const mockCategory: CategorySummary = {
   title: 'Government Worker Protections',
   status: 'Stable',
   insufficientData: false,
-  decayWeightedScore: 3.2,
+  structuralScore: 1.8,
+  aiScore: 0.5,
+  thematicScore: null,
   baselineAvg: 2.5,
   baselineStdDev: 0.8,
   sparklineData: [

@@ -29,10 +29,10 @@ describe('buildOverviewFromRows', () => {
 
   it('builds heatmap rows with convergence scores', () => {
     const rows = [
-      makeRow('civilService', '2026-01-06', 0.5),
-      makeRow('civilService', '2026-01-13', 0.8),
-      makeRow('fiscal', '2026-01-06', 0.1),
-      makeRow('fiscal', '2026-01-13', null),
+      makeRow('civilService', '2026-01-06', 0.5, { status: 'Stable' }),
+      makeRow('civilService', '2026-01-13', 0.8, { status: 'Stable' }),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Stable' }),
+      makeRow('fiscal', '2026-01-13', null, { status: 'Stable' }),
     ];
     const result = buildOverviewFromRows(rows);
 
@@ -62,10 +62,13 @@ describe('buildOverviewFromRows', () => {
     expect(milTimeline!.segments[0].status).toBe('ConfirmedConcern');
   });
 
-  it('returns null when convergenceDetail is null or missing status', () => {
+  it('returns null status for categories without convergenceDetail in a week', () => {
+    // military has convergence_detail so the week is included;
+    // civilService and fiscal lack it, so their segments show null status
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, null),
       makeRow('fiscal', '2026-01-06', 0.1, { foo: 'bar' }),
+      makeRow('military', '2026-01-06', 0.3, { status: 'Stable' }),
     ];
     const result = buildOverviewFromRows(rows);
 
@@ -119,6 +122,7 @@ describe('buildOverviewFromRows', () => {
   });
 
   it('does not count null status as elevated', () => {
+    // fiscal has convergence so the week is included; civilService has null detail
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, null),
       makeRow('fiscal', '2026-01-06', 0.1, { status: 'Elevated' }),
@@ -145,7 +149,10 @@ describe('buildOverviewFromRows', () => {
   });
 
   it('preserves canonical CATEGORIES order in heatmap/timeline', () => {
-    const rows = [makeRow('fiscal', '2026-01-06', 0.8), makeRow('civilService', '2026-01-06', 0.2)];
+    const rows = [
+      makeRow('fiscal', '2026-01-06', 0.8, { status: 'Stable' }),
+      makeRow('civilService', '2026-01-06', 0.2, { status: 'Stable' }),
+    ];
     const result = buildOverviewFromRows(rows);
 
     // civilService comes before fiscal in canonical CATEGORIES array
@@ -155,7 +162,7 @@ describe('buildOverviewFromRows', () => {
   });
 
   it('includes all 14 categories even when DB has no rows for some', () => {
-    const rows = [makeRow('civilService', '2026-01-06', 0.5)];
+    const rows = [makeRow('civilService', '2026-01-06', 0.5, { status: 'Stable' })];
     const result = buildOverviewFromRows(rows);
 
     expect(result.heatmap).toHaveLength(14);

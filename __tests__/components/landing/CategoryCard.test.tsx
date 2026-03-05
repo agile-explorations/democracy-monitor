@@ -5,8 +5,10 @@ import { CategoryCard } from '@/components/landing/CategoryCard';
 const defaultProps = {
   category: 'civilService',
   title: 'Government Worker Protections',
-  status: 'Drift' as const,
-  decayWeightedScore: 12.4,
+  convergenceStatus: 'Elevated' as const,
+  structuralScore: 3.1,
+  aiScore: 0.8,
+  thematicScore: null as number | null,
   baselineAvg: 3.2,
   baselineStdDev: 1.1,
   sparklineData: [
@@ -21,22 +23,17 @@ const defaultProps = {
 };
 
 describe('CategoryCard', () => {
-  it('renders title and status', () => {
+  it('renders title and convergence status', () => {
     const { getByText, getByRole } = render(<CategoryCard {...defaultProps} />);
     expect(getByText('Government Worker Protections')).toBeTruthy();
-    expect(getByRole('status').textContent).toContain('Drift');
+    expect(getByRole('status').textContent).toContain('Elevated');
   });
 
-  it('renders score and baseline values', () => {
-    const { getByText } = render(<CategoryCard {...defaultProps} />);
-    expect(getByText('Current: 12.4')).toBeTruthy();
-    expect(getByText('Baseline avg: 3.2')).toBeTruthy();
-  });
-
-  it('renders baseline ratio', () => {
+  it('renders layer z-scores', () => {
     const { container } = render(<CategoryCard {...defaultProps} />);
-    expect(container.textContent).toContain('3.9');
-    expect(container.textContent).toContain('baseline');
+    expect(container.textContent).toContain('L1: 3.1');
+    expect(container.textContent).toContain('L2: 0.8');
+    expect(container.textContent).toContain('L3: \u2014');
   });
 
   it('renders summary text', () => {
@@ -78,15 +75,21 @@ describe('CategoryCard', () => {
     expect(getByText('civilService')).toBeTruthy();
   });
 
-  it('uses same style for all statuses', () => {
-    const { container } = render(<CategoryCard {...defaultProps} status="Stable" />);
+  it('uses same card style for all convergence statuses', () => {
+    const { container } = render(<CategoryCard {...defaultProps} convergenceStatus="Stable" />);
     const card = container.querySelector('a');
     expect(card?.className).toContain('bg-dm-card');
   });
 
-  it('hides ratio when baseline is zero', () => {
-    const { container } = render(<CategoryCard {...defaultProps} baselineAvg={0} />);
-    expect(container.textContent).not.toContain('baseline)');
+  it('renders dash for null layer scores', () => {
+    const { container } = render(
+      <CategoryCard {...defaultProps} structuralScore={null} aiScore={null} thematicScore={null} />,
+    );
+    // All three layers should show dashes
+    const text = container.textContent ?? '';
+    expect(text).toContain('L1: \u2014');
+    expect(text).toContain('L2: \u2014');
+    expect(text).toContain('L3: \u2014');
   });
 
   it('hides flagged count when zero', () => {

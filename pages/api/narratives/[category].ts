@@ -69,7 +69,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cached = tryStoredResponse(stored, version);
     if (cached) return sendCached(res, cached);
 
-    return await generateAndRespond(res, categoryKey, category.title, weekOf, version);
+    // If generate=true is explicitly requested (e.g., from a cron job), generate on demand.
+    // Otherwise return null — never block a page view on AI generation.
+    if (req.query.generate === 'true') {
+      return await generateAndRespond(res, categoryKey, category.title, weekOf, version);
+    }
+
+    return res.status(200).json({ expert: null, public: null });
   } catch (err) {
     console.error(`[api/narratives/${categoryKey}] Error:`, err);
     return res.status(500).json({ error: formatError(err) });

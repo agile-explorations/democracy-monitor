@@ -11,6 +11,7 @@ import type {
   SynchronyPoint,
 } from '@/lib/types/overview';
 import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import { latestCompleteWeek } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
 
 /** Weeks since inauguration (Jan 20, 2025) — used as default overview window. */
@@ -114,9 +115,10 @@ export function computeWeeklyWeightedScores(
   return result;
 }
 
-/** Fetch recent weekly_aggregates rows for all categories. */
+/** Fetch recent weekly_aggregates rows for all categories (excludes current in-progress week). */
 async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
   const db = getDb();
+  const cutoff = latestCompleteWeek();
   const rows = await db
     .select({
       category: weeklyAggregates.category,
@@ -130,7 +132,8 @@ async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
       sql`${weeklyAggregates.weekOf} >= (
         SELECT MAX(week_of) - make_interval(days => ${weeks * 7})
         FROM weekly_aggregates
-      )`,
+        WHERE week_of <= ${cutoff}
+      ) AND ${weeklyAggregates.weekOf} <= ${cutoff}`,
     )
     .orderBy(weeklyAggregates.category, desc(weeklyAggregates.weekOf));
 
@@ -257,9 +260,12 @@ export function buildOverviewFromRows(rows: AggregateRow[]): Omit<OverviewSummar
     byCat.set(row.category, arr);
   }
 
-  const weekSet = new Set<string>();
-  for (const row of rows) weekSet.add(row.week_of);
-  const allWeeks = Array.from(weekSet).sort();
+  // Only include weeks where at least one category has convergence data
+  const weeksWithConvergence = new Set<string>();
+  for (const row of rows) {
+    if (row.convergence_detail) weeksWithConvergence.add(row.week_of);
+  }
+  const allWeeks = Array.from(weeksWithConvergence).sort();
   const latestWeek = allWeeks[allWeeks.length - 1] ?? '';
 
   const { heatmap, statusTimeline, weekElevatedCounts, weekStatusCounts, statusCounts } =

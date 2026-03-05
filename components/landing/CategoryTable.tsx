@@ -1,10 +1,17 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
+import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import { Sparkline } from '@/components/ui/Sparkline';
-import { StatusPill } from '@/components/ui/StatusPill';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
+import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import {
+  AI_FLAG_RATE_THRESHOLD,
+  STRUCTURAL_ANOMALY_THRESHOLD,
+  THEMATIC_DRIFT_ELEVATED,
+} from '@/lib/methodology/scoring-config';
 import type { CategorySummary } from '@/lib/services/category-summary-service';
 
 export interface CategoryTableProps {
@@ -14,10 +21,11 @@ export interface CategoryTableProps {
   linkParams?: string;
 }
 
-function formatRatio(score: number, baseline: number): string {
-  if (baseline <= 0) return '\u2014';
-  return `${(score / baseline).toFixed(1)}\u00d7`;
-}
+const LAYER_THRESHOLDS = [
+  STRUCTURAL_ANOMALY_THRESHOLD,
+  AI_FLAG_RATE_THRESHOLD,
+  THEMATIC_DRIFT_ELEVATED,
+] as const;
 
 export function CategoryTable({
   categories,
@@ -26,21 +34,74 @@ export function CategoryTable({
   linkParams = '',
 }: CategoryTableProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
+  const { resolvedMode } = useTheme();
+  const elevatedColor = CONVERGENCE_STATUS_COLORS[resolvedMode].Elevated;
 
   const descriptionMap = new Map(CATEGORIES.map((c) => [c.key, c.description]));
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto md:overflow-visible">
       <table className="w-full text-xs border-collapse">
         <thead>
+          {readingLevel === 'detailed' && (
+            <tr className="text-dm-muted">
+              <th colSpan={4} style={{ paddingTop: 52 }} />
+              <th
+                colSpan={3}
+                className="px-2 pb-0 font-medium text-center text-xs align-bottom border-b border-dm-border/30"
+                style={{ paddingTop: 52 }}
+              >
+                Assessment Layers
+              </th>
+              <th style={{ paddingTop: 52 }} />
+            </tr>
+          )}
           <tr className="border-b border-dm-border text-left text-dm-muted">
-            <th className="py-2 pr-3 font-medium">Category</th>
-            <th className="py-2 px-2 font-medium">Status</th>
-            <th className="py-2 px-2 font-medium hidden md:table-cell">Layers</th>
-            <th className="py-2 px-2 font-medium">Trend</th>
-            <th className="py-2 px-2 font-medium text-right">Score</th>
-            <th className="py-2 px-2 font-medium text-right hidden md:table-cell">vs Baseline</th>
-            <th className="py-2 px-2 font-medium text-right">Docs</th>
+            <th className="py-2 pr-3 font-medium align-bottom">Category</th>
+            <th className="py-2 px-2 font-medium align-bottom">Status</th>
+            <th
+              className="px-2 pb-2 font-medium hidden md:table-cell align-bottom"
+              style={readingLevel === 'detailed' ? undefined : { paddingTop: 64 }}
+            >
+              <div className="flex items-end gap-2.5">
+                {['Structural', 'AI', 'Thematic'].map((label) => (
+                  <span
+                    key={label}
+                    className="text-xs text-dm-muted leading-none w-2.5 whitespace-nowrap"
+                    style={{
+                      transform: 'translateX(3px) rotate(-60deg)',
+                      transformOrigin: 'bottom center',
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </th>
+            <th className="py-2 px-2 font-medium align-bottom">Status Trend Line</th>
+            {readingLevel === 'detailed' && (
+              <>
+                <th
+                  className="py-2 px-2 font-medium text-right align-bottom"
+                  title="L1: Structural Diff (composite anomaly score)"
+                >
+                  Structural
+                </th>
+                <th
+                  className="py-2 px-2 font-medium text-right align-bottom"
+                  title="L2: AI Assessment (flag rate z-score)"
+                >
+                  AI
+                </th>
+                <th
+                  className="py-2 px-2 font-medium text-right align-bottom"
+                  title="L3: Thematic Diff (drift z-score)"
+                >
+                  Thematic
+                </th>
+                <th className="py-2 px-2 font-medium text-right align-bottom">Docs</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -57,6 +118,7 @@ export function CategoryTable({
                 readingLevel={readingLevel}
                 highlightWeek={highlightWeek}
                 linkParams={linkParams}
+                elevatedColor={elevatedColor}
                 onToggle={() => setExpandedKey(isExpanded ? null : cat.category)}
               />
             );
@@ -74,6 +136,7 @@ function CategoryRow({
   readingLevel,
   highlightWeek,
   linkParams,
+  elevatedColor,
   onToggle,
 }: {
   cat: CategorySummary;
@@ -82,6 +145,7 @@ function CategoryRow({
   readingLevel: ReadingLevel;
   highlightWeek?: string | null;
   linkParams: string;
+  elevatedColor: string;
   onToggle: () => void;
 }) {
   return (
@@ -110,8 +174,10 @@ function CategoryRow({
         <td className="py-2 px-2">
           {cat.insufficientData ? (
             <span className="text-[10px] text-dm-muted">No Data</span>
+          ) : cat.convergenceStatus ? (
+            <ConvergenceStatusPill status={cat.convergenceStatus} />
           ) : (
-            <StatusPill level={cat.status} />
+            <span className="text-[10px] text-dm-muted">{'\u2014'}</span>
           )}
         </td>
         <td className="py-2 px-2 hidden md:table-cell">
@@ -120,36 +186,51 @@ function CategoryRow({
               structural={cat.structuralElevated}
               ai={cat.aiElevated}
               thematic={cat.thematicElevated}
+              scores={{
+                structural: cat.structuralScore,
+                ai: cat.aiScore,
+                thematic: cat.thematicScore,
+              }}
             />
           ) : (
-            <span className="text-dm-muted">\u2014</span>
+            <span className="text-dm-muted">{'\u2014'}</span>
           )}
         </td>
         <td className="py-2 px-2">
           <div className="w-[120px]">
             <Sparkline
               data={cat.sparklineData}
-              baselineAvg={cat.baselineAvg}
-              baselineStdDev={cat.baselineStdDev}
+              baselineAvg={0}
+              baselineStdDev={0}
               width={120}
               height={28}
               highlightWeek={highlightWeek ?? undefined}
             />
           </div>
         </td>
-        <td className="py-2 px-2 text-right text-dm-text-primary font-medium tabular-nums">
-          {cat.decayWeightedScore.toFixed(1)}
-        </td>
-        <td className="py-2 px-2 text-right text-dm-text-secondary tabular-nums hidden md:table-cell">
-          {formatRatio(cat.decayWeightedScore, cat.baselineAvg)}
-        </td>
-        <td className="py-2 px-2 text-right text-dm-text-secondary tabular-nums">
-          {cat.documentCount}
-        </td>
+        {readingLevel === 'detailed' && (
+          <>
+            {([cat.structuralScore, cat.aiScore, cat.thematicScore] as const).map((score, i) => {
+              const elevated = score != null && score >= LAYER_THRESHOLDS[i];
+              return (
+                <td
+                  key={i}
+                  className="py-2 px-2 text-right tabular-nums font-medium"
+                  style={elevated ? { color: elevatedColor } : undefined}
+                >
+                  {score != null ? score.toFixed(1) : '\u2014'}
+                </td>
+              );
+            })}
+            <td className="py-2 px-2 text-right text-dm-text-secondary tabular-nums">
+              {cat.documentCount}
+            </td>
+          </>
+        )}
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={7} className="px-4 py-3 bg-dm-border/10">
+          <td colSpan={readingLevel === 'detailed' ? 8 : 4} className="px-4 py-3 bg-dm-border/10">
             <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
               {description}
             </p>

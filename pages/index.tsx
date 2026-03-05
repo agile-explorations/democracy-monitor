@@ -217,7 +217,9 @@ export default function Home() {
             {/* Cumulative concern chart */}
             <section>
               <div className="mb-1">
-                <h2 className="text-sm font-semibold text-dm-text-primary">Cumulative Concern</h2>
+                <h2 className="text-sm font-semibold text-dm-text-primary">
+                  Cumulative Concern Score
+                </h2>
                 <p className="text-[11px] text-dm-muted mt-0.5">
                   {readingLevel === 'summary'
                     ? 'Weighted concern score across all categories per week'
@@ -271,6 +273,7 @@ export default function Home() {
                     onCellClick={handleCellClick}
                     onWeekHeaderClick={handleWeekHeaderClick}
                     selectedWeek={selectedWeek}
+                    linkParams={linkParams}
                   />
                 </section>
               </>

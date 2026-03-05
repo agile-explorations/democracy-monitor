@@ -10,7 +10,9 @@ export interface CategorySummary {
   structuralElevated: boolean;
   aiElevated: boolean;
   thematicElevated: boolean;
-  decayWeightedScore: number;
+  structuralScore: number | null;
+  aiScore: number | null;
+  thematicScore: number | null;
   documentCount: number;
 }
 
