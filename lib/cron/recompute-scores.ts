@@ -10,6 +10,7 @@
  */
 
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { getAnalysisPeriods, ALL_DATES_WARNING } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -23,6 +24,7 @@ interface RecomputeOptions {
   to?: string;
   dryRun?: boolean;
   batchSize?: number;
+  allDates?: boolean;
 }
 
 type DocumentRow = typeof documents.$inferSelect;
@@ -110,16 +112,12 @@ function logRecomputeStart(options: RecomputeOptions, dryRun: boolean): void {
   if (options.to) console.log(`[recompute] To: ${options.to}`);
 }
 
-export async function recomputeScores(options: RecomputeOptions): Promise<void> {
-  if (!isDbAvailable()) {
-    throw new Error('DATABASE_URL not configured');
-  }
-
-  const db = getDb(); // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig moved to CLI entry block for testability
-  const dryRun = options.dryRun ?? false;
-  const batchSize = options.batchSize ?? 500;
-  logRecomputeStart(options, dryRun);
-
+async function recomputeOnePeriod(
+  options: RecomputeOptions,
+  db: ReturnType<typeof getDb>,
+  dryRun: boolean,
+  batchSize: number,
+): Promise<{ scored: number; stored: number; categoryCounts: CategoryCounts }> {
   const whereClause = buildWhereClause(options);
   let offset = 0;
   let totalScored = 0;
@@ -147,8 +145,61 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
     offset += batchSize;
   }
 
-  logRecomputeSummary(totalScored, totalStored, categoryCounts, dryRun);
-  if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to);
+  return { scored: totalScored, stored: totalStored, categoryCounts };
+}
+
+export async function recomputeScores(options: RecomputeOptions): Promise<void> {
+  if (!isDbAvailable()) {
+    throw new Error('DATABASE_URL not configured');
+  }
+
+  const db = getDb(); // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig moved to CLI entry block for testability
+  const dryRun = options.dryRun ?? false;
+  const batchSize = options.batchSize ?? 500;
+  const hasDateArgs = !!(options.from || options.to);
+  const useAnalysisPeriods = !hasDateArgs && !options.allDates;
+
+  if (options.allDates) console.warn(ALL_DATES_WARNING);
+
+  if (useAnalysisPeriods) {
+    const periods = getAnalysisPeriods();
+    console.log(`[recompute] Defaulting to ${periods.length} analysis periods`);
+    const allCategoryCounts: CategoryCounts = {};
+    let grandScored = 0;
+    let grandStored = 0;
+
+    for (const period of periods) {
+      console.log(`\n[recompute] === ${period.label} (${period.from} → ${period.to}) ===`);
+      const periodOptions = { ...options, from: period.from, to: period.to };
+      logRecomputeStart(periodOptions, dryRun);
+      const { scored, stored, categoryCounts } = await recomputeOnePeriod(
+        periodOptions,
+        db,
+        dryRun,
+        batchSize,
+      );
+      grandScored += scored;
+      grandStored += stored;
+      for (const [cat, counts] of Object.entries(categoryCounts)) {
+        if (!allCategoryCounts[cat]) allCategoryCounts[cat] = { scored: 0, nonZero: 0 };
+        allCategoryCounts[cat].scored += counts.scored;
+        allCategoryCounts[cat].nonZero += counts.nonZero;
+      }
+      if (!dryRun) await recomputeWeeklyAggregates(period.from, period.to);
+    }
+
+    logRecomputeSummary(grandScored, grandStored, allCategoryCounts, dryRun);
+  } else {
+    logRecomputeStart(options, dryRun);
+    const { scored, stored, categoryCounts } = await recomputeOnePeriod(
+      options,
+      db,
+      dryRun,
+      batchSize,
+    );
+    logRecomputeSummary(scored, stored, categoryCounts, dryRun);
+    if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to);
+  }
 }
 
 if (require.main === module) {
@@ -173,6 +224,9 @@ if (require.main === module) {
         break;
       case '--batch-size':
         options.batchSize = parseInt(args[++i], 10);
+        break;
+      case '--all-dates':
+        options.allDates = true;
         break;
     }
   }

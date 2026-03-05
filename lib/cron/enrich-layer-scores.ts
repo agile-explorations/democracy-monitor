@@ -8,6 +8,7 @@
  */
 
 import { and, eq, gte, lt, lte, sql } from 'drizzle-orm';
+import { getAnalysisPeriods, ALL_DATES_WARNING } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { aiDocumentAssessments, weeklyAggregates } from '@/lib/db/schema';
@@ -23,6 +24,7 @@ interface EnrichOptions {
   from?: string;
   to?: string;
   category?: string;
+  allDates?: boolean;
 }
 
 /** Build an AIAssessmentSummary from stored ai_document_assessments rows. */
@@ -159,25 +161,11 @@ async function loadAggregates(options: EnrichOptions): Promise<WeeklyAggregate[]
   }));
 }
 
-async function run(options: EnrichOptions): Promise<void> {
-  const { loadEnvConfig } = require('@next/env');
-  loadEnvConfig(process.cwd());
-
-  if (!isDbAvailable()) {
-    console.error('[enrich-layers] DATABASE_URL not configured');
-    process.exit(1);
-  }
-
-  const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
-  if (cats.length === 0) {
-    console.error(`[enrich-layers] Unknown category: ${options.category}`);
-    process.exit(1);
-  }
-
-  console.log('[enrich-layers] Loading weekly aggregates...');
-  const aggregates = await loadAggregates(options);
-  console.log(`[enrich-layers] ${aggregates.length} aggregates to enrich`);
-
+async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
+  enriched: number;
+  skippedNoL2: number;
+  catCounts: Record<string, number>;
+}> {
   let enriched = 0;
   let skippedNoL2 = 0;
   const catCounts: Record<string, number> = {};
@@ -196,12 +184,67 @@ async function run(options: EnrichOptions): Promise<void> {
     }
   }
 
-  console.log(`\r[enrich-layers] ${enriched}/${aggregates.length} enriched`);
+  return { enriched, skippedNoL2, catCounts };
+}
+
+async function run(options: EnrichOptions): Promise<void> {
+  const { loadEnvConfig } = require('@next/env');
+  loadEnvConfig(process.cwd());
+
+  if (!isDbAvailable()) {
+    console.error('[enrich-layers] DATABASE_URL not configured');
+    process.exit(1);
+  }
+
+  const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
+  if (cats.length === 0) {
+    console.error(`[enrich-layers] Unknown category: ${options.category}`);
+    process.exit(1);
+  }
+
+  if (options.allDates) console.warn(ALL_DATES_WARNING);
+
+  const hasDateArgs = !!(options.from || options.to);
+  const useAnalysisPeriods = !hasDateArgs && !options.allDates;
+
+  let totalEnriched = 0;
+  let totalSkippedNoL2 = 0;
+  const allCatCounts: Record<string, number> = {};
+
+  if (useAnalysisPeriods) {
+    const periods = getAnalysisPeriods();
+    console.log(`[enrich-layers] Defaulting to ${periods.length} analysis periods`);
+
+    for (const period of periods) {
+      console.log(`\n[enrich-layers] === ${period.label} (${period.from} → ${period.to}) ===`);
+      const aggregates = await loadAggregates({ ...options, from: period.from, to: period.to });
+      if (aggregates.length === 0) continue;
+      console.log(`[enrich-layers] ${aggregates.length} aggregates to enrich`);
+
+      const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
+      totalEnriched += enriched;
+      totalSkippedNoL2 += skippedNoL2;
+      for (const [cat, count] of Object.entries(catCounts)) {
+        allCatCounts[cat] = (allCatCounts[cat] || 0) + count;
+      }
+    }
+  } else {
+    console.log('[enrich-layers] Loading weekly aggregates...');
+    const aggregates = await loadAggregates(options);
+    console.log(`[enrich-layers] ${aggregates.length} aggregates to enrich`);
+
+    const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
+    totalEnriched = enriched;
+    totalSkippedNoL2 = skippedNoL2;
+    Object.assign(allCatCounts, catCounts);
+  }
+
+  console.log(`\n[enrich-layers] ${totalEnriched} total enriched`);
   console.log(
-    `[enrich-layers] ${skippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
+    `[enrich-layers] ${totalSkippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
   );
   console.log('[enrich-layers] Per category:');
-  for (const [cat, count] of Object.entries(catCounts).sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [cat, count] of Object.entries(allCatCounts).sort(([a], [b]) => a.localeCompare(b))) {
     console.log(`  ${cat}: ${count} weeks`);
   }
 }
@@ -221,6 +264,9 @@ if (require.main === module) {
         break;
       case '--category':
         options.category = args[++i];
+        break;
+      case '--all-dates':
+        options.allDates = true;
         break;
     }
   }

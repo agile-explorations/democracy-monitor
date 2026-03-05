@@ -1,3 +1,4 @@
+import type { SQL } from 'drizzle-orm';
 import { and, eq, isNull, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
@@ -35,7 +36,11 @@ async function embedIndividually(texts: string[]): Promise<(number[] | null)[]> 
 }
 
 /** Embed a single batch, returning the count embedded. */
-async function embedOneBatch(batchSize: number, category?: string): Promise<number> {
+async function embedOneBatch(
+  batchSize: number,
+  category?: string,
+  dateFilter?: SQL,
+): Promise<number> {
   const db = getDb();
 
   const conditions = [
@@ -43,6 +48,7 @@ async function embedOneBatch(batchSize: number, category?: string): Promise<numb
     sql`${documents.contentType} != 'metadata_only'`,
   ];
   if (category) conditions.push(eq(documents.category, category));
+  if (dateFilter) conditions.push(dateFilter);
 
   const unembedded = await db
     .select({ id: documents.id, title: documents.title, content: documents.content })
@@ -94,6 +100,7 @@ async function embedOneBatch(batchSize: number, category?: string): Promise<numb
 export async function embedUnprocessedDocuments(
   batchSize = 50,
   category?: string,
+  dateFilter?: SQL,
 ): Promise<number> {
   if (!isDbAvailable()) return 0;
 
@@ -101,7 +108,7 @@ export async function embedUnprocessedDocuments(
   let batchCount: number;
 
   do {
-    batchCount = await embedOneBatch(batchSize, category);
+    batchCount = await embedOneBatch(batchSize, category, dateFilter);
     total += batchCount;
   } while (batchCount === batchSize);
 

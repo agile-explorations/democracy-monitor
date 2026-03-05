@@ -123,4 +123,21 @@ describe('backfill-layer2', () => {
       }),
     ).rejects.toThrow('Database not available');
   });
+
+  it('defaults to analysis periods when no date args provided', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-layer2');
+    // Should not throw — previously this would throw "Provide --baseline or --from/--to"
+    await expect(
+      runBackfillLayer2({
+        fresh: false,
+        confirm: false,
+        dryRun: false,
+      }),
+    ).resolves.toBeUndefined();
+  });
 });

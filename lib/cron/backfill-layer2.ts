@@ -8,6 +8,7 @@
  *   pnpm layer2:backfill --dry-run
  */
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { getAnalysisPeriods } from '@/lib/data/analysis-periods';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
@@ -65,14 +66,18 @@ function parseArgs(): BackfillArgs {
   return result;
 }
 
-function resolveDateRange(args: BackfillArgs): { from: string; to: string } {
+function resolveDateRanges(args: BackfillArgs): Array<{ from: string; to: string; label: string }> {
   if (args.baseline) {
     const config = BASELINE_CONFIGS.find((c) => c.id === args.baseline);
     if (!config) throw new Error(`Unknown baseline: ${args.baseline}`);
-    return { from: config.from, to: config.to };
+    return [{ from: config.from, to: config.to, label: config.id }];
   }
-  if (args.from && args.to) return { from: args.from, to: args.to };
-  throw new Error('Provide --baseline or --from/--to');
+  if (args.from && args.to) return [{ from: args.from, to: args.to, label: 'custom' }];
+  // Default: all analysis periods
+  console.log(
+    '[backfill-l2] No --baseline or --from/--to specified, defaulting to all analysis periods',
+  );
+  return getAnalysisPeriods();
 }
 
 async function getDocumentsForCategoryWeek(
@@ -134,16 +139,10 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
     console.log('[backfill-l2] All ai_document_assessments deleted.');
   }
 
-  const { from, to } = resolveDateRange(args);
+  const dateRanges = resolveDateRanges(args);
   const categories = args.category ? CATEGORIES.filter((c) => c.key === args.category) : CATEGORIES;
 
   if (categories.length === 0) throw new Error(`Unknown category: ${args.category}`);
-
-  const weeks = generateWeeks(from, to);
-  console.log(
-    `[backfill-l2] ${categories.length} categories × ${weeks.length} weeks ` +
-      `(${from} → ${to})${args.dryRun ? ' [DRY RUN]' : ''}`,
-  );
 
   const options: Layer2Options = { dryRun: args.dryRun };
   let totalDocs = 0;
@@ -151,30 +150,39 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   let skipped = 0;
   let p2Retried = 0;
 
-  for (const cat of categories) {
-    for (const weekOf of weeks) {
-      const items = await getDocumentsForCategoryWeek(cat.key, weekOf);
-      if (items.length === 0) continue;
+  for (const range of dateRanges) {
+    const weeks = generateWeeks(range.from, range.to);
+    console.log(
+      `\n[backfill-l2] === ${range.label} (${range.from} → ${range.to}) ===\n` +
+        `[backfill-l2] ${categories.length} categories × ${weeks.length} weeks` +
+        `${args.dryRun ? ' [DRY RUN]' : ''}`,
+    );
 
-      const existing = await getPass1Count(cat.key, weekOf);
-      if (existing >= items.length) {
-        skipped += items.length;
-        p2Retried += await retryMissingPass2(cat.key, weekOf, options);
-        continue;
-      }
+    for (const cat of categories) {
+      for (const weekOf of weeks) {
+        const items = await getDocumentsForCategoryWeek(cat.key, weekOf);
+        if (items.length === 0) continue;
 
-      console.log(`[backfill-l2] ${cat.key} / ${weekOf}: ${items.length} docs`);
-      const summary = await runLayer2Assessment(items, cat.key, weekOf, options);
+        const existing = await getPass1Count(cat.key, weekOf);
+        if (existing >= items.length) {
+          skipped += items.length;
+          p2Retried += await retryMissingPass2(cat.key, weekOf, options);
+          continue;
+        }
 
-      if (summary) {
-        totalDocs += summary.totalDocuments;
-        totalFlagged += summary.flagCount;
+        console.log(`[backfill-l2] ${cat.key} / ${weekOf}: ${items.length} docs`);
+        const summary = await runLayer2Assessment(items, cat.key, weekOf, options);
+
+        if (summary) {
+          totalDocs += summary.totalDocuments;
+          totalFlagged += summary.flagCount;
+        }
       }
     }
   }
 
   console.log(
-    `[backfill-l2] Complete: ${totalDocs} docs assessed, ${totalFlagged} flagged` +
+    `\n[backfill-l2] Complete: ${totalDocs} docs assessed, ${totalFlagged} flagged` +
       (skipped > 0 ? `, ${skipped} skipped (already processed)` : '') +
       (p2Retried > 0 ? `, ${p2Retried} Pass 2 retried` : ''),
   );

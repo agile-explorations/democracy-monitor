@@ -3,7 +3,9 @@ import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
 import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
 import type { RhetoricSource } from '@/lib/cron/backfill-rhetoric';
 import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
+import { buildAnalysisPeriodCondition } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
+import { documents } from '@/lib/db/schema';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { getDocumentsForWeek, storeDocuments } from '@/lib/services/document-store';
@@ -169,9 +171,10 @@ async function backfillCategory(
     counts[await recordAndClassify(categoryKey, week, result.fetchResult, result.docs)]++;
   }
 
-  // Embed unprocessed documents for this category after all weeks
+  // Embed unprocessed documents for this category after all weeks (analysis periods only)
   try {
-    const embedded = await embedUnprocessedDocuments(EMBED_BATCH_SIZE, categoryKey);
+    const dateFilter = buildAnalysisPeriodCondition(documents.publishedAt);
+    const embedded = await embedUnprocessedDocuments(EMBED_BATCH_SIZE, categoryKey, dateFilter);
     if (embedded > 0) console.log(`  [${categoryKey}] Embedded ${embedded} documents`);
   } catch (err) {
     console.warn(`  [${categoryKey}] Embedding skipped: ${formatError(err)}`);

@@ -68,7 +68,7 @@ describe('recomputeScores', () => {
     await expect(recomputeScores({})).rejects.toThrow('DATABASE_URL not configured');
   });
 
-  it('processes a batch of documents and stores scores', async () => {
+  it('processes a batch of documents and stores scores with explicit date range', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
     const docs = [
@@ -91,25 +91,34 @@ describe('recomputeScores', () => {
     mockComputeAllWeeklyAggregates.mockResolvedValue({});
     mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
 
-    await recomputeScores({ batchSize: 10 });
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01', batchSize: 10 });
 
     expect(mockScoreDocument).toHaveBeenCalledTimes(2);
     expect(mockStoreDocumentScores).toHaveBeenCalledOnce();
-    // Aggregation always runs after scoring
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
   });
 
-  it('completes immediately when no documents exist', async () => {
+  it('defaults to analysis periods when no date args provided', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
     mockComputeAllWeeklyAggregates.mockResolvedValue({});
 
-    await expect(recomputeScores({})).resolves.toBeUndefined();
+    await recomputeScores({});
 
-    // No documents means no scoring calls
-    expect(mockScoreDocument).toHaveBeenCalledTimes(0);
-    // Aggregation still runs (no-op with empty results)
+    // Should run aggregation once per analysis period (4 baselines + T2 = 5)
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(5);
+  });
+
+  it('--allDates bypasses analysis period restriction', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const mockDb = makeMockDb([[]]);
+    mockGetDb.mockReturnValue(mockDb);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ allDates: true });
+
+    // Single pass over all documents, single aggregation call
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
   });
 
@@ -130,15 +139,13 @@ describe('recomputeScores', () => {
       scoredAt: new Date().toISOString(),
     });
 
-    await recomputeScores({ dryRun: true });
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01', dryRun: true });
 
-    // Documents are scored even in dry-run
     expect(mockScoreDocument).toHaveBeenCalledOnce();
-    // But scores are not persisted (storeDocumentScores call count stays at 0)
     expect(mockStoreDocumentScores).toHaveBeenCalledTimes(0);
   });
 
-  it('always triggers weekly aggregation after scoring', async () => {
+  it('triggers weekly aggregation for explicit date range', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
@@ -148,7 +155,7 @@ describe('recomputeScores', () => {
     } as Record<string, Array<{ category: string; weekOf: string; avgScore: number }>>);
     mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
 
-    await recomputeScores({});
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
 
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
     expect(mockStoreWeeklyAggregate).toHaveBeenCalledOnce();
@@ -159,9 +166,8 @@ describe('recomputeScores', () => {
     const mockDb = makeMockDb([[]]);
     mockGetDb.mockReturnValue(mockDb);
 
-    await recomputeScores({ dryRun: true });
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01', dryRun: true });
 
-    // Aggregation is skipped in dry-run
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(0);
   });
 });

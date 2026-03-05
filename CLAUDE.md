@@ -22,15 +22,15 @@ pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeli
 pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo, --dry-run, --limit N)
 pnpm backfill:verify       # Completeness check: doc coverage, scores, aggregates, embeddings
 pnpm compute-baseline-stats # Compute baseline statistics from existing aggregates/embeddings
-pnpm recompute-scores      # Re-score all documents + re-aggregate (after rule changes)
+pnpm recompute-scores      # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtures
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
 pnpm retry:signals  # Retry failed RSS/HTML/JSON/FR signals from last snapshot
-pnpm embed:missing  # Embed all documents missing embeddings (--category <key> to filter)
+pnpm embed:missing  # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
 pnpm recrossfeed    # Re-route intent docs to categories via rhetoric cross-feed
-pnpm layer2:backfill # Backfill Layer 2 AI assessments (Pass 1 + Pass 2)
+pnpm layer2:backfill # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)
 pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
 pnpm purge:cl-noise # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
