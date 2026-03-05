@@ -45,6 +45,7 @@
       "files": [
         "lib/cron/**",
         "lib/data/**",
+        "lib/validation/**",
         "lib/demo/**",
         "lib/seed/**",
         "lib/db/schema.ts",

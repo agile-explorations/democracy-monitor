@@ -3,10 +3,10 @@
  * No API calls are made — this only reads from the documents table and writes to document_scores.
  *
  * Usage:
- *   pnpm recompute-scores                       # Recompute all + re-aggregate
- *   pnpm recompute-scores --category judicialIndependence  # Single category
- *   pnpm recompute-scores --from 2025-01-20      # Date range
- *   pnpm recompute-scores --dry-run              # Preview without writing
+ *   pnpm scores:recompute                       # Recompute all + re-aggregate
+ *   pnpm scores:recompute --category judicialIndependence  # Single category
+ *   pnpm scores:recompute --from 2025-01-20      # Date range
+ *   pnpm scores:recompute --dry-run              # Preview without writing
  */
 
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';

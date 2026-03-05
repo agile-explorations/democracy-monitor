@@ -1,20 +1,29 @@
-/** Layer 2 and CourtListener completeness queries for backfill verification. */
+/** Layer 2, layer score, and metadata_only queries for data validation. */
 
 import { eq, sql, and, gte, lt, inArray } from 'drizzle-orm';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { documents, aiDocumentAssessments } from '@/lib/db/schema';
+import { documents, weeklyAggregates, aiDocumentAssessments } from '@/lib/db/schema';
 import type {
-  ClOpinionCoverage,
   Layer2Completeness,
   Layer2PeriodStats,
-} from './backfill-verification-service';
+  LayerScorePeriodStats,
+  MetadataOnlyStats,
+} from './data-validation-service';
 
-const L2_PERIODS = [
+// ---------------------------------------------------------------------------
+// Shared period definitions
+// ---------------------------------------------------------------------------
+
+const VALIDATION_PERIODS = [
   ...BASELINE_CONFIGS.map((c) => ({ id: c.id, label: c.label, from: c.from, to: c.to })),
   { id: 'trump_t2', label: 'Trump T2 (2025–)', from: '2025-01-20', to: '2030-01-01' },
 ];
+
+// ---------------------------------------------------------------------------
+// Layer 2 completeness
+// ---------------------------------------------------------------------------
 
 const MONITORING_KEYS = CATEGORIES.map((c) => c.key);
 
@@ -37,7 +46,6 @@ function buildL2Filters(from: string, to: string, category?: string) {
   };
 }
 
-/** Query per-category L2 counts for a date range, returned as Maps keyed by category. */
 async function queryL2CountsByCategory(from: string, to: string, category?: string) {
   const db = getDb();
   const { dateFilter, aiDateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
@@ -90,7 +98,6 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
   };
 }
 
-/** Sum per-category L2 counts into aggregate totals for a period. */
 async function getLayer2PeriodStats(from: string, to: string, category?: string) {
   const maps = await queryL2CountsByCategory(from, to, category);
   const cats = category ? [category] : MONITORING_KEYS;
@@ -119,7 +126,7 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
   if (!isDbAvailable()) return [];
 
   const results: Layer2PeriodStats[] = [];
-  for (const period of L2_PERIODS) {
+  for (const period of VALIDATION_PERIODS) {
     const stats = await getLayer2PeriodStats(period.from, period.to, category);
     results.push({
       period: period.id,
@@ -138,28 +145,94 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
   return results;
 }
 
-export async function getClOpinionCoverage(): Promise<ClOpinionCoverage | null> {
-  if (!isDbAvailable()) return null;
+// ---------------------------------------------------------------------------
+// Layer score population check
+// ---------------------------------------------------------------------------
+
+export async function getLayerScorePopulation(category?: string): Promise<LayerScorePeriodStats[]> {
+  if (!isDbAvailable()) return [];
   const db = getDb();
 
-  const [stats] = await db
+  const results: LayerScorePeriodStats[] = [];
+  for (const period of VALIDATION_PERIODS) {
+    const conditions = [
+      sql`${weeklyAggregates.weekOf} >= ${period.from}`,
+      sql`${weeklyAggregates.weekOf} < ${period.to}`,
+    ];
+    if (category) conditions.push(eq(weeklyAggregates.category, category));
+
+    const [stats] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        withStructural: sql<number>`count(*) filter (where ${weeklyAggregates.structuralScore} is not null)::int`,
+        withAi: sql<number>`count(*) filter (where ${weeklyAggregates.aiScore} is not null)::int`,
+        withThematic: sql<number>`count(*) filter (where ${weeklyAggregates.thematicScore} is not null)::int`,
+        withConvergence: sql<number>`count(*) filter (where ${weeklyAggregates.convergenceScore} is not null)::int`,
+        withAll: sql<number>`count(*) filter (where ${weeklyAggregates.structuralScore} is not null and ${weeklyAggregates.aiScore} is not null and ${weeklyAggregates.thematicScore} is not null)::int`,
+      })
+      .from(weeklyAggregates)
+      .where(and(...conditions));
+
+    results.push({
+      period: period.id,
+      label: period.label,
+      totalWeeks: Number(stats.total),
+      withStructural: Number(stats.withStructural),
+      withAi: Number(stats.withAi),
+      withThematic: Number(stats.withThematic),
+      withConvergence: Number(stats.withConvergence),
+      withAllLayers: Number(stats.withAll),
+    });
+  }
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// metadata_only classification check
+// ---------------------------------------------------------------------------
+
+export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const results: MetadataOnlyStats[] = [];
+
+  const [clStats] = await db
     .select({
-      docketEntries: sql<number>`count(*) filter (where ${documents.sourceType} != 'judicial_opinion')::int`,
-      opinionDocuments: sql<number>`count(*) filter (where ${documents.sourceType} = 'judicial_opinion')::int`,
-      uniqueCases: sql<number>`count(distinct ${documents.caseId})::int`,
-      casesWithOpinion: sql<number>`count(distinct case when ${documents.sourceType} = 'judicial_opinion' then ${documents.caseId} end)::int`,
+      total: sql<number>`count(*)::int`,
+      marked: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
     })
     .from(documents)
-    .where(eq(documents.sourceOrigin, 'courtlistener'));
+    .where(eq(documents.sourceType, 'court_opinion'));
 
-  const uniqueCases = Number(stats.uniqueCases);
-  const casesWithOpinion = Number(stats.casesWithOpinion);
+  const clTotal = Number(clStats.total);
+  const clMarked = Number(clStats.marked);
+  results.push({
+    population: 'CourtListener docket stubs',
+    sourceFilter: { column: 'source_type', value: 'court_opinion' },
+    total: clTotal,
+    markedMetadataOnly: clMarked,
+    unmarked: clTotal - clMarked,
+    pass: clTotal === 0 || clMarked === clTotal,
+  });
 
-  return {
-    docketEntries: Number(stats.docketEntries),
-    opinionDocuments: Number(stats.opinionDocuments),
-    uniqueCases,
-    casesWithOpinion,
-    casesWithoutOpinion: Math.max(0, uniqueCases - casesWithOpinion),
-  };
+  const [gdeltStats] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      marked: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
+    })
+    .from(documents)
+    .where(eq(documents.sourceOrigin, 'gdelt'));
+
+  const gdeltTotal = Number(gdeltStats.total);
+  const gdeltMarked = Number(gdeltStats.marked);
+  results.push({
+    population: 'GDELT rhetoric documents',
+    sourceFilter: { column: 'source_origin', value: 'gdelt' },
+    total: gdeltTotal,
+    markedMetadataOnly: gdeltMarked,
+    unmarked: gdeltTotal - gdeltMarked,
+    pass: gdeltTotal === 0 || gdeltMarked === gdeltTotal,
+  });
+
+  return results;
 }

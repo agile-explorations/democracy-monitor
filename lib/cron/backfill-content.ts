@@ -6,7 +6,7 @@
  * - GovInfo Congressional Reports: fetches /packages/{id}/htm from GovInfo API
  * - WH (whitehouse.gov / trumpwhitehouse.archives.gov): scrapes article body
  *
- * Sets embedded_at = NULL on updated docs so `pnpm embed:missing` re-embeds them.
+ * Sets embedded_at = NULL on updated docs so `pnpm embeddings:backfill` re-embeds them.
  */
 
 import { eq, isNull, and, sql } from 'drizzle-orm';
@@ -333,7 +333,9 @@ async function run(options: BackfillOptions): Promise<void> {
   } else {
     console.log(`[backfill-content] Done — ${totalUpdated} documents updated`);
     if (totalUpdated > 0) {
-      console.log('[backfill-content] Run `pnpm embed:missing` to re-embed updated documents');
+      console.log(
+        '[backfill-content] Run `pnpm embeddings:backfill` to re-embed updated documents',
+      );
     }
   }
 }

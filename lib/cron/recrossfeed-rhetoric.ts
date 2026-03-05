@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm recrossfeed [--dry-run] [--batch-size N]
+ * CLI: pnpm crossfeed:rerun [--dry-run] [--batch-size N]
  *
  * Re-routes existing rhetoric documents (category='intent') to monitoring
  * categories via the rhetoric cross-feed classifier. Useful when new categories
@@ -38,12 +38,12 @@ async function run(dryRun: boolean, batchSize: number): Promise<void> {
   loadEnvConfig(process.cwd());
 
   if (!isDbAvailable()) {
-    console.error('[recrossfeed] DATABASE_URL not configured');
+    console.error('[crossfeed:rerun] DATABASE_URL not configured');
     process.exit(1);
   }
 
   const db = getDb();
-  const label = dryRun ? '[recrossfeed:dry-run]' : '[recrossfeed]';
+  const label = dryRun ? '[recrossfeed:dry-run]' : '[crossfeed:rerun]';
   const categoryCounts: Record<string, number> = {};
   let totalRows = 0;
   let offset = 0;
@@ -90,7 +90,7 @@ if (require.main === module) {
   const batchSize = bsIdx !== -1 ? parseInt(args[bsIdx + 1], 10) || 500 : 500;
 
   run(dryRun, batchSize).catch((err) => {
-    console.error('[recrossfeed] Fatal:', err);
+    console.error('[crossfeed:rerun] Fatal:', err);
     process.exit(1);
   });
 }

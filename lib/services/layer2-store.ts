@@ -74,19 +74,26 @@ export async function storePass2Assessment(
 }
 
 /**
- * Count Pass 1 assessments already stored for a category-week.
+ * Count Pass 1 assessments whose URLs fall within a Monday-aligned week.
+ * Uses a 7-day range instead of exact week_of match because historical data
+ * has inconsistent week_of alignment (some Wednesday-based, some Monday-based).
  */
 export async function getPass1Count(category: string, weekOf: string): Promise<number> {
   if (!isDbAvailable()) return 0;
   const db = getDb();
 
+  const weekEnd = new Date(weekOf);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+
   const [row] = await db
-    .select({ n: count() })
+    .select({ n: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
     .from(aiDocumentAssessments)
     .where(
       and(
         eq(aiDocumentAssessments.category, category),
-        eq(aiDocumentAssessments.weekOf, weekOf),
+        sql`${aiDocumentAssessments.weekOf} >= ${weekOf}`,
+        sql`${aiDocumentAssessments.weekOf} < ${weekEndStr}`,
         eq(aiDocumentAssessments.pass, 1),
       ),
     );
@@ -95,12 +102,15 @@ export async function getPass1Count(category: string, weekOf: string): Promise<n
 }
 
 /**
- * Get URLs that already have Pass 1 assessments for a specific category and model.
+ * Get URLs that already have Pass 1 assessments for a specific category.
  * Used to skip redundant API calls during backfill.
+ * Model filter removed: the DB stores the resolved model name (e.g.
+ * 'gpt-4o-mini-2024-07-18') which differs from the alias ('gpt-4o-mini'),
+ * and there is only one P1 model in practice.
  */
 export async function getExistingPass1Urls(
   urls: string[],
-  model: string,
+  _model: string,
   category: string,
 ): Promise<Set<string>> {
   if (!isDbAvailable() || urls.length === 0) return new Set();
@@ -117,7 +127,6 @@ export async function getExistingPass1Urls(
         and(
           inArray(aiDocumentAssessments.url, batch),
           eq(aiDocumentAssessments.pass, 1),
-          eq(aiDocumentAssessments.model, model),
           eq(aiDocumentAssessments.category, category),
         ),
       );

@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm enrich-layers [--from <date>] [--to <date>] [--category <key>]
+ * CLI: pnpm layers:enrich [--from <date>] [--to <date>] [--category <key>]
  *
  * Enriches existing weekly aggregates with L1 (structural), L2 (AI summary from
  * stored assessments), L3 (thematic drift), and convergence scores. NO API calls —
@@ -180,7 +180,7 @@ async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
     catCounts[agg.category] = (catCounts[agg.category] || 0) + 1;
 
     if (enriched % 100 === 0) {
-      process.stdout.write(`\r[enrich-layers] ${enriched}/${aggregates.length} enriched`);
+      process.stdout.write(`\r[layers:enrich] ${enriched}/${aggregates.length} enriched`);
     }
   }
 
@@ -192,13 +192,13 @@ async function run(options: EnrichOptions): Promise<void> {
   loadEnvConfig(process.cwd());
 
   if (!isDbAvailable()) {
-    console.error('[enrich-layers] DATABASE_URL not configured');
+    console.error('[layers:enrich] DATABASE_URL not configured');
     process.exit(1);
   }
 
   const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
   if (cats.length === 0) {
-    console.error(`[enrich-layers] Unknown category: ${options.category}`);
+    console.error(`[layers:enrich] Unknown category: ${options.category}`);
     process.exit(1);
   }
 
@@ -213,13 +213,13 @@ async function run(options: EnrichOptions): Promise<void> {
 
   if (useAnalysisPeriods) {
     const periods = getAnalysisPeriods();
-    console.log(`[enrich-layers] Defaulting to ${periods.length} analysis periods`);
+    console.log(`[layers:enrich] Defaulting to ${periods.length} analysis periods`);
 
     for (const period of periods) {
-      console.log(`\n[enrich-layers] === ${period.label} (${period.from} → ${period.to}) ===`);
+      console.log(`\n[layers:enrich] === ${period.label} (${period.from} → ${period.to}) ===`);
       const aggregates = await loadAggregates({ ...options, from: period.from, to: period.to });
       if (aggregates.length === 0) continue;
-      console.log(`[enrich-layers] ${aggregates.length} aggregates to enrich`);
+      console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
 
       const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
       totalEnriched += enriched;
@@ -229,9 +229,9 @@ async function run(options: EnrichOptions): Promise<void> {
       }
     }
   } else {
-    console.log('[enrich-layers] Loading weekly aggregates...');
+    console.log('[layers:enrich] Loading weekly aggregates...');
     const aggregates = await loadAggregates(options);
-    console.log(`[enrich-layers] ${aggregates.length} aggregates to enrich`);
+    console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
 
     const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
     totalEnriched = enriched;
@@ -239,11 +239,11 @@ async function run(options: EnrichOptions): Promise<void> {
     Object.assign(allCatCounts, catCounts);
   }
 
-  console.log(`\n[enrich-layers] ${totalEnriched} total enriched`);
+  console.log(`\n[layers:enrich] ${totalEnriched} total enriched`);
   console.log(
-    `[enrich-layers] ${totalSkippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
+    `[layers:enrich] ${totalSkippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
   );
-  console.log('[enrich-layers] Per category:');
+  console.log('[layers:enrich] Per category:');
   for (const [cat, count] of Object.entries(allCatCounts).sort(([a], [b]) => a.localeCompare(b))) {
     console.log(`  ${cat}: ${count} weeks`);
   }
@@ -274,7 +274,7 @@ if (require.main === module) {
   run(options)
     .then(() => process.exit(0))
     .catch((err) => {
-      console.error('[enrich-layers] Fatal:', err);
+      console.error('[layers:enrich] Fatal:', err);
       process.exit(1);
     });
 }

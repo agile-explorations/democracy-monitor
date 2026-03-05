@@ -1,8 +1,13 @@
-/** Source-specific coverage queries for backfill verification. */
+/** Source-specific coverage queries for ingest validation. */
 
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
-import type { PaginationFitness, SourcePeriodCoverage } from './backfill-verification-service';
+import { documents } from '@/lib/db/schema';
+import type {
+  PaginationFitness,
+  SourcePeriodCoverage,
+  ClOpinionCoverage,
+} from './ingest-validation-service';
 
 export async function getPaginationFitness(category?: string): Promise<PaginationFitness[]> {
   if (!isDbAvailable()) return [];
@@ -98,4 +103,30 @@ export async function getGdeltCrossfeedCoverage(
     period: 'all',
     count: Number(r.count),
   }));
+}
+
+export async function getClOpinionCoverage(): Promise<ClOpinionCoverage | null> {
+  if (!isDbAvailable()) return null;
+  const db = getDb();
+
+  const [stats] = await db
+    .select({
+      docketEntries: sql<number>`count(*) filter (where ${documents.sourceType} != 'judicial_opinion')::int`,
+      opinionDocuments: sql<number>`count(*) filter (where ${documents.sourceType} = 'judicial_opinion')::int`,
+      uniqueCases: sql<number>`count(distinct ${documents.caseId})::int`,
+      casesWithOpinion: sql<number>`count(distinct case when ${documents.sourceType} = 'judicial_opinion' then ${documents.caseId} end)::int`,
+    })
+    .from(documents)
+    .where(eq(documents.sourceOrigin, 'courtlistener'));
+
+  const uniqueCases = Number(stats.uniqueCases);
+  const casesWithOpinion = Number(stats.casesWithOpinion);
+
+  return {
+    docketEntries: Number(stats.docketEntries),
+    opinionDocuments: Number(stats.opinionDocuments),
+    uniqueCases,
+    casesWithOpinion,
+    casesWithoutOpinion: Math.max(0, uniqueCases - casesWithOpinion),
+  };
 }

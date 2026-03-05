@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm embed:missing [--category <key>] [--all-dates]
+ * CLI: pnpm embeddings:backfill [--category <key>] [--all-dates]
  *
  * Embeds documents that have no embedding yet, restricted to analysis periods by default.
  * Pass --all-dates to embed ALL unembedded documents regardless of date.

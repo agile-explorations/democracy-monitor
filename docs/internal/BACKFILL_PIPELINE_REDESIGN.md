@@ -23,7 +23,7 @@ Different commands execute different subsets of the pipeline stages, leaving doc
 | `pnpm snapshot`               | yes           | yes    | yes       | yes    | yes | yes     | yes | yes          |
 | `pnpm legiscan:bulk`          | yes           | **no** | **no**    | **no** | no  | no      | no  | no           |
 | `pnpm layer2:backfill`        | no            | no     | no        | no     | no  | yes     | no  | no           |
-| `pnpm recompute-scores`       | no            | yes    | no        | no     | no  | no      | no  | no           |
+| `pnpm scores:recompute`       | no            | yes    | no        | no     | no  | no      | no  | no           |
 
 Result: we currently have ~18K documents that are ingested and scored but have no weekly aggregates or embeddings. Baseline stats can't be computed because they depend on weekly aggregates. Layer 3 can't run because it depends on embeddings.
 
@@ -81,7 +81,7 @@ The full pipeline has 9 stages, divided into two phases:
 1. Ingest ──→ 7. Layer 2 ──────────────────────────────────────────────────────┘
 ```
 
-Note: Layer 2 (stage 7) does NOT depend on baselines — it runs Pass 1/Pass 2 on individual documents independently. However, Convergence (stage 9) depends on Layer 2 output and baseline stats (to compute flag rate z-scores). This means `layer2:backfill` can run in parallel with `compute-baseline-stats`.
+Note: Layer 2 (stage 7) does NOT depend on baselines — it runs Pass 1/Pass 2 on individual documents independently. However, Convergence (stage 9) depends on Layer 2 output and baseline stats (to compute flag rate z-scores). This means `layer2:backfill` can run in parallel with `baselines:compute`.
 
 ---
 
@@ -140,7 +140,7 @@ Without `--source`, all applicable sources run. Without `--category`, all catego
 
 **Note on WH/GDELT + `--category`:** WH and GDELT fetch globally, then classify documents into categories. `--source whitehouse --category civilService` means: fetch WH globally, then only store/score/aggregate/embed documents classified into `civilService`. The `--category` filter applies after classification, not before fetching.
 
-### `pnpm compute-baseline-stats` — baseline computation (stage 5)
+### `pnpm baselines:compute` — baseline computation (stage 5)
 
 Computes baseline statistics from existing data. Reads `weekly_aggregates` and `documents.embedding`, writes to `baselines`. No fetching, no AI.
 
@@ -180,13 +180,13 @@ Runs Layer 2 AI two-pass assessment on existing documents. Unchanged from curren
 | `--from <date>` / `--to <date>` | Date range             |
 | `--category <key>`              | Filter to one category |
 
-### `pnpm recompute-scores` — re-score and re-aggregate (stages 2–3)
+### `pnpm scores:recompute` — re-score and re-aggregate (stages 2–3)
 
 Re-runs keyword scoring on existing documents and recomputes weekly aggregates from the new scores. Used after assessment rule changes. Without the re-aggregation step, aggregates computed from old scores would be stale.
 
-### `pnpm backfill:verify` — completeness verification
+### `pnpm validate:ingest` + `pnpm validate:data` — completeness verification
 
-Checks that all pipeline stages completed correctly. Reports gaps and inconsistencies.
+Checks that all pipeline stages completed correctly. Reports gaps and inconsistencies. Ingest validation covers source coverage, content completeness, and pagination fitness. Data validation covers scores, embeddings, baselines, Layer 2 coverage, and layer score population.
 
 **Checks (derived from TEST_SPECIFICATION.md §Backfill Completeness Verification):**
 
@@ -271,15 +271,15 @@ pnpm backfill --source fec --from 2025-01-20
 pnpm backfill --source legiscan
 
 # 3. Compute baseline statistics
-pnpm compute-baseline-stats
+pnpm baselines:compute
 
 # 4. Run full assessment on historical T2 weeks (stages 6-9)
 #    Stages 1-4 are no-ops (already backfilled). layer2:backfill runs
-#    in parallel with compute-baseline-stats since L2 doesn't need baselines.
+#    in parallel with baselines:compute since L2 doesn't need baselines.
 pnpm snapshot --from 2025-01-20
 
 # 5. Verify completeness
-pnpm backfill:verify
+pnpm validate:ingest && pnpm validate:data
 
 # 6. Start daily pipeline
 pnpm snapshot
@@ -295,16 +295,16 @@ pnpm backfill --source fr --category newCategory --from 2021-01-20 --to 2023-01-
 pnpm backfill --source fr --category newCategory --from 2025-01-20
 
 # 3. Recompute baseline stats (picks up new category's data)
-pnpm compute-baseline-stats
+pnpm baselines:compute
 
 # 4. Run full assessment on T2 for new category (optional, $$$)
 pnpm snapshot --from 2025-01-20 --category newCategory
 
 # 5. Verify
-pnpm backfill:verify --category newCategory
+pnpm validate:ingest --category newCategory && pnpm validate:data --category newCategory
 ```
 
-Non-FR sources (CL, DOJ, etc.) don't need `--category` because they classify documents to categories automatically. If a new category routes to an existing source (e.g., adding immigrationEnforcement to DOJ taxonomy), the existing DOJ documents are already in the DB — just re-run `pnpm recompute-scores` and `pnpm compute-baseline-stats`.
+Non-FR sources (CL, DOJ, etc.) don't need `--category` because they classify documents to categories automatically. If a new category routes to an existing source (e.g., adding immigrationEnforcement to DOJ taxonomy), the existing DOJ documents are already in the DB — just re-run `pnpm scores:recompute` and `pnpm baselines:compute`.
 
 ### Adding a new source
 
@@ -317,13 +317,13 @@ pnpm backfill --source newsource --from 2021-01-20 --to 2023-01-19 && \
 pnpm backfill --source newsource --from 2025-01-20
 
 # 4. Recompute baseline stats (new source affects aggregates)
-pnpm compute-baseline-stats
+pnpm baselines:compute
 
 # 5. Run full assessment on T2 (optional, $$$)
 pnpm snapshot --from 2025-01-20
 
 # 6. Verify
-pnpm backfill:verify
+pnpm validate:ingest && pnpm validate:data
 ```
 
 ### Repairing incomplete data
@@ -336,13 +336,13 @@ pnpm backfill --from 2021-01-20 --to 2023-01-19
 pnpm backfill --from 2025-01-20
 
 # 2. Recompute baseline stats (in case aggregates or embeddings changed)
-pnpm compute-baseline-stats
+pnpm baselines:compute
 
 # 3. Re-run AI assessment on T2 (idempotent: skips already-assessed docs)
 pnpm layer2:backfill --from 2025-01-20
 
 # 4. Verify
-pnpm backfill:verify
+pnpm validate:ingest && pnpm validate:data
 ```
 
 ### Purging and re-ingesting bad data
@@ -370,32 +370,32 @@ psql $DATABASE_URL -c "
 pnpm backfill --source fr --category immigrationEnforcement --from 2025-01-20
 
 # 4. Recompute baseline stats if baseline periods were affected
-pnpm compute-baseline-stats
+pnpm baselines:compute
 
 # 5. Verify
-pnpm backfill:verify --category immigrationEnforcement
+pnpm validate:ingest --category immigrationEnforcement && pnpm validate:data --category immigrationEnforcement
 ```
 
 ### After keyword rule changes
 
 ```bash
-pnpm recompute-scores         # re-scores + re-aggregates (stages 2-3)
-pnpm compute-baseline-stats   # baselines depend on aggregates
+pnpm scores:recompute         # re-scores + re-aggregates (stages 2-3)
+pnpm baselines:compute   # baselines depend on aggregates
 ```
 
 ---
 
 ## What Gets Removed
 
-| Item                            | Reason                                                                                             |
-| ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `lib/cron/backfill-baseline.ts` | Fetching replaced by `pnpm backfill`. Stats computation replaced by `pnpm compute-baseline-stats`. |
-| `pnpm build-baseline` script    | Replaced by the two commands above.                                                                |
-| `--ingest-only` flag            | Backfill always does stages 1–4. No partial mode.                                                  |
-| `--skip-ai` flag                | Backfill never runs AI. Assessment is separate.                                                    |
-| `--model` flag                  | Models are methodology, not runtime config.                                                        |
-| `--no-rhetoric` flag            | WH/GDELT are sources. Use `--source` to filter.                                                    |
-| `--rhetoric-only` flag          | Use `--source whitehouse` or `--source gdelt`.                                                     |
+| Item                            | Reason                                                                                        |
+| ------------------------------- | --------------------------------------------------------------------------------------------- |
+| `lib/cron/backfill-baseline.ts` | Fetching replaced by `pnpm backfill`. Stats computation replaced by `pnpm baselines:compute`. |
+| `pnpm build-baseline` script    | Replaced by the two commands above.                                                           |
+| `--ingest-only` flag            | Backfill always does stages 1–4. No partial mode.                                             |
+| `--skip-ai` flag                | Backfill never runs AI. Assessment is separate.                                               |
+| `--model` flag                  | Models are methodology, not runtime config.                                                   |
+| `--no-rhetoric` flag            | WH/GDELT are sources. Use `--source` to filter.                                               |
+| `--rhetoric-only` flag          | Use `--source whitehouse` or `--source gdelt`.                                                |
 
 ---
 
@@ -421,4 +421,4 @@ Integrate into `pnpm backfill --source legiscan`. Unified CLI even though the in
 
 ### 4. Scope and timing — Decision: Phased, but soon
 
-Phase 1 (urgent — prevents recurring partial-state problem): fix backfill skip logic (run score/aggregate/embed even when ingest is skipped), create `compute-baseline-stats`, create `backfill:verify`, remove `build-baseline`. Phase 2 (ergonomic improvement): source unification (WH/GDELT as `--source`, LegiScan integration), `snapshot --from/--to`, flag cleanup.
+Phase 1 (urgent — prevents recurring partial-state problem): fix backfill skip logic (run score/aggregate/embed even when ingest is skipped), create `baselines:compute`, create `backfill:verify`, remove `build-baseline`. Phase 2 (ergonomic improvement): source unification (WH/GDELT as `--source`, LegiScan integration), `snapshot --from/--to`, flag cleanup.

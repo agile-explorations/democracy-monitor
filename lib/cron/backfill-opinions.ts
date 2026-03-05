@@ -190,7 +190,9 @@ async function run(options: BackfillOptions): Promise<void> {
   console.log(`  Hit rate:            ${hitRate}%`);
 
   if (documentsCreated > 0) {
-    console.log('\n[backfill-opinions] Run `pnpm embed:missing` to embed new opinion documents.');
+    console.log(
+      '\n[backfill-opinions] Run `pnpm embeddings:backfill` to embed new opinion documents.',
+    );
   }
 }
 

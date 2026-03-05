@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm compute-baseline-stats [--baseline <id>] [--category <key>]
+ * CLI: pnpm baselines:compute [--baseline <id>] [--category <key>]
  *
  * Computes baseline statistics from existing weekly_aggregates and document embeddings.
  * No fetching, no AI — reads from document_scores/weekly_aggregates, writes to baselines.

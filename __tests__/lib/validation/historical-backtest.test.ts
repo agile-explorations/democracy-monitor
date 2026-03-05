@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getDb } from '@/lib/db';
-import { statusAtLeast, getWeekMonday, runBacktest } from '@/lib/validation/historical-backtest';
+import {
+  convergenceStatusAtLeast,
+  getWeekMonday,
+  runBacktest,
+} from '@/lib/validation/historical-backtest';
 import type { KnownEvent } from '@/lib/validation/known-events';
 
 vi.mock('@/lib/db', () => ({
@@ -13,23 +17,23 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('statusAtLeast', () => {
+describe('convergenceStatusAtLeast', () => {
   it('returns true when actual equals threshold', () => {
-    expect(statusAtLeast('Warning', 'Warning')).toBe(true);
-    expect(statusAtLeast('Drift', 'Drift')).toBe(true);
-    expect(statusAtLeast('Capture', 'Capture')).toBe(true);
+    expect(convergenceStatusAtLeast('Elevated', 'Elevated')).toBe(true);
+    expect(convergenceStatusAtLeast('Divergent', 'Divergent')).toBe(true);
+    expect(convergenceStatusAtLeast('ConfirmedConcern', 'ConfirmedConcern')).toBe(true);
   });
 
   it('returns true when actual is above threshold', () => {
-    expect(statusAtLeast('Drift', 'Warning')).toBe(true);
-    expect(statusAtLeast('Capture', 'Warning')).toBe(true);
-    expect(statusAtLeast('Capture', 'Drift')).toBe(true);
+    expect(convergenceStatusAtLeast('Divergent', 'Elevated')).toBe(true);
+    expect(convergenceStatusAtLeast('ConfirmedConcern', 'Elevated')).toBe(true);
+    expect(convergenceStatusAtLeast('ConfirmedConcern', 'Divergent')).toBe(true);
   });
 
   it('returns false when actual is below threshold', () => {
-    expect(statusAtLeast('Stable', 'Warning')).toBe(false);
-    expect(statusAtLeast('Warning', 'Drift')).toBe(false);
-    expect(statusAtLeast('Drift', 'Capture')).toBe(false);
+    expect(convergenceStatusAtLeast('Stable', 'Elevated')).toBe(false);
+    expect(convergenceStatusAtLeast('Elevated', 'Divergent')).toBe(false);
+    expect(convergenceStatusAtLeast('Divergent', 'ConfirmedConcern')).toBe(false);
   });
 });
 
@@ -58,38 +62,43 @@ describe('getWeekMonday', () => {
 describe('runBacktest', () => {
   const EVENTS: KnownEvent[] = [
     {
+      id: 'T1-1',
       date: '2017-01-27',
-      category: 'military',
+      category: 'civilLiberties',
       description: 'Travel ban EO',
-      expectedSeverity: 'Drift',
+      period: 'trump_t1',
+      expectedMinStatus: 'Elevated',
     },
     {
+      id: 'T1-2',
       date: '2017-05-09',
-      category: 'rule_of_law',
+      category: 'judicialIndependence',
       description: 'Comey firing',
-      expectedSeverity: 'Capture',
+      period: 'trump_t1',
+      expectedMinStatus: 'Divergent',
     },
   ];
 
-  function mockDb(
-    aggregateRows: Array<Record<string, unknown>>,
-    assessmentRows: Array<Record<string, unknown>>,
-  ) {
+  function mockDb(rows: Array<Record<string, unknown>>) {
     const db = {
-      execute: vi
-        .fn()
-        .mockResolvedValueOnce({ rows: aggregateRows })
-        .mockResolvedValueOnce({ rows: assessmentRows }),
+      execute: vi.fn().mockResolvedValueOnce({ rows }),
     };
     mockGetDb.mockReturnValue(db as ReturnType<typeof getDb>);
     return db;
   }
 
   it('detects event when week status meets expected severity', async () => {
-    mockDb(
-      [{ category: 'military', week_of: '2017-01-23', total_severity: 8.5 }],
-      [{ category: 'military', week: '2017-01-23T00:00:00.000Z', status: 'Drift' }],
-    );
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.5,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+    ]);
 
     const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
     expect(results).toHaveLength(1);
@@ -99,10 +108,17 @@ describe('runBacktest', () => {
   });
 
   it('marks event as missed when week status is below expected severity', async () => {
-    mockDb(
-      [{ category: 'rule_of_law', week_of: '2017-05-08', total_severity: 2.0 }],
-      [{ category: 'rule_of_law', week: '2017-05-08T00:00:00.000Z', status: 'Warning' }],
-    );
+    mockDb([
+      {
+        category: 'judicialIndependence',
+        week_of: '2017-05-08',
+        total_severity: 2.0,
+        status: 'Elevated',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+    ]);
 
     const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[1]]);
     expect(results).toHaveLength(1);
@@ -111,27 +127,37 @@ describe('runBacktest', () => {
     expect(results[0].detectionRate).toBe(0);
   });
 
-  it('counts false alarms for weeks with Drift+ but no known event', async () => {
-    mockDb(
-      [
-        { category: 'military', week_of: '2017-01-23', total_severity: 8.5 },
-        { category: 'military', week_of: '2017-02-06', total_severity: 10.0 },
-      ],
-      [
-        { category: 'military', week: '2017-01-23T00:00:00.000Z', status: 'Drift' },
-        { category: 'military', week: '2017-02-06T00:00:00.000Z', status: 'Drift' },
-      ],
-    );
+  it('counts false alarms for weeks with Divergent+ but no known event', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.5,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-02-06',
+        total_severity: 10.0,
+        status: 'Divergent',
+        structural_score: 4.0,
+        ai_score: 3.0,
+        thematic_score: 4.0,
+      },
+    ]);
 
     const results = await runBacktest('2017-01-20', '2017-03-01', [EVENTS[0]]);
     expect(results[0].falseAlarms).toBe(1);
   });
 
   it('handles empty data gracefully', async () => {
-    mockDb([], []);
+    mockDb([]);
 
     const results = await runBacktest('2017-01-20', '2017-06-01', EVENTS);
-    expect(results).toHaveLength(2); // One per unique category
+    expect(results).toHaveLength(2);
     for (const r of results) {
       expect(r.weeklyScores).toHaveLength(0);
       expect(r.detectionRate).toBe(0);
@@ -142,33 +168,67 @@ describe('runBacktest', () => {
   it('computes detection rate correctly with mixed results', async () => {
     const events: KnownEvent[] = [
       {
+        id: 'T1-1',
         date: '2017-01-27',
-        category: 'military',
+        category: 'civilLiberties',
         description: 'Event 1',
-        expectedSeverity: 'Drift',
+        period: 'trump_t1',
+        expectedMinStatus: 'Elevated',
       },
       {
+        id: 'T1-1',
         date: '2017-03-06',
-        category: 'military',
+        category: 'civilLiberties',
         description: 'Event 2',
-        expectedSeverity: 'Drift',
+        period: 'trump_t1',
+        expectedMinStatus: 'Elevated',
       },
     ];
 
-    mockDb(
-      [
-        { category: 'military', week_of: '2017-01-23', total_severity: 8.0 },
-        { category: 'military', week_of: '2017-03-06', total_severity: 3.0 },
-      ],
-      [
-        { category: 'military', week: '2017-01-23T00:00:00.000Z', status: 'Drift' },
-        { category: 'military', week: '2017-03-06T00:00:00.000Z', status: 'Warning' },
-      ],
-    );
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.0,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-03-06',
+        total_severity: 3.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+    ]);
 
     const results = await runBacktest('2017-01-20', '2017-06-01', events);
     expect(results[0].detectedEvents).toHaveLength(1);
     expect(results[0].missedEvents).toHaveLength(1);
     expect(results[0].detectionRate).toBe(0.5);
+  });
+
+  it('includes layer scores in weekly data', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.5,
+        status: 'Elevated',
+        structural_score: 3.1,
+        ai_score: 2.5,
+        thematic_score: 4.2,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
+    const week = results[0].weeklyScores[0];
+    expect(week.structuralScore).toBe(3.1);
+    expect(week.aiScore).toBe(2.5);
+    expect(week.thematicScore).toBe(4.2);
   });
 });

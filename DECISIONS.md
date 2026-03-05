@@ -25,7 +25,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 2. **`--all-dates` as opt-in override**: Prints a warning when used. Deliberately friction-ful to prevent accidental gap-year processing.
 3. **`layer2:backfill` no longer throws without args**: Previously required `--baseline` or `--from/--to`. Now defaults to iterating all analysis periods — consistent with the other commands.
 4. **`backfill.ts` embed step filtered**: The `embedUnprocessedDocuments()` call within `backfillCategory()` now passes an analysis-period date condition, preventing embedding of stray gap-year docs during backfill runs.
-5. **Scripts left unchanged after audit**: `backtest`, `validate:events`, `seed:review`, `backfill:content/opinions/gaps/verify`, `purge:cl-noise`, `legiscan:bulk`, `retry:signals`, `recrossfeed` — all either read-only diagnostics, already date-scoped, or not time-series processors.
+5. **Scripts left unchanged after audit**: `backtest`, `validate:events`, `seed:review`, `backfill:content/opinions/gaps/verify`, `cl:purge-noise`, `legiscan:bulk`, `signals:retry`, `crossfeed:rerun` — all either read-only diagnostics, already date-scoped, or not time-series processors.
 
 **Lessons Learned:**
 
@@ -120,7 +120,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 2. **Reuse `fetchGovInfoText` across backfill and forward pipeline**: Single function in `govinfo-fetcher.ts` serves both the CLI backfill and the `backfill-fetchers.ts` forward pipeline. FR uses the same pattern with `fetchFrRawText`.
 3. **Content truncation at 8,000 chars**: Matches the embedding context window constraints. FR Presidential Documents average ~10KB raw text; Congressional Reports can be much larger. Truncation with ellipsis preserves the most relevant content (front-loaded in both document types).
 4. **Warning only for fixable types in backfill:verify**: Content completeness displays all source types with null content, but only generates actionable warnings (with `pnpm backfill:content --source` command) for `Presidential Document` and `congressional_report`. Non-fixable types (e.g., `docket_entry` with NOS codes) shown with info icon but don't trigger warnings.
-5. **`embedded_at = NULL` reset on content update**: Updated documents get `embedded_at` reset so `pnpm embed:missing` picks them up for re-embedding. Clean separation between content backfill and embedding steps.
+5. **`embedded_at = NULL` reset on content update**: Updated documents get `embedded_at` reset so `pnpm embeddings:backfill` picks them up for re-embedding. Clean separation between content backfill and embedding steps.
 
 **Lessons Learned:**
 
@@ -165,7 +165,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ## Sprint R-S1f: Backfill Pipeline Redesign (Phase 2) ✅
 
-**Status: Done.** Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL locks), added `snapshot --from/--to` for retroactive assessment, created `purge:cl-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
+**Status: Done.** Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL locks), added `snapshot --from/--to` for retroactive assessment, created `cl:purge-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
 
 **Scope vs. Actual:**
 
@@ -223,7 +223,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ## Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
 
-**Status: Done.** Fixed backfill skip logic (score/aggregate/embed always run even when ingest is skipped), removed dead CLI flags and 3 files (~580 lines), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. 1532 tests across 124 files. Phase 2 deferred to R-S1f.
+**Status: Done.** Fixed backfill skip logic (score/aggregate/embed always run even when ingest is skipped), removed dead CLI flags and 3 files (~580 lines), added `baselines:compute` and `backfill:verify` commands, incremental snapshot for API signals. 1532 tests across 124 files. Phase 2 deferred to R-S1f.
 
 **Scope vs. Actual:**
 
@@ -241,7 +241,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Lessons Learned:**
 
-- **Mock return values must be valid for always-on code paths**: After making `recompute-scores` always aggregate (removing the `if (options.aggregate)` guard), the mock for `computeAllWeeklyAggregates` needed to return `{}` instead of `undefined`. `Object.entries(undefined)` throws — the guard was masking the invalid mock.
+- **Mock return values must be valid for always-on code paths**: After making `scores:recompute` always aggregate (removing the `if (options.aggregate)` guard), the mock for `computeAllWeeklyAggregates` needed to return `{}` instead of `undefined`. `Object.entries(undefined)` throws — the guard was masking the invalid mock.
 - **OpenGrep `no-mock-call-assertions` applies consistently**: New test files can't use `toHaveBeenCalledWith()` assertions. Testing output values instead (e.g., checking `result.items` contains expected documents) produces better tests that survive refactoring.
 
 **Spec Deviations:**

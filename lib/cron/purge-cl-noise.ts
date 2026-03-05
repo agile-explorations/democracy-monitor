@@ -7,8 +7,8 @@
  * cl_habeas (NOS 530). The query was fixed in Sprint R-S1d but ~41K old docs remain.
  *
  * Usage:
- *   pnpm purge:cl-noise              # Analyze only (dry run)
- *   pnpm purge:cl-noise --confirm    # Delete noise + clear fetch_log
+ *   pnpm cl:purge-noise              # Analyze only (dry run)
+ *   pnpm cl:purge-noise --confirm    # Delete noise + clear fetch_log
  */
 
 import { sql } from 'drizzle-orm';
@@ -163,9 +163,9 @@ async function run(confirm: boolean): Promise<void> {
   console.log(`  AI assessments deleted: ${result.deletedAssessments}`);
   console.log(`  Fetch log entries cleared: ${result.clearedFetchLog}`);
   console.log('\n[purge-cl-noise] Next steps:');
-  console.log('  1. pnpm recompute-scores --category civilLiberties');
-  console.log('  2. pnpm compute-baseline-stats');
-  console.log('  3. pnpm backfill:verify --category civilLiberties');
+  console.log('  1. pnpm scores:recompute --category civilLiberties');
+  console.log('  2. pnpm baselines:compute');
+  console.log('  3. pnpm validate:ingest --category civilLiberties');
 }
 
 if (require.main === module) {

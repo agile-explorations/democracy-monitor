@@ -127,7 +127,7 @@ CREATE INDEX idx_doc_scores_document ON document_scores (document_id);
 
 **Integration**: Modify `snapshot.ts` to call `scoreDocument()` for each item before passing to `enhancedAssessment()`. Store results in `document_scores`. The existing `analyzeContent()` continues to produce batch status — the per-document scores are additive, not a replacement.
 
-**[V3] Backfill integration**: Also modify `backfill.ts` to call `scoreDocument()` after storing documents each week. Add `--score-only` flag to re-score existing documents without re-fetching. Add `pnpm recompute-scores` script to `package.json`.
+**[V3] Backfill integration**: Also modify `backfill.ts` to call `scoreDocument()` after storing documents each week. Add `--score-only` flag to re-score existing documents without re-fetching. Add `pnpm scores:recompute` script to `package.json`.
 
 **Files touched**:
 

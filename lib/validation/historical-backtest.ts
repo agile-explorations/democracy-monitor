@@ -1,14 +1,42 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { statusIndex } from '@/lib/services/status-ordering';
-import type { StatusLevel } from '@/lib/types';
-import { toDateString } from '@/lib/utils/date-utils';
+import type { ConvergenceStatus } from '@/lib/types/structural';
+import { getMonday, toDateString } from '@/lib/utils/date-utils';
 import type { KnownEvent } from './known-events';
+
+const CONVERGENCE_ORDER: ConvergenceStatus[] = [
+  'Stable',
+  'Elevated',
+  'Divergent',
+  'ConfirmedConcern',
+];
+
+/** Returns 0–3 numeric index for a ConvergenceStatus. */
+export function convergenceIndex(status: ConvergenceStatus): number {
+  const idx = CONVERGENCE_ORDER.indexOf(status);
+  return idx >= 0 ? idx : 0;
+}
+
+/** Returns true if `actual` is at least as severe as `threshold`. */
+export function convergenceStatusAtLeast(
+  actual: ConvergenceStatus,
+  threshold: ConvergenceStatus,
+): boolean {
+  return convergenceIndex(actual) >= convergenceIndex(threshold);
+}
+
+export interface WeekData {
+  totalSeverity: number;
+  status: ConvergenceStatus;
+  structuralScore: number | null;
+  aiScore: number | null;
+  thematicScore: number | null;
+}
 
 export interface BacktestResult {
   period: string;
   category: string;
-  weeklyScores: Array<{ weekOf: string; totalSeverity: number; status: string }>;
+  weeklyScores: Array<{ weekOf: string } & WeekData>;
   peakWeek: string;
   peakScore: number;
   knownEvents: KnownEvent[];
@@ -18,70 +46,52 @@ export interface BacktestResult {
   detectionRate: number;
 }
 
-/** Returns true if `actual` is at least as severe as `threshold`. */
-export function statusAtLeast(actual: string, threshold: string): boolean {
-  return statusIndex(actual as StatusLevel) >= statusIndex(threshold as StatusLevel);
-}
-
-/** Get the Monday (ISO week start) for a given date string. */
+/** Get the Monday (ISO week start) for a date string. Delegates to shared utility. */
 export function getWeekMonday(dateStr: string): string {
-  const d = new Date(dateStr);
-  const day = d.getUTCDay();
-  // Shift Sunday (0) to 7 so Monday=1 is always the start
-  const diff = day === 0 ? 6 : day - 1;
-  d.setUTCDate(d.getUTCDate() - diff);
-  return toDateString(d);
+  return getMonday(new Date(dateStr));
 }
 
-type WeekEntry = { totalSeverity: number; status: string };
-type WeeklyLookup = Map<string, Map<string, WeekEntry>>;
+type WeeklyLookup = Map<string, Map<string, WeekData>>;
 
-function buildWeeklyLookup(
-  aggregateRows: Record<string, unknown>[],
-  assessmentRows: Record<string, unknown>[],
-): WeeklyLookup {
+function buildWeeklyLookup(rows: Record<string, unknown>[]): WeeklyLookup {
   const weeklyData: WeeklyLookup = new Map();
 
-  for (const row of aggregateRows) {
+  for (const row of rows) {
     const r = row as Record<string, unknown>;
     const category = r.category as string;
-    const weekOf = r.week_of as string;
-    const totalSeverity = Number(r.total_severity);
+    const weekOf = toDateString(new Date(r.week_of as string));
+    const totalSeverity = Number(r.total_severity ?? 0);
+    const rawStatus = (r.status as string) ?? 'Stable';
+    const status = CONVERGENCE_ORDER.includes(rawStatus as ConvergenceStatus)
+      ? (rawStatus as ConvergenceStatus)
+      : 'Stable';
 
     if (!weeklyData.has(category)) weeklyData.set(category, new Map());
-    const catMap = weeklyData.get(category)!;
-    if (!catMap.has(weekOf)) catMap.set(weekOf, { totalSeverity, status: 'Stable' });
-    else catMap.get(weekOf)!.totalSeverity = totalSeverity;
-  }
-
-  for (const row of assessmentRows) {
-    const r = row as Record<string, unknown>;
-    const category = r.category as string;
-    const week = toDateString(new Date(r.week as string));
-    const status = r.status as string;
-
-    if (!weeklyData.has(category)) weeklyData.set(category, new Map());
-    const catMap = weeklyData.get(category)!;
-    if (!catMap.has(week)) catMap.set(week, { totalSeverity: 0, status });
-    else catMap.get(week)!.status = status;
+    weeklyData.get(category)!.set(weekOf, {
+      totalSeverity,
+      status,
+      structuralScore: r.structural_score != null ? Number(r.structural_score) : null,
+      aiScore: r.ai_score != null ? Number(r.ai_score) : null,
+      thematicScore: r.thematic_score != null ? Number(r.thematic_score) : null,
+    });
   }
 
   return weeklyData;
 }
 
 function buildWeeklyTimeline(
-  catData: Map<string, WeekEntry> | undefined,
-): Array<{ weekOf: string; totalSeverity: number; status: string }> {
+  catData: Map<string, WeekData> | undefined,
+): Array<{ weekOf: string } & WeekData> {
   if (!catData) return [];
   return [...catData.entries()]
-    .map(([weekOf, data]) => ({ weekOf, totalSeverity: data.totalSeverity, status: data.status }))
+    .map(([weekOf, data]) => ({ weekOf, ...data }))
     .sort((a, b) => a.weekOf.localeCompare(b.weekOf));
 }
 
 function evaluateCategoryBacktest(
-  catData: Map<string, WeekEntry> | undefined,
+  catData: Map<string, WeekData> | undefined,
   catEvents: KnownEvent[],
-  weeklyScores: Array<{ weekOf: string; totalSeverity: number; status: string }>,
+  weeklyScores: Array<{ weekOf: string } & WeekData>,
 ): {
   peakWeek: string;
   peakScore: number;
@@ -107,7 +117,7 @@ function evaluateCategoryBacktest(
     const monday = getWeekMonday(event.date);
     eventWeeks.add(monday);
     const weekData = catData?.get(monday);
-    if (weekData && statusAtLeast(weekData.status, event.expectedSeverity)) {
+    if (weekData && convergenceStatusAtLeast(weekData.status, event.expectedMinStatus)) {
       detected.push(event);
     } else {
       missed.push(event);
@@ -116,7 +126,7 @@ function evaluateCategoryBacktest(
 
   let falseAlarms = 0;
   for (const ws of weeklyScores) {
-    if (statusAtLeast(ws.status, 'Drift') && !eventWeeks.has(ws.weekOf)) {
+    if (convergenceStatusAtLeast(ws.status, 'Divergent') && !eventWeeks.has(ws.weekOf)) {
       falseAlarms++;
     }
   }
@@ -135,7 +145,7 @@ function evaluateCategoryBacktest(
 
 /**
  * Run a backtest against historical data in the database.
- * Queries weeklyAggregates and assessments, then compares against known events.
+ * Queries weekly_aggregates with convergence status, then compares against known events.
  */
 export async function runBacktest(
   from: string,
@@ -144,22 +154,16 @@ export async function runBacktest(
 ): Promise<BacktestResult[]> {
   const db = getDb();
 
-  const aggregateRows = await db.execute(sql`
-    SELECT category, week_of, total_severity
+  const result = await db.execute(sql`
+    SELECT category, week_of, total_severity,
+      structural_score, ai_score, thematic_score,
+      convergence_detail->>'status' as status
     FROM weekly_aggregates
     WHERE week_of >= ${from} AND week_of <= ${to}
     ORDER BY category, week_of
   `);
 
-  const assessmentRows = await db.execute(sql`
-    SELECT DISTINCT ON (category, date_trunc('week', assessed_at))
-      category, date_trunc('week', assessed_at) AS week, status
-    FROM assessments
-    WHERE assessed_at >= ${new Date(from)} AND assessed_at <= ${new Date(to)}
-    ORDER BY category, date_trunc('week', assessed_at), assessed_at DESC
-  `);
-
-  const weeklyData = buildWeeklyLookup(aggregateRows.rows, assessmentRows.rows);
+  const weeklyData = buildWeeklyLookup(result.rows);
   const eventCategories = [...new Set(knownEvents.map((e) => e.category))];
 
   return eventCategories.map((category) => {

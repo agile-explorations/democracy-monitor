@@ -1,7 +1,7 @@
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
 import { runBacktest } from '@/lib/validation/historical-backtest';
-import { TRUMP_2017_2018_EVENTS } from '@/lib/validation/known-events';
+import { TRUMP_T1_EVENTS } from '@/lib/validation/known-events';
 
 loadEnvConfig(process.cwd());
 
@@ -25,9 +25,9 @@ async function main(): Promise<void> {
   }
 
   console.log(`[backtest] Running backtest: ${from} → ${to}`);
-  console.log(`[backtest] Known events: ${TRUMP_2017_2018_EVENTS.length}`);
+  console.log(`[backtest] Known events: ${TRUMP_T1_EVENTS.length}`);
 
-  const results = await runBacktest(from, to, TRUMP_2017_2018_EVENTS);
+  const results = await runBacktest(from, to, TRUMP_T1_EVENTS);
 
   if (results.length === 0) {
     console.log('[backtest] No data found for any category in this period.');
@@ -54,7 +54,7 @@ async function main(): Promise<void> {
 
     if (r.missedEvents.length > 0) {
       for (const e of r.missedEvents) {
-        console.log(`  MISSED: ${e.date} — ${e.description} (expected ${e.expectedSeverity})`);
+        console.log(`  MISSED: ${e.date} — ${e.description} (expected ${e.expectedMinStatus})`);
       }
     }
   }

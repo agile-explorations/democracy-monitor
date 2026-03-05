@@ -20,19 +20,22 @@ pnpm snapshot              # Run daily snapshot cron (incremental fetch + full a
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
 pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo, --dry-run, --limit N)
-pnpm backfill:verify       # Completeness check: doc coverage, scores, aggregates, embeddings
-pnpm compute-baseline-stats # Compute baseline statistics from existing aggregates/embeddings
-pnpm recompute-scores      # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
+pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness
+pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
+pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
+pnpm baselines:compute # Compute baseline statistics from existing aggregates/embeddings
+pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtures
 pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
 pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
-pnpm retry:signals  # Retry failed RSS/HTML/JSON/FR signals from last snapshot
-pnpm embed:missing  # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
-pnpm recrossfeed    # Re-route intent docs to categories via rhetoric cross-feed
-pnpm layer2:backfill # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)
-pnpm legiscan:bulk  # Download LegiScan bulk datasets (Congress baseline periods)
-pnpm purge:cl-noise # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
+pnpm signals:retry      # Retry failed RSS/HTML/JSON/FR signals from last snapshot
+pnpm embeddings:backfill # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
+pnpm crossfeed:rerun    # Re-route intent docs to categories via rhetoric cross-feed
+pnpm layers:enrich      # Recompute L1/L2/L3/convergence from updated layer data
+pnpm layer2:backfill    # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)
+pnpm legiscan:bulk      # Download LegiScan bulk datasets (Congress baseline periods)
+pnpm cl:purge-noise     # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
 pnpm backtest       # Run historical backtesting
 ```
@@ -94,7 +97,7 @@ lib/
   db/             # Drizzle ORM (schema, client, migrations)
   cache/          # Redis + in-memory fallback cache layer
   ai/             # AI provider abstraction (OpenAI, Anthropic) + prompt templates
-  cron/           # Scheduled tasks (snapshot, backfill, embed-missing, recompute-scores)
+  cron/           # Scheduled tasks (snapshot, backfill, embeddings, scores, layers)
   methodology/    # Scoring config, named constants, thresholds
   utils/          # Pure utility functions (async, collections, date, math, ai)
   seed/           # Seed data export/import pipeline + fixtures
