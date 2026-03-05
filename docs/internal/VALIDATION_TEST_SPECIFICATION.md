@@ -37,7 +37,7 @@ Validation results are meaningless against contaminated data. The following clea
 - **L1 (structural)**: No filtering on `metadata_only` in weekly aggregator or structural anomaly service. Volume counts, NOS distribution, court level distribution, injunction rates all preserved.
 - **L2 (AI assessment)**: `metadata_only` excluded from `backfill-layer2.ts`. Stops wasting API calls on jurisdiction codes.
 - **L3 (thematic drift)**: Embedder skips `metadata_only` documents. Existing embeddings from stubs stop polluting centroids.
-- **Keyword scoring**: Still runs (no filter in `recompute-scores`), but harmless — keywords are annotations only, and title-only matches are low-weight.
+- **Keyword scoring**: `metadata_only` filter added to `recompute-scores.ts` (2026-03-05). Keyword scores no longer run on content-less documents.
 
 **Execution sequence** (order matters):
 
@@ -52,24 +52,24 @@ Validation results are meaningless against contaminated data. The following clea
 
    ```sql
    DELETE FROM ai_document_assessments
-   WHERE document_id IN (
-     SELECT id FROM documents WHERE source_type = 'court_opinion'
+   WHERE url IN (
+     SELECT url FROM documents WHERE source_type = 'court_opinion'
    );
    ```
 
-3. **Reset their `embedded_at` to NULL and verify embedding cleanup** — stop them polluting L3 centroids
+3. **Reset embeddings and `embedded_at` to NULL** — stop them polluting L3 centroids
 
    ```sql
-   UPDATE documents SET embedded_at = NULL
+   UPDATE documents SET embedded_at = NULL, embedding = NULL
    WHERE source_type = 'court_opinion';
    ```
 
-   **Verify with Claude Code before executing:** Where are embedding vectors stored — inline on the documents table (a `vector` column) or in a separate embeddings table? If separate, delete embedding rows for these documents as well. Centroid computation that joins on an embeddings table rather than filtering by `embedded_at IS NOT NULL` would still pick up zombie embeddings.
+   Embeddings are stored inline on the documents table (`embedding vector(1536)` column). Centroid computation filters on `embedding IS NOT NULL`. Both `embedded_at` and `embedding` must be NULLed — resetting only `embedded_at` would leave zombie vectors that centroid computation still picks up. (Confirmed with Claude Code 2026-03-05.)
 
 4. **Add `metadata_only` filtering to L2 pipeline and keyword scorer** — three permanent fixes:
-   - In `backfill-layer2.ts`: add ≥100 char content gate. Skip documents where `content` is NULL or `LENGTH(content) < 100`. Log skipped count for operational monitoring. Applies universally (CL, LegiScan title-only bills, FR null-content docs). **Important:** if a skipped document has a `raw_text_url` or other backfillable content source, log it separately as "content backfill candidate" rather than silently skipping — these are documents that _should_ be assessed once content is fetched (FR and WH documents fall in this category).
-   - In `recompute-scores.ts` / `document-scorer.ts`: add `metadata_only` filter so keyword scores don't run on content-less documents. Without this, `totalSeverity` and `avgSeverityPerDoc` in weekly aggregates are partially derived from jurisdiction codes and GDELT titles — harmless for status (keywords are annotations only) but misleading for diagnostic analysis. Note: `recompute-scores.ts` currently has no `content_type` filter (verified 2026-03-05).
-   - **Content definition:** The ≥100 char gate applies to the `content` field (raw extracted text stored on the document row), not to the existence of a `raw_text_url` or other content source. Documents with short/null `content` but a fetchable `raw_text_url` should be queued for content backfill, not permanently skipped.
+   - In `backfill-layer2.ts`: add ≥100 char content gate. Skip documents where `content` is NULL or `LENGTH(content) < 100`. Log skipped count for operational monitoring. Applies universally (CL, LegiScan title-only bills, FR null-content docs). **Important:** if a skipped document is from a source type with known backfillable content (FR documents where the API provides full text, WH documents where the URL can be fetched), log it separately as "content backfill candidate" rather than silently skipping — these are documents that _should_ be assessed once content is fetched.
+   - In `recompute-scores.ts` / `document-scorer.ts`: `metadata_only` filter added (2026-03-05). Keyword scores no longer run on content-less documents.
+   - **Content definition:** The ≥100 char gate applies to the `content` field (raw extracted text stored on the document row). Documents with short/null `content` from backfillable sources should be queued for content backfill, not permanently skipped.
 
 5. **Recompute weekly aggregates** for CL-heavy categories (lawEnforcement, civilLiberties, judicialIndependence) after cleanup.
 
@@ -78,7 +78,7 @@ Validation results are meaningless against contaminated data. The following clea
 **Additional content gaps** (not blocking validation but noted):
 
 - 536 LegiScan title-only bills (bill text not in bulk downloads; content gate handles them)
-- 23,875 FR null-content documents (backfillable via `raw_text_url` — see Phase 2 content backfill plan)
+- 23,875 FR null-content documents (backfillable via FR API full-text endpoint — see Phase 2 content backfill plan)
 - 4,323 WH title-only documents (URL fetch backfill planned)
 
 ### Verify `metadata_only` Classification Completeness
@@ -105,7 +105,8 @@ Before running any event validation, confirm the data exists. Run this first to 
 -- Category inventory: what categories exist and how many docs per period?
 SELECT category,
   COUNT(*) FILTER (WHERE published_at BETWEEN '2017-01-20' AND '2019-01-19') as trump_t1,
-  COUNT(*) FILTER (WHERE published_at BETWEEN '2021-01-20' AND '2023-01-19') as biden,
+  COUNT(*) FILTER (WHERE published_at BETWEEN '2021-01-20' AND '2022-01-19') as biden_2021,
+  COUNT(*) FILTER (WHERE published_at BETWEEN '2022-01-20' AND '2023-01-19') as biden_2022,
   COUNT(*) FILTER (WHERE published_at >= '2025-01-20') as trump_t2
 FROM documents
 GROUP BY category
@@ -127,7 +128,7 @@ If a target category shows zero documents for an event week, the event test is i
 
 ### Trump T1 (2017–2018) — Baseline Period Events
 
-These events occurred during a baseline period. The system isn't expected to flag baselines as concerning (baselines define the reference point). However, these events should produce **visible spikes relative to Biden baseline periods**. If Trump T1 and Biden T2 are indistinguishable, calibration is wrong.
+These events occurred during a baseline period. The system isn't expected to flag baselines as concerning (baselines define the reference point). However, these events should produce **visible spikes relative to Biden baseline periods**. If Trump T1 and Biden periods are indistinguishable, calibration is wrong.
 
 ---
 
@@ -589,7 +590,7 @@ ORDER BY week_of;
 ```sql
 SELECT category, week_of,
   structural_score, ai_score, thematic_score, convergence_score,
-  status
+  convergence_detail->>'status' as status
 FROM weekly_aggregates
 WHERE week_of BETWEEN '2025-01-13' AND '2025-03-01'
   AND category IN ('executiveOversight', 'civilService', 'executiveActions',
@@ -603,6 +604,8 @@ ORDER BY category, week_of;
 
 ### Diagnostic 2: Layer 2 AI Assessment Quality
 
+Schema note: `ai_document_assessments` joins to documents via `(url, category)`, not `document_id`. Pass is indicated by `pass` column (1 or 2). Pass 1 relevance is `relevant` (boolean). Pass 2 assessment is `assessment` enum (`routine`, `novel_not_concerning`, `potentially_concerning`, `clearly_concerning`). Audit samples are `is_audit_sample = true`.
+
 #### 2a. P1 flag rate and P2 concern rate by category and period
 
 ```sql
@@ -615,20 +618,22 @@ SELECT d.category,
     ELSE 'other'
   END as period,
   COUNT(DISTINCT d.id) as total_docs,
-  COUNT(DISTINCT a.document_id) as assessed_docs,
-  COUNT(*) FILTER (WHERE a.pass1_result = 'flagged') as p1_flagged,
-  COUNT(*) FILTER (
-    WHERE a.pass2_classification IN ('clearly_concerning', 'warrants_attention')
-  ) as p2_confirmed
+  COUNT(DISTINCT CASE WHEN p1.url IS NOT NULL THEN d.url END) as p1_assessed,
+  COUNT(DISTINCT CASE WHEN p1.relevant = true THEN d.url END) as p1_flagged,
+  COUNT(DISTINCT CASE WHEN p2.assessment IN ('potentially_concerning', 'clearly_concerning')
+    THEN d.url END) as p2_confirmed
 FROM documents d
-LEFT JOIN ai_document_assessments a ON d.id = a.document_id
+LEFT JOIN ai_document_assessments p1
+  ON d.url = p1.url AND d.category = p1.category AND p1.pass = 1
+LEFT JOIN ai_document_assessments p2
+  ON d.url = p2.url AND d.category = p2.category AND p2.pass = 2
 WHERE d.category != 'intent'
   AND (d.content_type IS NULL OR d.content_type != 'metadata_only')
 GROUP BY d.category, period
 ORDER BY d.category, period;
 ```
 
-**What to look for**: P1 flag rate should be higher in Trump T2 than Biden periods for categories with real events. If uniformly high across all periods → category description too broad (repeat the civilLiberties calibration). If uniformly low including Trump T2 → Pass 1 missing real signals. P2 confirmation rate should be meaningful (20-60%); if <5%, P1 is too aggressive.
+**What to look for**: P1 flag rate should be higher in Trump T2 than Biden periods for categories with real events. If uniformly high across all periods → category description too broad (repeat the civilLiberties calibration). If uniformly low including Trump T2 → Pass 1 missing real signals. P2 confirmation rate should be meaningful (20-60% of flagged); if <5%, P1 is too aggressive.
 
 #### 2b. P2 assessments for known-event weeks
 
@@ -636,13 +641,15 @@ Run for each event. Example for IG firings:
 
 ```sql
 SELECT d.title, d.source_type, d.published_at,
-  a.pass2_classification, a.pass2_erosion_type,
-  LEFT(a.pass2_reasoning, 300) as reasoning_excerpt
+  a.assessment, a.erosion_type,
+  LEFT(a.reasoning, 300) as reasoning_excerpt
 FROM documents d
-JOIN ai_document_assessments a ON d.id = a.document_id
+JOIN ai_document_assessments a
+  ON d.url = a.url AND d.category = a.category
 WHERE d.category = 'executiveOversight'
   AND d.published_at BETWEEN '2025-01-20' AND '2025-02-07'
-  AND a.pass2_classification IS NOT NULL
+  AND a.pass = 2
+  AND a.assessment IS NOT NULL
 ORDER BY d.published_at;
 ```
 
@@ -650,12 +657,17 @@ ORDER BY d.published_at;
 
 #### 2c. False negative audit results for Trump T2
 
+Audit false negatives are Pass 2 audit samples that came back as concerning — documents that Pass 1 marked as not relevant but the audit sample found concerning on deeper review.
+
 ```sql
 SELECT d.category, d.title, d.published_at, d.source_type,
-  a.audit_result, LEFT(a.audit_reasoning, 200) as audit_excerpt
+  a.assessment, LEFT(a.reasoning, 200) as reasoning_excerpt
 FROM documents d
-JOIN ai_document_assessments a ON d.id = a.document_id
-WHERE a.audit_result = 'false_negative'
+JOIN ai_document_assessments a
+  ON d.url = a.url AND d.category = a.category
+WHERE a.pass = 2
+  AND a.is_audit_sample = true
+  AND a.assessment IN ('potentially_concerning', 'clearly_concerning')
   AND d.published_at BETWEEN '2025-01-20' AND '2025-06-01'
 ORDER BY d.category, d.published_at;
 ```
@@ -727,11 +739,11 @@ SELECT category,
     WHEN week_of >= '2025-01-20' THEN 'trump_t2'
     ELSE 'other'
   END as period,
-  status,
+  convergence_detail->>'status' as status,
   COUNT(*) as weeks
 FROM weekly_aggregates
-WHERE status IS NOT NULL
-GROUP BY category, period, status
+WHERE convergence_detail->>'status' IS NOT NULL
+GROUP BY category, period, convergence_detail->>'status'
 ORDER BY category, period, status;
 ```
 
@@ -741,18 +753,22 @@ ORDER BY category, period, status;
 
 ```sql
 SELECT week_of,
-  COUNT(*) FILTER (WHERE status IN ('Elevated', 'Divergent', 'ConfirmedConcern')) as elevated_categories,
+  COUNT(*) FILTER (
+    WHERE convergence_detail->>'status' IN ('Elevated', 'Divergent', 'ConfirmedConcern')
+  ) as elevated_categories,
   COUNT(*) as total_categories,
   STRING_AGG(
-    CASE WHEN status IN ('Elevated', 'Divergent', 'ConfirmedConcern')
+    CASE WHEN convergence_detail->>'status' IN ('Elevated', 'Divergent', 'ConfirmedConcern')
       THEN category ELSE NULL END,
     ', '
   ) as which_elevated
 FROM weekly_aggregates
 WHERE week_of BETWEEN '2025-01-13' AND '2025-03-01'
-  AND status IS NOT NULL
+  AND convergence_detail->>'status' IS NOT NULL
 GROUP BY week_of
-HAVING COUNT(*) FILTER (WHERE status IN ('Elevated', 'Divergent', 'ConfirmedConcern')) >= 3
+HAVING COUNT(*) FILTER (
+  WHERE convergence_detail->>'status' IN ('Elevated', 'Divergent', 'ConfirmedConcern')
+) >= 3
 ORDER BY week_of;
 ```
 
