@@ -19,6 +19,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'FDR and the 1937 Court-Packing Plan: Lessons for Today',
       summary:
         "A historical analysis of Roosevelt's failed attempt at court packing and its long-term consequences for judicial independence.",
+      pubDate: '2025-06-01',
     },
     category: 'judicialIndependence',
     suppressedKeyword: 'court packing',
@@ -29,6 +30,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'RICO Indictment in Drug Trafficking Case',
       summary:
         'Federal prosecutors filed RICO charges against members of an organized crime ring involved in drug trafficking and money laundering.',
+      pubDate: '2025-06-01',
     },
     category: 'judicialIndependence',
     suppressedKeyword: 'court packing', // Not relevant to courts — the RICO suppression is for infrastructure
@@ -39,6 +41,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'GAO Review Finds No Evidence of Impoundment Violation',
       summary:
         'The Government Accountability Office found no evidence of illegal impoundment in the latest quarterly review of executive spending.',
+      pubDate: '2025-06-01',
     },
     category: 'fiscal',
     suppressedKeyword: 'impoundment',
@@ -49,6 +52,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Annual FISA Compliance Review Released',
       summary:
         'The Office of the Director of National Intelligence published its annual report on FISA compliance, showing adherence to court-imposed minimization procedures.',
+      pubDate: '2025-06-01',
     },
     category: 'judicialIndependence',
     suppressedKeyword: 'court packing', // FISA suppression is for infrastructure
@@ -59,6 +63,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Bipartisan Deal Averts Impoundment Crisis',
       summary:
         'Congressional leaders reached a bipartisan agreement to release frozen funds, avoiding a prolonged impoundment standoff.',
+      pubDate: '2025-06-01',
     },
     category: 'fiscal',
     suppressedKeyword: 'impoundment',
@@ -69,6 +74,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Contempt of Court Charge Dismissed in Federal Case',
       summary:
         'A federal judge dismissed the contempt of court citation after finding the defendant had substantially complied with the original order.',
+      pubDate: '2025-06-01',
     },
     category: 'judicialIndependence',
     suppressedKeyword: 'contempt of court',
@@ -79,6 +85,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Annual Military Training Exercise at Fort Liberty',
       summary:
         'The Department of Defense announced a routine training exercise involving domestic military deployment of reserve units for annual readiness drills.',
+      pubDate: '2025-06-01',
     },
     category: 'military',
     suppressedKeyword: 'domestic military deployment',
@@ -89,6 +96,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Senate Confirms New Inspector General for Commerce Department',
       summary:
         'The Senate confirmed the nomination, ending a prolonged ig vacancy at the Department of Commerce. The new IG was sworn in today.',
+      pubDate: '2025-06-01',
     },
     category: 'executiveOversight',
     suppressedKeyword: 'ig vacancy',
@@ -99,6 +107,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'Court Blocked Impoundment of Education Funds',
       summary:
         "A federal court ruled against the administration's attempt to withhold education funding, rejecting the impoundment as unauthorized.",
+      pubDate: '2025-06-01',
     },
     category: 'fiscal',
     suppressedKeyword: 'impoundment',
@@ -109,6 +118,7 @@ export const FALSE_POSITIVE_CASES: FalsePositiveCase[] = [
       title: 'National Guard Activated for Hurricane Relief',
       summary:
         'The governor activated the National Guard to assist with hurricane disaster relief operations across the affected coastal counties.',
+      pubDate: '2025-06-01',
     },
     category: 'military',
     suppressedKeyword: 'national guard activated',

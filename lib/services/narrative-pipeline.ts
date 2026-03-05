@@ -4,6 +4,7 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
 import type { NarrativeLayerData } from '@/lib/types';
 import type { ConvergenceSynthesis, StructuralScore } from '@/lib/types/structural';
+import { getTopConcerningDocuments } from './layer2-store';
 import {
   generateCategoryNarrative,
   generateOverviewNarrative,
@@ -78,10 +79,14 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   let generated = 0;
   for (const data of elevated) {
     try {
+      const docs = await getTopConcerningDocuments(data.category, weekOf);
+      if (docs.length > 0) data.documentContext = docs;
       const result = await generateCategoryNarrative(data);
       await storeNarratives(data.category, weekOf, result);
       generated++;
-      console.log(`[narratives]   ${data.category}: stored (model=${result.model})`);
+      console.log(
+        `[narratives]   ${data.category}: stored (model=${result.model}, docs=${docs.length})`,
+      );
     } catch (err) {
       console.error(`[narratives]   ${data.category}: failed:`, err);
     }

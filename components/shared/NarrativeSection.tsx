@@ -1,3 +1,4 @@
+import { Markdown } from '@/components/ui/Markdown';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 
 export interface NarrativeSectionProps {
@@ -42,7 +43,7 @@ export function NarrativeSection({ narrative, readingLevel, loading }: Narrative
           {readingLevel === 'detailed' ? 'Expert view' : 'Summary view'}
         </span>
       </h3>
-      <div className="text-sm text-dm-text-primary leading-relaxed whitespace-pre-line">{text}</div>
+      <Markdown className="text-sm text-dm-text-primary leading-relaxed">{text}</Markdown>
     </div>
   );
 }

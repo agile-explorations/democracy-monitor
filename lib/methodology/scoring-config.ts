@@ -194,6 +194,9 @@ export const AI_CONCERN_THRESHOLD = 0.2;
 /** Minimum non-audit Pass 2 assessments required for concern rate to be meaningful. */
 export const AI_CONCERN_MIN_SAMPLE = 3;
 
+/** Minimum total documents required for AI flag rate z-score to trigger elevation. */
+export const AI_FLAG_RATE_MIN_DOCS = 10;
+
 /** Default fraction of unflagged docs to audit with Pass 2. */
 export const AUDIT_SAMPLE_RATE = 0.03;
 

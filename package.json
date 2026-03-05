@@ -54,6 +54,7 @@
     "retry:signals": "tsx lib/cron/retry-failed-signals.ts",
     "embed:missing": "tsx lib/cron/embed-missing.ts",
     "recrossfeed": "tsx lib/cron/recrossfeed-rhetoric.ts",
+    "enrich-layers": "tsx lib/cron/enrich-layer-scores.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "prepare": "husky"
   },
@@ -68,6 +69,7 @@
     "pg": "^8.18.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-markdown": "^10.1.0",
     "recharts": "^3.7.0",
     "xml2js": "0.6.2",
     "zod": "^4.3.6"

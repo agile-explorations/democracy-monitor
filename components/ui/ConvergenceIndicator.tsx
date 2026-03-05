@@ -1,5 +1,6 @@
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import { LAYER_DESCRIPTIONS } from '@/lib/data/convergence-explanations';
 
 export interface ConvergenceIndicatorProps {
   structural: boolean;
@@ -34,7 +35,7 @@ export function ConvergenceIndicator({
         return (
           <span
             key={LABELS[i]}
-            title={`${LABELS[i]}: ${active ? 'elevated' : 'normal'}${suffix}`}
+            title={`${LABELS[i]}: ${active ? 'elevated' : 'normal'}${suffix} — ${LAYER_DESCRIPTIONS[i]}`}
             className="inline-block w-2.5 h-2.5 rounded-full border"
             style={{
               backgroundColor: active ? activeFill : inactiveFill,

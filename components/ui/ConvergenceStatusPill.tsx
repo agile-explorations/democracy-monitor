@@ -1,3 +1,4 @@
+import { CONVERGENCE_TOOLTIPS } from '@/lib/data/convergence-explanations';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
 const DISPLAY_LABELS: Record<ConvergenceStatus, string> = {
@@ -23,19 +24,12 @@ const STYLE: Record<ConvergenceStatus, string> = {
     'bg-convergence-confirmed/15 text-convergence-confirmed border-convergence-confirmed/30',
 };
 
-const TOOLTIPS: Record<ConvergenceStatus, string> = {
-  Stable: 'No assessment layers elevated',
-  Elevated: 'One assessment layer elevated',
-  Divergent: 'Two assessment layers elevated',
-  ConfirmedConcern: 'All three assessment layers elevated',
-};
-
 export function ConvergenceStatusPill({ status }: { status: ConvergenceStatus }) {
   return (
     <span
       role="status"
-      aria-label={`Status: ${DISPLAY_LABELS[status]}. ${TOOLTIPS[status]}`}
-      title={TOOLTIPS[status]}
+      aria-label={`Status: ${DISPLAY_LABELS[status]}. ${CONVERGENCE_TOOLTIPS[status]}`}
+      title={CONVERGENCE_TOOLTIPS[status]}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${STYLE[status]}`}
     >
       <span aria-hidden="true">{ICONS[status]}</span>

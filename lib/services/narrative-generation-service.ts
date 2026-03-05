@@ -1,5 +1,10 @@
 import { getProvider } from '@/lib/ai/provider';
-import type { NarrativeLayerData, NarrativeResult, OverviewNarrativeInput } from '@/lib/types';
+import type {
+  NarrativeDocumentContext,
+  NarrativeLayerData,
+  NarrativeResult,
+  OverviewNarrativeInput,
+} from '@/lib/types';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
 const NARRATIVE_MODEL = 'claude-opus-4-6';
@@ -34,6 +39,8 @@ export function buildExpertPrompt(data: NarrativeLayerData): string {
     'Requirements:',
     '- State which layers are elevated and which are not.',
     '- Reference specific z-scores, dimension scores, and distribution shifts.',
+    '- Reference specific documents by title when explaining what triggered the assessment.',
+    '- Focus on what happened in the real world, not on how the monitoring system works internally. Minimize self-referential language about "our system" or "our layers".',
     '- Include a "Limitations" sentence acknowledging what the system cannot detect.',
     '- Explain the convergence status and what the pattern of layer agreement means.',
     '- Present counter-arguments ("this could also be explained by...").',
@@ -58,6 +65,8 @@ export function buildPublicPrompt(data: NarrativeLayerData): string {
     'Requirements:',
     '- State which monitoring layers detected unusual activity and which did not.',
     '- Do NOT reference z-scores, dimension scores, or technical metrics.',
+    '- Describe what specific government actions or publications triggered this assessment, referencing document titles.',
+    '- Focus on what happened in the real world, not on how the monitoring system works internally. Minimize self-referential language about "our system" or "our layers".',
     '- Explain in everyday terms what the changes mean.',
     '- Include a "Limitations" sentence acknowledging what the system cannot detect.',
     '- Explain the overall assessment status and what it means.',
@@ -75,7 +84,25 @@ export function formatLayerContext(data: NarrativeLayerData): string {
   sections.push(formatStructuralContext(data));
   sections.push(formatAIContext(data));
   sections.push(formatThematicContext(data));
+  const docSection = formatDocumentContext(data.documentContext);
+  if (docSection) sections.push(docSection);
   return sections.join('\n\n');
+}
+
+/** Format top concerning documents into a context section for the AI prompt. */
+export function formatDocumentContext(docs: NarrativeDocumentContext[] | undefined): string | null {
+  if (!docs || docs.length === 0) return null;
+  const lines = ['--- KEY DOCUMENTS ---'];
+  for (const doc of docs) {
+    lines.push(`Title: ${doc.title}`);
+    lines.push(`  Source: ${doc.sourceType}${doc.sourceOrigin ? ` (${doc.sourceOrigin})` : ''}`);
+    if (doc.agency) lines.push(`  Agency: ${doc.agency}`);
+    lines.push(`  Assessment: ${doc.assessment}`);
+    if (doc.erosionType) lines.push(`  Erosion type: ${doc.erosionType}`);
+    if (doc.reasoning) lines.push(`  Reasoning: ${doc.reasoning}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 function formatConvergenceContext(data: NarrativeLayerData): string {

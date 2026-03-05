@@ -210,6 +210,43 @@ describe('synthesizeConvergence', () => {
     });
   });
 
+  describe('AI minimum document gate', () => {
+    it('high z-score with <10 docs stays Stable', () => {
+      const ai = makeAISummary({ flagRateZScore: 3.0, totalDocuments: 5, flagCount: 3 });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Stable');
+      expect(result.aiElevated).toBe(false);
+    });
+
+    it('exactly 10 docs triggers Elevated', () => {
+      const ai = makeAISummary({ flagRateZScore: 2.0, totalDocuments: 10, flagCount: 5 });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Elevated');
+      expect(result.aiElevated).toBe(true);
+    });
+
+    it('low doc count prevents ConfirmedConcern via AI path', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const ai = makeAISummary({
+        flagRateZScore: 3.0,
+        totalDocuments: 5,
+        flagCount: 3,
+        concernRate: 0.5,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 1,
+        },
+      });
+      const result = synthesizeConvergence(structural, ai, makeThematicDrift());
+      // AI not elevated (too few docs), so only structural = Elevated, not ConfirmedConcern
+      expect(result.status).toBe('Elevated');
+      expect(result.aiElevated).toBe(false);
+      expect(result.layersElevated).toBe(1);
+    });
+  });
+
   describe('bootstrap behavior', () => {
     it('thematic alone cannot trigger Elevated during bootstrap', () => {
       const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });

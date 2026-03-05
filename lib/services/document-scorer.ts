@@ -165,7 +165,9 @@ function matchKeywordsWithSuppression(
   return { keywordMatches, suppressedMatches };
 }
 
-export function scoreDocument(item: ContentItem, category: string): DocumentScore {
+export function scoreDocument(item: ContentItem, category: string): DocumentScore | null {
+  if (!item.pubDate && !item.date) return null;
+
   const rules = ASSESSMENT_RULES[category];
   const contentText = `${item.title || ''} ${item.summary || ''}`;
   const isHighAuthority = isHighAuthoritySource(item.agency);
@@ -222,7 +224,8 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
 export function scoreDocumentBatch(items: ContentItem[], category: string): DocumentScore[] {
   return items
     .filter((item) => !item.isError && !item.isWarning)
-    .map((item) => scoreDocument(item, category));
+    .map((item) => scoreDocument(item, category))
+    .filter((score): score is DocumentScore => score !== null);
 }
 
 function buildScoreRow(score: DocumentScore) {

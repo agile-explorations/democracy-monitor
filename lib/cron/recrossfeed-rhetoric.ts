@@ -27,7 +27,8 @@ function toContentItems(rows: (typeof documents.$inferSelect)[]): ContentItem[] 
     title: row.title,
     summary: row.content ?? undefined,
     link: row.url ?? undefined,
-    date: row.publishedAt?.toISOString(),
+    pubDate: row.publishedAt?.toISOString(),
+    type: row.sourceType,
     sourceOrigin: (row.sourceOrigin as ContentItem['sourceOrigin']) ?? undefined,
   }));
 }

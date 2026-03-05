@@ -1,19 +1,12 @@
 import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import { CONVERGENCE_EXPLANATIONS } from '@/lib/data/convergence-explanations';
 import type { ConvergenceSynthesis } from '@/lib/types/structural';
 
 export interface ConvergenceHeaderProps {
   synthesis: ConvergenceSynthesis | null;
 }
-
-const STATUS_EXPLANATIONS: Record<string, string> = {
-  Stable: 'No detection layers are elevated. Patterns are within normal baseline range.',
-  Elevated: 'One detection layer shows anomalous activity. Monitoring increased.',
-  Divergent: 'Multiple detection layers independently flag anomalies in this category.',
-  ConfirmedConcern:
-    'Multiple layers elevated with high AI concern rate. Warrants close examination.',
-};
 
 export function ConvergenceHeader({ synthesis }: ConvergenceHeaderProps) {
   const { resolvedMode } = useTheme();
@@ -63,7 +56,7 @@ export function ConvergenceHeader({ synthesis }: ConvergenceHeaderProps) {
 
       {/* Explanation */}
       <p className="text-[11px] text-dm-muted mt-2">
-        {STATUS_EXPLANATIONS[synthesis.status] ?? ''}
+        {CONVERGENCE_EXPLANATIONS[synthesis.status] ?? ''}
       </p>
     </div>
   );

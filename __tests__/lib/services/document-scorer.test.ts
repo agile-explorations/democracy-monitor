@@ -55,7 +55,7 @@ describe('classifyDocument', () => {
 describe('scoreDocument', () => {
   it('returns zero score for clean text with no keyword matches', () => {
     const score = scoreDocument(
-      { title: 'Routine quarterly budget report released by Treasury' },
+      { title: 'Routine quarterly budget report released by Treasury', pubDate: '2025-06-01' },
       'fiscal',
     );
     expect(score.finalScore).toBe(0);
@@ -67,7 +67,7 @@ describe('scoreDocument', () => {
 
   it('returns non-zero score for capture keyword', () => {
     const score = scoreDocument(
-      { title: 'Mass termination of career staff announced' },
+      { title: 'Mass termination of career staff announced', pubDate: '2025-06-01' },
       'civilService',
     );
     expect(score.finalScore).toBeGreaterThan(0);
@@ -80,6 +80,7 @@ describe('scoreDocument', () => {
       {
         title: 'Mass termination executive order signed',
         type: 'Presidential Document',
+        pubDate: '2025-06-01',
       },
       'civilService',
     );
@@ -93,6 +94,7 @@ describe('scoreDocument', () => {
       {
         title: 'Notice of workforce reduction in agency',
         type: 'Notice',
+        pubDate: '2025-06-01',
       },
       'civilService',
     );
@@ -105,6 +107,7 @@ describe('scoreDocument', () => {
       {
         title: 'GAO finds violated impoundment control act',
         agency: 'Government Accountability Office',
+        pubDate: '2025-06-01',
       },
       'fiscal',
     );
@@ -112,7 +115,10 @@ describe('scoreDocument', () => {
   });
 
   it('does not flag authority from content text alone', () => {
-    const score = scoreDocument({ title: 'Article mentions GAO report on impoundment' }, 'fiscal');
+    const score = scoreDocument(
+      { title: 'Article mentions GAO report on impoundment', pubDate: '2025-06-01' },
+      'fiscal',
+    );
     expect(score.isHighAuthority).toBe(false);
   });
 
@@ -121,6 +127,7 @@ describe('scoreDocument', () => {
       {
         title: 'No Evidence of Impoundment Violation Found',
         summary: 'Review found no evidence of impoundment or withholding of funds.',
+        pubDate: '2025-06-01',
       },
       'fiscal',
     );
@@ -133,6 +140,7 @@ describe('scoreDocument', () => {
       {
         title: 'FDR and the 1937 Court-Packing Plan: Historical Lessons',
         summary: "Analysis of Roosevelt's attempt at court packing and its consequences.",
+        pubDate: '2025-06-01',
       },
       'judicialIndependence',
     );
@@ -146,6 +154,7 @@ describe('scoreDocument', () => {
       {
         title: 'Contempt of Court Finding in Civil Contempt Case',
         summary: 'Judge issues civil contempt citation for procedural non-compliance.',
+        pubDate: '2025-06-01',
       },
       'judicialIndependence',
     );
@@ -164,6 +173,7 @@ describe('scoreDocument', () => {
         title: 'Administration Orders Regulatory Freeze Across Agencies',
         summary:
           'All agencies must halt pending rulemakings under the regulatory freeze directive.',
+        pubDate: '2025-06-01',
       },
       'rulemaking',
     );
@@ -184,6 +194,7 @@ describe('scoreDocument', () => {
       {
         title: 'Test Document Title',
         link: 'https://example.com/doc/123',
+        pubDate: '2025-06-01',
       },
       'civilService',
     );
@@ -195,7 +206,7 @@ describe('scoreDocument', () => {
 describe('logarithmic diminishing returns', () => {
   it('1 capture = ~4.0 severity', () => {
     const score = scoreDocument(
-      { title: 'Inspector general removed from post' },
+      { title: 'Inspector general removed from post', pubDate: '2025-06-01' },
       'executiveOversight',
     );
     const captureMatches = score.matches.filter((m) => m.tier === 'capture');
@@ -210,6 +221,7 @@ describe('logarithmic diminishing returns', () => {
     const score = scoreDocument(
       {
         title: 'Political loyalty test with mass termination of career staff',
+        pubDate: '2025-06-01',
       },
       'civilService',
     );
@@ -223,6 +235,7 @@ describe('logarithmic diminishing returns', () => {
     const score = scoreDocument(
       {
         title: 'Systematic purge mass termination political loyalty test for all career staff',
+        pubDate: '2025-06-01',
       },
       'civilService',
     );
@@ -256,10 +269,9 @@ describe('admin overlay keyword matching', () => {
     expect(score.matches.some((m) => m.keyword === 'doge')).toBe(false);
   });
 
-  it('matches admin overlay keywords when no date provided (uses core only)', () => {
-    // "doge" is admin-only, not in core rules — should NOT match without a date
+  it('returns null for documents with no pubDate or date', () => {
     const score = scoreDocument({ title: 'DOGE review announced' }, 'civilService');
-    expect(score.matches.some((m) => m.keyword === 'doge')).toBe(false);
+    expect(score).toBeNull();
   });
 
   it('matches schedule_f_era overlay for documents after 2020-10-21', () => {
@@ -309,9 +321,9 @@ describe('scoreDocument category isolation', () => {
 describe('scoreDocumentBatch', () => {
   it('filters out error and warning items', () => {
     const items = [
-      { title: 'Mass termination order signed', isError: true },
-      { title: 'Connection failed', isWarning: true },
-      { title: 'Routine report on workforce' },
+      { title: 'Mass termination order signed', isError: true, pubDate: '2025-06-01' },
+      { title: 'Connection failed', isWarning: true, pubDate: '2025-06-01' },
+      { title: 'Routine report on workforce', pubDate: '2025-06-01' },
     ];
     const scores = scoreDocumentBatch(items, 'civilService');
     expect(scores).toHaveLength(1);
@@ -320,9 +332,9 @@ describe('scoreDocumentBatch', () => {
 
   it('scores all valid items', () => {
     const items = [
-      { title: 'Mass termination announced' },
-      { title: 'Routine report on workforce' },
-      { title: 'Reclassification announced' },
+      { title: 'Mass termination announced', pubDate: '2025-06-01' },
+      { title: 'Routine report on workforce', pubDate: '2025-06-01' },
+      { title: 'Reclassification announced', pubDate: '2025-06-01' },
     ];
     const scores = scoreDocumentBatch(items, 'civilService');
     expect(scores).toHaveLength(3);

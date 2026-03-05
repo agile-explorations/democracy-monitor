@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
+import { getTopConcerningDocuments } from '@/lib/services/layer2-store';
 import {
   buildStableTemplate,
   generateCategoryNarrative,
@@ -98,6 +99,9 @@ async function generateAndRespond(
     const template = buildStableTemplate(categoryTitle, weekOf);
     return sendCached(res, formatResponse(template.expert, template.public, version));
   }
+
+  const docs = await getTopConcerningDocuments(categoryKey, weekOf);
+  if (docs.length > 0) layerData.documentContext = docs;
 
   const result = await generateCategoryNarrative(layerData);
   await storeNarratives(categoryKey, weekOf, result).catch((err) =>

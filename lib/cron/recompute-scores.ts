@@ -48,6 +48,7 @@ function processDocumentBatch(
     };
 
     const score = scoreDocument(item, doc.category);
+    if (!score) continue;
     score.documentId = doc.id;
     scores.push(score);
 

@@ -1,15 +1,16 @@
-# Democracy Monitor — Roadmap
+# Democracy Monitor — Roadmap (Through Launch)
 
-This document describes the planned sprint sequence for completing the Democracy Monitor system. It bridges the specification documents (which describe _what_ the system does) and GitHub Issues (which track _who is doing what right now_).
+This document describes the planned sprint sequence for completing the Democracy Monitor system through launch. It bridges the specification documents (which describe _what_ the system does) and GitHub Issues (which track _who is doing what right now_). Post-launch features and improvements are tracked in `FUTURE_ROADMAP.md`.
 
 **Specification documents:**
 
-- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, and category framework with framework alignment mapping.
+- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, category framework with framework alignment mapping, and architectural vision for Phases 5-10.
+- `FUTURE_ROADMAP.md` — **Post-launch features and improvements.** Architecture improvements (R-F1–R-F11), surviving features from original Sprint 23-29 plan, and new feature phases: Phase 5 (deferred sources), Phase 6 (primary-source rhetoric), Phase 7 (media coverage), Phase 8 (rhetoric vs. action), Phase 9 (Project 2025 tracking), Phase 10 (authoritarian infrastructure build-out), and cross-feature convergence framework.
 - `CATEGORY_FRAMEWORK_ANALYSIS.md` — Analysis mapping Democracy Monitor categories against established democracy measurement frameworks. Rationale for 13-category architecture, renames (courts → judicialIndependence, igs → executiveOversight), and new categories (lawEnforcement, civilLiberties).
 - `SPIKE_FINDINGS.md` — Results from 8 source availability spikes. 7 passed (CourtListener, DOJ API, GovInfo/GAO, IG RSS, LegiScan, FEC, FCC RSS), 1 failed (GDELT diversity metrics). Validates source volumes, API access, historical depth, and metadata quality for Sprint R-S1.
 - `TEST_SPECIFICATION.md` — Ship/no-ship gate checklist for Sprint R-S1. Unit tests (routing, structural scoring, convergence logic, status mapping), integration tests (pipeline behavior, coverage health, embedding segregation), calibration assertions (baseline stability, known-events sensitivity, router drift). Derived from ChatGPT architecture review.
 - `SYSTEM SPECIFICATION V3 ADDENDUM.md` — Backend features: source health, feedback learning, novel threat detection, expert contributions, cycle-aware baselines (Sprints A-J, Phase 15). Partially superseded by architecture proposal — source health (Sprint 17) and cycle-aware baselines (Sprint 15.1) remain; feedback learning and novel threat detection restructured under Layers 2 and 3.
-- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). **Partially superseded** — data model, status system, and visualization content changed by Architecture Proposal. Architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern) carry forward. See `UI_V3_DIVERGENCE_MAP.md` for section-by-section mapping. Full V4 rewrite tracked as R-F10 in Post-R5.
+- `UI DESIGN SPECIFICATION V3.md` — UI redesign: information architecture, visual language, component design, admin interface (Phases 1-5). **Partially superseded** — data model, status system, and visualization content changed by Architecture Proposal. Architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern) carry forward. See `UI_V3_DIVERGENCE_MAP.md` for section-by-section mapping. Full V4 rewrite tracked as R-F10 in `FUTURE_ROADMAP.md`.
 - `SIGNAL_GAP_REMEDIATION.md` — Signal detection gap fixes: InsufficientData display, presidential documents, keyword expansion, rhetoric cross-feed, expanded FR queries (Phases 16-20, Sprints 20-22). Sprints 20-21 code work completed; Sprint 22 rhetoric cross-feed absorbed into Sprint R1.
 
 **Prior work:** Sprints 1-10 built the core dashboard, assessment engine, AI skeptic review, progressive disclosure, snapshot/backfill infrastructure, history page, infrastructure overlay, rhetoric tracking, P2025 pipeline, validation indices, and test coverage. Sprints 11-12.1 built seed data framework, baseline backfill, review report, interactive CLI review, and DB-centric review flow. Sprints 13-21 built keyword tuning pipeline, 4 baselines (Biden 2021/2022, Trump 2017/2018), cycle-aware adjustments, UI rebuild (landing page, category detail, week detail), source health monitoring, and signal gap remediation. See `MEMORY.md` sprint log and `DECISIONS.md` for details.
@@ -703,11 +704,9 @@ Build in order of category coverage breadth and implementation simplicity:
 
 > **Status: Done.** `fetchWithRetry()` HTTP retry wrapper (3 attempts, exponential backoff), wired into 4 feed-fetcher signal handlers (RSS, HTML, JSON, Federal Register). `recordSnapshotSignalResults()` for fetch_log integration. `retry-failed-signals` cron at 11am UTC for extended outages. `buildSignalLookup()` helper. 8 files changed, 1526 tests total. See `DECISIONS.md` for retrospective.
 
-#### Sprint R-S1d: Backfill Verification Fixes ✅
+#### Sprint R-S1d: Backfill Verification Fixes
 
-**Actual:** All 4 fixes complete. Code fixes (#178-181) delivered. FR backfills complete for 4 new categories across all baseline periods. FEC pagination (offset-based) and DOJ binary search (off-by-one) fixed, OpenGrep made blocking, 246 lines dead code removed. cl_first_amendment query rewritten to scoped variant + `purge:cl-noise` tool built (R-S1f). FR backfills for lawEnforcement, civilLiberties, mediaFreedom completed. NOS maxPages bumped 10→15→45 (R-S1g). immigrationEnforcement category added with 2 FR signals + GDELT cross-feed. FCC RSS (#183) deferred — gov shutdown. Pipeline redesign proposal drafted (BACKFILL_PIPELINE_REDESIGN.md).
-
-**Source:** Backfill verification audit (2026-02-28). API-vs-DB count comparison across all source types and baseline periods. FEC perfect match, GovInfo near-perfect, DOJ structurally verified.
+**Source:** Backfill verification audit (2026-02-28). API-vs-DB count comparison across all source types and baseline periods. FEC perfect match, GovInfo near-perfect, DOJ structurally verified. CourtListener and FR require fixes before Phase 2 baseline computation.
 
 **Fix 1 — `cl_first_amendment` query rewrite + re-backfill (HIGH PRIORITY)**
 
@@ -782,34 +781,13 @@ Work items:
 
 **Not a fix — GovInfo Trump T2 delta (-7):** Self-corrects on next backfill run. No action needed.
 
-#### Sprint R-S1e: Backfill Pipeline Redesign (Phase 1) ✅
+#### Sprint R-S1e: Incremental Snapshot + LegiScan Integration + Pipeline Fault Tolerance
 
-> **Actual:** Phase 1 delivered (7 issues, #184-#190). Fixed backfill skip logic (score/aggregate/embed always run), removed dead CLI flags + 3 deleted files (~580 lines removed), added `compute-baseline-stats` and `backfill:verify` commands, incremental snapshot for API signals. Phase 2 items (LegiScan, cron locks, `snapshot --from/--to`, cl_first_amendment purge, WH/GDELT `--source` options) deferred to R-S1f. Net: +425 lines (1174 added, 749 removed), 1532 tests across 124 files.
->
-> **Post-sprint follow-up (2026-02-28):**
->
-> - Fixed `embedUnprocessedDocuments()` to loop until done and filter by category (was single-batch, no filter)
-> - Added FR period coverage check to `backfill:verify` (per-category × 5 baseline periods)
-> - Added GDELT cross-feed coverage check to `backfill:verify` (per-category doc counts)
-> - Fixed CL pagination cap from 20 → 300 (actual `maxPages=15 × pageSize=20`)
-> - Added 22 tests for backfill-verify (12) and verification service (10)
-> - Fixed `recompute-scores` OFFSET pagination skip: added `documents.id` tiebreaker (reduced missing scores from 8,583 → 3 out of 337,494)
-> - Ran `recompute-scores` across all categories: 337,491/337,494 scored, 3,665 weekly aggregates
-> - Final verify state: 3 missing scores, 0 missing aggregates, baselines 4/4 × 14/14 complete
+**Source:** Claude Code analysis (2026-02-28). The daily snapshot's fixed 20-item fetch cap causes routine silent data loss — not just during outages. CourtListener/civilLiberties averages 38 docs/day but the snapshot captures only ~20. FR/infoAvailability peaks at 159 docs/day — snapshot misses ~87% on spike days. The backfill pipeline (which uses paginated `fetchHistorical`) has been masking this, but real-time monitoring has gaps between backfills. Separately, LegiScan's session-based ZIP model doesn't fit the signal/feed-fetcher pattern and needs its own integration path.
 
-#### Sprint R-S1f: Backfill Pipeline Redesign (Phase 2) ✅
+**Goal:** Replace best-effort "fetch latest 20" snapshot with incremental "bring DB up to date since last run" for all API sources. Wire LegiScan into pipeline. Add cron overlap protection.
 
-> **Actual:** Phase 2 delivered (5 issues, #191-#195). Unified WH/GDELT/LegiScan as `--source` options in backfill, added cron overlap protection (PostgreSQL advisory locks), added `snapshot --from/--to` for retroactive assessment, created `purge:cl-noise` command for CL noise document cleanup, removed dead `fetchWhArchiveHistorical` (~94 lines). 1561 tests across 126 files.
-
-**Absorbed:** Original R-S1e scope (incremental snapshot, LegiScan integration, cron locks) folded into the pipeline redesign. See `docs/internal/BACKFILL_PIPELINE_REDESIGN.md` for the complete proposal.
-
-**Source:** Pipeline redesign proposal (2026-02-28). The existing backfill/snapshot/build-baseline commands have overlapping responsibilities, inconsistent stage execution, and CLI flags that bypass methodology. The redesign unifies everything into a 9-stage pipeline with clean commands.
-
-**Goal:** Replace the current patchwork of `pnpm backfill`, `pnpm build-baseline`, `pnpm snapshot` with a unified pipeline: `pnpm backfill` (stages 1-4: ingest/score/aggregate/embed), `pnpm compute-baseline-stats` (stage 5), `pnpm snapshot --from/--to` (stages 6-9: L1/L2/L3/convergence), plus `pnpm backfill:verify` and `pnpm recompute-scores`. Also includes cl_first_amendment data purge (deferred from R-S1d), incremental snapshot (replacing 20-item cap), LegiScan as `--source legiscan`, WH/GDELT as `--source` options, and cron overlap protection.
-
-**Depends on:** Sprint R-S1d ✅. Must land before Phase 2 baseline computation.
-
-_The original R-S1e analysis below is preserved as context. The implementation plan is in `BACKFILL_PIPELINE_REDESIGN.md`._
+**Depends on:** Sprint R-S1c (fetchWithRetry ✅). Can run in parallel with R-S1d — R-S1d fixes historical data quality, R-S1e fixes forward-looking data completeness. Both must land before Phase 2 baseline computation.
 
 **Finding: 20-item cap silent data loss**
 
@@ -899,31 +877,14 @@ Source silence detection (>2× expected cadence) uses `fetchedCount` — a sourc
 - Integration: snapshot with incremental fetch stores all documents (not just first 20)
 - Integration: LegiScan weekly cron stores bills + runs Layer 2 + records source health
 
-**Phase 2 — Historical re-processing (~1 week, mostly compute time):**
+**Phase 2 — Historical backfill (~1 week, mostly compute time):**
 
-_Depends on: (a) R-S1d data quality fixes landed ✅, (b) R-S1e incremental snapshot deployed ✅, (c) fetch_log-based verification passes ✅, (d) Sprint R-CL1 opinion ingestion complete ✅, and (e) Sprint R-P2 data quality fixes ✅ (document_scores composite unique, GDELT metadata_only cleanup, content backfill, fresh L2 rerun). All conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
+_Depends on: (a) R-S1d data quality fixes landed (cl_first_amendment query scoped, FR gaps filled, immigrationEnforcement added, NOS maxPages bumped), (b) R-S1e incremental snapshot deployed and running (no more silent data loss from 20-item cap), and (c) fetch_log-based verification passes — API-vs-DB counts within tolerance per source type per baseline period. All three conditions must be met before baseline computation begins. Computing baselines against incomplete data invalidates all downstream detection._
 
-**Decisions (Sprint R-P2, 2026-03-03):**
-
-- **`document_scores` fix:** Unique constraint changed from `(url)` to `(url, category)`. Cross-fed documents were sharing one score row (last category scored wins). Upsert target and resolveDocumentIds JOIN updated. Migration 0029.
-- **GDELT stays metadata-only:** GDELT Context 2.0 API has 72-hour lookback — can't backfill historical article text. Adding it to the forward pipeline would create baseline/T2 asymmetry. CREC (Congressional Record) via GovInfo is the better primary-source rhetoric path — separate sprint after Phase 2. New `content_type` column marks GDELT docs as `metadata_only`, excluding them from embedding (~60K stale vectors cleaned) and Layer 2 assessment.
-- **Full L2 rerun:** Delete all `ai_document_assessments` and re-run P1+P2. Cost ~$35-50. Engineering cost of selective re-assessment exceeds API cost. The 11K stale civilLiberties assessments under the old 73%-flag-rate prompt alone justify it.
-- **WH content backfill:** `pnpm backfill:content --source wh` added for ~4K White House docs with null content (both whitehouse.gov and trumpwhitehouse.archives.gov).
-
-**8-step re-processing sequence:**
-
-1. Schema migration + GDELT cleanup — apply migration 0029, mark GDELT as `metadata_only`, clear GDELT embeddings (~5 min)
-2. Content backfill — FR (~24K docs), GovInfo (~20 docs), WH (~4K docs), CL opinions (~25K) (`pnpm backfill:content`, `pnpm backfill:opinions`) (~2-4 hours)
-3. Re-embed all content-updated documents (`pnpm embed:missing`) (~1-2 hours, ~$1-2)
-4. Re-score all documents (`pnpm recompute-scores`) (~30 min)
-5. Full L2 rerun (`pnpm layer2:backfill --fresh --confirm --from 2017-01-20 --to 2026-03-10`) (~$35-50, overnight)
-6. Recompute aggregates + baselines (`pnpm compute-baseline-stats`) (~30 min)
-7. Verify completeness (`pnpm backfill:verify`)
-8. Compute layer scores (L1/L2/L3) + convergence
-
-**Additional prerequisites:**
-
-- Re-cross-feed existing GDELT rhetoric corpus to 13 categories (Sprint R1/R3.2 cross-feed covers 11; lawEnforcement, civilLiberties, immigrationEnforcement need GDELT rows)
+- Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
+- All validated sources have 2017+ archives
+- Route documents through category assignment logic with source-type tagging
+- **Re-cross-feed existing GDELT rhetoric corpus to 13 categories.** The Sprint R1/R3.2 cross-feed was built and validated against 11 categories. Three new categories (lawEnforcement, civilLiberties, immigrationEnforcement) have no GDELT cross-feed rows. Re-run `crossfeedRhetoricToCategories()` against the existing ~57K rhetoric documents with the updated `categories.ts` (which now includes all 13 categories and their signals). One-time batch operation. This is required before baseline computation — without it, the 3 new categories have FR-only baselines and source convergence is a no-op for them. For immigrationEnforcement specifically, GDELT is essential (FR volume is only ~5-6/wk).
 
 **Phase 3 — Per-source-type baseline computation + Layer 2 enhancement:**
 
@@ -950,179 +911,31 @@ _Depends on: (a) R-S1d data quality fixes landed ✅, (b) R-S1e incremental snap
 
 **Phase 5 — P2 Deferred sources (post-launch):**
 
-- **CREC (Congressional Record) via GovInfo** — Primary-source rhetoric data replacing GDELT metadata-only gap. GovInfo has full CREC text. Would provide actual content for rhetoric analysis. Separate sprint after Phase 2 baseline computation. (Note: GDELT Context 2.0 API has 72-hour lookback only — unusable for historical backfill.)
 - Oversight.gov scraping (all 75 IGs — no API)
 - VRL partnership (calibration dataset for LegiScan AI accuracy)
 - CBO reports pipeline (fiscal — low-volume supplementary signal)
 - DHS/ICE/CBP monthly statistical tables for immigrationEnforcement (encounters, detention, removals — Excel/PDF download, quarterly batch, no API)
 
-#### Sprint R-S1g: CourtListener Pagination Fix ✅
-
-**Source:** `backfill:verify` pagination fitness warnings (2026-03-01). Analysis of weekly CL volume distributions revealed systemic truncation across civilLiberties and lawEnforcement.
-
-**Actual:** maxPages bumped 15→45 (CL_BACKFILL_MAX_PAGES named constant), verification cap 300→900, `--force` flag added to backfill for re-fetching completed weeks. Re-backfilled all CL baseline periods + T2. Baselines recomputed for civilLiberties and lawEnforcement. Deduplication (NOS 440 shared between categories) deferred as future optimization — daily double-fetch is negligible (~4 extra 1-page API calls/day) and restructuring backfill from category-major to week-major is a larger change.
-
-**Problem:** civilLiberties and lawEnforcement CourtListener signals both query NOS 440 (civil rights). With `maxPages=15` (300 results), 37% of all weeks exceed the cap (101/272 for civilLiberties, 102/272 for lawEnforcement). Trump T1 (2017–2018) averages 430–530 docs/week — every week is truncated. 51,774 URLs (72% of civilLiberties CL corpus) are shared between the two categories, meaning the same documents are fetched twice via separate queries.
-
-**Key constraint:** Baselines and monitoring must use the same pagination cap. Current baselines are computed from truncated data. Fixing forward monitoring without re-backfilling baselines would create false volume anomalies (500 docs/week vs baseline computed from 300 docs/week).
-
-**Volume profile (weekly docs, courtlistener):**
-
-| Period             | civilLiberties avg | lawEnforcement avg | Cap status                    |
-| ------------------ | -----------------: | -----------------: | ----------------------------- |
-| Trump T1 (2017–18) |            430–448 |            464–531 | Permanently exceeded          |
-| Biden (2021–22)    |            131–135 |            123–126 | Under cap                     |
-| Trump T2 (2025–26) |            182–187 |            159–195 | Borderline, some weeks exceed |
-
-**Depends on:** No blockers. Should land before Phase 2 baseline computation (R2).
-
 ---
 
-## Post-R5: Remaining Features & Validated Improvements
+## Post-Launch: Future Features & Improvements
 
-These items are validated but not yet scoped for specific sprints. They come from two sources: (1) features from the original Sprint 23–29 plan that survive under the new architecture, and (2) improvements identified during the architecture review process (2026-02-22 through 2026-02-24) by ChatGPT, Claude Code, and design discussion.
+All post-launch items — architecture improvements (R-F1 through R-F11), surviving features from the original Sprint 23-29 plan, and new feature phases (Phases 5-10) — are tracked in `FUTURE_ROADMAP.md`.
 
-When starting sprint planning, review this list for items relevant to current work. When new ideas emerge during implementation, add them to the "Added During Implementation" section at the bottom.
+**Key items for reference** (see `FUTURE_ROADMAP.md` for full specifications):
 
----
+- **R-F1–R-F11**: Architecture improvements from ChatGPT/Claude Code reviews (pre-filtering, synchrony detection, semantic variance decomposition, event retrospective harness, UI V4, infrastructure theme tagging, etc.)
+- **R-F4 (Coverage Health)** and **R-F5 (Mechanism Extraction)**: Minimum viable scope elevated into Sprint R-S1; full scope tracked in FUTURE_ROADMAP.md
+- **Surviving features**: Admin Auth + Review Queue, Suppression Learning, Onboarding + Polish
+- **Phase 5**: Deferred sources (Oversight.gov, VRL, CBO)
+- **Phase 6**: Primary-source rhetoric (CREC via GovInfo, cabinet/VP agency newsrooms, presidential social media, MediaCloud)
+- **Phase 7**: Media coverage as independent signal (coverage suppression, source concentration, tone asymmetry, coverage displacement)
+- **Phase 8**: Rhetoric vs. Action temporal analysis (lag analysis, matched-pairs, speaker tracking, ring analysis)
+- **Phase 9**: Project 2025: Plan vs. Delivered (proposal extraction, matcher pipeline, status persistence)
+- **Phase 10**: Authoritarian infrastructure build-out (detention capacity, personnel, surveillance, legal, financial — via SAM.gov, USAJobs.gov, SEC EDGAR, GovInfo)
+- **Cross-feature convergence framework**: Design before building Phases 8-10; rhetoric + blueprint + capability convergence per category
 
-### Architecture Improvements (from review)
-
-#### R-F1: Pass 1 Pre-filtering with Functional Classifier
-
-**Source**: Claude Code review #4 · **Layer**: 2 · **Effort**: Small (~20 LOC)
-**Prerequisite**: Layer 1 functional classifier operational (Sprint R2 ✅)
-
-Documents classified by Layer 1 as `financial_regulatory` or `cultural_ceremonial` are formulaic and extremely unlikely to be relevant. Skipping Pass 1 for these saves ~15–20% AI costs with zero false-negative risk. Add a `PASS1_SKIP_BUCKETS` constant — documents in those buckets still get embedded (Layer 3) and counted (Layer 1) but skip AI assessment.
-
-#### R-F2: Sprint 21 Preservation vs. Deprecation
-
-**Source**: Claude Code review #7 · **Layer**: Keywords/annotations · **Effort**: Medium (~2–4 hours)
-**Prerequisite**: Sprint R4 (keywords demoted to annotation role)
-
-Sprint 21 added 56 operational keywords, admin overlay system, `getEffectiveKeywords()`. Under the new architecture:
-
-- **Preserve**: Admin overlay data as annotation metadata, keyword dictionaries as research artifact
-- **Simplify**: Date-filtering complexity → simpler "highlight for this administration?" logic
-- **Deprecate**: `getEffectiveKeywords()` pipeline integration, `document-scorer.ts` scoring pathway
-
-#### R-F3: Cross-Category Synchrony Detection
-
-**Source**: ChatGPT red team analysis #4 · **Layer**: Convergence synthesis · **Effort**: Medium (~50–80 LOC)
-**Prerequisite**: Convergence synthesis operational (Sprint R2+ ✅)
-
-Count how many categories are simultaneously at Elevated or above per week. If N > threshold (e.g., 5 of 13), flag as cross-category synchrony event. UI element: dashboard-level indicator with historical sparkline. Already feeds the Administration Overview page's synchrony chart.
-
-#### R-F4: Coverage Health Monitoring — **Elevated to Sprint R-S1**
-
-**Source**: ChatGPT red team analysis #5, elevated per ChatGPT/Claude Code source expansion review · **Layer**: Infrastructure · **Effort**: Medium (~100–150 LOC + dashboard)
-**Prerequisite**: None (independent). Complements existing Sprint 17 source health.
-
-_Minimum viable scope ships in Sprint R-S1 Phase 1 (item 5):_ per-source-type document count per day, "source silent" alerts when a source goes silent for >2× expected cadence, DOJ taxonomy change tracking. Full operational dashboard with schema change detection and seasonal dip classification deferred to this R-F item.
-
-#### R-F5: Pass 2 Mechanism Extraction Fields — **Elevated to Sprint R-S1**
-
-**Source**: ChatGPT red team analysis #3, elevated per ChatGPT architecture review · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema change)
-**Prerequisite**: Pass 2 operational (Sprint R3 ✅)
-
-_Ships in Sprint R-S1 Phase 3:_ Add structured mechanism fields to Pass 2 output: `powerCreatedOrExpanded`, `oversightReduced`, `enforcementLeverChanged`, `dueProcessChanged`, `accessToSystemsChanged`. Prompt change to Pass 2's structured output schema — not infrastructure. Ships with source expansion so the enriched document corpus gets mechanism-tagged from the start. Without this, the most shareable output (AI narrative) can drift into persuasive prose without a mechanically checkable backbone.
-
-#### R-F6: Semantic Escalation Within Functional Buckets
-
-**Source**: ChatGPT red team analysis #2 · **Layer**: 3 · **Effort**: Medium–Large
-**Prerequisite**: Layer 1 functional classifier + Layer 3 operational
-
-Track embedding drift _within_ each functional bucket, not just at category level. Catches the most sophisticated evasion: keeping structure, function, and volume identical while changing substance within a functional category. Sub-cluster Layer 3's embeddings by functional bucket, compute per-bucket centroid distance.
-
-#### R-F7: AI Model Challenge Set
-
-**Source**: ChatGPT red team analysis #3 · **Layer**: 2 · **Effort**: Medium (initial) + Small (ongoing)
-**Prerequisite**: Pass 1 + Pass 2 operational (Sprint R3 ✅)
-
-~50–100 curated documents (routine governance, known erosion events, edge cases) as a fixed test suite. Run against Pass 1/Pass 2 on model updates or prompt revisions. Detect classification drift and regression before production deployment.
-
-#### R-F8: Semantic Variance Decomposition
-
-**Source**: ChatGPT final review · **Layer**: 3 · **Effort**: Medium (~80–120 LOC)
-**Prerequisite**: Layer 3 operational with clustering (Sprint R2 ✅)
-
-Decompose Layer 3 centroid drift into within-cluster variance (stylistic change) vs. between-cluster variance (substantive institutional change). Standard ANOVA on embedding vectors. A shift in the ratio is more specific than raw centroid distance. UI: "variance type: structural" vs. "variance type: stylistic" annotation on thematic drift panel.
-
-#### R-F9: Event Retrospective Harness
-
-**Source**: ChatGPT red team validation · **Layer**: All / validation · **Effort**: Large (~200–300 LOC)
-**Prerequisite**: Full three-layer system operational (Sprint R3 ✅)
-
-Run DOGE establishment, USAID closure, and IG firings through the complete pipeline retrospectively. Report per week: which layers fired, signal strength, top driver documents, detection ordering. Expected patterns: DOGE (Layer 2 first → Layer 1 corroborates), USAID (Layer 1 convergence gap or Layer 2 news), IG firings (Layer 2 first). Produces: public methodology chapter, calibration reference, credibility artifact for OSS release.
-
-#### R-F10: UI Design Specification V4
-
-**Source**: Architecture review process (2026-02-24) · **Layer**: All (UI) · **Effort**: Large (~2–3 days)
-**Prerequisite**: Sprint R3 complete
-
-UI Spec V3 was written against the old keyword-severity architecture. V4 rewrites all data-model-dependent sections while preserving architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern). A divergence map (`UI_V3_DIVERGENCE_MAP.md`) documents every V3 section that needs updating. The Architecture Proposal's Dashboard Visualization section serves as the interim UI specification for Sprint R4.
-
-#### R-F11: Pass 2 Infrastructure Theme Tagging
-
-**Source**: Architecture design discussion (2026-02-24) · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema)
-**Prerequisite**: Next baseline re-run (AI model version update)
-**Trigger**: Add to Pass 2 schema _before_ next baseline re-run so theme tags ride the re-run at zero additional cost.
-
-Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceApparatus`, `criminalizationOfOpposition`. Enables structured cross-category infrastructure convergence detection (replaces V3 keyword-based infrastructure convergence). Until then, Opus cross-category narrative synthesis provides interpretive coverage. Deferred because all four baselines already ran through Pass 2 — adding now would cost ~$28–60 for re-runs.
-
----
-
-### Surviving Features (from original Sprint 23–29 plan)
-
-#### Admin Auth + Review Queue (was Sprint 24)
-
-- Admin auth, feedback store, review queue page, feedback fields
-- Review queue now reviews Pass 2 assessments instead of keyword-based alerts
-- See original Sprint 24 plan and V3 Addendum Sprint D
-
-#### Suppression Learning + Proposals (was Sprint 26)
-
-- Feedback learning pipeline using Pass 2 assessment patterns
-- Admin proposal review for prompt adjustments and threshold changes
-- See original Sprint 26 plan and V3 Addendum Sprint E
-
-#### Onboarding + Responsive Polish + Performance (was Sprint 28)
-
-- First-time visitor onboarding, mobile layouts, performance optimization
-- See original Sprint 28 plan and UI spec section 4.5, 4.6, 10.2
-
-#### Alternative Sources (was Sprint 29) — **Absorbed into Sprint R-S1**
-
-- ~~CourtListener, State AG feeds, source priority framework~~ — Superseded by Sprint R-S1 source expansion, validated by availability spikes. P0: CourtListener + GovInfo/GAO + DOJ API + LegiScan. P1: IG RSS + FCC RSS + FEC. P2 (deferred): Oversight.gov + VRL + CBO. See `ARCHITECTURE_PROPOSAL.md` §Source Expansion and `SPIKE_FINDINGS.md` for validated source details.
-
----
-
-### Added During Implementation
-
-#### `document_scores` unique constraint mismatch (2026-03-01)
-
-**Source**: GDELT re-cross-feed implementation · **Layer**: Schema · **Effort**: Medium (migration + recompute)
-
-`document_scores` has a unique constraint on `url` alone, while `documents` uses `(url, category)`. This means cross-fed documents (same URL under multiple categories) share a single score row — whichever category is scored last overwrites the others. Consequences:
-
-- `backfill:verify` can't detect unscored cross-fed documents (the LEFT JOIN on `url` always finds the original score row)
-- Weekly aggregates may pull scores computed under a different category's rules
-- `recompute-scores` upserts on `url`, so only one category "wins" per URL
-
-**Fix**: Migrate `document_scores` unique constraint from `(url)` to `(url, category)`, update the upsert in `document-scorer.ts`, update the `getStageCompleteness` JOIN in `backfill-verification-service.ts` to match on both `url` and `category`, then run `pnpm recompute-scores` to populate per-category score rows.
-
-#### CourtListener opinion ingestion (2026-03-03) — COMPLETED (Sprint R-CL1)
-
-**Decision: Option B** — opinions as new documents (type `judicial_opinion`), linked to parent dockets by `case_id` column on `documents` table. Filings and opinions are distinct events at different moments with different analytical meaning: "case filed" (institutional pushback) vs. "case decided" (judicial constraint). They belong on different weeks because they happened on different weeks.
-
-**Implementation**: `case_id` column on `documents` (format: `cl:{docket_id}`). Opinion text fetched via `GET /api/rest/v4/opinions/?cluster__docket={ID}`. Layer 1 deduplicates by `case_id` for volume counts; Layers 2 and 3 see both documents. Forward pipeline (`backfill-fetchers.ts`) automatically fetches opinions alongside new docket entries. Backfill script: `pnpm backfill:opinions`.
-
----
-
-### Completed
-
-- **CourtListener opinion ingestion** (Sprint R-CL1): Option B — opinions as new `judicial_opinion` documents linked via `case_id`. Schema migration, CL opinions API integration, `backfill:opinions` script, forward pipeline auto-ingestion, Layer 1 volume dedup by `case_id`. 164K existing dockets backfilled with `case_id`.
-- **Layer 2 P1 civilLiberties calibration** (Sprint R-CAL1): Erosion type framework added to P1 prompt, civilLiberties description tightened to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7%. 22 weeks backfilled. Architecture-consistent approach (no per-category prompt fields).
+**Alternative Sources (was Sprint 29)**: Absorbed into Sprint R-S1. P0: CourtListener + GovInfo/GAO + DOJ API + LegiScan. P1: IG RSS + FCC RSS + FEC. P2 (deferred): See Phase 5 in `FUTURE_ROADMAP.md`.
 
 ---
 
@@ -1167,9 +980,9 @@ The following sprint plans were replaced by the architecture redesign (Sprints R
 6. Review cycle: verify news-coverage-driven signals are genuine
 7. Update UI to render `newsOnly` warnings distinctly
 
-### Sprints 23–29 (restructured into R4 + Post-R5)
+### Sprints 23–29 (restructured into R4 + FUTURE_ROADMAP.md)
 
-Original plans for: methodology pages, admin auth, detailed mode, suppression learning, novel threats, onboarding, alternative sources. The detection methodology changed fundamentally — keyword-severity scoring replaced by three-layer convergence. Dashboard visualization, admin review, and supporting pages all depend on the new architecture's output format. Core features preserved in Post-R5 section above.
+Original plans for: methodology pages, admin auth, detailed mode, suppression learning, novel threats, onboarding, alternative sources. The detection methodology changed fundamentally — keyword-severity scoring replaced by three-layer convergence. Dashboard visualization, admin review, and supporting pages all depend on the new architecture's output format. Core features preserved in `FUTURE_ROADMAP.md`.
 
 </details>
 

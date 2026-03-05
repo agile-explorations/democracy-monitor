@@ -2,6 +2,7 @@ import { and, count, eq, inArray, sql } from 'drizzle-orm';
 import type { Pass1Response } from '@/lib/ai/schemas/layer2-response';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { aiDocumentAssessments, documents } from '@/lib/db/schema';
+import type { NarrativeDocumentContext } from '@/lib/types';
 import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
 
 /**
@@ -258,5 +259,54 @@ export async function findPass2Gaps(category: string, weekOf: string): Promise<P
     erosionType: (r.erosion_type as string) ?? 'unknown',
     title: r.title as string | null,
     content: r.content as string | null,
+  }));
+}
+
+/**
+ * Get the top concerning documents from Pass 2 assessments for a category-week.
+ * Returns documents rated potentially_concerning or clearly_concerning,
+ * ordered by severity (clearly > potentially) then confidence DESC.
+ */
+export async function getTopConcerningDocuments(
+  category: string,
+  weekOf: string,
+  limit = 5,
+): Promise<NarrativeDocumentContext[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const rows = await db.execute(sql`
+    SELECT
+      d.title,
+      d.source_type,
+      d.source_origin,
+      d.metadata->>'agency' AS agency,
+      a2.assessment,
+      a2.erosion_type,
+      a2.reasoning
+    FROM ${aiDocumentAssessments} a2
+    JOIN ${documents} d ON d.url = a2.url AND d.category = a2.category
+    WHERE a2.category = ${category}
+      AND a2.week_of = ${weekOf}
+      AND a2.pass = 2
+      AND a2.is_audit_sample = false
+      AND a2.assessment IN ('potentially_concerning', 'clearly_concerning')
+    ORDER BY
+      CASE a2.assessment
+        WHEN 'clearly_concerning' THEN 0
+        WHEN 'potentially_concerning' THEN 1
+      END,
+      a2.confidence DESC NULLS LAST
+    LIMIT ${limit}
+  `);
+
+  return (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+    title: (r.title as string) ?? 'Untitled',
+    sourceType: (r.source_type as string) ?? 'unknown',
+    sourceOrigin: r.source_origin as string | null,
+    agency: r.agency as string | null,
+    assessment: (r.assessment as string) ?? 'unknown',
+    erosionType: r.erosion_type as string | null,
+    reasoning: r.reasoning as string | null,
   }));
 }

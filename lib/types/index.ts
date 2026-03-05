@@ -92,6 +92,7 @@ export type {
 export { VALIDATION_SOURCES } from './validation';
 export type {
   NarrativeVersion,
+  NarrativeDocumentContext,
   NarrativeLayerData,
   NarrativeResult,
   StoredNarrative,

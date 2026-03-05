@@ -1,6 +1,7 @@
 import {
   AI_CONCERN_MIN_SAMPLE,
   AI_CONCERN_THRESHOLD,
+  AI_FLAG_RATE_MIN_DOCS,
   AI_FLAG_RATE_THRESHOLD,
   STRUCTURAL_ANOMALY_THRESHOLD,
   THEMATIC_DRIFT_ELEVATED,
@@ -64,6 +65,7 @@ function isStructuralElevated(structural: StructuralScore | null): boolean {
 
 function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {
   if (!aiAssessment) return false;
+  if (aiAssessment.totalDocuments < AI_FLAG_RATE_MIN_DOCS) return false;
   return aiAssessment.flagRateZScore > AI_FLAG_RATE_THRESHOLD;
 }
 

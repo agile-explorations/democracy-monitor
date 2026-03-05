@@ -8,6 +8,17 @@ import type {
 /** Narrative audience version identifier. */
 export type NarrativeVersion = 'expert' | 'public';
 
+/** A top-concerning document from Pass 2 AI assessment, used to ground narrative generation. */
+export interface NarrativeDocumentContext {
+  title: string;
+  sourceType: string;
+  sourceOrigin: string | null;
+  agency: string | null;
+  assessment: string;
+  erosionType: string | null;
+  reasoning: string | null;
+}
+
 /** Layer data extracted from a weekly_aggregates row, used as input for narrative generation. */
 export interface NarrativeLayerData {
   category: string;
@@ -21,6 +32,7 @@ export interface NarrativeLayerData {
   thematicDetail: ThematicDriftScore | null;
   convergenceScore: number | null;
   convergenceDetail: ConvergenceSynthesis | null;
+  documentContext?: NarrativeDocumentContext[];
 }
 
 /** Result of narrative generation for a single category-week. */
