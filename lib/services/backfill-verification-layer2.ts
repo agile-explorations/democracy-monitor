@@ -48,7 +48,7 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
       total: sql<number>`count(distinct ${documents.url})::int`,
     })
     .from(documents)
-    .where(and(dateFilter, catFilter))
+    .where(and(dateFilter, catFilter, sql`${documents.contentType} != 'metadata_only'`))
     .groupBy(documents.category);
 
   const p1Rows = await db

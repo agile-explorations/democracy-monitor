@@ -77,7 +77,8 @@ export const CONTENT_FIXABLE_ORIGINS = new Map([['whitehouse', 'wh']]);
 export async function getContentCompleteness(category?: string): Promise<ContentCompleteness[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
-  const catFilter = category ? eq(documents.category, category) : undefined;
+  const conditions = [sql`${documents.contentType} != 'metadata_only'`];
+  if (category) conditions.push(eq(documents.category, category));
 
   const rows = await db
     .select({
@@ -86,7 +87,7 @@ export async function getContentCompleteness(category?: string): Promise<Content
       nullContent: sql<number>`count(*) filter (where ${documents.content} is null)::int`,
     })
     .from(documents)
-    .where(catFilter)
+    .where(and(...conditions))
     .groupBy(documents.sourceType)
     .orderBy(sql`count(*) filter (where ${documents.content} is null) desc`);
 
@@ -209,7 +210,13 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
       documentScores,
       and(eq(documents.url, documentScores.url), eq(documents.category, documentScores.category)),
     )
-    .where(catFilter ? and(catFilter, isNull(documentScores.id)) : isNull(documentScores.id));
+    .where(
+      and(
+        sql`${documents.contentType} != 'metadata_only'`,
+        isNull(documentScores.id),
+        ...(catFilter ? [catFilter] : []),
+      ),
+    );
 
   const aggGap = await getAggregateGap(db, category);
 

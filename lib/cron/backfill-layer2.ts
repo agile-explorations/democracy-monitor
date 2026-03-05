@@ -91,6 +91,7 @@ async function getDocumentsForCategoryWeek(
         gte(documents.publishedAt, new Date(weekOf)),
         lt(documents.publishedAt, new Date(weekEnd)),
         sql`${documents.contentType} != 'metadata_only'`,
+        sql`length(${documents.content}) >= 100`,
       ),
     );
 
