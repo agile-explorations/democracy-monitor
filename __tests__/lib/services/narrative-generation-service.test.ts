@@ -7,10 +7,15 @@ import {
   buildPublicPrompt,
   buildOverviewPrompt,
   formatLayerContext,
+  formatDocumentContext,
   generateCategoryNarrative,
   generateOverviewNarrative,
 } from '@/lib/services/narrative-generation-service';
-import type { NarrativeLayerData, OverviewNarrativeInput } from '@/lib/types';
+import type {
+  NarrativeDocumentContext,
+  NarrativeLayerData,
+  OverviewNarrativeInput,
+} from '@/lib/types';
 import type {
   ConvergenceSynthesis,
   StructuralScore,
@@ -377,6 +382,103 @@ describe('buildOverviewPrompt', () => {
     const prompt = buildOverviewPrompt(input, 'public');
     expect(prompt).toContain('plain language');
     expect(prompt).toContain('200-500 words');
+  });
+});
+
+describe('formatDocumentContext', () => {
+  it('returns null for undefined input', () => {
+    expect(formatDocumentContext(undefined)).toBeNull();
+  });
+
+  it('returns null for empty array', () => {
+    expect(formatDocumentContext([])).toBeNull();
+  });
+
+  it('formats a single document with all fields', () => {
+    const docs: NarrativeDocumentContext[] = [
+      {
+        title: 'Executive Order on Agency Reorganization',
+        sourceType: 'federal_register',
+        sourceOrigin: 'FR',
+        agency: 'Office of Management and Budget',
+        assessment: 'clearly_concerning',
+        erosionType: 'operational_hollowing',
+        reasoning: 'Eliminates oversight positions across multiple agencies.',
+      },
+    ];
+    const result = formatDocumentContext(docs)!;
+    expect(result).toContain('KEY DOCUMENTS');
+    expect(result).toContain('Executive Order on Agency Reorganization');
+    expect(result).toContain('federal_register (FR)');
+    expect(result).toContain('Office of Management and Budget');
+    expect(result).toContain('clearly_concerning');
+    expect(result).toContain('operational_hollowing');
+    expect(result).toContain('Eliminates oversight positions');
+  });
+
+  it('omits optional fields when null', () => {
+    const docs: NarrativeDocumentContext[] = [
+      {
+        title: 'Notice of Proposed Rulemaking',
+        sourceType: 'federal_register',
+        sourceOrigin: null,
+        agency: null,
+        assessment: 'potentially_concerning',
+        erosionType: null,
+        reasoning: null,
+      },
+    ];
+    const result = formatDocumentContext(docs)!;
+    expect(result).toContain('Notice of Proposed Rulemaking');
+    expect(result).toContain('Source: federal_register');
+    expect(result).not.toContain('Agency:');
+    expect(result).not.toContain('Erosion type:');
+    expect(result).not.toContain('Reasoning:');
+  });
+});
+
+describe('formatLayerContext with document context', () => {
+  it('includes KEY DOCUMENTS section when documentContext is present', () => {
+    const data = makeLayerData({
+      documentContext: [
+        {
+          title: 'Test Document',
+          sourceType: 'federal_register',
+          sourceOrigin: 'FR',
+          agency: 'DOJ',
+          assessment: 'clearly_concerning',
+          erosionType: 'formal_override',
+          reasoning: 'Test reasoning.',
+        },
+      ],
+    });
+    const context = formatLayerContext(data);
+    expect(context).toContain('KEY DOCUMENTS');
+    expect(context).toContain('Test Document');
+  });
+
+  it('omits KEY DOCUMENTS section when documentContext is absent', () => {
+    const context = formatLayerContext(makeLayerData());
+    expect(context).not.toContain('KEY DOCUMENTS');
+  });
+});
+
+describe('prompt document instructions', () => {
+  it('expert prompt instructs referencing specific documents', () => {
+    const prompt = buildExpertPrompt(makeLayerData());
+    expect(prompt).toContain('Reference specific documents by title');
+  });
+
+  it('public prompt instructs describing government actions', () => {
+    const prompt = buildPublicPrompt(makeLayerData());
+    expect(prompt).toContain('specific government actions or publications');
+  });
+
+  it('both prompts minimize self-referential language', () => {
+    const expert = buildExpertPrompt(makeLayerData());
+    const pub = buildPublicPrompt(makeLayerData());
+    expect(expert).toContain('Minimize self-referential language');
+    expect(pub).toContain('Minimize self-referential language');
   });
 });
 
