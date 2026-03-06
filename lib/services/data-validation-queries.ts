@@ -33,10 +33,6 @@ function buildL2Filters(from: string, to: string, category?: string) {
       gte(documents.publishedAt, new Date(from)),
       lt(documents.publishedAt, new Date(to)),
     ),
-    aiDateFilter: and(
-      sql`${aiDocumentAssessments.weekOf} >= ${from}`,
-      sql`${aiDocumentAssessments.weekOf} < ${to}`,
-    ),
     catFilter: category
       ? eq(documents.category, category)
       : inArray(documents.category, MONITORING_KEYS),
@@ -46,9 +42,28 @@ function buildL2Filters(from: string, to: string, category?: string) {
   };
 }
 
-async function queryL2CountsByCategory(from: string, to: string, category?: string) {
+/**
+ * Build an EXISTS subquery that matches ai_document_assessments rows to
+ * documents published within a date range. This avoids week_of alignment
+ * issues where boundary weeks straddle period starts.
+ */
+function buildDocExistsFilter(from: string, to: string, category?: string) {
+  const catSql = category ? sql`and d2.category = ${category}` : sql``;
+  return sql`exists (select 1 from documents d2 where d2.url = ${aiDocumentAssessments.url} and d2.category = ${aiDocumentAssessments.category} and d2.published_at >= ${from}::date and d2.published_at < ${to}::date ${catSql})`;
+}
+
+async function queryL2DocAndP1(from: string, to: string, category?: string) {
   const db = getDb();
-  const { dateFilter, aiDateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
+  const { dateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
+
+  // L2-eligible docs: non-metadata_only, content >= 100 chars (matches backfill-layer2.ts filter)
+  const l2Eligible = and(
+    dateFilter,
+    catFilter,
+    sql`${documents.contentType} != 'metadata_only'`,
+    sql`${documents.content} is not null`,
+    sql`length(${documents.content}) >= 100`,
+  );
 
   const docRows = await db
     .select({
@@ -56,7 +71,7 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
       total: sql<number>`count(distinct ${documents.url})::int`,
     })
     .from(documents)
-    .where(and(dateFilter, catFilter, sql`${documents.contentType} != 'metadata_only'`))
+    .where(l2Eligible)
     .groupBy(documents.category);
 
   const p1Rows = await db
@@ -66,10 +81,23 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
       flagged: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${aiDocumentAssessments.relevant} = true)::int`,
     })
     .from(aiDocumentAssessments)
-    .where(and(eq(aiDocumentAssessments.pass, 1), aiDateFilter, catAiFilter))
+    .where(
+      and(eq(aiDocumentAssessments.pass, 1), catAiFilter, buildDocExistsFilter(from, to, category)),
+    )
     .groupBy(aiDocumentAssessments.category);
 
-  const p2Base = and(eq(aiDocumentAssessments.pass, 2), aiDateFilter, catAiFilter);
+  return { docRows, p1Rows };
+}
+
+async function queryL2P2(from: string, to: string, category?: string) {
+  const db = getDb();
+  const { catAiFilter } = buildL2Filters(from, to, category);
+  const p2Base = and(
+    eq(aiDocumentAssessments.pass, 2),
+    catAiFilter,
+    buildDocExistsFilter(from, to, category),
+  );
+
   const p2FlagRouteRows = await db
     .select({
       category: aiDocumentAssessments.category,
@@ -89,6 +117,15 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
     .from(aiDocumentAssessments)
     .where(and(p2Base, eq(aiDocumentAssessments.isAuditSample, true)))
     .groupBy(aiDocumentAssessments.category);
+
+  return { p2FlagRouteRows, p2AuditRows };
+}
+
+async function queryL2CountsByCategory(from: string, to: string, category?: string) {
+  const [{ docRows, p1Rows }, { p2FlagRouteRows, p2AuditRows }] = await Promise.all([
+    queryL2DocAndP1(from, to, category),
+    queryL2P2(from, to, category),
+  ]);
 
   return {
     docs: new Map(docRows.map((r) => [r.category, Number(r.total)])),
