@@ -916,6 +916,10 @@ _Depends on: (a) R-S1d data quality fixes landed (cl_first_amendment query scope
 - CBO reports pipeline (fiscal — low-volume supplementary signal)
 - DHS/ICE/CBP monthly statistical tables for immigrationEnforcement (encounters, detention, removals — Excel/PDF download, quarterly batch, no API)
 
+#### Sprint R-CPD1: GovInfo CPD Fetcher + Active Source Filtering
+
+> **Status: Pre-gate complete (#239–#242).** GovInfo CPD fetcher with NARA subject-based category routing (164 mapped terms, 13 categories). `ACTIVE_SOURCES` filter excludes whitehouse/gdelt from scoring, embedding, and backfill pipelines. Backfilled across all 5 analysis periods. Gate (#243) and post-gate WH+GDELT cleanup (#244–#246) remain. See `DECISIONS.md` for retrospective.
+
 ---
 
 ## Post-Launch: Future Features & Improvements

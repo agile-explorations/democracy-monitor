@@ -862,3 +862,32 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 - **CL's opinion type enum includes misleading labels**: `100trialcourt` ("Trial Court Document") contains full district court opinions with substantive reasoning. An inclusion-set approach would have silently dropped all district court opinions. Exclusion sets are safer for enum values you don't control.
 - **CL `date_created` is a database timestamp, not a court date**: The opinions endpoint's `date_created` field reflects when CL ingested the opinion, not when the court issued it. The clusters endpoint's `date_filed` is the actual opinion date. This is not documented in CL's API docs.
 - **for...of loop mutation hazard**: `fillClOpinions` pushes new items into the array it iterates. `for...of` would iterate the new items too. Fixed with index-based loop + `const docketCount = items.length` snapshot.
+
+---
+
+## Sprint R-CPD1: GovInfo CPD Fetcher + Active Source Filtering
+
+**Planned:** 8 issues (#239–#246). Pre-gate: NARA subject mapping (#239), CPD fetcher (#240), active source filtering (#241), CPD backfill (#242). Gate: validate CPD detection quality (#243). Post-gate: WH+GDELT score cleanup (#244), crossfeed deprecation (#245), validation updates (#246).
+
+**Actual:** Pre-gate issues #239–#242 delivered. 11 files changed (6 modified, 5 new), 1102 lines added. Backfill completed across all 5 analysis periods. Gate (#243) and post-gate (#244–#246) remain open.
+
+**Key Decisions:**
+
+1. **`sourceOrigin: 'govinfo_cpd'`**: Distinct from `'govinfo'` (GAO/Congressional) to allow independent source health monitoring and filtering. Both are GovInfo API sources but serve different analytical purposes.
+2. **NARA subject mapping is deterministic, not fuzzy**: 164 exact-match subject terms mapped to 13 categories. 91 expected-unmapped subjects (countries, holidays, sports) explicitly listed and suppressed from unmapped warnings. No NLP or fuzzy matching — auditable and reproducible.
+3. **`ACTIVE_SOURCES` constant (not `LAUNCH_ACTIVE_SOURCES`)**: User decision — this filter will outlive launch. Applied at scoring (recompute-scores), embedding (embed-missing), and backfill embed steps. Excludes `whitehouse` and `gdelt`. Mirrors `--all-dates` / `buildAnalysisPeriodCondition()` pattern.
+4. **GovInfo search uses `collection:CPD` not `collection:DCPD`**: Package IDs use `DCPD-` prefix but the search API collection code is `CPD`. Discovered via live API testing — `collection:DCPD` returned HTTP 500. Not documented.
+5. **WH+GDELT cleanup deferred to post-gate**: ACTIVE_SOURCES filter handles new pipeline runs, but stale document_scores from old WH/GDELT data remain in DB. Weekly aggregator reads from document_scores without source filter, so stale scores leak into aggregates. Requires explicit cleanup (#244) after gate validation confirms CPD quality.
+6. **`fetchCpdRecent` kept despite Knip unused export**: Planned for snapshot pipeline integration. Same pattern as other fetcher `fetchRecent` functions.
+7. **Multi-category storage**: One CPD document with N subject mappings creates N rows in `documents` table (same URL, different category). Matches existing upsert constraint on `(url, category)`.
+
+**Spec Deviations:**
+
+- None. Ad-hoc source expansion sprint, not driven by a spec.
+
+**Lessons Learned:**
+
+1. **GovInfo collection codes ≠ package ID prefixes**: The search API uses `collection:CPD` but packages are `DCPD-202500184`. Always test collection codes against the live API — the documentation doesn't clearly distinguish them.
+2. **NARA `subject` field is `Array<{level1: string}>` not flat strings**: GovInfo summary metadata uses nested objects. The fetcher must extract `.level1` from each entry.
+3. **3 known NARA typos in subject terms**: Double spaces ("Federal agencies", "Defense and national security") and punctuation variants ("Navy. Department of the"). These are in the authoritative data and must be handled as exact-match entries in the mapping, not normalized away.
+4. **`--force-unlock` needed for chained backfill commands**: Running `pnpm backfill --source cpd` sequentially for multiple periods requires the first invocation to use `--force-unlock` if a previous run left a stale lock. Subsequent runs within the same `&&` chain don't need it because the lock is released on clean exit.
