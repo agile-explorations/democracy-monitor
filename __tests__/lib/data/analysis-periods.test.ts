@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getAnalysisPeriods, isInAnalysisPeriod } from '@/lib/data/analysis-periods';
+import {
+  getAnalysisPeriods,
+  isInAnalysisPeriod,
+  ACTIVE_SOURCES,
+} from '@/lib/data/analysis-periods';
 
 describe('analysis-periods', () => {
   beforeEach(() => {
@@ -69,6 +73,23 @@ describe('analysis-periods', () => {
     it('accepts Date objects', () => {
       expect(isInAnalysisPeriod(new Date('2022-06-15'))).toBe(true);
       expect(isInAnalysisPeriod(new Date('2020-07-15'))).toBe(false);
+    });
+  });
+
+  describe('ACTIVE_SOURCES', () => {
+    it('includes expected active sources', () => {
+      expect(ACTIVE_SOURCES.has('federal_register')).toBe(true);
+      expect(ACTIVE_SOURCES.has('courtlistener')).toBe(true);
+      expect(ACTIVE_SOURCES.has('govinfo_cpd')).toBe(true);
+      expect(ACTIVE_SOURCES.has('govinfo')).toBe(true);
+      expect(ACTIVE_SOURCES.has('doj')).toBe(true);
+      expect(ACTIVE_SOURCES.has('fec')).toBe(true);
+      expect(ACTIVE_SOURCES.has('legiscan')).toBe(true);
+    });
+
+    it('excludes whitehouse and gdelt', () => {
+      expect(ACTIVE_SOURCES.has('whitehouse')).toBe(false);
+      expect(ACTIVE_SOURCES.has('gdelt')).toBe(false);
     });
   });
 });

@@ -5,7 +5,7 @@
  * Every pipeline command should restrict to these periods unless --all-dates is passed.
  */
 import type { SQL } from 'drizzle-orm';
-import { or, and, gte, lte } from 'drizzle-orm';
+import { or, and, gte, lte, inArray } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { toDateString } from '@/lib/utils/date-utils';
 import { BASELINE_CONFIGS } from './baselines';
@@ -52,3 +52,36 @@ export function buildAnalysisPeriodCondition(dateColumn: PgColumn): SQL {
 export const ALL_DATES_WARNING =
   '[WARNING] --all-dates: processing ALL documents regardless of analysis period. ' +
   'This includes gap-year data not used in baseline comparisons.';
+
+// ---------------------------------------------------------------------------
+// Active source filtering
+// ---------------------------------------------------------------------------
+
+/**
+ * Source origins included in the active pipeline at launch.
+ *
+ * Documents from excluded sources (e.g., whitehouse, gdelt) remain in the DB
+ * but are filtered out of scoring, aggregation, embedding, and baseline computation.
+ * Pass --all-sources to pipeline commands to override this filter.
+ */
+export const ACTIVE_SOURCES: ReadonlySet<string> = new Set([
+  'federal_register',
+  'courtlistener',
+  'doj',
+  'govinfo',
+  'fec',
+  'govinfo_cpd',
+  'legiscan',
+]);
+
+/**
+ * Build a Drizzle SQL condition that restricts a source_origin column to active sources.
+ * Returns: col IN ('federal_register', 'courtlistener', ...)
+ */
+export function buildActiveSourceCondition(sourceOriginColumn: PgColumn): SQL {
+  return inArray(sourceOriginColumn, [...ACTIVE_SOURCES]);
+}
+
+export const ALL_SOURCES_WARNING =
+  '[WARNING] --all-sources: processing documents from ALL source origins. ' +
+  'This includes excluded sources (whitehouse, gdelt) not used in active pipeline.';

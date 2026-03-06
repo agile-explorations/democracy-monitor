@@ -10,7 +10,12 @@
  */
 
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
-import { getAnalysisPeriods, ALL_DATES_WARNING } from '@/lib/data/analysis-periods';
+import {
+  getAnalysisPeriods,
+  ALL_DATES_WARNING,
+  buildActiveSourceCondition,
+  ALL_SOURCES_WARNING,
+} from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -26,6 +31,7 @@ interface RecomputeOptions {
   dryRun?: boolean;
   batchSize?: number;
   allDates?: boolean;
+  allSources?: boolean;
 }
 
 type DocumentRow = typeof documents.$inferSelect;
@@ -103,6 +109,7 @@ function buildWhereClause(options: RecomputeOptions) {
   if (options.category) conditions.push(eq(documents.category, options.category));
   if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
   if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
+  if (!options.allSources) conditions.push(buildActiveSourceCondition(documents.sourceOrigin));
   return and(...conditions);
 }
 
@@ -161,6 +168,9 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
   const useAnalysisPeriods = !hasDateArgs && !options.allDates;
 
   if (options.allDates) console.warn(ALL_DATES_WARNING);
+  if (options.allSources) console.warn(ALL_SOURCES_WARNING);
+  if (!options.allSources)
+    console.log('[recompute] Filtering to active sources (use --all-sources to override)');
 
   if (useAnalysisPeriods) {
     const periods = getAnalysisPeriods();
@@ -217,7 +227,8 @@ Options:
   --to <date>         End date (YYYY-MM-DD)
   --batch-size <n>    Documents per batch (default: 500)
   --dry-run           Preview without writing to DB
-  --all-dates         Process all dates (default: analysis periods only)`,
+  --all-dates         Process all dates (default: analysis periods only)
+  --all-sources       Include all source origins (default: active sources only)`,
   );
   const options: RecomputeOptions = {};
 
@@ -240,6 +251,9 @@ Options:
         break;
       case '--all-dates':
         options.allDates = true;
+        break;
+      case '--all-sources':
+        options.allSources = true;
         break;
     }
   }

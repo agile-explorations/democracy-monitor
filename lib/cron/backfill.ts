@@ -1,9 +1,14 @@
+import { and } from 'drizzle-orm';
+import { backfillCpd } from '@/lib/cron/backfill-cpd';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
 import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
 import type { RhetoricSource } from '@/lib/cron/backfill-rhetoric';
 import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
-import { buildAnalysisPeriodCondition } from '@/lib/data/analysis-periods';
+import {
+  buildAnalysisPeriodCondition,
+  buildActiveSourceCondition,
+} from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { documents } from '@/lib/db/schema';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
@@ -28,6 +33,7 @@ interface BackfillOptions {
   dryRun?: boolean;
   source?: string;
   force?: boolean;
+  forceUnlock?: boolean;
 }
 
 const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
@@ -39,7 +45,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
 };
 
 const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['whitehouse', 'gdelt']);
-const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legiscan']);
+const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legiscan', 'cpd']);
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
@@ -172,9 +178,12 @@ async function backfillCategory(
     counts[await recordAndClassify(categoryKey, week, result.fetchResult, result.docs)]++;
   }
 
-  // Embed unprocessed documents for this category after all weeks (analysis periods only)
+  // Embed unprocessed documents for this category after all weeks (analysis periods + active sources)
   try {
-    const dateFilter = buildAnalysisPeriodCondition(documents.publishedAt);
+    const dateFilter = and(
+      buildAnalysisPeriodCondition(documents.publishedAt),
+      buildActiveSourceCondition(documents.sourceOrigin),
+    );
     const embedded = await embedUnprocessedDocuments(EMBED_BATCH_SIZE, categoryKey, dateFilter);
     if (embedded > 0) console.log(`  [${categoryKey}] Embedded ${embedded} documents`);
   } catch (err) {
@@ -252,6 +261,11 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
     totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun, rhetoricFilter);
   }
 
+  // CPD backfill: runs when no source filter, or when source is cpd
+  if ((!options.source || options.source === 'cpd') && !options.category) {
+    totalDocs += await backfillCpd(weeks, dryRun);
+  }
+
   // LegiScan backfill: runs when no source filter, or when source is legiscan
   if (!options.source || options.source === 'legiscan') {
     totalDocs += await backfillLegiscan(from, to, dryRun);
@@ -272,6 +286,7 @@ function parseCliArgs(args: string[]): BackfillOptions {
     else if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--source') opts.source = args[++i];
     else if (arg === '--force') opts.force = true;
+    else if (arg === '--force-unlock') opts.forceUnlock = true;
   }
   return opts;
 }
@@ -290,10 +305,11 @@ Options:
   --category <key>    Process a single category
   --source <name>     Limit to a specific source
   --dry-run           Preview without writing to DB
-  --force             Force re-fetch even if already completed`,
+  --force             Force re-fetch even if already completed
+  --force-unlock      Clear stale cron lock before running`,
   );
   const opts = parseCliArgs(argv);
-  withCronLock('backfill', () => runBackfill(opts))
+  withCronLock('backfill', () => runBackfill(opts), undefined, opts.forceUnlock)
     .then((ran) => process.exit(ran ? 0 : 0))
     .catch((err) => {
       console.error('[backfill] Fatal error:', err);
