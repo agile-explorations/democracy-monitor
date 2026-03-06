@@ -27,6 +27,7 @@ export interface Layer2Options {
   pass2Model?: string;
   auditSampleRate?: number;
   dryRun?: boolean;
+  verbose?: boolean;
 }
 
 const DEFAULT_PASS1_PROVIDER = 'openai';
@@ -248,12 +249,13 @@ export async function retryMissingPass2(
   const gaps = await findPass2Gaps(categoryKey, weekOf);
   if (gaps.length === 0) return 0;
 
-  // Skip gaps with no content — these docs only have titles and will always fail Pass 2
-  const viable = gaps.filter((g) => g.content && g.content.length > 0);
-  const skippedNoContent = gaps.length - viable.length;
-  if (skippedNoContent > 0) {
+  // Skip gaps with insufficient content — matches backfill-layer2.ts L2 eligibility (>= 100 chars)
+  const MIN_CONTENT_LENGTH = 100;
+  const viable = gaps.filter((g) => g.content && g.content.length >= MIN_CONTENT_LENGTH);
+  const skipped = gaps.length - viable.length;
+  if (skipped > 0 && options?.verbose) {
     console.warn(
-      `[layer2] Skipping ${skippedNoContent}/${gaps.length} gaps with null content ` +
+      `[layer2] Skipping ${skipped}/${gaps.length} gaps with insufficient content ` +
         `for ${categoryKey} / ${weekOf}`,
     );
   }
@@ -275,6 +277,9 @@ export async function retryMissingPass2(
     if (result && !resolved.dryRun) {
       await storePass2Assessment(result, categoryKey, weekOf);
       return 1;
+    }
+    if (!result && options?.verbose) {
+      console.warn(`[layer2] Pass 2 retry failed for ${gap.url}`);
     }
     return 0;
   });

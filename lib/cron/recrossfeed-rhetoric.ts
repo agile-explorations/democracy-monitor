@@ -14,6 +14,7 @@ import {
   crossfeedRhetoricToCategories,
 } from '@/lib/services/rhetoric-crossfeed';
 import type { ContentItem } from '@/lib/types';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 function tallyCounts(items: ContentItem[], counts: Record<string, number>): void {
   for (const item of items) {
@@ -85,6 +86,14 @@ async function run(dryRun: boolean, batchSize: number): Promise<void> {
 /* CLI entry */
 if (require.main === module) {
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm crossfeed:rerun [options]
+
+Options:
+  --batch-size <n>    Documents per batch (default: 500)
+  --dry-run           Preview without writing to DB`,
+  );
   const dryRun = args.includes('--dry-run');
   const bsIdx = args.indexOf('--batch-size');
   const batchSize = bsIdx !== -1 ? parseInt(args[bsIdx + 1], 10) || 500 : 500;

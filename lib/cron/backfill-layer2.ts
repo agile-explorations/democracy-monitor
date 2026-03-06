@@ -5,6 +5,8 @@
  *   pnpm layer2:backfill --baseline biden_2022 --pass 1
  *   pnpm layer2:backfill --baseline biden_2022 --pass 2
  *   pnpm layer2:backfill --from 2025-01-20 --to 2026-02-22 --category civilService
+ *   pnpm layer2:backfill --retry-p2                      # fast: retry only missing P2 assessments
+ *   pnpm layer2:backfill --retry-p2 --category elections  # scoped to one category
  *   pnpm layer2:backfill --dry-run
  */
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
@@ -15,8 +17,9 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { documents, aiDocumentAssessments } from '@/lib/db/schema';
 import type { Layer2Options } from '@/lib/services/layer2-orchestrator';
 import { runLayer2Assessment, retryMissingPass2 } from '@/lib/services/layer2-orchestrator';
-import { getPass1Count } from '@/lib/services/layer2-store';
+import { getPass1Count, findPass2GapWeeks } from '@/lib/services/layer2-store';
 import type { ContentItem } from '@/lib/types';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
 
 interface BackfillArgs {
@@ -28,11 +31,19 @@ interface BackfillArgs {
   dryRun: boolean;
   fresh: boolean;
   confirm: boolean;
+  retryP2: boolean;
+  verbose: boolean;
 }
 
 function parseArgs(): BackfillArgs {
   const args = process.argv.slice(2);
-  const result: BackfillArgs = { dryRun: false, fresh: false, confirm: false };
+  const result: BackfillArgs = {
+    dryRun: false,
+    fresh: false,
+    confirm: false,
+    retryP2: false,
+    verbose: false,
+  };
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -59,6 +70,12 @@ function parseArgs(): BackfillArgs {
         break;
       case '--confirm':
         result.confirm = true;
+        break;
+      case '--retry-p2':
+        result.retryP2 = true;
+        break;
+      case '--verbose':
+        result.verbose = true;
         break;
     }
   }
@@ -144,7 +161,7 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
 
   if (categories.length === 0) throw new Error(`Unknown category: ${args.category}`);
 
-  const options: Layer2Options = { dryRun: args.dryRun };
+  const options: Layer2Options = { dryRun: args.dryRun, verbose: args.verbose };
   let totalDocs = 0;
   let totalFlagged = 0;
   let skipped = 0;
@@ -188,11 +205,59 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   );
 }
 
+async function runRetryP2(args: BackfillArgs): Promise<void> {
+  if (!isDbAvailable()) throw new Error('Database not available');
+
+  const dateRanges = resolveDateRanges(args);
+  const options: Layer2Options = { dryRun: args.dryRun, verbose: args.verbose };
+  let totalGaps = 0;
+  let retried = 0;
+
+  for (const range of dateRanges) {
+    const gapWeeks = await findPass2GapWeeks(args.category, range.from, range.to);
+    if (gapWeeks.length === 0) continue;
+
+    const rangeGaps = gapWeeks.reduce((s, g) => s + g.gapCount, 0);
+    totalGaps += rangeGaps;
+    console.log(
+      `[backfill-l2] ${range.label}: ${rangeGaps} P2 gaps across ${gapWeeks.length} category-weeks`,
+    );
+
+    for (const gap of gapWeeks) {
+      retried += await retryMissingPass2(gap.category, gap.weekOf, options);
+    }
+  }
+
+  if (totalGaps === 0) {
+    console.log('[backfill-l2] No Pass 2 gaps found.');
+  } else {
+    console.log(
+      `[backfill-l2] Retry complete: ${retried}/${totalGaps} Pass 2 assessments recovered`,
+    );
+  }
+}
+
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
+  checkHelp(
+    process.argv.slice(2),
+    `Usage: pnpm layer2:backfill [options]
+
+Options:
+  --baseline <id>     Run for a specific baseline period (e.g. biden_2022)
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
+  --category <key>    Process a single category
+  --pass <n>          Run only pass 1 or 2
+  --retry-p2          Fast retry of only missing Pass 2 assessments
+  --dry-run           Preview without writing to DB
+  --fresh --confirm   Delete all assessments and re-run from scratch
+  --verbose           Show per-URL skip/failure details`,
+  );
   const args = parseArgs();
-  runBackfillLayer2(args)
+  const run = args.retryP2 ? runRetryP2(args) : runBackfillLayer2(args);
+  run
     .then(() => process.exit(0))
     .catch((err) => {
       console.error('[backfill-l2] Fatal error:', err);

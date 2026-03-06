@@ -50,7 +50,12 @@ export async function withCronLock(
   key: string,
   fn: () => Promise<void>,
   ttlMs?: number,
+  forceUnlock?: boolean,
 ): Promise<boolean> {
+  if (forceUnlock) {
+    console.warn(`[cron-lock] Force-unlocking "${key}"`);
+    await releaseLock(key);
+  }
   const acquired = await acquireLock(key, ttlMs);
   if (!acquired) {
     console.warn(`[cron-lock] Lock "${key}" is held by another process. Skipping.`);

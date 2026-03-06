@@ -10,6 +10,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 async function run(categoryFilter?: string, allDates?: boolean): Promise<void> {
   if (!isDbAvailable()) {
@@ -49,6 +50,14 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
 
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm embeddings:backfill [options]
+
+Options:
+  --category <key>    Process a single category
+  --all-dates         Process all dates (default: analysis periods only)`,
+  );
   const catIdx = args.indexOf('--category');
   const categoryFilter = catIdx !== -1 ? args[catIdx + 1] : undefined;
   const allDates = args.includes('--all-dates');

@@ -19,6 +19,7 @@ import { getBaselineAIFlagRate } from '@/lib/services/layer2-store';
 import { storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 interface EnrichOptions {
   from?: string;
@@ -252,6 +253,16 @@ async function run(options: EnrichOptions): Promise<void> {
 /* CLI entry */
 if (require.main === module) {
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm layers:enrich [options]
+
+Options:
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
+  --category <key>    Process a single category
+  --all-dates         Process all dates (default: analysis periods only)`,
+  );
   const options: EnrichOptions = {};
 
   for (let i = 0; i < args.length; i++) {

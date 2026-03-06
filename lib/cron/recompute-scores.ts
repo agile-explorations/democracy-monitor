@@ -17,6 +17,7 @@ import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scor
 import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import type { DocumentScore } from '@/lib/types/scoring';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 interface RecomputeOptions {
   category?: string;
@@ -206,6 +207,18 @@ if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm scores:recompute [options]
+
+Options:
+  --category <key>    Process a single category
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
+  --batch-size <n>    Documents per batch (default: 500)
+  --dry-run           Preview without writing to DB
+  --all-dates         Process all dates (default: analysis periods only)`,
+  );
   const options: RecomputeOptions = {};
 
   for (let i = 0; i < args.length; i++) {

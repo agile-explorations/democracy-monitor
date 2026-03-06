@@ -13,6 +13,7 @@ import {
 import type { LegiScanBill, LegiScanDatasetEntry } from '@/lib/services/legiscan-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { toDateString } from '@/lib/utils/date-utils';
 
 /** Baseline periods aligned to presidential administrations. */
@@ -291,6 +292,14 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
 
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm legiscan:bulk [options]
+
+Options:
+  --state <code>      State code (default: US)
+  --dry-run           Preview without writing to DB`,
+  );
   const options: BulkOptions = { state: 'US', dryRun: false };
 
   for (let i = 0; i < args.length; i++) {

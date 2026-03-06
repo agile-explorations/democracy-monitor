@@ -272,6 +272,48 @@ export async function findPass2Gaps(category: string, weekOf: string): Promise<P
 }
 
 /**
+ * Find all category-weeks that have P1-flagged docs missing a non-audit Pass 2.
+ * Optional filters narrow to a specific category and/or date range.
+ */
+export async function findPass2GapWeeks(
+  category?: string,
+  from?: string,
+  to?: string,
+): Promise<Array<{ category: string; weekOf: string; gapCount: number }>> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const conditions = [
+    sql`a1.pass = 1`,
+    sql`a1.relevant = true`,
+    sql`NOT EXISTS (
+      SELECT 1 FROM ${aiDocumentAssessments} a2
+      WHERE a2.url = a1.url AND a2.category = a1.category
+        AND a2.pass = 2 AND a2.is_audit_sample = false
+    )`,
+  ];
+  if (category) conditions.push(sql`a1.category = ${category}`);
+  if (from) conditions.push(sql`a1.week_of >= ${from}`);
+  if (to) conditions.push(sql`a1.week_of < ${to}`);
+
+  const rows = await db.execute(sql`
+    SELECT a1.category, a1.week_of, count(*)::int as gap_count
+    FROM ${aiDocumentAssessments} a1
+    JOIN ${documents} d ON d.url = a1.url AND d.category = a1.category
+    WHERE ${sql.join(conditions, sql` AND `)}
+      AND d.content IS NOT NULL AND length(d.content) >= 100
+    GROUP BY a1.category, a1.week_of
+    ORDER BY a1.category, a1.week_of
+  `);
+
+  return (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+    category: r.category as string,
+    weekOf: String(r.week_of).slice(0, 10),
+    gapCount: r.gap_count as number,
+  }));
+}
+
+/**
  * Get the top concerning documents from Pass 2 assessments for a category-week.
  * Returns documents rated potentially_concerning or clearly_concerning,
  * ordered by severity (clearly > potentially) then confidence DESC.

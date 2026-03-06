@@ -1,4 +1,5 @@
 import { getIncompleteWeeks } from '@/lib/services/fetch-log-store';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 interface GapOptions {
   source?: string;
@@ -62,7 +63,17 @@ if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
 
-  const options = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm backfill:gaps [options]
+
+Options:
+  --source <name>     Filter by source
+  --category <key>    Filter by category
+  --json              Output as JSON`,
+  );
+  const options = parseArgs(argv);
 
   showGaps(options)
     .then(() => process.exit(0))

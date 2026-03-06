@@ -14,6 +14,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import { computeBaseline, storeBaseline } from '@/lib/services/baseline-service';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { getWeekRanges } from '@/lib/utils/date-utils';
 
 interface ComputeBaselineOptions {
@@ -109,7 +110,16 @@ function parseCliArgs(args: string[]): ComputeBaselineOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  runComputeBaselineStats(parseCliArgs(process.argv.slice(2)))
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm baselines:compute [options]
+
+Options:
+  --baseline <id>     Compute a specific baseline (e.g. biden_2022)
+  --category <key>    Process a single category`,
+  );
+  runComputeBaselineStats(parseCliArgs(argv))
     .then(() => process.exit(0))
     .catch((err) => {
       console.error('[baseline-stats] Fatal error:', err);

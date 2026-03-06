@@ -15,6 +15,7 @@ import { documents } from '@/lib/db/schema';
 import { stripHtml } from '@/lib/parsers/feed-parser';
 import { fetchGovInfoText } from '@/lib/services/govinfo-fetcher';
 import { sleep } from '@/lib/utils/async';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 const BATCH_SIZE = 50;
 const RATE_LIMIT_MS = 200;
@@ -346,6 +347,15 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
 
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm backfill:content [options]
+
+Options:
+  --source <name>     Source to backfill (fr, govinfo, wh; default: all)
+  --limit <n>         Max documents to process
+  --dry-run           Preview without writing to DB`,
+  );
   const sourceIdx = args.indexOf('--source');
   const limitIdx = args.indexOf('--limit');
   const dryRun = args.includes('--dry-run');

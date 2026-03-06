@@ -39,6 +39,7 @@ import {
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types/assessment';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
 import { addDays, getWeekRanges, toDateString } from '@/lib/utils/date-utils';
 
@@ -46,6 +47,7 @@ interface SnapshotOptions {
   from?: string;
   to?: string;
   category?: string;
+  forceUnlock?: boolean;
 }
 
 /** Run Layer 2 AI assessment + weekly aggregate computation. */
@@ -319,6 +321,7 @@ function parseSnapshotArgs(args: string[]): SnapshotOptions {
     if (arg === '--from') opts.from = args[++i];
     else if (arg === '--to') opts.to = args[++i];
     else if (arg === '--category') opts.category = args[++i];
+    else if (arg === '--force-unlock') opts.forceUnlock = true;
   }
   return opts;
 }
@@ -326,8 +329,19 @@ function parseSnapshotArgs(args: string[]): SnapshotOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const opts = parseSnapshotArgs(process.argv.slice(2));
-  withCronLock('snapshot', () => runSnapshots(opts))
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm snapshot [options]
+
+Options:
+  --from <date>       Start date (YYYY-MM-DD), default: current week
+  --to <date>         End date (YYYY-MM-DD), default: today
+  --category <key>    Process a single category
+  --force-unlock      Clear stale cron lock before running`,
+  );
+  const opts = parseSnapshotArgs(argv);
+  withCronLock('snapshot', () => runSnapshots(opts), undefined, opts.forceUnlock)
     .then((ran) => process.exit(ran ? 0 : 0))
     .catch((err) => {
       console.error('[snapshot] Fatal error:', err);

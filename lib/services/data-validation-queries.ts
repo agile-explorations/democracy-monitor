@@ -121,10 +121,45 @@ async function queryL2P2(from: string, to: string, category?: string) {
   return { p2FlagRouteRows, p2AuditRows };
 }
 
+async function queryL2P2Gaps(from: string, to: string, category?: string): Promise<number> {
+  const db = getDb();
+  const { catAiFilter } = buildL2Filters(from, to, category);
+  // Only count gaps for docs with sufficient content (>= 100 chars) — short docs
+  // permanently fail P2 parse and are skipped by retryMissingPass2.
+  const contentFilter = sql`EXISTS (
+    SELECT 1 FROM ${documents} d3
+    WHERE d3.url = ${aiDocumentAssessments.url}
+      AND d3.category = ${aiDocumentAssessments.category}
+      AND d3.content IS NOT NULL AND length(d3.content) >= 100
+  )`;
+  const [row] = await db
+    .select({
+      missing: sql<number>`count(distinct (${aiDocumentAssessments.url}, ${aiDocumentAssessments.category}))::int`,
+    })
+    .from(aiDocumentAssessments)
+    .where(
+      and(
+        eq(aiDocumentAssessments.pass, 1),
+        eq(aiDocumentAssessments.relevant, true),
+        catAiFilter,
+        buildDocExistsFilter(from, to, category),
+        contentFilter,
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${aiDocumentAssessments} a2
+          WHERE a2.url = ${aiDocumentAssessments.url}
+            AND a2.category = ${aiDocumentAssessments.category}
+            AND a2.pass = 2 AND a2.is_audit_sample = false
+        )`,
+      ),
+    );
+  return Number(row.missing);
+}
+
 async function queryL2CountsByCategory(from: string, to: string, category?: string) {
-  const [{ docRows, p1Rows }, { p2FlagRouteRows, p2AuditRows }] = await Promise.all([
+  const [{ docRows, p1Rows }, { p2FlagRouteRows, p2AuditRows }, p2GapCount] = await Promise.all([
     queryL2DocAndP1(from, to, category),
     queryL2P2(from, to, category),
+    queryL2P2Gaps(from, to, category),
   ]);
 
   return {
@@ -132,6 +167,7 @@ async function queryL2CountsByCategory(from: string, to: string, category?: stri
     p1: new Map(p1Rows.map((r) => [r.category, r])),
     p2FlagRoute: new Map(p2FlagRouteRows.map((r) => [r.category, r])),
     p2Audit: new Map(p2AuditRows.map((r) => [r.category, r])),
+    p2GapCount,
   };
 }
 
@@ -156,7 +192,16 @@ async function getLayer2PeriodStats(from: string, to: string, category?: string)
     auditSampled += Number(maps.p2Audit.get(cat)?.sampled ?? 0);
     auditFalseNeg += Number(maps.p2Audit.get(cat)?.falseNegatives ?? 0);
   }
-  return { totalDocs, p1Total, p1Flagged, p2FlagRoute, p2Concerning, auditSampled, auditFalseNeg };
+  return {
+    totalDocs,
+    p1Total,
+    p1Flagged,
+    p2FlagRoute,
+    p2Concerning,
+    p2Missing: maps.p2GapCount,
+    auditSampled,
+    auditFalseNeg,
+  };
 }
 
 export async function getLayer2Completeness(category?: string): Promise<Layer2Completeness> {
@@ -173,7 +218,7 @@ export async function getLayer2Completeness(category?: string): Promise<Layer2Co
       missingPass1: Math.max(0, stats.totalDocs - stats.p1Total),
       pass1Flagged: stats.p1Flagged,
       pass2Assessed: stats.p2FlagRoute + stats.auditSampled,
-      missingPass2: Math.max(0, stats.p1Flagged - stats.p2FlagRoute),
+      missingPass2: stats.p2Missing,
       pass2Flagged: stats.p2Concerning + stats.auditFalseNeg,
       auditSampled: stats.auditSampled,
       auditFalseNegatives: stats.auditFalseNeg,

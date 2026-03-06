@@ -14,6 +14,7 @@ import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/wee
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
 import { getWeekRanges, toDateString } from '@/lib/utils/date-utils';
 
@@ -278,7 +279,20 @@ function parseCliArgs(args: string[]): BackfillOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const opts = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm backfill [options]
+
+Options:
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
+  --category <key>    Process a single category
+  --source <name>     Limit to a specific source
+  --dry-run           Preview without writing to DB
+  --force             Force re-fetch even if already completed`,
+  );
+  const opts = parseCliArgs(argv);
   withCronLock('backfill', () => runBackfill(opts))
     .then((ran) => process.exit(ran ? 0 : 0))
     .catch((err) => {

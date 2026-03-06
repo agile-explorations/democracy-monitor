@@ -1,5 +1,6 @@
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { runBacktest } from '@/lib/validation/historical-backtest';
 import { TRUMP_T1_EVENTS } from '@/lib/validation/known-events';
 
@@ -10,6 +11,14 @@ const DEFAULT_TO = '2018-01-19';
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm backtest [options]
+
+Options:
+  --from <date>       Start date (YYYY-MM-DD, default: 2017-01-20)
+  --to <date>         End date (YYYY-MM-DD, default: 2019-01-20)`,
+  );
   let from = DEFAULT_FROM;
   let to = DEFAULT_TO;
 

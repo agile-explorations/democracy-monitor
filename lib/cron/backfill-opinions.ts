@@ -19,6 +19,7 @@ import {
 } from '@/lib/services/courtlistener-fetcher';
 import { storeDocuments } from '@/lib/services/document-store';
 import { sleep } from '@/lib/utils/async';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 interface BackfillOptions {
   category?: string;
@@ -212,7 +213,17 @@ function parseCliArgs(args: string[]): BackfillOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const options = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm backfill:opinions [options]
+
+Options:
+  --category <key>    Process a single category
+  --limit <n>         Max documents to process
+  --dry-run           Preview without writing to DB`,
+  );
+  const options = parseCliArgs(argv);
   run(options).catch((err) => {
     console.error('[backfill-opinions] Fatal:', err);
     process.exit(1);

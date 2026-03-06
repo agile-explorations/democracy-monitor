@@ -22,6 +22,7 @@ import { DEMO_SCENARIOS } from '@/lib/demo/scenarios';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { EnhancedAssessment, IntentAssessment, StatusLevel } from '@/lib/types';
+import { checkHelp } from '@/lib/utils/cli-help';
 import { toDateString } from '@/lib/utils/date-utils';
 
 loadEnvConfig(process.cwd());
@@ -171,6 +172,14 @@ export async function seedDemoData(
 }
 
 if (require.main === module) {
+  checkHelp(
+    process.argv.slice(2),
+    `Usage: pnpm demo:seed [options]
+
+Options:
+  --scenario <name>   Scenario name (default: degrading)
+  --days <n>          Number of days to generate (default: 30)`,
+  );
   const { days, scenario } = parseArgs();
   seedDemoData(days, scenario)
     .then(() => process.exit(0))

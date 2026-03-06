@@ -13,6 +13,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 /** NOS descriptions that indicate valid civil rights/liberties cases. */
 const VALID_NOS_PATTERNS = [
@@ -171,7 +172,15 @@ async function run(confirm: boolean): Promise<void> {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const confirm = process.argv.includes('--confirm');
+  const args = process.argv.slice(2);
+  checkHelp(
+    args,
+    `Usage: pnpm cl:purge-noise [options]
+
+Options:
+  --confirm           Actually delete (default: dry run / analysis only)`,
+  );
+  const confirm = args.includes('--confirm');
   run(confirm)
     .then(() => process.exit(0))
     .catch((err) => {

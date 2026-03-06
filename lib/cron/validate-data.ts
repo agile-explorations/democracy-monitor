@@ -15,6 +15,7 @@ import type {
   MetadataOnlyStats,
 } from '@/lib/services/data-validation-service';
 import { runDataValidation } from '@/lib/services/data-validation-service';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -159,7 +160,15 @@ function parseCliArgs(args: string[]): { category?: string } {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const options = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm validate:data [options]
+
+Options:
+  --category <key>    Filter to a single category`,
+  );
+  const options = parseCliArgs(argv);
 
   console.log('[validate:data] Running data validation...');
   if (options.category) console.log(`[validate:data] Category filter: ${options.category}`);

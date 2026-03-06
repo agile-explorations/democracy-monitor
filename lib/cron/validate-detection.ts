@@ -15,6 +15,7 @@ import type {
   ValidateOptions,
 } from '@/lib/services/event-validation-service';
 import { runValidation } from '@/lib/services/event-validation-service';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 // ---------------------------------------------------------------------------
 // Formatters
@@ -172,7 +173,17 @@ function parseCliArgs(args: string[]): CliOptions {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const options = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm validate:detection [options]
+
+Options:
+  --category <key>    Filter to a single category
+  --verbose           Show detailed output
+  --evidence          Show supporting evidence for each event`,
+  );
+  const options = parseCliArgs(argv);
 
   console.log('[validate:detection] Running detection validation...');
   if (options.category) console.log(`[validate:detection] Category filter: ${options.category}`);

@@ -19,6 +19,7 @@ import {
   CONTENT_FIXABLE_ORIGINS,
 } from '@/lib/services/ingest-validation-service';
 import type { Category } from '@/lib/types';
+import { checkHelp } from '@/lib/utils/cli-help';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -181,7 +182,15 @@ function parseCliArgs(args: string[]): { category?: string } {
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
-  const options = parseCliArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  checkHelp(
+    argv,
+    `Usage: pnpm validate:ingest [options]
+
+Options:
+  --category <key>    Filter to a single category`,
+  );
+  const options = parseCliArgs(argv);
 
   console.log('[validate:ingest] Running ingest validation...');
   if (options.category) console.log(`[validate:ingest] Category filter: ${options.category}`);
