@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-04)
+## Current state (as of 2026-03-07)
 
 ### Categories & baselines
 
@@ -74,7 +74,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 ### Source health & coverage
 
 - Fault-tolerant fetching: `fetchWithRetry()` in `lib/utils/fetch-retry.ts` wraps HTTP calls with 3-attempt exponential backoff (2s, 4s). Retries on 5xx/429, returns immediately on 4xx. Used by RSS/HTML/JSON/FR signal fetchers in feed-fetcher.ts. Retry cron (`pnpm signals:retry`) runs at 11am UTC for extended outages.
-- RSS/HTML/JSON signals recorded in `fetch_log` via `recordSnapshotSignalResults()` for unified gap visibility alongside API signals
+- All signal types recorded in `fetch_log` via `recordSnapshotSignalResults()` (SNAPSHOT_LOGGED_TYPES covers rss, html, json, federal_register, courtlistener, doj_json, govinfo, fec_json, oig_html)
 - Source health monitoring: `source_health` table, 31 signals with stable IDs, 6 canary sources, SourceHealthCheck classification (healthy/degraded/unavailable/silent)
 - Meta-assessment: 4 integrity levels (high/moderate/low/critical) from `INTEGRITY_THRESHOLDS` in scoring-config; canary downgrade from high→moderate when ≥50% canaries critical
 - Confidence degradation: `sourceAvailability` factor (weight 0.15) in `DATA_COVERAGE_WEIGHTS`; `CRITICAL_CONFIDENCE_CAP = 0.3` hard cap
@@ -84,7 +84,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Source fetchers
 
-- Fetcher module pattern: `parseParams()` + `toContentItem()` (pure, tested) + `fetchRecent()` + `fetchHistorical()` (I/O, excluded from coverage). All 4 source fetchers follow this.
+- Fetcher module pattern: `parseParams()` + `toContentItem()` (pure, tested) + `fetchRecent()` + `fetchHistorical()` (I/O, excluded from coverage). All gov-doc fetchers throw on HTTP errors (first page throws; subsequent pages return partial). `fetchSignalWithRetry` wraps with 3 retries + exponential backoff and records failures in `fetch_log`.
 - CourtListener fetcher: `lib/services/courtlistener-fetcher.ts`, REST API v4, `COURTLISTENER_API_TOKEN` env var, 750ms rate limit, pseudo-URL `courtlistener://recap?nos=440`. `CL_BACKFILL_MAX_PAGES = 45` (900 results) — peak weekly volume is 842 (lawEnforcement, Trump T1)
 - DOJ fetcher: `lib/services/doj-fetcher.ts`, `https://www.justice.gov/api/v1/press_releases.json`, open API, pseudo-URL `doj://press?component=criminal-division`
 - DOJ frozen taxonomy: `lib/data/doj-taxonomy.ts`, 15 `DojInternalBucket` values, `classifyDojRelease()` first-match-wins, `DOJ_BUCKET_TO_CATEGORIES` maps to DM categories
@@ -104,7 +104,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `crossfeedRhetoricToCategories(items)` in rhetoric-crossfeed.ts — classifies rhetoric items by FR signal terms, stores under matched categories. Called in snapshot, backfill, and backfill-rhetoric pipelines.
 - `lib/data/category-topics.ts` — PolicyArea→categories many-to-many mapping (bridges 5 rhetoric areas to 13 assessment categories)
 - `classifyPolicyAreaWithScore()` exported from intent-data-service.ts — returns {area, score}; score=0 means unclassifiable
-- Trump WH archive scraper: `trumpwhitehouse.archives.gov` WordPress parser in rhetoric-fetcher.ts (WhArchiveConfig in baselines.ts)
+- WH scraper removed (Sprint R-CPD2): rhetoric-fetcher.ts is now GDELT-only. Historical WH data remains in DB but no new fetching.
 
 ### Modules & patterns
 
@@ -316,4 +316,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-AP1: Analysis period safeguards — `lib/data/analysis-periods.ts` single source of truth (BASELINE_CONFIGS + T2). Pipeline commands (`scores:recompute`, `embeddings:backfill`, `layers:enrich`, `layer2:backfill`) default to analysis periods only; `--all-dates` override for gap years. `backfill.ts` embed step filtered. 12 new tests (1683 total across 135 files).
 - Sprint R-VAL1: Validation command refactor — replaced `backfill:verify` + `validate:events` with three non-overlapping commands: `validate:ingest` (source coverage, content completeness, pagination fitness), `validate:data` (scores, embeddings, baselines, L2 coverage, layer scores, metadata_only classification), `validate:detection` (known events, negative controls, layer attribution). New checks: `getLayerScorePopulation`, `getMetadataOnlyClassification`. Service/query/CLI separation. Issues #234-#238. 1678 tests across 135 files.
 - Sprint R-CPD1: CPD source swap — GovInfo CPD fetcher with NARA subject-based category routing (164 mapped terms, 13 categories). `ACTIVE_SOURCES` filter excludes whitehouse/gdelt from scoring/embedding/backfill. Backfilled 5 analysis periods. Pre-gate (#239-#242) complete; gate (#243) + post-gate cleanup (#244-#246) pending. 11 files, 1102 lines added, 1694 tests.
+- Sprint R-CPD2: Validated document database — non-Monday week_of fix (getWeekRanges Monday-alignment + DB cleanup: 2,825 deletes, 143 updates), WH scraper removal (rhetoric-fetcher, backfill-rhetoric, backfill-content, baselines, intent-data-service), fetcher error handling (all 8 gov-doc fetchers throw on HTTP errors for retry/logging), pre-existing TS fixes (oig_html SignalType, domhandler Element), SNAPSHOT_LOGGED_TYPES expansion, event expectation adjustments (T2-1/T2-9/T2-11 thin signals, NC-2 threshold 10%→8%). NC-3 calibration diagnosed (L1 thin-category sensitivity + L2 high-volume over-flagging) and deferred to #267. Issues #261-#267. 1722 tests across 139 files.
 - Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/internal/ROADMAP.md`.

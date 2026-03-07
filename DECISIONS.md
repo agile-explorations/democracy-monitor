@@ -10,6 +10,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CPD2: Validated Document Database ✅
+
+**Status: Done.** Data cleanup (non-Monday week_of fix + DB repair), production code cleanup (WH scraper removal, fetcher error handling), validation code cleanup (event expectations, NC-2 threshold, SNAPSHOT_LOGGED_TYPES expansion, pre-existing TS fixes).
+
+**Scope vs. Actual:**
+
+- Planned (6 issues #261-#266): non-Monday week_of fix (#261), WH scraper removal (#262), fetcher error handling (#263), TS fixes (#264), SNAPSHOT_LOGGED_TYPES (#265), event expectation adjustments (#266)
+- Actual: All 6 issues delivered. Additionally created #267 (NC-3 calibration) as a follow-up research issue after investigating root cause.
+
+**Key Decisions:**
+
+1. **getWeekRanges Monday-alignment**: Root cause was baseline configs using inauguration dates (non-Mondays) as `from` parameter. Fixed by snapping `from` to Monday via `getMonday()`. Data cleanup: 2,824 duplicate deletes + 143 standalone row updates + 1 hatch collision resolution. Post-fix: 0 non-Monday rows, 4,515 total (down from 7,340).
+2. **WH scraper removal scope**: Removed all code but left historical WH data in the database. Documents with `source_origin='whitehouse'` still exist and are scored/displayed — only the fetcher code was removed.
+3. **Fetcher error throw strategy**: First page errors throw (enabling retry via `fetchSignalWithRetry`). Subsequent page errors in paginated fetchers (FR, CL) log and return partial results. GDELT left as-is (uses internal `fetchWithRetry`, may be removed).
+4. **NC-3 deferred to separate issue**: Investigated layer-by-layer. Root causes: L1 sensitivity in thin categories (judicialIndependence, elections — normal volume variance exceeds structural threshold), L2 over-flagging in high-volume categories (civilLiberties, executiveOversight). Created #267 with full diagnostic table.
+5. **ai_document_assessments week_of not cleaned**: Has mixed DOW alignment (153K non-Monday rows), but `getPass1Count` already uses 7-day range queries. No data fix needed — consumers handle it.
+
+**Lessons Learned:**
+
+1. **Data alignment bugs compound**: A single `getWeekRanges` bug created 2,968 bad rows. DST transitions shifted the DOW mid-baseline (Friday→Thursday in March, back to Friday in November), creating 3+ different alignments per baseline period. UTC date arithmetic is essential for week-based bucketing.
+2. **Silent HTTP error swallowing was universal**: All 8 government-doc fetchers returned empty arrays on non-OK responses. This bypassed retry logic and `fetch_log` error recording. Audit revealed the pattern was consistent across all fetchers written at different times — a shared anti-pattern worth an OpenGrep rule.
+3. **Negative controls distinguish data bugs from calibration issues**: NC-3 failing after the non-Monday fix confirmed it's a real calibration problem, not a data artifact. The diagnostic data (layer scores per week) pinpointed exactly which layer drives each category's false elevations.
+
+---
+
 ## Sprint R-VAL1: Validation Command Refactor ✅
 
 **Status: Done.** Replaced monolithic `backfill:verify` + standalone `validate:events` with three semantically distinct, non-overlapping validation commands: `validate:ingest`, `validate:data`, `validate:detection`.
