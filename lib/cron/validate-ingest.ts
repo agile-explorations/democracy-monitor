@@ -2,7 +2,8 @@
  * CLI: pnpm validate:ingest [--category <key>]
  *
  * Checks source coverage, content completeness, pagination fitness,
- * FR/GDELT period coverage, and CourtListener opinion coverage.
+ * FR/CPD/GDELT period coverage, signal definition coverage,
+ * and CourtListener opinion coverage.
  */
 
 import { CATEGORIES } from '@/lib/data/categories';
@@ -10,6 +11,7 @@ import type {
   ContentCompleteness,
   DocumentCoverage,
   IngestReport,
+  SignalCoverageGap,
   SourcePeriodCoverage,
   SourcePeriodGap,
   ClOpinionCoverage,
@@ -111,6 +113,49 @@ function printFrPeriodCoverage(frCoverage: SourcePeriodCoverage[], cats: Categor
   }
 }
 
+function printCpdPeriodCoverage(cpdCoverage: SourcePeriodCoverage[], cats: Category[]): void {
+  console.log('\n=== CPD Period Coverage ===');
+  const cpdByCat = new Map<string, Map<string, number>>();
+  for (const row of cpdCoverage) {
+    if (!cpdByCat.has(row.category)) cpdByCat.set(row.category, new Map());
+    cpdByCat.get(row.category)!.set(row.period, row.count);
+  }
+  const hdr = EXPECTED_PERIODS.map((p) => p.replace(/^[a-z]+_/, '').padStart(6)).join(' ');
+  console.log(`  ${''.padEnd(30)} ${hdr}`);
+  for (const cat of cats) {
+    const pMap = cpdByCat.get(cat.key);
+    if (!pMap) continue; // Only show categories that have CPD data
+    const vals = EXPECTED_PERIODS.map((p) => {
+      const c = pMap?.get(p) ?? 0;
+      return (c > 0 ? String(c) : '-').padStart(6);
+    });
+    console.log(`  ${cat.key.padEnd(30)} ${vals.join(' ')}`);
+  }
+  const catsWithData = cats.filter((c) => cpdByCat.has(c.key));
+  const catsWithout = cats.filter((c) => !cpdByCat.has(c.key));
+  if (catsWithout.length > 0 && catsWithData.length > 0) {
+    console.log(`  (${catsWithout.length} categories have no CPD documents)`);
+  }
+}
+
+function printSignalCoverage(gaps: SignalCoverageGap[]): void {
+  if (gaps.length === 0) {
+    console.log('\n=== Signal Definition Coverage ===');
+    console.log('  \u2713 All expected sources have data in every category');
+    return;
+  }
+  console.log('\n=== Signal Definition Coverage ===');
+  const byCategory = new Map<string, SignalCoverageGap[]>();
+  for (const gap of gaps) {
+    if (!byCategory.has(gap.category)) byCategory.set(gap.category, []);
+    byCategory.get(gap.category)!.push(gap);
+  }
+  for (const [cat, catGaps] of [...byCategory.entries()].sort()) {
+    const sources = catGaps.map((g) => `${g.expectedSource} (${g.origin})`).join(', ');
+    console.log(`  \u2717 ${cat.padEnd(30)} missing: ${sources}`);
+  }
+}
+
 function printGdeltCoverage(
   gdeltCoverage: SourcePeriodCoverage[],
   docCoverage: DocumentCoverage[],
@@ -182,7 +227,9 @@ function printReport(report: IngestReport, categoryFilter?: string): void {
   printClOpinionCoverage(report.clOpinionCoverage);
   printSourcePeriodCoverage(report.sourcePeriodCoverage);
   printFrPeriodCoverage(report.frPeriodCoverage, cats);
+  printCpdPeriodCoverage(report.cpdPeriodCoverage, cats);
   printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
+  printSignalCoverage(report.signalCoverageGaps);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

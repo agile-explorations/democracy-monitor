@@ -7,19 +7,27 @@
  * Source-specific queries: ingest-validation-queries.ts
  */
 
-import { eq, sql, and, inArray } from 'drizzle-orm';
 import { CATEGORIES } from '@/lib/data/categories';
-import { isDbAvailable, getDb } from '@/lib/db';
-import { documents } from '@/lib/db/schema';
+import { isDbAvailable } from '@/lib/db';
 import type { Category } from '@/lib/types';
 import {
+  getDocumentCoverage,
+  getContentCompleteness,
+  getContentCompletenessByOrigin,
   getPaginationFitness,
   getFrPeriodCoverage,
+  getCpdPeriodCoverage,
   getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
   getSourcePeriodCoverage,
+  getSourceCoverageByCategory,
+  checkSignalCoverage,
 } from './ingest-validation-queries';
-import type { SourcePeriodGap } from './ingest-validation-queries';
+import type {
+  SourcePeriodGap,
+  SignalCoverageRow,
+  SignalCoverageGap,
+} from './ingest-validation-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,9 +72,11 @@ export interface IngestReport {
   contentCompletenessByOrigin: ContentCompleteness[];
   paginationFitness: PaginationFitness[];
   frPeriodCoverage: SourcePeriodCoverage[];
+  cpdPeriodCoverage: SourcePeriodCoverage[];
   gdeltCrossfeedCoverage: SourcePeriodCoverage[];
   sourcePeriodCoverage: SourcePeriodGap[];
   clOpinionCoverage: ClOpinionCoverage | null;
+  signalCoverageGaps: SignalCoverageGap[];
   warnings: string[];
 }
 
@@ -77,97 +87,20 @@ export const CONTENT_FIXABLE_TYPES = new Set(['Presidential Document', 'congress
 export const CONTENT_FIXABLE_ORIGINS = new Map([['whitehouse', 'wh']]);
 
 // Re-export query functions and types for consumers
-export type { SourcePeriodGap };
+export type { SourcePeriodGap, SignalCoverageRow, SignalCoverageGap };
 export {
+  getDocumentCoverage,
+  getContentCompleteness,
+  getContentCompletenessByOrigin,
   getPaginationFitness,
   getFrPeriodCoverage,
+  getCpdPeriodCoverage,
   getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
   getSourcePeriodCoverage,
+  getSourceCoverageByCategory,
+  checkSignalCoverage,
 };
-
-// ---------------------------------------------------------------------------
-// Queries (document coverage and content completeness)
-// ---------------------------------------------------------------------------
-
-export async function getDocumentCoverage(category?: string): Promise<DocumentCoverage[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const catFilter = category ? eq(documents.category, category) : undefined;
-  const rows = await db
-    .select({
-      category: documents.category,
-      sourceOrigin: sql<string>`coalesce(${documents.sourceOrigin}, 'unknown')`,
-      count: sql<number>`count(*)::int`,
-    })
-    .from(documents)
-    .where(catFilter)
-    .groupBy(documents.category, documents.sourceOrigin)
-    .orderBy(documents.category, documents.sourceOrigin);
-
-  return rows.map((r) => ({
-    category: r.category,
-    sourceOrigin: r.sourceOrigin,
-    count: Number(r.count),
-  }));
-}
-
-export async function getContentCompleteness(category?: string): Promise<ContentCompleteness[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-  const conditions = [sql`${documents.contentType} != 'metadata_only'`];
-  if (category) conditions.push(eq(documents.category, category));
-
-  const rows = await db
-    .select({
-      sourceType: documents.sourceType,
-      total: sql<number>`count(*)::int`,
-      nullContent: sql<number>`count(*) filter (where ${documents.content} is null)::int`,
-    })
-    .from(documents)
-    .where(and(...conditions))
-    .groupBy(documents.sourceType)
-    .orderBy(sql`count(*) filter (where ${documents.content} is null) desc`);
-
-  return rows
-    .filter((r) => Number(r.nullContent) > 0)
-    .map((r) => ({
-      sourceType: r.sourceType,
-      total: Number(r.total),
-      nullContent: Number(r.nullContent),
-    }));
-}
-
-export async function getContentCompletenessByOrigin(
-  category?: string,
-): Promise<ContentCompleteness[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-  const origins = [...CONTENT_FIXABLE_ORIGINS.keys()];
-  if (origins.length === 0) return [];
-
-  const catFilter = category ? eq(documents.category, category) : undefined;
-  const originFilter = inArray(documents.sourceOrigin, origins);
-
-  const rows = await db
-    .select({
-      sourceType: sql<string>`coalesce(${documents.sourceOrigin}, 'unknown')`,
-      total: sql<number>`count(*)::int`,
-      nullContent: sql<number>`count(*) filter (where ${documents.content} is null)::int`,
-    })
-    .from(documents)
-    .where(catFilter ? and(catFilter, originFilter) : originFilter)
-    .groupBy(documents.sourceOrigin);
-
-  return rows
-    .filter((r) => Number(r.nullContent) > 0)
-    .map((r) => ({
-      sourceType: r.sourceType,
-      total: Number(r.total),
-      nullContent: Number(r.nullContent),
-    }));
-}
 
 // ---------------------------------------------------------------------------
 // Warning collection
@@ -312,6 +245,12 @@ export function collectWarnings(report: IngestReport, categoryFilter?: string): 
 
   warnings.push(...checkSourcePeriodGaps(report.sourcePeriodCoverage));
 
+  // Signal definition coverage gaps
+  for (const gap of report.signalCoverageGaps) {
+    const label = gap.origin === 'signal' ? 'signal-defined' : 'pipeline-routed';
+    warnings.push(`${gap.category} missing ${label} source: ${gap.expectedSource}`);
+  }
+
   return warnings;
 }
 
@@ -328,19 +267,26 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     contentByOrigin,
     pagination,
     frPeriod,
+    cpdPeriod,
     gdeltCrossfeed,
     sourcePeriod,
     clOpinions,
+    sourceCoverage,
   ] = await Promise.all([
     getDocumentCoverage(category),
     getContentCompleteness(category),
     getContentCompletenessByOrigin(category),
     getPaginationFitness(category),
     getFrPeriodCoverage(category),
+    getCpdPeriodCoverage(category),
     getGdeltCrossfeedCoverage(category),
     getSourcePeriodCoverage(),
     getClOpinionCoverage(),
+    getSourceCoverageByCategory(),
   ]);
+
+  const cats = category ? CATEGORIES.filter((c) => c.key === category) : CATEGORIES;
+  const signalCoverageGaps = checkSignalCoverage(sourceCoverage, cats);
 
   const report: IngestReport = {
     documentCoverage: coverage,
@@ -348,9 +294,11 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     contentCompletenessByOrigin: contentByOrigin,
     paginationFitness: pagination,
     frPeriodCoverage: frPeriod,
+    cpdPeriodCoverage: cpdPeriod,
     gdeltCrossfeedCoverage: gdeltCrossfeed,
     sourcePeriodCoverage: sourcePeriod,
     clOpinionCoverage: clOpinions,
+    signalCoverageGaps,
     warnings: [],
   };
   report.warnings = collectWarnings(report, category);

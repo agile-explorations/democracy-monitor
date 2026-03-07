@@ -181,8 +181,11 @@ describe('collectWarnings', () => {
       contentCompletenessByOrigin: [],
       paginationFitness: [],
       frPeriodCoverage: [],
+      cpdPeriodCoverage: [],
       gdeltCrossfeedCoverage: [],
+      sourcePeriodCoverage: [],
       clOpinionCoverage: null,
+      signalCoverageGaps: [],
       warnings: [],
       ...overrides,
     };
