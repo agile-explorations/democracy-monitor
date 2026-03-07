@@ -19,7 +19,7 @@ pnpm db:migrate     # Apply migrations to PostgreSQL
 pnpm snapshot              # Run daily snapshot cron (incremental fetch + full assessment)
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
-pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo, --dry-run, --limit N)
+pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|wh|oig|fec, --dry-run, --limit N)
 pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution

@@ -222,4 +222,12 @@ describe('stripHtml', () => {
   it('handles empty string', () => {
     expect(stripHtml('')).toBe('');
   });
+
+  it('strips style blocks with their content', () => {
+    expect(stripHtml('<style>.s1 { color: black; }</style><p>Content</p>')).toBe('Content');
+  });
+
+  it('strips script blocks with their content', () => {
+    expect(stripHtml('<script>alert("x")</script><p>Content</p>')).toBe('Content');
+  });
 });

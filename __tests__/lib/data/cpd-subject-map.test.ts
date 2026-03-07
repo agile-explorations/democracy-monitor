@@ -16,7 +16,6 @@ const VALID_CATEGORIES = [
   'immigrationEnforcement',
   'fiscal',
   'military',
-  'emergencyPowers',
   'rulemaking',
   'infoAvailability',
   'mediaFreedom',
@@ -95,7 +94,7 @@ describe('mapSubjectsToCategories', () => {
     const categories = mapSubjectsToCategories(subjects);
     expect(categories).toContain('executiveOversight');
     expect(categories).toContain('lawEnforcement');
-    expect(categories).toContain('emergencyPowers');
+    expect(categories).toContain('military');
     expect(categories).toContain('judicialIndependence');
   });
 

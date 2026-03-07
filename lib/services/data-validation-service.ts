@@ -13,6 +13,7 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents, documentScores, weeklyAggregates, baselines } from '@/lib/db/schema';
+import { getDataIntegrityChecks } from './data-integrity-queries';
 import {
   getLayer2Completeness,
   getLayerScorePopulation,
@@ -27,6 +28,7 @@ export interface StageCompleteness {
   totalDocuments: number;
   missingScores: number;
   missingEmbeddings: number;
+  missingEmbeddingsIntent: number;
   metadataOnlyCount: number;
   totalWeeks: number;
   missingAggregates: number;
@@ -74,16 +76,25 @@ export interface MetadataOnlyStats {
   pass: boolean;
 }
 
+export interface DataIntegrityCheck {
+  name: string;
+  count: number;
+  detail?: string;
+  pass: boolean;
+}
+
 export interface DataReport {
   stageCompleteness: StageCompleteness;
   baselineCompleteness: BaselineCompleteness[];
   layer2Completeness: Layer2Completeness;
   layerScorePopulation: LayerScorePeriodStats[];
   metadataOnlyClassification: MetadataOnlyStats[];
+  dataIntegrity: DataIntegrityCheck[];
   warnings: string[];
 }
 
 // Re-export query functions for consumers
+export { getDataIntegrityChecks } from './data-integrity-queries';
 export { getLayer2Completeness, getLayerScorePopulation, getMetadataOnlyClassification };
 
 // ---------------------------------------------------------------------------
@@ -94,6 +105,7 @@ const EMPTY_STAGE: StageCompleteness = {
   totalDocuments: 0,
   missingScores: 0,
   missingEmbeddings: 0,
+  missingEmbeddingsIntent: 0,
   metadataOnlyCount: 0,
   totalWeeks: 0,
   missingAggregates: 0,
@@ -133,7 +145,8 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
   const [docStats] = await db
     .select({
       total: sql<number>`count(*)::int`,
-      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only')::int`,
+      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.category} != 'intent')::int`,
+      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.category} = 'intent')::int`,
       metadataOnlyCount: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
     })
     .from(documents)
@@ -160,6 +173,7 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
     totalDocuments: Number(docStats.total),
     missingScores: Number(scoreStats.missingScores),
     missingEmbeddings: Number(docStats.missingEmbeddings),
+    missingEmbeddingsIntent: Number(docStats.missingEmbeddingsIntent),
     metadataOnlyCount: Number(docStats.metadataOnlyCount),
     ...aggGap,
   };
@@ -214,7 +228,7 @@ export function collectWarnings(report: DataReport): string[] {
   }
   if (s.missingEmbeddings > 0) {
     warnings.push(
-      `${s.missingEmbeddings} documents need embedding (run: pnpm embeddings:backfill)`,
+      `${s.missingEmbeddings} detection documents need embedding (run: pnpm embeddings:backfill)`,
     );
   }
   if (s.missingAggregates > 0) {
@@ -251,6 +265,13 @@ export function collectWarnings(report: DataReport): string[] {
       warnings.push(`${m.population}: ${m.unmarked} of ${m.total} not marked metadata_only`);
   }
 
+  for (const check of report.dataIntegrity) {
+    if (!check.pass) {
+      const detail = check.detail ? `: ${check.detail}` : '';
+      warnings.push(`${check.name} (${check.count}${detail})`);
+    }
+  }
+
   return warnings;
 }
 
@@ -261,14 +282,21 @@ export function collectWarnings(report: DataReport): string[] {
 export async function runDataValidation(category?: string): Promise<DataReport> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
 
-  const [stageCompleteness, baselineCompleteness, layer2Completeness, layerScores, metadataOnly] =
-    await Promise.all([
-      getStageCompleteness(category),
-      getBaselineCompleteness(),
-      getLayer2Completeness(category),
-      getLayerScorePopulation(category),
-      getMetadataOnlyClassification(),
-    ]);
+  const [
+    stageCompleteness,
+    baselineCompleteness,
+    layer2Completeness,
+    layerScores,
+    metadataOnly,
+    dataIntegrity,
+  ] = await Promise.all([
+    getStageCompleteness(category),
+    getBaselineCompleteness(),
+    getLayer2Completeness(category),
+    getLayerScorePopulation(category),
+    getMetadataOnlyClassification(),
+    getDataIntegrityChecks(),
+  ]);
 
   const report: DataReport = {
     stageCompleteness,
@@ -276,6 +304,7 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layer2Completeness,
     layerScorePopulation: layerScores,
     metadataOnlyClassification: metadataOnly,
+    dataIntegrity,
     warnings: [],
   };
   report.warnings = collectWarnings(report);

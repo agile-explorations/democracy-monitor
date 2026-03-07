@@ -26,6 +26,18 @@ vi.mock('@/lib/services/fec-fetcher', () => ({
   parseFecParams: vi.fn().mockReturnValue({}),
 }));
 
+vi.mock('@/lib/services/doj-oig-fetcher', () => ({
+  fetchDojOigHistorical: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@/lib/services/hhs-oig-fetcher', () => ({
+  fetchHhsOigHistorical: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@/lib/services/ssa-oig-fetcher', () => ({
+  fetchSsaOigHistorical: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('@/lib/utils/async', () => ({
   sleep: vi.fn().mockResolvedValue(undefined),
 }));
@@ -137,6 +149,7 @@ describe('fetchWeekDocuments', () => {
         doj: [{ url: 'doj://test', type: 'doj_json' }],
         gi: [],
         fec: [],
+        oig: [],
       },
       'lawEnforcement',
     );
@@ -168,6 +181,7 @@ describe('fetchWeekDocuments', () => {
         doj: [{ url: 'doj://test', type: 'doj_json' }],
         gi: [],
         fec: [],
+        oig: [],
       },
       'lawEnforcement',
     );
@@ -182,7 +196,7 @@ describe('fetchWeekDocuments', () => {
     const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
     const result = await fetchWeekDocuments(
       week,
-      { fr: [], cl: [], doj: [], gi: [], fec: [] },
+      { fr: [], cl: [], doj: [], gi: [], fec: [], oig: [] },
       'executiveAuthority',
     );
 
@@ -210,6 +224,7 @@ describe('fetchWeekDocuments', () => {
         doj: [{ url: 'doj://test', type: 'doj_json' }],
         gi: [],
         fec: [],
+        oig: [],
       },
       'lawEnforcement',
     );

@@ -10,6 +10,7 @@ import {
   fetchWeekItemsDoj,
   fetchWeekItemsGovInfo,
   fetchWeekItemsFec,
+  fetchWeekItemsOig,
 } from '@/lib/cron/backfill-fetchers';
 import type { SourceFetchResult } from '@/lib/cron/backfill-fetchers';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
@@ -25,6 +26,7 @@ const API_SIGNAL_TYPES = new Set([
   'doj_json',
   'govinfo',
   'fec_json',
+  'oig_html',
 ]);
 
 export interface IncrementalFetchResult {
@@ -38,6 +40,7 @@ type GroupedSignals = {
   doj: Signal[];
   gi: Signal[];
   fec: Signal[];
+  oig: Signal[];
   rss: Signal[];
 };
 
@@ -48,6 +51,7 @@ function groupSignals(signals: Signal[]): GroupedSignals {
     doj: signals.filter((s) => s.type === 'doj_json'),
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
+    oig: signals.filter((s) => s.type === 'oig_html'),
     rss: signals.filter((s) => !API_SIGNAL_TYPES.has(s.type)),
   };
 }
@@ -89,6 +93,7 @@ async function fetchApiSignals(
     { key: 'doj', fn: fetchWeekItemsDoj },
     { key: 'gi', fn: fetchWeekItemsGovInfo },
     { key: 'fec', fn: fetchWeekItemsFec },
+    { key: 'oig', fn: fetchWeekItemsOig },
   ];
 
   for (const { key, fn } of fetchers) {

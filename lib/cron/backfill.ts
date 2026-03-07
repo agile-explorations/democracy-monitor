@@ -42,6 +42,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   govinfo: 'govinfo',
   fec: 'fec_json',
   fr: 'federal_register',
+  oig: 'oig_html',
 };
 
 const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['whitehouse', 'gdelt']);
@@ -49,7 +50,14 @@ const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legi
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
-type SignalGroups = { fr: Signal[]; cl: Signal[]; doj: Signal[]; gi: Signal[]; fec: Signal[] };
+type SignalGroups = {
+  fr: Signal[];
+  cl: Signal[];
+  doj: Signal[];
+  gi: Signal[];
+  fec: Signal[];
+  oig: Signal[];
+};
 
 const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
   courtlistener: 'cl',
@@ -57,6 +65,7 @@ const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
   govinfo: 'gi',
   fec_json: 'fec',
   federal_register: 'fr',
+  oig_html: 'oig',
 };
 
 /** Fetch, store, score, aggregate, and embed a week's documents. */
@@ -113,6 +122,7 @@ function buildSignalGroups(signals: Signal[], sourceSignalType?: string): Signal
     doj: signals.filter((s) => s.type === 'doj_json'),
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
+    oig: signals.filter((s) => s.type === 'oig_html'),
   };
   if (sourceSignalType) {
     const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];

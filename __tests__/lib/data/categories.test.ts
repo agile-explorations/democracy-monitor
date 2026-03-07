@@ -27,6 +27,7 @@ describe('CATEGORIES', () => {
       'doj_json',
       'govinfo',
       'fec_json',
+      'oig_html',
     ];
     for (const cat of CATEGORIES) {
       for (const signal of cat.signals) {
@@ -83,17 +84,19 @@ describe('CATEGORIES', () => {
     expect(types).toContain('federal_register');
   });
 
-  it('executiveOversight has govinfo and rss (IG) signal types', () => {
+  it('executiveOversight has govinfo, oig_html, and rss (DOD) signal types', () => {
     const cat = CATEGORIES.find((c) => c.key === 'executiveOversight');
     expect(cat).toBeDefined();
     const types = cat!.signals.map((s) => s.type);
     expect(types).toContain('govinfo');
+    expect(types).toContain('oig_html');
     expect(types).toContain('rss');
     const ids = cat!.signals.map((s) => s.id);
     expect(ids).toContain('gi_congressional_reports');
+    expect(ids).toContain('oig_doj');
+    expect(ids).toContain('oig_hhs');
+    expect(ids).toContain('oig_ssa');
     expect(ids).toContain('rss_dod_oig');
-    expect(ids).toContain('rss_hhs_oig');
-    expect(ids).toContain('rss_doj_oig');
   });
 
   it('elections has fec_json signal type', () => {

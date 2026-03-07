@@ -43,6 +43,8 @@ const MAX_SUMMARY_LENGTH = 800;
 /** Strip HTML tags, decode common entities, and collapse whitespace */
 export function stripHtml(html: string): string {
   return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
     .replace(/<[^>]*>/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')

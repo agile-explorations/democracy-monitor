@@ -101,11 +101,11 @@ export const CATEGORIES: Category[] = [
         note: 'The main website for all government watchdog reports — Inspector General audits, investigations, and recommendations.',
       },
       {
-        id: 'rss_ssa_oig',
-        name: 'Social Security Watchdog',
-        url: 'https://oig.ssa.gov/feed.xml',
-        type: 'rss',
-        note: 'Reports from the Social Security Inspector General (still working)',
+        id: 'oig_ssa',
+        name: 'SSA Inspector General',
+        url: 'oig://ssa',
+        type: 'oig_html',
+        note: 'SSA OIG audit reports via HTML scraping (oig.ssa.gov)',
         health: {
           isCanary: false,
           expectedFrequency: 'weekly',
@@ -159,7 +159,7 @@ export const CATEGORIES: Category[] = [
         name: 'DOD Inspector General',
         url: 'https://www.dodig.mil/RSS-Feed/',
         type: 'rss',
-        note: 'Department of Defense Office of Inspector General reports',
+        note: 'DOD OIG — Akamai WAF may block; diagnostic pending (#251)',
         health: {
           isCanary: false,
           expectedFrequency: 'weekly',
@@ -168,11 +168,11 @@ export const CATEGORIES: Category[] = [
         },
       },
       {
-        id: 'rss_hhs_oig',
+        id: 'oig_hhs',
         name: 'HHS Inspector General',
-        url: 'https://oig.hhs.gov/rss/oig-rss.xml',
-        type: 'rss',
-        note: 'Health and Human Services Office of Inspector General reports',
+        url: 'oig://hhs',
+        type: 'oig_html',
+        note: 'HHS OIG reports via HTML scraping (oig.hhs.gov)',
         health: {
           isCanary: false,
           expectedFrequency: 'weekly',
@@ -181,11 +181,11 @@ export const CATEGORIES: Category[] = [
         },
       },
       {
-        id: 'rss_doj_oig',
+        id: 'oig_doj',
         name: 'DOJ Inspector General',
-        url: 'https://oig.justice.gov/rss.xml',
-        type: 'rss',
-        note: 'Department of Justice Office of Inspector General reports',
+        url: 'oig://doj',
+        type: 'oig_html',
+        note: 'DOJ OIG reports via HTML scraping (oig.justice.gov)',
         health: {
           isCanary: false,
           expectedFrequency: 'weekly',

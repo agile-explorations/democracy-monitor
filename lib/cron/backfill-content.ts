@@ -1,29 +1,39 @@
 /**
- * CLI: pnpm backfill:content [--source fr|govinfo|wh] [--dry-run] [--limit N]
+ * CLI: pnpm backfill:content [--source fr|govinfo|wh|oig|fec] [--dry-run] [--limit N]
  *
  * Backfills null-content documents with full text:
  * - FR Presidential Documents: fetches raw_text_url from FR API, then raw text
  * - GovInfo Congressional Reports: fetches /packages/{id}/htm from GovInfo API
  * - WH (whitehouse.gov / trumpwhitehouse.archives.gov): scrapes article body
+ * - OIG (HHS/DOJ/SSA Inspector General): HHS detail page HTML, DOJ/SSA PDF extraction
+ * - FEC (MURs/Advisory Opinions): re-fetches structured data + PDF text extraction
  *
  * Sets embedded_at = NULL on updated docs so `pnpm embeddings:backfill` re-embeds them.
  */
 
-import { eq, isNull, and, sql } from 'drizzle-orm';
+import { eq, isNull, and, sql, like } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { stripHtml } from '@/lib/parsers/feed-parser';
+import { fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
+import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
 import { fetchGovInfoText } from '@/lib/services/govinfo-fetcher';
+import { fetchHhsOigReportContent } from '@/lib/services/hhs-oig-fetcher';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { extractPdfText } from '@/lib/utils/pdf-extractor';
 
 const BATCH_SIZE = 50;
 const RATE_LIMIT_MS = 200;
 const WH_RATE_LIMIT_MS = 500;
 const MAX_CONTENT_LENGTH = 8_000;
 const FR_FETCH_TIMEOUT_MS = 30_000;
+const DOJ_OIG_CRAWL_DELAY_MS = 5_000; // robots.txt: Crawl-delay: 5
+const HHS_OIG_CRAWL_DELAY_MS = 10_000; // robots.txt: Crawl-delay: 10
+const SSA_OIG_RATE_LIMIT_MS = 2_000; // no robots.txt crawl-delay, be polite
+const FEC_RATE_LIMIT_MS = 4_000; // FEC allows ~1,000 req/hr
 
-type Source = 'fr' | 'govinfo' | 'wh';
+type Source = 'fr' | 'govinfo' | 'wh' | 'oig' | 'fec';
 
 interface BackfillOptions {
   sources: Source[];
@@ -311,6 +321,128 @@ async function backfillWh(options: BackfillOptions): Promise<number> {
   return updated;
 }
 
+/** Fetch content for a single OIG document based on its URL pattern. */
+async function fetchOigContent(url: string): Promise<{ content: string | null; delayMs: number }> {
+  // HHS OIG: scrape structured HTML detail page
+  if (url.includes('oig.hhs.gov')) {
+    const content = await fetchHhsOigReportContent(url);
+    return { content, delayMs: HHS_OIG_CRAWL_DELAY_MS };
+  }
+
+  // SSA OIG: URL is already a PDF
+  if (url.endsWith('.pdf')) {
+    const content = await extractPdfText(url);
+    return { content, delayMs: SSA_OIG_RATE_LIMIT_MS };
+  }
+
+  // DOJ OIG: scrape detail page for PDF link, then extract PDF
+  if (url.includes('oig.justice.gov')) {
+    const pdfUrl = await fetchDojOigPdfUrl(url);
+    if (!pdfUrl) return { content: null, delayMs: DOJ_OIG_CRAWL_DELAY_MS };
+    await sleep(DOJ_OIG_CRAWL_DELAY_MS);
+    const content = await extractPdfText(pdfUrl);
+    return { content, delayMs: DOJ_OIG_CRAWL_DELAY_MS };
+  }
+
+  return { content: null, delayMs: RATE_LIMIT_MS };
+}
+
+async function backfillOig(options: BackfillOptions): Promise<number> {
+  const db = getDb();
+
+  // OIG listing pages produce short metadata summaries (up to ~350 chars for multi-component DOJ reports).
+  // Real report content is 1,000+ chars — use 400 as the threshold to catch all metadata-only docs.
+  const rows = await db
+    .select({ id: documents.id, url: documents.url, content: documents.content })
+    .from(documents)
+    .where(and(eq(documents.sourceOrigin, 'oig'), like(documents.sourceType, 'ig_report')));
+
+  const needsContent = rows.filter((r) => r.url && (!r.content || r.content.length < 400));
+
+  console.log(
+    `[backfill-content] oig: ${needsContent.length}/${rows.length} IG reports need content`,
+  );
+  if (options.dryRun) return 0;
+
+  const toProcess = options.limit ? needsContent.slice(0, options.limit) : needsContent;
+  let updated = 0;
+  let failed = 0;
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const row = toProcess[i];
+    if (!row.url) continue;
+
+    const { content, delayMs } = await fetchOigContent(row.url);
+    if (content) {
+      await db
+        .update(documents)
+        .set({ content, embeddedAt: sql`NULL` })
+        .where(eq(documents.id, row.id));
+      updated++;
+    } else {
+      failed++;
+    }
+
+    await sleep(delayMs);
+
+    if ((i + 1) % BATCH_SIZE === 0 || i === toProcess.length - 1) {
+      console.log(
+        `[backfill-content] oig: ${i + 1}/${toProcess.length} processed (${updated} updated, ${failed} failed)`,
+      );
+    }
+  }
+
+  return updated;
+}
+
+async function backfillFec(options: BackfillOptions): Promise<number> {
+  const db = getDb();
+
+  // Old fetcher stored only respondent names or short API summaries (max ~266 chars).
+  // Enriched content with dispositions/citations/PDF text is 500+ chars.
+  const rows = await db
+    .select({ id: documents.id, url: documents.url, content: documents.content })
+    .from(documents)
+    .where(and(eq(documents.sourceOrigin, 'fec')));
+
+  const needsContent = rows.filter((r) => r.url && (!r.content || r.content.length < 400));
+
+  console.log(
+    `[backfill-content] fec: ${needsContent.length}/${rows.length} FEC documents need content enrichment`,
+  );
+  if (options.dryRun) return 0;
+
+  const toProcess = options.limit ? needsContent.slice(0, options.limit) : needsContent;
+  let updated = 0;
+  let failed = 0;
+
+  for (let i = 0; i < toProcess.length; i++) {
+    const row = toProcess[i];
+    if (!row.url) continue;
+
+    const content = await fetchFecEnrichedContent(row.url);
+    if (content && content.length > (row.content?.length || 0)) {
+      await db
+        .update(documents)
+        .set({ content, embeddedAt: sql`NULL` })
+        .where(eq(documents.id, row.id));
+      updated++;
+    } else {
+      failed++;
+    }
+
+    await sleep(FEC_RATE_LIMIT_MS);
+
+    if ((i + 1) % BATCH_SIZE === 0 || i === toProcess.length - 1) {
+      console.log(
+        `[backfill-content] fec: ${i + 1}/${toProcess.length} processed (${updated} updated, ${failed} failed)`,
+      );
+    }
+  }
+
+  return updated;
+}
+
 async function run(options: BackfillOptions): Promise<void> {
   if (!isDbAvailable()) {
     console.error('[backfill-content] DATABASE_URL not configured');
@@ -326,6 +458,10 @@ async function run(options: BackfillOptions): Promise<void> {
       totalUpdated += await backfillGovInfo(options);
     } else if (source === 'wh') {
       totalUpdated += await backfillWh(options);
+    } else if (source === 'oig') {
+      totalUpdated += await backfillOig(options);
+    } else if (source === 'fec') {
+      totalUpdated += await backfillFec(options);
     }
   }
 
@@ -352,7 +488,7 @@ if (require.main === module) {
     `Usage: pnpm backfill:content [options]
 
 Options:
-  --source <name>     Source to backfill (fr, govinfo, wh; default: all)
+  --source <name>     Source to backfill (fr, govinfo, wh, oig, fec; default: all)
   --limit <n>         Max documents to process
   --dry-run           Preview without writing to DB`,
   );
@@ -361,11 +497,9 @@ Options:
   const dryRun = args.includes('--dry-run');
 
   const sourceArg = sourceIdx !== -1 ? args[sourceIdx + 1] : undefined;
-  const validSources: Source[] = ['fr', 'govinfo', 'wh'];
+  const validSources: Source[] = ['fr', 'govinfo', 'wh', 'oig', 'fec'];
   const sources: Source[] =
-    sourceArg && validSources.includes(sourceArg as Source)
-      ? [sourceArg as Source]
-      : ['fr', 'govinfo', 'wh'];
+    sourceArg && validSources.includes(sourceArg as Source) ? [sourceArg as Source] : validSources;
 
   const limit = limitIdx !== -1 ? parseInt(args[limitIdx + 1], 10) : null;
 

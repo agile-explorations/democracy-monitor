@@ -9,6 +9,7 @@
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
+  DataIntegrityCheck,
   DataReport,
   Layer2PeriodStats,
   LayerScorePeriodStats,
@@ -34,6 +35,11 @@ function printStageCompleteness(report: DataReport): void {
   const s = report.stageCompleteness;
   console.log(`  Documents missing scores:      ${s.missingScores} / ${s.totalDocuments}`);
   console.log(`  Documents missing embeddings:  ${s.missingEmbeddings} / ${s.totalDocuments}`);
+  if (s.missingEmbeddingsIntent > 0) {
+    console.log(
+      `  Intent docs missing embeddings: ${s.missingEmbeddingsIntent} (not used in detection)`,
+    );
+  }
   if (s.metadataOnlyCount > 0) {
     console.log(
       `  Metadata-only (excluded):      ${s.metadataOnlyCount} (not counted in missing embeddings)`,
@@ -128,12 +134,22 @@ function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
   }
 }
 
+function printDataIntegrity(checks: DataIntegrityCheck[]): void {
+  console.log('\n=== Data Integrity ===');
+  for (const check of checks) {
+    const mark = check.pass ? PASS : FAIL;
+    const detail = check.pass ? '' : ` (${check.count}${check.detail ? ': ' + check.detail : ''})`;
+    console.log(`  ${mark} ${check.name}${detail}`);
+  }
+}
+
 function printReport(report: DataReport): void {
   printStageCompleteness(report);
   printBaselineCompleteness(report);
   printLayer2Completeness(report.layer2Completeness);
   printLayerScorePopulation(report.layerScorePopulation);
   printMetadataOnlyClassification(report.metadataOnlyClassification);
+  printDataIntegrity(report.dataIntegrity);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

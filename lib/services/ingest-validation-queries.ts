@@ -105,6 +105,55 @@ export async function getGdeltCrossfeedCoverage(
   }));
 }
 
+export interface SourcePeriodGap {
+  sourceOrigin: string;
+  period: string;
+  count: number;
+  earliestDate: string | null;
+}
+
+/**
+ * Count documents per source_origin per analysis period.
+ * Used to detect sources missing from specific periods.
+ */
+export async function getSourcePeriodCoverage(): Promise<SourcePeriodGap[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const rows = await db.execute(sql`
+    select
+      coalesce(source_origin, 'unknown') as source_origin,
+      case
+        when published_at >= '2017-01-20' and published_at < '2018-01-20' then 'trump_2017'
+        when published_at >= '2018-01-20' and published_at < '2019-01-20' then 'trump_2018'
+        when published_at >= '2021-01-20' and published_at < '2022-01-20' then 'biden_2021'
+        when published_at >= '2022-01-20' and published_at < '2023-01-20' then 'biden_2022'
+        when published_at >= '2025-01-20' then 'trump_t2'
+        else 'other'
+      end as period,
+      count(*)::int as count,
+      min(published_at)::date as earliest_date
+    from documents
+    where category != 'intent'
+    group by source_origin, period
+    order by source_origin, period
+  `);
+
+  return (
+    rows.rows as Array<{
+      source_origin: string;
+      period: string;
+      count: number;
+      earliest_date: string | null;
+    }>
+  ).map((r) => ({
+    sourceOrigin: r.source_origin,
+    period: r.period,
+    count: Number(r.count),
+    earliestDate: r.earliest_date ? String(r.earliest_date).slice(0, 10) : null,
+  }));
+}
+
 export async function getClOpinionCoverage(): Promise<ClOpinionCoverage | null> {
   if (!isDbAvailable()) return null;
   const db = getDb();

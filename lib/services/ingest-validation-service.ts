@@ -17,7 +17,9 @@ import {
   getFrPeriodCoverage,
   getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
+  getSourcePeriodCoverage,
 } from './ingest-validation-queries';
+import type { SourcePeriodGap } from './ingest-validation-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,6 +65,7 @@ export interface IngestReport {
   paginationFitness: PaginationFitness[];
   frPeriodCoverage: SourcePeriodCoverage[];
   gdeltCrossfeedCoverage: SourcePeriodCoverage[];
+  sourcePeriodCoverage: SourcePeriodGap[];
   clOpinionCoverage: ClOpinionCoverage | null;
   warnings: string[];
 }
@@ -73,12 +76,14 @@ export const CONTENT_FIXABLE_TYPES = new Set(['Presidential Document', 'congress
 /** Source origins where content can be backfilled via `pnpm backfill:content`. */
 export const CONTENT_FIXABLE_ORIGINS = new Map([['whitehouse', 'wh']]);
 
-// Re-export query functions for consumers
+// Re-export query functions and types for consumers
+export type { SourcePeriodGap };
 export {
   getPaginationFitness,
   getFrPeriodCoverage,
   getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
+  getSourcePeriodCoverage,
 };
 
 // ---------------------------------------------------------------------------
@@ -193,6 +198,74 @@ function checkFrCoverage(frCoverage: SourcePeriodCoverage[], cats: Category[]): 
   return warnings;
 }
 
+/** Expected start dates for each analysis period. */
+const PERIOD_START_DATES: Record<string, string> = {
+  trump_2017: '2017-01-20',
+  trump_2018: '2018-01-20',
+  biden_2021: '2021-01-20',
+  biden_2022: '2022-01-20',
+  trump_t2: '2025-01-20',
+};
+
+/** Days after period start before a source is considered "late". */
+const LATE_START_DAYS = 30;
+
+function checkSourcePeriodGaps(coverage: SourcePeriodGap[]): string[] {
+  const warnings: string[] = [];
+
+  // Build map: source -> { period -> { count, earliest } }
+  const bySource = new Map<string, Map<string, { count: number; earliest: string | null }>>();
+  for (const row of coverage) {
+    if (row.period === 'other') continue;
+    if (!bySource.has(row.sourceOrigin)) bySource.set(row.sourceOrigin, new Map());
+    bySource.get(row.sourceOrigin)!.set(row.period, {
+      count: row.count,
+      earliest: row.earliestDate,
+    });
+  }
+
+  for (const [source, periods] of bySource) {
+    const hasAnyBaseline = EXPECTED_PERIODS.some(
+      (p) => p !== 'trump_t2' && (periods.get(p)?.count ?? 0) > 0,
+    );
+    const t2 = periods.get('trump_t2');
+
+    // Source in baselines but missing from T2
+    if (hasAnyBaseline && (!t2 || t2.count === 0)) {
+      warnings.push(`${source}: present in baselines but missing from T2`);
+    }
+
+    // Source in T2 but started late (>30 days after inauguration)
+    if (t2 && t2.count > 0 && t2.earliest) {
+      const periodStart = new Date(PERIOD_START_DATES.trump_t2);
+      const earliest = new Date(t2.earliest);
+      const daysDiff = Math.round(
+        (earliest.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24),
+      );
+      if (daysDiff > LATE_START_DAYS) {
+        warnings.push(
+          `${source}: T2 data starts ${t2.earliest} (${daysDiff} days after inauguration)`,
+        );
+      }
+    }
+
+    // Large volume asymmetry across periods (baseline vs baseline)
+    const baselinePeriods = ['biden_2022', 'biden_2021', 'trump_2017', 'trump_2018'];
+    const baselineCounts = baselinePeriods
+      .map((p) => periods.get(p)?.count ?? 0)
+      .filter((c) => c > 0);
+    if (baselineCounts.length >= 2) {
+      const max = Math.max(...baselineCounts);
+      const min = Math.min(...baselineCounts);
+      if (max > 10 * min && min > 0) {
+        warnings.push(`${source}: >10x volume asymmetry across baselines (${min}–${max})`);
+      }
+    }
+  }
+
+  return warnings;
+}
+
 export function collectWarnings(report: IngestReport, categoryFilter?: string): string[] {
   const warnings: string[] = [];
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
@@ -237,6 +310,8 @@ export function collectWarnings(report: IngestReport, categoryFilter?: string): 
     warnings.push(`Categories missing GDELT cross-feed: ${missingGdelt.join(', ')}`);
   }
 
+  warnings.push(...checkSourcePeriodGaps(report.sourcePeriodCoverage));
+
   return warnings;
 }
 
@@ -247,16 +322,25 @@ export function collectWarnings(report: IngestReport, categoryFilter?: string): 
 export async function runIngestValidation(category?: string): Promise<IngestReport> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
 
-  const [coverage, content, contentByOrigin, pagination, frPeriod, gdeltCrossfeed, clOpinions] =
-    await Promise.all([
-      getDocumentCoverage(category),
-      getContentCompleteness(category),
-      getContentCompletenessByOrigin(category),
-      getPaginationFitness(category),
-      getFrPeriodCoverage(category),
-      getGdeltCrossfeedCoverage(category),
-      getClOpinionCoverage(),
-    ]);
+  const [
+    coverage,
+    content,
+    contentByOrigin,
+    pagination,
+    frPeriod,
+    gdeltCrossfeed,
+    sourcePeriod,
+    clOpinions,
+  ] = await Promise.all([
+    getDocumentCoverage(category),
+    getContentCompleteness(category),
+    getContentCompletenessByOrigin(category),
+    getPaginationFitness(category),
+    getFrPeriodCoverage(category),
+    getGdeltCrossfeedCoverage(category),
+    getSourcePeriodCoverage(),
+    getClOpinionCoverage(),
+  ]);
 
   const report: IngestReport = {
     documentCoverage: coverage,
@@ -265,6 +349,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     paginationFitness: pagination,
     frPeriodCoverage: frPeriod,
     gdeltCrossfeedCoverage: gdeltCrossfeed,
+    sourcePeriodCoverage: sourcePeriod,
     clOpinionCoverage: clOpinions,
     warnings: [],
   };

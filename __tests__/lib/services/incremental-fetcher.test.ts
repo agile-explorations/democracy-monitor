@@ -11,6 +11,7 @@ vi.mock('@/lib/cron/backfill-fetchers', () => ({
   fetchWeekItemsDoj: vi.fn().mockResolvedValue({ items: [], errors: [] }),
   fetchWeekItemsGovInfo: vi.fn().mockResolvedValue({ items: [], errors: [] }),
   fetchWeekItemsFec: vi.fn().mockResolvedValue({ items: [], errors: [] }),
+  fetchWeekItemsOig: vi.fn().mockResolvedValue({ items: [], errors: [] }),
 }));
 
 vi.mock('@/lib/services/feed-fetcher', () => ({

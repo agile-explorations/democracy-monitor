@@ -6,6 +6,7 @@ import {
   buildOpinionContentItem,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
+import { fetchDojOigHistorical } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecHistorical, parseFecParams } from '@/lib/services/fec-fetcher';
 import {
   fetchFederalRegisterHistorical,
@@ -17,13 +18,22 @@ import {
   fetchGovInfoText,
   parseGovInfoParams,
 } from '@/lib/services/govinfo-fetcher';
+import { fetchHhsOigHistorical } from '@/lib/services/hhs-oig-fetcher';
+import { fetchSsaOigHistorical } from '@/lib/services/ssa-oig-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
 
 type Signal = { url: string; type: string };
-type SignalGroups = { fr: Signal[]; cl: Signal[]; doj: Signal[]; gi: Signal[]; fec: Signal[] };
+type SignalGroups = {
+  fr: Signal[];
+  cl: Signal[];
+  doj: Signal[];
+  gi: Signal[];
+  fec: Signal[];
+  oig: Signal[];
+};
 
 interface WeekRange {
   start: string;
@@ -46,6 +56,7 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
   doj: 'doj',
   gi: 'govinfo',
   fec: 'fec',
+  oig: 'oig',
 };
 
 const SIGNAL_MAX_RETRIES = 3;
@@ -256,6 +267,42 @@ export async function fetchWeekItemsFec(
   return { items, errors };
 }
 
+const OIG_FETCHERS: Record<
+  string,
+  (params: { dateFrom: string; dateTo: string }) => Promise<ContentItem[]>
+> = {
+  'oig://doj': (p) => fetchDojOigHistorical(p),
+  'oig://hhs': (p) => fetchHhsOigHistorical(p),
+  'oig://ssa': (p) => fetchSsaOigHistorical(p),
+};
+
+export async function fetchWeekItemsOig(
+  signals: Array<{ url: string; type: string }>,
+  week: WeekRange,
+  categoryKey: string,
+): Promise<SourceFetchResult> {
+  const items: ContentItem[] = [];
+  const errors: string[] = [];
+
+  for (const signal of signals) {
+    const fetcher = OIG_FETCHERS[signal.url];
+    if (!fetcher) {
+      errors.push(`Unknown OIG signal URL: ${signal.url}`);
+      continue;
+    }
+    const result = await fetchSignalWithRetry(
+      () => fetcher({ dateFrom: week.start, dateTo: week.end }),
+      'OIG',
+      categoryKey,
+      week.start,
+    );
+    items.push(...result.items);
+    if (result.error) errors.push(result.error);
+  }
+
+  return { items, errors };
+}
+
 type FetchFn = (
   signals: Signal[],
   week: WeekRange,
@@ -268,6 +315,7 @@ const GROUP_FETCHERS: Array<{ key: keyof SignalGroups; fn: FetchFn }> = [
   { key: 'doj', fn: fetchWeekItemsDoj },
   { key: 'gi', fn: fetchWeekItemsGovInfo },
   { key: 'fec', fn: fetchWeekItemsFec },
+  { key: 'oig', fn: fetchWeekItemsOig },
 ];
 
 export async function fetchWeekDocuments(

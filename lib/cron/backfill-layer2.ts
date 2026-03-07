@@ -5,7 +5,8 @@
  *   pnpm layer2:backfill --baseline biden_2022 --pass 1
  *   pnpm layer2:backfill --baseline biden_2022 --pass 2
  *   pnpm layer2:backfill --from 2025-01-20 --to 2026-02-22 --category civilService
- *   pnpm layer2:backfill --retry-p2                      # fast: retry only missing P2 assessments
+ *   pnpm layer2:backfill --source fec --fresh --confirm   # re-assess all FEC docs
+ *   pnpm layer2:backfill --retry-p2                       # fast: retry only missing P2 assessments
  *   pnpm layer2:backfill --retry-p2 --category elections  # scoped to one category
  *   pnpm layer2:backfill --dry-run
  */
@@ -27,6 +28,7 @@ interface BackfillArgs {
   from?: string;
   to?: string;
   category?: string;
+  source?: string;
   pass?: number;
   dryRun: boolean;
   fresh: boolean;
@@ -58,6 +60,9 @@ function parseArgs(): BackfillArgs {
         break;
       case '--category':
         result.category = args[++i];
+        break;
+      case '--source':
+        result.source = args[++i];
         break;
       case '--pass':
         result.pass = parseInt(args[++i], 10);
@@ -100,22 +105,24 @@ function resolveDateRanges(args: BackfillArgs): Array<{ from: string; to: string
 async function getDocumentsForCategoryWeek(
   category: string,
   weekOf: string,
+  source?: string,
 ): Promise<ContentItem[]> {
   const db = getDb();
   const weekEnd = addDays(weekOf, 7);
 
+  const conditions = [
+    eq(documents.category, category),
+    gte(documents.publishedAt, new Date(weekOf)),
+    lt(documents.publishedAt, new Date(weekEnd)),
+    sql`${documents.contentType} != 'metadata_only'`,
+    sql`length(${documents.content}) >= 100`,
+  ];
+  if (source) conditions.push(eq(documents.sourceOrigin, source));
+
   const rows = await db
     .select()
     .from(documents)
-    .where(
-      and(
-        eq(documents.category, category),
-        gte(documents.publishedAt, new Date(weekOf)),
-        lt(documents.publishedAt, new Date(weekEnd)),
-        sql`${documents.contentType} != 'metadata_only'`,
-        sql`length(${documents.content}) >= 100`,
-      ),
-    );
+    .where(and(...conditions));
 
   return rows.map((row) => ({
     title: row.title,
@@ -146,14 +153,34 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
   if (args.fresh) {
     if (!args.confirm) {
       console.error(
-        '[backfill-l2] --fresh requires --confirm to delete all ai_document_assessments. Aborting.',
+        '[backfill-l2] --fresh requires --confirm to delete ai_document_assessments. Aborting.',
       );
       return;
     }
     const db = getDb();
-    console.log('[backfill-l2] --fresh: deleting all ai_document_assessments...');
-    await db.delete(aiDocumentAssessments);
-    console.log('[backfill-l2] All ai_document_assessments deleted.');
+    const scopeLabels: string[] = [];
+    if (args.source) scopeLabels.push(`source=${args.source}`);
+    if (args.category) scopeLabels.push(`category=${args.category}`);
+
+    if (scopeLabels.length > 0) {
+      console.log(`[backfill-l2] --fresh: deleting assessments (${scopeLabels.join(', ')})...`);
+      const docConditions = [
+        args.source ? eq(documents.sourceOrigin, args.source) : undefined,
+        args.category ? eq(documents.category, args.category) : undefined,
+      ].filter(Boolean);
+      const whereClause = docConditions.length === 1 ? docConditions[0] : and(...docConditions);
+      await db.delete(aiDocumentAssessments).where(
+        sql`${aiDocumentAssessments.documentId} IN (
+          SELECT ${documents.id} FROM ${documents}
+          WHERE ${whereClause}
+        )`,
+      );
+      console.log(`[backfill-l2] Scoped assessments deleted.`);
+    } else {
+      console.log('[backfill-l2] --fresh: deleting all ai_document_assessments...');
+      await db.delete(aiDocumentAssessments);
+      console.log('[backfill-l2] All ai_document_assessments deleted.');
+    }
   }
 
   const dateRanges = resolveDateRanges(args);
@@ -177,10 +204,10 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
 
     for (const cat of categories) {
       for (const weekOf of weeks) {
-        const items = await getDocumentsForCategoryWeek(cat.key, weekOf);
+        const items = await getDocumentsForCategoryWeek(cat.key, weekOf, args.source);
         if (items.length === 0) continue;
 
-        const existing = await getPass1Count(cat.key, weekOf);
+        const existing = await getPass1Count(cat.key, weekOf, args.source);
         if (existing >= items.length) {
           skipped += items.length;
           p2Retried += await retryMissingPass2(cat.key, weekOf, options);
@@ -249,10 +276,11 @@ Options:
   --from <date>       Start date (YYYY-MM-DD)
   --to <date>         End date (YYYY-MM-DD)
   --category <key>    Process a single category
+  --source <origin>   Scope to a source_origin (e.g. fec, oig, cpd)
   --pass <n>          Run only pass 1 or 2
   --retry-p2          Fast retry of only missing Pass 2 assessments
   --dry-run           Preview without writing to DB
-  --fresh --confirm   Delete all assessments and re-run from scratch
+  --fresh --confirm   Delete assessments and re-run (scoped by --source or --category if set)
   --verbose           Show per-URL skip/failure details`,
   );
   const args = parseArgs();

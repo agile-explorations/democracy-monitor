@@ -64,6 +64,12 @@
       "rules": {
         "max-lines-per-function": "off"
       }
+    },
+    {
+      "files": ["lib/services/fec-fetcher.ts", "lib/services/layer2-store.ts"],
+      "rules": {
+        "max-lines": ["warn", { "max": 400, "skipBlankLines": true, "skipComments": true }]
+      }
     }
   ]
 }

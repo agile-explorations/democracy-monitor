@@ -11,6 +11,7 @@ import type {
   DocumentCoverage,
   IngestReport,
   SourcePeriodCoverage,
+  SourcePeriodGap,
   ClOpinionCoverage,
 } from '@/lib/services/ingest-validation-service';
 import {
@@ -148,12 +149,38 @@ function printClOpinionCoverage(cl: ClOpinionCoverage | null): void {
   );
 }
 
+function printSourcePeriodCoverage(coverage: SourcePeriodGap[]): void {
+  console.log('\n=== Source Period Coverage ===');
+  const sources = new Map<string, Map<string, { count: number; earliest: string | null }>>();
+  for (const row of coverage) {
+    if (row.period === 'other') continue;
+    if (!sources.has(row.sourceOrigin)) sources.set(row.sourceOrigin, new Map());
+    sources.get(row.sourceOrigin)!.set(row.period, {
+      count: row.count,
+      earliest: row.earliestDate,
+    });
+  }
+
+  const periods = ['trump_2017', 'trump_2018', 'biden_2021', 'biden_2022', 'trump_t2'];
+  const hdr = periods.map((p) => p.replace(/^[a-z]+_/, '').padStart(10)).join(' ');
+  console.log(`  ${''.padEnd(20)} ${hdr}`);
+
+  for (const [source, pMap] of [...sources.entries()].sort()) {
+    const vals = periods.map((p) => {
+      const c = pMap.get(p)?.count ?? 0;
+      return (c > 0 ? String(c) : '-').padStart(10);
+    });
+    console.log(`  ${source.padEnd(20)} ${vals.join(' ')}`);
+  }
+}
+
 function printReport(report: IngestReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
   printContentCompleteness(report.contentCompleteness, report.contentCompletenessByOrigin);
   printPaginationFitness(report);
   printClOpinionCoverage(report.clOpinionCoverage);
+  printSourcePeriodCoverage(report.sourcePeriodCoverage);
   printFrPeriodCoverage(report.frPeriodCoverage, cats);
   printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
 

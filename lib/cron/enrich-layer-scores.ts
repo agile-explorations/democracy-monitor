@@ -1,10 +1,13 @@
 /**
- * CLI: pnpm layers:enrich [--from <date>] [--to <date>] [--category <key>]
+ * CLI: pnpm layers:enrich [--from <date>] [--to <date>] [--category <key>] [--narratives]
  *
  * Enriches existing weekly aggregates with L1 (structural), L2 (AI summary from
- * stored assessments), L3 (thematic drift), and convergence scores. NO API calls —
- * reads L2 data from ai_document_assessments table, computes L1/L3 from DB, and
- * writes enriched results back to weekly_aggregates.
+ * stored assessments), L3 (thematic drift), and convergence scores. NO API calls
+ * for enrichment — reads L2 data from ai_document_assessments table, computes
+ * L1/L3 from DB, and writes enriched results back to weekly_aggregates.
+ *
+ * With --narratives, generates AI narratives for Elevated+ weeks after enrichment
+ * (requires ANTHROPIC_API_KEY).
  */
 
 import { and, eq, gte, lt, lte, sql } from 'drizzle-orm';
@@ -18,7 +21,7 @@ import type { Pass1Result, Pass2Result } from '@/lib/services/layer2-assessment-
 import { getBaselineAIFlagRate } from '@/lib/services/layer2-store';
 import { storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
-import type { AIAssessmentSummary } from '@/lib/types/structural';
+import type { AIAssessmentSummary, ConvergenceSynthesis } from '@/lib/types/structural';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 interface EnrichOptions {
@@ -26,6 +29,7 @@ interface EnrichOptions {
   to?: string;
   category?: string;
   allDates?: boolean;
+  narratives?: boolean;
 }
 
 /** Build an AIAssessmentSummary from stored ai_document_assessments rows. */
@@ -35,8 +39,7 @@ async function buildAISummaryFromDB(
 ): Promise<AIAssessmentSummary | null> {
   const db = getDb(); // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block
 
-  // L2 week_of uses a different anchor (Friday) than aggregates (Monday).
-  // Match any L2 rows whose week_of falls within the Monday–Sunday window.
+  // Match L2 rows whose week_of falls within the Monday–Sunday window.
   const nextWeek = new Date(weekOf);
   nextWeek.setDate(nextWeek.getDate() + 7);
   const nextWeekStr = nextWeek.toISOString().slice(0, 10);
@@ -162,14 +165,18 @@ async function loadAggregates(options: EnrichOptions): Promise<WeeklyAggregate[]
   }));
 }
 
+const ELEVATED_STATUSES = new Set(['Elevated', 'Divergent', 'ConfirmedConcern']);
+
 async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
   enriched: number;
   skippedNoL2: number;
   catCounts: Record<string, number>;
+  elevatedWeeks: Set<string>;
 }> {
   let enriched = 0;
   let skippedNoL2 = 0;
   const catCounts: Record<string, number> = {};
+  const elevatedWeeks = new Set<string>();
 
   for (const agg of aggregates) {
     const aiSummary = await buildAISummaryFromDB(agg.category, agg.weekOf);
@@ -180,12 +187,17 @@ async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
     enriched++;
     catCounts[agg.category] = (catCounts[agg.category] || 0) + 1;
 
+    const detail = result.convergenceDetail as ConvergenceSynthesis | undefined;
+    if (detail && ELEVATED_STATUSES.has(detail.status)) {
+      elevatedWeeks.add(agg.weekOf);
+    }
+
     if (enriched % 100 === 0) {
       process.stdout.write(`\r[layers:enrich] ${enriched}/${aggregates.length} enriched`);
     }
   }
 
-  return { enriched, skippedNoL2, catCounts };
+  return { enriched, skippedNoL2, catCounts, elevatedWeeks };
 }
 
 async function run(options: EnrichOptions): Promise<void> {
@@ -211,6 +223,7 @@ async function run(options: EnrichOptions): Promise<void> {
   let totalEnriched = 0;
   let totalSkippedNoL2 = 0;
   const allCatCounts: Record<string, number> = {};
+  const allElevatedWeeks = new Set<string>();
 
   if (useAnalysisPeriods) {
     const periods = getAnalysisPeriods();
@@ -222,22 +235,25 @@ async function run(options: EnrichOptions): Promise<void> {
       if (aggregates.length === 0) continue;
       console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
 
-      const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
+      const { enriched, skippedNoL2, catCounts, elevatedWeeks } =
+        await enrichAggregates(aggregates);
       totalEnriched += enriched;
       totalSkippedNoL2 += skippedNoL2;
       for (const [cat, count] of Object.entries(catCounts)) {
         allCatCounts[cat] = (allCatCounts[cat] || 0) + count;
       }
+      elevatedWeeks.forEach((w) => allElevatedWeeks.add(w));
     }
   } else {
     console.log('[layers:enrich] Loading weekly aggregates...');
     const aggregates = await loadAggregates(options);
     console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
 
-    const { enriched, skippedNoL2, catCounts } = await enrichAggregates(aggregates);
+    const { enriched, skippedNoL2, catCounts, elevatedWeeks } = await enrichAggregates(aggregates);
     totalEnriched = enriched;
     totalSkippedNoL2 = skippedNoL2;
     Object.assign(allCatCounts, catCounts);
+    elevatedWeeks.forEach((w) => allElevatedWeeks.add(w));
   }
 
   console.log(`\n[layers:enrich] ${totalEnriched} total enriched`);
@@ -247,6 +263,22 @@ async function run(options: EnrichOptions): Promise<void> {
   console.log('[layers:enrich] Per category:');
   for (const [cat, count] of Object.entries(allCatCounts).sort(([a], [b]) => a.localeCompare(b))) {
     console.log(`  ${cat}: ${count} weeks`);
+  }
+
+  if (options.narratives) {
+    const { generateNarrativesForWeek } = await import('@/lib/services/narrative-pipeline');
+    const sortedWeeks = Array.from(allElevatedWeeks).sort();
+    console.log(`\n[layers:enrich] Generating narratives for ${sortedWeeks.length} elevated weeks`);
+    let narrated = 0;
+    for (const weekOf of sortedWeeks) {
+      try {
+        await generateNarrativesForWeek(weekOf);
+        narrated++;
+      } catch (err) {
+        console.error(`[layers:enrich] Narrative failed for ${weekOf}:`, err);
+      }
+    }
+    console.log(`[layers:enrich] ${narrated}/${sortedWeeks.length} narrative weeks completed`);
   }
 }
 
@@ -261,7 +293,8 @@ Options:
   --from <date>       Start date (YYYY-MM-DD)
   --to <date>         End date (YYYY-MM-DD)
   --category <key>    Process a single category
-  --all-dates         Process all dates (default: analysis periods only)`,
+  --all-dates         Process all dates (default: analysis periods only)
+  --narratives        Generate AI narratives for Elevated+ weeks after enrichment`,
   );
   const options: EnrichOptions = {};
 
@@ -278,6 +311,9 @@ Options:
         break;
       case '--all-dates':
         options.allDates = true;
+        break;
+      case '--narratives':
+        options.narratives = true;
         break;
     }
   }

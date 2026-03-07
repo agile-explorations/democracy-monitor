@@ -103,6 +103,7 @@ describe('data-validation-service', () => {
       totalDocuments: 0,
       missingScores: 0,
       missingEmbeddings: 0,
+      missingEmbeddingsIntent: 0,
       metadataOnlyCount: 0,
       totalWeeks: 0,
       missingAggregates: 0,
@@ -133,7 +134,7 @@ describe('data-validation-service', () => {
       vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
 
       const result = await getStageCompleteness();
-      expect(result).toEqual({
+      expect(result).toMatchObject({
         totalDocuments: 100,
         missingScores: 3,
         missingEmbeddings: 5,
@@ -309,6 +310,7 @@ describe('collectWarnings', () => {
         totalDocuments: 100,
         missingScores: 0,
         missingEmbeddings: 0,
+        missingEmbeddingsIntent: 0,
         metadataOnlyCount: 0,
         totalWeeks: 20,
         missingAggregates: 0,
@@ -317,6 +319,7 @@ describe('collectWarnings', () => {
       layer2Completeness: [],
       layerScorePopulation: [],
       metadataOnlyClassification: [],
+      dataIntegrity: [],
       warnings: [],
       ...overrides,
     };
@@ -328,6 +331,7 @@ describe('collectWarnings', () => {
         totalDocuments: 100,
         missingScores: 15,
         missingEmbeddings: 0,
+        missingEmbeddingsIntent: 0,
         metadataOnlyCount: 0,
         totalWeeks: 20,
         missingAggregates: 0,

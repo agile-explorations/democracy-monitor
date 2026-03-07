@@ -17,7 +17,7 @@ async function main(): Promise<void> {
 
 Options:
   --from <date>       Start date (YYYY-MM-DD, default: 2017-01-20)
-  --to <date>         End date (YYYY-MM-DD, default: 2019-01-20)`,
+  --to <date>         End date (YYYY-MM-DD, default: 2018-01-19)`,
   );
   let from = DEFAULT_FROM;
   let to = DEFAULT_TO;

@@ -1,7 +1,7 @@
 /**
  * CPD (Compilation of Presidential Documents) subject-to-category mapping.
  *
- * Maps NARA-curated subject terms to our 13 monitoring categories.
+ * Maps NARA-curated subject terms to our 14 monitoring categories.
  * Many-to-many: a subject can map to multiple categories, and a document
  * with multiple subjects routes to the union of their categories.
  *
@@ -27,11 +27,8 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['Presidency, U.S', ['executiveActions']],
   ['Legislation, enacted', ['executiveActions']],
   ['Legislation, proposed', ['executiveActions']],
-  ['Defense Production Act of 1950', ['executiveActions', 'emergencyPowers']],
-  [
-    'Defense Production Act of 1950, executive authorities',
-    ['executiveActions', 'emergencyPowers'],
-  ],
+  ['Defense Production Act of 1950', ['executiveActions', 'military']],
+  ['Defense Production Act of 1950, executive authorities', ['executiveActions', 'military']],
 
   // --- executiveOversight ---
   ['Government organization and employees', ['executiveOversight', 'civilService']],
@@ -161,16 +158,16 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['North Atlantic Treaty Organization', ['military']],
   ['Guantanamo Bay, U.S. Naval Base in Cuba, detention facility', ['military', 'lawEnforcement']],
 
-  // --- emergencyPowers ---
-  ['Homeland Security, Department of', ['emergencyPowers', 'immigrationEnforcement']],
-  ['Secretary of Homeland Security', ['emergencyPowers', 'immigrationEnforcement']],
-  ['Terrorism', ['emergencyPowers']],
-  ['Federal Emergency Management Agency (FEMA)', ['emergencyPowers']],
-  ['Disaster assistance to States', ['emergencyPowers']],
-  ['Natural disasters', ['emergencyPowers']],
-  ['Classified national security information', ['emergencyPowers']],
-  ['Office of the Director of National Intelligence', ['emergencyPowers']],
-  ['Central Intelligence Agency', ['emergencyPowers']],
+  // --- military (emergency powers / national security apparatus) ---
+  ['Homeland Security, Department of', ['military', 'immigrationEnforcement']],
+  ['Secretary of Homeland Security', ['military', 'immigrationEnforcement']],
+  ['Terrorism', ['military']],
+  ['Federal Emergency Management Agency (FEMA)', ['military']],
+  ['Disaster assistance to States', ['military']],
+  ['Natural disasters', ['military']],
+  ['Classified national security information', ['military']],
+  ['Office of the Director of National Intelligence', ['military']],
+  ['Central Intelligence Agency', ['military']],
 
   // --- rulemaking ---
   ['Environment', ['rulemaking']],
@@ -209,9 +206,9 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['Centers for Medicare and Medicaid Services', ['rulemaking', 'fiscal']],
   ['Patient Protection and Affordable Care Act', ['rulemaking']],
   ['Diseases', ['rulemaking']],
-  ['COVID-19 pandemic', ['rulemaking', 'emergencyPowers']],
+  ['COVID-19 pandemic', ['rulemaking', 'military']],
   ['Coronavirus pandemic, international cooperation efforts', ['rulemaking']],
-  ['COVID\u201319 pandemic', ['rulemaking', 'emergencyPowers']],
+  ['COVID\u201319 pandemic', ['rulemaking', 'military']],
 
   // --- Housing/infrastructure (regulatory) ---
   ['Housing, affordability and access', ['rulemaking']],
