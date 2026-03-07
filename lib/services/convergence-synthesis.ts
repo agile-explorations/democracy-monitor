@@ -2,6 +2,7 @@ import {
   AI_CONCERN_MIN_SAMPLE,
   AI_CONCERN_THRESHOLD,
   AI_FLAG_RATE_MIN_DOCS,
+  AI_FLAG_RATE_STRONG_THRESHOLD,
   AI_FLAG_RATE_THRESHOLD,
   STRUCTURAL_ANOMALY_THRESHOLD,
   THEMATIC_DRIFT_ELEVATED,
@@ -23,8 +24,13 @@ import type {
  *   Divergent        — two or more layers deviating
  *   ConfirmedConcern — two or more layers deviating AND high AI concern rate
  *
- * During bootstrap (Layer 3 insufficient rolling data), thematic drift alone
- * cannot trigger Elevated — only structural and AI can.
+ * L3 operates in reinforcement-only mode: thematic drift can upgrade a signal
+ * that L1 or L2 already flagged (Elevated → Divergent), but cannot independently
+ * trigger Elevated status. Empirical validation shows L3 has high false-positive
+ * rate (~44% of baseline weeks) with zero independent true detections, due to
+ * baseline contamination from content-less stubs and metadata-only embeddings.
+ * Re-evaluate after clean baseline recomputation.
+ *
  * AI layer is not affected by bootstrap.
  */
 export function synthesizeConvergence(
@@ -37,12 +43,7 @@ export function synthesizeConvergence(
   const thematicElevated = isThematicElevated(thematic);
   const isBootstrap = thematic?.bootstrap ?? true;
 
-  const layersElevated = countElevatedLayers(
-    structuralElevated,
-    aiElevated,
-    thematicElevated,
-    isBootstrap,
-  );
+  const layersElevated = countElevatedLayers(structuralElevated, aiElevated, thematicElevated);
   const highConcern = isHighConcern(aiAssessment);
   const status = determineStatus(layersElevated, highConcern);
   const pattern = describePattern(structuralElevated, aiElevated, thematicElevated, isBootstrap);
@@ -66,7 +67,11 @@ function isStructuralElevated(structural: StructuralScore | null): boolean {
 function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {
   if (!aiAssessment) return false;
   if (aiAssessment.totalDocuments < AI_FLAG_RATE_MIN_DOCS) return false;
-  return aiAssessment.flagRateZScore > AI_FLAG_RATE_THRESHOLD;
+  if (aiAssessment.flagRateZScore <= AI_FLAG_RATE_THRESHOLD) return false;
+  // P1 flag rate is elevated — require P2 corroboration or very strong flag rate
+  return (
+    aiAssessment.concernRate > 0 || aiAssessment.flagRateZScore > AI_FLAG_RATE_STRONG_THRESHOLD
+  );
 }
 
 function isThematicElevated(thematic: ThematicDriftScore | null): boolean {
@@ -87,15 +92,14 @@ function countElevatedLayers(
   structuralElevated: boolean,
   aiElevated: boolean,
   thematicElevated: boolean,
-  isBootstrap: boolean,
 ): number {
   let count = 0;
   if (structuralElevated) count++;
   if (aiElevated) count++;
-  // During bootstrap, thematic drift alone doesn't count
-  if (thematicElevated && !isBootstrap) count++;
-  // During bootstrap, thematic can still reinforce other layers
-  if (thematicElevated && isBootstrap && (structuralElevated || aiElevated)) count++;
+  // L3 reinforcement-only: thematic drift can upgrade existing L1/L2 signals
+  // but cannot independently trigger elevation (insufficient specificity for
+  // standalone detection — re-evaluate after clean baseline recomputation)
+  if (thematicElevated && (structuralElevated || aiElevated)) count++;
   return count;
 }
 

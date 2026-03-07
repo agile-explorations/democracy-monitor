@@ -203,6 +203,58 @@ Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceAppa
 
 ---
 
+### R-F12: Per-Category L1 Structural Threshold Calibration
+
+**Source**: Sprint R-CAL2 NC-3 calibration analysis (2026-03-07)
+**Layer affected**: Layer 1 / Convergence synthesis
+**Effort**: Medium (analysis-heavy, code changes small)
+**Prerequisite**: Stable baseline data with clean embeddings
+
+Five categories still exceed the 5% Elevated+ threshold during Biden 2022 baseline after the R-CAL2 fixes (L2 P2-corroboration, L3 reinforcement-only). All are driven by L1 structural noise in thin categories:
+
+| Category               | Biden 2022 Elevated+ | Avg docs/week | Root cause                                                                                        |
+| ---------------------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
+| judicialIndependence   | 23.1%                | 6.3           | Structural z-scores inherently noisy at this volume — 12/52 weeks fire L1 even with dampening=1.0 |
+| executiveOversight     | 13.5%                | 42.5          | Mixed: 4 L1 thin-week spikes + 3 L2 with flagRateZScore >3.0                                      |
+| executiveActions       | 7.7%                 | 13.9          | 2 L1 + 2 L2 with z>3.0                                                                            |
+| elections              | 7.7%                 | 5.7           | 3 L1 thin-category noise + 1 L2                                                                   |
+| immigrationEnforcement | 5.8%                 | 7.2           | 3 L1 thin-category noise                                                                          |
+
+**What doesn't work**: Global dampening constant changes (STRUCTURAL_MIN_DOC_COUNT tested at 10, 20, 30). Higher dampening trades true positives for false positive reduction uniformly — the wrong lever because it suppresses genuine signals in the same thin categories where noise is the problem.
+
+**Proposed approach**: Adaptive thresholds based on corpus size. Categories with fewer than ~20 average docs/week need a higher structural anomaly threshold or a different statistical test (e.g., Poisson-based rather than z-score-based, since small-count distributions are not normal). Options:
+
+- Per-category `STRUCTURAL_ANOMALY_THRESHOLD` overrides in `scoring-config.ts`
+- Automatic threshold scaling: `effectiveThreshold = BASE_THRESHOLD × (targetMinDocs / avgDocsPerWeek)` when avgDocs < targetMinDocs
+- Switch thin categories to Poisson confidence intervals instead of z-scores — a count going from 6 to 12 is within the 95% Poisson interval and shouldn't trigger
+- Accept a higher NC-3 threshold (10%) for categories below a document volume floor, documented as a statistical limitation
+
+**For launch**: NC-3 threshold raised to 10% for categories with <20 avg docs/week. judicialIndependence (23.1%) remains a documented known limitation. All other categories pass at the adjusted threshold.
+
+---
+
+### R-F13: Layer 3 Re-evaluation as Independent Signal
+
+**Source**: Sprint R-CAL2 analysis (2026-03-07)
+**Layer affected**: Layer 3 / Convergence synthesis
+**Effort**: Medium
+**Prerequisite**: Clean baseline recomputation after OIG backfill, FEC enrichment, and FR content backfill
+
+L3 (thematic drift) was set to reinforcement-only mode during R-CAL2 based on empirical findings: 23 false positive weeks in Biden 2022, 0 independent true detections across the entire validation set. The one event L3 detects (T2-12 government shutdown) already has L1+L2 = Divergent independently. L3 had a 44% false positive rate (23/52 Biden 2022 weeks).
+
+**Root cause**: Baseline centroids were computed from contaminated embeddings — 164K content-less CourtListener docket stubs (now marked `metadata_only`) and 60K GDELT metadata-only documents (excluded). The centroids that L3 measures drift against were themselves noisy, producing noisy drift measurements.
+
+**Re-evaluation trigger**: After the next full baseline recomputation with clean embeddings (post content backfill and source cleanup), re-run the L3 analysis:
+
+1. Compute per-source-type centroids from clean full-text embeddings only
+2. Measure Biden 2022 L3 false positive rate — if it drops below 10%, L3 may be viable as an independent signal
+3. Check whether L3 catches any events that L1+L2 miss — the architecture's claim is that L3 detects _gradual_ semantic drift invisible to per-document assessment (L2) and structural metrics (L1). Test against T2-5 (sustained layoff program, 6+ months) and T2-7 (Schedule F evolution over 12 months)
+4. If L3 passes both tests (low baseline noise + catches gradual drift), restore as independent signal with the higher threshold (likely 4.0-5.0 instead of current 3.5)
+
+**Reinforcement-only mode is the correct default until this re-evaluation is complete.** The flag should be a configurable constant (`L3_INDEPENDENT_SIGNAL = false`) in `scoring-config.ts`, not hardcoded architectural removal.
+
+---
+
 ## Surviving Features (from original Sprint 23–29 plan)
 
 These features were planned in the original Sprint 23-29 sequence and survive under the new architecture with modifications.

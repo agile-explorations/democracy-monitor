@@ -128,11 +128,12 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
   controls.push(evaluateNc2BidenP2ConfirmRate(await fetchP2ConfirmationRate(b22.from, b22.to)));
 
   const b22Weeks = await fetchWeeklyData(b22.from, b22.to, catFilter);
-  const byCat = new Map<string, { elevated: number; total: number }>();
+  const byCat = new Map<string, { elevated: number; total: number; totalDocs: number }>();
   for (const row of b22Weeks) {
-    if (!byCat.has(row.category)) byCat.set(row.category, { elevated: 0, total: 0 });
+    if (!byCat.has(row.category)) byCat.set(row.category, { elevated: 0, total: 0, totalDocs: 0 });
     const entry = byCat.get(row.category)!;
     entry.total++;
+    entry.totalDocs += row.document_count ?? 0;
     if (row.status && convergenceStatusAtLeast(row.status as ConvergenceStatus, 'Elevated')) {
       entry.elevated++;
     }
@@ -143,6 +144,7 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
         category: cat,
         elevatedCount: d.elevated,
         totalWeeks: d.total,
+        avgDocsPerWeek: d.total > 0 ? d.totalDocs / d.total : 0,
       })),
     ),
   );

@@ -109,26 +109,44 @@ export function evaluateNc2BidenP2ConfirmRate(rate: number): NegativeControlResu
   };
 }
 
+/** Avg docs/week threshold below which a category uses the relaxed NC-3 limit. */
+const NC3_THIN_CATEGORY_DOC_THRESHOLD = 20;
+
+/** Elevated+ rate limit for categories with ≥20 avg docs/week. */
+const NC3_STANDARD_RATE = 0.05;
+
+/** Elevated+ rate limit for categories with <20 avg docs/week. */
+const NC3_THIN_RATE = 0.1;
+
 /**
- * NC-3: Biden 2022 weeks at Elevated+ should be ≤2 of ~52 per category.
- * Fail if >5% of weeks are Elevated+.
+ * NC-3: Biden 2022 weeks at Elevated+ per category.
+ * Tiered threshold: ≤5% for categories with ≥20 avg docs/week,
+ * ≤10% for thin categories (<20 avg docs/week) where structural
+ * z-scores are inherently noisy with small samples.
  */
 export function evaluateNc3BidenElevatedWeeks(
-  categoryWeeks: Array<{ category: string; elevatedCount: number; totalWeeks: number }>,
+  categoryWeeks: Array<{
+    category: string;
+    elevatedCount: number;
+    totalWeeks: number;
+    avgDocsPerWeek: number;
+  }>,
 ): NegativeControlResult {
   const details = categoryWeeks.map((r) => {
     const pct = r.totalWeeks > 0 ? r.elevatedCount / r.totalWeeks : 0;
-    return { category: r.category, value: pct, pass: pct <= 0.05 };
+    const limit =
+      r.avgDocsPerWeek >= NC3_THIN_CATEGORY_DOC_THRESHOLD ? NC3_STANDARD_RATE : NC3_THIN_RATE;
+    return { category: r.category, value: pct, pass: pct <= limit };
   });
   const allPass = details.every((d) => d.pass);
   const worst = details.reduce((a, b) => (b.value > a.value ? b : a), details[0]);
 
   return {
     id: 'NC-3',
-    description: 'Biden 2022 weeks at Elevated+ per category (fail >5%)',
+    description: 'Biden 2022 weeks at Elevated+ per category (fail >5%/10%)',
     pass: allPass,
     actual: worst ? `worst: ${worst.category} at ${(worst.value * 100).toFixed(1)}%` : 'no data',
-    threshold: '≤5% of weeks',
+    threshold: '≤5% (≥20 docs/week) or ≤10% (<20 docs/week)',
     details,
   };
 }

@@ -185,8 +185,11 @@ export const BOOTSTRAP_CONFIDENCE = 0.5;
 
 // --- Layer 2 (AI two-pass assessment) ---
 
-/** Z-score threshold for AI flag rate to be considered elevated. */
+/** Z-score threshold for AI flag rate to be considered elevated (requires P2 corroboration). */
 export const AI_FLAG_RATE_THRESHOLD = 1.5;
+
+/** Z-score threshold for AI flag rate to fire without P2 corroboration (very strong signal). */
+export const AI_FLAG_RATE_STRONG_THRESHOLD = 3.0;
 
 /** Fraction of Pass 2 docs at potentially/clearly concerning to trigger high concern. */
 export const AI_CONCERN_THRESHOLD = 0.2;

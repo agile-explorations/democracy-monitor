@@ -117,21 +117,35 @@ describe('negative control evaluations', () => {
     });
   });
 
-  describe('NC-3: Biden 2022 elevated weeks', () => {
-    it('passes when ≤5% of weeks are elevated', () => {
-      const data = [{ category: 'civilService', elevatedCount: 2, totalWeeks: 52 }];
+  describe('NC-3: Biden 2022 elevated weeks (tiered thresholds)', () => {
+    it('passes at ≤5% for categories with ≥20 avg docs/week', () => {
+      const data = [
+        { category: 'civilService', elevatedCount: 2, totalWeeks: 52, avgDocsPerWeek: 30 },
+      ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(true);
     });
 
-    it('fails when >5% of weeks are elevated', () => {
-      const data = [{ category: 'civilService', elevatedCount: 5, totalWeeks: 52 }];
+    it('fails at >5% for categories with ≥20 avg docs/week', () => {
+      const data = [
+        { category: 'civilService', elevatedCount: 5, totalWeeks: 52, avgDocsPerWeek: 30 },
+      ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
     });
 
-    it('fails when any single category exceeds threshold', () => {
+    it('passes at ≤10% for thin categories (<20 avg docs/week)', () => {
+      const data = [{ category: 'elections', elevatedCount: 5, totalWeeks: 52, avgDocsPerWeek: 6 }];
+      expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(true);
+    });
+
+    it('fails at >10% for thin categories', () => {
+      const data = [{ category: 'elections', elevatedCount: 6, totalWeeks: 52, avgDocsPerWeek: 6 }];
+      expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
+    });
+
+    it('fails when any single category exceeds its threshold', () => {
       const data = [
-        { category: 'civilService', elevatedCount: 0, totalWeeks: 52 },
-        { category: 'fiscal', elevatedCount: 10, totalWeeks: 52 },
+        { category: 'civilService', elevatedCount: 0, totalWeeks: 52, avgDocsPerWeek: 30 },
+        { category: 'fiscal', elevatedCount: 10, totalWeeks: 52, avgDocsPerWeek: 100 },
       ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
     });

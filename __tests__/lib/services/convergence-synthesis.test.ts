@@ -78,11 +78,11 @@ describe('synthesizeConvergence', () => {
       expect(result.structuralElevated).toBe(true);
     });
 
-    it('returns Elevated when only thematic is elevated', () => {
+    it('returns Stable when only thematic is elevated (L3 reinforcement-only)', () => {
       const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(makeStructuralScore(), null, thematic);
-      expect(result.status).toBe('Elevated');
-      expect(result.layersElevated).toBe(1);
+      expect(result.status).toBe('Stable');
+      expect(result.layersElevated).toBe(0);
       expect(result.thematicElevated).toBe(true);
     });
 
@@ -102,8 +102,8 @@ describe('synthesizeConvergence', () => {
   });
 
   describe('AI layer elevation', () => {
-    it('AI alone triggers Elevated', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0 });
+    it('AI triggers Elevated when P1 flag rate elevated AND P2 confirms concern', () => {
+      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('Elevated');
       expect(result.aiElevated).toBe(true);
@@ -112,6 +112,54 @@ describe('synthesizeConvergence', () => {
 
     it('AI below threshold does not trigger', () => {
       const ai = makeAISummary({ flagRateZScore: 1.0 });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Stable');
+      expect(result.aiElevated).toBe(false);
+    });
+
+    it('AI does NOT trigger when P1 elevated but P2 found nothing concerning', () => {
+      const ai = makeAISummary({
+        flagRateZScore: 2.0,
+        concernRate: 0,
+        concernDistribution: {
+          routine: 5,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 0,
+        },
+      });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Stable');
+      expect(result.aiElevated).toBe(false);
+    });
+
+    it('AI triggers without P2 concern when flag rate is very strong (>3.0)', () => {
+      const ai = makeAISummary({
+        flagRateZScore: 3.5,
+        concernRate: 0,
+        concernDistribution: {
+          routine: 5,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 0,
+        },
+      });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Elevated');
+      expect(result.aiElevated).toBe(true);
+    });
+
+    it('AI does NOT trigger at exactly strong threshold without P2 concern', () => {
+      const ai = makeAISummary({
+        flagRateZScore: 3.0,
+        concernRate: 0,
+        concernDistribution: {
+          routine: 5,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 0,
+        },
+      });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('Stable');
       expect(result.aiElevated).toBe(false);
@@ -247,36 +295,45 @@ describe('synthesizeConvergence', () => {
     });
   });
 
-  describe('bootstrap behavior', () => {
-    it('thematic alone cannot trigger Elevated during bootstrap', () => {
-      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
+  describe('L3 reinforcement-only behavior', () => {
+    it('thematic alone cannot trigger Elevated', () => {
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(makeStructuralScore(), null, thematic);
       expect(result.status).toBe('Stable');
-      expect(result.bootstrap).toBe(true);
+      expect(result.layersElevated).toBe(0);
     });
 
-    it('thematic can reinforce structural during bootstrap', () => {
+    it('thematic reinforces structural to produce Divergent', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
-      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(structural, null, thematic);
       expect(result.status).toBe('Divergent');
       expect(result.layersElevated).toBe(2);
     });
 
-    it('thematic can reinforce AI during bootstrap', () => {
+    it('thematic reinforces AI to produce Divergent', () => {
+      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, thematic);
+      expect(result.status).toBe('Divergent');
+      expect(result.layersElevated).toBe(2);
+    });
+
+    it('thematic reinforces AI with high concern to produce ConfirmedConcern', () => {
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.3 });
-      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
+      const thematic = makeThematicDrift({ zScore: 4.0 });
       const result = synthesizeConvergence(makeStructuralScore(), ai, thematic);
       expect(result.status).toBe('ConfirmedConcern');
       expect(result.layersElevated).toBe(2);
     });
 
-    it('AI is not affected by bootstrap', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0 });
-      const thematic = makeThematicDrift({ zScore: 0, bootstrap: true });
-      const result = synthesizeConvergence(makeStructuralScore(), ai, thematic);
-      expect(result.status).toBe('Elevated');
-      expect(result.aiElevated).toBe(true);
+    it('reinforcement works the same during bootstrap', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
+      const result = synthesizeConvergence(structural, null, thematic);
+      expect(result.status).toBe('Divergent');
+      expect(result.layersElevated).toBe(2);
+      expect(result.bootstrap).toBe(true);
     });
   });
 

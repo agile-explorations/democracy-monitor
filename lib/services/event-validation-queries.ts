@@ -11,6 +11,7 @@ import { ALL_KNOWN_EVENTS } from '@/lib/validation/known-events';
 export interface WeekRow {
   category: string;
   week_of: string;
+  document_count: number;
   structural_score: number | null;
   ai_score: number | null;
   thematic_score: number | null;
@@ -33,7 +34,7 @@ export async function fetchWeeklyData(
   const db = getDb();
   const catClause = categoryFilter ? sql` AND category = ${categoryFilter}` : sql``;
   const result = await db.execute(sql`
-    SELECT category, week_of,
+    SELECT category, week_of, document_count,
       structural_score, ai_score, thematic_score,
       convergence_detail->>'status' as status
     FROM weekly_aggregates
