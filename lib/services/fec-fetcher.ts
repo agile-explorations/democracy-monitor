@@ -308,13 +308,13 @@ async function fetchAoHistorical(
         baseDelayMs: FEC_RETRY_BASE_DELAY_MS,
         label: `fec-AO-${dateFrom}-p${page + 1}`,
       });
-    } catch {
-      console.error(`[fec] Network error on AO ${dateFrom} p${page + 1}`);
-      break;
+    } catch (err) {
+      throw new Error(
+        `[fec] Network error on AO ${dateFrom} p${page + 1}: ${err instanceof Error ? err.message : err}`,
+      );
     }
     if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
-      break;
+      throw new Error(`[fec] HTTP ${response.status} on AO ${dateFrom}`);
     }
 
     const data: FecLegalSearchResponse = await response.json();
@@ -351,13 +351,13 @@ async function fetchMurHistorical(
         baseDelayMs: FEC_RETRY_BASE_DELAY_MS,
         label: `fec-MUR-${dateFrom}-p${page + 1}`,
       });
-    } catch {
-      console.error(`[fec] Network error on MUR ${dateFrom} p${page + 1}`);
-      break;
+    } catch (err) {
+      throw new Error(
+        `[fec] Network error on MUR ${dateFrom} p${page + 1}: ${err instanceof Error ? err.message : err}`,
+      );
     }
     if (!response.ok) {
-      console.error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
-      break;
+      throw new Error(`[fec] HTTP ${response.status} on MUR ${dateFrom}`);
     }
 
     const data: FecLegalSearchResponse = await response.json();

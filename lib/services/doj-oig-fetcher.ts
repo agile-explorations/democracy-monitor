@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
@@ -39,7 +40,7 @@ export function toContentItem(report: DojOigReport): ContentItem {
 
 /** Parse a single views-row element into a DojOigReport. */
 export function parseReportRow(
-  $row: cheerio.Cheerio<cheerio.Element>,
+  $row: cheerio.Cheerio<Element>,
   $: cheerio.CheerioAPI,
 ): DojOigReport | null {
   const timeEl = $row.find('time.datetime');
@@ -92,8 +93,7 @@ async function fetchPage(
   });
 
   if (!response.ok) {
-    console.error(`[doj-oig] HTTP ${response.status} for ${pageUrl}`);
-    return { reports: [], totalPages: 0 };
+    throw new Error(`[doj-oig] HTTP ${response.status} for ${pageUrl}`);
   }
 
   const html = await response.text();

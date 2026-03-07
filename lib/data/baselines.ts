@@ -1,9 +1,4 @@
-export type BaselineSource = 'federal_register' | 'whitehouse' | 'gdelt';
-
-export interface WhArchiveConfig {
-  baseUrl: string; // e.g. 'https://trumpwhitehouse.archives.gov'
-  sections: string[]; // e.g. ['/remarks/', '/briefings-statements/']
-}
+export type BaselineSource = 'federal_register' | 'gdelt';
 
 export interface BaselineConfig {
   id: string;
@@ -15,13 +10,7 @@ export interface BaselineConfig {
   calendarYear: number; // e.g. 2022
   availableSources: BaselineSource[];
   sourceNotes?: string; // human-readable explanation of source limitations
-  whArchive?: WhArchiveConfig; // for archive-era baselines (non-current WH)
 }
-
-const TRUMP_WH_ARCHIVE: WhArchiveConfig = {
-  baseUrl: 'https://trumpwhitehouse.archives.gov',
-  sections: ['/remarks/', '/briefings-statements/'],
-};
 
 export const BASELINE_CONFIGS: BaselineConfig[] = [
   {
@@ -32,7 +21,7 @@ export const BASELINE_CONFIGS: BaselineConfig[] = [
     cycleYear: 2,
     administration: 'biden',
     calendarYear: 2022,
-    availableSources: ['federal_register', 'whitehouse', 'gdelt'],
+    availableSources: ['federal_register', 'gdelt'],
   },
   {
     id: 'biden_2021',
@@ -42,7 +31,7 @@ export const BASELINE_CONFIGS: BaselineConfig[] = [
     cycleYear: 1,
     administration: 'biden',
     calendarYear: 2021,
-    availableSources: ['federal_register', 'whitehouse', 'gdelt'],
+    availableSources: ['federal_register', 'gdelt'],
   },
   {
     id: 'trump_2017',
@@ -52,8 +41,7 @@ export const BASELINE_CONFIGS: BaselineConfig[] = [
     cycleYear: 1,
     administration: 'trump',
     calendarYear: 2017,
-    availableSources: ['federal_register', 'whitehouse', 'gdelt'],
-    whArchive: TRUMP_WH_ARCHIVE,
+    availableSources: ['federal_register', 'gdelt'],
   },
   {
     id: 'trump_2018',
@@ -63,7 +51,6 @@ export const BASELINE_CONFIGS: BaselineConfig[] = [
     cycleYear: 2,
     administration: 'trump',
     calendarYear: 2018,
-    availableSources: ['federal_register', 'whitehouse', 'gdelt'],
-    whArchive: TRUMP_WH_ARCHIVE,
+    availableSources: ['federal_register', 'gdelt'],
   },
 ];

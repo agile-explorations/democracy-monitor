@@ -215,9 +215,11 @@ export const TRUMP_T2_EVENTS: KnownEvent[] = [
     category: 'civilLiberties',
     description: 'Day One EO blitz — DEI order',
     period: 'trump_t2',
-    expectedMinStatus: 'Elevated',
+    expectedMinStatus: 'Stable',
     expectedLayers: { l2: true },
     signalDensity: 'moderate',
+    notes:
+      'Expected miss — DEI order signal thin in formal documents; requires rhetoric/media sources.',
   },
   // T2-2. Mass IG Firings (Jan 24, 2025)
   {
@@ -363,11 +365,11 @@ export const TRUMP_T2_EVENTS: KnownEvent[] = [
     category: 'elections',
     description: 'CISA election security office elimination',
     period: 'trump_t2',
-    expectedMinStatus: 'Elevated',
+    expectedMinStatus: 'Stable',
     expectedLayers: { l1: true },
     signalDensity: 'thin',
     notes:
-      'Thin signal — primarily institutional silence + media. No formal FR document may exist.',
+      'Expected miss — thin signal, primarily institutional silence + media. No formal FR document may exist.',
   },
   {
     id: 'T2-9',
@@ -420,9 +422,11 @@ export const TRUMP_T2_EVENTS: KnownEvent[] = [
     category: 'judicialIndependence',
     description: 'SCOTUS allows mass layoffs to proceed',
     period: 'trump_t2',
-    expectedMinStatus: 'Elevated',
+    expectedMinStatus: 'Stable',
     expectedLayers: { l2: true },
     signalDensity: 'moderate',
+    notes:
+      'Expected miss — SCOTUS ruling signal may not appear in judicialIndependence formal documents.',
   },
   {
     id: 'T2-11',

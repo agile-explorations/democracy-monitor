@@ -148,8 +148,7 @@ async function searchGovInfo(
   });
 
   if (!response.ok) {
-    console.error(`[govinfo] Search HTTP ${response.status}`);
-    return { results: [], count: 0, offsetMark: null };
+    throw new Error(`[govinfo] Search HTTP ${response.status}`);
   }
 
   return response.json();

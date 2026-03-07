@@ -1,10 +1,9 @@
 /**
- * CLI: pnpm backfill:content [--source fr|govinfo|wh|oig|fec] [--dry-run] [--limit N]
+ * CLI: pnpm backfill:content [--source fr|govinfo|oig|fec] [--dry-run] [--limit N]
  *
  * Backfills null-content documents with full text:
  * - FR Presidential Documents: fetches raw_text_url from FR API, then raw text
  * - GovInfo Congressional Reports: fetches /packages/{id}/htm from GovInfo API
- * - WH (whitehouse.gov / trumpwhitehouse.archives.gov): scrapes article body
  * - OIG (HHS/DOJ/SSA Inspector General): HHS detail page HTML, DOJ/SSA PDF extraction
  * - FEC (MURs/Advisory Opinions): re-fetches structured data + PDF text extraction
  *
@@ -25,7 +24,6 @@ import { extractPdfText } from '@/lib/utils/pdf-extractor';
 
 const BATCH_SIZE = 50;
 const RATE_LIMIT_MS = 200;
-const WH_RATE_LIMIT_MS = 500;
 const MAX_CONTENT_LENGTH = 8_000;
 const FR_FETCH_TIMEOUT_MS = 30_000;
 const DOJ_OIG_CRAWL_DELAY_MS = 5_000; // robots.txt: Crawl-delay: 5
@@ -33,7 +31,7 @@ const HHS_OIG_CRAWL_DELAY_MS = 10_000; // robots.txt: Crawl-delay: 10
 const SSA_OIG_RATE_LIMIT_MS = 2_000; // no robots.txt crawl-delay, be polite
 const FEC_RATE_LIMIT_MS = 4_000; // FEC allows ~1,000 req/hr
 
-type Source = 'fr' | 'govinfo' | 'wh' | 'oig' | 'fec';
+type Source = 'fr' | 'govinfo' | 'oig' | 'fec';
 
 interface BackfillOptions {
   sources: Source[];
@@ -178,149 +176,6 @@ async function backfillGovInfo(options: BackfillOptions): Promise<number> {
   return updated;
 }
 
-/** CSS selectors to try for extracting article body from WH pages (priority order). */
-const WH_BODY_SELECTORS = ['.page-content', '.entry-content', 'article', 'main'];
-
-/**
- * Extract article body text from a WH HTML page.
- * Tries progressively broader CSS selectors; falls back to stripping all HTML.
- */
-export function extractWhBody(html: string): string | null {
-  for (const selector of WH_BODY_SELECTORS) {
-    const inner = extractBySelector(html, selector);
-    if (!inner) continue;
-    const text = stripHtml(inner).replace(/\0/g, '').trim();
-    if (text.length > 50) return truncateContent(text);
-  }
-  // Fallback: strip all HTML
-  const text = stripHtml(html).replace(/\0/g, '').trim();
-  return text.length > 50 ? truncateContent(text) : null;
-}
-
-/**
- * Extract inner HTML for a CSS selector, handling nested tags via depth counting.
- * Class selectors (`.foo`) match any div/section with that class.
- * Tag selectors (`article`) match the tag directly.
- */
-function extractBySelector(html: string, selector: string): string | null {
-  let openPattern: RegExp;
-  let tagName: string;
-
-  if (selector.startsWith('.')) {
-    const className = selector.slice(1);
-    openPattern = new RegExp(
-      `<(div|section)[^>]*\\bclass=["'][^"']*\\b${className}\\b[^"']*["'][^>]*>`,
-      'i',
-    );
-    const openMatch = openPattern.exec(html);
-    if (!openMatch) return null;
-    tagName = openMatch[1].toLowerCase();
-    return extractBalancedContent(html, tagName, openMatch.index + openMatch[0].length);
-  }
-
-  openPattern = new RegExp(`<${selector}[^>]*>`, 'i');
-  const openMatch = openPattern.exec(html);
-  if (!openMatch) return null;
-  tagName = selector;
-  return extractBalancedContent(html, tagName, openMatch.index + openMatch[0].length);
-}
-
-/** Find balanced closing tag by counting open/close depth from a start offset. */
-function extractBalancedContent(html: string, tag: string, contentStart: number): string | null {
-  const openRe = new RegExp(`<${tag}[\\s>]`, 'gi');
-  const closeRe = new RegExp(`</${tag}\\s*>`, 'gi');
-  const events: Array<{ pos: number; isOpen: boolean }> = [];
-
-  openRe.lastIndex = contentStart;
-  closeRe.lastIndex = contentStart;
-
-  let m: RegExpExecArray | null;
-  while ((m = openRe.exec(html))) events.push({ pos: m.index, isOpen: true });
-  while ((m = closeRe.exec(html))) events.push({ pos: m.index, isOpen: false });
-  events.sort((a, b) => a.pos - b.pos);
-
-  let depth = 1;
-  for (const ev of events) {
-    depth += ev.isOpen ? 1 : -1;
-    if (depth === 0) return html.slice(contentStart, ev.pos);
-  }
-  return null;
-}
-
-/** Archive domains for prior administration pages that 404 on current whitehouse.gov. */
-const WH_ARCHIVE_HOSTS = ['trumpwhitehouse.archives.gov', 'bidenwhitehouse.archives.gov'];
-
-async function fetchWhPageContent(url: string): Promise<string | null> {
-  try {
-    const response = await fetch(url, {
-      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
-      signal: AbortSignal.timeout(FR_FETCH_TIMEOUT_MS),
-    });
-    if (response.ok) {
-      const html = await response.text();
-      return extractWhBody(html);
-    }
-    // Fallback: try archive domains for whitehouse.gov 404s
-    if (response.status === 404 && url.includes('www.whitehouse.gov')) {
-      for (const archiveHost of WH_ARCHIVE_HOSTS) {
-        const archiveUrl = url.replace('www.whitehouse.gov', archiveHost);
-        const archiveRes = await fetch(archiveUrl, {
-          headers: { 'User-Agent': 'DemocracyMonitor/1.0 (content-backfill)' },
-          signal: AbortSignal.timeout(FR_FETCH_TIMEOUT_MS),
-        });
-        if (archiveRes.ok) {
-          const html = await archiveRes.text();
-          const content = extractWhBody(html);
-          if (content) return content;
-        }
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function backfillWh(options: BackfillOptions): Promise<number> {
-  const db = getDb();
-
-  const rows = await db
-    .select({ id: documents.id, url: documents.url })
-    .from(documents)
-    .where(and(eq(documents.sourceOrigin, 'whitehouse'), isNull(documents.content)));
-
-  console.log(`[backfill-content] wh: ${rows.length} White House documents with null content`);
-  if (options.dryRun) return 0;
-
-  const toProcess = options.limit ? rows.slice(0, options.limit) : rows;
-  let updated = 0;
-
-  for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
-    const batch = toProcess.slice(i, i + BATCH_SIZE);
-
-    for (const row of batch) {
-      if (!row.url) continue;
-
-      const content = await fetchWhPageContent(row.url);
-      if (content) {
-        await db
-          .update(documents)
-          .set({ content, embeddedAt: sql`NULL` })
-          .where(eq(documents.id, row.id));
-        updated++;
-      }
-
-      await sleep(WH_RATE_LIMIT_MS);
-    }
-
-    console.log(
-      `[backfill-content] wh: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length} processed (${updated} updated)`,
-    );
-  }
-
-  return updated;
-}
-
 /** Fetch content for a single OIG document based on its URL pattern. */
 async function fetchOigContent(url: string): Promise<{ content: string | null; delayMs: number }> {
   // HHS OIG: scrape structured HTML detail page
@@ -456,8 +311,6 @@ async function run(options: BackfillOptions): Promise<void> {
       totalUpdated += await backfillFr(options);
     } else if (source === 'govinfo') {
       totalUpdated += await backfillGovInfo(options);
-    } else if (source === 'wh') {
-      totalUpdated += await backfillWh(options);
     } else if (source === 'oig') {
       totalUpdated += await backfillOig(options);
     } else if (source === 'fec') {
@@ -488,7 +341,7 @@ if (require.main === module) {
     `Usage: pnpm backfill:content [options]
 
 Options:
-  --source <name>     Source to backfill (fr, govinfo, wh, oig, fec; default: all)
+  --source <name>     Source to backfill (fr, govinfo, oig, fec; default: all)
   --limit <n>         Max documents to process
   --dry-run           Preview without writing to DB`,
   );
@@ -497,7 +350,7 @@ Options:
   const dryRun = args.includes('--dry-run');
 
   const sourceArg = sourceIdx !== -1 ? args[sourceIdx + 1] : undefined;
-  const validSources: Source[] = ['fr', 'govinfo', 'wh', 'oig', 'fec'];
+  const validSources: Source[] = ['fr', 'govinfo', 'oig', 'fec'];
   const sources: Source[] =
     sourceArg && validSources.includes(sourceArg as Source) ? [sourceArg as Source] : validSources;
 

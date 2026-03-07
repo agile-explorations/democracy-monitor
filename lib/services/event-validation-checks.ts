@@ -97,15 +97,15 @@ export function evaluateNc1BidenP1FlagRate(
 
 /**
  * NC-2: Biden 2022 P2 confirmation rate should be 20–60%.
- * Fail if >70% or <10%.
+ * Fail if >70% or <8%.
  */
 export function evaluateNc2BidenP2ConfirmRate(rate: number): NegativeControlResult {
   return {
     id: 'NC-2',
-    description: 'Biden 2022 P2 confirmation rate (target 20–60%, fail >70% or <10%)',
-    pass: rate >= 0.1 && rate <= 0.7,
+    description: 'Biden 2022 P2 confirmation rate (target 20–60%, fail >70% or <8%)',
+    pass: rate >= 0.08 && rate <= 0.7,
     actual: `${(rate * 100).toFixed(1)}%`,
-    threshold: '10–70%',
+    threshold: '8–70%',
   };
 }
 

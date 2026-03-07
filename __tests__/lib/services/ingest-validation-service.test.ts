@@ -186,6 +186,7 @@ describe('collectWarnings', () => {
       sourcePeriodCoverage: [],
       clOpinionCoverage: null,
       signalCoverageGaps: [],
+      fetchErrors: [],
       warnings: [],
       ...overrides,
     };

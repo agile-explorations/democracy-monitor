@@ -327,7 +327,8 @@ async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!response.ok) {
-      console.error(`[courtlistener] HTTP ${response.status} on page ${page}`);
+      if (page === 0) throw new Error(`[courtlistener] HTTP ${response.status} on page ${page}`);
+      console.error(`[courtlistener] HTTP ${response.status} on page ${page}, returning partial`);
       break;
     }
 

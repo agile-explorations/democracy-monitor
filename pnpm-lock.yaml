@@ -17,6 +17,9 @@ importers:
       cheerio:
         specifier: ^1.1.2
         version: 1.1.2
+      domhandler:
+        specifier: '5'
+        version: 5.0.3
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@types/pg@8.16.0)(pg@8.18.0)

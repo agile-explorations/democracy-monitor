@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import type { Element } from 'domhandler';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
@@ -40,7 +41,7 @@ export function toContentItem(report: HhsOigReport): ContentItem {
 }
 
 /** Parse a single usa-card element into an HhsOigReport. */
-export function parseReportCard($card: cheerio.Cheerio<cheerio.Element>): HhsOigReport | null {
+export function parseReportCard($card: cheerio.Cheerio<Element>): HhsOigReport | null {
   const linkEl = $card.find('.usa-card__heading a');
   const title = linkEl.text().trim();
   const href = linkEl.attr('href');
@@ -117,8 +118,7 @@ async function fetchPage(
   });
 
   if (!response.ok) {
-    console.error(`[hhs-oig] HTTP ${response.status} for ${pageUrl}`);
-    return { reports: [], totalPages: 0 };
+    throw new Error(`[hhs-oig] HTTP ${response.status} for ${pageUrl}`);
   }
 
   const html = await response.text();

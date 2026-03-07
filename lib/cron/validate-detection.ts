@@ -68,11 +68,12 @@ function printNegativeControls(controls: NegativeControlResult[]): void {
 
 function printEventDetection(events: LayerAttribution[], verbose: boolean): void {
   console.log('\n=== Known Event Detection ===');
+  const STATUS_WIDTH = 42;
   const hdr =
     `  ${'ID'.padEnd(8)}` +
     `${'Date'.padEnd(12)}` +
     `${'Category'.padEnd(26)}` +
-    `${'Status'.padEnd(20)}` +
+    `${'Status'.padEnd(STATUS_WIDTH)}` +
     `${'L1'.padStart(4)}` +
     `${'L2'.padStart(4)}` +
     `${'L3'.padStart(4)}` +
@@ -82,7 +83,7 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
   for (const e of events) {
     const hasData = e.convergenceStatus !== null;
     const status = e.convergenceStatus ?? 'no data';
-    const expected = `(≥${e.expectedMinStatus})`;
+    const statusText = e.detected ? status : `${status} (expected ≥${e.expectedMinStatus})`;
     const det = statusIcon(e.detected, hasData);
     const l1 = layerIcon(e.l1Fired, e.structuralScore);
     const l2 = layerIcon(e.l2Fired, e.aiScore);
@@ -92,12 +93,13 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
       `  ${e.eventId.padEnd(8)}` +
         `${e.eventDate.padEnd(12)}` +
         `${e.category.padEnd(26)}` +
-        `${`${status} ${expected}`.padEnd(20)}` +
+        `${statusText.padEnd(STATUS_WIDTH)}` +
         `${l1.padStart(4)}` +
         `${l2.padStart(4)}` +
         `${l3.padStart(4)}` +
         `${det.padStart(5)}`,
     );
+    console.log(`           ${e.description}`);
 
     if (verbose) {
       const scores = [
@@ -107,6 +109,48 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
       ].join('  ');
       console.log(`           ${scores}`);
       if (e.notes) console.log(`           Note: ${e.notes}`);
+    }
+  }
+
+  console.log('');
+  console.log(
+    `  Legend: ${PASS} layer fired / event detected   \u00B7 layer below threshold   ${FAIL} event missed   ${SKIP} no data`,
+  );
+}
+
+function printDetectionBreakdown(events: LayerAttribution[]): void {
+  // By period
+  const byPeriod = new Map<string, { detected: number; total: number }>();
+  for (const e of events) {
+    const period = e.eventId.startsWith('T1-') ? 'Trump T1' : 'Trump T2';
+    if (!byPeriod.has(period)) byPeriod.set(period, { detected: 0, total: 0 });
+    const entry = byPeriod.get(period)!;
+    entry.total++;
+    if (e.detected) entry.detected++;
+  }
+  console.log('\n=== Detection by Period ===');
+  for (const [period, data] of byPeriod) {
+    const pct = data.total > 0 ? ((data.detected / data.total) * 100).toFixed(0) : '0';
+    const mark = data.detected === data.total ? PASS : WARN;
+    console.log(`  ${mark} ${period.padEnd(12)} ${data.detected}/${data.total} detected (${pct}%)`);
+  }
+
+  // By category — only show categories with misses
+  const byCat = new Map<string, { detected: number; total: number }>();
+  for (const e of events) {
+    if (!byCat.has(e.category)) byCat.set(e.category, { detected: 0, total: 0 });
+    const entry = byCat.get(e.category)!;
+    entry.total++;
+    if (e.detected) entry.detected++;
+  }
+  const missed = [...byCat.entries()]
+    .filter(([, d]) => d.detected < d.total)
+    .sort(([, a], [, b]) => a.detected / a.total - b.detected / b.total);
+  if (missed.length > 0) {
+    console.log('\n=== Misses by Category ===');
+    for (const [cat, data] of missed) {
+      const pct = ((data.detected / data.total) * 100).toFixed(0);
+      console.log(`  ${FAIL} ${cat.padEnd(26)} ${data.detected}/${data.total} detected (${pct}%)`);
     }
   }
 }
@@ -148,6 +192,7 @@ function printReport(report: ValidationReport, options: CliOptions): void {
   printNegativeControls(report.negativeControls);
   printEventDetection(report.eventDetection, !!options.verbose);
   if (options.evidence) printEvidence(report);
+  printDetectionBreakdown(report.eventDetection);
   printSummary(report);
 }
 

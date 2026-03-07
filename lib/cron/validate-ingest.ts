@@ -10,6 +10,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import type {
   ContentCompleteness,
   DocumentCoverage,
+  FetchErrorSummary,
   IngestReport,
   SignalCoverageGap,
   SourcePeriodCoverage,
@@ -156,6 +157,21 @@ function printSignalCoverage(gaps: SignalCoverageGap[]): void {
   }
 }
 
+function printFetchErrors(errors: FetchErrorSummary[]): void {
+  console.log('\n=== Fetch Errors ===');
+  if (errors.length === 0) {
+    console.log('  \u2713 No incomplete fetches');
+    return;
+  }
+  for (const fe of errors) {
+    const errDetail = fe.totalErrors > 0 ? `, ${fe.totalErrors} error(s)` : '';
+    console.log(
+      `  \u2717 ${fe.sourceOrigin.padEnd(20)} ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies)${errDetail}`,
+    );
+  }
+  console.log('  Run: pnpm backfill:gaps for details');
+}
+
 function printGdeltCoverage(
   gdeltCoverage: SourcePeriodCoverage[],
   docCoverage: DocumentCoverage[],
@@ -230,6 +246,7 @@ function printReport(report: IngestReport, categoryFilter?: string): void {
   printCpdPeriodCoverage(report.cpdPeriodCoverage, cats);
   printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
   printSignalCoverage(report.signalCoverageGaps);
+  printFetchErrors(report.fetchErrors);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

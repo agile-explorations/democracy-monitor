@@ -3,7 +3,6 @@ import { backfillCpd } from '@/lib/cron/backfill-cpd';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
 import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
-import type { RhetoricSource } from '@/lib/cron/backfill-rhetoric';
 import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
 import {
   buildAnalysisPeriodCondition,
@@ -45,7 +44,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   oig: 'oig_html',
 };
 
-const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['whitehouse', 'gdelt']);
+const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['gdelt']);
 const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legiscan', 'cpd']);
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
@@ -263,12 +262,11 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
     }
   }
 
-  // Rhetoric backfill: runs when no source filter, or when source is whitehouse/gdelt
+  // Rhetoric backfill (GDELT): runs when no source filter, or when source is gdelt
   const isRhetoricSource = options.source ? RHETORIC_SOURCES.has(options.source) : false;
   const shouldRunRhetoric = !options.source || isRhetoricSource;
   if (shouldRunRhetoric && !options.category) {
-    const rhetoricFilter = isRhetoricSource ? (options.source as RhetoricSource) : undefined;
-    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun, rhetoricFilter);
+    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun);
   }
 
   // CPD backfill: runs when no source filter, or when source is cpd

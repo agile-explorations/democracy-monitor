@@ -113,13 +113,11 @@ describe('BASELINE_CONFIGS', () => {
     }
   });
 
-  it('trump baselines have whArchive config', () => {
-    const trump2017 = BASELINE_CONFIGS.find((c) => c.id === 'trump_2017')!;
-    expect(trump2017.whArchive).toBeDefined();
-    expect(trump2017.whArchive!.baseUrl).toContain('trumpwhitehouse.archives.gov');
-    expect(trump2017.whArchive!.sections).toHaveLength(2);
-    const trump2018 = BASELINE_CONFIGS.find((c) => c.id === 'trump_2018')!;
-    expect(trump2018.whArchive).toBeDefined();
+  it('all baselines have federal_register and gdelt sources', () => {
+    for (const config of BASELINE_CONFIGS) {
+      expect(config.availableSources).toContain('federal_register');
+      expect(config.availableSources).toContain('gdelt');
+    }
   });
 });
 

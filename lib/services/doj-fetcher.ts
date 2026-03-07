@@ -139,8 +139,7 @@ async function fetchDojPage(
 
   const response = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!response.ok) {
-    console.error(`[doj] HTTP ${response.status} on page ${page}`);
-    return null;
+    throw new Error(`[doj] HTTP ${response.status} on page ${page}`);
   }
 
   const newCookies = parseCookies(response.headers.get('set-cookie')) || cookies;

@@ -63,16 +63,6 @@ export async function fetchPresidentialDocuments(): Promise<IntentStatement[]> {
   }
 }
 
-export async function fetchWhiteHouseBriefings(): Promise<IntentStatement[]> {
-  return fetchRssFeed(
-    'https://www.whitehouse.gov/briefings-statements/feed/',
-    'intent:wh-briefings',
-    'White House',
-    1,
-    /<link>(https:\/\/www\.whitehouse\.gov[^<]*)<\/link>/g,
-  );
-}
-
 async function fetchRssFeed(
   feedUrl: string,
   cacheKey: string,
@@ -163,7 +153,6 @@ export async function fetchGoogleNewsRhetoric(): Promise<IntentStatement[]> {
 export async function fetchAllRhetoricSources(): Promise<IntentStatement[]> {
   const results = await Promise.allSettled([
     fetchPresidentialDocuments(),
-    fetchWhiteHouseBriefings(),
     fetchNPRPolitics(),
     fetchAPPolitics(),
     fetchGoogleNewsRhetoric(),

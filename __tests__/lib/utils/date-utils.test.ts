@@ -69,35 +69,45 @@ describe('formatWeekLabel', () => {
 });
 
 describe('getWeekRanges', () => {
-  it('returns a single range for a span of 6 days or fewer', () => {
+  it('Monday-aligns the start date', () => {
+    // 2025-01-01 is a Wednesday → snaps back to Monday 2024-12-30
     const ranges = getWeekRanges('2025-01-01', '2025-01-05');
-    expect(ranges).toEqual([{ start: '2025-01-01', end: '2025-01-05' }]);
+    expect(ranges).toEqual([{ start: '2024-12-30', end: '2025-01-05' }]);
   });
 
-  it('returns a single range for exactly 7 days', () => {
-    const ranges = getWeekRanges('2025-01-01', '2025-01-07');
-    expect(ranges).toEqual([{ start: '2025-01-01', end: '2025-01-07' }]);
+  it('keeps Monday start dates unchanged', () => {
+    // 2025-01-06 is already a Monday
+    const ranges = getWeekRanges('2025-01-06', '2025-01-12');
+    expect(ranges).toEqual([{ start: '2025-01-06', end: '2025-01-12' }]);
   });
 
-  it('splits multi-week ranges into 7-day chunks', () => {
-    const ranges = getWeekRanges('2025-01-01', '2025-01-21');
+  it('splits multi-week ranges into Monday-aligned 7-day chunks', () => {
+    // 2025-01-06 (Mon) through 2025-01-26 (Sun) = 3 full weeks
+    const ranges = getWeekRanges('2025-01-06', '2025-01-26');
     expect(ranges).toEqual([
-      { start: '2025-01-01', end: '2025-01-07' },
-      { start: '2025-01-08', end: '2025-01-14' },
-      { start: '2025-01-15', end: '2025-01-21' },
+      { start: '2025-01-06', end: '2025-01-12' },
+      { start: '2025-01-13', end: '2025-01-19' },
+      { start: '2025-01-20', end: '2025-01-26' },
     ]);
   });
 
   it('clamps the final partial week to the end date', () => {
-    const ranges = getWeekRanges('2025-01-01', '2025-01-10');
+    const ranges = getWeekRanges('2025-01-06', '2025-01-15');
     expect(ranges).toEqual([
-      { start: '2025-01-01', end: '2025-01-07' },
-      { start: '2025-01-08', end: '2025-01-10' },
+      { start: '2025-01-06', end: '2025-01-12' },
+      { start: '2025-01-13', end: '2025-01-15' },
     ]);
   });
 
-  it('returns a single-day range when start equals end', () => {
-    const ranges = getWeekRanges('2025-06-15', '2025-06-15');
-    expect(ranges).toEqual([{ start: '2025-06-15', end: '2025-06-15' }]);
+  it('handles inauguration dates (Friday → snaps to Monday)', () => {
+    // 2017-01-20 is a Friday → snaps to Monday 2017-01-16
+    const ranges = getWeekRanges('2017-01-20', '2017-01-29');
+    expect(ranges[0].start).toBe('2017-01-16');
+    expect(ranges).toHaveLength(2);
+  });
+
+  it('returns a single-day range when start equals end (Monday)', () => {
+    const ranges = getWeekRanges('2025-06-16', '2025-06-16');
+    expect(ranges).toEqual([{ start: '2025-06-16', end: '2025-06-16' }]);
   });
 });

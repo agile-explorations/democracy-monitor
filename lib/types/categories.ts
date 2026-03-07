@@ -7,7 +7,8 @@ export type SignalType =
   | 'courtlistener'
   | 'doj_json'
   | 'govinfo'
-  | 'fec_json';
+  | 'fec_json'
+  | 'oig_html';
 
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 

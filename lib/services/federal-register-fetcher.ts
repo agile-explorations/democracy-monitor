@@ -113,7 +113,8 @@ export async function fetchFederalRegisterHistorical(options: {
     });
 
     if (!response.ok) {
-      console.error(`[fr-historical] HTTP ${response.status} for page ${page}`);
+      if (page === 1) throw new Error(`[fr-historical] HTTP ${response.status} for page ${page}`);
+      console.error(`[fr-historical] HTTP ${response.status} for page ${page}, returning partial`);
       break;
     }
 

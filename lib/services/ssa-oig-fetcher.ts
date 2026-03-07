@@ -136,8 +136,7 @@ async function fetchPage(
   });
 
   if (!response.ok) {
-    console.error(`[ssa-oig] HTTP ${response.status} for ${pageUrl}`);
-    return { reports: [], totalPages: 0 };
+    throw new Error(`[ssa-oig] HTTP ${response.status} for ${pageUrl}`);
   }
 
   const html = await response.text();

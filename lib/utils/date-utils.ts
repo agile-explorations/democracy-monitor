@@ -62,12 +62,14 @@ export function formatWeekLabelWithYear(week: string): string {
 /** Split a date range into week-sized chunks (Monday-aligned). */
 export function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = [];
-  const current = new Date(from);
+  // Snap to the Monday of the starting week
+  const monday = new Date(getMonday(new Date(from)) + 'T00:00:00Z');
+  const current = new Date(monday);
   const endDate = new Date(to);
 
   while (current <= endDate) {
     const weekEnd = new Date(current);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
     const actualEnd = weekEnd > endDate ? endDate : weekEnd;
 
     ranges.push({
@@ -75,7 +77,7 @@ export function getWeekRanges(from: string, to: string): Array<{ start: string; 
       end: toDateString(actualEnd),
     });
 
-    current.setDate(current.getDate() + 7);
+    current.setUTCDate(current.getUTCDate() + 7);
   }
 
   return ranges;

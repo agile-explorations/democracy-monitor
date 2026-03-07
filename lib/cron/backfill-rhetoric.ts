@@ -1,13 +1,9 @@
-/** Rhetoric backfill helpers for White House + GDELT data (monitoring period). */
+/** Rhetoric backfill helpers for GDELT data (monitoring period). */
 
 import { storeDocuments } from '@/lib/services/document-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
-import {
-  fetchWhiteHouseHistorical,
-  fetchGdeltHistorical,
-  GDELT_QUERIES,
-} from '@/lib/services/rhetoric-fetcher';
+import { fetchGdeltHistorical, GDELT_QUERIES } from '@/lib/services/rhetoric-fetcher';
 
 async function backfillGdeltMonitoring(
   weeks: Array<{ start: string; end: string }>,
@@ -49,57 +45,12 @@ async function backfillGdeltMonitoring(
   return gdeltDocs;
 }
 
-async function backfillRhetoricMonitoring(
-  weeks: Array<{ start: string; end: string }>,
-  dryRun: boolean,
-  sourceFilter?: RhetoricSource,
-): Promise<{ whDocs: number; gdeltDocs: number }> {
-  let whDocs = 0;
-  let gdeltDocs = 0;
-
-  console.log('\n[backfill] === Rhetoric Sources ===');
-
-  if (!sourceFilter || sourceFilter === 'whitehouse') {
-    console.log('[backfill] Fetching White House briefing-room archive...');
-    if (!dryRun) {
-      try {
-        const whItems = await fetchWhiteHouseHistorical({
-          dateFrom: weeks[0].start,
-          dateTo: weeks[weeks.length - 1].end,
-          delayMs: 500,
-        });
-        if (whItems.length > 0) {
-          const stored = await storeDocuments(whItems, 'intent');
-          await crossfeedRhetoricToCategories(whItems);
-          whDocs = stored;
-          console.log(`  White House: ${whItems.length} items fetched, ${stored} stored`);
-        } else {
-          console.log('  White House: 0 items (site may be blocking)');
-        }
-      } catch (err) {
-        console.error('  White House fetch error:', err);
-      }
-    } else {
-      console.log('  White House: [dry run] would fetch archive pages');
-    }
-  }
-
-  if (!sourceFilter || sourceFilter === 'gdelt') {
-    gdeltDocs = await backfillGdeltMonitoring(weeks, dryRun);
-  }
-
-  return { whDocs, gdeltDocs };
-}
-
-export type RhetoricSource = 'whitehouse' | 'gdelt';
-
 export async function backfillRhetoricWithAggregation(
   weeks: Array<{ start: string; end: string }>,
   dryRun: boolean,
-  sourceFilter?: RhetoricSource,
 ): Promise<number> {
-  const rhetoric = await backfillRhetoricMonitoring(weeks, dryRun, sourceFilter);
-  const docs = rhetoric.whDocs + rhetoric.gdeltDocs;
+  console.log('\n[backfill] === Rhetoric Sources ===');
+  const docs = await backfillGdeltMonitoring(weeks, dryRun);
 
   if (!dryRun) {
     console.log('\n[backfill] === Intent Weekly Aggregation ===');

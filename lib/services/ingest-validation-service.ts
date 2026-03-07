@@ -10,6 +10,7 @@
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import type { Category } from '@/lib/types';
+import { getIncompleteWeeks } from './fetch-log-store';
 import {
   getDocumentCoverage,
   getContentCompleteness,
@@ -66,6 +67,13 @@ export interface ClOpinionCoverage {
   casesWithoutOpinion: number;
 }
 
+export interface FetchErrorSummary {
+  sourceOrigin: string;
+  totalIncomplete: number;
+  categories: number;
+  totalErrors: number;
+}
+
 export interface IngestReport {
   documentCoverage: DocumentCoverage[];
   contentCompleteness: ContentCompleteness[];
@@ -77,6 +85,7 @@ export interface IngestReport {
   sourcePeriodCoverage: SourcePeriodGap[];
   clOpinionCoverage: ClOpinionCoverage | null;
   signalCoverageGaps: SignalCoverageGap[];
+  fetchErrors: FetchErrorSummary[];
   warnings: string[];
 }
 
@@ -84,7 +93,7 @@ export interface IngestReport {
 export const CONTENT_FIXABLE_TYPES = new Set(['Presidential Document', 'congressional_report']);
 
 /** Source origins where content can be backfilled via `pnpm backfill:content`. */
-export const CONTENT_FIXABLE_ORIGINS = new Map([['whitehouse', 'wh']]);
+export const CONTENT_FIXABLE_ORIGINS = new Map<string, string>();
 
 // Re-export query functions and types for consumers
 export type { SourcePeriodGap, SignalCoverageRow, SignalCoverageGap };
@@ -251,7 +260,44 @@ export function collectWarnings(report: IngestReport, categoryFilter?: string): 
     warnings.push(`${gap.category} missing ${label} source: ${gap.expectedSource}`);
   }
 
+  // Fetch errors
+  for (const fe of report.fetchErrors) {
+    warnings.push(
+      `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies) (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
+    );
+  }
+
   return warnings;
+}
+
+// ---------------------------------------------------------------------------
+// Fetch error summarization
+// ---------------------------------------------------------------------------
+
+interface IncompleteWeekRow {
+  sourceOrigin: string;
+  category: string;
+  errors: string[] | null;
+}
+
+function summarizeFetchErrors(incompleteWeeks: IncompleteWeekRow[]): FetchErrorSummary[] {
+  const bySource = new Map<string, { categories: Set<string>; errors: number; count: number }>();
+  for (const w of incompleteWeeks) {
+    if (!bySource.has(w.sourceOrigin))
+      bySource.set(w.sourceOrigin, { categories: new Set(), errors: 0, count: 0 });
+    const entry = bySource.get(w.sourceOrigin)!;
+    entry.categories.add(w.category);
+    entry.errors += w.errors?.length ?? 0;
+    entry.count++;
+  }
+  return [...bySource.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([source, data]) => ({
+      sourceOrigin: source,
+      totalIncomplete: data.count,
+      categories: data.categories.size,
+      totalErrors: data.errors,
+    }));
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +318,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     sourcePeriod,
     clOpinions,
     sourceCoverage,
+    incompleteWeeks,
   ] = await Promise.all([
     getDocumentCoverage(category),
     getContentCompleteness(category),
@@ -283,10 +330,12 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     getSourcePeriodCoverage(),
     getClOpinionCoverage(),
     getSourceCoverageByCategory(),
+    getIncompleteWeeks(),
   ]);
 
   const cats = category ? CATEGORIES.filter((c) => c.key === category) : CATEGORIES;
   const signalCoverageGaps = checkSignalCoverage(sourceCoverage, cats);
+  const fetchErrors = summarizeFetchErrors(incompleteWeeks);
 
   const report: IngestReport = {
     documentCoverage: coverage,
@@ -299,6 +348,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     sourcePeriodCoverage: sourcePeriod,
     clOpinionCoverage: clOpinions,
     signalCoverageGaps,
+    fetchErrors,
     warnings: [],
   };
   report.warnings = collectWarnings(report, category);
