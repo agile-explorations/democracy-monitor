@@ -319,6 +319,7 @@ describe('collectWarnings', () => {
       layer2Completeness: [],
       layerScorePopulation: [],
       metadataOnlyClassification: [],
+      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0, staleWeeks: 0 },
       dataIntegrity: [],
       warnings: [],
       ...overrides,

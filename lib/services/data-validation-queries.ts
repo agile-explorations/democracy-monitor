@@ -10,6 +10,7 @@ import type {
   Layer2PeriodStats,
   LayerScorePeriodStats,
   MetadataOnlyStats,
+  NarrativeCoverage,
 } from './data-validation-service';
 
 // ---------------------------------------------------------------------------
@@ -317,4 +318,49 @@ export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats
   });
 
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Narrative coverage
+// ---------------------------------------------------------------------------
+
+export async function getNarrativeCoverage(category?: string): Promise<NarrativeCoverage> {
+  if (!isDbAvailable())
+    return { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0, staleWeeks: 0 };
+  const db = getDb();
+
+  const catFilter = category ? sql`AND wa.category = ${category}` : sql``;
+
+  const rows = await db.execute(sql`
+    WITH elevated AS (
+      SELECT category, week_of, computed_at
+      FROM weekly_aggregates wa
+      WHERE convergence_detail IS NOT NULL
+        AND convergence_detail->>'status' <> 'Stable'
+        ${catFilter}
+    ),
+    narr AS (
+      SELECT category, week_of, max(generated_at) as latest_generated
+      FROM narratives
+      GROUP BY category, week_of
+    )
+    SELECT
+      count(DISTINCT (e.category, e.week_of))::int AS elevated_weeks,
+      count(DISTINCT CASE WHEN n.week_of IS NOT NULL
+            THEN (e.category, e.week_of) END)::int AS narrative_weeks,
+      count(DISTINCT CASE WHEN n.week_of IS NULL
+            THEN (e.category, e.week_of) END)::int AS missing_weeks,
+      count(DISTINCT CASE WHEN n.latest_generated < e.computed_at
+            THEN (e.category, e.week_of) END)::int AS stale_weeks
+    FROM elevated e
+    LEFT JOIN narr n ON n.category = e.category AND n.week_of = e.week_of
+  `);
+
+  const stats = rows.rows[0] as Record<string, unknown>;
+  return {
+    elevatedWeeks: Number(stats.elevated_weeks ?? 0),
+    narrativeWeeks: Number(stats.narrative_weeks ?? 0),
+    missingWeeks: Number(stats.missing_weeks ?? 0),
+    staleWeeks: Number(stats.stale_weeks ?? 0),
+  };
 }

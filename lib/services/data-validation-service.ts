@@ -18,6 +18,7 @@ import {
   getLayer2Completeness,
   getLayerScorePopulation,
   getMetadataOnlyClassification,
+  getNarrativeCoverage,
 } from './data-validation-queries';
 
 // ---------------------------------------------------------------------------
@@ -83,19 +84,32 @@ export interface DataIntegrityCheck {
   pass: boolean;
 }
 
+export interface NarrativeCoverage {
+  elevatedWeeks: number;
+  narrativeWeeks: number;
+  missingWeeks: number;
+  staleWeeks: number;
+}
+
 export interface DataReport {
   stageCompleteness: StageCompleteness;
   baselineCompleteness: BaselineCompleteness[];
   layer2Completeness: Layer2Completeness;
   layerScorePopulation: LayerScorePeriodStats[];
   metadataOnlyClassification: MetadataOnlyStats[];
+  narrativeCoverage: NarrativeCoverage;
   dataIntegrity: DataIntegrityCheck[];
   warnings: string[];
 }
 
 // Re-export query functions for consumers
 export { getDataIntegrityChecks } from './data-integrity-queries';
-export { getLayer2Completeness, getLayerScorePopulation, getMetadataOnlyClassification };
+export {
+  getLayer2Completeness,
+  getLayerScorePopulation,
+  getMetadataOnlyClassification,
+  getNarrativeCoverage,
+};
 
 // ---------------------------------------------------------------------------
 // Stage completeness queries
@@ -219,6 +233,21 @@ function checkBaselineCompleteness(baselines: BaselineCompleteness[]): string[] 
   return warnings;
 }
 
+function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
+  const warnings: string[] = [];
+  if (nc.missingWeeks > 0) {
+    warnings.push(
+      `${nc.missingWeeks} elevated category-weeks missing narratives (run: pnpm layers:enrich --narratives)`,
+    );
+  }
+  if (nc.staleWeeks > 0) {
+    warnings.push(
+      `${nc.staleWeeks} narratives are stale (generated before latest layer recomputation)`,
+    );
+  }
+  return warnings;
+}
+
 export function collectWarnings(report: DataReport): string[] {
   const warnings: string[] = [];
   const s = report.stageCompleteness;
@@ -265,6 +294,8 @@ export function collectWarnings(report: DataReport): string[] {
       warnings.push(`${m.population}: ${m.unmarked} of ${m.total} not marked metadata_only`);
   }
 
+  warnings.push(...checkNarrativeCoverage(report.narrativeCoverage));
+
   for (const check of report.dataIntegrity) {
     if (!check.pass) {
       const detail = check.detail ? `: ${check.detail}` : '';
@@ -288,6 +319,7 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layer2Completeness,
     layerScores,
     metadataOnly,
+    narrativeCov,
     dataIntegrity,
   ] = await Promise.all([
     getStageCompleteness(category),
@@ -295,6 +327,7 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     getLayer2Completeness(category),
     getLayerScorePopulation(category),
     getMetadataOnlyClassification(),
+    getNarrativeCoverage(category),
     getDataIntegrityChecks(),
   ]);
 
@@ -304,6 +337,7 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layer2Completeness,
     layerScorePopulation: layerScores,
     metadataOnlyClassification: metadataOnly,
+    narrativeCoverage: narrativeCov,
     dataIntegrity,
     warnings: [],
   };

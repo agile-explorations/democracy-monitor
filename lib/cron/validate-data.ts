@@ -14,6 +14,7 @@ import type {
   Layer2PeriodStats,
   LayerScorePeriodStats,
   MetadataOnlyStats,
+  NarrativeCoverage,
 } from '@/lib/services/data-validation-service';
 import { runDataValidation } from '@/lib/services/data-validation-service';
 import { checkHelp } from '@/lib/utils/cli-help';
@@ -134,6 +135,23 @@ function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
   }
 }
 
+function printNarrativeCoverage(nc: NarrativeCoverage): void {
+  console.log('\n=== Narrative Coverage ===');
+  const covPct =
+    nc.elevatedWeeks > 0 ? ((nc.narrativeWeeks / nc.elevatedWeeks) * 100).toFixed(0) : '0';
+  const covMark = nc.missingWeeks === 0 ? PASS : WARN;
+  console.log(
+    `  ${covMark} ${nc.narrativeWeeks} / ${nc.elevatedWeeks} elevated category-weeks have narratives (${covPct}%)`,
+  );
+  if (nc.missingWeeks > 0) {
+    console.log(`    ${nc.missingWeeks} missing (run: pnpm layers:enrich --narratives)`);
+  }
+  const staleMark = nc.staleWeeks === 0 ? PASS : WARN;
+  console.log(
+    `  ${staleMark} ${nc.staleWeeks} stale narratives (generated before layer recomputation)`,
+  );
+}
+
 function printDataIntegrity(checks: DataIntegrityCheck[]): void {
   console.log('\n=== Data Integrity ===');
   for (const check of checks) {
@@ -149,6 +167,7 @@ function printReport(report: DataReport): void {
   printLayer2Completeness(report.layer2Completeness);
   printLayerScorePopulation(report.layerScorePopulation);
   printMetadataOnlyClassification(report.metadataOnlyClassification);
+  printNarrativeCoverage(report.narrativeCoverage);
   printDataIntegrity(report.dataIntegrity);
 
   if (report.warnings.length > 0) {
