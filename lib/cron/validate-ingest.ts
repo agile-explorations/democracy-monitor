@@ -2,7 +2,7 @@
  * CLI: pnpm validate:ingest [--category <key>]
  *
  * Checks source coverage, content completeness, pagination fitness,
- * FR/CPD/GDELT period coverage, signal definition coverage,
+ * FR/CPD period coverage, signal definition coverage,
  * and CourtListener opinion coverage.
  */
 
@@ -172,26 +172,6 @@ function printFetchErrors(errors: FetchErrorSummary[]): void {
   console.log('  Run: pnpm backfill:gaps for details');
 }
 
-function printGdeltCoverage(
-  gdeltCoverage: SourcePeriodCoverage[],
-  docCoverage: DocumentCoverage[],
-  cats: Category[],
-): void {
-  console.log('\n=== GDELT Cross-Feed Coverage ===');
-  const gdeltMap = new Map(gdeltCoverage.map((r) => [r.category, r.count]));
-  const docsByCat = new Map<string, number>();
-  for (const row of docCoverage) {
-    docsByCat.set(row.category, (docsByCat.get(row.category) ?? 0) + row.count);
-  }
-  for (const cat of cats) {
-    const count = gdeltMap.get(cat.key) ?? 0;
-    const thin = (docsByCat.get(cat.key) ?? 0) < 500;
-    const mark = count > 0 ? '\u2713' : thin ? '-' : '\u2717';
-    const note = count === 0 && thin ? ' (thin category)' : '';
-    console.log(`  ${cat.key.padEnd(30)} ${mark} ${count}${note}`);
-  }
-}
-
 function printClOpinionCoverage(cl: ClOpinionCoverage | null): void {
   if (!cl) return;
   console.log('\n=== CourtListener Opinion Coverage ===');
@@ -244,7 +224,6 @@ function printReport(report: IngestReport, categoryFilter?: string): void {
   printSourcePeriodCoverage(report.sourcePeriodCoverage);
   printFrPeriodCoverage(report.frPeriodCoverage, cats);
   printCpdPeriodCoverage(report.cpdPeriodCoverage, cats);
-  printGdeltCoverage(report.gdeltCrossfeedCoverage, report.documentCoverage, cats);
   printSignalCoverage(report.signalCoverageGaps);
   printFetchErrors(report.fetchErrors);
 

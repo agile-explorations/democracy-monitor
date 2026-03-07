@@ -2,7 +2,7 @@
  * Ingest validation service — "Did we get the data we expected?"
  *
  * Checks source coverage, content completeness, pagination fitness,
- * FR/GDELT period coverage, and CourtListener opinion coverage.
+ * FR period coverage, and CourtListener opinion coverage.
  *
  * Source-specific queries: ingest-validation-queries.ts
  */
@@ -18,7 +18,6 @@ import {
   getPaginationFitness,
   getFrPeriodCoverage,
   getCpdPeriodCoverage,
-  getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
   getSourcePeriodCoverage,
   getSourceCoverageByCategory,
@@ -81,7 +80,6 @@ export interface IngestReport {
   paginationFitness: PaginationFitness[];
   frPeriodCoverage: SourcePeriodCoverage[];
   cpdPeriodCoverage: SourcePeriodCoverage[];
-  gdeltCrossfeedCoverage: SourcePeriodCoverage[];
   sourcePeriodCoverage: SourcePeriodGap[];
   clOpinionCoverage: ClOpinionCoverage | null;
   signalCoverageGaps: SignalCoverageGap[];
@@ -104,7 +102,6 @@ export {
   getPaginationFitness,
   getFrPeriodCoverage,
   getCpdPeriodCoverage,
-  getGdeltCrossfeedCoverage,
   getClOpinionCoverage,
   getSourcePeriodCoverage,
   getSourceCoverageByCategory,
@@ -152,6 +149,9 @@ const PERIOD_START_DATES: Record<string, string> = {
 /** Days after period start before a source is considered "late". */
 const LATE_START_DAYS = 30;
 
+/** Sources excluded from period gap warnings (retired or metadata-only). */
+const RETIRED_SOURCES = new Set(['whitehouse', 'gdelt']);
+
 function checkSourcePeriodGaps(coverage: SourcePeriodGap[]): string[] {
   const warnings: string[] = [];
 
@@ -159,6 +159,7 @@ function checkSourcePeriodGaps(coverage: SourcePeriodGap[]): string[] {
   const bySource = new Map<string, Map<string, { count: number; earliest: string | null }>>();
   for (const row of coverage) {
     if (row.period === 'other') continue;
+    if (RETIRED_SOURCES.has(row.sourceOrigin)) continue;
     if (!bySource.has(row.sourceOrigin)) bySource.set(row.sourceOrigin, new Map());
     bySource.get(row.sourceOrigin)!.set(row.period, {
       count: row.count,
@@ -239,19 +240,6 @@ export function collectWarnings(report: IngestReport, categoryFilter?: string): 
   }
 
   warnings.push(...checkFrCoverage(report.frPeriodCoverage, cats));
-
-  const gdeltCats = new Set(report.gdeltCrossfeedCoverage.map((r) => r.category));
-  const docsByCat = new Map<string, number>();
-  for (const row of report.documentCoverage) {
-    docsByCat.set(row.category, (docsByCat.get(row.category) ?? 0) + row.count);
-  }
-  const missingGdelt = cats
-    .filter((c) => !gdeltCats.has(c.key) && (docsByCat.get(c.key) ?? 0) >= THIN_CATEGORY_THRESHOLD)
-    .map((c) => c.key);
-  if (missingGdelt.length > 0) {
-    warnings.push(`Categories missing GDELT cross-feed: ${missingGdelt.join(', ')}`);
-  }
-
   warnings.push(...checkSourcePeriodGaps(report.sourcePeriodCoverage));
 
   // Signal definition coverage gaps
@@ -314,7 +302,6 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     pagination,
     frPeriod,
     cpdPeriod,
-    gdeltCrossfeed,
     sourcePeriod,
     clOpinions,
     sourceCoverage,
@@ -326,7 +313,6 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     getPaginationFitness(category),
     getFrPeriodCoverage(category),
     getCpdPeriodCoverage(category),
-    getGdeltCrossfeedCoverage(category),
     getSourcePeriodCoverage(),
     getClOpinionCoverage(),
     getSourceCoverageByCategory(),
@@ -344,7 +330,6 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     paginationFitness: pagination,
     frPeriodCoverage: frPeriod,
     cpdPeriodCoverage: cpdPeriod,
-    gdeltCrossfeedCoverage: gdeltCrossfeed,
     sourcePeriodCoverage: sourcePeriod,
     clOpinionCoverage: clOpinions,
     signalCoverageGaps,

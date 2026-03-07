@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getPaginationFitness,
   getFrPeriodCoverage,
-  getGdeltCrossfeedCoverage,
 } from '@/lib/services/ingest-validation-queries';
 import {
   getDocumentCoverage,
@@ -76,7 +75,6 @@ describe('ingest-validation-service', () => {
     expect(await getContentCompleteness()).toEqual([]);
     expect(await getPaginationFitness()).toEqual([]);
     expect(await getFrPeriodCoverage()).toEqual([]);
-    expect(await getGdeltCrossfeedCoverage()).toEqual([]);
   });
 
   describe('getDocumentCoverage', () => {
@@ -151,26 +149,6 @@ describe('ingest-validation-service', () => {
       ]);
     });
   });
-
-  describe('getGdeltCrossfeedCoverage', () => {
-    it('maps raw rows to SourcePeriodCoverage with sourceOrigin=gdelt and period=all', async () => {
-      const { isDbAvailable } = await import('@/lib/db');
-      vi.mocked(isDbAvailable).mockReturnValue(true);
-
-      mockExecute.mockResolvedValue({
-        rows: [
-          { category: 'civilService', count: 55 },
-          { category: 'mediaFreedom', count: 30 },
-        ],
-      });
-
-      const result = await getGdeltCrossfeedCoverage();
-      expect(result).toEqual([
-        { category: 'civilService', sourceOrigin: 'gdelt', period: 'all', count: 55 },
-        { category: 'mediaFreedom', sourceOrigin: 'gdelt', period: 'all', count: 30 },
-      ]);
-    });
-  });
 });
 
 describe('collectWarnings', () => {
@@ -182,7 +160,6 @@ describe('collectWarnings', () => {
       paginationFitness: [],
       frPeriodCoverage: [],
       cpdPeriodCoverage: [],
-      gdeltCrossfeedCoverage: [],
       sourcePeriodCoverage: [],
       clOpinionCoverage: null,
       signalCoverageGaps: [],

@@ -174,34 +174,6 @@ export async function getFrPeriodCoverage(category?: string): Promise<SourcePeri
   }));
 }
 
-export async function getGdeltCrossfeedCoverage(
-  category?: string,
-): Promise<SourcePeriodCoverage[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-
-  const catFilter = category ? sql`category = ${category}` : sql`1=1`;
-
-  const rows = await db.execute(sql`
-    select
-      category,
-      count(*)::int as count
-    from documents
-    where source_origin = 'gdelt'
-      and category != 'intent'
-      and ${catFilter}
-    group by category
-    order by category
-  `);
-
-  return (rows.rows as Array<{ category: string; count: number }>).map((r) => ({
-    category: r.category,
-    sourceOrigin: 'gdelt',
-    period: 'all',
-    count: Number(r.count),
-  }));
-}
-
 export interface SourcePeriodGap {
   sourceOrigin: string;
   period: string;
@@ -362,7 +334,6 @@ const SIGNAL_TYPE_TO_ORIGIN: Record<string, string> = {
 /** Sources that reach categories via pipeline routing, not signal definitions. */
 const PIPELINE_SOURCES: Array<{ origin: string; categories: 'all' | string[] }> = [
   { origin: 'govinfo_cpd', categories: 'all' },
-  { origin: 'gdelt', categories: 'all' },
 ];
 
 /**
