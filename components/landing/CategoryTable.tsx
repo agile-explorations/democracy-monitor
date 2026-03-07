@@ -172,12 +172,10 @@ function CategoryRow({
           )}
         </td>
         <td className="py-2 px-2">
-          {cat.insufficientData ? (
-            <span className="text-[10px] text-dm-muted">No Data</span>
-          ) : cat.convergenceStatus ? (
+          {cat.convergenceStatus ? (
             <ConvergenceStatusPill status={cat.convergenceStatus} />
           ) : (
-            <span className="text-[10px] text-dm-muted">{'\u2014'}</span>
+            <span className="text-[10px] text-dm-muted">No Data</span>
           )}
         </td>
         <td className="py-2 px-2 hidden md:table-cell">

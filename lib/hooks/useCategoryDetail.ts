@@ -64,7 +64,6 @@ export interface CategoryDetailState {
   baseline: { avg: number; stddev: number };
   title: string;
   convergenceStatus: ConvergenceSynthesis | null;
-  dataCoverage: number | null;
   rangePreset: TimeRangePreset;
   brushStartIndex: number | undefined;
   brushEndIndex: number | undefined;
@@ -86,7 +85,6 @@ export function useCategoryDetail(
   const [baseline, setBaseline] = useState({ avg: 0, stddev: 0 });
   const [title, setTitle] = useState('');
   const [convergenceStatus, setConvergenceStatus] = useState<ConvergenceSynthesis | null>(null);
-  const [dataCoverage, setDataCoverage] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Range state
@@ -128,7 +126,6 @@ export function useCategoryDetail(
           setTitle(detail.title ?? '');
           setBaseline(detail.baseline ?? { avg: 0, stddev: 0 });
           setConvergenceStatus(detail.latestWeek?.convergenceDetail ?? null);
-          setDataCoverage(detail.assessment?.dataCoverage ?? null);
         }
       } catch (err) {
         console.error('Failed to load category detail:', err);
@@ -248,7 +245,6 @@ export function useCategoryDetail(
     baseline,
     title,
     convergenceStatus,
-    dataCoverage,
     rangePreset,
     brushStartIndex,
     brushEndIndex,

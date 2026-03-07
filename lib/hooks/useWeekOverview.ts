@@ -4,8 +4,6 @@ import { useEffect, useState } from 'react';
 export interface CategorySummary {
   category: string;
   title: string;
-  status: string;
-  insufficientData: boolean;
   convergenceStatus: string | null;
   structuralElevated: boolean;
   aiElevated: boolean;

@@ -74,7 +74,7 @@ describe('GET /api/category/[key]', () => {
     const data = res.body as Record<string, unknown>;
     expect(data.category).toBe('judicialIndependence');
     expect(data.title).toBe('Following Court Orders');
-    expect(data.assessment).toBeNull();
+    expect(data.latestWeek).toBeNull();
     expect(data.baseline).toEqual({ avg: 0, stddev: 0 });
   });
 });

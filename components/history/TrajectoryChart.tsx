@@ -10,14 +10,22 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { CATEGORY_COLORS } from '@/lib/data/chart-colors';
-import type { TrajectoryPoint } from '@/lib/services/snapshot-store';
+
+interface TrajectoryPoint {
+  week: string;
+  status: string;
+  reason: string;
+  matchCount: number;
+}
 
 const STATUS_LEVEL: Record<string, number> = {
   Stable: 0,
-  Warning: 1,
-  Drift: 2,
-  Capture: 3,
+  Elevated: 1,
+  Divergent: 2,
+  ConfirmedConcern: 3,
 };
+
+const STATUS_LABELS = ['Stable', 'Elevated', 'Divergent', 'Confirmed Concern'];
 
 interface TrajectoryChartProps {
   data: Record<string, TrajectoryPoint[]>;
@@ -44,12 +52,12 @@ function TrajectoryTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-lg p-3 max-w-xs">
-      <p className="font-medium text-sm text-slate-900 mb-1">{label}</p>
+    <div className="bg-dm-card border border-dm-border rounded-lg shadow-lg p-3 max-w-xs">
+      <p className="font-medium text-sm text-dm-text-primary mb-1">{label}</p>
       {payload.map((entry) => {
         const cat = entry.dataKey as string;
         if (cat === 'convergence' || cat.endsWith('_reason')) return null;
-        const level = ['Stable', 'Warning', 'Drift', 'Capture'][entry.value as number];
+        const level = STATUS_LABELS[entry.value as number];
         return (
           <p key={cat} className="text-xs" style={{ color: entry.color }}>
             {cat}: {level}
@@ -92,7 +100,7 @@ export function TrajectoryChart({ data, convergenceData }: TrajectoryChartProps)
 
   if (chartData.length === 0) {
     return (
-      <div className="text-center text-slate-500 py-8">
+      <div className="text-center text-dm-text-secondary py-8">
         No trajectory data available. Run the backfill script to populate historical data.
       </div>
     );
@@ -113,7 +121,7 @@ export function TrajectoryChart({ data, convergenceData }: TrajectoryChartProps)
         <YAxis
           domain={[0, 3]}
           ticks={[0, 1, 2, 3]}
-          tickFormatter={(v: number) => ['Stable', 'Warning', 'Drift', 'Capture'][v] || ''}
+          tickFormatter={(v: number) => STATUS_LABELS[v] || ''}
           tick={{ fontSize: 11 }}
           width={70}
         />

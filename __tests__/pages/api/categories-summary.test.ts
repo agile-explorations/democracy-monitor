@@ -58,7 +58,7 @@ describe('GET /api/categories/summary', () => {
     expect(data.length).toBe(14);
     expect(data[0]).toHaveProperty('category');
     expect(data[0]).toHaveProperty('title');
-    expect(data[0]).toHaveProperty('status', 'Stable');
+    expect(data[0]).toHaveProperty('convergenceStatus', null);
     expect(data[0]).toHaveProperty('sparklineData');
     expect(data[0].sparklineData).toEqual([]);
   });

@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { TrajectoryPoint } from '@/lib/services/snapshot-store';
 import { CategoryTimeline } from './CategoryTimeline';
 import { TrajectoryChart } from './TrajectoryChart';
+
+interface TrajectoryPoint {
+  week: string;
+  status: string;
+  reason: string;
+  matchCount: number;
+}
 
 const INAUGURATION = '2025-01-20';
 
@@ -59,7 +65,7 @@ export function HistorySection() {
   if (loading) {
     return (
       <Card>
-        <div className="animate-pulse text-center py-8 text-slate-400">
+        <div className="animate-pulse text-center py-8 text-dm-muted">
           Loading historical data...
         </div>
       </Card>
@@ -81,51 +87,51 @@ export function HistorySection() {
       {/* Summary stats */}
       {summary && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-            <div className="text-2xl font-bold text-slate-900">{summary.documents.total}</div>
-            <div className="text-xs text-slate-500">Documents Tracked</div>
+          <div className="bg-dm-card rounded-xl border border-dm-border p-4 text-center">
+            <div className="text-2xl font-bold text-dm-text-primary">{summary.documents.total}</div>
+            <div className="text-xs text-dm-text-secondary">Documents Tracked</div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-            <div className="text-2xl font-bold text-slate-900">{summary.snapshots.total}</div>
-            <div className="text-xs text-slate-500">Assessment Snapshots</div>
+          <div className="bg-dm-card rounded-xl border border-dm-border p-4 text-center">
+            <div className="text-2xl font-bold text-dm-text-primary">{summary.snapshots.total}</div>
+            <div className="text-xs text-dm-text-secondary">Assessment Snapshots</div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-            <div className="text-2xl font-bold text-slate-900">
+          <div className="bg-dm-card rounded-xl border border-dm-border p-4 text-center">
+            <div className="text-2xl font-bold text-dm-text-primary">
               {summary.documents.byCategory.length}
             </div>
-            <div className="text-xs text-slate-500">Categories</div>
+            <div className="text-xs text-dm-text-secondary">Categories</div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-            <div className="text-2xl font-bold text-slate-900">
+          <div className="bg-dm-card rounded-xl border border-dm-border p-4 text-center">
+            <div className="text-2xl font-bold text-dm-text-primary">
               {Object.values(trajectory).reduce((acc, pts) => acc + pts.length, 0)}
             </div>
-            <div className="text-xs text-slate-500">Weekly Data Points</div>
+            <div className="text-xs text-dm-text-secondary">Weekly Data Points</div>
           </div>
         </div>
       )}
 
       {/* All-category trajectory chart */}
       <Card>
-        <h3 className="text-base font-semibold text-slate-900 mb-4">
+        <h3 className="text-base font-semibold text-dm-text-primary mb-4">
           Institutional Health Trajectory
         </h3>
-        <p className="text-xs text-slate-500 mb-4">
-          Assessment status (Stable → Capture) per category over time since Jan 20, 2025
+        <p className="text-xs text-dm-text-secondary mb-4">
+          Convergence status (Stable → Confirmed Concern) per category over time since Jan 20, 2025
         </p>
         {hasData ? (
           <TrajectoryChart data={trajectory} convergenceData={convergenceTimeline} />
         ) : (
-          <p className="text-center text-slate-400 py-8">
+          <p className="text-center text-dm-muted py-8">
             No trajectory data yet. Run{' '}
-            <code className="bg-slate-100 px-1 rounded">pnpm backfill</code> to populate historical
-            data.
+            <code className="bg-dm-border/30 px-1 rounded">pnpm backfill</code> to populate
+            historical data.
           </p>
         )}
       </Card>
 
       {/* Category drill-down */}
       <Card>
-        <h3 className="text-base font-semibold text-slate-900 mb-4">Category Detail</h3>
+        <h3 className="text-base font-semibold text-dm-text-primary mb-4">Category Detail</h3>
         <div className="flex flex-wrap gap-2 mb-4">
           {CATEGORIES.map((cat) => (
             <button
@@ -133,8 +139,8 @@ export function HistorySection() {
               onClick={() => setSelectedCategory(selectedCategory === cat.key ? null : cat.key)}
               className={`px-3 py-1 rounded-full text-xs border transition-colors ${
                 selectedCategory === cat.key
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                  ? 'bg-dm-accent text-white border-dm-accent'
+                  : 'bg-dm-card text-dm-text-secondary border-dm-border hover:border-dm-accent/50'
               }`}
             >
               {cat.title}
@@ -149,9 +155,9 @@ export function HistorySection() {
             from={INAUGURATION}
           />
         ) : selectedCategory ? (
-          <p className="text-center text-slate-400 py-4">No data for this category yet.</p>
+          <p className="text-center text-dm-muted py-4">No data for this category yet.</p>
         ) : (
-          <p className="text-center text-slate-400 py-4">
+          <p className="text-center text-dm-muted py-4">
             Select a category to view its detailed timeline.
           </p>
         )}

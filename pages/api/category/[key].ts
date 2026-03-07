@@ -4,7 +4,6 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { baselines, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
-import { getLatestSnapshot } from '@/lib/services/snapshot-store';
 import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import { requireMethod } from '@/lib/utils/api-helpers';
 
@@ -63,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       category: key,
       title: category.title,
-      assessment: null,
       baseline: { avg: 0, stddev: 0 },
       latestWeek: null,
     });
@@ -71,8 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const db = getDb();
-    const [assessment, baselineRow, latestWeek] = await Promise.all([
-      getLatestSnapshot(key),
+    const [baselineRow, latestWeek] = await Promise.all([
       db
         .select({ avg: baselines.avgWeeklySeverity, stddev: baselines.stddevWeeklySeverity })
         .from(baselines)
@@ -84,7 +81,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({
       category: key,
       title: category.title,
-      assessment,
       baseline: baselineRow ?? { avg: 0, stddev: 0 },
       latestWeek,
     });

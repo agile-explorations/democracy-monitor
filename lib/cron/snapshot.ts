@@ -1,10 +1,5 @@
 import { CATEGORIES } from '@/lib/data/categories';
-import { getCurrentCycleYear, PRIMARY_BASELINE_CYCLE_YEAR } from '@/lib/methodology/scoring-config';
-import { enhancedAssessment } from '@/lib/services/ai-assessment-service';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
-import type { CycleAdjustmentFactor } from '@/lib/services/cycle-adjustment-service';
-import { loadCycleAdjustmentFactors } from '@/lib/services/cycle-adjustment-service';
-import { enrichWithDeepAnalysis } from '@/lib/services/deep-analysis';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import {
@@ -27,7 +22,6 @@ import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
 import { generateNarrativesForWeek } from '@/lib/services/narrative-pipeline';
 import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
-import { saveSnapshot } from '@/lib/services/snapshot-store';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
   computeHealthSummary,
@@ -82,7 +76,6 @@ async function runLayersAndAggregate(
 async function snapshotCategory(
   cat: (typeof CATEGORIES)[number],
   allHealthChecks: SourceHealthCheck[],
-  cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): Promise<void> {
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
@@ -118,18 +111,9 @@ async function snapshotCategory(
   );
 
   if (items.length === 0) {
-    console.log(`[snapshot]   Skipping assessment (no items)`);
+    console.log(`[snapshot]   Skipping (no items)`);
     return;
   }
-
-  console.log(`[snapshot] Running assessment for ${cat.key}...`);
-  const assessment = await enhancedAssessment(items, cat.key, { skipCache: true, cycleFactors });
-
-  console.log(`[snapshot] Running deep analysis for ${cat.key}...`);
-  await enrichWithDeepAnalysis(assessment, items);
-
-  console.log(`[snapshot] Saving snapshot for ${cat.key}: ${assessment.status}`);
-  await saveSnapshot(assessment);
 
   const docScores = scoreDocumentBatch(items, cat.key);
   storeDocumentScores(docScores).catch((err) =>
@@ -143,28 +127,20 @@ async function snapshotCategory(
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
 }
 
-/** Run full assessment on a historical week (stages 6-9) using already-stored documents. */
+/** Run scoring + Layer 2 + weekly aggregation for a historical week using stored documents. */
 async function snapshotCategoryWeek(
   cat: (typeof CATEGORIES)[number],
   week: { start: string; end: string },
-  cycleFactors?: Map<string, CycleAdjustmentFactor>,
 ): Promise<boolean> {
   const items = await getDocumentsForWeek(cat.key, week.start, week.end);
   if (items.length === 0) return false;
 
-  // Score + aggregate (stages 2-3, idempotent)
   const docScores = scoreDocumentBatch(items, cat.key);
   await storeDocumentScores(docScores);
 
-  // Layer 2 + aggregate with layer scores (stages 7, 6/8/9 via enrichWithLayerScores)
   await runLayersAndAggregate(items, cat.key, week.start);
 
-  // Keyword assessment + deep analysis + save snapshot (convergence output)
-  const assessment = await enhancedAssessment(items, cat.key, { skipCache: true, cycleFactors });
-  await enrichWithDeepAnalysis(assessment, items);
-  await saveSnapshot(assessment);
-
-  console.log(`  [${cat.key}] ${week.start}: ${items.length} docs, status=${assessment.status}`);
+  console.log(`  [${cat.key}] ${week.start}: ${items.length} docs`);
   return true;
 }
 
@@ -180,11 +156,6 @@ async function runHistoricalSnapshots(options: SnapshotOptions): Promise<void> {
   if (cats.length === 0) throw new Error(`Category "${options.category}" not found`);
   console.log(`[snapshot] ${cats.length} categories to process`);
 
-  const cycleFactors = await loadCycleAdjustmentFactors(
-    getCurrentCycleYear(),
-    PRIMARY_BASELINE_CYCLE_YEAR,
-  );
-
   let totalWeeks = 0;
   let totalEmpty = 0;
 
@@ -192,7 +163,7 @@ async function runHistoricalSnapshots(options: SnapshotOptions): Promise<void> {
     console.log(`\n[snapshot] === ${cat.key} ===`);
     for (const week of weeks) {
       try {
-        const hadDocs = await snapshotCategoryWeek(cat, week, cycleFactors);
+        const hadDocs = await snapshotCategoryWeek(cat, week);
         if (hadDocs) totalWeeks++;
         else totalEmpty++;
       } catch (err) {
@@ -269,21 +240,13 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<void>
   }
   console.log(`[snapshot] Starting snapshot run for ${cats.length} categories...`);
 
-  const cycleFactors = await loadCycleAdjustmentFactors(
-    getCurrentCycleYear(),
-    PRIMARY_BASELINE_CYCLE_YEAR,
-  );
-  if (cycleFactors.size > 0) {
-    console.log(`[snapshot] Loaded ${cycleFactors.size} cycle adjustment factors`);
-  }
-
   let succeeded = 0;
   let failed = 0;
   const allHealthChecks: SourceHealthCheck[] = [];
 
   for (const cat of cats) {
     try {
-      await snapshotCategory(cat, allHealthChecks, cycleFactors);
+      await snapshotCategory(cat, allHealthChecks);
       succeeded++;
     } catch (err) {
       failed++;

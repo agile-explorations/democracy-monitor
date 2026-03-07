@@ -6,12 +6,11 @@ import { CategoryStatusChart } from '@/components/category/CategoryStatusChart';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
-import { StatusPill } from '@/components/ui/StatusPill';
+import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
-import type { StatusLevel } from '@/lib/types';
 
 export default function CategoryDetailPage() {
   const router = useRouter();
@@ -33,7 +32,6 @@ export default function CategoryDetailPage() {
     baseline,
     title,
     convergenceStatus,
-    dataCoverage,
     rangePreset,
     brushStartIndex,
     brushEndIndex,
@@ -69,14 +67,6 @@ export default function CategoryDetailPage() {
   }
 
   const latestRow = weeklyData[weeklyData.length - 1];
-  const status: StatusLevel =
-    convergenceStatus?.status === 'ConfirmedConcern'
-      ? 'Capture'
-      : convergenceStatus?.status === 'Divergent'
-        ? 'Drift'
-        : convergenceStatus?.status === 'Elevated'
-          ? 'Warning'
-          : 'Stable';
 
   return (
     <>
@@ -99,13 +89,12 @@ export default function CategoryDetailPage() {
               {latestRow && <>{Number(latestRow.documentCount)} docs latest week</>}
             </p>
           </div>
-          <StatusPill level={status} />
+          {convergenceStatus?.status ? (
+            <ConvergenceStatusPill status={convergenceStatus.status} />
+          ) : (
+            <span className="text-[10px] text-dm-muted">No Data</span>
+          )}
         </div>
-        {dataCoverage !== null && (
-          <p className="mt-2 text-[11px] text-dm-muted">
-            Data coverage: {(dataCoverage * 100).toFixed(0)}%
-          </p>
-        )}
       </header>
 
       {/* Time range bar */}

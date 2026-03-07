@@ -3,76 +3,32 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { baselines, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
-import type { StatusLevel } from '@/lib/types';
-import type { ConvergenceStatus, ConvergenceSynthesis } from '@/lib/types/structural';
+import type {
+  AIAssessmentSummary,
+  ConvergenceStatus,
+  ConvergenceSynthesis,
+} from '@/lib/types/structural';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
 const SPARKLINE_WEEKS = 8;
 
-interface AssessmentRow {
-  status: string;
-  reason: string;
-  assessedAt: Date;
-  matches: unknown;
-  insufficientData: boolean;
-}
-
-function parseAssessmentRows(rows: { rows: unknown[] }): Record<string, AssessmentRow> {
-  const result: Record<string, AssessmentRow> = {};
-  for (const row of rows.rows) {
-    const r = row as Record<string, unknown>;
-    const detail = r.detail as Record<string, unknown> | null;
-    result[r.category as string] = {
-      status: r.status as string,
-      reason: r.reason as string,
-      assessedAt: new Date(r.assessed_at as string),
-      matches: r.matches,
-      insufficientData: detail?.insufficientData === true,
-    };
-  }
-  return result;
-}
-
 export interface CategorySummary {
   category: string;
   title: string;
-  status: StatusLevel;
-  insufficientData: boolean;
+  convergenceStatus: ConvergenceStatus | null;
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
+  structuralElevated: boolean;
+  aiElevated: boolean;
+  thematicElevated: boolean;
   baselineAvg: number;
   baselineStdDev: number;
   sparklineData: Array<{ week: string; score: number }>;
   documentCount: number;
-  flaggedCount: number;
+  l2FlagCount: number;
   summary: string;
-  assessedAt: string | null;
-  convergenceStatus: ConvergenceStatus | null;
-  structuralElevated: boolean;
-  aiElevated: boolean;
-  thematicElevated: boolean;
-}
-
-/** Fetch assessment status per category. When weekOf is provided, prefer assessments within that week. */
-async function fetchLatestAssessments(
-  db: ReturnType<typeof getDb>,
-  weekOf?: string,
-): Promise<Record<string, AssessmentRow>> {
-  const rows = weekOf
-    ? await db.execute(sql`
-        SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
-        FROM assessments
-        WHERE assessed_at >= ${weekOf}::date
-          AND assessed_at < (${weekOf}::date + interval '7 days')
-        ORDER BY category, assessed_at DESC
-      `)
-    : await db.execute(sql`
-        SELECT DISTINCT ON (category) category, status, reason, assessed_at, matches, detail
-        FROM assessments
-        ORDER BY category, assessed_at DESC
-      `);
-  return parseAssessmentRows(rows);
+  computedAt: string | null;
 }
 
 /** Fetch baseline avg/stddev per category for the primary baseline. */
@@ -95,7 +51,7 @@ async function fetchBaselines(
   return result;
 }
 
-/** Fetch N weeks of weekly aggregates per category. When weekOf is provided, the trailing window ends at that week. */
+/** Fetch N weeks of weekly aggregates per category for sparkline rendering. */
 async function fetchSparklineData(
   db: ReturnType<typeof getDb>,
   weekOf?: string,
@@ -133,23 +89,28 @@ interface ConvergenceRow {
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
+  computedAt: string;
+  l2FlagCount: number;
+  documentCount: number;
 }
 
-/** Fetch convergence synthesis + layer scores per category. When weekOf is provided, use that specific week. */
+/** Fetch convergence synthesis + layer scores per category from weekly_aggregates. */
 async function fetchLatestConvergence(
   db: ReturnType<typeof getDb>,
   weekOf?: string,
 ): Promise<Record<string, ConvergenceRow>> {
   const rows = weekOf
     ? await db.execute(sql`
-        SELECT category, convergence_detail, structural_score, ai_score, thematic_score
+        SELECT category, convergence_detail, structural_score, ai_score, thematic_score,
+               computed_at, ai_detail, document_count
         FROM weekly_aggregates
         WHERE convergence_detail IS NOT NULL
           AND week_of = ${weekOf}
         ORDER BY category
       `)
     : await db.execute(sql`
-        SELECT DISTINCT ON (category) category, convergence_detail, structural_score, ai_score, thematic_score
+        SELECT DISTINCT ON (category) category, convergence_detail, structural_score,
+               ai_score, thematic_score, computed_at, ai_detail, document_count
         FROM weekly_aggregates
         WHERE convergence_detail IS NOT NULL
           AND week_of <= ${latestCompleteWeek()}
@@ -161,62 +122,74 @@ async function fetchLatestConvergence(
     const r = row as Record<string, unknown>;
     const detail = r.convergence_detail as ConvergenceSynthesis | null;
     if (detail) {
+      const aiDetail = r.ai_detail as AIAssessmentSummary | null;
       result[r.category as string] = {
         synthesis: detail,
         structuralScore: r.structural_score != null ? Number(r.structural_score) : null,
         aiScore: r.ai_score != null ? Number(r.ai_score) : null,
         thematicScore: r.thematic_score != null ? Number(r.thematic_score) : null,
+        computedAt: r.computed_at ? new Date(r.computed_at as string).toISOString() : '',
+        l2FlagCount: aiDetail?.flagCount ?? 0,
+        documentCount: Number(r.document_count ?? 0),
       };
     }
   }
   return result;
 }
 
+/** Build a human-readable summary from convergence synthesis. */
+function buildConvergenceSummary(convergence: ConvergenceSynthesis): string {
+  const { status, structuralElevated, aiElevated, thematicElevated, pattern } = convergence;
+
+  if (status === 'Stable') return 'All detection layers within normal parameters.';
+
+  const layers: string[] = [];
+  if (structuralElevated) layers.push('structural anomaly');
+  if (aiElevated) layers.push('AI assessment');
+  if (thematicElevated) layers.push('thematic drift');
+
+  if (layers.length === 0) return `Status: ${status}. Pattern: ${pattern}.`;
+  return `${status}: elevated signal in ${layers.join(', ')}. Pattern: ${pattern}.`;
+}
+
 /**
- * Build category summaries combining static metadata, assessments,
- * baselines, and sparkline data.
+ * Build category summaries from weekly_aggregates convergence data + baselines.
  * When weekOf is provided, data is scoped to that specific week.
  */
 export async function getCategorySummaries(weekOf?: string): Promise<CategorySummary[]> {
   const db = getDb();
 
-  const [latestAssessments, baselineData, sparklineData, convergenceData] = await Promise.all([
-    fetchLatestAssessments(db, weekOf),
+  const [baselineData, sparklineData, convergenceData] = await Promise.all([
     fetchBaselines(db),
     fetchSparklineData(db, weekOf),
     fetchLatestConvergence(db, weekOf),
   ]);
 
   return CATEGORIES.map((cat) => {
-    const assessment = latestAssessments[cat.key];
     const baseline = baselineData[cat.key] ?? { avg: 0, stddev: 0 };
     const sparkline = sparklineData[cat.key] ?? [];
-    const convergenceRow = convergenceData[cat.key] ?? null;
-    const convergence = convergenceRow?.synthesis ?? null;
+    const row = convergenceData[cat.key] ?? null;
+    const convergence = row?.synthesis ?? null;
 
     const latestWeek = sparkline[sparkline.length - 1];
-    const matches = assessment?.matches;
-    const flaggedCount = Array.isArray(matches) ? matches.length : 0;
 
     return {
       category: cat.key,
       title: cat.title,
-      status: (assessment?.status ?? 'Stable') as StatusLevel,
-      insufficientData: assessment?.insufficientData ?? false,
-      structuralScore: convergenceRow?.structuralScore ?? null,
-      aiScore: convergenceRow?.aiScore ?? null,
-      thematicScore: convergenceRow?.thematicScore ?? null,
-      baselineAvg: baseline.avg,
-      baselineStdDev: baseline.stddev,
-      sparklineData: sparkline.map((s) => ({ week: s.week, score: s.score })),
-      documentCount: latestWeek?.docCount ?? 0,
-      flaggedCount,
-      summary: assessment?.reason ?? 'No assessment data available.',
-      assessedAt: assessment?.assessedAt?.toISOString() ?? null,
       convergenceStatus: convergence?.status ?? null,
+      structuralScore: row?.structuralScore ?? null,
+      aiScore: row?.aiScore ?? null,
+      thematicScore: row?.thematicScore ?? null,
       structuralElevated: convergence?.structuralElevated ?? false,
       aiElevated: convergence?.aiElevated ?? false,
       thematicElevated: convergence?.thematicElevated ?? false,
+      baselineAvg: baseline.avg,
+      baselineStdDev: baseline.stddev,
+      sparklineData: sparkline.map((s) => ({ week: s.week, score: s.score })),
+      documentCount: row?.documentCount ?? latestWeek?.docCount ?? 0,
+      l2FlagCount: row?.l2FlagCount ?? 0,
+      summary: convergence ? buildConvergenceSummary(convergence) : cat.description,
+      computedAt: row?.computedAt ?? null,
     };
   });
 }

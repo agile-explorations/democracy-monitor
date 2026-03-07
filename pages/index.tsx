@@ -158,7 +158,7 @@ export default function Home() {
   const displayedWeek = selectedWeek ?? filteredWeeks[filteredWeeks.length - 1];
   const weekDetailHref = displayedWeek ? `/week/${displayedWeek}` : undefined;
 
-  const lastUpdated = categories.find((c) => c.assessedAt)?.assessedAt ?? null;
+  const lastUpdated = categories.find((c) => c.computedAt)?.computedAt ?? null;
 
   return (
     <>

@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
-import { StatusPill } from '@/components/ui/StatusPill';
+import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import type { CategorySummary } from '@/lib/hooks/useWeekOverview';
-import type { StatusLevel } from '@/lib/types';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
 export interface WeekCategoryGridProps {
@@ -43,12 +42,12 @@ export function WeekCategoryGrid({ summaries, weekOf }: WeekCategoryGridProps) {
         >
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-sm font-medium text-dm-text-primary truncate">{cat.title}</span>
-            {cat.insufficientData ? (
+            {cat.convergenceStatus ? (
+              <ConvergenceStatusPill status={cat.convergenceStatus as ConvergenceStatus} />
+            ) : (
               <span className="text-[10px] text-dm-muted px-1.5 py-0.5 rounded border border-dm-border whitespace-nowrap">
                 No Data
               </span>
-            ) : (
-              <StatusPill level={cat.status as StatusLevel} />
             )}
           </div>
           <div className="flex items-center justify-between">
@@ -57,9 +56,6 @@ export function WeekCategoryGrid({ summaries, weekOf }: WeekCategoryGridProps) {
               ai={cat.aiElevated}
               thematic={cat.thematicElevated}
             />
-            <span className="text-[10px] text-dm-muted">
-              {cat.convergenceStatus ? (cat.convergenceStatus as ConvergenceStatus) : '\u2014'}
-            </span>
           </div>
         </Link>
       ))}
