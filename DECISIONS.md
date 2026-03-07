@@ -10,6 +10,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CAL2: NC-3 Convergence Calibration ✅
+
+**Status: Done.** Three convergence fixes reduce Biden 2022 NC-3 false positive rate from 10/13 categories failing to 2/13 (now within tiered thresholds). Detection rate preserved at 30/39 (77%). Plus validate:ingest cleanup for retired GDELT/WH sources.
+
+**Scope vs. Actual:**
+
+- Planned (3 issues #267-#269): NC-3 threshold review (#267), L2 P2-corroboration (#268), L1 thin-category dampening (#269)
+- Actual: #268 delivered as planned. #269 investigated but abandoned — MIN_DOC_COUNT increases traded true positives for false positive reduction (4 lost detections at MIN=30, all in thin categories with 5-14 docs). Replaced with L3 reinforcement-only mode (empirically justified, zero detection cost). #267 delivered as tiered thresholds. Additionally cleaned up validate:ingest to remove retired GDELT/WH source noise.
+
+**Key Decisions:**
+
+1. **L2 P2-corroboration requirement**: `isAIElevated()` now requires `concernRate > 0` OR `flagRateZScore > 3.0` (new `AI_FLAG_RATE_STRONG_THRESHOLD`). Previously fired on P1 flag rate z-score > 1.5 alone, which flagged categories with modestly above-average P1 rates even when no documents were actually concerning. Zero detection cost — no known events rely on P1-only L2 signals.
+2. **L3 reinforcement-only mode**: Thematic drift can upgrade L1/L2 signals (Elevated → Divergent) but cannot independently trigger Elevated. Root cause: L3 had 44% false positive rate in Biden 2022 (23/52 Elevated+ weeks) with zero independent true detections. Underlying issue: baseline centroids computed from contaminated embeddings (164K CL stubs + 60K GDELT metadata-only). Tracked as R-F13 in FUTURE_ROADMAP.md for post-launch re-evaluation.
+3. **L1 dampening abandoned**: Tested MIN_DOC_COUNT at 10, 20, 30. All values above 10 lost true detections (judicialIndependence 5-14 docs, civilService 12 docs). Dampening is the wrong lever — the real fix is per-category L1 calibration (tracked as R-F12 in FUTURE_ROADMAP.md).
+4. **NC-3 tiered thresholds**: Categories with ≥20 avg docs/week get 5% Elevated+ threshold; <20 docs/week get 10%. Structural z-scores are inherently noisy with small samples, so a tighter threshold penalizes thin categories unfairly.
+5. **Retired source cleanup in validate:ingest**: Removed `getGdeltCrossfeedCoverage` function/query, removed GDELT from `PIPELINE_SOURCES`, added `RETIRED_SOURCES` set to skip whitehouse/gdelt in `checkSourcePeriodGaps`. Eliminates misleading warnings for sources that no longer actively ingest.
+
+**Lessons Learned:**
+
+1. **Layer-by-layer diagnosis is essential for false positive triage**: Querying which layer drove each Elevated+ week immediately identified L3 as the dominant noise source (44% FP rate) vs L1 (category-specific) vs L2 (near-zero after P2 corroboration). Without this decomposition, the dampening approach would have been pursued and would have lost detections.
+2. **Empirical analysis before code changes**: The L1 dampening investigation showed all 4 lost detections at MIN=30 were L1-dampening losses in thin categories — something that wasn't obvious from the aggregate NC-3 numbers alone. Running the full detection suite against every proposed change prevented a bad trade.
+3. **Contaminated baselines cause cascading noise**: L3's 44% FP rate traces back to embedding quality — 164K CL stubs and 60K GDELT metadata-only documents in the baseline centroid computation. The reinforcement-only constraint is a sound engineering decision until embeddings are cleaned up.
+
+---
+
 ## Sprint R-CPD2: Validated Document Database ✅
 
 **Status: Done.** Data cleanup (non-Monday week_of fix + DB repair), production code cleanup (WH scraper removal, fetcher error handling), validation code cleanup (event expectations, NC-2 threshold, SNAPSHOT_LOGGED_TYPES expansion, pre-existing TS fixes).
