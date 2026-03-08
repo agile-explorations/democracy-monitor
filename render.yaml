@@ -13,7 +13,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: epd-redis
-          type: redis
+          type: keyvalue
           property: connectionString
       - key: OPENAI_API_KEY
         sync: false
@@ -22,16 +22,17 @@ services:
       - key: NODE_ENV
         value: production
 
+  - type: keyvalue
+    name: epd-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
 databases:
   - name: epd-db
     plan: basic-1gb
     databaseName: epd
     postgresMajorVersion: '16'
-
-keyValueStores:
-  - name: epd-redis
-    plan: starter
-    maxmemoryPolicy: allkeys-lru
 
 # Cron jobs — uncomment after initial deployment is verified
 #
@@ -48,7 +49,7 @@ keyValueStores:
 #       - key: REDIS_URL
 #         fromService:
 #           name: epd-redis
-#           type: redis
+#           type: keyvalue
 #           property: connectionString
 #       - key: OPENAI_API_KEY
 #         sync: false
@@ -67,7 +68,7 @@ keyValueStores:
 #       - key: REDIS_URL
 #         fromService:
 #           name: epd-redis
-#           type: redis
+#           type: keyvalue
 #           property: connectionString
 #       - key: OPENAI_API_KEY
 #         sync: false
@@ -84,7 +85,7 @@ keyValueStores:
 #       - key: REDIS_URL
 #         fromService:
 #           name: epd-redis
-#           type: redis
+#           type: keyvalue
 #           property: connectionString
 #
 #   - name: hourly-uptime
