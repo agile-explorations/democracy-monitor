@@ -33,13 +33,12 @@ For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODO
 pnpm install
 cp .env.example .env.local    # optional — works without it
 pnpm db:migrate               # create tables (requires PostgreSQL)
-pnpm seed:import              # load fixture data (~93MB, no API keys needed)
 pnpm dev                      # http://localhost:3000
 ```
 
 **Requirements:** Node.js 18+, pnpm, PostgreSQL
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup tiers (quick start, with AI, full dataset).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup and the full dataset download.
 
 ### Running tests
 

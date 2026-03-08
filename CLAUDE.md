@@ -25,9 +25,7 @@ pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 c
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
 pnpm baselines:compute # Compute baseline statistics from existing aggregates/embeddings
 pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
-pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots from fixtures
-pnpm seed:export    # Export seed data fixtures from DB to lib/seed/fixtures/
-pnpm seed:import    # Import seed data fixtures into DB (no API keys needed)
+pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
 pnpm signals:retry      # Retry failed RSS/HTML/JSON/FR signals from last snapshot
 pnpm embeddings:backfill # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
@@ -100,7 +98,7 @@ lib/
   cron/           # Scheduled tasks (snapshot, backfill, embeddings, scores, layers)
   methodology/    # Scoring config, named constants, thresholds
   utils/          # Pure utility functions (async, collections, date, math, ai)
-  seed/           # Seed data export/import pipeline + fixtures
+  seed/           # AI assessment review pipeline (seed:review, seed:apply)
   validation/     # Historical backtesting and known-event validation
   allowedHosts.ts # Proxy host whitelist
 
@@ -201,7 +199,9 @@ Configured for **Render.com** deployment via `render.yaml`:
 - Web Service (Next.js app)
 - PostgreSQL (Drizzle ORM, pgvector embeddings)
 - Redis Key-Value store (caching)
-- 3 Cron jobs (stubs for future phases)
+- 5 Cron jobs (commented out until initial deployment is verified)
+
+Database is bootstrapped from a `pg_dump` stored in GitHub Release assets. On first deploy, `pnpm db:init` detects an empty database, downloads the latest dump, restores it, then runs Drizzle migrations. See `DEPLOYMENT.md`.
 
 ## Project management
 

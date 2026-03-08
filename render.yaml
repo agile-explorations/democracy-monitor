@@ -3,7 +3,7 @@ services:
     name: democracy-monitor
     runtime: node
     plan: standard
-    buildCommand: pnpm install && pnpm db:migrate && pnpm build
+    buildCommand: pnpm install && pnpm db:init && pnpm build
     startCommand: pnpm start
     envVars:
       - key: DATABASE_URL
@@ -33,76 +33,78 @@ keyValueStores:
     plan: starter
     maxmemoryPolicy: allkeys-lru
 
-crons:
-  - name: daily-digest
-    schedule: '0 7 * * *'
-    buildCommand: pnpm install
-    startCommand: npx tsx lib/cron/daily-digest.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: epd-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: epd-redis
-          type: redis
-          property: connectionString
-      - key: OPENAI_API_KEY
-        sync: false
-
-  - name: hourly-uptime
-    schedule: '0 * * * *'
-    buildCommand: pnpm install
-    startCommand: npx tsx lib/cron/uptime-check.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: epd-db
-          property: connectionString
-
-  - name: daily-snapshot
-    schedule: '0 6 * * *'
-    buildCommand: pnpm install
-    startCommand: npx tsx lib/cron/snapshot.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: epd-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: epd-redis
-          type: redis
-          property: connectionString
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-  - name: retry-failed-signals
-    schedule: '0 11 * * *'
-    buildCommand: pnpm install
-    startCommand: npx tsx lib/cron/retry-failed-signals.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: epd-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: epd-redis
-          type: redis
-          property: connectionString
-
-  - name: weekly-clustering
-    schedule: '0 3 * * 0'
-    buildCommand: pnpm install
-    startCommand: npx tsx lib/cron/weekly-clustering.ts
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: epd-db
-          property: connectionString
-      - key: OPENAI_API_KEY
-        sync: false
+# Cron jobs — uncomment after initial deployment is verified
+#
+# crons:
+#   - name: daily-snapshot
+#     schedule: '0 6 * * *'
+#     buildCommand: pnpm install
+#     startCommand: npx tsx lib/cron/snapshot.ts
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: epd-db
+#           property: connectionString
+#       - key: REDIS_URL
+#         fromService:
+#           name: epd-redis
+#           type: redis
+#           property: connectionString
+#       - key: OPENAI_API_KEY
+#         sync: false
+#       - key: ANTHROPIC_API_KEY
+#         sync: false
+#
+#   - name: daily-digest
+#     schedule: '0 7 * * *'
+#     buildCommand: pnpm install
+#     startCommand: npx tsx lib/cron/daily-digest.ts
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: epd-db
+#           property: connectionString
+#       - key: REDIS_URL
+#         fromService:
+#           name: epd-redis
+#           type: redis
+#           property: connectionString
+#       - key: OPENAI_API_KEY
+#         sync: false
+#
+#   - name: retry-failed-signals
+#     schedule: '0 11 * * *'
+#     buildCommand: pnpm install
+#     startCommand: npx tsx lib/cron/retry-failed-signals.ts
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: epd-db
+#           property: connectionString
+#       - key: REDIS_URL
+#         fromService:
+#           name: epd-redis
+#           type: redis
+#           property: connectionString
+#
+#   - name: hourly-uptime
+#     schedule: '0 * * * *'
+#     buildCommand: pnpm install
+#     startCommand: npx tsx lib/cron/uptime-check.ts
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: epd-db
+#           property: connectionString
+#
+#   - name: weekly-clustering
+#     schedule: '0 3 * * 0'
+#     buildCommand: pnpm install
+#     startCommand: npx tsx lib/cron/weekly-clustering.ts
+#     envVars:
+#       - key: DATABASE_URL
+#         fromDatabase:
+#           name: epd-db
+#           property: connectionString
+#       - key: OPENAI_API_KEY
+#         sync: false

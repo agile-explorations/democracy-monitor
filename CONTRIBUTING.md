@@ -23,29 +23,18 @@ pnpm dev                      # http://localhost:3000
 
 ### Data Setup
 
-**Tier 1 — Quick start (most contributors):**
+Download the latest database dump from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases) and restore it:
 
 ```bash
-pnpm db:migrate     # Create tables
-pnpm seed:import    # Load ~93MB of fixtures (assessments, baselines, scores, aggregates)
+createdb democracy_monitor
+pg_restore --no-owner --no-privileges -d democracy_monitor data-dump.pgdump
+pnpm db:migrate     # Apply any migrations newer than the dump
 pnpm dev
 ```
 
-No API keys needed. The full app works with historical data. AI assessment columns are null but the app handles this gracefully.
+This gives you the full production dataset including all AI assessment data. No API keys needed to explore the data and run the app.
 
-**Tier 2 — With AI (data pipeline contributors):**
-
-Same as Tier 1, plus set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in `.env.local`. You can then run `pnpm snapshot` or `pnpm layer2:backfill --dry-run` to test pipeline changes.
-
-**Tier 3 — Full dataset (maintainers):**
-
-Download the complete database dump from the latest GitHub Release and restore:
-
-```bash
-pg_restore -d democracy_monitor data-dump.pgdump
-```
-
-This includes all AI assessment data (~228K rows). Only needed for validating AI quality or running the full pipeline end-to-end.
+To contribute to the AI pipeline, also set `OPENAI_API_KEY` and/or `ANTHROPIC_API_KEY` in `.env.local`.
 
 ### Commands
 
@@ -57,8 +46,6 @@ pnpm test:watch     # Watch mode
 pnpm lint           # ESLint
 pnpm db:generate    # Generate Drizzle migrations from schema changes
 pnpm db:migrate     # Apply migrations to PostgreSQL
-pnpm seed:import    # Import seed fixtures into DB (no API keys needed)
-pnpm seed:export    # Export seed data from DB to fixtures
 ```
 
 ## Code Conventions

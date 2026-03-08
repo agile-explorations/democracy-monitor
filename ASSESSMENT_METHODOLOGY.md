@@ -174,4 +174,4 @@ All scoring thresholds, dimension weights, and configuration constants are defin
 
 The methodology constants are also available programmatically via the `/api/methodology` JSON endpoint.
 
-Seed data for local reproduction is available via `pnpm seed:import`, which loads baseline assessments, document scores, and weekly aggregates without requiring API keys. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.
+The full dataset is available as a database dump in [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases). See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions.

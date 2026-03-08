@@ -4,37 +4,51 @@ Democracy Monitor deploys on **Render.com** via `render.yaml`. This guide covers
 
 ## Initial Deployment
 
-1. **Create services** — Connect the repo in the Render dashboard. `render.yaml` provisions: web service, PostgreSQL, Redis, and 4 cron jobs.
+### 1. Create the database dump
 
-2. **Set API keys** — In the Render dashboard, set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` on the web service (these sync to crons via `render.yaml`). Both are needed for Layer 2 AI assessment.
+From a machine with the full local database:
 
-3. **Deploy** — The build command runs `pnpm install && pnpm db:migrate && pnpm build`, so schema changes apply automatically on every deploy.
+```bash
+./scripts/dump-db.sh
+```
 
-4. **Restore database** — One-time restore from the latest GitHub Release:
+This creates `data-dump.pgdump` (~600 MB–1.2 GB compressed). Then upload it to a GitHub Release:
 
-   ```bash
-   pg_restore -h <render-host> -U <user> -d epd data-dump.pgdump
-   ```
+```bash
+gh release delete data-latest --yes --cleanup-tag 2>/dev/null
+gh release create data-latest \
+  --title "Database snapshot" \
+  --notes "Full database dump for deployment and contributor setup." \
+  data-dump.pgdump
+```
 
-   This loads all historical data including AI assessments. Without this step, the app starts empty and builds data from daily cron runs.
+### 2. Deploy to Render
 
-5. **Verify** — Check that `daily-snapshot` fires at 06:00 UTC and produces assessment data.
+Connect the repo in the Render dashboard. `render.yaml` provisions: web service, PostgreSQL, and Redis.
+
+Set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` in the Render dashboard. Both are needed for Layer 2 AI assessment.
+
+### 3. First build auto-restores
+
+The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads the dump from the latest GitHub Release, restores it with `pg_restore`, then runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
+
+### 4. Enable cron jobs
+
+Once the app is running, uncomment the cron job definitions in `render.yaml` and redeploy.
+
+### 5. Verify
+
+Check that the app loads with historical data and that cron jobs (once enabled) produce fresh assessment data.
 
 ## Data Strategy
 
-Data lives in three places, each serving a different purpose:
+Data lives in two places:
 
-### In git (~93MB) — Local dev fixtures
+### In GitHub Releases (~600 MB–1.2 GB compressed) — Full database dump
 
-Lightweight fixtures for local development: assessments, baselines, document scores, weekly aggregates, intent weekly, and a document manifest. Updated via `pnpm seed:export`.
+Complete `pg_dump` including all tables. The build command auto-restores from the latest release on first deploy. Contributors can also download it to run the full app locally.
 
-These let any contributor run the full app without API keys (`pnpm seed:import`).
-
-### In GitHub Releases (~500MB-1GB compressed) — Full database dump
-
-Complete `pg_dump` including `documents` and `ai_document_assessments` tables. Updated after major baseline runs (e.g., after paying for Layer 2 AI assessment).
-
-This is the authoritative backup of expensive-to-reproduce AI assessment data.
+This is the authoritative backup of expensive-to-reproduce AI assessment data (~$47–97 to regenerate).
 
 ### In Render PostgreSQL — Production data
 
@@ -46,27 +60,34 @@ In order of preference:
 
 1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans.
 
-2. **GitHub Release pg_dump** — Restore the latest release dump. Loses data since the dump was created, but preserves all AI assessment work.
+2. **GitHub Release pg_dump** — Delete and recreate the Render database; the next deploy auto-restores from the latest release. Loses data since the dump was created, but preserves all AI assessment work.
 
-   ```bash
-   pg_restore -h <render-host> -U <user> -d epd data-dump.pgdump
-   ```
-
-3. **Seed fixtures + re-run** — Last resort. Import fixtures (`pnpm seed:import`) then re-run baseline and backfill pipelines. AI re-assessment costs ~$47-97.
+3. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$47–97.
 
 ## Cron Jobs
 
-| Job                 | Schedule          | Purpose                                                        |
-| ------------------- | ----------------- | -------------------------------------------------------------- |
-| `daily-snapshot`    | 06:00 UTC daily   | Fetch sources, run Layer 1 + 2 + 3 assessment, store snapshots |
-| `daily-digest`      | 07:00 UTC daily   | Generate AI summary of the day's findings                      |
-| `weekly-clustering` | 03:00 UTC Sundays | Semantic clustering analysis                                   |
-| `hourly-uptime`     | Every hour        | Source availability monitoring                                 |
+Cron jobs are defined in `render.yaml` but commented out until the initial deployment is verified. Once enabled:
+
+| Job                    | Schedule          | Purpose                                                        |
+| ---------------------- | ----------------- | -------------------------------------------------------------- |
+| `daily-snapshot`       | 06:00 UTC daily   | Fetch sources, run Layer 1 + 2 + 3 assessment, store snapshots |
+| `daily-digest`         | 07:00 UTC daily   | Generate AI summary of the day's findings                      |
+| `retry-failed-signals` | 11:00 UTC daily   | Retry failed RSS/HTML/JSON/FR signals from last snapshot       |
+| `hourly-uptime`        | Every hour        | Source availability monitoring                                 |
+| `weekly-clustering`    | 03:00 UTC Sundays | Semantic clustering analysis                                   |
 
 `daily-digest` runs one hour after `daily-snapshot` so it has fresh data to summarize.
 
 ## Ongoing Operations
 
 - **Adding schema changes** — Modify `lib/db/schema.ts`, run `pnpm db:generate`, commit the migration. It applies automatically on next deploy.
-- **After baseline runs** — Export a fresh pg_dump and attach it to a new GitHub Release.
-- **Updating fixtures** — Run `pnpm seed:export` locally and commit the updated fixture files.
+- **Updating the database dump** — Run `./scripts/dump-db.sh` locally and upload to a new GitHub Release.
+
+## For Contributors
+
+To work with the full production dataset locally:
+
+1. Download the latest dump from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases)
+2. Create a local database: `createdb democracy_monitor`
+3. Restore: `pg_restore --no-owner --no-privileges -d democracy_monitor data-dump.pgdump`
+4. Run migrations: `pnpm db:migrate`
