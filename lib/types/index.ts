@@ -90,11 +90,21 @@ export type {
   ValidationSummary,
 } from './validation';
 export { VALIDATION_SOURCES } from './validation';
+export { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from './narrative';
 export type {
   NarrativeVersion,
   NarrativeDocumentContext,
+  NarrativeFlaggedDocContext,
+  SourceTypeBreakdown,
+  NarrativeBaselineContext,
+  NarrativeTrajectory,
   NarrativeLayerData,
   NarrativeResult,
+  MultiPassNarrativeResult,
   StoredNarrative,
-  OverviewNarrativeInput,
+  EditorialRecord,
+  NarrativeFailure,
+  WeeklySummaryInput,
+  TermSummaryInput,
+  TermStatistics,
 } from './narrative';

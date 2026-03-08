@@ -141,12 +141,6 @@ async function fetchPage(
   return { reports, totalPages };
 }
 
-/** Fetch recent HHS OIG reports for the snapshot pipeline. */
-export async function fetchHhsOigRecent(_params: Record<string, never>): Promise<ContentItem[]> {
-  const { reports } = await fetchPage(`${BASE_URL}${REPORTS_PATH}`);
-  return reports.slice(0, 20).map(toContentItem);
-}
-
 /** Fetch historical HHS OIG reports for the backfill pipeline. */
 export async function fetchHhsOigHistorical(params: {
   dateFrom: string;

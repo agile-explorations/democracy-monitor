@@ -1,10 +1,8 @@
 import type { InferInsertModel } from 'drizzle-orm';
-import { and, desc, eq, sql } from 'drizzle-orm';
 import { EnhancedAssessmentSchema } from '@/lib/ai/schemas/snapshot-validation';
 import { getDb } from '@/lib/db';
 import { assessments } from '@/lib/db/schema';
 import type { EnhancedAssessment } from '@/lib/types';
-import { toDateString } from '@/lib/utils/date-utils';
 
 /**
  * Save an assessment snapshot to the database.
@@ -15,45 +13,6 @@ export async function saveSnapshot(
 ): Promise<void> {
   const db = getDb();
   await db.insert(assessments).values(buildSnapshotRow(assessment, assessedAt));
-}
-
-/**
- * Get the most recent snapshot for a given category.
- */
-export async function getLatestSnapshot(category: string): Promise<EnhancedAssessment | null> {
-  const db = getDb();
-  const rows = await db
-    .select()
-    .from(assessments)
-    .where(eq(assessments.category, category))
-    .orderBy(desc(assessments.assessedAt))
-    .limit(1);
-
-  if (rows.length === 0) return null;
-  return rowToAssessment(rows[0] as unknown as AssessmentRow);
-}
-
-/**
- * Get the latest snapshot per category (one query with DISTINCT ON).
- */
-export async function getLatestSnapshots(): Promise<Record<string, EnhancedAssessment>> {
-  const db = getDb();
-
-  // Use raw SQL for DISTINCT ON which Drizzle doesn't natively support
-  const rows = await db.execute(sql`
-    SELECT DISTINCT ON (category) *
-    FROM assessments
-    ORDER BY category, assessed_at DESC
-  `);
-
-  const result: Record<string, EnhancedAssessment> = {};
-  for (const row of rows.rows) {
-    const assessment = rowToAssessment(row as unknown as AssessmentRow);
-    if (assessment) {
-      result[assessment.category] = assessment;
-    }
-  }
-  return result;
 }
 
 export interface AssessmentRow {
@@ -130,53 +89,4 @@ export function rowToAssessment(row: AssessmentRow): EnhancedAssessment | null {
         ? new Date((row.assessed_at || row.assessedAt) as unknown as string).toISOString()
         : null) || new Date().toISOString(),
   };
-}
-
-export interface TrajectoryPoint {
-  week: string;
-  status: string;
-  reason: string;
-  matchCount: number;
-}
-
-/**
- * Get weekly trajectory for all categories within a date range.
- * Returns one assessment per category per week (the latest in each week).
- */
-export async function getWeeklyTrajectory(options?: {
-  from?: string;
-  to?: string;
-}): Promise<Record<string, TrajectoryPoint[]>> {
-  const db = getDb();
-
-  // Use raw SQL for the date_trunc + DISTINCT ON combo
-  const fromClause = options?.from ? sql`AND assessed_at >= ${new Date(options.from)}` : sql``;
-  const toClause = options?.to ? sql`AND assessed_at <= ${new Date(options.to)}` : sql``;
-
-  const rows = await db.execute(sql`
-    SELECT DISTINCT ON (category, date_trunc('week', assessed_at))
-      category,
-      date_trunc('week', assessed_at) AS week,
-      status,
-      reason,
-      matches,
-      assessed_at
-    FROM assessments
-    WHERE 1=1 ${fromClause} ${toClause}
-    ORDER BY category, date_trunc('week', assessed_at), assessed_at DESC
-  `);
-
-  const result: Record<string, TrajectoryPoint[]> = {};
-  for (const row of rows.rows) {
-    const r = row as Record<string, unknown>;
-    const cat = r.category as string;
-    if (!result[cat]) result[cat] = [];
-    result[cat].push({
-      week: toDateString(new Date(r.week as string)),
-      status: r.status as string,
-      reason: r.reason as string,
-      matchCount: Array.isArray(r.matches) ? r.matches.length : 0,
-    });
-  }
-  return result;
 }

@@ -477,6 +477,24 @@ export const narratives = pgTable(
   ],
 );
 
+export const narrativeFailures = pgTable(
+  'narrative_failures',
+  {
+    id: serial('id').primaryKey(),
+    category: varchar('category', { length: 50 }).notNull(),
+    weekOf: date('week_of').notNull(),
+    failedPass: integer('failed_pass').notNull(),
+    error: text('error').notNull(),
+    attempts: integer('attempts').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('uq_narrative_failures_category_week').on(table.category, table.weekOf),
+    index('idx_narrative_failures_unresolved').on(table.resolvedAt),
+  ],
+);
+
 export const fetchLog = pgTable(
   'fetch_log',
   {

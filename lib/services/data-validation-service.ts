@@ -89,6 +89,14 @@ export interface NarrativeCoverage {
   narrativeWeeks: number;
   missingWeeks: number;
   staleWeeks: number;
+  /** Weeks that have at least one elevated category-week narrative. */
+  weeksWithNarratives: number;
+  /** Weeks that have a weekly summary (_overview). */
+  weeksWithSummary: number;
+  /** Weeks that have a term summary (_term_summary). */
+  weeksWithTermSummary: number;
+  /** Weeks missing a weekly summary despite having category narratives. */
+  missingSummaryWeeks: number;
 }
 
 export interface DataReport {
@@ -238,6 +246,11 @@ function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
   if (nc.missingWeeks > 0) {
     warnings.push(
       `${nc.missingWeeks} elevated category-weeks missing narratives (run: pnpm layers:enrich --narratives)`,
+    );
+  }
+  if (nc.missingSummaryWeeks > 0) {
+    warnings.push(
+      `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm layers:enrich --narratives)`,
     );
   }
   if (nc.staleWeeks > 0) {

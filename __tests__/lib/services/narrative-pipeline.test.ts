@@ -31,7 +31,11 @@ function buildRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
-const CAT = { key: 'judicialIndependence', title: 'Judicial Independence' };
+const CAT = {
+  key: 'judicialIndependence',
+  title: 'Judicial Independence',
+  description: 'Government actions that undermine judicial independence',
+};
 
 describe('toNarrativeLayerData', () => {
   it('maps basic fields from row and category metadata', () => {

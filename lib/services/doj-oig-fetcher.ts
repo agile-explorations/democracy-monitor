@@ -116,13 +116,6 @@ async function fetchPage(
   return { reports, totalPages };
 }
 
-/** Fetch recent DOJ OIG reports for the snapshot pipeline. */
-export async function fetchDojOigRecent(_params: Record<string, never>): Promise<ContentItem[]> {
-  const url = buildReportsUrl({});
-  const { reports } = await fetchPage(url);
-  return reports.slice(0, 20).map(toContentItem);
-}
-
 /** Fetch historical DOJ OIG reports for the backfill pipeline. */
 export async function fetchDojOigHistorical(params: {
   dateFrom: string;

@@ -154,12 +154,6 @@ async function fetchPage(
   return { reports, totalPages };
 }
 
-/** Fetch recent SSA OIG reports for the snapshot pipeline. */
-export async function fetchSsaOigRecent(_params: Record<string, never>): Promise<ContentItem[]> {
-  const { reports } = await fetchPage(`${BASE_URL}${REPORTS_PATH}`);
-  return reports.slice(0, 20).map(toContentItem);
-}
-
 /**
  * Get the calendar years that overlap with a date range.
  * E.g., 2017-01-20 to 2018-01-19 → [2017, 2018]

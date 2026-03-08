@@ -1,7 +1,13 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { narratives } from '@/lib/db/schema';
-import type { NarrativeResult, NarrativeVersion, StoredNarrative } from '@/lib/types';
+import type {
+  EditorialRecord,
+  MultiPassNarrativeResult,
+  NarrativeResult,
+  NarrativeVersion,
+  StoredNarrative,
+} from '@/lib/types';
 
 /** Retrieve a stored narrative for a category/week/version. */
 export async function getStoredNarrative(
@@ -35,7 +41,7 @@ export async function getStoredNarrative(
   };
 }
 
-/** Retrieve both narrative versions for a category/week. */
+/** Retrieve both final narrative versions for a category/week. */
 export async function getStoredNarratives(
   category: string,
   weekOf: string,
@@ -47,7 +53,42 @@ export async function getStoredNarratives(
   return { expert, public: pub };
 }
 
-/** Store a generated narrative result (both versions) in the database. */
+/** Retrieve the full editorial record (drafts + feedback + finals) for a category/week. */
+export async function getEditorialRecord(
+  category: string,
+  weekOf: string,
+): Promise<EditorialRecord> {
+  const db = getDb();
+  const versions: NarrativeVersion[] = [
+    'expert',
+    'public',
+    'expert_draft',
+    'public_draft',
+    'feedback',
+  ];
+
+  const rows = await db
+    .select()
+    .from(narratives)
+    .where(
+      and(
+        eq(narratives.category, category),
+        eq(narratives.weekOf, weekOf),
+        inArray(narratives.version, versions),
+      ),
+    );
+
+  const byVersion = new Map(rows.map((r) => [r.version, r.content]));
+  return {
+    expert: byVersion.get('expert') ?? null,
+    public: byVersion.get('public') ?? null,
+    expertDraft: byVersion.get('expert_draft') ?? null,
+    publicDraft: byVersion.get('public_draft') ?? null,
+    feedback: byVersion.get('feedback') ?? null,
+  };
+}
+
+/** Store a simple narrative result (both versions) — used for weekly/term summaries. */
 export async function storeNarratives(
   category: string,
   weekOf: string,
@@ -68,4 +109,56 @@ export async function storeNarratives(
         set: { content: row.content, model: row.model },
       });
   }
+}
+
+/** Store all 5 artifacts from a multi-pass narrative generation in a single transaction. */
+export async function storeMultiPassNarratives(
+  category: string,
+  weekOf: string,
+  result: MultiPassNarrativeResult,
+): Promise<void> {
+  const db = getDb();
+  const rows: Array<{
+    category: string;
+    weekOf: string;
+    version: string;
+    content: string;
+    model: string;
+  }> = [
+    {
+      category,
+      weekOf,
+      version: 'expert_draft',
+      content: result.expertDraft,
+      model: result.draftModel,
+    },
+    {
+      category,
+      weekOf,
+      version: 'public_draft',
+      content: result.publicDraft,
+      model: result.draftModel,
+    },
+    {
+      category,
+      weekOf,
+      version: 'feedback',
+      content: result.feedback,
+      model: result.feedbackModel,
+    },
+    { category, weekOf, version: 'expert', content: result.expert, model: result.finalModel },
+    { category, weekOf, version: 'public', content: result.public, model: result.finalModel },
+  ];
+
+  await db.transaction(async (tx) => {
+    for (const row of rows) {
+      await tx
+        .insert(narratives)
+        .values(row)
+        .onConflictDoUpdate({
+          target: [narratives.category, narratives.weekOf, narratives.version],
+          set: { content: row.content, model: row.model },
+        });
+    }
+  });
 }

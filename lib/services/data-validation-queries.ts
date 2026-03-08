@@ -324,9 +324,32 @@ export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats
 // Narrative coverage
 // ---------------------------------------------------------------------------
 
+const EMPTY_NARRATIVE_COVERAGE: NarrativeCoverage = {
+  elevatedWeeks: 0,
+  narrativeWeeks: 0,
+  missingWeeks: 0,
+  staleWeeks: 0,
+  weeksWithNarratives: 0,
+  weeksWithSummary: 0,
+  weeksWithTermSummary: 0,
+  missingSummaryWeeks: 0,
+};
+
+function toNarrativeCoverage(row: Record<string, unknown>): NarrativeCoverage {
+  return {
+    elevatedWeeks: Number(row.elevated_weeks ?? 0),
+    narrativeWeeks: Number(row.narrative_weeks ?? 0),
+    missingWeeks: Number(row.missing_weeks ?? 0),
+    staleWeeks: Number(row.stale_weeks ?? 0),
+    weeksWithNarratives: Number(row.weeks_with_narratives ?? 0),
+    weeksWithSummary: Number(row.weeks_with_summary ?? 0),
+    weeksWithTermSummary: Number(row.weeks_with_term_summary ?? 0),
+    missingSummaryWeeks: Number(row.missing_summary_weeks ?? 0),
+  };
+}
+
 export async function getNarrativeCoverage(category?: string): Promise<NarrativeCoverage> {
-  if (!isDbAvailable())
-    return { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0, staleWeeks: 0 };
+  if (!isDbAvailable()) return EMPTY_NARRATIVE_COVERAGE;
   const db = getDb();
 
   const catFilter = category ? sql`AND wa.category = ${category}` : sql``;
@@ -342,7 +365,19 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
     narr AS (
       SELECT category, week_of, max(generated_at) as latest_generated
       FROM narratives
+      WHERE category NOT IN ('_overview', '_term_summary')
       GROUP BY category, week_of
+    ),
+    summary_weeks AS (
+      SELECT DISTINCT week_of FROM narratives WHERE category = '_overview'
+    ),
+    term_weeks AS (
+      SELECT DISTINCT week_of FROM narratives WHERE category = '_term_summary'
+    ),
+    narrated_weeks AS (
+      SELECT DISTINCT e.week_of
+      FROM elevated e
+      JOIN narr n ON n.category = e.category AND n.week_of = e.week_of
     )
     SELECT
       count(DISTINCT (e.category, e.week_of))::int AS elevated_weeks,
@@ -351,16 +386,16 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
       count(DISTINCT CASE WHEN n.week_of IS NULL
             THEN (e.category, e.week_of) END)::int AS missing_weeks,
       count(DISTINCT CASE WHEN n.latest_generated < e.computed_at
-            THEN (e.category, e.week_of) END)::int AS stale_weeks
+            THEN (e.category, e.week_of) END)::int AS stale_weeks,
+      (SELECT count(*)::int FROM narrated_weeks) AS weeks_with_narratives,
+      (SELECT count(*)::int FROM summary_weeks) AS weeks_with_summary,
+      (SELECT count(*)::int FROM term_weeks) AS weeks_with_term_summary,
+      (SELECT count(*)::int FROM narrated_weeks nw
+       WHERE NOT EXISTS (SELECT 1 FROM summary_weeks sw WHERE sw.week_of = nw.week_of)
+      ) AS missing_summary_weeks
     FROM elevated e
     LEFT JOIN narr n ON n.category = e.category AND n.week_of = e.week_of
   `);
 
-  const stats = rows.rows[0] as Record<string, unknown>;
-  return {
-    elevatedWeeks: Number(stats.elevated_weeks ?? 0),
-    narrativeWeeks: Number(stats.narrative_weeks ?? 0),
-    missingWeeks: Number(stats.missing_weeks ?? 0),
-    staleWeeks: Number(stats.stale_weeks ?? 0),
-  };
+  return toNarrativeCoverage(rows.rows[0] as Record<string, unknown>);
 }

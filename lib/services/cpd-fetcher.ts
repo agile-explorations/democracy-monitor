@@ -301,13 +301,3 @@ export async function fetchCpdHistorical(params: {
 
   return docs;
 }
-
-/** Fetch recent CPD documents (last 7 days) for the snapshot pipeline. */
-export async function fetchCpdRecent(): Promise<CpdDocument[]> {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const dateFrom = sevenDaysAgo.toISOString().slice(0, 10);
-  const dateTo = new Date().toISOString().slice(0, 10);
-
-  return fetchCpdHistorical({ dateFrom, dateTo, maxPages: 5 });
-}

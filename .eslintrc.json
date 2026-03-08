@@ -70,10 +70,17 @@
         "lib/services/fec-fetcher.ts",
         "lib/services/layer2-store.ts",
         "lib/services/ingest-validation-queries.ts",
-        "lib/services/data-validation-queries.ts"
+        "lib/services/data-validation-queries.ts",
+        "lib/services/narrative-queries.ts"
       ],
       "rules": {
         "max-lines": ["warn", { "max": 400, "skipBlankLines": true, "skipComments": true }]
+      }
+    },
+    {
+      "files": ["lib/services/narrative-prompts.ts"],
+      "rules": {
+        "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]
       }
     }
   ]

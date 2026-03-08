@@ -1,27 +1,42 @@
 import { and, eq } from 'drizzle-orm';
+import { getProvider } from '@/lib/ai/provider';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
-import type { NarrativeLayerData } from '@/lib/types';
+import type {
+  NarrativeLayerData,
+  NarrativeResult,
+  TermSummaryInput,
+  WeeklySummaryInput,
+} from '@/lib/types';
+import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import type { ConvergenceSynthesis, StructuralScore } from '@/lib/types/structural';
-import { getTopConcerningDocuments } from './layer2-store';
+import { formatError } from '@/lib/utils/api-helpers';
+import { recordFailure, resolveFailure } from './narrative-failure-store';
+import { buildStableTemplate, isElevatedStatus } from './narrative-generation-service';
+import { generateMultiPassNarrative } from './narrative-multipass';
+import { buildTermSummaryPrompt, buildWeeklySummaryPrompt } from './narrative-prompts';
 import {
-  generateCategoryNarrative,
-  generateOverviewNarrative,
-  isElevatedStatus,
-} from './narrative-generation-service';
-import { storeNarratives } from './narrative-store';
+  enrichCategoryData,
+  getPreviousWeekNarrative,
+  getTermNarrative,
+  getTermStatistics,
+  getTrajectoryTable,
+} from './narrative-queries';
+import { storeMultiPassNarratives, storeNarratives } from './narrative-store';
 
-const OVERVIEW_CATEGORY_KEY = '_overview';
+const SUMMARY_MODEL = 'claude-opus-4-6';
 
 /** Convert a weekly_aggregates row to NarrativeLayerData. */
 export function toNarrativeLayerData(
-  cat: { key: string; title: string },
+  cat: { key: string; title: string; description: string },
   row: typeof weeklyAggregates.$inferSelect,
 ): NarrativeLayerData {
   return {
     category: cat.key,
     categoryTitle: cat.title,
+    categoryDescription: cat.description,
     weekOf: String(row.weekOf),
     structuralScore: row.structuralScore,
     structuralDetail: row.structuralDetail as StructuralScore | null,
@@ -54,9 +69,126 @@ export async function loadAllLayerData(weekOf: string): Promise<NarrativeLayerDa
   return results;
 }
 
+/** Generate a single-pass summary narrative (expert or public). */
+async function generateSinglePass(
+  prompt: string,
+  systemPrompt: string,
+  maxTokens: number,
+): Promise<string> {
+  const claude = getProvider('anthropic');
+  if (!claude.isAvailable()) throw new Error('Anthropic API key not configured');
+  const result = await claude.complete(prompt, { model: SUMMARY_MODEL, maxTokens, systemPrompt });
+  return result.content;
+}
+
+/** Generate weekly cross-category summary (replaces _overview). */
+async function generateWeeklySummary(input: WeeklySummaryInput): Promise<NarrativeResult> {
+  const systemPrompt =
+    'You are an expert analyst for a democratic institution monitoring system. ' +
+    'You produce rigorous, evidence-based cross-category synthesis.';
+
+  const [expert, pub] = await Promise.all([
+    generateSinglePass(buildWeeklySummaryPrompt(input, 'expert'), systemPrompt, 2048),
+    generateSinglePass(buildWeeklySummaryPrompt(input, 'public'), systemPrompt, 1024),
+  ]);
+  return { expert, public: pub, model: SUMMARY_MODEL };
+}
+
+/** Generate incremental term summary (_term_summary). */
+async function generateTermSummary(input: TermSummaryInput): Promise<NarrativeResult> {
+  const systemPrompt =
+    'You are an expert analyst for a democratic institution monitoring system. ' +
+    'You produce rigorous, evidence-based term-level synthesis.';
+
+  const [expert, pub] = await Promise.all([
+    generateSinglePass(buildTermSummaryPrompt(input, 'expert'), systemPrompt, 4096),
+    generateSinglePass(buildTermSummaryPrompt(input, 'public'), systemPrompt, 2048),
+  ]);
+  return { expert, public: pub, model: SUMMARY_MODEL };
+}
+
+/** Phase 1: Generate per-category narratives (stable templates + multi-pass for elevated). */
+async function generateCategoryNarratives(
+  categories: NarrativeLayerData[],
+  weekOf: string,
+): Promise<{ narratives: Map<string, { expert: string; public: string }>; failed: string[] }> {
+  const narratives = new Map<string, { expert: string; public: string }>();
+  const failed: string[] = [];
+
+  for (const data of categories) {
+    if (!isElevatedStatus(data.convergenceDetail)) {
+      const template = buildStableTemplate(data.categoryTitle, data.weekOf);
+      await storeNarratives(data.category, weekOf, template);
+      narratives.set(data.category, { expert: template.expert, public: template.public });
+      continue;
+    }
+    try {
+      await enrichCategoryData(data);
+      const result = await generateMultiPassNarrative(data);
+      await storeMultiPassNarratives(data.category, weekOf, result);
+      await resolveFailure(data.category, weekOf);
+      narratives.set(data.category, { expert: result.expert, public: result.public });
+      console.log(
+        `[narratives]   ${data.category}: stored (docs=${data.documentContext?.length ?? 0})`,
+      );
+    } catch (err) {
+      const passInfo = (err as { passInfo?: { pass: number } }).passInfo;
+      const pass = passInfo?.pass ?? 0;
+      const msg = formatError(err);
+      await recordFailure(data.category, weekOf, pass, msg);
+      failed.push(data.category);
+      console.error(`[narratives]   ${data.category}: failed at pass ${pass}: ${msg}`);
+    }
+  }
+
+  return { narratives, failed };
+}
+
+/** Phase 2+3: Generate weekly summary and incremental term summary. */
+async function generateSummaries(
+  weekOf: string,
+  categories: NarrativeLayerData[],
+  categoryNarratives: Map<string, { expert: string; public: string }>,
+  failedCategories: string[],
+): Promise<void> {
+  const previousWeekSummary = await getPreviousWeekNarrative(weekOf);
+  const weeklyInput: WeeklySummaryInput = {
+    weekOf,
+    categories,
+    categoryNarratives,
+    failedCategories,
+    previousWeekSummary,
+  };
+  const weeklyResult = await generateWeeklySummary(weeklyInput);
+  await storeNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);
+  console.log('[narratives]   weekly summary: stored');
+
+  try {
+    const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
+      getTermNarrative(),
+      getTrajectoryTable(T2_INAUGURATION, weekOf),
+      getTermStatistics(T2_INAUGURATION, weekOf),
+    ]);
+    const termInput: TermSummaryInput = {
+      weekOf,
+      weeklySummary: { expert: weeklyResult.expert, public: weeklyResult.public },
+      previousTermSummary,
+      trajectoryTable,
+      statistics,
+    };
+    const termResult = await generateTermSummary(termInput);
+    await storeNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
+    console.log('[narratives]   term summary: stored');
+  } catch (err) {
+    console.error('[narratives]   term summary: failed:', err);
+  }
+}
+
 /**
- * Generate and store narratives for all Elevated+ categories in a given week,
- * plus an overview narrative. Called as the final step of the snapshot pipeline.
+ * Generate and store narratives for all categories in a given week,
+ * plus a weekly summary and incremental term summary.
+ *
+ * Cascade: category narratives (multi-pass) → weekly summary → term summary.
  */
 export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   if (!isDbAvailable()) {
@@ -75,31 +207,16 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   const elevated = categories.filter((c) => isElevatedStatus(c.convergenceDetail));
   console.log(`[narratives] ${elevated.length} of ${categories.length} categories elevated`);
 
-  // Generate per-category narratives for Elevated+ categories
-  let generated = 0;
-  for (const data of elevated) {
-    try {
-      const docs = await getTopConcerningDocuments(data.category, weekOf);
-      if (docs.length > 0) data.documentContext = docs;
-      const result = await generateCategoryNarrative(data);
-      await storeNarratives(data.category, weekOf, result);
-      generated++;
-      console.log(
-        `[narratives]   ${data.category}: stored (model=${result.model}, docs=${docs.length})`,
-      );
-    } catch (err) {
-      console.error(`[narratives]   ${data.category}: failed:`, err);
-    }
-  }
+  const { narratives: categoryNarratives, failed: failedCategories } =
+    await generateCategoryNarratives(categories, weekOf);
 
-  // Generate overview narrative
   try {
-    const overview = await generateOverviewNarrative({ weekOf, categories });
-    await storeNarratives(OVERVIEW_CATEGORY_KEY, weekOf, overview);
-    console.log(`[narratives]   overview: stored (model=${overview.model})`);
+    await generateSummaries(weekOf, categories, categoryNarratives, failedCategories);
   } catch (err) {
-    console.error('[narratives]   overview: failed:', err);
+    console.error('[narratives]   weekly summary: failed:', err);
   }
 
-  console.log(`[narratives] Done — ${generated} category + 1 overview narratives generated`);
+  console.log(
+    `[narratives] Done — ${categoryNarratives.size} category narratives (${failedCategories.length} failed), weekly + term summaries`,
+  );
 }

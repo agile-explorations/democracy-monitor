@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { isDbAvailable } from '@/lib/db';
+import type { NarrativeVersion, StoredNarrative } from '@/lib/types';
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Returns true if the request method matches; sends 405 and returns false otherwise.
@@ -21,7 +24,43 @@ export function requireDb(res: NextApiResponse): boolean {
   return false;
 }
 
+/**
+ * Validates and returns the weekOf query parameter; sends 400 and returns null otherwise.
+ * Usage: `const weekOf = requireWeekOf(req, res); if (!weekOf) return;`
+ */
+export function requireWeekOf(req: NextApiRequest, res: NextApiResponse): string | null {
+  const weekOf = req.query.weekOf as string | undefined;
+  if (!weekOf) {
+    res.status(400).json({ error: 'Missing required query parameter: weekOf' });
+    return null;
+  }
+  if (!DATE_RE.test(weekOf)) {
+    res.status(400).json({ error: 'Invalid weekOf format. Expected YYYY-MM-DD.' });
+    return null;
+  }
+  return weekOf;
+}
+
 /** Extract a human-readable message from an unknown error value. */
 export function formatError(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** Extract narrative content from stored results, filtering by optional version. */
+export function tryStoredResponse(
+  stored: { expert: StoredNarrative | null; public: StoredNarrative | null },
+  version?: NarrativeVersion,
+): Record<string, string> | null {
+  if (version) {
+    if (stored[version]) return { [version]: stored[version]!.content };
+  } else if (stored.expert && stored.public) {
+    return { expert: stored.expert.content, public: stored.public.content };
+  }
+  return null;
+}
+
+/** Send a JSON response with 1-hour CDN cache headers. */
+export function sendCached(res: NextApiResponse, body: Record<string, unknown>): void {
+  res.setHeader('Cache-Control', 'public, s-maxage=3600');
+  res.status(200).json(body);
 }

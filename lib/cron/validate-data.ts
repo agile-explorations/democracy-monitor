@@ -141,14 +141,25 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
     nc.elevatedWeeks > 0 ? ((nc.narrativeWeeks / nc.elevatedWeeks) * 100).toFixed(0) : '0';
   const covMark = nc.missingWeeks === 0 ? PASS : WARN;
   console.log(
-    `  ${covMark} ${nc.narrativeWeeks} / ${nc.elevatedWeeks} elevated category-weeks have narratives (${covPct}%)`,
+    `  ${covMark} Category: ${nc.narrativeWeeks} / ${nc.elevatedWeeks} elevated category-weeks have narratives (${covPct}%)`,
   );
   if (nc.missingWeeks > 0) {
     console.log(`    ${nc.missingWeeks} missing (run: pnpm layers:enrich --narratives)`);
   }
+  const summaryExpected = nc.weeksWithNarratives;
+  const summaryCovered = summaryExpected - nc.missingSummaryWeeks;
+  const summaryMark = nc.missingSummaryWeeks === 0 ? PASS : WARN;
+  console.log(
+    `  ${summaryMark} Weekly:   ${summaryCovered} / ${summaryExpected} narrated weeks have weekly summaries (${nc.weeksWithSummary} total)`,
+  );
+  if (nc.missingSummaryWeeks > 0) {
+    console.log(`    ${nc.missingSummaryWeeks} missing (run: pnpm layers:enrich --narratives)`);
+  }
+  const termMark = nc.weeksWithTermSummary > 0 ? PASS : WARN;
+  console.log(`  ${termMark} Term:     ${nc.weeksWithTermSummary} term summary snapshots stored`);
   const staleMark = nc.staleWeeks === 0 ? PASS : WARN;
   console.log(
-    `  ${staleMark} ${nc.staleWeeks} stale narratives (generated before layer recomputation)`,
+    `  ${staleMark} Stale:    ${nc.staleWeeks} narratives generated before layer recomputation`,
   );
 }
 

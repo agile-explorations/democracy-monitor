@@ -10,7 +10,7 @@ import type { PgColumn } from 'drizzle-orm/pg-core';
 import { toDateString } from '@/lib/utils/date-utils';
 import { BASELINE_CONFIGS } from './baselines';
 
-const T2_INAUGURATION = '2025-01-20';
+export const T2_INAUGURATION = '2025-01-20';
 
 export interface AnalysisPeriod {
   from: string;
