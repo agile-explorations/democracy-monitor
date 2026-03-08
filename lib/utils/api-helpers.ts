@@ -49,7 +49,7 @@ export function formatError(err: unknown): string {
 /** Extract narrative content from stored results, filtering by optional version. */
 export function tryStoredResponse(
   stored: { expert: StoredNarrative | null; public: StoredNarrative | null },
-  version?: NarrativeVersion,
+  version?: 'expert' | 'public',
 ): Record<string, string> | null {
   if (version) {
     if (stored[version]) return { [version]: stored[version]!.content };
@@ -60,7 +60,7 @@ export function tryStoredResponse(
 }
 
 /** Send a JSON response with 1-hour CDN cache headers. */
-export function sendCached(res: NextApiResponse, body: Record<string, unknown>): void {
+export function sendCached(res: NextApiResponse, body: object): void {
   res.setHeader('Cache-Control', 'public, s-maxage=3600');
   res.status(200).json(body);
 }
