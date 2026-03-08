@@ -608,6 +608,8 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 #### Sprint R4a: API Layer + Narrative Generation (Backend) ✅
 
 > **Status: Done.** `narratives` table + migration, narrative-generation-service.ts (dual-audience prompts, Opus 4.6), narrative-store.ts (DB CRUD), narrative-pipeline.ts (orchestration), `/api/narratives/[category]` + `/api/narratives/overview` endpoints with on-demand generation, snapshot pipeline integration as final step. 15 files changed, 51 new tests (1411 total). See `DECISIONS.md` for retrospective.
+>
+> **Upgraded in Sprint R-NAR1:** Replaced single-pass with 3-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision). Added weekly cross-category summaries (`_overview`), incremental term summaries (`_term_summary`), `narrative_failures` table + CLI retry (`pnpm narratives:retry`), editorial transparency (`?editorial=true`), `validate:data` expanded narrative coverage. API routes now read-only (no on-demand generation). 35 files changed, 32 new tests (1724 total). See `DECISIONS.md` Sprint R-NAR1.
 
 **Goal:** Build narrative generation service and API endpoints. No UI changes.
 

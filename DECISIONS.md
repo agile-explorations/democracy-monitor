@@ -10,6 +10,34 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-NAR1: Multi-Pass Narrative Architecture ✅
+
+**Status: Done.** Replaced single-pass narrative generation with three-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision). Added weekly cross-category summaries, incremental term summaries, failure tracking with CLI retry, editorial transparency in UI, and expanded validation coverage.
+
+**Scope vs. Actual:**
+
+- Planned (9 issues #270-#278): 3-pass multi-model narratives (#270), narrative pipeline cascade (#271), failure tracking + retry (#272), editorial transparency (#273), weekly summary (#274), term summary (#275), validate:data expansion (#276), dead code cleanup (#277), tests (#278)
+- Actual: All 9 issues delivered as planned. Additionally fixed 8 pre-existing code quality issues identified during post-sprint review (DRY violations, missing date validation, non-transactional writes, unused imports).
+
+**Key Decisions:**
+
+1. **Three-pass design with epistemic independence**: Pass 1 (Claude Opus draft) and Pass 2 (GPT-4o feedback) use different providers to avoid self-reinforcing biases. Pass 3 (Claude Opus revision) incorporates cross-provider feedback. Transactional: all 3 must succeed or nothing is stored.
+2. **Information cascade, not re-analysis**: Weekly summary is generated FROM category narratives (not raw documents). Term summary is generated FROM weekly summaries + trajectory statistics. Each level synthesizes the level below it, avoiding redundant API calls and ensuring consistency.
+3. **Stable categories get templates, not API calls**: Only Elevated/Divergent/ConfirmedConcern categories trigger the 3-pass pipeline. Stable categories get a static template ("No significant anomalies detected..."). This keeps costs proportional to actual signals.
+4. **Editorial transparency as opt-in**: Drafts and GPT-4o feedback stored alongside finals but only returned when `?editorial=true` is passed. Default API response is clean expert+public output.
+5. **`enrichCategoryData` extracted to `narrative-queries.ts`**: Was duplicated in pipeline + retry-narratives. Now single source, imported by both. Sample generation scripts (which had a 3rd copy) deleted.
+6. **Shared constants in `lib/types/narrative.ts`**: `OVERVIEW_CATEGORY` and `TERM_SUMMARY_CATEGORY` were defined in 3 files. Now defined once and imported everywhere. `T2_INAUGURATION` exported from `analysis-periods.ts` instead of redefined.
+7. **`storeMultiPassNarratives` wrapped in transaction**: Ensures all 5 artifacts (expert_draft, public_draft, feedback, expert, public) are stored atomically.
+8. **`requireWeekOf` API helper**: Added date format validation (`/^\d{4}-\d{2}-\d{2}$/`) to narrative API routes. Previously weekOf was passed to DB queries without validation.
+
+**Lessons Learned:**
+
+1. **OpenGrep rules catch issues ESLint misses**: The `no-inline-error-format` rule caught two instances of `err instanceof Error ? err.message : String(err)` that should use `formatError()`. Pre-commit hooks running both ESLint and OpenGrep are valuable for consistency enforcement.
+2. **Relative imports in tests need care with import/order**: Test fixtures in `__tests__/fixtures/` using relative paths (`../../fixtures/...`) must come after `@/` alias imports in the ESLint import/order rule. The `parent` group in ESLint import/order sorts after `internal` (`@/`).
+3. **validate:data narrative coverage conflates old and new**: The existing `_overview` rows from the pre-multipass system show up as "weekly summaries" even though they were generated differently. Not blocking — old rows get overwritten when the new pipeline runs — but the display is initially misleading.
+
+---
+
 ## Sprint R-CAL2: NC-3 Convergence Calibration ✅
 
 **Status: Done.** Three convergence fixes reduce Biden 2022 NC-3 false positive rate from 10/13 categories failing to 2/13 (now within tiered thresholds). Detection rate preserved at 30/39 (77%). Plus validate:ingest cleanup for retired GDELT/WH sources.
