@@ -1,12 +1,14 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SourceHealthTimeline } from '@/components/overview/SourceHealthTimeline';
+import { HealthSummary } from '@/components/system/HealthSummary';
 import {
   renderIngest,
   renderDataReport,
   renderDetection,
 } from '@/components/system/ValidationReports';
+import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import type { FetchWeekHealth } from '@/lib/types/overview';
@@ -23,41 +25,43 @@ function ValidationPanel({
   renderReport: (data: any) => React.ReactNode;
 }) {
   const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(endpoint);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      setData(await res.json());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        if (!cancelled) setData(await res.json());
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [endpoint]);
-
-  const handleToggle = () => {
-    const willOpen = !open;
-    setOpen(willOpen);
-    if (willOpen && !data && !loading) load();
-  };
 
   return (
     <div className="rounded-lg border border-dm-border bg-dm-card">
       <button
-        onClick={handleToggle}
+        onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 text-left hover:bg-dm-border/20 transition-colors"
       >
         <div>
           <span className="text-sm font-semibold text-dm-text-primary">{title}</span>
           <p className="text-xs text-dm-muted mt-0.5">{description}</p>
         </div>
-        <span className="text-dm-muted text-xs shrink-0 ml-4">{open ? '\u25B2' : '\u25BC'}</span>
+        <span className="text-dm-muted text-xs shrink-0 ml-4">
+          {loading ? '\u25CF' : open ? '\u25B2' : '\u25BC'}
+        </span>
       </button>
       {open && (
         <div className="px-5 pb-5">
@@ -78,6 +82,7 @@ function ValidationPanel({
 
 export default function HealthPage() {
   const { resolvedMode } = useTheme();
+  const { readingLevel } = useReadingLevel();
   const [fetchTimeline, setFetchTimeline] = useState<FetchWeekHealth[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -128,25 +133,30 @@ export default function HealthPage() {
           )}
         </section>
 
-        {/* Validation panels — loaded on demand */}
-        <ValidationPanel
-          title="Ingest Health"
-          description="Source coverage, content completeness, and fetch error rates across all data sources."
-          endpoint="/api/health/validate-ingest"
-          renderReport={renderIngest}
-        />
-        <ValidationPanel
-          title="Data Readiness"
-          description="Pipeline completeness across scoring, embedding, aggregation, and AI assessment stages."
-          endpoint="/api/health/validate-data"
-          renderReport={renderDataReport}
-        />
-        <ValidationPanel
-          title="Detection Correctness"
-          description="Validates the system correctly detects known events and does not over-flag during calm baseline periods."
-          endpoint="/api/health/validate-detection"
-          renderReport={renderDetection}
-        />
+        {readingLevel === 'summary' ? (
+          <HealthSummary />
+        ) : (
+          <>
+            <ValidationPanel
+              title="Ingest Health"
+              description="Source coverage, content completeness, and fetch error rates across all data sources."
+              endpoint="/api/health/validate-ingest"
+              renderReport={renderIngest}
+            />
+            <ValidationPanel
+              title="Data Readiness"
+              description="Pipeline completeness across scoring, embedding, aggregation, and AI assessment stages."
+              endpoint="/api/health/validate-data"
+              renderReport={renderDataReport}
+            />
+            <ValidationPanel
+              title="Detection Correctness"
+              description="Validates the system correctly detects known events and does not over-flag during calm baseline periods."
+              endpoint="/api/health/validate-detection"
+              renderReport={renderDetection}
+            />
+          </>
+        )}
       </div>
     </>
   );
