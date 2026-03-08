@@ -218,6 +218,13 @@
       "when": 1772928907809,
       "tag": "0030_silly_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1773148340000,
+      "tag": "0031_search_indexes",
+      "breakpoints": true
     }
   ]
 }

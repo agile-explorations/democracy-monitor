@@ -1,0 +1,284 @@
+import Head from 'next/head';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
+import { ResearchResults } from '@/components/search/ResearchResults';
+import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
+import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
+import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
+
+export default function SearchPage() {
+  const router = useRouter();
+  const { readingLevel } = useReadingLevel();
+  const [mode, setMode] = useLocalStorage<SearchMode>('dm_search_mode', 'research');
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const { history, addEntry, clearHistory } = useSearchHistory();
+
+  const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
+  const [exploreResult, setExploreResult] = useState<ExploreResult | null>(null);
+  const [synthesizing, setSynthesizing] = useState(false);
+
+  // Explore filters
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+  const [filterSort, setFilterSort] = useState('relevance');
+  const [filterPage, setFilterPage] = useState(1);
+
+  // Close history dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) setShowHistory(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const performSearch = useCallback(
+    async (q: string, searchMode: SearchMode, page = 1) => {
+      if (!q.trim()) return;
+      addEntry(q);
+      setShowHistory(false);
+      setLoading(true);
+      setError(null);
+
+      const params = new URLSearchParams({ q, mode: searchMode });
+      if (searchMode === 'explore') {
+        if (filterCategory) params.set('category', filterCategory);
+        if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+        if (filterDateTo) params.set('dateTo', filterDateTo);
+        if (filterSource) params.set('source', filterSource);
+        if (filterSort !== 'relevance') params.set('sort', filterSort);
+        if (page > 1) params.set('page', String(page));
+      }
+      router.replace(`/search?${params.toString()}`, undefined, { shallow: true });
+
+      try {
+        if (searchMode === 'research') {
+          await performResearch(q, params);
+        } else {
+          const res = await fetch(`/api/search?${params.toString()}`);
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `Search failed (${res.status})`);
+          }
+          setExploreResult((await res.json()) as ExploreResult);
+          setResearchResult(null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Search failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filterCategory, filterDateFrom, filterDateTo, filterSource, filterSort, router],
+  );
+
+  const performResearch = async (q: string, urlParams: URLSearchParams) => {
+    setExploreResult(null);
+
+    // Phase 1: Fetch documents immediately (fast)
+    const docsParams = new URLSearchParams(urlParams);
+    docsParams.set('docsOnly', 'true');
+    const docsRes = await fetch(`/api/search?${docsParams.toString()}`);
+    if (!docsRes.ok) {
+      const body = await docsRes.json().catch(() => ({}));
+      throw new Error(body.error || `Search failed (${docsRes.status})`);
+    }
+    const docsData = await docsRes.json();
+
+    // Show docs while synthesis runs
+    setResearchResult({
+      answer: { expert: '', public: '' },
+      documents: docsData.documents,
+      dateRange: docsData.dateRange,
+      queryConfidence: docsData.queryConfidence,
+      relatedQuestions: [],
+    });
+    setLoading(false);
+    setSynthesizing(true);
+
+    // Phase 2: Fetch full synthesis (slow — 3-pass RAG)
+    try {
+      const synthParams = new URLSearchParams(urlParams);
+      synthParams.set('editorial', 'true');
+      const synthRes = await fetch(`/api/search?${synthParams.toString()}`);
+      if (!synthRes.ok) {
+        const body = await synthRes.json().catch(() => ({}));
+        throw new Error(body.error || `Synthesis failed (${synthRes.status})`);
+      }
+      setResearchResult((await synthRes.json()) as ResearchResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Answer generation failed');
+    } finally {
+      setSynthesizing(false);
+    }
+  };
+
+  // Sync URL → state on mount
+  useEffect(() => {
+    const q = router.query.q as string | undefined;
+    const m = router.query.mode as SearchMode | undefined;
+    if (q) setQuery(q);
+    if (m && (m === 'research' || m === 'explore')) setMode(m);
+    if (router.query.category) setFilterCategory(router.query.category as string);
+    if (router.query.dateFrom) setFilterDateFrom(router.query.dateFrom as string);
+    if (router.query.dateTo) setFilterDateTo(router.query.dateTo as string);
+    if (router.query.source) setFilterSource(router.query.source as string);
+    if (router.query.sort) setFilterSort(router.query.sort as string);
+    if (router.query.page) setFilterPage(Number(router.query.page));
+    if (q && q.trim().length > 0) performSearch(q, m ?? mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFilterPage(1);
+    performSearch(query, mode, 1);
+  };
+
+  return (
+    <>
+      <Head>
+        <title>Search the Record &mdash; Democracy Monitor</title>
+      </Head>
+
+      <Link href="/" className="text-xs text-dm-accent hover:underline">
+        &larr; Back to overview
+      </Link>
+
+      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
+        Search the Documentary Record
+      </h1>
+      <p className="text-sm text-dm-muted mb-6">
+        Search government documents indexed by Democracy Monitor.
+      </p>
+
+      <form onSubmit={handleSubmit} ref={formRef} className="mb-4">
+        <div className="relative flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setShowHistory(true)}
+              placeholder={
+                mode === 'research'
+                  ? 'Ask a question about the government record...'
+                  : 'Search documents by keyword, title, or content...'
+              }
+              className="w-full px-3 py-2 rounded-lg border border-dm-border bg-dm-card text-dm-text-primary text-sm placeholder:text-dm-muted focus:outline-none focus:ring-2 focus:ring-dm-accent/50"
+            />
+            {showHistory && (
+              <SearchHistoryDropdown
+                history={history}
+                onSelect={(q) => {
+                  setQuery(q);
+                  performSearch(q, mode);
+                }}
+                onClear={clearHistory}
+                onClose={() => setShowHistory(false)}
+              />
+            )}
+          </div>
+          <button
+            type="submit"
+            disabled={loading || !query.trim()}
+            className="px-4 py-2 rounded-lg bg-dm-accent text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          >
+            {loading ? 'Searching...' : 'Search'}
+          </button>
+        </div>
+      </form>
+
+      {/* Mode toggle */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-xs text-dm-muted">Mode:</span>
+        <div className="flex rounded-lg border border-dm-border overflow-hidden">
+          {(['research', 'explore'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m);
+                setResearchResult(null);
+                setExploreResult(null);
+                setError(null);
+              }}
+              className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
+                mode === m
+                  ? 'bg-dm-accent text-white'
+                  : 'bg-dm-card text-dm-text-secondary hover:text-dm-text-primary'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {mode === 'explore' && (
+        <ExploreFilters
+          {...{
+            filterCategory,
+            setFilterCategory,
+            filterDateFrom,
+            setFilterDateFrom,
+            filterDateTo,
+            setFilterDateTo,
+            filterSource,
+            setFilterSource,
+            filterSort,
+            setFilterSort,
+          }}
+        />
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4 mb-6">
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        </div>
+      )}
+
+      {loading && (
+        <div className="text-center py-12">
+          <p className="text-sm text-dm-muted">
+            {mode === 'research'
+              ? 'Retrieving documents and generating answer...'
+              : 'Searching documents...'}
+          </p>
+        </div>
+      )}
+
+      {!loading && mode === 'research' && researchResult && (
+        <ResearchResults
+          result={researchResult}
+          readingLevel={readingLevel}
+          synthesizing={synthesizing}
+          onRelatedQuestion={(q) => {
+            setQuery(q);
+            performSearch(q, 'research');
+          }}
+        />
+      )}
+
+      {!loading && mode === 'explore' && exploreResult && (
+        <ExploreResults
+          result={exploreResult}
+          page={filterPage}
+          onPageChange={(p) => {
+            setFilterPage(p);
+            performSearch(query, mode, p);
+          }}
+        />
+      )}
+    </>
+  );
+}

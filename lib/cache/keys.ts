@@ -13,4 +13,5 @@ export const CacheKeys = {
   doj: (queryKey: string) => `doj:${queryKey}`,
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
+  searchResearch: (queryHash: string) => `search:research:${queryHash}`,
 } as const;

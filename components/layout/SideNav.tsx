@@ -52,6 +52,37 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function SearchNavLink() {
+  const router = useRouter();
+  const isActive = router.asPath.startsWith('/search');
+  return (
+    <Link
+      href="/search"
+      className={`flex items-center gap-1.5 px-3 py-1 text-[12px] rounded transition-colors ${
+        isActive
+          ? 'bg-dm-accent/10 text-dm-accent font-medium'
+          : 'text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-card'
+      }`}
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      Search the Record
+    </Link>
+  );
+}
+
 export function SideNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <>
@@ -64,6 +95,10 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
         }`}
       >
         <div className="pt-4 pb-6 space-y-4">
+          <div className="px-3 pb-2">
+            <SearchNavLink />
+          </div>
+
           <NavSection title="Categories">
             {CATEGORIES.map((cat) => (
               <NavLink key={cat.key} href={`/category/${cat.key}`} label={cat.title} />

@@ -1,0 +1,215 @@
+import { CATEGORIES } from '@/lib/data/categories';
+import { categoryLabel, formatDate } from './helpers';
+import type { ExploreDocResult, ExploreResult } from './types';
+
+function ExploreDocCard({ doc }: { doc: ExploreDocResult }) {
+  return (
+    <div className="rounded-lg border border-dm-border bg-dm-card p-3">
+      <div className="flex-1 min-w-0">
+        {doc.url ? (
+          <a
+            href={doc.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-dm-text-primary hover:text-dm-accent transition-colors"
+          >
+            {doc.title}
+          </a>
+        ) : (
+          <span className="text-sm font-medium text-dm-text-primary">{doc.title}</span>
+        )}
+
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-dm-muted">
+          {doc.publishedAt && <span>{formatDate(doc.publishedAt)}</span>}
+          <span className="px-1.5 py-0 rounded bg-dm-border/50">{categoryLabel(doc.category)}</span>
+          {doc.documentClass && <span>{doc.documentClass}</span>}
+          <span>{doc.sourceOrigin ?? doc.sourceType}</span>
+        </div>
+
+        {doc.finalScore != null && (
+          <div className="flex flex-wrap items-center gap-x-3 mt-2 text-[11px]">
+            <span className="text-dm-text-secondary font-medium">
+              Score: {doc.finalScore.toFixed(1)}
+            </span>
+            {(doc.captureCount ?? 0) > 0 && (
+              <span className="text-red-500">{doc.captureCount}C</span>
+            )}
+            {(doc.driftCount ?? 0) > 0 && <span className="text-amber-500">{doc.driftCount}D</span>}
+            {(doc.warningCount ?? 0) > 0 && (
+              <span className="text-dm-muted">{doc.warningCount}W</span>
+            )}
+            {(doc.suppressedCount ?? 0) > 0 && (
+              <span className="text-dm-muted line-through">{doc.suppressedCount} suppressed</span>
+            )}
+            {doc.classMultiplier != null && doc.classMultiplier !== 1.0 && (
+              <span className="text-dm-muted">
+                {doc.documentClass} &times;{doc.classMultiplier.toFixed(1)}
+              </span>
+            )}
+          </div>
+        )}
+
+        {doc.aiAssessment && (
+          <div className="flex items-center gap-2 mt-1 text-[11px]">
+            <span
+              className={`font-medium ${
+                doc.aiAssessment === 'clearly_concerning'
+                  ? 'text-red-500'
+                  : doc.aiAssessment === 'potentially_concerning'
+                    ? 'text-amber-500'
+                    : 'text-dm-muted'
+              }`}
+            >
+              AI: {doc.aiAssessment.replace(/_/g, ' ')}
+            </span>
+            {doc.aiConfidence != null && (
+              <span className="text-dm-muted">({(doc.aiConfidence * 100).toFixed(0)}%)</span>
+            )}
+            {doc.aiErosionType && (
+              <span className="text-dm-muted">{doc.aiErosionType.replace(/_/g, ' ')}</span>
+            )}
+          </div>
+        )}
+
+        {doc.cosineSimilarity != null && (
+          <div className="mt-1 text-[11px] text-dm-muted">
+            Relevance: {(doc.cosineSimilarity * 100).toFixed(0)}%
+          </div>
+        )}
+
+        {doc.snippet && (
+          <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
+            &ldquo;{doc.snippet.trim()}&rdquo;
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ExploreFilters({
+  filterCategory,
+  setFilterCategory,
+  filterDateFrom,
+  setFilterDateFrom,
+  filterDateTo,
+  setFilterDateTo,
+  filterSource,
+  setFilterSource,
+  filterSort,
+  setFilterSort,
+}: {
+  filterCategory: string;
+  setFilterCategory: (v: string) => void;
+  filterDateFrom: string;
+  setFilterDateFrom: (v: string) => void;
+  filterDateTo: string;
+  setFilterDateTo: (v: string) => void;
+  filterSource: string;
+  setFilterSource: (v: string) => void;
+  filterSort: string;
+  setFilterSort: (v: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6">
+      <select
+        value={filterCategory}
+        onChange={(e) => setFilterCategory(e.target.value)}
+        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+      >
+        <option value="">All categories</option>
+        {CATEGORIES.map((c) => (
+          <option key={c.key} value={c.key}>
+            {c.title}
+          </option>
+        ))}
+      </select>
+      <input
+        type="date"
+        value={filterDateFrom}
+        onChange={(e) => setFilterDateFrom(e.target.value)}
+        placeholder="From"
+        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+      />
+      <input
+        type="date"
+        value={filterDateTo}
+        onChange={(e) => setFilterDateTo(e.target.value)}
+        placeholder="To"
+        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+      />
+      <select
+        value={filterSource}
+        onChange={(e) => setFilterSource(e.target.value)}
+        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+      >
+        <option value="">All sources</option>
+        <option value="government">Government only</option>
+        <option value="news">News only</option>
+        <option value="federal_register">Federal Register</option>
+        <option value="courtlistener">CourtListener</option>
+        <option value="doj">DOJ</option>
+        <option value="govinfo">GovInfo</option>
+        <option value="govinfo_cpd">CPD</option>
+        <option value="fec">FEC</option>
+        <option value="legiscan">LegiScan</option>
+        <option value="oig">OIG</option>
+      </select>
+      <select
+        value={filterSort}
+        onChange={(e) => setFilterSort(e.target.value)}
+        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+      >
+        <option value="relevance">Sort: Relevance</option>
+        <option value="date">Sort: Date</option>
+        <option value="score">Sort: Score</option>
+      </select>
+    </div>
+  );
+}
+
+export function ExploreResults({
+  result,
+  page,
+  onPageChange,
+}: {
+  result: ExploreResult;
+  page: number;
+  onPageChange: (page: number) => void;
+}) {
+  const totalPages = Math.ceil(result.totalResults / result.pageSize);
+
+  return (
+    <div>
+      <p className="text-xs text-dm-muted mb-4">
+        {result.totalResults.toLocaleString()} result{result.totalResults !== 1 ? 's' : ''}
+      </p>
+      <div className="space-y-2">
+        {result.documents.map((doc) => (
+          <ExploreDocCard key={doc.id} doc={doc} />
+        ))}
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            className="px-3 py-1 text-xs rounded border border-dm-border text-dm-text-secondary hover:text-dm-text-primary disabled:opacity-30 transition-colors"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-dm-muted">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className="px-3 py-1 text-xs rounded border border-dm-border text-dm-text-secondary hover:text-dm-text-primary disabled:opacity-30 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
