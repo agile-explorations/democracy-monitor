@@ -67,7 +67,7 @@
     "domhandler": "5",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.9.2",
-    "next": "14.2.5",
+    "next": "16.1.6",
     "openai": "^6.18.0",
     "pdf-parse": "1.1.1",
     "pg": "^8.18.0",
