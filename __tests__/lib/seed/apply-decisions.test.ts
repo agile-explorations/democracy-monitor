@@ -285,3 +285,275 @@ describe('formatChangePreview', () => {
     expect(formatChangePreview([])).toBe('No changes to apply.');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Additional branch coverage tests
+// ---------------------------------------------------------------------------
+
+describe('applyRecommendation — missing branch coverage', () => {
+  it('returns null for move action with invalid suggestedTier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'delayed compliance',
+      category: 'judicialIndependence',
+      action: 'move',
+      currentTier: 'drift',
+      suggestedTier: 'invalidTier',
+      reason: 'Invalid tier',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('returns null for move action without suggestedTier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'delayed compliance',
+      category: 'judicialIndependence',
+      action: 'move',
+      currentTier: 'drift',
+      reason: 'No tier specified',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('returns null for add action with invalid suggestedTier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'new keyword',
+      category: 'judicialIndependence',
+      action: 'add',
+      suggestedTier: 'nonexistentTier',
+      reason: 'Invalid tier',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('returns null for add action without suggestedTier', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'new keyword',
+      category: 'judicialIndependence',
+      action: 'add',
+      reason: 'Missing tier',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('handles multi-category recommendation for move', () => {
+    const rules = makeRules();
+    // Both categories have 'workforce reduction' — wait, only civilService does.
+    // Test with comma-separated categories where first has the keyword.
+    const change = applyRecommendation(rules, {
+      keyword: 'workforce reduction',
+      category: 'civilService, judicialIndependence',
+      action: 'move',
+      currentTier: 'warning',
+      suggestedTier: 'drift',
+      reason: 'Should be drift',
+      occurrences: 2,
+      fpRate: 0,
+    });
+    expect(change).toEqual({
+      keyword: 'workforce reduction',
+      category: 'civilService',
+      action: 'moved',
+      fromTier: 'warning',
+      toTier: 'drift',
+    });
+    expect(rules.civilService.keywords.warning).not.toContain('workforce reduction');
+    expect(rules.civilService.keywords.drift).toContain('workforce reduction');
+  });
+
+  it('handles multi-category recommendation for remove', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'injunction issued',
+      category: 'judicialIndependence, civilService',
+      action: 'remove',
+      reason: 'FP',
+      occurrences: 5,
+      fpRate: 0.8,
+    });
+    expect(change).toEqual({
+      keyword: 'injunction issued',
+      category: 'judicialIndependence',
+      action: 'removed',
+      fromTier: 'warning',
+    });
+  });
+
+  it('falls back to all categories when move category is empty string', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'contempt of court',
+      category: '',
+      action: 'move',
+      currentTier: 'capture',
+      suggestedTier: 'drift',
+      reason: 'Demote',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    // Should find it in judicialIndependence (first category key)
+    expect(change).toEqual({
+      keyword: 'contempt of court',
+      category: 'judicialIndependence',
+      action: 'moved',
+      fromTier: 'capture',
+      toTier: 'drift',
+    });
+  });
+
+  it('falls back to all categories when remove category is empty string', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'schedule f',
+      category: '',
+      action: 'remove',
+      reason: 'FP',
+      occurrences: 1,
+      fpRate: 1,
+    });
+    // Should find it in civilService
+    expect(change).toEqual({
+      keyword: 'schedule f',
+      category: 'civilService',
+      action: 'removed',
+      fromTier: 'capture',
+    });
+  });
+
+  it('skips move when category has the keyword but target category does not exist', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'some keyword',
+      category: 'nonexistent',
+      action: 'move',
+      suggestedTier: 'drift',
+      reason: 'Bad cat',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('skips remove when target category does not exist', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'some keyword',
+      category: 'nonexistent',
+      action: 'remove',
+      reason: 'Bad cat',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+
+  it('does not duplicate keyword on move when already present in target tier', () => {
+    const rules = makeRules();
+    // Manually put 'delayed compliance' into warning too
+    rules.judicialIndependence.keywords.warning.push('delayed compliance');
+
+    const change = applyRecommendation(rules, {
+      keyword: 'delayed compliance',
+      category: 'judicialIndependence',
+      action: 'move',
+      currentTier: 'drift',
+      suggestedTier: 'warning',
+      reason: 'Move to warning',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toEqual({
+      keyword: 'delayed compliance',
+      category: 'judicialIndependence',
+      action: 'moved',
+      fromTier: 'drift',
+      toTier: 'warning',
+    });
+    // Should only appear once in warning
+    const warningOccurrences = rules.judicialIndependence.keywords.warning.filter(
+      (k) => k === 'delayed compliance',
+    );
+    expect(warningOccurrences).toHaveLength(1);
+  });
+
+  it('case-insensitive keyword matching for findKeywordTier', () => {
+    const rules = makeRules();
+    expect(findKeywordTier(rules.judicialIndependence, 'Contempt Of Court')).toBe('capture');
+    expect(findKeywordTier(rules.judicialIndependence, 'INJUNCTION ISSUED')).toBe('warning');
+  });
+
+  it('handles unrecognized action type (falls through to null)', () => {
+    const rules = makeRules();
+    const change = applyRecommendation(rules, {
+      keyword: 'something',
+      category: 'judicialIndependence',
+      action: 'unknown' as 'remove',
+      reason: 'test',
+      occurrences: 1,
+      fpRate: 0,
+    });
+    expect(change).toBeNull();
+  });
+});
+
+describe('applyAllRecommendations — mixed operations', () => {
+  it('skips non-applicable recommendations and includes applicable ones', () => {
+    const rules = makeRules();
+    const changes = applyAllRecommendations(rules, [
+      {
+        keyword: 'nonexistent',
+        category: 'judicialIndependence',
+        action: 'remove',
+        reason: 'Not found',
+        occurrences: 1,
+        fpRate: 1,
+      },
+      {
+        keyword: 'injunction issued',
+        category: 'judicialIndependence',
+        action: 'remove',
+        reason: 'FP',
+        occurrences: 5,
+        fpRate: 0.7,
+      },
+      {
+        keyword: 'new term',
+        category: 'civilService',
+        action: 'add',
+        suggestedTier: 'warning',
+        reason: 'Missing',
+        occurrences: 3,
+        fpRate: 0,
+      },
+    ]);
+    expect(changes).toHaveLength(2);
+    expect(changes[0].action).toBe('removed');
+    expect(changes[1].action).toBe('added');
+  });
+});
+
+describe('serializeRules — missing branch coverage', () => {
+  it('handles rules without volumeThreshold', () => {
+    const rules: AssessmentRules = {
+      testCategory: {
+        keywords: { capture: ['a'], drift: ['b'], warning: ['c'] },
+      },
+    };
+    const source = serializeRules(rules);
+    expect(source).not.toContain('volumeThreshold');
+    expect(source).toContain("'a',");
+    expect(source).toContain("'b',");
+    expect(source).toContain("'c',");
+  });
+});

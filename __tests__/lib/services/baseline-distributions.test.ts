@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { buildWeekMetadata } from '@/lib/services/baseline-distributions';
+import {
+  buildWeekMetadata,
+  buildBaselineDistribution,
+  computeSourceConvergenceRatio,
+} from '@/lib/services/baseline-distributions';
 
 describe('buildWeekMetadata', () => {
   it('counts rows without caseId by title', () => {
@@ -116,5 +120,376 @@ describe('buildWeekMetadata', () => {
     const meta = buildWeekMetadata('environment', '2025-06-02', rows);
     // cl:111 counts once, two non-CL docs count by title (each unique)
     expect(meta.documentCount).toBe(3);
+  });
+
+  it('uses UNKNOWN_AGENCY label for null agency values', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: null,
+        publishedAt: new Date('2025-06-02'),
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    expect(meta.agencyDistribution).toHaveProperty('unknown');
+    expect(meta.agencyDistribution['unknown']).toBe(1);
+  });
+
+  it('computes type distribution proportionally', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+      {
+        sourceType: 'Notice',
+        title: 'Rule B',
+        action: null,
+        agency: 'DOJ',
+        publishedAt: new Date('2025-06-03'),
+      },
+      {
+        sourceType: 'Rule',
+        title: 'Rule C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-04'),
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    // 2 Notice out of 3 total
+    expect(meta.typeDistribution['Notice']).toBeCloseTo(2 / 3);
+    expect(meta.typeDistribution['Rule']).toBeCloseTo(1 / 3);
+  });
+
+  it('computes dailyCounts across the 7-day week', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'), // day 0
+      },
+      {
+        sourceType: 'Notice',
+        title: 'Rule B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'), // day 0 again
+      },
+      {
+        sourceType: 'Rule',
+        title: 'Rule C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-05'), // day 3
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    expect(meta.dailyCounts[0]).toBe(2); // day 0
+    expect(meta.dailyCounts[3]).toBe(1); // day 3
+    expect(meta.dailyCounts[1]).toBe(0); // day 1
+  });
+
+  it('skips null publishedAt dates in dailyCounts', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: null,
+      },
+      {
+        sourceType: 'Notice',
+        title: 'Rule B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    // Only 1 doc has a valid date
+    const totalDailyCounts = meta.dailyCounts.reduce((s, v) => s + v, 0);
+    expect(totalDailyCounts).toBe(1);
+  });
+
+  it('ignores dates outside the 7-day window in dailyCounts', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-01'), // before weekOf
+      },
+      {
+        sourceType: 'Notice',
+        title: 'Rule B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-10'), // after 7-day window
+      },
+      {
+        sourceType: 'Notice',
+        title: 'Rule C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-03'), // within window
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    const totalDailyCounts = meta.dailyCounts.reduce((s, v) => s + v, 0);
+    expect(totalDailyCounts).toBe(1);
+  });
+
+  it('computes sourceConvergenceRatio correctly', () => {
+    const meta = buildWeekMetadata('environment', '2025-06-02', [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+      {
+        sourceType: 'rhetoric',
+        title: 'News article',
+        action: null,
+        agency: null,
+        publishedAt: new Date('2025-06-03'),
+      },
+    ]);
+    // log2((1+1)/(1+1)) = log2(1) = 0
+    expect(meta.sourceConvergenceRatio).toBeCloseTo(0);
+  });
+
+  it('returns action field from metadata to functional classifier', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'Rule A',
+        action: 'Final Rule',
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+    ];
+    const meta = buildWeekMetadata('environment', '2025-06-02', rows);
+    // functionalDistribution should have entries (exact bucket depends on classifier)
+    expect(Object.keys(meta.functionalDistribution).length).toBeGreaterThan(0);
+  });
+});
+
+describe('computeSourceConvergenceRatio', () => {
+  it('returns 0 for empty rows', () => {
+    expect(computeSourceConvergenceRatio([])).toBeCloseTo(0);
+  });
+
+  it('returns positive ratio when only government docs', () => {
+    const rows = [
+      { sourceType: 'Notice', title: 'A', action: null, agency: null, publishedAt: null },
+      { sourceType: 'Rule', title: 'B', action: null, agency: null, publishedAt: null },
+    ];
+    // log2((2+1)/(0+1)) = log2(3) ≈ 1.585
+    expect(computeSourceConvergenceRatio(rows)).toBeCloseTo(Math.log2(3));
+  });
+
+  it('returns negative ratio when only rhetoric docs', () => {
+    const rows = [
+      { sourceType: 'rhetoric', title: 'A', action: null, agency: null, publishedAt: null },
+      { sourceType: 'rhetoric', title: 'B', action: null, agency: null, publishedAt: null },
+    ];
+    // log2((0+1)/(2+1)) = log2(1/3) ≈ -1.585
+    expect(computeSourceConvergenceRatio(rows)).toBeCloseTo(Math.log2(1 / 3));
+  });
+
+  it('returns 0 when doc types are neither government nor rhetoric', () => {
+    const rows = [
+      { sourceType: 'unknown_type', title: 'A', action: null, agency: null, publishedAt: null },
+    ];
+    // log2((0+1)/(0+1)) = 0
+    expect(computeSourceConvergenceRatio(rows)).toBeCloseTo(0);
+  });
+});
+
+describe('buildBaselineDistribution', () => {
+  const baseConfig = {
+    id: 'test-baseline',
+    label: 'Test Baseline',
+    from: '2025-06-02',
+    to: '2025-06-22',
+    cycleYear: 1 as const,
+    administration: 'test',
+    calendarYear: 2025,
+    availableSources: [] as string[],
+  };
+
+  it('computes mean and stddev of weekly doc counts', () => {
+    // Spread docs across 2 weeks (Monday-based)
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'), // Mon wk1
+      },
+      {
+        sourceType: 'Notice',
+        title: 'B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-03'), // Tue wk1
+      },
+      {
+        sourceType: 'Notice',
+        title: 'C',
+        action: null,
+        agency: 'DOJ',
+        publishedAt: new Date('2025-06-09'), // Mon wk2
+      },
+    ];
+
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    // Week 1: 2 docs, Week 2: 1 doc → mean = 1.5
+    expect(result.meanDocCount).toBe(1.5);
+    expect(result.stdDevDocCount).toBeGreaterThan(0);
+    expect(result.baselineId).toBe('test-baseline');
+    expect(result.category).toBe('environment');
+  });
+
+  it('computes agency distribution across all rows', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+      {
+        sourceType: 'Notice',
+        title: 'B',
+        action: null,
+        agency: 'DOJ',
+        publishedAt: new Date('2025-06-03'),
+      },
+      {
+        sourceType: 'Rule',
+        title: 'C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-04'),
+      },
+    ];
+
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(result.agencyDistribution['EPA']).toBeCloseTo(2 / 3);
+    expect(result.agencyDistribution['DOJ']).toBeCloseTo(1 / 3);
+  });
+
+  it('handles null agency in baseline distribution', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: null,
+        publishedAt: new Date('2025-06-02'),
+      },
+    ];
+
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(result.agencyDistribution).toHaveProperty('unknown');
+  });
+
+  it('skips rows with null publishedAt during weekly grouping', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: null,
+      },
+      {
+        sourceType: 'Notice',
+        title: 'B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+    ];
+
+    // Should not throw — null publishedAt is skipped in groupByWeek
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    // Only 1 row grouped into a week (the other has null publishedAt)
+    expect(result.meanDocCount).toBe(1);
+  });
+
+  it('computes meanDailyVariance and stdDevDailyVariance', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'), // Mon
+      },
+      {
+        sourceType: 'Notice',
+        title: 'B',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'), // Mon (same day)
+      },
+      {
+        sourceType: 'Rule',
+        title: 'C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-04'), // Wed
+      },
+    ];
+
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(typeof result.meanDailyVariance).toBe('number');
+    expect(typeof result.stdDevDailyVariance).toBe('number');
+  });
+
+  it('computes meanSourceConvergenceRatio and stdDev', () => {
+    const rows = [
+      {
+        sourceType: 'Notice',
+        title: 'A',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-02'),
+      },
+      {
+        sourceType: 'rhetoric',
+        title: 'B',
+        action: null,
+        agency: null,
+        publishedAt: new Date('2025-06-03'),
+      },
+      {
+        sourceType: 'Notice',
+        title: 'C',
+        action: null,
+        agency: 'EPA',
+        publishedAt: new Date('2025-06-09'),
+      },
+    ];
+
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(typeof result.meanSourceConvergenceRatio).toBe('number');
+    expect(typeof result.stdDevSourceConvergenceRatio).toBe('number');
   });
 });

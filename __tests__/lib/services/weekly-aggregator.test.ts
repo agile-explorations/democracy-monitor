@@ -286,4 +286,164 @@ describe('computeAllWeeklyAggregates', () => {
     expect(result['judicialIndependence']).toHaveLength(1);
     expect(result['agencies']).toHaveLength(1);
   });
+
+  it('applies from/to date filters', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const db = {
+      selectDistinct: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+      execute: vi.fn().mockResolvedValue({ rows: [] }),
+    };
+
+    mockGetDb.mockReturnValue(db as never);
+
+    const result = await computeAllWeeklyAggregates({ from: '2025-01-01', to: '2025-03-01' });
+    expect(result).toEqual({});
+    expect(db.selectDistinct).toHaveBeenCalled();
+  });
+
+  it('groups multiple weeks under same category', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const groups = [
+      { category: 'agencies', weekOf: '2025-02-03' },
+      { category: 'agencies', weekOf: '2025-02-10' },
+    ];
+
+    const statsRow = {
+      totalSeverity: 5,
+      documentCount: 1,
+      captureMatchCount: 0,
+      driftMatchCount: 1,
+      warningMatchCount: 0,
+      suppressedMatchCount: 0,
+    };
+
+    const db = {
+      selectDistinct: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockResolvedValue(groups),
+          }),
+        }),
+      }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([statsRow]),
+        }),
+      }),
+      execute: vi.fn().mockResolvedValue({ rows: [] }),
+    };
+
+    mockGetDb.mockReturnValue(db as never);
+
+    const result = await computeAllWeeklyAggregates();
+    expect(result['agencies']).toHaveLength(2);
+  });
+});
+
+describe('storeWeeklyAggregate', () => {
+  it('returns without action when DB is unavailable', async () => {
+    mockIsDbAvailable.mockReturnValue(false);
+
+    const { storeWeeklyAggregate } = await import('@/lib/services/weekly-aggregator');
+    await storeWeeklyAggregate({
+      category: 'agencies',
+      weekOf: '2025-02-03',
+      totalSeverity: 0,
+      documentCount: 0,
+      avgSeverityPerDoc: 0,
+      captureProportion: 0,
+      driftProportion: 0,
+      warningProportion: 0,
+      severityMix: 0,
+      captureMatchCount: 0,
+      driftMatchCount: 0,
+      warningMatchCount: 0,
+      suppressedMatchCount: 0,
+      topKeywords: [],
+      computedAt: new Date().toISOString(),
+    });
+
+    expect(mockGetDb).toHaveBeenCalledTimes(0);
+  });
+
+  it('upserts aggregate to database when DB is available', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+    const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+    const db = { insert: mockInsert };
+    mockGetDb.mockReturnValue(db as never);
+
+    const { storeWeeklyAggregate } = await import('@/lib/services/weekly-aggregator');
+    await storeWeeklyAggregate({
+      category: 'agencies',
+      weekOf: '2025-02-03',
+      totalSeverity: 10,
+      documentCount: 2,
+      avgSeverityPerDoc: 5,
+      captureProportion: 0.5,
+      driftProportion: 0.3,
+      warningProportion: 0.2,
+      severityMix: 2.6,
+      captureMatchCount: 5,
+      driftMatchCount: 3,
+      warningMatchCount: 2,
+      suppressedMatchCount: 1,
+      topKeywords: ['test'],
+      computedAt: new Date().toISOString(),
+    });
+
+    expect(mockInsert).toHaveBeenCalled();
+    expect(mockOnConflict).toHaveBeenCalled();
+  });
+
+  it('handles optional layer fields with null defaults', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+    const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+    const db = { insert: mockInsert };
+    mockGetDb.mockReturnValue(db as never);
+
+    const { storeWeeklyAggregate } = await import('@/lib/services/weekly-aggregator');
+    await storeWeeklyAggregate({
+      category: 'agencies',
+      weekOf: '2025-02-03',
+      totalSeverity: 10,
+      documentCount: 2,
+      avgSeverityPerDoc: 5,
+      captureProportion: 0,
+      driftProportion: 0,
+      warningProportion: 0,
+      severityMix: 0,
+      captureMatchCount: 0,
+      driftMatchCount: 0,
+      warningMatchCount: 0,
+      suppressedMatchCount: 0,
+      topKeywords: [],
+      structuralScore: 0.5,
+      structuralDetail: { test: true },
+      thematicScore: undefined,
+      aiScore: undefined,
+      computedAt: new Date().toISOString(),
+    });
+
+    // Upsert was called with the aggregate including optional layer fields
+    expect(mockOnConflict).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { WeekMap } from '@/lib/services/convergence-service';
-import { computeConvergenceSeries } from '@/lib/services/convergence-service';
+import {
+  computeConvergenceSeries,
+  fetchWeeklyConvergenceData,
+} from '@/lib/services/convergence-service';
+
+vi.mock('@/lib/db', () => ({
+  getDb: vi.fn(),
+}));
 
 // The function uses INFRASTRUCTURE_THEMES from lib/data/infrastructure-keywords.ts
 // which has 3 themes: detention, surveillance, criminalization — each with activationThreshold: 2
@@ -121,5 +128,140 @@ describe('computeConvergenceSeries', () => {
     expect(result).toHaveLength(2);
     expect(result[0].convergence).toBe('none');
     expect(result[1].convergence).toBe('emerging');
+  });
+
+  it('convergenceScore is 0 when only one theme has non-zero intensity', () => {
+    // Only detention keywords, no surveillance/criminalization keywords
+    // activeIntensities will have length 1 (only detention > 0)
+    // So convergenceScore should be 0
+    const weekMap: WeekMap = new Map([
+      [
+        '2025-02-03',
+        [
+          {
+            category: 'immigration',
+            reason: 'detention facility',
+            matches: ['detention center'],
+          },
+        ],
+      ],
+    ]);
+    const result = computeConvergenceSeries(weekMap);
+    expect(result).toHaveLength(1);
+    // Only 1 intensity > 0, so convergenceScore = 0
+    expect(result[0].convergenceScore).toBe(0);
+  });
+
+  it('handles all three themes activated simultaneously', () => {
+    const weekMap: WeekMap = new Map([
+      [
+        '2025-02-03',
+        [
+          // detention theme (>= 2 matches)
+          { category: 'immigration', reason: 'detention facility', matches: ['detention center'] },
+          // surveillance theme (>= 2 matches)
+          {
+            category: 'civilLiberties',
+            reason: 'mass surveillance',
+            matches: ['facial recognition'],
+          },
+          // criminalization theme (>= 2 matches)
+          {
+            category: 'civilLiberties',
+            reason: 'political prosecution',
+            matches: ['selective prosecution'],
+          },
+        ],
+      ],
+    ]);
+    const result = computeConvergenceSeries(weekMap);
+    expect(result).toHaveLength(1);
+    expect(result[0].activeThemeCount).toBe(3);
+    // All three intensities > 0, convergenceScore = product of all 3
+    expect(result[0].convergenceScore).toBeGreaterThan(0);
+  });
+});
+
+describe('fetchWeeklyConvergenceData', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('builds convergence points from DB rows with to parameter', async () => {
+    const { getDb } = await import('@/lib/db');
+    const mockExecute = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          category: 'judicialIndependence',
+          week: '2025-02-03T00:00:00.000Z',
+          status: 'none',
+          reason: 'routine update',
+          matches: [],
+        },
+      ],
+    });
+    vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as never);
+
+    const result = await fetchWeeklyConvergenceData('2025-01-01', '2025-03-01');
+    expect(result).toHaveLength(1);
+    expect(result[0].week).toBe('2025-02-03');
+    expect(result[0].convergence).toBe('none');
+  });
+
+  it('handles rows where matches is not an array', async () => {
+    const { getDb } = await import('@/lib/db');
+    const mockExecute = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          category: 'immigration',
+          week: '2025-02-03T00:00:00.000Z',
+          status: 'elevated',
+          reason: 'detention facility',
+          matches: 'not-an-array', // non-array matches value
+        },
+      ],
+    });
+    vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as never);
+
+    const result = await fetchWeeklyConvergenceData('2025-01-01');
+    expect(result).toHaveLength(1);
+    // matches should be treated as empty array when not an array
+  });
+
+  it('groups multiple rows into the same week', async () => {
+    const { getDb } = await import('@/lib/db');
+    const mockExecute = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          category: 'immigration',
+          week: '2025-02-03T00:00:00.000Z',
+          status: 'none',
+          reason: 'detention facility',
+          matches: ['detention center'],
+        },
+        {
+          category: 'civilLiberties',
+          week: '2025-02-03T00:00:00.000Z',
+          status: 'none',
+          reason: 'mass surveillance',
+          matches: ['facial recognition'],
+        },
+      ],
+    });
+    vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as never);
+
+    const result = await fetchWeeklyConvergenceData('2025-01-01');
+    expect(result).toHaveLength(1);
+    // Two entries in same week
+  });
+
+  it('calls DB without toClause when to is not provided', async () => {
+    const { getDb } = await import('@/lib/db');
+    const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
+    vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as never);
+
+    const result = await fetchWeeklyConvergenceData('2025-01-01');
+    expect(result).toEqual([]);
+    expect(mockExecute).toHaveBeenCalledTimes(1);
   });
 });

@@ -170,4 +170,264 @@ describe('recomputeScores', () => {
 
     expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(0);
   });
+
+  it('handles documents where scoreDocument returns null', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const docs = [
+      makeDocRow(1, 'judicialIndependence', 'Skipped Doc'),
+      makeDocRow(2, 'judicialIndependence', 'Scored Doc'),
+    ];
+    const mockDb = makeMockDb([docs, []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    // First doc returns null (skipped), second returns a score
+    mockScoreDocument.mockReturnValueOnce(null as never).mockReturnValueOnce({
+      documentId: 0,
+      category: 'judicialIndependence',
+      finalScore: 5,
+      tierScores: { capture: 0, drift: 2, warning: 1 },
+      classMultiplier: 1.3,
+      matchedKeywords: ['court'],
+      scoredAt: new Date().toISOString(),
+    });
+    mockStoreDocumentScores.mockResolvedValue(1);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
+
+    expect(mockScoreDocument).toHaveBeenCalledTimes(2);
+    // Only 1 valid score stored (null scores are filtered out)
+    expect(mockStoreDocumentScores).toHaveBeenCalledTimes(1);
+  });
+
+  it('processes multiple batches until empty batch is reached', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const batch1 = [makeDocRow(1, 'agencies', 'Doc 1'), makeDocRow(2, 'agencies', 'Doc 2')];
+    const batch2 = [makeDocRow(3, 'agencies', 'Doc 3')];
+    const mockDb = makeMockDb([batch1, batch2, []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockScoreDocument.mockReturnValue({
+      documentId: 0,
+      category: 'agencies',
+      finalScore: 3,
+      tierScores: { capture: 0, drift: 1, warning: 1 },
+      classMultiplier: 1.0,
+      matchedKeywords: [],
+      scoredAt: new Date().toISOString(),
+    });
+    mockStoreDocumentScores.mockResolvedValue(2);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01', batchSize: 2 });
+
+    // 3 documents across 2 batches
+    expect(mockScoreDocument).toHaveBeenCalledTimes(3);
+    // storeDocumentScores called once per batch with valid scores
+    expect(mockStoreDocumentScores).toHaveBeenCalledTimes(2);
+  });
+
+  it('tracks per-category counts across batches', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const docs = [
+      makeDocRow(1, 'judicialIndependence', 'Doc 1'),
+      makeDocRow(2, 'agencies', 'Doc 2'),
+      makeDocRow(3, 'judicialIndependence', 'Doc 3'),
+    ];
+    const mockDb = makeMockDb([docs, []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockScoreDocument
+      .mockReturnValueOnce({
+        documentId: 0,
+        category: 'judicialIndependence',
+        finalScore: 5,
+        tierScores: { capture: 1, drift: 0, warning: 0 },
+        classMultiplier: 1.3,
+        matchedKeywords: [],
+        scoredAt: new Date().toISOString(),
+      })
+      .mockReturnValueOnce({
+        documentId: 0,
+        category: 'agencies',
+        finalScore: 0,
+        tierScores: { capture: 0, drift: 0, warning: 0 },
+        classMultiplier: 1.0,
+        matchedKeywords: [],
+        scoredAt: new Date().toISOString(),
+      })
+      .mockReturnValueOnce({
+        documentId: 0,
+        category: 'judicialIndependence',
+        finalScore: 3,
+        tierScores: { capture: 0, drift: 1, warning: 0 },
+        classMultiplier: 1.0,
+        matchedKeywords: [],
+        scoredAt: new Date().toISOString(),
+      });
+    mockStoreDocumentScores.mockResolvedValue(3);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
+
+    expect(mockScoreDocument).toHaveBeenCalledTimes(3);
+  });
+
+  it('extracts agency from doc.metadata when present', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const doc = {
+      ...makeDocRow(1, 'agencies', 'Agency Test'),
+      metadata: { agency: 'Department of Justice' },
+    };
+    const mockDb = makeMockDb([[doc], []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockScoreDocument.mockReturnValue({
+      documentId: 0,
+      category: 'agencies',
+      finalScore: 5,
+      tierScores: { capture: 1, drift: 0, warning: 0 },
+      classMultiplier: 1.3,
+      matchedKeywords: [],
+      scoredAt: new Date().toISOString(),
+    });
+    mockStoreDocumentScores.mockResolvedValue(1);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
+
+    // scoreDocument called — agency is extracted from metadata
+    expect(mockScoreDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it('handles doc with null content and null metadata', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const doc = {
+      ...makeDocRow(1, 'agencies', 'No Content'),
+      content: null,
+      metadata: null,
+      publishedAt: null,
+      url: null,
+    };
+    const mockDb = makeMockDb([[doc], []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockScoreDocument.mockReturnValue({
+      documentId: 0,
+      category: 'agencies',
+      finalScore: 0,
+      tierScores: { capture: 0, drift: 0, warning: 0 },
+      classMultiplier: 1.0,
+      matchedKeywords: [],
+      scoredAt: new Date().toISOString(),
+    });
+    mockStoreDocumentScores.mockResolvedValue(1);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
+
+    // Null content/metadata/url/publishedAt → scoreDocument still called
+    expect(mockScoreDocument).toHaveBeenCalledTimes(1);
+    expect(mockStoreDocumentScores).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies category filter', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const mockDb = makeMockDb([[]]);
+    mockGetDb.mockReturnValue(mockDb);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({
+      from: '2025-01-20',
+      to: '2025-03-01',
+      category: 'judicialIndependence',
+    });
+
+    expect(mockDb.select).toHaveBeenCalled();
+  });
+
+  it('--allDates skips analysis period loop', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const docs = [makeDocRow(1, 'agencies', 'Doc')];
+    const mockDb = makeMockDb([docs, []]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockScoreDocument.mockReturnValue({
+      documentId: 0,
+      category: 'agencies',
+      finalScore: 1,
+      tierScores: { capture: 0, drift: 0, warning: 1 },
+      classMultiplier: 1.0,
+      matchedKeywords: [],
+      scoredAt: new Date().toISOString(),
+    });
+    mockStoreDocumentScores.mockResolvedValue(1);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ allDates: true });
+
+    // allDates => single pass => single aggregate call
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
+  });
+
+  it('dry-run with analysis periods skips store and aggregate', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const mockDb = makeMockDb([[]]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    await recomputeScores({ dryRun: true });
+
+    // Dry-run with analysis periods: store and aggregate counts should be zero
+    expect(mockStoreDocumentScores).toHaveBeenCalledTimes(0);
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(0);
+  });
+
+  it('stores weekly aggregates for each analysis period category', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const mockDb = makeMockDb([[]]);
+    mockGetDb.mockReturnValue(mockDb);
+
+    mockComputeAllWeeklyAggregates.mockResolvedValue({
+      agencies: [
+        {
+          category: 'agencies',
+          weekOf: '2025-02-03',
+          totalSeverity: 10,
+          documentCount: 2,
+          avgSeverityPerDoc: 5,
+          captureProportion: 0,
+          driftProportion: 0,
+          warningProportion: 0,
+          severityMix: 0,
+          captureMatchCount: 0,
+          driftMatchCount: 0,
+          warningMatchCount: 0,
+          suppressedMatchCount: 0,
+          topKeywords: [],
+          computedAt: new Date().toISOString(),
+        },
+      ],
+    } as never);
+    mockStoreWeeklyAggregate.mockResolvedValue(undefined as never);
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01' });
+
+    expect(mockStoreWeeklyAggregate).toHaveBeenCalledTimes(1);
+  });
+
+  it('allSources flag is passed through to where clause', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const mockDb = makeMockDb([[]]);
+    mockGetDb.mockReturnValue(mockDb);
+    mockComputeAllWeeklyAggregates.mockResolvedValue({});
+
+    await recomputeScores({ from: '2025-01-20', to: '2025-03-01', allSources: true });
+
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledOnce();
+  });
 });

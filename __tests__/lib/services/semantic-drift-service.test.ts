@@ -3,7 +3,13 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { getBaseline } from '@/lib/services/baseline-service';
 import { cosineSimilarity } from '@/lib/services/embedding-service';
-import { computeWeekCentroid, computeSemanticDrift } from '@/lib/services/semantic-drift-service';
+import {
+  computeWeekCentroid,
+  computeSemanticDrift,
+  computeRollingThematicDrift,
+  detectNovelDocuments,
+  computeVarianceRatio,
+} from '@/lib/services/semantic-drift-service';
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
@@ -322,5 +328,310 @@ describe('computeSemanticDrift', () => {
     expect(result!.normalizedDrift!).toBeGreaterThanOrEqual(1);
     expect(result!.normalizedDrift!).toBeLessThan(2);
     expect(result!.interpretation).toContain('elevated');
+  });
+
+  it('noise floor of zero triggers no-normalization interpretation', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    mockGetDb.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ embedding: [1, 0, 0] }]),
+        }),
+      }),
+    } as never);
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2022',
+      category: 'judicialIndependence',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0,
+      embeddingCentroid: [0, 1, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
+
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
+    expect(result).not.toBeNull();
+    expect(result!.normalizedDrift).toBeNull();
+    expect(result!.interpretation).toContain('Noise floor not available');
+  });
+
+  it('returns null when baseline itself is null', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    mockGetDb.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ embedding: [1, 0, 0] }]),
+        }),
+      }),
+    } as never);
+    mockGetBaseline.mockResolvedValue(null);
+
+    const result = await computeSemanticDrift('judicialIndependence', '2025-02-03');
+    expect(result).toBeNull();
+  });
+});
+
+describe('computeRollingThematicDrift', () => {
+  function mockDbWithEmbeddings(callResults: Array<Array<{ embedding: number[] }>>) {
+    let callIdx = 0;
+    mockGetDb.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockImplementation(() => {
+            const result = callResults[callIdx] ?? [];
+            callIdx++;
+            return Promise.resolve(result);
+          }),
+        }),
+      }),
+    } as never);
+  }
+
+  it('returns null when current centroid is unavailable', async () => {
+    mockIsDbAvailable.mockReturnValue(false);
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03');
+    expect(result).toBeNull();
+  });
+
+  it('returns bootstrap result when no preceding weeks have centroids', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    // Current centroid returns data, all preceding weeks return empty
+    const calls: Array<Array<{ embedding: number[] }>> = [
+      [{ embedding: [1, 0, 0] }], // current week
+    ];
+    // Add 8 empty results for preceding weeks (windowSize=8)
+    for (let i = 0; i < 8; i++) calls.push([]);
+    mockDbWithEmbeddings(calls);
+
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2022',
+      category: 'judicialIndependence',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0.05,
+      embeddingCentroid: [0, 1, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03');
+    expect(result).not.toBeNull();
+    expect(result!.bootstrap).toBe(true);
+    expect(result!.rollingWindow.weeks).toBe(0);
+    expect(result!.zScore).toBe(0);
+    expect(result!.crossAdminDistance).not.toBeNull();
+  });
+
+  it('returns bootstrap result with null crossAdminDistance when no baseline', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    const calls: Array<Array<{ embedding: number[] }>> = [[{ embedding: [1, 0, 0] }]];
+    for (let i = 0; i < 8; i++) calls.push([]);
+    mockDbWithEmbeddings(calls);
+
+    mockGetBaseline.mockResolvedValue(null);
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03');
+    expect(result).not.toBeNull();
+    expect(result!.bootstrap).toBe(true);
+    expect(result!.crossAdminDistance).toBeNull();
+    expect(result!.rollingCentroidDistance).toBe(0);
+  });
+
+  it('computes rolling result with sufficient preceding weeks', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    // current week + 5 preceding weeks with data (>= windowSize/2 = 4 for window=8)
+    const calls: Array<Array<{ embedding: number[] }>> = [
+      [{ embedding: [1, 0, 0] }], // current week
+    ];
+    // 8 preceding weeks, first 5 have data
+    for (let i = 0; i < 5; i++) calls.push([{ embedding: [0.9 + i * 0.02, 0.1, 0] }]);
+    for (let i = 0; i < 3; i++) calls.push([]);
+    mockDbWithEmbeddings(calls);
+
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2022',
+      category: 'judicialIndependence',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0.05,
+      embeddingCentroid: [0, 1, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03');
+    expect(result).not.toBeNull();
+    expect(result!.bootstrap).toBe(false);
+    expect(result!.rollingWindow.weeks).toBe(5);
+    expect(typeof result!.zScore).toBe('number');
+    expect(typeof result!.rollingCentroidDistance).toBe('number');
+    expect(result!.crossAdminDistance).not.toBeNull();
+  });
+
+  it('applies bootstrap confidence scaling when in bootstrap mode', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    // current week + 3 preceding weeks (< windowSize/2 = 4, so bootstrap)
+    const calls: Array<Array<{ embedding: number[] }>> = [
+      [{ embedding: [1, 0, 0] }], // current week
+    ];
+    for (let i = 0; i < 3; i++) calls.push([{ embedding: [0.8 + i * 0.1, 0.2, 0] }]);
+    for (let i = 0; i < 5; i++) calls.push([]);
+    mockDbWithEmbeddings(calls);
+
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2022',
+      category: 'judicialIndependence',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0.05,
+      embeddingCentroid: [0, 1, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03');
+    expect(result).not.toBeNull();
+    expect(result!.bootstrap).toBe(true);
+    expect(result!.rollingWindow.weeks).toBe(3);
+  });
+
+  it('accepts custom windowSize option', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    // current week + only 2 weeks for a small window
+    const calls: Array<Array<{ embedding: number[] }>> = [
+      [{ embedding: [1, 0, 0] }], // current week
+      [{ embedding: [0.9, 0.1, 0] }],
+      [{ embedding: [0.85, 0.15, 0] }],
+    ];
+    mockDbWithEmbeddings(calls);
+
+    mockGetBaseline.mockResolvedValue({
+      baselineId: 'biden_2022',
+      category: 'judicialIndependence',
+      avgWeeklySeverity: 15,
+      stddevWeeklySeverity: 5,
+      avgWeeklyDocCount: 6,
+      avgSeverityMix: 2.5,
+      driftNoiseFloor: 0.05,
+      embeddingCentroid: [0, 1, 0],
+      computedAt: '2025-02-08T00:00:00.000Z',
+    });
+
+    const result = await computeRollingThematicDrift('judicialIndependence', '2025-02-03', {
+      windowSize: 2,
+    });
+    expect(result).not.toBeNull();
+    expect(result!.rollingWindow.weeks).toBe(2);
+  });
+});
+
+describe('detectNovelDocuments', () => {
+  it('returns zero rate for empty embeddings', () => {
+    const result = detectNovelDocuments([], [1, 0, 0]);
+    expect(result.novelRate).toBe(0);
+    expect(result.novelIndices).toEqual([]);
+  });
+
+  it('detects no novel documents when all are close to centroid', () => {
+    const embeddings = [
+      [1, 0, 0],
+      [0.99, 0.01, 0],
+      [0.98, 0.02, 0],
+    ];
+    const centroid = [1, 0, 0];
+    const result = detectNovelDocuments(embeddings, centroid, 0.3);
+    expect(result.novelRate).toBe(0);
+    expect(result.novelIndices).toEqual([]);
+  });
+
+  it('detects novel documents that are far from centroid', () => {
+    const embeddings = [
+      [1, 0, 0], // close
+      [0, 1, 0], // orthogonal — distance = 1.0
+      [0, 0, 1], // orthogonal — distance = 1.0
+    ];
+    const centroid = [1, 0, 0];
+    const result = detectNovelDocuments(embeddings, centroid, 0.3);
+    expect(result.novelRate).toBeCloseTo(2 / 3);
+    expect(result.novelIndices).toEqual([1, 2]);
+  });
+
+  it('uses custom threshold', () => {
+    const embeddings = [
+      [1, 0, 0],
+      [0.5, 0.5, 0], // distance from [1,0,0] is 1 - cos(45°) ≈ 0.293
+    ];
+    const centroid = [1, 0, 0];
+    // With threshold 0.2, the second should be novel
+    const result = detectNovelDocuments(embeddings, centroid, 0.2);
+    expect(result.novelIndices).toEqual([1]);
+  });
+});
+
+describe('computeVarianceRatio', () => {
+  it('returns 1 when rolling variance is zero', () => {
+    const result = computeVarianceRatio(
+      [[1, 0, 0]],
+      [1, 0, 0],
+      [[1, 0, 0]], // all identical to centroid → variance = 0
+      [1, 0, 0],
+    );
+    expect(result).toBe(1);
+  });
+
+  it('returns 0 when current embeddings are empty', () => {
+    const result = computeVarianceRatio(
+      [],
+      [1, 0, 0],
+      [
+        [1, 0, 0],
+        [0, 1, 0],
+      ],
+      [0.5, 0.5, 0],
+    );
+    // currentVar = 0 (empty), rollingVar > 0, so result = 0/rollingVar = 0
+    expect(result).toBe(0);
+  });
+
+  it('returns ratio > 1 when current has more variance', () => {
+    // Current: widely spread embeddings
+    const currentEmbs = [
+      [1, 0, 0],
+      [0, 1, 0],
+    ];
+    const currentCentroid = [0.5, 0.5, 0];
+    // Rolling: tight embeddings
+    const rollingEmbs = [
+      [1, 0, 0],
+      [0.99, 0.01, 0],
+    ];
+    const rollingCentroid = [0.995, 0.005, 0];
+
+    const result = computeVarianceRatio(currentEmbs, currentCentroid, rollingEmbs, rollingCentroid);
+    expect(result).toBeGreaterThan(1);
+  });
+
+  it('returns ratio < 1 when current has less variance', () => {
+    // Current: tight embeddings
+    const currentEmbs = [
+      [1, 0, 0],
+      [0.99, 0.01, 0],
+    ];
+    const currentCentroid = [0.995, 0.005, 0];
+    // Rolling: widely spread embeddings
+    const rollingEmbs = [
+      [1, 0, 0],
+      [0, 1, 0],
+    ];
+    const rollingCentroid = [0.5, 0.5, 0];
+
+    const result = computeVarianceRatio(currentEmbs, currentCentroid, rollingEmbs, rollingCentroid);
+    expect(result).toBeLessThan(1);
   });
 });

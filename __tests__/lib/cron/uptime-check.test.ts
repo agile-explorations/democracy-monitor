@@ -67,4 +67,20 @@ describe('runUptimeCheck', () => {
 
     await expect(runUptimeCheck()).resolves.toBeUndefined();
   });
+
+  it('completes when down site has no error message', async () => {
+    const downWithStatus: UptimeResult = {
+      hostname: 'noerror.example.com',
+      status: 503,
+      responseTimeMs: null,
+      isUp: false,
+      checkedAt: new Date().toISOString(),
+      // No error property — exercises the "status 503" fallback branch
+    };
+    mockCheckAllSites.mockResolvedValue([downWithStatus]);
+    mockRecordResults.mockResolvedValue(undefined);
+
+    // Should complete without error even when error field is missing
+    await expect(runUptimeCheck()).resolves.toBeUndefined();
+  });
 });

@@ -10,6 +10,29 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-COV1: Branch Coverage Improvement ✅
+
+**Status: Done.** Raised global branch coverage from 62.62% to 68.24% (+306 tests across 21 test files). Coverage thresholds raised from 63%→68% branches, 68%→71% statements.
+
+**Scope vs. Actual:**
+
+- Planned (7 issues #279-#285): Quick-win files (4), parser+scorer (2), pure-logic services (5), narrative+seed (3), DB-dependent services (5), recompute-scores cron (1), raise thresholds.
+- Actual: All Tier 1 (pure logic) and Tier 2 (DB-dependent) files completed. Reached 68.24% branches — short of the 70% aspirational target but a significant improvement. Second-wave agents (convergence-service, components) partially completed before user decided to move on.
+
+**Key Decisions:**
+
+1. **Parallel agent strategy**: 5 independent agents writing tests for non-overlapping files simultaneously. All completed successfully with zero merge conflicts.
+2. **Excluded interactive-review.ts and feed-fetcher.ts**: Readline-dependent and heavy external-API mocking respectively — diminishing ROI.
+3. **Threshold set conservatively at 68%**: Actual coverage is 68.24%, leaving 0.24% headroom. Previous threshold (63%) was too loose; 68% locks in the gains.
+
+**Lessons Learned:**
+
+1. Parallel test-writing agents work extremely well when files are independent — 5 agents completed ~300 tests with no conflicts.
+2. Branch coverage gains have diminishing returns past ~68% — remaining uncovered branches are mostly I/O paths, interactive CLI flows, and component rendering edge cases.
+3. Pre-push hook running full `test:coverage` can time out at 2-minute default — need longer timeout for push operations.
+
+---
+
 ## Sprint R-NAR1: Multi-Pass Narrative Architecture ✅
 
 **Status: Done.** Replaced single-pass narrative generation with three-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision). Added weekly cross-category summaries, incremental term summaries, failure tracking with CLI retry, editorial transparency in UI, and expanded validation coverage.

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { isDbAvailable } from '@/lib/db';
-import type { NarrativeVersion, StoredNarrative } from '@/lib/types';
+import type { StoredNarrative } from '@/lib/types';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 

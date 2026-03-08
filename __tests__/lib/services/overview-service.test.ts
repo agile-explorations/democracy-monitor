@@ -233,4 +233,123 @@ describe('computeWeeklyWeightedScores', () => {
     // 3 + 3 + 1 = 7
     expect(result.get(0)).toBe(7);
   });
+
+  it('handles convergence_detail with unrecognised status string', () => {
+    const rows = [
+      makeRow('civilService', '2017-01-23', 0.5, { status: 'UnknownStatus' }),
+      makeRow('fiscal', '2017-01-23', 0.1, { status: 'Divergent' }),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+    // UnknownStatus → null → weight 0, Divergent → weight 2
+    expect(result.get(0)).toBe(2);
+  });
+
+  it('handles convergence_detail that is a non-object primitive', () => {
+    const rows = [
+      makeRow('civilService', '2017-01-23', 0.5, 'just a string'),
+      makeRow('fiscal', '2017-01-23', 0.1, 42),
+    ];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+    // Both parse as null → weight 0
+    expect(result.get(0)).toBe(0);
+  });
+
+  it('handles convergence_detail with missing status property', () => {
+    const rows = [makeRow('civilService', '2017-01-23', 0.5, { other: 'field' })];
+    const result = computeWeeklyWeightedScores(rows, '2017-01-20');
+    // No status property → null → weight 0
+    expect(result.get(0)).toBe(0);
+  });
+});
+
+describe('buildOverviewFromRows — additional branch coverage', () => {
+  it('handles Divergent status in statusCounts for latest week', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, { status: 'Divergent' }),
+      makeRow('fiscal', '2026-01-06', 0.3, { status: 'Divergent' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+    expect(result.statusCounts.Divergent).toBe(2);
+    expect(result.statusCounts.Stable).toBe(12); // remaining 12 categories default to Stable
+  });
+
+  it('handles ConfirmedConcern status in statusCounts for latest week', () => {
+    const rows = [makeRow('civilService', '2026-01-06', 0.9, { status: 'ConfirmedConcern' })];
+    const result = buildOverviewFromRows(rows);
+    expect(result.statusCounts.ConfirmedConcern).toBe(1);
+  });
+
+  it('handles rows where convergence_detail is boolean false', () => {
+    // false is falsy — parseStatus returns null
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, false),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Stable' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    const csTimeline = result.statusTimeline.find((r) => r.category === 'civilService');
+    expect(csTimeline!.segments[0].status).toBeNull();
+  });
+
+  it('handles rows where convergence_detail has null status', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, { status: null }),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Elevated' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    const csTimeline = result.statusTimeline.find((r) => r.category === 'civilService');
+    expect(csTimeline!.segments[0].status).toBeNull();
+  });
+
+  it('handles multiple weeks with mixed elevated statuses in synchrony', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, { status: 'Elevated' }),
+      makeRow('fiscal', '2026-01-06', 0.3, { status: 'ConfirmedConcern' }),
+      makeRow('civilService', '2026-01-13', 0.2, { status: 'Divergent' }),
+      makeRow('fiscal', '2026-01-13', 0.1, { status: 'Stable' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    // Week 2026-01-06: Elevated(1) + ConfirmedConcern(3) = 4
+    expect(result.synchrony[0].elevatedCount).toBe(2);
+    expect(result.synchrony[0].weightedScore).toBe(4);
+
+    // Week 2026-01-13: Divergent(2) = 2
+    expect(result.synchrony[1].elevatedCount).toBe(1);
+    expect(result.synchrony[1].weightedScore).toBe(2);
+  });
+
+  it('excludes weeks with no convergence_detail from allWeeks', () => {
+    // All rows have null convergence_detail, so no weeks qualify
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, null),
+      makeRow('fiscal', '2026-01-13', 0.1, null),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    // No weeks with convergence data → empty synchrony
+    expect(result.synchrony).toEqual([]);
+    // All 14 categories default to Stable
+    expect(result.statusCounts.Stable).toBe(14);
+  });
+
+  it('handles single category with data across multiple weeks', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', 0.5, { status: 'Elevated' }),
+      makeRow('civilService', '2026-01-13', 0.3, { status: 'Divergent' }),
+      makeRow('civilService', '2026-01-20', 0.9, { status: 'ConfirmedConcern' }),
+    ];
+    const result = buildOverviewFromRows(rows);
+
+    expect(result.synchrony).toHaveLength(3);
+    // Each week has exactly 1 elevated category
+    expect(result.synchrony[0].elevatedCount).toBe(1);
+    expect(result.synchrony[1].elevatedCount).toBe(1);
+    expect(result.synchrony[2].elevatedCount).toBe(1);
+
+    // Latest week (2026-01-20): civilService=ConfirmedConcern, rest Stable
+    expect(result.statusCounts.ConfirmedConcern).toBe(1);
+    expect(result.statusCounts.Stable).toBe(13);
+  });
 });

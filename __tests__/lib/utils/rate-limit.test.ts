@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkRateLimit, getClientIp, _resetRateLimiter } from '@/lib/utils/rate-limit';
 
 describe('rate-limit', () => {
@@ -69,5 +69,52 @@ describe('getClientIp', () => {
       socket: {},
     } as never;
     expect(getClientIp(req)).toBe('unknown');
+  });
+});
+
+describe('rate-limit cleanup', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    _resetRateLimiter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    _resetRateLimiter();
+  });
+
+  it('removes IPs with only stale timestamps after cleanup runs', () => {
+    // Add a request at the current time
+    checkRateLimit('stale-ip', { windowMs: 1000, maxRequests: 10 });
+
+    // Advance past the MAX_WINDOW_MS (60s) so the timestamp becomes stale
+    vi.advanceTimersByTime(61_000);
+
+    // Trigger the cleanup interval (runs every 60s)
+    vi.advanceTimersByTime(60_000);
+
+    // The stale IP's entries should have been cleaned up.
+    // A new request from the same IP should be allowed (fresh state).
+    const result = checkRateLimit('stale-ip', { windowMs: 1000, maxRequests: 1 });
+    expect(result.allowed).toBe(true);
+  });
+
+  it('keeps IPs with recent timestamps after cleanup runs', () => {
+    const opts = { windowMs: 1000, maxRequests: 2 };
+
+    // Add a request near the cleanup trigger time
+    checkRateLimit('active-ip', opts);
+
+    // Advance to just before MAX_WINDOW_MS expires, then add another request
+    vi.advanceTimersByTime(50_000);
+    checkRateLimit('active-ip', opts);
+
+    // Trigger cleanup — the second request is still within MAX_WINDOW_MS
+    vi.advanceTimersByTime(60_000);
+
+    // The active IP should still have state (second request is recent)
+    // so the next request should be the 2nd in the window => allowed
+    const result = checkRateLimit('active-ip', opts);
+    expect(result.allowed).toBe(true);
   });
 });

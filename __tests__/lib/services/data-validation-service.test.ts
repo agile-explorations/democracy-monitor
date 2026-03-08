@@ -145,6 +145,44 @@ describe('data-validation-service', () => {
     });
   });
 
+  describe('getStageCompleteness with category filter', () => {
+    it('passes category filter to the query', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+
+      const results = [
+        [
+          {
+            total: '50',
+            missingEmbeddings: '2',
+            missingEmbeddingsIntent: '1',
+            metadataOnlyCount: '5',
+          },
+        ],
+        [{ missingScores: '1' }],
+        [{ totalWeeks: '10' }],
+        [{ aggWeeks: '10' }],
+      ];
+      let callIdx = 0;
+      const selectFn = vi.fn().mockImplementation(() => {
+        return createChainable(results[callIdx++] || []);
+      });
+
+      const { getDb } = await import('@/lib/db');
+      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
+
+      const result = await getStageCompleteness('judicialIndependence');
+      expect(result).toMatchObject({
+        totalDocuments: 50,
+        missingScores: 1,
+        missingEmbeddings: 2,
+        missingEmbeddingsIntent: 1,
+        totalWeeks: 10,
+        missingAggregates: 0,
+      });
+    });
+  });
+
   describe('getBaselineCompleteness', () => {
     it('maps rows with hasStats=true', async () => {
       const { isDbAvailable } = await import('@/lib/db');
@@ -389,5 +427,306 @@ describe('collectWarnings', () => {
     expect(warnings.filter((w) => w.includes('documents need'))).toEqual([]);
     expect(warnings.filter((w) => w.includes('layer scores'))).toEqual([]);
     expect(warnings.filter((w) => w.includes('metadata_only'))).toEqual([]);
+  });
+
+  it('warns for missing embeddings', () => {
+    const report = emptyReport({
+      stageCompleteness: {
+        totalDocuments: 100,
+        missingScores: 0,
+        missingEmbeddings: 7,
+        missingEmbeddingsIntent: 0,
+        metadataOnlyCount: 0,
+        totalWeeks: 20,
+        missingAggregates: 0,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('7 detection documents need embedding'),
+    );
+  });
+
+  it('warns for missing aggregates', () => {
+    const report = emptyReport({
+      stageCompleteness: {
+        totalDocuments: 100,
+        missingScores: 0,
+        missingEmbeddings: 0,
+        missingEmbeddingsIntent: 0,
+        metadataOnlyCount: 0,
+        totalWeeks: 20,
+        missingAggregates: 3,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(expect.stringContaining('3 weeks need aggregates'));
+  });
+
+  it('warns for layer2 missing pass1 docs', () => {
+    const report = emptyReport({
+      layer2Completeness: [
+        {
+          period: 'biden_2022',
+          label: 'Biden 2022–23',
+          totalDocuments: 100,
+          pass1Assessed: 90,
+          missingPass1: 10,
+          pass1Flagged: 5,
+          pass2Assessed: 5,
+          missingPass2: 0,
+          pass2Flagged: 2,
+          auditSampled: 5,
+          auditFalseNegatives: 0,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('biden_2022: 10 docs missing L2 Pass 1'),
+    );
+  });
+
+  it('warns for layer2 missing pass2 docs', () => {
+    const report = emptyReport({
+      layer2Completeness: [
+        {
+          period: 'trump_t2',
+          label: 'Trump T2',
+          totalDocuments: 200,
+          pass1Assessed: 200,
+          missingPass1: 0,
+          pass1Flagged: 20,
+          pass2Assessed: 15,
+          missingPass2: 5,
+          pass2Flagged: 3,
+          auditSampled: 10,
+          auditFalseNegatives: 0,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('trump_t2: 5 flagged docs missing L2 Pass 2'),
+    );
+  });
+
+  it('warns for layer2 audit false negatives with rate', () => {
+    const report = emptyReport({
+      layer2Completeness: [
+        {
+          period: 'biden_2021',
+          label: 'Biden 2021–22',
+          totalDocuments: 100,
+          pass1Assessed: 100,
+          missingPass1: 0,
+          pass1Flagged: 10,
+          pass2Assessed: 15,
+          missingPass2: 0,
+          pass2Flagged: 5,
+          auditSampled: 20,
+          auditFalseNegatives: 3,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('biden_2021: 3/20 audit false negatives (15.0%)'),
+    );
+  });
+
+  it('warns when some but not all weeks have layer scores', () => {
+    const report = emptyReport({
+      layerScorePopulation: [
+        {
+          period: 'biden_2022',
+          label: 'Biden 2022–23',
+          totalWeeks: 52,
+          withStructural: 52,
+          withAi: 50,
+          withThematic: 48,
+          withConvergence: 45,
+          withAllLayers: 40,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('biden_2022: 40/52 weeks have all layer scores (77%)'),
+    );
+  });
+
+  it('does not warn for layer scores when totalWeeks is 0', () => {
+    const report = emptyReport({
+      layerScorePopulation: [
+        {
+          period: 'biden_2022',
+          label: 'Biden 2022–23',
+          totalWeeks: 0,
+          withStructural: 0,
+          withAi: 0,
+          withThematic: 0,
+          withConvergence: 0,
+          withAllLayers: 0,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings.filter((w) => w.includes('layer scores'))).toEqual([]);
+  });
+
+  it('does not warn for layer scores when all weeks have all layers', () => {
+    const report = emptyReport({
+      layerScorePopulation: [
+        {
+          period: 'trump_t2',
+          label: 'Trump T2',
+          totalWeeks: 10,
+          withStructural: 10,
+          withAi: 10,
+          withThematic: 10,
+          withConvergence: 10,
+          withAllLayers: 10,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings.filter((w) => w.includes('layer scores'))).toEqual([]);
+  });
+
+  it('warns for missing narratives', () => {
+    const report = emptyReport({
+      narrativeCoverage: {
+        elevatedWeeks: 10,
+        narrativeWeeks: 7,
+        missingWeeks: 3,
+        staleWeeks: 0,
+        weeksWithNarratives: 7,
+        weeksWithSummary: 7,
+        weeksWithTermSummary: 0,
+        missingSummaryWeeks: 0,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('3 elevated category-weeks missing narratives'),
+    );
+  });
+
+  it('warns for missing weekly summaries', () => {
+    const report = emptyReport({
+      narrativeCoverage: {
+        elevatedWeeks: 5,
+        narrativeWeeks: 5,
+        missingWeeks: 0,
+        staleWeeks: 0,
+        weeksWithNarratives: 5,
+        weeksWithSummary: 3,
+        weeksWithTermSummary: 0,
+        missingSummaryWeeks: 2,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('2 narrated weeks missing weekly summaries'),
+    );
+  });
+
+  it('warns for stale narratives', () => {
+    const report = emptyReport({
+      narrativeCoverage: {
+        elevatedWeeks: 5,
+        narrativeWeeks: 5,
+        missingWeeks: 0,
+        staleWeeks: 4,
+        weeksWithNarratives: 5,
+        weeksWithSummary: 5,
+        weeksWithTermSummary: 0,
+        missingSummaryWeeks: 0,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(expect.stringContaining('4 narratives are stale'));
+  });
+
+  it('warns for failed data integrity checks with detail', () => {
+    const report = emptyReport({
+      dataIntegrity: [
+        { name: 'Non-Monday week_of', count: 5, detail: 'sample detail', pass: false },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(
+      expect.stringContaining('Non-Monday week_of (5: sample detail)'),
+    );
+  });
+
+  it('warns for failed data integrity checks without detail', () => {
+    const report = emptyReport({
+      dataIntegrity: [{ name: 'Orphan categories', count: 2, pass: false }],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(expect.stringContaining('Orphan categories (2)'));
+  });
+
+  it('does not warn for passing data integrity checks', () => {
+    const report = emptyReport({
+      dataIntegrity: [
+        { name: 'Non-Monday week_of', count: 0, pass: true },
+        { name: 'Orphan categories', count: 0, pass: true },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings.filter((w) => w.includes('Non-Monday') || w.includes('Orphan'))).toEqual([]);
+  });
+
+  it('warns for passing metadata_only classification (skipped)', () => {
+    const report = emptyReport({
+      metadataOnlyClassification: [
+        {
+          population: 'GDELT rhetoric documents',
+          sourceFilter: { column: 'source_origin', value: 'gdelt' },
+          total: 5000,
+          markedMetadataOnly: 5000,
+          unmarked: 0,
+          pass: true,
+        },
+      ],
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings.filter((w) => w.includes('GDELT'))).toEqual([]);
+  });
+
+  it('combines multiple warning sources simultaneously', () => {
+    const report = emptyReport({
+      stageCompleteness: {
+        totalDocuments: 100,
+        missingScores: 5,
+        missingEmbeddings: 3,
+        missingEmbeddingsIntent: 0,
+        metadataOnlyCount: 0,
+        totalWeeks: 20,
+        missingAggregates: 2,
+      },
+      narrativeCoverage: {
+        elevatedWeeks: 10,
+        narrativeWeeks: 8,
+        missingWeeks: 2,
+        staleWeeks: 1,
+        weeksWithNarratives: 8,
+        weeksWithSummary: 7,
+        weeksWithTermSummary: 0,
+        missingSummaryWeeks: 1,
+      },
+    });
+    const warnings = collectWarnings(report);
+    expect(warnings).toContainEqual(expect.stringContaining('5 documents need scores'));
+    expect(warnings).toContainEqual(
+      expect.stringContaining('3 detection documents need embedding'),
+    );
+    expect(warnings).toContainEqual(expect.stringContaining('2 weeks need aggregates'));
+    expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
+    expect(warnings).toContainEqual(expect.stringContaining('1 narratives are stale'));
+    expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
   });
 });

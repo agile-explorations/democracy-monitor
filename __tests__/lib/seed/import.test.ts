@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterAll, describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
@@ -138,6 +138,45 @@ describe('importSeedData', () => {
     const assessIdx = tableOrder.indexOf('assessments');
     const scoresIdx = tableOrder.indexOf('document_scores');
     expect(assessIdx).toBeLessThan(scoresIdx);
+  });
+
+  it('uses default fixtures directory when no inputDir given', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    setupMockDb();
+
+    // importSeedData() with no args uses lib/seed/fixtures/ as default.
+    // That directory may or may not exist, but we test the default path logic.
+    // If it doesn't exist, it should throw "Fixture directory not found".
+    const defaultDir = path.resolve(__dirname, '..', '..', '..', 'lib', 'seed', 'fixtures');
+    if (fs.existsSync(defaultDir)) {
+      // Default dir exists — import should succeed (may import 0 rows if fixtures are empty)
+      await expect(importSeedData()).resolves.toBeUndefined();
+    } else {
+      // Default dir doesn't exist — should throw
+      await expect(importSeedData()).rejects.toThrow('Fixture directory not found');
+    }
+  });
+
+  it('batches large fixture files in chunks of 500', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+    setupMockDb();
+
+    // Create a fixture with more than 500 rows to exercise the batching loop
+    const largeRows = Array.from({ length: 501 }, (_, i) => ({
+      id: i + 1,
+      category: `cat-${i}`,
+      status: 'Stable',
+    }));
+    writeFixture(testDir, 'assessments', largeRows);
+
+    await importSeedData(testDir);
+
+    // Two batches: 500 + 1
+    const assessmentInserts = insertedRows.filter((r) => r.table === 'assessments');
+    const totalInserted = assessmentInserts.reduce((sum, r) => sum + r.rows.length, 0);
+    expect(totalInserted).toBe(501);
+    // Should have made 2 insert calls (batch 1: 500, batch 2: 1)
+    expect(assessmentInserts).toHaveLength(2);
   });
 
   afterAll(() => {

@@ -1,9 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
   selectAuditSample,
   computeAIAssessmentSummary,
+  assessPass1,
+  assessPass2,
 } from '@/lib/services/layer2-assessment-service';
 import type { Pass1Result, Pass2Result } from '@/lib/services/layer2-assessment-service';
+import type { AIProvider, ContentItem } from '@/lib/types';
 
 function makePass1(url: string, relevant: boolean): Pass1Result {
   return {
@@ -184,5 +187,282 @@ describe('computeAIAssessmentSummary', () => {
     const result = computeAIAssessmentSummary([], [], 0, 0, 'gpt-4o-mini', 'claude-sonnet');
     expect(result.pass1Model).toBe('gpt-4o-mini');
     expect(result.pass2Model).toBe('claude-sonnet');
+  });
+
+  it('z-score is zero when value equals mean and stddev is zero', () => {
+    // All flagged, baseline=1.0, stddev=0 → value equals mean
+    const pass1 = [makePass1('a', true)];
+    const pass2 = [makePass2('a', 'routine')];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 1.0, 0, 'm1', 'm2');
+    expect(result.flagRateZScore).toBe(0);
+  });
+
+  it('audit sample with no false negatives reports zero rate', () => {
+    const pass1 = [makePass1('a', true), makePass1('b', false)];
+    const pass2 = [
+      makePass2('a', 'routine'),
+      makePass2('b', 'routine', true), // audit sample, not concerning
+    ];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0.1, 0.05, 'm1', 'm2');
+    expect(result.auditSample.sampled).toBe(1);
+    expect(result.auditSample.falseNegatives).toBe(0);
+    expect(result.auditSample.falseNegativeRate).toBe(0);
+  });
+
+  it('audit clearly_concerning counts as false negative', () => {
+    const pass1 = [makePass1('a', false)];
+    const pass2 = [makePass2('a', 'clearly_concerning', true)];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0, 0.05, 'm1', 'm2');
+    expect(result.auditSample.falseNegatives).toBe(1);
+  });
+
+  it('concern rate counts both potentially and clearly concerning', () => {
+    const pass1 = [
+      makePass1('a', true),
+      makePass1('b', true),
+      makePass1('c', true),
+      makePass1('d', true),
+    ];
+    const pass2 = [
+      makePass2('a', 'routine'),
+      makePass2('b', 'potentially_concerning'),
+      makePass2('c', 'clearly_concerning'),
+      makePass2('d', 'novel_not_concerning'),
+    ];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0, 0.05, 'm1', 'm2');
+    expect(result.concernRate).toBeCloseTo(0.5); // 2 of 4
+  });
+
+  it('no non-audit pass2 results yields zero concern rate', () => {
+    const pass1 = [makePass1('a', false)];
+    const pass2 = [makePass2('a', 'potentially_concerning', true)]; // only audit
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0, 0.05, 'm1', 'm2');
+    expect(result.concernRate).toBe(0);
+    expect(result.concernDistribution.routine).toBe(0);
+  });
+});
+
+describe('assessPass1', () => {
+  function makeDoc(overrides: Partial<ContentItem> = {}): ContentItem {
+    return {
+      title: 'Test Document',
+      summary: 'This is a test summary',
+      link: 'https://example.com/doc',
+      pubDate: '2025-02-01',
+      agency: 'DOJ',
+      type: 'federal_register',
+      ...overrides,
+    };
+  }
+
+  function makeProvider(content: string): AIProvider {
+    return {
+      name: 'openai',
+      complete: vi.fn().mockResolvedValue({
+        content,
+        model: 'gpt-4o-mini',
+        tokensUsed: { input: 100, output: 50 },
+        latencyMs: 200,
+      }),
+      isAvailable: vi.fn().mockReturnValue(true),
+    };
+  }
+
+  it('returns null when AI call throws', async () => {
+    const doc = makeDoc();
+    const provider: AIProvider = {
+      name: 'openai',
+      complete: vi.fn().mockRejectedValue(new Error('API timeout')),
+      isAvailable: vi.fn().mockReturnValue(true),
+    };
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when response cannot be parsed', async () => {
+    const doc = makeDoc();
+    const provider = makeProvider('not valid json');
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).toBeNull();
+  });
+
+  it('returns parsed result for valid response', async () => {
+    const doc = makeDoc();
+    const validJson = JSON.stringify({
+      relevant: true,
+      confidence: 0.9,
+      signals: ['signal1'],
+      erosionType: 'operational_hollowing',
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe('https://example.com/doc');
+    expect(result!.response.relevant).toBe(true);
+    expect(result!.meta.model).toBe('gpt-4o-mini');
+    expect(result!.meta.provider).toBe('openai');
+  });
+
+  it('uses title as URL fallback when link is missing', async () => {
+    const doc = makeDoc({ link: undefined });
+    const validJson = JSON.stringify({
+      relevant: false,
+      confidence: 0.8,
+      signals: [],
+      erosionType: 'routine',
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe('Test Document');
+  });
+
+  it('uses "unknown" as URL fallback when both link and title are missing', async () => {
+    const doc = makeDoc({ link: undefined, title: undefined });
+    const validJson = JSON.stringify({
+      relevant: false,
+      confidence: 0.5,
+      signals: [],
+      erosionType: 'routine',
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe('unknown');
+  });
+});
+
+describe('assessPass2', () => {
+  function makeDoc(overrides: Partial<ContentItem> = {}): ContentItem {
+    return {
+      title: 'Test Document',
+      summary: 'This is a test summary',
+      link: 'https://example.com/doc',
+      pubDate: '2025-02-01',
+      agency: 'DOJ',
+      type: 'federal_register',
+      ...overrides,
+    };
+  }
+
+  function makeProvider(content: string): AIProvider {
+    return {
+      name: 'anthropic',
+      complete: vi.fn().mockResolvedValue({
+        content,
+        model: 'claude-sonnet',
+        tokensUsed: { input: 200, output: 100 },
+        latencyMs: 500,
+      }),
+      isAvailable: vi.fn().mockReturnValue(true),
+    };
+  }
+
+  it('returns null when AI call throws', async () => {
+    const doc = makeDoc();
+    const provider: AIProvider = {
+      name: 'anthropic',
+      complete: vi.fn().mockRejectedValue(new Error('Rate limited')),
+      isAvailable: vi.fn().mockReturnValue(true),
+    };
+
+    const result = await assessPass2(
+      doc,
+      ['signal'],
+      'operational_hollowing',
+      'Test category',
+      provider,
+      false,
+    );
+    expect(result).toBeNull();
+  });
+
+  it('returns null when response cannot be parsed', async () => {
+    const doc = makeDoc();
+    const provider = makeProvider('invalid json');
+
+    const result = await assessPass2(
+      doc,
+      ['signal'],
+      'operational_hollowing',
+      'Test category',
+      provider,
+      false,
+    );
+    expect(result).toBeNull();
+  });
+
+  it('returns parsed result for valid response', async () => {
+    const doc = makeDoc();
+    const validJson = JSON.stringify({
+      assessment: 'potentially_concerning',
+      confidence: 0.85,
+      reasoning: 'Reasoning text',
+      comparativeContext: 'Context text',
+      citedPassages: ['passage1'],
+      erosionType: 'formal_override',
+      counterArguments: ['counter1'],
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass2(
+      doc,
+      ['signal'],
+      'operational_hollowing',
+      'Test category',
+      provider,
+      false,
+    );
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe('https://example.com/doc');
+    expect(result!.response.assessment).toBe('potentially_concerning');
+    expect(result!.isAuditSample).toBe(false);
+    expect(result!.meta.provider).toBe('anthropic');
+  });
+
+  it('correctly sets isAuditSample flag', async () => {
+    const doc = makeDoc();
+    const validJson = JSON.stringify({
+      assessment: 'routine',
+      confidence: 0.9,
+      reasoning: 'Routine',
+      comparativeContext: 'Normal',
+      citedPassages: [],
+      erosionType: 'routine',
+      counterArguments: [],
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass2(doc, [], 'routine', 'Test category', provider, true);
+    expect(result).not.toBeNull();
+    expect(result!.isAuditSample).toBe(true);
+  });
+
+  it('uses title fallback when link is missing', async () => {
+    const doc = makeDoc({ link: undefined });
+    const validJson = JSON.stringify({
+      assessment: 'routine',
+      confidence: 0.9,
+      reasoning: 'test',
+      comparativeContext: 'test',
+      citedPassages: [],
+      erosionType: 'routine',
+      counterArguments: [],
+    });
+    const provider = makeProvider(validJson);
+
+    const result = await assessPass2(doc, [], 'routine', 'Test category', provider, false);
+    expect(result).not.toBeNull();
+    expect(result!.url).toBe('Test Document');
   });
 });
