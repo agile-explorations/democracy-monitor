@@ -10,6 +10,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-UI1: UI Catch-Up ✅
+
+**Status: Done.** Left nav, system pages (Health, Architecture, Methodology), site-wide footer, category page chart fixes, Tailwind opacity fix, methodology accuracy audit, document URL fix (api.govinfo.gov → www.govinfo.gov). 49 files changed. Issues #286–#292.
+
+**Scope vs. Actual:**
+
+- Planned (7 issues #286-#292): Remove dead pages, left sidebar nav, narratives on landing+category, category heatmap, health page, architecture page, methodology page.
+- Actual: All 7 planned items delivered plus 6 unplanned additions: (a) site-wide OSS footer replacing landing-only methodology footer, (b) Tailwind CSS opacity modifier fix (hex→space-separated RGB in CSS variables), (c) category page chart fixes (convergence score, status bar heights, brush defaults, auto-select latest week), (d) api.govinfo.gov URL rewrite across 3 DB tables (42,299 rows), (e) methodology accuracy audit (14 categories, 11 functional buckets, source list, baselines, L2 audit results), (f) documentation reorganization (4 files moved).
+
+**Key Decisions:**
+
+1. **Tailwind opacity fix at the source**: CSS variables used hex format (`#e2e8f0`) which silently breaks Tailwind's opacity modifier syntax (`bg-dm-border/40`). Fixed by converting all CSS variables to space-separated RGB and adding `withAlpha()` wrapper in tailwind.config.ts — one-time fix covering all 20+ dm-\* tokens.
+2. **api.govinfo.gov URLs fixed in DB, not in UI**: 15,003 documents had API URLs requiring an API key. Fixed by rewriting URLs in `documents`, `document_scores`, and `ai_document_assessments` tables to public `www.govinfo.gov/app/details/` URLs. Fetcher code already produces correct URLs — the bad data was from an older code version.
+3. **Convergence score replaces severity score**: RangeSummaryPanel showed legacy `totalSeverity` average. Replaced with `convergenceScore` (0–3 scale) which aligns with the three-layer architecture.
+4. **Status bars use fixed ordinal heights**: STATUS_BAR_HEIGHT maps Stable=0, Elevated=1, Divergent=2, ConfirmedConcern=3 on the shared score Y-axis, replacing raw convergenceScore values that produced misleading heights.
+5. **Methodology accuracy audit**: ASSESSMENT_METHODOLOGY.md had 4 factual errors (13→14 categories, 9→11 functional buckets, wrong source list, wrong baseline sources). Fixed in both the markdown and the methodology page.
+
+**Lessons Learned:**
+
+1. **DB URL consistency matters across tables**: Fixing `documents.url` without also fixing `document_scores.url` and `ai_document_assessments.url` broke LEFT JOINs, causing "(untitled)" document titles. All tables sharing a logical key must be updated together.
+2. **CSS variable format determines Tailwind feature support**: Hex CSS variables silently disable opacity modifiers. This class of bug produces no error — the property just doesn't render.
+3. **Public-facing methodology docs drift from code**: The methodology doc was written during Sprint R4c and never updated as categories, sources, and functional buckets were added in later sprints. Accuracy audits should be a checklist item when sources or categories change.
+
+---
+
 ## Sprint R-COV1: Branch Coverage Improvement ✅
 
 **Status: Done.** Raised global branch coverage from 62.62% to 68.24% (+306 tests across 21 test files). Coverage thresholds raised from 63%→68% branches, 68%→71% statements.
