@@ -90,7 +90,7 @@ export function useCategoryDetail(
   const [loading, setLoading] = useState(true);
 
   // Range state
-  const [rangePreset, setRangePreset] = useState<TimeRangePreset>('6mo');
+  const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushStartIndex, setBrushStartIndex] = useState<number | undefined>(undefined);
   const [brushEndIndex, setBrushEndIndex] = useState<number | undefined>(undefined);
 
@@ -238,12 +238,17 @@ export function useCategoryDetail(
     [key, weeklyData],
   );
 
-  // Apply initial weekOf after selectWeek is available and data loaded
+  // Apply initial weekOf after selectWeek is available and data loaded.
+  // If no weekOf param was provided, auto-select the latest week.
   useEffect(() => {
-    if (initialWeekApplied.current || !initialParams?.weekOf) return;
+    if (initialWeekApplied.current) return;
     if (weeklyData.length === 0) return;
     initialWeekApplied.current = true;
-    selectWeek(initialParams.weekOf);
+    if (initialParams?.weekOf) {
+      selectWeek(initialParams.weekOf);
+    } else {
+      selectWeek(weeklyData[weeklyData.length - 1].weekOf);
+    }
   }, [weeklyData, initialParams, selectWeek]);
 
   return {

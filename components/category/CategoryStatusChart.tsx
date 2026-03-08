@@ -41,11 +41,12 @@ interface ChartPoint {
   statusOpacity: number;
 }
 
-const STATUS_ORDER: Record<ConvergenceStatus, number> = {
-  Stable: 1,
-  Elevated: 2,
-  Divergent: 3,
-  ConfirmedConcern: 4,
+/** Fixed bar heights per status on the 0–3 score axis */
+const STATUS_BAR_HEIGHT: Record<ConvergenceStatus, number> = {
+  Stable: 0,
+  Elevated: 1,
+  Divergent: 2,
+  ConfirmedConcern: 3,
 };
 
 /** Stable shape renderer for status bars — avoids Cell+Brush index misalignment */
@@ -136,7 +137,7 @@ export function CategoryStatusChart({
         trend: row.convergenceScore != null ? smoothed[i] : null,
         documentCount: Number(row.documentCount),
         status,
-        statusValue: status ? STATUS_ORDER[status] : 0,
+        statusValue: status ? STATUS_BAR_HEIGHT[status] : 0,
         statusFill: status ? statusColors[status] : 'transparent',
         statusOpacity: status ? 0.7 : 0,
       };
@@ -160,17 +161,15 @@ export function CategoryStatusChart({
           />
           Trend
         </span>
-        {(['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'] as ConvergenceStatus[]).map(
-          (s) => (
-            <span key={s} className="flex items-center gap-1.5">
-              <span
-                className="inline-block w-3 h-3 rounded-sm"
-                style={{ backgroundColor: statusColors[s] }}
-              />
-              {s === 'ConfirmedConcern' ? 'Concern' : s}
-            </span>
-          ),
-        )}
+        {(['Elevated', 'Divergent', 'ConfirmedConcern'] as ConvergenceStatus[]).map((s) => (
+          <span key={s} className="flex items-center gap-1.5">
+            <span
+              className="inline-block w-3 h-3 rounded-sm"
+              style={{ backgroundColor: statusColors[s] }}
+            />
+            {s === 'ConfirmedConcern' ? 'Concern' : s}
+          </span>
+        ))}
       </div>
 
       <ResponsiveContainer width="100%" height={320}>
@@ -200,12 +199,11 @@ export function CategoryStatusChart({
             domain={[0, 3]}
             ticks={[0, 1, 2, 3]}
           />
-          <YAxis yAxisId="status" hide domain={[0, 5]} />
           <Tooltip content={<StatusTooltip mode={mode} />} />
 
           {/* Status bars — uses shape prop instead of Cell to avoid Brush index misalignment */}
           <Bar
-            yAxisId="status"
+            yAxisId="score"
             dataKey="statusValue"
             barSize={6}
             isAnimationActive={false}

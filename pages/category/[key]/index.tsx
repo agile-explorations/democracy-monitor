@@ -7,7 +7,6 @@ import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
-import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
@@ -31,9 +30,7 @@ export default function CategoryDetailPage() {
 
   const {
     weeklyData,
-    baseline,
     title,
-    convergenceStatus,
     rangePreset,
     brushStartIndex,
     brushEndIndex,
@@ -86,19 +83,12 @@ export default function CategoryDetailPage() {
 
       {/* Header */}
       <header className="mt-4 mb-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-bold text-dm-text-primary">{title}</h2>
-            <p className="text-xs text-dm-text-secondary mt-1">
-              {readingLevel === 'detailed' && <span className="font-mono mr-2">{categoryKey}</span>}
-              {latestRow && <>{Number(latestRow.documentCount)} docs latest week</>}
-            </p>
-          </div>
-          {convergenceStatus?.status ? (
-            <ConvergenceStatusPill status={convergenceStatus.status} />
-          ) : (
-            <span className="text-[10px] text-dm-muted">No Data</span>
-          )}
+        <div>
+          <h2 className="text-lg font-bold text-dm-text-primary">{title}</h2>
+          <p className="text-xs text-dm-text-secondary mt-1">
+            {readingLevel === 'detailed' && <span className="font-mono mr-2">{categoryKey}</span>}
+            {latestRow && <>{Number(latestRow.documentCount)} docs latest week</>}
+          </p>
         </div>
         {category && (
           <p className="text-sm text-dm-text-secondary mt-3 max-w-3xl leading-relaxed">
@@ -113,7 +103,7 @@ export default function CategoryDetailPage() {
       {/* Status-over-time chart */}
       <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-          Status Over Time
+          Convergence Score Over Time
         </h2>
         <CategoryStatusChart
           data={weeklyData}
@@ -133,7 +123,6 @@ export default function CategoryDetailPage() {
             weeklyData={weeklyData}
             startIndex={brushStartIndex ?? 0}
             endIndex={brushEndIndex ?? weeklyData.length - 1}
-            baseline={baseline}
           />
         </div>
       )}
