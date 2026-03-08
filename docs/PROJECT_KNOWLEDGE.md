@@ -35,6 +35,10 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - Week detail page: `/category/[key]/week/[date]` — summary cards, sparkline with highlight, keyword matches, DocumentTable with CSV export
 - Narrative API: `/api/narratives/[category]` + `/api/narratives/overview`. Read-only from stored narratives (no on-demand generation). `?editorial=true` returns drafts + GPT-4o feedback. `_overview` = weekly summary, `_term_summary` = incremental term summary
 - Health API: `/api/health/meta` (MetaAssessment), `/api/health/sources` (sources + summary); both DB-optional
+- Search page: `/search` — two modes (research + explore). Research = 3-pass RAG synthesis with two-phase loading (docs first, then answer). Explore = keyword + semantic search with filters/pagination.
+- Search API: `/api/search` — unified endpoint, `mode=research|explore`. Research supports `docsOnly=true` (fast doc-only response) and `editorial=true` (returns draft/feedback chain). `/api/search/similar/[documentId]` for related docs.
+- Research synthesis: `lib/services/research-synthesis-service.ts` — Claude Opus draft → GPT-4o editorial feedback → Claude Opus revision. Same multi-model pattern as narratives. Prompts in `research-prompts.ts`.
+- Search service: `lib/services/search-service.ts` — `searchResearch()` (vector + recency re-ranking + URL dedup), `searchExplore()` (keyword + semantic with filters), `findSimilarDocuments()`. SQL helpers in `search-queries.ts`.
 
 ### UI patterns
 

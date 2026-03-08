@@ -1017,3 +1017,38 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 2. **NARA `subject` field is `Array<{level1: string}>` not flat strings**: GovInfo summary metadata uses nested objects. The fetcher must extract `.level1` from each entry.
 3. **3 known NARA typos in subject terms**: Double spaces ("Federal agencies", "Defense and national security") and punctuation variants ("Navy. Department of the"). These are in the authoritative data and must be handled as exact-match entries in the mapping, not normalized away.
 4. **`--force-unlock` needed for chained backfill commands**: Running `pnpm backfill --source cpd` sequentially for multiple periods requires the first invocation to use `--force-unlock` if a previous run left a stale lock. Subsequent runs within the same `&&` chain don't need it because the lock is released on clean exit.
+
+---
+
+## Sprint Search: Document Search with RAG Synthesis ✅
+
+**Status: Done.** Full-text + semantic search across 165K+ documents, 3-pass RAG synthesis (Claude Opus → GPT-4o feedback → Claude Opus revision), explore mode with filters/pagination, two-phase client loading, search history with curated suggestions, editorial transparency, nav integration. 19 files changed (14 new, 5 modified). Issues #293–#300.
+
+**Scope vs. Actual:**
+
+- Planned (8 issues #293-#300): DB migration/indexes (#293), search service (#294), similar documents endpoint (#295), research synthesis service (#296), research API route (#297), explore API route (#298), search page UI (#299), nav integration (#300)
+- Actual: All 8 issues delivered. Additionally added 6 user-requested enhancements during review: (a) two-phase loading for research mode (documents shown immediately while synthesis runs), (b) magnifier icon in left nav, (c) markdown rendering with citation resolution via `react-markdown`, (d) shared `EditorialPanel` component extracted from `NarrativeSection.tsx` for DRY reuse across search and narrative UIs, (e) localStorage search history with curated suggestions, (f) recency-boosted re-ranking + URL deduplication for search quality.
+
+**Key Decisions:**
+
+1. **Two-phase client loading**: Research mode issues two sequential requests — a fast `docsOnly=true` request returns documents in ~1s for immediate display, then a full synthesis request (10-30s for 3-pass RAG) updates the UI with the answer. The `synthesizing` state shows a pulsing banner between phases. Better UX than a 30s blank loading state.
+2. **3-pass RAG with epistemic independence**: Draft (Claude Opus) → Editorial feedback (GPT-4o) → Revision (Claude Opus). Same multi-model pattern as narrative generation. Different providers for Passes 1 and 2 prevent self-reinforcing biases. Transactional: all 3 must succeed.
+3. **Recency-boosted re-ranking**: Pure cosine similarity favored Biden-era documents (larger corpus, more topical overlap). Re-ranking formula: `0.7 × cosine_similarity + 0.3 × recency` with 4-year linear decay. Ensures T2-era documents (primary monitoring focus) surface above baseline-era docs.
+4. **URL deduplication via `DISTINCT ON`**: Same document appears in multiple categories (especially CPD presidential documents — up to 12 categories). Three-layer SQL query: 5× candidates by vector similarity → `DISTINCT ON (url)` keeping highest similarity → recency-boosted re-rank.
+5. **All 20 documents sent to LLM**: Initially set `RESEARCH_CONTEXT_DOCS = 8`, which led to answers saying "The eight documents retrieved..." Changed to 20 to match the retrieval count. Cost increase is minimal given Opus context window.
+6. **Shared `EditorialPanel` component**: Extracted from `NarrativeSection.tsx` to avoid duplicating the editorial process UI in search results. Both narrative and search UIs now import from `components/shared/EditorialPanel.tsx`. Self-contained toggle, stacked panels with model labels.
+7. **Citation resolution via markdown preprocessing**: `[Doc N]` references in AI output are preprocessed into `[[Doc N]](cite:N)` markdown links. Custom `react-markdown` `a` component resolves `cite:N` protocol to actual document URLs.
+8. **Search history in localStorage**: Max 20 entries, case-insensitive deduplication, most-recent-first. Curated suggestions (8 questions) always visible below recent searches, based on corpus analysis of document types and coverage areas.
+9. **HNSW index on embeddings**: `CREATE INDEX ... USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64)`. Approximate nearest neighbor for sub-second vector search across 165K+ rows. Combined with GIN index on `search_vector` tsvector column.
+
+**Spec Deviations:**
+
+1. **Search Specification §4.1 filter by `source_type`**: Spec expected normalized source_type values. Implementation uses `source_origin` instead (added in Sprint R-S1a), which correctly tracks data provenance. `source_type` remains denormalized (#28 still open) but is not needed for search filtering.
+2. **Similar documents endpoint is standalone**: Spec implied similar docs would be inline in search results. Implemented as a separate `/api/search/similar/[documentId]` endpoint for on-demand loading, avoiding expensive vector queries on every search.
+
+**Lessons Learned:**
+
+1. **Two-phase loading is essential for RAG UIs**: Users seeing 30s of blank "loading" assumed the search was broken. Showing documents immediately (from the same vector search the synthesis uses) provides instant feedback and lets users scan results while the answer generates.
+2. **Pure vector similarity has corpus-size bias**: A larger corpus of Biden-era documents dominated results even for T2-specific queries. Recency boosting is necessary when the monitoring focus is on recent activity but historical baselines contain more data.
+3. **`DISTINCT ON` in PostgreSQL requires specific ORDER BY alignment**: The deduplication query required `ORDER BY url, cosine_similarity DESC` inside the `DISTINCT ON` subquery, then re-ordering by `combined_score DESC` in the outer query. PostgreSQL requires `DISTINCT ON` columns to match the leftmost ORDER BY columns.
+4. **Excluding low-value sources from research search matters**: `source_origin NOT IN ('gdelt', 'whitehouse')` in the research query prevents metadata-only GDELT stubs and WH press releases from consuming candidate slots. These sources were already filtered from scoring pipelines (ACTIVE_SOURCES) but needed explicit exclusion in search queries too.

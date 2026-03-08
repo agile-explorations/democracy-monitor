@@ -947,9 +947,9 @@ All post-launch items — architecture improvements (R-F1 through R-F11), surviv
 
 ## Known Prerequisites for Future Sprints
 
-| Issue | Blocker for                      | Description                                                                                                                                                                                                                              |
-| ----- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| #28   | Sprint L (Search Infrastructure) | Normalize `source_type` values in documents table. Three specs disagree on semantics; actual DB has FR document types mixed with content classifications. Search Specification §4.1 filters by origin-based values that don't exist yet. |
+| Issue | Blocker for                      | Description                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| #28   | Sprint L (Search Infrastructure) | Normalize `source_type` values in documents table. Three specs disagree on semantics; actual DB has FR document types mixed with content classifications. Search Specification §4.1 filters by origin-based values that don't exist yet. **Actual:** Sprint Search shipped using `source_origin` for filtering instead, bypassing the normalization blocker. #28 remains open but is no longer blocking. |
 
 ---
 
