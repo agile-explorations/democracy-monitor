@@ -1,19 +1,12 @@
-import Link from 'next/link';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export interface WeekNavigatorProps {
   availableWeeks: string[];
   selectedWeek: string | null;
   onWeekChange: (week: string) => void;
-  weekDetailHref?: string;
 }
 
-export function WeekNavigator({
-  availableWeeks,
-  selectedWeek,
-  onWeekChange,
-  weekDetailHref,
-}: WeekNavigatorProps) {
+export function WeekNavigator({ availableWeeks, selectedWeek, onWeekChange }: WeekNavigatorProps) {
   const currentIndex = selectedWeek
     ? availableWeeks.indexOf(selectedWeek)
     : availableWeeks.length - 1;
@@ -44,14 +37,6 @@ export function WeekNavigator({
       >
         ▶
       </button>
-      {weekDetailHref && (
-        <Link
-          href={weekDetailHref}
-          className="text-[11px] text-dm-muted hover:text-dm-accent transition-colors ml-1"
-        >
-          View Week Details &rarr;
-        </Link>
-      )}
     </div>
   );
 }

@@ -4,7 +4,13 @@ import { useRouter } from 'next/router';
 import { DisplaySettings } from '@/components/layout/DisplaySettings';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
-export function SiteHeader() {
+export function SiteHeader({
+  onMenuToggle,
+  lastUpdated,
+}: {
+  onMenuToggle?: () => void;
+  lastUpdated?: string | null;
+}) {
   const router = useRouter();
   const { resolvedMode } = useTheme();
   const isHome = router.pathname === '/';
@@ -17,7 +23,7 @@ export function SiteHeader() {
         alt=""
         width={140}
         height={140}
-        className="rounded -ml-6 -mb-7 shrink-0"
+        className="rounded -ml-6 -mb-12 shrink-0"
       />
       <span className="text-2xl font-bold text-dm-text-primary pb-1">Democracy Monitor</span>
     </div>
@@ -28,9 +34,22 @@ export function SiteHeader() {
       {/* Indigo accent bar */}
       <div className="h-1.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 rounded-t" />
 
-      <div className="border-x border-b border-dm-border rounded-b px-4 pb-4 pt-2 overflow-hidden">
+      <div className="border-x border-b border-dm-border rounded-b px-4 pb-2 pt-1 overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div className="flex items-end gap-3">
+            {onMenuToggle && (
+              <button
+                onClick={onMenuToggle}
+                className="lg:hidden text-dm-text-secondary hover:text-dm-text-primary transition-colors pb-1 -ml-1"
+                aria-label="Toggle navigation"
+              >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <rect y="3" width="20" height="2" rx="1" />
+                  <rect y="9" width="20" height="2" rx="1" />
+                  <rect y="15" width="20" height="2" rx="1" />
+                </svg>
+              </button>
+            )}
             {isHome ? (
               <h1>{logoAndTitle}</h1>
             ) : (
@@ -41,10 +60,30 @@ export function SiteHeader() {
             <span className="px-1.5 py-0.5 mb-1.5 rounded border border-dm-border text-[10px] text-dm-text-secondary">
               Experimental
             </span>
+            <a
+              href="https://github.com/sponsors/agile-explorations"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-2 py-0.5 mb-1.5 rounded border border-pink-300 dark:border-pink-700 text-[10px] text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"
+            >
+              ♥ Sponsor
+            </a>
           </div>
-          <div className="flex items-center gap-3 pb-1">
-            <DisplaySettings />
+        </div>
+
+        {/* Tagline + last updated + display settings */}
+        <div className="mt-2 ml-32 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <p className="text-sm text-dm-text-secondary">
+              Automated analysis of the U.S. government documentary record
+            </p>
+            {lastUpdated && (
+              <p className="text-[11px] text-dm-muted">
+                Last updated: {new Date(lastUpdated).toLocaleDateString()}
+              </p>
+            )}
           </div>
+          <DisplaySettings />
         </div>
       </div>
     </header>

@@ -127,18 +127,3 @@ export async function generateDailyDigest(
   await cacheSet(cacheKey, digest, DIGEST_CACHE_TTL_S);
   return digest;
 }
-
-export async function getDigest(date: string): Promise<DigestEntry | null> {
-  const cacheKey = CacheKeys.digest(date);
-  const cached = await cacheGet<DigestEntry>(cacheKey);
-  if (cached) return cached;
-
-  if (!isDbAvailable()) return null;
-
-  const db = getDb();
-  const rows = await db.select().from(digests).where(eq(digests.date, date)).limit(1);
-
-  if (rows.length === 0) return null;
-
-  return mapRowToDigestEntry(rows[0]);
-}

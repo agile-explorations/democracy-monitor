@@ -36,5 +36,6 @@ export interface Category {
   key: string;
   title: string;
   description: string;
+  expertDescription: string;
   signals: Signal[];
 }

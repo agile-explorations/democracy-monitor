@@ -85,8 +85,8 @@ export function Sparkline({
         y={bandTop}
         width={innerW}
         height={Math.max(bandBottom - bandTop, 0)}
-        fill="var(--color-baseline-fill)"
-        stroke="var(--color-baseline-border)"
+        fill="rgb(var(--color-baseline-fill))"
+        stroke="rgb(var(--color-baseline-border))"
         strokeWidth={0.5}
       />
 
@@ -96,7 +96,7 @@ export function Sparkline({
         y1={baselineY}
         x2={width - PADDING_X}
         y2={baselineY}
-        stroke="var(--color-muted)"
+        stroke="rgb(var(--color-muted))"
         strokeWidth={1}
         strokeDasharray="3,3"
       />

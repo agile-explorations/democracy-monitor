@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { EditorialRecord } from '@/lib/types';
 import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import type { WeekExplanation } from '@/lib/types/explanation';
 import type { ConvergenceSynthesis } from '@/lib/types/structural';
@@ -57,6 +58,7 @@ interface WeekData {
   layers: CategoryDetailLatestWeek | null;
   explanation: WeekExplanation | null;
   narrative: { expert: string; public: string } | null;
+  editorial: EditorialRecord | null;
 }
 
 export interface CategoryDetailState {
@@ -215,12 +217,16 @@ export function useCategoryDetail(
           r.ok ? r.json() : null,
         ),
         fetch(`/api/narratives/${key}?weekOf=${week}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/narratives/${key}?weekOf=${week}&editorial=true`).then((r) =>
+          r.ok ? r.json() : null,
+        ),
       ])
-        .then(([catData, explanation, narrative]) => {
+        .then(([catData, explanation, narrative, editorial]) => {
           setWeekData({
             layers: catData?.latestWeek ?? null,
             explanation,
             narrative,
+            editorial: editorial?.expertDraft || editorial?.feedback ? editorial : null,
           });
         })
         .catch((err) => {

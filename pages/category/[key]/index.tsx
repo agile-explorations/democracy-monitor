@@ -6,9 +6,11 @@ import { CategoryStatusChart } from '@/components/category/CategoryStatusChart';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
+import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
+import { CATEGORIES } from '@/lib/data/categories';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 
@@ -44,6 +46,9 @@ export default function CategoryDetailPage() {
     selectWeek,
     loading,
   } = useCategoryDetail(categoryKey, initialParams);
+
+  const availableWeeks = useMemo(() => weeklyData.map((r) => r.weekOf), [weeklyData]);
+  const category = useMemo(() => CATEGORIES.find((c) => c.key === categoryKey), [categoryKey]);
 
   if (loading) {
     return (
@@ -95,6 +100,11 @@ export default function CategoryDetailPage() {
             <span className="text-[10px] text-dm-muted">No Data</span>
           )}
         </div>
+        {category && (
+          <p className="text-sm text-dm-text-secondary mt-3 max-w-3xl leading-relaxed">
+            {readingLevel === 'detailed' ? category.expertDescription : category.description}
+          </p>
+        )}
       </header>
 
       {/* Time range bar */}
@@ -131,12 +141,20 @@ export default function CategoryDetailPage() {
       {/* Week detail — shown when a week is selected */}
       {selectedWeek && categoryKey && (
         <div className="mt-8 pt-6 border-t border-dm-border">
+          <div className="flex items-center justify-end mb-4">
+            <WeekNavigator
+              availableWeeks={availableWeeks}
+              selectedWeek={selectedWeek}
+              onWeekChange={selectWeek}
+            />
+          </div>
           <WeekDetailPanel
             weekOf={selectedWeek}
             categoryKey={categoryKey}
             layers={weekData?.layers ?? null}
             explanation={weekData?.explanation ?? null}
             narrative={weekData?.narrative ?? null}
+            editorial={weekData?.editorial ?? null}
             readingLevel={readingLevel}
             loading={weekLoading}
             onClose={() => selectWeek(null)}

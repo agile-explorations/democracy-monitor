@@ -3,19 +3,19 @@ import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
-import { MethodologyFooter } from '@/components/landing/MethodologyFooter';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
-import { SourceHealthTimeline } from '@/components/overview/SourceHealthTimeline';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
 import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
+import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
+import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
 import type { ConvergenceStatus } from '@/lib/types';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
@@ -24,8 +24,7 @@ export default function Home() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
-  const { categories, overview, meta, healthSummary, fetchTimeline, lastCheckedAt, loading } =
-    useDashboardData();
+  const { categories, overview, meta, healthSummary, loading } = useDashboardData();
 
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
@@ -100,6 +99,21 @@ export default function Home() {
     handleWeekChange,
   } = useWeekSelection(categories, filteredWeeks);
 
+  // Narrative data (term summary + weekly overview)
+  const latestWeek = useMemo(() => {
+    if (!filteredWeeks.length) return null;
+    return filteredWeeks[filteredWeeks.length - 1];
+  }, [filteredWeeks]);
+
+  const {
+    termNarrative,
+    termNarrativeLoading,
+    termEditorial,
+    weeklyNarrative,
+    weeklyNarrativeLoading,
+    weeklyEditorial,
+  } = useLandingNarratives(latestWeek, selectedWeek);
+
   const handlePresetChange = useCallback((preset: TimeRangePreset) => {
     setRangePreset(preset);
     setBrushRange(null); // Reset brush when preset changes
@@ -154,12 +168,6 @@ export default function Home() {
     return qs ? `?${qs}` : '';
   }, [selectedWeek, filteredWeeks, rangeDates]);
 
-  // Week detail href for the WeekNavigator
-  const displayedWeek = selectedWeek ?? filteredWeeks[filteredWeeks.length - 1];
-  const weekDetailHref = displayedWeek ? `/week/${displayedWeek}` : undefined;
-
-  const lastUpdated = categories.find((c) => c.computedAt)?.computedAt ?? null;
-
   return (
     <>
       <Head>
@@ -171,18 +179,6 @@ export default function Home() {
         />
       </Head>
       <main>
-        {/* Subtitle + last updated */}
-        <div className="mb-6">
-          <p className="text-sm text-dm-text-secondary">
-            Automated analysis of the U.S. government documentary record
-          </p>
-          {lastUpdated && (
-            <p className="text-[11px] text-dm-muted mt-1">
-              Last updated: {new Date(lastUpdated).toLocaleDateString()}
-            </p>
-          )}
-        </div>
-
         {/* Data integrity banner (above everything when active) */}
         {meta && (
           <DataIntegrityBanner
@@ -196,9 +192,10 @@ export default function Home() {
         {/* Positioning statement */}
         <section className="mb-6">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
-            Democracy Monitor reads government documents published in the Federal Register and
-            analyzes them using three-layer triangulated detection: structural anomaly analysis, AI
-            document assessment, and thematic drift monitoring. Unlike expert opinion indices, every
+            Democracy Monitor gathers government documents from a variety of sources to assess all
+            three branches of government — the executive, the legislative, and the judiciary. It
+            uses three-layer triangulated detection: structural anomaly analysis, AI document
+            assessment, and thematic drift monitoring. Unlike expert opinion indices, every
             assessment traces to specific documents and reproducible metrics. The methodology is
             open source.
           </p>
@@ -249,16 +246,20 @@ export default function Home() {
               <OverviewStatusSummary statusCounts={filteredStatusCounts} />
             </section>
 
+            {/* Term summary narrative — both reading levels */}
+            <section>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-2">Term Summary</h2>
+              <NarrativeSection
+                narrative={termNarrative}
+                readingLevel={readingLevel}
+                loading={termNarrativeLoading}
+                editorial={termEditorial}
+                placeholder="Term summary narrative coming soon."
+              />
+            </section>
+
             {readingLevel === 'detailed' && (
               <>
-                {/* Source fetch health timeline */}
-                <SourceHealthTimeline
-                  data={fetchTimeline}
-                  mode={resolvedMode}
-                  brushStartIndex={activeRange?.start}
-                  brushEndIndex={activeRange?.end}
-                />
-
                 {/* Status heatmap */}
                 <section>
                   <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
@@ -277,6 +278,26 @@ export default function Home() {
                   />
                 </section>
               </>
+            )}
+
+            {/* Weekly overview narrative — both reading levels */}
+            {(weeklyNarrative || weeklyNarrativeLoading) && (
+              <section>
+                <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
+                  Weekly Overview
+                  {selectedWeek && (
+                    <span className="ml-2 text-[11px] font-normal text-dm-muted">
+                      Week of {formatWeekLabel(selectedWeek)}
+                    </span>
+                  )}
+                </h2>
+                <NarrativeSection
+                  narrative={weeklyNarrative}
+                  readingLevel={readingLevel}
+                  loading={weeklyNarrativeLoading}
+                  editorial={weeklyEditorial}
+                />
+              </section>
             )}
           </div>
         )}
@@ -297,7 +318,6 @@ export default function Home() {
                 availableWeeks={availableWeeks}
                 selectedWeek={selectedWeek}
                 onWeekChange={handleWeekChange}
-                weekDetailHref={weekDetailHref}
               />
             )}
           </div>
@@ -319,8 +339,6 @@ export default function Home() {
             />
           )}
         </section>
-
-        <MethodologyFooter />
       </main>
     </>
   );

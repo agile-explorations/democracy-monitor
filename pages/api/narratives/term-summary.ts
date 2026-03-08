@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getEditorialRecord, getStoredNarratives } from '@/lib/services/narrative-store';
 import type { NarrativeVersion } from '@/lib/types';
-import { OVERVIEW_CATEGORY } from '@/lib/types';
+import { TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import {
   requireDb,
   requireMethod,
@@ -27,17 +27,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     if (editorial) {
-      const record = await getEditorialRecord(OVERVIEW_CATEGORY, weekOf);
+      const record = await getEditorialRecord(TERM_SUMMARY_CATEGORY, weekOf);
       return sendCached(res, record);
     }
 
-    const stored = await getStoredNarratives(OVERVIEW_CATEGORY, weekOf);
+    const stored = await getStoredNarratives(TERM_SUMMARY_CATEGORY, weekOf);
     const cached = tryStoredResponse(stored, version);
     if (cached) return sendCached(res, cached);
 
     return res.status(200).json({ expert: null, public: null });
   } catch (err) {
-    console.error('[api/narratives/overview] Error:', err);
+    console.error('[api/narratives/term-summary] Error:', err);
     return res.status(500).json({ error: formatError(err) });
   }
 }

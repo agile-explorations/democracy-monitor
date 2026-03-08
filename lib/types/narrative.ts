@@ -113,6 +113,9 @@ export interface EditorialRecord {
   expertDraft: string | null;
   publicDraft: string | null;
   feedback: string | null;
+  draftModel: string | null;
+  feedbackModel: string | null;
+  finalModel: string | null;
 }
 
 /** Recorded narrative generation failure. */

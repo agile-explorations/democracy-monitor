@@ -7,6 +7,8 @@ export const CATEGORIES: Category[] = [
     title: 'Government Worker Protections',
     description:
       "Are career government workers protected from being fired for political reasons? 'Schedule F' is a rule that could let the President fire thousands of workers who aren't loyal to him.",
+    expertDescription:
+      'Merit-system protections insulate the federal workforce from political patronage. Reclassification of career positions (e.g., Schedule F) or mass reductions in force can hollow out institutional expertise and create loyalty-based staffing, undermining bureaucratic independence that constrains executive overreach.',
     signals: [
       {
         id: 'fr_opm',
@@ -56,6 +58,8 @@ export const CATEGORIES: Category[] = [
     title: 'Spending Money Congress Approved',
     description:
       'Can the President refuse to spend money that Congress already approved? This is called "impoundment" and it\'s usually illegal.',
+    expertDescription:
+      "The Impoundment Control Act of 1974 prohibits the executive from unilaterally withholding congressionally appropriated funds. Circumventing this — through rescission, deferral, or spending freezes — undermines Congress's constitutional power of the purse, a foundational check on executive authority.",
     signals: [
       {
         id: 'fr_impoundment',
@@ -92,6 +96,8 @@ export const CATEGORIES: Category[] = [
     title: 'Government Watchdogs (Inspectors General)',
     description:
       'Inspectors General (IGs) are like detectives who check if government agencies are doing their jobs correctly. Can they do their work without being fired or blocked?',
+    expertDescription:
+      'Inspectors General provide independent oversight of executive agencies, with statutory protections against removal. Mass IG firings, vacancy manipulation, or resource cuts degrade the internal accountability infrastructure that deters waste, fraud, and abuse of power across the federal government.',
     signals: [
       {
         id: 'html_oversight_gov',
@@ -200,6 +206,8 @@ export const CATEGORIES: Category[] = [
     title: 'Keeping Politics Out of Government',
     description:
       'Government workers should serve all Americans, not just one political party. The Hatch Act is a law that stops them from campaigning while at work.',
+    expertDescription:
+      'The Hatch Act creates a firewall between partisan politics and federal administration. When enforcement weakens or violations go unpunished, the civil service risks becoming an extension of party apparatus — eroding public trust in government neutrality and the nonpartisan delivery of services.',
     signals: [
       {
         id: 'fr_hatch_act',
@@ -222,6 +230,8 @@ export const CATEGORIES: Category[] = [
     title: 'Following Court Orders',
     description:
       'When a judge orders the government to do something (or stop doing something), does the President follow those orders? This is a key part of our system of checks and balances.',
+    expertDescription:
+      "Judicial independence is the cornerstone of constitutional governance. Executive non-compliance with court orders, attempts to restructure court jurisdiction, or politicized judicial appointments erode the judiciary's ability to serve as a check on executive and legislative power.",
     signals: [
       {
         id: 'rss_scotus',
@@ -271,6 +281,8 @@ export const CATEGORIES: Category[] = [
     title: 'Using Military Inside the U.S.',
     description:
       'The military is supposed to fight foreign enemies, not police American citizens. There are strict laws about when troops can be used inside the U.S.',
+    expertDescription:
+      'The Posse Comitatus Act and Insurrection Act define narrow boundaries for domestic military deployment. Expansion of emergency powers, invocation of IEEPA for domestic purposes, or National Guard deployments beyond traditional scope signal militarization of civilian governance.',
     signals: [
       {
         id: 'rss_dod_news',
@@ -333,6 +345,8 @@ export const CATEGORIES: Category[] = [
     title: 'Independent Agency Rules',
     description:
       'Some government agencies (like the FDA or EPA) are supposed to make decisions based on science and law, not politics. Can the President control what rules they write?',
+    expertDescription:
+      "Independent agencies derive authority from statutory mandates, not executive direction. Centralized regulatory review (e.g., OIRA clearance of independent agency rules) or executive orders overriding agency expertise undermine the administrative state's capacity for evidence-based policymaking.",
     signals: [
       {
         id: 'fr_exec_regulatory',
@@ -362,6 +376,8 @@ export const CATEGORIES: Category[] = [
     title: 'Executive Action Volume',
     description:
       'Tracking the volume and pace of presidential actions and new regulations. High activity may indicate rapid expansion of executive authority.',
+    expertDescription:
+      'The rate and scope of executive orders, memoranda, and rulemaking serve as a structural indicator of executive assertiveness. Abnormal volume spikes — especially paired with procedural shortcuts like interim final rules — can signal an effort to entrench policy before institutional pushback materializes.',
     signals: [
       {
         id: 'fr_presidential_actions',
@@ -396,6 +412,8 @@ export const CATEGORIES: Category[] = [
     title: 'Information Availability',
     description:
       'Are government websites, reports, and data still publicly accessible? Tracks whether critical transparency infrastructure is online and whether expected reports are being published.',
+    expertDescription:
+      "Public access to government data, FOIA compliance, and publication of mandated reports form the transparency infrastructure that enables democratic accountability. Removal of datasets, website takedowns, or suppression of required disclosures reduces the public's ability to monitor government conduct.",
     signals: [
       {
         id: 'json_uptime',
@@ -438,6 +456,8 @@ export const CATEGORIES: Category[] = [
     title: 'Free and Fair Elections',
     description:
       'Are elections being administered fairly and without interference? Tracks changes to election infrastructure, voter access, and election administration independence.',
+    expertDescription:
+      'Free and fair elections require independent administration, equitable ballot access, and transparent campaign finance. Federal actions that alter voter eligibility rules, defund election security, weaken FEC enforcement, or challenge certification processes threaten the foundational mechanism of democratic legitimacy.',
     signals: [
       {
         id: 'fr_election_integrity',
@@ -474,6 +494,8 @@ export const CATEGORIES: Category[] = [
     title: 'Press Freedom',
     description:
       'Can journalists report freely without government interference? Tracks press access, FOIA compliance, and threats to independent media.',
+    expertDescription:
+      "Press freedom is a prerequisite for informed public participation in democracy. Restricting press credentials, retaliating against outlets, weakening FOIA, or using FCC licensing as political leverage degrades the fourth estate's watchdog function over government power.",
     signals: [
       {
         id: 'fr_press_foia',
@@ -516,6 +538,8 @@ export const CATEGORIES: Category[] = [
     title: 'Federal Law Enforcement',
     description:
       'Is federal law enforcement being used selectively or politically? Tracks DOJ prosecution patterns, enforcement priorities, and potential politicization of the justice system.',
+    expertDescription:
+      'Independent prosecutorial discretion is central to rule of law. Politicized DOJ priorities — selective prosecution of political opponents, dropped investigations of allies, or retaliation against career prosecutors — transform law enforcement from a neutral institution into an instrument of political power.',
     signals: [
       {
         id: 'cl_enforcement_cases',
@@ -559,6 +583,8 @@ export const CATEGORIES: Category[] = [
     title: 'Civil Rights & Liberties',
     description:
       'Government actions that reduce civil liberties protections. Tracks policies restricting constitutional rights, rulings narrowing due process or equal protection, expansion of surveillance or detention authority, and termination of civil rights consent decrees.',
+    expertDescription:
+      'Constitutional rights — due process, equal protection, habeas corpus, and First Amendment freedoms — define the boundary between state power and individual liberty. Erosion of these protections through executive action, consent decree termination, or expanded surveillance authority signals democratic backsliding at its most fundamental level.',
     signals: [
       {
         id: 'cl_civil_rights',
@@ -602,6 +628,8 @@ export const CATEGORIES: Category[] = [
     title: 'Immigration Enforcement',
     description:
       'How is immigration enforcement changing? Tracks detention, removal, asylum restrictions, and enforcement apparatus patterns through DHS and CBP actions.',
+    expertDescription:
+      'Immigration enforcement often serves as a leading indicator of broader institutional norm erosion. Expansion of expedited removal, mass detention without due process, and deployment of enforcement infrastructure beyond traditional immigration contexts can normalize executive overreach that later extends to other domains.',
     signals: [
       {
         id: 'fr_dhs_immigration',

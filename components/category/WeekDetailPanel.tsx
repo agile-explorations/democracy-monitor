@@ -6,6 +6,7 @@ import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { DocumentTable } from '@/components/week/DocumentTable';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import type { EditorialRecord } from '@/lib/types';
 import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import type { WeekExplanation } from '@/lib/types/explanation';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
@@ -16,6 +17,7 @@ export interface WeekDetailPanelProps {
   layers: CategoryDetailLatestWeek | null;
   explanation: WeekExplanation | null;
   narrative: { expert: string; public: string } | null;
+  editorial: EditorialRecord | null;
   readingLevel: ReadingLevel;
   loading: boolean;
   onClose: () => void;
@@ -70,6 +72,7 @@ export function WeekDetailPanel({
   layers,
   explanation,
   narrative,
+  editorial,
   readingLevel,
   loading,
   onClose,
@@ -97,7 +100,11 @@ export function WeekDetailPanel({
           <ConvergenceHeader synthesis={layers?.convergenceDetail ?? null} />
 
           {/* Narrative */}
-          <NarrativeSection narrative={narrative} readingLevel={readingLevel} />
+          <NarrativeSection
+            narrative={narrative}
+            readingLevel={readingLevel}
+            editorial={editorial}
+          />
 
           {/* Three-layer panels — collapsed by default */}
           <CollapsiblePanel title="Layer 1: Structural Anomaly">

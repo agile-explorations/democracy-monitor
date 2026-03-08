@@ -1,5 +1,9 @@
 import type { Config } from 'tailwindcss';
 
+function withAlpha(varName: string) {
+  return `rgb(var(${varName}) / <alpha-value>)`;
+}
+
 const config: Config = {
   content: [
     './pages/**/*.{js,ts,jsx,tsx}',
@@ -11,32 +15,32 @@ const config: Config = {
     extend: {
       colors: {
         dm: {
-          bg: 'var(--color-bg)',
-          card: 'var(--color-card)',
-          'text-primary': 'var(--color-text-primary)',
-          'text-secondary': 'var(--color-text-secondary)',
-          border: 'var(--color-border)',
-          accent: 'var(--color-accent)',
-          muted: 'var(--color-muted)',
-          'baseline-fill': 'var(--color-baseline-fill)',
-          'baseline-border': 'var(--color-baseline-border)',
+          bg: withAlpha('--color-bg'),
+          card: withAlpha('--color-card'),
+          'text-primary': withAlpha('--color-text-primary'),
+          'text-secondary': withAlpha('--color-text-secondary'),
+          border: withAlpha('--color-border'),
+          accent: withAlpha('--color-accent'),
+          muted: withAlpha('--color-muted'),
+          'baseline-fill': withAlpha('--color-baseline-fill'),
+          'baseline-border': withAlpha('--color-baseline-border'),
         },
         status: {
-          stable: 'var(--color-status-stable)',
-          warning: 'var(--color-status-warning)',
-          drift: 'var(--color-status-drift)',
-          capture: 'var(--color-status-capture)',
+          stable: withAlpha('--color-status-stable'),
+          warning: withAlpha('--color-status-warning'),
+          drift: withAlpha('--color-status-drift'),
+          capture: withAlpha('--color-status-capture'),
         },
         convergence: {
-          stable: 'var(--color-convergence-stable)',
-          elevated: 'var(--color-convergence-elevated)',
-          divergent: 'var(--color-convergence-divergent)',
-          confirmed: 'var(--color-convergence-confirmed)',
+          stable: withAlpha('--color-convergence-stable'),
+          elevated: withAlpha('--color-convergence-elevated'),
+          divergent: withAlpha('--color-convergence-divergent'),
+          confirmed: withAlpha('--color-convergence-confirmed'),
         },
         source: {
-          healthy: 'var(--color-source-healthy)',
-          degraded: 'var(--color-source-degraded)',
-          unavailable: 'var(--color-source-unavailable)',
+          healthy: withAlpha('--color-source-healthy'),
+          degraded: withAlpha('--color-source-degraded'),
+          unavailable: withAlpha('--color-source-unavailable'),
         },
       },
       maxWidth: {

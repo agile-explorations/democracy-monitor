@@ -12,24 +12,6 @@ export const CHART_COLORS = {
   },
 } as const;
 
-/** Per-category hex colors for multi-line charts. */
-export const CATEGORY_COLORS: Record<string, string> = {
-  civilService: '#6366f1',
-  fiscal: '#8b5cf6',
-  executiveOversight: '#a855f7',
-  hatch: '#d946ef',
-  judicialIndependence: '#ec4899',
-  military: '#f43f5e',
-  rulemaking: '#f97316',
-  executiveActions: '#eab308',
-  infoAvailability: '#22c55e',
-  elections: '#14b8a6',
-  mediaFreedom: '#06b6d4',
-  lawEnforcement: '#0ea5e9',
-  civilLiberties: '#3b82f6',
-  immigrationEnforcement: '#0284c7',
-};
-
 /** Per-mode colors for the source health timeline strip. */
 export const HEALTH_STRIP_COLORS = {
   light: { complete: '#22c55e', partial: '#f59e0b', failed: '#ef4444' },

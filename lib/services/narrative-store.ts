@@ -78,13 +78,16 @@ export async function getEditorialRecord(
       ),
     );
 
-  const byVersion = new Map(rows.map((r) => [r.version, r.content]));
+  const byVersion = new Map(rows.map((r) => [r.version, { content: r.content, model: r.model }]));
   return {
-    expert: byVersion.get('expert') ?? null,
-    public: byVersion.get('public') ?? null,
-    expertDraft: byVersion.get('expert_draft') ?? null,
-    publicDraft: byVersion.get('public_draft') ?? null,
-    feedback: byVersion.get('feedback') ?? null,
+    expert: byVersion.get('expert')?.content ?? null,
+    public: byVersion.get('public')?.content ?? null,
+    expertDraft: byVersion.get('expert_draft')?.content ?? null,
+    publicDraft: byVersion.get('public_draft')?.content ?? null,
+    feedback: byVersion.get('feedback')?.content ?? null,
+    draftModel: byVersion.get('expert_draft')?.model ?? null,
+    feedbackModel: byVersion.get('feedback')?.model ?? null,
+    finalModel: byVersion.get('expert')?.model ?? null,
   };
 }
 

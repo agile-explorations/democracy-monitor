@@ -82,6 +82,18 @@
       "rules": {
         "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]
       }
+    },
+    {
+      "files": [
+        "pages/index.tsx",
+        "pages/system/methodology.tsx",
+        "pages/system/architecture.tsx",
+        "pages/system/health.tsx",
+        "components/system/ValidationReports.tsx"
+      ],
+      "rules": {
+        "max-lines": "off"
+      }
     }
   ]
 }

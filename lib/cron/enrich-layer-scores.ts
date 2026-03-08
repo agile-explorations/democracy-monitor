@@ -11,7 +11,11 @@
  */
 
 import { and, eq, gte, lt, lte, sql } from 'drizzle-orm';
-import { getAnalysisPeriods, ALL_DATES_WARNING } from '@/lib/data/analysis-periods';
+import {
+  getAnalysisPeriods,
+  ALL_DATES_WARNING,
+  T2_INAUGURATION,
+} from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { aiDocumentAssessments, weeklyAggregates } from '@/lib/db/schema';
@@ -267,7 +271,10 @@ async function run(options: EnrichOptions): Promise<void> {
 
   if (options.narratives) {
     const { generateNarrativesForWeek } = await import('@/lib/services/narrative-pipeline');
-    const sortedWeeks = Array.from(allElevatedWeeks).sort();
+    // Only generate narratives for Trump T2 — baseline periods are historical reference data
+    const sortedWeeks = Array.from(allElevatedWeeks)
+      .filter((w) => w >= T2_INAUGURATION)
+      .sort();
     console.log(`\n[layers:enrich] Generating narratives for ${sortedWeeks.length} elevated weeks`);
     let narrated = 0;
     for (const weekOf of sortedWeeks) {
