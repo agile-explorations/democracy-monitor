@@ -6,7 +6,7 @@ A real-time dashboard that monitors signals of executive-power centralization ac
 
 ## What It Does
 
-The dashboard tracks **13 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, and civil liberties — and assigns each a convergence status:
+The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a convergence status:
 
 | Status                | Meaning                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -19,7 +19,7 @@ No single detection layer can escalate a category beyond Elevated on its own. As
 
 ## How It Works
 
-1. **Data collection** — Cron jobs fetch from 7 source types (Federal Register, White House, GDELT, CourtListener, DOJ, GovInfo/GAO, FEC) plus IG and FCC RSS feeds, storing documents in PostgreSQL
+1. **Data collection** — Cron jobs fetch from multiple source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, GDELT) plus FCC RSS feeds, storing documents in PostgreSQL
 2. **Layer 1 — Structural anomaly** — Deterministic, metadata-only analysis: volume spikes, document-type shifts, functional distribution changes, agency concentration, publication tempo, and source convergence. Uses Jensen-Shannon divergence and z-scores against historical baselines.
 3. **Layer 2 — AI assessment** — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document, then Claude evaluates flagged documents. Different providers ensure independent evaluation. Tracks flag rates and concern rates against baselines.
 4. **Layer 3 — Thematic drift** — Embedding-based intra-administration rolling window (8 weeks) detecting semantic shifts in government output that wouldn't appear in structural metadata

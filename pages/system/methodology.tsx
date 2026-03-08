@@ -155,8 +155,8 @@ function DetailedContent() {
       {/* Data Sources */}
       <Section title="Data Sources">
         <p>
-          Democracy Monitor ingests documents from seven source types, covering different facets of
-          government activity:
+          Democracy Monitor ingests documents from multiple source types, covering different facets
+          of government activity:
         </p>
         <DataTable
           headers={['Source', 'What It Provides', 'Update Cadence']}
@@ -167,14 +167,9 @@ function DetailedContent() {
               'Daily',
             ],
             [
-              'White House',
-              'Briefing room statements, press releases, policy announcements',
-              'Daily',
-            ],
-            [
-              'GDELT',
-              'Global news coverage of U.S. government activity (filtered to U.S. sources)',
-              'Daily',
+              'GovInfo / GAO',
+              'GAO audit reports, congressional reports, public laws, presidential documents (CPD)',
+              'Every few days',
             ],
             [
               'CourtListener',
@@ -187,29 +182,39 @@ function DetailedContent() {
               'Every few days',
             ],
             [
-              'GovInfo / GAO',
-              'GAO audit reports, congressional reports, public laws',
+              'Inspector General (OIG)',
+              'Audit reports and investigations from HHS, DOJ, and SSA Inspectors General',
               'Every few days',
+            ],
+            [
+              'LegiScan',
+              'State and federal legislative bill tracking via bulk datasets',
+              'Periodic',
             ],
             [
               'FEC',
               'Federal Election Commission advisory opinions and Matters Under Review',
               'Weekly',
             ],
+            [
+              'GDELT',
+              'Global news coverage of U.S. government activity (filtered to U.S. sources)',
+              'Daily',
+            ],
           ]}
         />
         <p>
-          Additionally, RSS feeds from Inspector General offices and the FCC provide supplementary
-          signals for specific categories. Each source type has an expected publication cadence.
-          When a source goes silent beyond its expected window, the system flags it for attention
-          and may reduce confidence in assessments that depend on that source.
+          Additionally, RSS feeds from the FCC provide supplementary signals for specific
+          categories. Each source type has an expected publication cadence. When a source goes
+          silent beyond its expected window, the system flags it for attention and may reduce
+          confidence in assessments that depend on that source.
         </p>
       </Section>
 
       {/* Categories */}
       <Section title="Categories">
         <p>
-          The system monitors 13 institutional categories, aligned to frameworks used by V-Dem and
+          The system monitors 14 institutional categories, aligned to frameworks used by V-Dem and
           Freedom House for measuring democratic governance:
         </p>
         <DataTable
@@ -240,6 +245,10 @@ function DetailedContent() {
               'Civil Liberties',
               'Protection of constitutional rights, due process, and equal protection',
             ],
+            [
+              'Immigration Enforcement',
+              'Detention, removal, asylum restrictions, and enforcement apparatus patterns',
+            ],
           ]}
         />
       </Section>
@@ -263,10 +272,11 @@ function DetailedContent() {
             quantifies how much the current distribution differs from the baseline.
           </li>
           <li>
-            <strong>Functional Distribution</strong> — Shifts across nine institutional function
-            buckets (rulemaking, personnel actions, organizational changes, enforcement, spending,
-            oversight, rights/liberties, information control, judicial). Detects when the{' '}
-            <em>kind</em> of government activity changes, not just the volume.
+            <strong>Functional Distribution</strong> — Shifts across eleven institutional function
+            buckets (rulemaking, executive action, personnel action, administrative procedure,
+            organizational change, financial/regulatory, cultural/ceremonial, news/rhetoric,
+            enforcement action, judicial action, unclassified). Detects when the <em>kind</em> of
+            government activity changes, not just the volume.
           </li>
           <li>
             <strong>Agency Activity</strong> — Changes in which agencies are publishing documents.
@@ -329,6 +339,9 @@ function DetailedContent() {
         <p>
           An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to
           estimate false negative rates — how many concerning documents Pass 1 might be missing.
+          Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to
+          under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast
+          majority of routine documents while catching most documents that warrant closer review.
         </p>
       </Section>
 
@@ -417,8 +430,9 @@ function DetailedContent() {
           ]}
         />
         <p>
-          All four baselines cover the same data sources to ensure consistent comparison. Baselines
-          that would have covered only a subset of sources were excluded.
+          All four baselines cover the same core data sources (Federal Register, CourtListener, DOJ,
+          GovInfo, FEC, LegiScan, OIG) to ensure consistent comparison. Baselines that would have
+          covered only a subset of sources were excluded.
         </p>
         <p>
           <strong>Cycle-year adjustment:</strong> First-year administrations systematically differ

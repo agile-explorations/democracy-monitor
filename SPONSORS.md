@@ -26,7 +26,7 @@ The three-layer detection system was built over one month of intensive developme
 | AI API costs           | ~$0.50        | Daily pipeline: ~60 docs/day through GPT-4o-mini + Claude Sonnet |
 | **Total**              | **~$258-260** |                                                                  |
 
-The AI API costs are low because the daily document volume is small (~420 docs/week across 11 categories) and GPT-4o-mini is inexpensive. Claude Sonnet (Pass 2) only runs on flagged documents and a 3% audit sample.
+The AI API costs are low because the daily document volume is small (~420 docs/week across 14 categories) and GPT-4o-mini is inexpensive. Claude Sonnet (Pass 2) only runs on flagged documents and a 3% audit sample.
 
 ## Sponsorship Tiers
 
@@ -48,7 +48,7 @@ Fund dedicated maintainer time: dependency updates, bug fixes, pipeline monitori
 
 ### Sprint Sponsor — $2,500 (one-time)
 
-Fund a full development sprint from the [project roadmap](ROADMAP.md). Each sprint produces named deliverables tracked publicly — see [DECISIONS.md](DECISIONS.md) for retrospectives showing planned vs. built for every completed sprint.
+Fund a full development sprint from the [project roadmap](ROADMAP.md). Each sprint produces named deliverables tracked publicly — see [DECISIONS.md](docs/DECISIONS.md) for retrospectives showing planned vs. built for every completed sprint.
 
 ## How to Sponsor
 

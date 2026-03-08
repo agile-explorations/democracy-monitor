@@ -6,25 +6,26 @@ The system is designed to surface patterns worth human examination, not render d
 
 ## Data Sources
 
-Democracy Monitor ingests documents from seven source types, covering different facets of government activity:
+Democracy Monitor ingests documents from multiple source types, covering different facets of government activity:
 
-| Source                 | What It Provides                                                                                 | Update Cadence |
-| ---------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
-| **Federal Register**   | Executive orders, proposed and final rules, notices, presidential documents                      | Daily          |
-| **White House**        | Briefing room statements, press releases, policy announcements                                   | Daily          |
-| **GDELT**              | Global news coverage of U.S. government activity (filtered to U.S. sources)                      | Daily          |
-| **CourtListener**      | Federal court opinions, docket entries, RECAP archive (civil rights, enforcement, habeas corpus) | Every few days |
-| **DOJ Press Releases** | Department of Justice press releases across divisions (Criminal, Civil Rights, etc.)             | Every few days |
-| **GovInfo / GAO**      | GAO audit reports, congressional reports, public laws                                            | Every few days |
-| **FEC**                | Federal Election Commission advisory opinions and Matters Under Review (MURs)                    | Weekly         |
+| Source                      | What It Provides                                                                                 | Update Cadence |
+| --------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
+| **Federal Register**        | Executive orders, proposed and final rules, notices, presidential documents                      | Daily          |
+| **GovInfo / GAO**           | GAO audit reports, congressional reports, public laws, presidential documents (CPD collection)   | Every few days |
+| **CourtListener**           | Federal court opinions, docket entries, RECAP archive (civil rights, enforcement, habeas corpus) | Every few days |
+| **DOJ Press Releases**      | Department of Justice press releases across divisions (Criminal, Civil Rights, etc.)             | Every few days |
+| **Inspector General (OIG)** | Audit reports and investigations from HHS, DOJ, and SSA Inspectors General                       | Every few days |
+| **LegiScan**                | State and federal legislative bill tracking via bulk datasets                                    | Periodic       |
+| **FEC**                     | Federal Election Commission advisory opinions and Matters Under Review (MURs)                    | Weekly         |
+| **GDELT**                   | Global news coverage of U.S. government activity (filtered to U.S. sources)                      | Daily          |
 
-Additionally, RSS feeds from Inspector General offices and the FCC provide supplementary signals for specific categories.
+Additionally, RSS feeds from the FCC provide supplementary signals for specific categories.
 
 Each source type has an expected publication cadence. When a source goes silent beyond its expected window, the system flags it for attention and may reduce confidence in assessments that depend on that source.
 
 ## Categories
 
-The system monitors 13 institutional categories, aligned to frameworks used by V-Dem and Freedom House for measuring democratic governance. Each category tracks a specific dimension of executive-power constraint:
+The system monitors 14 institutional categories, aligned to frameworks used by V-Dem and Freedom House for measuring democratic governance. Each category tracks a specific dimension of executive-power constraint:
 
 | Category                     | What It Monitors                                                                   |
 | ---------------------------- | ---------------------------------------------------------------------------------- |
@@ -41,6 +42,7 @@ The system monitors 13 institutional categories, aligned to frameworks used by V
 | **Media Freedom**            | Press access, FOIA compliance, threats to independent journalism                   |
 | **Law Enforcement**          | Selective or political use of federal prosecution authority                        |
 | **Civil Liberties**          | Protection of constitutional rights, due process, and equal protection             |
+| **Immigration Enforcement**  | Detention, removal, asylum restrictions, and enforcement apparatus patterns        |
 
 ## Three-Layer Detection
 
@@ -52,7 +54,7 @@ Layer 1 is fully deterministic and uses only document metadata — no text analy
 
 - **Volume** — Document count relative to baseline mean and standard deviation. A spike or drop in the number of documents published in a category may indicate unusual activity.
 - **Type Composition** — Distribution of document types (executive orders, rules, notices, proclamations). Measured using Jensen-Shannon divergence, which quantifies how much the current distribution differs from the baseline.
-- **Functional Distribution** — Shifts across nine institutional function buckets (rulemaking, personnel actions, organizational changes, enforcement, spending, oversight, rights/liberties, information control, judicial). Detects when the _kind_ of government activity changes, not just the volume.
+- **Functional Distribution** — Shifts across eleven institutional function buckets (rulemaking, executive action, personnel action, administrative procedure, organizational change, financial/regulatory, cultural/ceremonial, news/rhetoric, enforcement action, judicial action, unclassified). Detects when the _kind_ of government activity changes, not just the volume.
 - **Agency Activity** — Changes in which agencies are publishing documents. Unusual concentration or absence of specific agencies can signal institutional disruption.
 - **Publication Tempo** — Daily variance within the week. A pattern where all documents arrive on one day rather than being spread across the week may indicate coordinated activity.
 - **Source Convergence** — Ratio of government-origin documents to rhetoric/news sources. Large imbalances may indicate that government actions are generating disproportionate external attention, or that government publishing has gone quiet.
@@ -71,7 +73,7 @@ Two aggregate metrics determine whether Layer 2 is elevated:
 - **Flag rate** — The fraction of documents flagged by Pass 1, compared against baseline flag rates using z-scores. A significantly higher flag rate than the baseline suggests more documents warranting attention.
 - **Concern rate** — The fraction of Pass 2-reviewed documents classified as "potentially concerning" or "clearly concerning." When this exceeds 20%, the layer is considered elevated.
 
-An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing.
+An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
 ### Layer 3: Thematic Drift
 
@@ -108,7 +110,7 @@ All anomaly detection requires a reference period for comparison. The system mai
 | **Trump 2017** | Year 1 of term | Cross-administration, first year                                          |
 | **Trump 2018** | Year 2 of term | Cross-administration, same cycle year as primary                          |
 
-All four baselines cover the same data sources (Federal Register, White House, GDELT) to ensure consistent comparison. Baselines that would have covered only a subset of sources were excluded to avoid confounding the analysis.
+All four baselines cover the same core data sources (Federal Register, CourtListener, DOJ, GovInfo, FEC, LegiScan, OIG) to ensure consistent comparison. Baselines that would have covered only a subset of sources were excluded to avoid confounding the analysis.
 
 **Cycle-year adjustment:** First-year administrations systematically differ from second-year administrations (higher executive order volume, more personnel changes). Cycle adjustment factors, computed from baseline data, account for these predictable Year 1 vs. Year 2 differences so that expected seasonal patterns don't trigger false positives.
 
