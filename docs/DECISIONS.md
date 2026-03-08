@@ -10,6 +10,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-RESP: Responsive Layout ✅
+
+**Status: Done.** Viewport meta tag, responsive header, mobile-friendly table/charts/panels. 10 files changed, CSS/layout only. Issues #301–#305.
+
+**Scope vs. Actual:**
+
+- Planned (5 issues #301-#305): Viewport meta in \_document.tsx (#301), SiteHeader mobile layout (#302), CategoryTable mobile layout (#303), chart margins and legend wrapping (#304), grid breakpoint gaps in detail panels (#305).
+- Actual: All 5 issues delivered. Additionally removed "Display:" label on mobile and centered the settings pill bar after user feedback that the button row was still clipped.
+
+**Key Decisions:**
+
+1. **Two `<Image>` elements instead of CSS resizing**: Next.js `<Image>` requires explicit width/height for optimization. Used `hidden sm:block` / `sm:hidden` to swap between 140px (desktop) and 80px (mobile) logos rather than CSS transforms.
+2. **Sparkline column hidden below `sm:`**: The 120px fixed-width sparkline was the main width pressure in the CategoryTable. Hiding it on mobile preserves the more important columns (Category, Status, Layer indicators).
+3. **Chart margins reduced globally**: Both SynchronyChart and CategoryStatusChart had `right: 58, left: 28` margins — legacy values for label clearance. Reduced to `right: 16, left: 0` which reclaims ~70px on mobile without clipping content.
+4. **DisplaySettings centered on mobile**: Settings pill bar made `w-full justify-center` on mobile so it centers when it wraps to its own line, `w-auto justify-start` at `sm:` to resume inline layout.
+5. **Header badges hidden on mobile**: "Experimental" and "Sponsor" badges hidden below `sm:` — they're non-essential and crowd the title row.
+
+**Lessons Learned:**
+
+1. **Iterate with user screenshots**: The initial `ml-16` fix for the tagline row still wasn't enough for DisplaySettings to fit. Two rounds of user feedback (remove label, then center) got it right. Mobile layout needs visual validation — CSS reasoning alone isn't sufficient.
+2. **`overflow-x-auto` already in place on key components**: The codebase already had scroll containers on heatmaps, data tables, and the category table. The main gaps were the header, chart margins, and detail panel grids — not the data-heavy components.
+
+---
+
 ## Sprint R-UI1: UI Catch-Up ✅
 
 **Status: Done.** Left nav, system pages (Health, Architecture, Methodology), site-wide footer, category page chart fixes, Tailwind opacity fix, methodology accuracy audit, document URL fix (api.govinfo.gov → www.govinfo.gov). 49 files changed. Issues #286–#292.

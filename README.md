@@ -43,7 +43,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup and the full dataset downl
 ### Running tests
 
 ```bash
-pnpm test          # Run full test suite (Vitest, 1450+ tests)
+pnpm test          # Run full test suite (Vitest, 2000+ tests)
 pnpm test:watch    # Watch mode
 ```
 
@@ -83,14 +83,14 @@ lib/
   db/             # Drizzle ORM schema and migrations
   cron/           # Scheduled tasks (snapshot, backfill, digest)
   methodology/    # Scoring config, named constants, thresholds
-  seed/           # Seed data export/import pipeline + fixtures
+  seed/           # AI assessment review pipeline (seed:review, seed:apply)
   types/          # TypeScript type definitions
   utils/          # Pure utility functions
-  validation/     # Cross-baseline validation
+  validation/     # Historical backtesting and known-event validation
 
-components/       # UI components (CategoryCard, TrendChart, StatusPill, etc.)
+components/       # UI components (overview, category detail, week detail, search)
 pages/api/        # Server-side API routes (proxy, assessment, health, history)
-__tests__/        # Vitest tests mirroring lib/ structure (1450+ tests)
+__tests__/        # Vitest tests mirroring lib/ structure (2000+ tests)
 ```
 
 For detailed architecture documentation, see [CLAUDE.md](CLAUDE.md).
@@ -105,8 +105,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 
 - **Detection methodology** — Improving three-layer detection accuracy, reducing false positives in structural and AI assessment
 - **Signal coverage** — Adding data sources for under-monitored categories (state-level data, international indices)
-- **Source integrations** — New fetchers for government data sources (LegiScan legislative tracking is planned)
-- **Test coverage** — 1450+ tests across 117 files; UI components and newer services need coverage
+- **Source integrations** — New fetchers for government data sources (Oversight.gov, state-level courts)
+- **Test coverage** — 2000+ tests across 142 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
 ## Sponsor This Project

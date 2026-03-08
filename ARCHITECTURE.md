@@ -280,7 +280,7 @@ This rule has a clear semantic: dampening applies to categories that are _inhere
 
 #### LegiScan Status
 
-LegiScan is operational at the free tier. Fetcher (`legiscan-fetcher.ts`, 207 lines), bulk import (`legiscan-bulk.ts`, 278 lines), and data are already in place: 332 sessions from all 50 states + DC + PR, 693,905 total bills downloaded, 1,826 classified across 11 categories (T1: 627, Biden: 515, T2: 676). API key is in `.env.local`.
+LegiScan is operational at the free tier. Fetcher (`legiscan-fetcher.ts`, 207 lines), bulk import (`legiscan-bulk.ts`, 278 lines), and data are already in place: 332 sessions from all 50 states + DC + PR, 693,905 total bills downloaded, 1,826 classified across 14 categories (T1: 627, Biden: 515, T2: 676). API key is in `.env.local`.
 
 **Remaining for pipeline integration (Sprint R-S1e):**
 
@@ -1297,7 +1297,7 @@ The overview is the natural starting point — a visitor arriving at Democracy M
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
 │  OVERALL STATUS SUMMARY                                     │
-│  "Across [N] weeks of monitoring, [X] of 13 categories     │
+│  "Across [N] weeks of monitoring, [X] of 14 categories     │
 │  show sustained structural deviation from historical        │
 │  baselines. The most significant shifts are in..."          │
 │                                                             │
@@ -1309,7 +1309,7 @@ The overview is the natural starting point — a visitor arriving at Democracy M
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  CATEGORY DRIFT OVERVIEW                                    │
-│  Small multiples or heatmap: all 13 categories showing      │
+│  Small multiples or heatmap: all 14 categories showing      │
 │  long-horizon drift from historical baseline over time.     │
 │  Each row = category, each column = week, color intensity   │
 │  = composite structural deviation from fixed baseline.      │
@@ -1347,7 +1347,7 @@ The overview is the natural starting point — a visitor arriving at Democracy M
 │                                                             │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  CATEGORY CARDS (11 cards, sorted by cumulative deviation)  │
+│  CATEGORY TABLE (14 categories, sorted by cumulative deviation)  │
 │  Same cards as landing page, but sorted by long-horizon     │
 │  drift rather than current-week status. Shows which         │
 │  institutions have moved furthest from baseline across      │
@@ -1572,7 +1572,7 @@ This is the fundamental improvement over the keyword architecture: the most freq
 | **Full backfill total**              | —               | **~$9–18**                 | One-time per period (e.g., Trump 2025)                           |
 | **Baseline regeneration (one-time)** | —               | **~$47–97**                | Four baselines × all three layers (see Baseline Re-run Strategy) |
 
-Weekly operational costs (~$2.50–10) are based on the original 11 categories with FR-primary sources. Expanding to 13 categories with additional sources (CourtListener, DOJ API, LegiScan, GovInfo/GAO, FEC, FCC, IG RSS) will significantly increase document volume. Spike findings indicate:
+Weekly operational costs (~$2.50–10) are based on the original 11 categories with FR-primary sources. Expanding to 14 categories with additional sources (CourtListener, DOJ API, LegiScan, GovInfo/GAO, FEC, FCC, IG RSS) will significantly increase document volume. Spike findings indicate:
 
 - CourtListener alone adds 130-210 docs/week across 3 categories
 - DOJ API adds 360-400 docs/week to lawEnforcement
@@ -1616,7 +1616,7 @@ Most items originally planned for Sprint R1 were completed in Sprint 20:
   - Layer 3 embeds rhetoric documents into the `gdelt` source-type embedding baseline (segregated from FR/CourtListener embeddings).
   - Baselines: rhetoric document counts per category are included in structural baselines once the cross-feed is operational. Categories that had zero rhetoric documents before the cross-feed will show a volume increase — this is a known baseline discontinuity that must be annotated, not a signal.
 
-  **Routing method:** AI classification using a cheap model (gpt-4o-mini) with the 13 category descriptions as the classification schema. Batch-classify existing rhetoric documents during backfill. Cost: ~$1-2 for the full 57K rhetoric corpus. Ongoing cost: negligible (<$0.01/week for new rhetoric documents).
+  **Routing method:** AI classification using a cheap model (gpt-4o-mini) with the 14 category descriptions as the classification schema. Batch-classify existing rhetoric documents during backfill. Cost: ~$1-2 for the full 57K rhetoric corpus. Ongoing cost: negligible (<$0.01/week for new rhetoric documents).
 
   **Routing model version pinning:** Category baselines must be computed using the **same routing model version** that will be used for ongoing monitoring. If the routing model is updated (e.g., gpt-4o-mini → gpt-4o-mini-2025-07), rhetoric documents in baselines must be re-routed with the new model before comparing to current routing. Otherwise, routing model changes could appear as category volume shifts. The routing model version is tracked as part of the version bundle (see §AI Reproducibility Strategy).
 
@@ -1669,9 +1669,9 @@ These are source infrastructure fixes that both the old and new architectures ne
 
 #### Sprint R-S1 (new — source expansion, parallelizes with R4/R5 UI work)
 
-**Goal:** Expand document sources to achieve meaningful signal across all 13 categories. Builds ingestion pipelines, runs historical backfills, and recomputes per-source-type baselines for affected categories.
+**Goal:** Expand document sources to achieve meaningful signal across all 14 categories. Builds ingestion pipelines, runs historical backfills, and recomputes per-source-type baselines for affected categories.
 
-**Prerequisite:** Source availability spikes complete (see `SPIKE_FINDINGS.md`). Results: 7 of 8 spikes passed (GDELT diversity metrics failed). All new sources validated with sufficient volume, historical depth, and metadata quality. 13 categories confirmed viable for launch.
+**Prerequisite:** Source availability spikes complete (see `SPIKE_FINDINGS.md`). Results: 7 of 8 spikes passed (GDELT diversity metrics failed). All new sources validated with sufficient volume, historical depth, and metadata quality. 14 categories confirmed viable for launch.
 
 **Phase 1 — P0 Ingestion pipelines (~2 weeks, parallelizable):**
 
@@ -1699,7 +1699,7 @@ _Prerequisite: (a) Sprint R-S1d data quality fixes landed, (b) Sprint R-S1e incr
 - Pull documents from all new sources across all 4 baseline periods + Trump 2025 monitoring period
 - All validated sources have 2017+ archives (CourtListener: all federal courts; DOJ: archive; GovInfo: 1995+; LegiScan: 2009+; FEC: 1999+)
 - Route documents through category assignment logic with source-type tagging
-- **Re-cross-feed existing GDELT rhetoric corpus to 13 categories.** The Sprint R1/R3.2 cross-feed was validated against 11 categories. Three new categories (lawEnforcement, civilLiberties, immigrationEnforcement) need GDELT cross-feed rows generated. Re-run `crossfeedRhetoricToCategories()` against existing ~57K rhetoric documents with updated `categories.ts`. One-time batch. Required before baseline computation — without it, new categories lack GDELT source-type baselines and source convergence is a no-op. Critical for immigrationEnforcement (FR-only volume is ~5-6/wk).
+- **Re-cross-feed existing GDELT rhetoric corpus to 14 categories.** The Sprint R1/R3.2 cross-feed was validated against 11 categories. Three new categories (lawEnforcement, civilLiberties, immigrationEnforcement) need GDELT cross-feed rows generated. Re-run `crossfeedRhetoricToCategories()` against existing ~57K rhetoric documents with updated `categories.ts`. One-time batch. Required before baseline computation — without it, new categories lack GDELT source-type baselines and source convergence is a no-op. Critical for immigrationEnforcement (FR-only volume is ~5-6/wk).
 
 **Phase 3 — Per-source-type baseline computation + Layer 2 enhancement (overlaps with Phase 2):**
 
@@ -1723,7 +1723,7 @@ _Prerequisite: (a) Sprint R-S1d data quality fixes landed, (b) Sprint R-S1e incr
 - Validate Pass 2 mechanism extraction fields produce structured, verifiable output (not just "concerning" labels)
 - Verify coverage health monitoring: simulate source silence and confirm alert triggers before real monitoring begins
 - Verify cross-source deduplication: confirm canonical_id matching catches GovInfo↔GAO and GovInfo↔IG overlaps; confirm duplicate-rejection rate is tracked per source pair
-- Verify backfill completeness: API count vs. DB count per source type per baseline period within tolerance (FEC: exact; GovInfo: ≤1%; CourtListener NOS: ≤3%; text-search signals: peak weekly within pagination cap; FR: all 13 categories populated; GDELT cross-feed: all 13 categories have rhetoric documents)
+- Verify backfill completeness: API count vs. DB count per source type per baseline period within tolerance (FEC: exact; GovInfo: ≤1%; CourtListener NOS: ≤3%; text-search signals: peak weekly within pagination cap; FR: all 14 categories populated; GDELT cross-feed: all 14 categories have rhetoric documents)
 
 **Phase 5 — P2 Deferred sources (post-launch):**
 
@@ -1926,7 +1926,7 @@ These items emerged from the ChatGPT and Claude Code reviews. They are validated
 
 ### Summary
 
-The proposed architecture replaces keyword-driven detection with triangulated measurement across three independent layers, monitoring 13 democratic threat vectors grounded in established political science frameworks (V-Dem, Freedom House, Levitsky & Ziblatt):
+The proposed architecture replaces keyword-driven detection with triangulated measurement across three independent layers, monitoring 14 democratic threat vectors grounded in established political science frameworks (V-Dem, Freedom House, Levitsky & Ziblatt):
 
 1. **Structural anomaly detection** — deterministic, language-immune, measures the machinery of government. Source-type-specific structural analyzers (FR dimensions differ from CourtListener dimensions differ from LegiScan dimensions) with cross-source convergence scoring. Validated by spike findings showing Presidential Document surges, Excepted Service notice disappearance, Proposed Rule declines, selective prosecution claims up 663%, and institutional capacity collapse (FEC quorum loss, IG firings) already visible in metadata.
 2. **AI two-pass assessment** — meaning-sensitive, reads for understanding, produces cited analysis with different models for epistemic independence. Includes false-negative audit sampling to prevent Pass 1 from becoming a silent filter.

@@ -1,538 +1,211 @@
-# Democracy Monitor — Future Roadmap (Post-Launch)
+# Democracy Monitor — Future Roadmap
 
-**Purpose**: Single source of truth for all validated improvements and feature phases planned after launch. Items here have been reviewed and endorsed during architectural design sessions but are deferred to post-launch sprints.
+Democracy Monitor is an open-source platform that detects democratic erosion signals by analyzing the U.S. government's own documentary record. The system reads hundreds of thousands of government documents — federal regulations, court filings, DOJ enforcement actions, presidential statements, inspector general reports, legislative bills, and election commission records — and uses three independent detection layers (structural anomaly analysis, AI document assessment, and thematic drift monitoring) to identify patterns that warrant public attention.
 
-**Relationship to other documents**:
+The current system monitors 14 democratic threat vector categories with documents from 9 primary sources across 5 historical periods. It detects known erosion events (IG firings, agency shutdowns, civil service restructuring, executive order surges) with 77% accuracy while maintaining low false positive rates during baseline governance periods.
 
-- `ROADMAP.md` — covers everything through launch (Sprints 11-21, R1-R5, R-S1, R-CL1)
-- `ARCHITECTURE.md` — contains the architectural vision for Phases 5-10 in its roadmap section; this document contains the implementation-level specifications
-- `ARCHITECTURE_ROADMAP.md` — **superseded by this document** (all items migrated here)
+This roadmap describes four planned releases that extend the platform's analytical capabilities. Each addresses a distinct gap in democratic oversight that no existing tool fills.
 
-**How to use this document**: When starting sprint planning, review this list for items that may be relevant to current work. When new ideas emerge during implementation, add them to the "Added During Implementation" section with date and source attribution rather than expanding the current sprint scope.
+**Release order and rationale:**
 
----
-
-## Table of Contents
-
-1. [Architecture Improvements (R-F items)](#architecture-improvements)
-2. [Surviving Features (from original Sprint 23-29 plan)](#surviving-features)
-3. [Phase 5 — Deferred Sources](#phase-5--deferred-sources)
-4. [Phase 6 — Primary-Source Rhetoric](#phase-6--primary-source-rhetoric)
-5. [Phase 7 — Media Coverage as Independent Signal](#phase-7--media-coverage-as-independent-signal)
-6. [Phase 8 — Rhetoric vs. Action](#phase-8--rhetoric-vs-action)
-7. [Phase 9 — Project 2025: Plan vs. Delivered](#phase-9--project-2025-plan-vs-delivered)
-8. [Phase 10 — Authoritarian Infrastructure Build-out](#phase-10--authoritarian-infrastructure-build-out)
-9. [Cross-Feature Convergence Framework](#cross-feature-convergence-framework)
+1. **Detection Quality & Platform Hardening** — foundation must be solid before building on it. Every subsequent release depends on accurate, calibrated detection.
+2. **Project 2025: Plan vs. Delivered** — requires almost no new data sources (the system already ingests the government documents that implement the proposals). Proposal extraction is available from third parties. The most immediately actionable feature for the public: "34% of Project 2025 proposals show implementation activity" is a headline that drives adoption and sponsorship. Also the most analytically defensible — matching documents against published proposals is a concrete factual question, not an interpretive judgment.
+3. **Rhetoric vs. Action** — requires substantial new source integration (Congressional Record, agency newsrooms, social media archives) but those sources have independent value even before the lag analysis engine is built. The matched-pairs engine and ring analysis are the sophisticated features that take longer; the source integration delivers value immediately through the existing three-layer pipeline.
+4. **Authoritarian Infrastructure Build-out** — the most novel contribution (nobody else tracks operational capacity for authoritarian action) but requires the most new data source integration (SAM.gov, USAJobs, SEC EDGAR). Its analytical power is maximized when it converges with Releases 2 and 3, so building it last lets the convergence framework be designed with real data rather than speculatively. Exception: if a specific infrastructure signal becomes urgent (e.g., detention contracts surge), the relevant fetcher can be fast-tracked as a standalone source addition without building the full analytical framework.
 
 ---
 
-## Architecture Improvements
+## Release 1: Detection Quality & Platform Hardening
 
-Sources: ChatGPT architectural review, ChatGPT red team analysis, Claude Code technical review (2026-02-22 through 2026-02-24).
+### Why It Matters
 
----
+A democracy monitoring tool is only as credible as its accuracy. False positives erode trust ("the system cries wolf"), false negatives create blind spots ("the system missed something important"), and data quality issues undermine every downstream analysis. Before adding new features, the platform must achieve the highest possible detection accuracy on events the public record already contains.
 
-### R-F1: Pass 1 Pre-filtering with Functional Classifier
+The current system detects 77% of known democratic erosion events across 2017-2026. The remaining 23% are split between genuine source gaps (events that primarily manifested in rhetoric or media coverage, not government documents), statistical limitations (thin categories where normal variance exceeds detection thresholds), and calibration opportunities (documents that exist in the database but aren't yet surfaced by the detection layers).
 
-**Source**: Claude Code review #4 · **Layer**: 2 · **Effort**: Small (~20 LOC)
-**Prerequisite**: Layer 1 functional classifier operational (Sprint R2 ✅)
+This release closes every gap that can be closed with the existing source stack, builds the operational infrastructure for ongoing accuracy improvement, and establishes the human review processes that keep the system honest.
 
-Documents classified by Layer 1 as `financial_regulatory` or `cultural_ceremonial` are formulaic (SEC filings, cultural import determinations) and extremely unlikely to be relevant to erosion concerns. Skipping Pass 1 for these documents would reduce AI costs by ~15–20% with zero false-negative risk.
+### Key Features
 
-Conceptually clean — Layer 1's structural classification informing Layer 2's scope. Could extend to other formulaic functional buckets as confidence grows.
+**Detection calibration.** Per-category adaptive thresholds that account for document volume — a category with 6 documents per week needs different statistical treatment than one with 300. Thin categories (judicialIndependence, elections, immigrationEnforcement) currently produce noisy structural scores that inflate false positive rates in baseline periods. The fix involves either Poisson-based confidence intervals for small samples or per-category threshold overrides. The goal: every category passes the baseline stability test (≤5-10% elevated weeks during normal governance periods) without sacrificing true positive detection.
 
-**Validation needed**: Run Pass 1 against a sample of these documents across all four baselines. If the flag rate is < 0.5%, pre-filtering is safe.
+**Layer 3 thematic drift restoration.** The thematic drift layer is currently in reinforcement-only mode — it can strengthen signals from other layers but can't independently detect events. This is because baseline centroids were computed from contaminated embeddings (content-less court docket stubs and metadata-only media documents that have since been cleaned up). After recomputing centroids from clean data, Layer 3 should be re-evaluated as an independent signal. Its unique value proposition is detecting _gradual_ semantic drift that no single week's analysis would catch — the slow reorientation of an agency's output from "oversight" language to "efficiency" language over months, invisible to per-document assessment but visible in the embedding trajectory.
 
-**Implementation**: Add a `PASS1_SKIP_BUCKETS` constant to the Layer 2 pipeline. Documents in those buckets still get embedded (Layer 3) and counted (Layer 1) but don't go through AI assessment.
+**Admin review queue.** Human review of AI assessments is essential for ongoing calibration. When the AI flags a document as concerning, a domain expert should be able to confirm, override, or provide context. These decisions feed back into the system's understanding of what constitutes genuine erosion versus routine governance. The review queue surfaces the AI's work for human judgment without requiring humans to read every document.
 
----
+**Feedback learning pipeline.** Systematic capture of human review decisions to improve detection over time. When reviewers consistently override the AI on a particular type of document (e.g., routine SEC filings that trigger false positives), the system proposes prompt adjustments or threshold changes. Every proposed change is human-approved and version-controlled — the system never silently modifies its own methodology.
 
-### R-F2: Sprint 21 Preservation vs. Deprecation
+**Additional data sources.** Three supplementary sources that fill specific category gaps: Oversight.gov IG reports (when an API becomes available or scraping proves reliable for all 75 IGs), Voting Rights Lab calibration data for LegiScan classification accuracy, and CBO reports for the fiscal category.
 
-**Source**: Claude Code review #7 · **Layer**: Keywords/annotations · **Effort**: Medium (~2–4 hours)
-**Prerequisite**: Sprint R4 (keywords demoted to annotation role)
+**Event retrospective harness.** A reusable tool for running known events through the complete detection pipeline retrospectively. When a new event occurs, the harness shows which layers detected it, which documents drove the detection, and what the system would have reported. This produces public methodology documentation, calibration benchmarks, and credibility artifacts for the open-source community.
 
-Sprint 21 added 56 operational keywords, the `admin-specific-keywords.ts` overlay system, and `getEffectiveKeywords()` pipeline integration. Under the new architecture:
+**Cross-category synchrony detection.** When multiple categories are simultaneously elevated — civilService, executiveOversight, and judicialIndependence all flagged in the same week — that cross-category pattern is itself a signal above the sum of individual categories. This meta-signal detects coordinated institutional pressure that individual category monitors cannot see.
 
-- **Preserve**: Admin overlay data as annotation metadata (highlighting "DOGE," "Schedule F" etc. in document text). The keyword dictionaries themselves as a research artifact documenting terminology evolution.
-- **Simplify**: The overlay's date-filtering complexity was built for scoring. For annotation use, it only needs to know "should this keyword be highlighted for documents in this administration?" — much simpler logic.
-- **Deprecate**: `getEffectiveKeywords()` pipeline integration into the assessment engine. The scoring pathway through `document-scorer.ts`.
+**Media coverage as independent signal.** Media coverage patterns — not the content of coverage, but the _patterns_ of coverage — are democracy health indicators. When a topic that normally generates diverse coverage across 30 outlets suddenly shows identical framing across 25 of them, something is shaping coverage. When a major government action generates almost no media scrutiny because the news cycle is dominated by something else, the absence of scrutiny is informative. This feature builds media-specific structural dimensions, media-specific baselines, and integrates media scrutiny as a convergence input alongside government document analysis.
 
----
+**Platform polish.** First-time visitor onboarding, mobile-responsive layouts, performance optimization, and the ongoing UI improvements that make the system accessible to non-technical users.
 
-### R-F3: Cross-Category Synchrony Detection
+### Implementation Details
 
-**Source**: ChatGPT red team analysis #4 · **Layer**: Convergence synthesis · **Effort**: Medium (~50–80 LOC)
-**Prerequisite**: Convergence synthesis operational (Sprint R2+ ✅)
-
-Small anomalies across many categories in the same week may indicate coordinated action. Currently mentioned as "cross-category clustering" in Layer 1's capabilities list but not implemented as a first-class metric.
-
-**Proposed implementation**: After computing per-category status, count how many categories are simultaneously at Elevated or above. If N > threshold (e.g., 5 of 13 categories elevated in the same week), flag as a cross-category synchrony event. This is a meta-signal above individual category status. Already feeds the Administration Overview page's synchrony chart.
-
-**UI element**: A dashboard-level indicator (separate from individual category cards) showing "X of 13 categories elevated this week" with historical sparkline.
-
----
-
-### R-F4: Coverage Health Monitoring (Full Scope)
-
-**Source**: ChatGPT red team analysis #5 · **Layer**: Infrastructure · **Effort**: Medium (~100–150 LOC + dashboard)
-**Note**: Minimum viable scope **ships in Sprint R-S1 Phase 1** (per-source-type document count per day, "source silent" alerts, DOJ taxonomy change tracking). This R-F item covers the full operational dashboard beyond what R-S1 delivers.
-
-Full scope beyond R-S1:
-
-- Schema change detection (source publishing format changes)
-- Seasonal dip classification (distinguishing recess from silence)
-- "Other/unclassified" functional bucket ratio monitoring — a spike may indicate the government is changing metadata conventions, which could be an evasion tactic
-- Per-source historical baseline comparison (not just silence detection but volume deviation)
-- Admin-facing operational dashboard with source status, last successful fetch, document counts vs. expected
+| Item                                                     | Effort               | Prerequisite                                          |
+| -------------------------------------------------------- | -------------------- | ----------------------------------------------------- |
+| Per-category L1 threshold calibration                    | Medium               | Stable baseline data                                  |
+| Layer 3 re-evaluation with clean centroids               | Medium               | Content cleanup complete, baselines recomputed        |
+| Admin auth + review queue                                | Medium               | Dashboard operational                                 |
+| Feedback learning pipeline                               | Medium-Large         | Review queue operational                              |
+| Event retrospective harness                              | Large (~300 LOC)     | Three-layer system operational                        |
+| Cross-category synchrony detection                       | Medium (~50-80 LOC)  | Convergence synthesis operational                     |
+| Media coverage signal (GDELT Phase 7)                    | Large                | Media-specific baselines, convergence formula changes |
+| Pass 1 pre-filtering (functional classifier)             | Small (~20 LOC)      | Layer 1 functional classifier operational             |
+| AI model challenge set                                   | Medium               | Pass 1 + Pass 2 operational                           |
+| Semantic variance decomposition (within/between cluster) | Medium (~80-120 LOC) | Layer 3 operational with clustering                   |
+| Semantic escalation within functional buckets            | Medium-Large         | Layer 1 classifier + Layer 3 operational              |
+| Pass 2 infrastructure theme tagging                      | Small                | Add before next baseline re-run                       |
+| Onboarding + responsive + performance                    | Medium               | Dashboard feature-complete                            |
 
 ---
 
-### R-F5: Pass 2 Mechanism Extraction Fields (Full Scope)
+## Release 2: Project 2025 — Plan vs. Delivered
 
-**Source**: ChatGPT red team analysis #3 · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema change)
-**Note**: Core fields **ship in Sprint R-S1 Phase 3** (`powerCreatedOrExpanded`, `oversightReduced`, `enforcementLeverChanged`, `dueProcessChanged`, `accessToSystemsChanged`). This R-F item covers enhancements beyond initial deployment.
+### Why It Matters
 
-Enhancements:
+Project 2025, published by the Heritage Foundation, is a 920-page blueprint for restructuring the federal government. It proposes specific policy changes organized by agency — who to fire, what programs to cut, which regulations to reverse, how to restructure the civil service. Regardless of whether any administration formally endorses the document, it functions as a declared-intent baseline: a public, detailed plan against which government actions can be measured.
 
-- Mechanism taxonomy refinement based on initial deployment data (are the 5 fields the right decomposition?)
-- Cross-document mechanism linking (same mechanism appearing across multiple documents in a week)
-- Mechanism trend analysis (which mechanisms are appearing more frequently over time)
-- Mechanism-based filtering in the admin review queue (surface documents by mechanism type)
+This creates a unique analytical opportunity. Most democracy monitoring compares government actions against _abstract principles_ (is judicial independence being eroded? is the civil service being politicized?). Those assessments require subjective judgment about what counts as erosion. Project 2025 comparison is different: it compares government actions against _specific, published proposals_. "Did the government do what this document said it should do?" is a concrete, auditable question with a factual answer.
 
----
+The system can answer this question automatically because it already ingests the government documents that would implement the proposals — Federal Register rules, executive orders, DOJ enforcement changes, OPM workforce guidance. Matching these documents against embedded P2025 proposals is a retrieval problem, and the LLM judge that classifies matches (NOT_RELATED / LOOSELY_RELATED / IMPLEMENTS / EXCEEDS) produces an auditable explanation for each match.
 
-### R-F6: Semantic Escalation Within Functional Buckets
+The "EXCEEDS" classification is particularly important. When government actions go beyond what even Project 2025 proposed, that's a signal worth surfacing — it means the administration is moving faster or further than its own allies' blueprint anticipated.
 
-**Source**: ChatGPT red team analysis #2 · **Layer**: 3 · **Effort**: Medium–Large
-**Prerequisite**: Layer 1 functional classifier + Layer 3 operational
+### Key Features
 
-Track embedding drift _within_ each institutional function bucket, not just at the category level. Example: within the "personnel guidance" functional bucket for civilService, detect that the semantic content shifted from hiring-related guidance to termination-related guidance — even though the document count, type, and functional classification are identical.
+**Proposal extraction and embedding.** The 920-page document needs systematic extraction into individual proposals, each with: target agency, mapped monitoring category, severity level, text, and embedding vector. Several organizations (Democracy Forward, Brookings P2025 tracker) have already extracted and categorized proposals — their work could serve as seed data with attribution, dramatically reducing the human extraction effort.
 
-This catches the most sophisticated evasion: keeping structure, function, and volume identical while changing substance within a functional category.
+**Weekly matching pipeline.** Each week, newly ingested government documents are compared against all P2025 proposal embeddings via cosine similarity. Top candidates are evaluated by an LLM judge that classifies the relationship and provides reasoning. The judge's prompt: "The government published this document. Does it implement, exceed, or have nothing to do with this specific P2025 proposal? Explain why."
 
-**Implementation**: Sub-cluster Layer 3's embeddings by functional bucket. Compute per-bucket centroid distance against the administration's rolling window. Report significant intra-bucket drift alongside category-level drift.
+**Status tracking over time.** Each proposal has a persistent status (Not Started → In Progress → Implemented → Exceeded → Abandoned) that updates weekly based on new matches. This enables "implementation velocity" — how many proposals changed status this week, this month, this quarter? Is the pace of implementation accelerating or decelerating?
 
----
+**"Exceeded" detection.** The most analytically novel feature. When the LLM judge determines that a government action goes beyond what P2025 proposed — more aggressive than the blueprint — that's a qualitatively different signal than mere implementation. Tracking which proposals are being exceeded, in which policy domains, reveals where the administration's ambitions extend beyond its declared allies' plan.
 
-### R-F7: AI Model Challenge Set
+**Category integration.** P2025 match counts feed into the existing convergence scoring per monitoring category. A category with high structural/AI scores _and_ active P2025 implementation is qualitatively different from high scores alone — it adds the "declared intent" dimension to the "measured action" dimensions the system already tracks.
 
-**Source**: ChatGPT red team analysis #3 · **Layer**: 2 · **Effort**: Medium (initial curation) + Small (ongoing)
-**Prerequisite**: Pass 1 + Pass 2 operational (Sprint R3 ✅)
+### Implementation Details
 
-Maintain a fixed test suite of known documents where stable classifications are expected. Run Pass 1 and Pass 2 against the challenge set whenever models are updated or prompts are revised. Track classification stability over time.
+**Schema:**
 
-**Purpose**: Detect model drift, prompt sensitivity, and regression. If a model update changes classifications on known documents, that's a signal to investigate before deploying the update to production.
+- `p2025_proposals` table: id, chapter, target_agency, dashboard_category, severity, text, summary, embedding
+- `p2025_matches` table: proposal_id, document_url, cosine_similarity, llm_classification, llm_confidence, llm_reasoning, human_reviewed
+- `p2025_tracking` table: proposal_id, week_of, status, match_count (enables time-series analysis)
 
-**Implementation**: ~50–100 curated documents spanning routine governance, known erosion events, and edge cases. Stored as versioned fixtures. Run as part of the model-update baseline regeneration process.
+**Pipeline:**
 
----
+1. Proposal extraction sprint — ingest existing third-party extractions or perform independent extraction. Human review required for quality.
+2. Embed all proposals using the same embedding model as the document pipeline.
+3. Weekly matcher: cosine similarity against new documents → top-K candidates → LLM judge classification → store matches with reasoning.
+4. Status update: review new matches, update proposal status based on cumulative evidence.
+5. Category integration: P2025 implementation velocity as a convergence input.
 
-### R-F8: Semantic Variance Decomposition
+**UI:** `/p2025` page with headline statistic ("Of Y proposals tracked, X% show implementation activity"), status breakdown bar, per-area progress, and drill-down to individual proposals with their matched government documents and the AI's reasoning for each match.
 
-**Source**: ChatGPT final architectural review (2026-02-22) · **Layer**: 3 · **Effort**: Medium (~80–120 LOC)
-**Prerequisite**: Layer 3 operational with clustering (Sprint R2 ✅)
-
-Layer 3's centroid drift can be caused by vocabulary modernization, template changes, or drafting personnel turnover — not just institutional change. A variance decomposition metric would sharpen signal specificity:
-
-- **Within-cluster variance**: How much are documents varying within established topic clusters? An increase suggests stylistic or formatting changes.
-- **Between-cluster variance**: How spread apart are the cluster centroids? An increase suggests substantive institutional change — the agency's output is fragmenting into more distinct topic areas.
-
-Substantive institutional change (e.g., an agency pivoting from guidance to enforcement) typically increases between-cluster variance. Stylistic change (e.g., new leadership's writing preferences) typically increases within-cluster variance without moving centroids.
-
-**Implementation**: After computing k-means clusters, decompose total embedding variance into within-cluster and between-cluster components (standard ANOVA decomposition on high-dimensional vectors). Track the ratio over time.
-
-**UI element**: Optional diagnostic on the Layer 3 thematic drift panel — "variance type: structural" vs. "variance type: stylistic" annotation when drift is detected.
+**Effort:** Medium-Large. Proposal extraction depends on third-party data availability. Matcher pipeline is straightforward given existing embedding infrastructure. Status persistence is small. Category integration is small.
 
 ---
 
-### R-F9: Event Retrospective Harness
+## Release 3: Rhetoric vs. Action
 
-**Source**: ChatGPT red team validation analysis (2026-02-22) · **Layer**: All / validation · **Effort**: Large (~200–300 LOC + analysis time)
-**Prerequisite**: Full three-layer system operational (Sprint R3 ✅)
+### Why It Matters
 
-Run three known institutional events — DOGE establishment, USAID closure, and IG firings — through the complete three-layer pipeline retrospectively. For each event, report per week:
+Democratic erosion often follows a pattern: officials first _say_ something, then they _do_ something. The rhetoric comes weeks or months before the policy. A president calls an agency "corrupt" and "wasteful" — three weeks later, DOGE enters the agency's offices and puts 10,000 employees on leave. A secretary of state announces a "reorganization" — within days, career staff are terminated and programs are cancelled.
 
-- Which layers fired (elevated vs. normal)
-- Signal strength (z-scores, flag rates, centroid distances)
-- Whether convergence status changed
-- Which specific documents were the top drivers
-- Which layer triggered first
+This pattern is not unique to any administration. It is a structural feature of how governments signal, test, and implement policy changes. The lag between rhetoric and action is measurable, and the measurement itself is valuable: it tells the public what is likely coming next, how reliably officials follow through on stated intentions, and whether rhetoric is escalating faster than action (signaling worse to come) or decelerating (signaling a trial balloon that lost momentum).
 
-**Expected detection patterns** (from ChatGPT analysis):
+No existing tool systematically measures this. Media covers rhetoric and actions separately. Fact-checkers verify individual claims. Democracy indices score outcomes annually. Nobody tracks the _temporal relationship_ between what officials say and what the government subsequently does, across every policy domain, with primary-source attribution.
 
-- **DOGE**: Layer 2 first (AI flags presidential documents and news), Layer 1 corroborates (presidential document surge in civilService). Layer 3 follows later as semantic cluster emerges.
-- **USAID closure**: Layer 1 convergence gap first (news spike without corresponding government documents) or Layer 2 (news/WH coverage). Layer 1 structural FR signal may be weak since the action was largely operational.
-- **IG firings**: Layer 2 first (AI flags oversight-related reporting), Layer 1 may show convergence gap. Layer 3 follows if it becomes a sustained theme.
+Democracy Monitor can do this because it already ingests the government's formal actions (regulations, court filings, enforcement actions) and presidential statements (via the Compilation of Presidential Documents). Adding attributed rhetoric from the Congressional Record, cabinet agency newsrooms, and official social media accounts creates a complete picture of who said what, when, and whether corresponding government action followed.
 
-**Purpose**: Ultimate practical validation. Produces: (1) public methodology chapter demonstrating detection capabilities, (2) calibration reference for threshold adjustment, (3) credibility artifact for open-source release.
+### Key Features
 
-**Implementation**: Standalone script that takes a date range and event description, runs all three layers against stored data, produces structured report. Generalizable into reusable "event analysis" tool.
+**Congressional Record integration.** Full-text floor speeches from the Congressional Record via GovInfo API, parsed by speaker using the `unitedstates/congressional-record` open-source parser. Each document is one speaker's remarks on one topic, with party affiliation, state, and ICPSR ID metadata. This transforms 240K-character monolithic debate transcripts into individually assessable, attributed rhetoric documents. Volume: 75-491 entries per week across all five analysis periods (2017-2026). Speaker parsing is a solved problem — Stanford's Congressional Speech Dataset validated this approach across 14 million speeches from 1879 to 2022.
 
----
+**Cabinet and VP rhetoric via agency newsrooms.** Every cabinet agency publishes speeches, transcripts, and press releases on .gov domains. The State Department publishes full press briefing transcripts and Secretary speeches with archived versions covering all baseline periods. DHS publishes Secretary statements directly relevant to immigration and law enforcement monitoring. DOJ (already integrated for press releases) extends to AG speeches and testimony. Each agency follows the same pipeline pattern: paginated listing → fetch full page → extract transcript → attribute to speaker → store with speaker metadata.
 
-### R-F10: UI Design Specification V4
+**Presidential social media.** For the current president, multiple third-party archives provide structured access to Truth Social posts: the CNN-maintained archive (JSON/CSV, updates every 5 minutes), the American Presidency Project at UCSB, and the Truthbrush open-source client from Stanford Internet Observatory. The gap between official record language and direct-to-public social media language is itself a signal — executive orders get formal FR language, but social media posts often use more aggressive framing that signals direction before policy follows.
 
-**Source**: Architecture review process (2026-02-24) · **Layer**: All (UI) · **Effort**: Large (~2–3 days)
-**Prerequisite**: Sprint R3 complete, real three-layer output available
+**Cross-correlation lag analysis.** For each policy area, compute the cross-correlation between weekly rhetoric scores and weekly action scores at lags of 0-12 weeks. The peak correlation and its lag position quantify: "how long after officials say X does corresponding policy action appear?" This produces a per-policy-area metric that the public can track over time.
 
-The UI Design Specification V3 was written against the original keyword-severity architecture. V4 rewrites all data-model-dependent sections while preserving architecture-independent decisions (visual language, reading level toggle, dark/light mode, responsive design, embed pattern). A divergence map (`UI_V3_DIVERGENCE_MAP.md`) documents every V3 section that needs updating.
+**Matched-pairs engine.** Linking _specific_ attributed statements ("Secretary of DHS said X on date Y") to _specific_ government actions ("DHS published rule Z three weeks later"). The approach: embed individual rhetoric statements and action documents, find cosine-similar pairs across the temporal lag window, LLM judge confirms the causal relationship. Each match is auditable — the user can see the original statement, the corresponding action, the time lag, and the AI's reasoning for connecting them.
 
-Key changes: Status system (Stable/Warning/Drift/Capture → Stable/Elevated/Divergent/Confirmed Concern/No Data), scoring (single decay-weighted → three-layer convergence), AI (single AI Skeptic → two-pass with false-negative audit), keywords (detection drivers → annotations only), new pages (Administration Overview as primary entry point), category detail (single trend chart → three-panel visualization).
+**Speaker-level tracking.** With attributed rhetoric data, compute per-official rhetoric-to-action patterns. Which officials' rhetoric most reliably predicts policy action? Some officials serve as trial balloons (long lag, low conversion rate) while others make policy announcements (short lag, high conversion). Tracking these patterns per speaker reveals the administration's communication strategy.
 
-**Approach**: Write V4 after Sprint R3, when real three-layer output provides concrete examples. The Architecture Proposal's Dashboard Visualization section serves as the interim UI specification for Sprint R4.
+**Ring analysis.** Rhetoric flows through concentric rings — from official record (Ring 1: Congressional Record, FR) to direct-to-public channels (Ring 2: social media, press conferences) to surrogate amplification (Ring 3: allied legislators, party leadership). When rhetoric appears in Ring 2 before Ring 1, or when Ring 3 surrogates test language that later appears in Ring 1 official actions, the progression pattern itself is informative. Measuring the lag between rings reveals how rhetoric is being operationalized.
 
----
+### Implementation Details
 
-### R-F11: Pass 2 Infrastructure Theme Tagging
+**Phase 1 — Rhetoric sources** (build first, feeds everything else):
 
-**Source**: Architecture design discussion (2026-02-24) · **Layer**: 2 (Pass 2) · **Effort**: Small (prompt + schema)
-**Prerequisite**: Next baseline re-run (AI model version update, ~2–4× per year)
-**Trigger**: Add to Pass 2 prompt and output schema _before_ the next scheduled baseline re-run so theme tags ride the re-run at zero additional cost.
+| Source                      | API                             | Coverage                        | Category routing                           |
+| --------------------------- | ------------------------------- | ------------------------------- | ------------------------------------------ |
+| Congressional Record (CREC) | GovInfo API                     | All 5 periods, 75-491/week      | Speaker-parsed, multi-category via content |
+| State Department newsroom   | HTML scraping (.gov)            | Archived versions for baselines | immigrationEnforcement, executiveActions   |
+| DHS newsroom                | HTML scraping (.gov)            | Secretary statements            | immigrationEnforcement, lawEnforcement     |
+| DOJ AG speeches             | Extend existing DOJ API         | Already partially covered       | lawEnforcement, judicialIndependence       |
+| Truth Social (presidential) | CNN archive / UCSB / Truthbrush | T2 + historical                 | Multi-category via content                 |
+| VP remarks                  | Captured via CPD                | Already ingested                | Multi-category via NARA subjects           |
 
-Add boolean fields to Pass 2 output: `detentionIncarceration`, `surveillanceApparatus`, `criminalizationOfOpposition`. Each boolean indicates whether the document relates to that cross-cutting theme, regardless of which monitoring category it belongs to.
+**Data model requirement**: `speaker` field on documents (or `speaker_id` linked to people table with name, role, party, agency). Design before building any fetcher — feeds matched-pairs, speaker tracking, and ring analysis.
 
-**What this enables**:
+**Phase 2 — Rhetoric analysis** (requires Phase 1 data):
 
-- Per-theme document counts across all categories per week, with baseline rates for comparison
-- Structural metric for infrastructure convergence: "N themes simultaneously active across M categories"
-- Replaces the V3 keyword-based infrastructure convergence with AI-based theme detection (language-immune, no treadmill)
-- The Opus narrative synthesis continues but can cite structured theme data rather than relying solely on cross-category interpretation
-
-**Why deferred**: All four baselines have already been run through Pass 2. Adding theme tags now would require re-running all baseline assessments (~$28–60). Instead, add the fields before the next model-version baseline re-run, when the re-run cost is already budgeted.
+| Component            | Effort | Description                                                                 |
+| -------------------- | ------ | --------------------------------------------------------------------------- |
+| Lag analysis service | Medium | Cross-correlation at 0-12 week lags per policy area                         |
+| Matched-pairs engine | Large  | Embed + cosine similarity + LLM judge across temporal window                |
+| Speaker tracking     | Medium | Per-official rhetoric-to-action conversion metrics                          |
+| Ring analysis        | Medium | Cross-ring lag measurement and progression patterns                         |
+| `/rhetoric` page     | Medium | Summary mode (lag table) + Detailed mode (matched pairs, speaker breakdown) |
 
 ---
 
-### R-F12: Per-Category L1 Structural Threshold Calibration
+## Release 4: Authoritarian Infrastructure Build-out
 
-**Source**: Sprint R-CAL2 NC-3 calibration analysis (2026-03-07)
-**Layer affected**: Layer 1 / Convergence synthesis
-**Effort**: Medium (analysis-heavy, code changes small)
-**Prerequisite**: Stable baseline data with clean embeddings
+### Why It Matters
 
-Five categories still exceed the 5% Elevated+ threshold during Biden 2022 baseline after the R-CAL2 fixes (L2 P2-corroboration, L3 reinforcement-only). All are driven by L1 structural noise in thin categories:
+Plenty of organizations track what the government _says_ (executive orders, policy statements) and what the government _decides_ (court rulings, enforcement actions). Democracy Monitor already does this across 14 categories. But almost nobody systematically tracks whether the government is quietly building the _operational capacity_ to act at scale — the physical infrastructure, the personnel pipeline, the surveillance technology, the legal authorities, and the funding that would make authoritarian action _possible_ even before any decision to act is made.
 
-| Category               | Biden 2022 Elevated+ | Avg docs/week | Root cause                                                                                        |
-| ---------------------- | -------------------- | ------------- | ------------------------------------------------------------------------------------------------- |
-| judicialIndependence   | 23.1%                | 6.3           | Structural z-scores inherently noisy at this volume — 12/52 weeks fire L1 even with dampening=1.0 |
-| executiveOversight     | 13.5%                | 42.5          | Mixed: 4 L1 thin-week spikes + 3 L2 with flagRateZScore >3.0                                      |
-| executiveActions       | 7.7%                 | 13.9          | 2 L1 + 2 L2 with z>3.0                                                                            |
-| elections              | 7.7%                 | 5.7           | 3 L1 thin-category noise + 1 L2                                                                   |
-| immigrationEnforcement | 5.8%                 | 7.2           | 3 L1 thin-category noise                                                                          |
+This is the capability dimension. It answers a different question than the other three releases. Rhetoric vs. Action asks "are officials following through on what they say?" Project 2025 asks "are they following a published plan?" Infrastructure Build-out asks: "even if they haven't done X yet, could they do X tomorrow?"
 
-**What doesn't work**: Global dampening constant changes (STRUCTURAL_MIN_DOC_COUNT tested at 10, 20, 30). Higher dampening trades true positives for false positive reduction uniformly — the wrong lever because it suppresses genuine signals in the same thin categories where noise is the problem.
+The distinction matters because infrastructure is often built quietly, through routine procurement and hiring processes that don't generate the kind of headlines or legal challenges that executive orders and court rulings do. A detention facility contract filed in SAM.gov, 2,000 new ICE officer postings on USAJobs, a facial recognition technology procurement — each is individually a routine government action. Together, they represent a systematic expansion of enforcement capacity that the public has a right to understand.
 
-**Proposed approach**: Adaptive thresholds based on corpus size. Categories with fewer than ~20 average docs/week need a higher structural anomaly threshold or a different statistical test (e.g., Poisson-based rather than z-score-based, since small-count distributions are not normal). Options:
+The scenario that makes this feature urgent: the same week that P2025 matching shows implementation of Chapter 5's detention proposals (Release 2) and rhetoric escalates about "mass deportation operations" (Release 3), SAM.gov reveals new detention facility contracts and USAJobs shows an ICE hiring surge (Release 4). Any one of these signals is informative. All four together tell a story that no single data source reveals: rhetoric is being operationalized according to a published plan, and the operational capacity to execute at scale is being built in parallel.
 
-- Per-category `STRUCTURAL_ANOMALY_THRESHOLD` overrides in `scoring-config.ts`
-- Automatic threshold scaling: `effectiveThreshold = BASE_THRESHOLD × (targetMinDocs / avgDocsPerWeek)` when avgDocs < targetMinDocs
-- Switch thin categories to Poisson confidence intervals instead of z-scores — a count going from 6 to 12 is within the 95% Poisson interval and shouldn't trigger
-- Accept a higher NC-3 threshold (10%) for categories below a document volume floor, documented as a statistical limitation
+### Key Features
 
-**For launch**: NC-3 threshold raised to 10% for categories with <20 avg docs/week. judicialIndependence (23.1%) remains a documented known limitation. All other categories pass at the adjusted threshold.
+**Detention capacity tracking.** Physical infrastructure for mass detention, measured through federal procurement data (SAM.gov API), private prison company filings (SEC EDGAR API for GEO Group and CoreCivic quarterly reports), and DHS statistical tables (encounters, detention bed counts, removals). The metric is concrete: total available detention bed capacity over time. Not "did the government say something about detention" but "how many people can the government detain tomorrow?"
 
----
+**Personnel build-out tracking.** Organizational capacity for enforcement at scale, measured through federal hiring data (USAJobs.gov API — job postings by agency, series, grade, location) and budget justifications (GovInfo — staffing targets, academy class sizes, authorized vs. filled positions). When 2,000 new ICE officer postings appear in a single month, that's infrastructure build-out regardless of any accompanying rhetoric.
 
-### R-F13: Layer 3 Re-evaluation as Independent Signal
+**Surveillance infrastructure tracking.** Technical capacity for monitoring at scale, measured through DHS technology procurement (SAM.gov — facial recognition, border surveillance, social media monitoring, biometric databases), FBI/NSA annual transparency reports, and federal grants to state/local law enforcement for surveillance equipment. The metric: surveillance technology spending and capability expansion over time.
 
-**Source**: Sprint R-CAL2 analysis (2026-03-07)
-**Layer affected**: Layer 3 / Convergence synthesis
-**Effort**: Medium
-**Prerequisite**: Clean baseline recomputation after OIG backfill, FEC enrichment, and FR content backfill
+**Legal infrastructure tracking.** Expansion of enforcement authority and reduction of legal constraints. Partially captured by existing sources (DOJ policy memos, consent decree withdrawals via CourtListener, AG opinions). Additional signals: new federal crime categories (LegiScan), mandatory minimum expansions, asset forfeiture fund balances, IRS enforcement budget shifts, OFAC sanctions expansion rate. The metric: how many enforcement tools exist and how broad is their scope — distinct from whether they're being _used_ (which existing categories already track).
 
-L3 (thematic drift) was set to reinforcement-only mode during R-CAL2 based on empirical findings: 23 false positive weeks in Biden 2022, 0 independent true detections across the entire validation set. The one event L3 detects (T2-12 government shutdown) already has L1+L2 = Divergent independently. L3 had a 44% false positive rate (23/52 Biden 2022 weeks).
+**Financial infrastructure tracking.** Funding patterns that enable enforcement capacity. DOJ asset forfeiture fund reports, DHS budget execution reports, ICE detention funding vs. expenditure. The metric: enforcement spending growth rate relative to overall budget.
 
-**Root cause**: Baseline centroids were computed from contaminated embeddings — 164K content-less CourtListener docket stubs (now marked `metadata_only`) and 60K GDELT metadata-only documents (excluded). The centroids that L3 measures drift against were themselves noisy, producing noisy drift measurements.
+**Cross-feature convergence.** When detention capacity, personnel build-out, and surveillance procurement all accelerate in the same policy domain in the same timeframe, while P2025 proposals for that domain are being implemented (Release 2) and rhetoric about that domain is escalating (Release 3) — that convergence across four independent analytical dimensions is the strongest signal the system can produce. This is a higher-order version of the existing three-layer convergence: not "do structural, AI, and thematic analysis agree?" but "do rhetoric, blueprint, capability, and measured action all point in the same direction?"
 
-**Re-evaluation trigger**: After the next full baseline recomputation with clean embeddings (post content backfill and source cleanup), re-run the L3 analysis:
+### Implementation Details
 
-1. Compute per-source-type centroids from clean full-text embeddings only
-2. Measure Biden 2022 L3 false positive rate — if it drops below 10%, L3 may be viable as an independent signal
-3. Check whether L3 catches any events that L1+L2 miss — the architecture's claim is that L3 detects _gradual_ semantic drift invisible to per-document assessment (L2) and structural metrics (L1). Test against T2-5 (sustained layoff program, 6+ months) and T2-7 (Schedule F evolution over 12 months)
-4. If L3 passes both tests (low baseline noise + catches gradual drift), restore as independent signal with the higher threshold (likely 4.0-5.0 instead of current 3.5)
+**Data sources and feasibility:**
 
-**Reinforcement-only mode is the correct default until this re-evaluation is complete.** The flag should be a configurable constant (`L3_INDEPENDENT_SIGNAL = false`) in `scoring-config.ts`, not hardcoded architectural removal.
+| Source                | API                | Historical                | Cost | Feasibility | Signal                                             |
+| --------------------- | ------------------ | ------------------------- | ---- | ----------- | -------------------------------------------------- |
+| SAM.gov               | Public REST        | Years of procurement data | Free | High        | Detention contracts, surveillance tech procurement |
+| USAJobs.gov           | Public REST        | Job postings over time    | Free | High        | Law enforcement hiring by agency                   |
+| SEC EDGAR             | Public REST        | All quarterly filings     | Free | High        | Private prison bed counts, occupancy, revenue      |
+| GovInfo budget docs   | Already integrated | All analysis periods      | Free | High        | Staffing targets, academy class sizes              |
+| FBI/NSA transparency  | Published PDFs     | Annual, low volume        | Free | Medium      | FISA stats, surveillance program scope             |
+| State/local grant DBs | Varies by program  | Partial                   | Free | Lower       | Federal surveillance grants to local agencies      |
 
----
-
-## Surviving Features (from original Sprint 23–29 plan)
-
-These features were planned in the original Sprint 23-29 sequence and survive under the new architecture with modifications.
-
----
-
-### Admin Auth + Review Queue (was Sprint 24)
-
-**Effort**: Medium
-**Prerequisite**: Sprint R4 dashboard operational
-
-- Admin authentication (shared-secret token)
-- Feedback store for human review decisions
-- Review queue page showing Pass 2 assessments for human review (replaces old keyword-based alerts)
-- Feedback fields on assessment records
-- See original Sprint 24 plan and V3 Addendum Sprint D for full specification
-
----
-
-### Suppression Learning + Proposals (was Sprint 26)
-
-**Effort**: Medium–Large
-**Prerequisite**: Admin review queue operational, sufficient Pass 2 data
-
-- Feedback learning pipeline using Pass 2 assessment patterns
-- Admin proposal review for prompt adjustments and threshold changes
-- See original Sprint 26 plan and V3 Addendum Sprint E
-
----
-
-### Onboarding + Responsive Polish + Performance (was Sprint 28)
-
-**Effort**: Medium
-**Prerequisite**: Dashboard feature-complete
-
-- First-time visitor onboarding flow
-- Mobile-responsive layouts across all pages
-- Performance optimization (bundle size, data loading, caching)
-- See original Sprint 28 plan and UI spec sections 4.5, 4.6, 10.2
-
----
-
-## Phase 5 — Deferred Sources
-
-Post-launch supplementary data sources that didn't make the R-S1 cut.
-
-- **Oversight.gov scraping** — all 75 IGs. No API exists; community scraper (inspectors-general project) is spotty. Would provide direct IG report access for executiveOversight category. Significant maintenance burden per-IG.
-- **VRL partnership** — Voting Rights Lab calibration dataset for LegiScan AI classification accuracy. Would provide ground-truth labels for state voting legislation, enabling precision/recall measurement on the system's LegiScan assessments.
-- **CBO reports pipeline** — Congressional Budget Office fiscal analysis. Low-volume supplementary signal for fiscal category.
-
----
-
-## Phase 6 — Primary-Source Rhetoric
-
-_Full architectural specification in `ARCHITECTURE.md` Phase 6._
-
-Post-launch, before the media sprint. Builds the primary-source rhetoric content that feeds Phases 7 and 8.
-
-### 6a. Congressional Record (CREC) via GovInfo
-
-**Feasibility**: Confirmed (2026-03-03). GovInfo API collection `CREC`, available across all 5 periods (2017-2026), full HTML text via granule download. Volume: 75-491 entries/week.
-
-**Speaker parsing**: Solved problem. `unitedstates/congressional-record` parser (Python, maintained) converts GPO HTML into structured per-speaker turns. Stanford's Congressional Speech Dataset validated this approach across 14 million speeches (1879-2022) with ICPSR ID linking. Procedural content filtered automatically.
-
-**Ingestion pattern**: Fetch CREC HTML → parse by speaker → store each substantive speech as separate document with speaker metadata (name, party, state, ICPSR ID). Each document is one speaker's remarks on one topic — much better unit for Layer 2 than 240K-char monolithic debate transcripts.
-
-**Open design decisions**:
-
-1. **Filtering strategy** — unfiltered CREC includes procedural noise ("PLEDGE OF ALLEGIANCE", "ADDITIONAL SPONSORS"). Keyword filtering per category needed but risks missing novel rhetoric if too aggressive. Options: broad filter (remove only clearly procedural), narrow filter (category-specific keywords), or ingest all and let Layer 2 triage.
-2. **Category routing** — which categories receive CREC documents and via what rules. Floor speeches touch multiple categories; need multi-category routing or primary-category assignment.
-3. **CREC-specific Layer 1 dimensions** — speaker party distribution, bipartisan vs. party-line rhetoric patterns, debate length as contentiousness proxy, amendment volume.
-
-**Estimated effort**: Medium–Large (new fetcher + parser integration + speaker metadata schema + category routing rules)
-
-### 6b. Cabinet and VP Rhetoric via Agency Newsrooms
-
-**Feasibility**: Confirmed (2026-03-03). Every cabinet agency publishes speeches, transcripts, and press releases on .gov domains with dates, speaker attribution, and verifiable URLs.
-
-**Tier 1 (recommended first sprint)**:
-
-- **DOJ** — extend existing justice.gov fetcher to include AG speeches and testimony transcripts
-- **State Department** — structured newsroom, archived versions cover baseline periods (2009-2017.state.gov, 2017-2021.state.gov)
-- **DHS** — Secretary statements, directly relevant to immigrationEnforcement and lawEnforcement
-- **VP office** — whitehouse.gov VP remarks (may be captured by WH content backfill)
-
-**Tier 2**: Treasury, Defense, HHS — lower volume but valuable for specific categories.
-
-**Tier 3 (meta-source)**: American Presidency Project (UCSB) — 250K+ presidential documents including spoken addresses, news conferences, statements. Covers all administrations going back decades. No API but structured and scrapable.
-
-**Pipeline pattern (per agency)**: RSS or paginated listing → fetch full page → extract transcript text → attribute to speaker → store as document with speaker metadata.
-
-**Data model requirement**: `speaker` field on documents table (or `speaker_id` linked to a people table with name, role, party, agency). Enables per-official rhetoric tracking, cross-agency rhetorical coordination detection, and per-speaker rhetoric-to-action lag measurement. **Design this before building any Phase 6 fetcher** — it feeds Phases 8 and 10.
-
-**Estimated effort**: Medium per agency (each is a separate fetcher following the same pattern). Recommend DOJ extension + State Department first to validate, then expand.
-
-### 6c. Presidential Social Media (Truth Social)
-
-**Feasibility**: Partial (2026-03-03). For the current president specifically, multiple third-party archives with structured access exist:
-
-- CNN-maintained archive (JSON/CSV/parquet, updates every 5 minutes)
-- American Presidency Project (UCSB, archived by date)
-- Trump's Truth (Defending Democracy Together, searchable index with video transcripts and image descriptions)
-- Truthbrush (Stanford Internet Observatory, open-source Python client)
-
-For other officials: access much more limited. As of August 2025, Truth Social requires auth for non-prominent users.
-
-**X/Twitter**: Effectively dead as research source. API: $200/month Basic (10K tweets, 7-day search), $5,000/month Pro (1M tweets, full archive). Academic access nominally restored under EU DSA but rarely granted.
-
-**Bluesky**: Bright spot. Firehose API is free, open, unauthenticated, real-time. Growing fast but not yet where primary political rhetoric happens. Worth monitoring as coverage increases.
-
-**Analytical value**: Gap between official record (Ring 1) and direct-to-public channels (Ring 2) is itself a signal. Social media rhetoric often signals direction before policy follows. When social media escalates 2-3 weeks before corresponding official actions, the lag feeds Phase 8 analysis.
-
-**Estimated effort**: Small–Medium (ingest from existing archives, no scraping needed for presidential posts)
-
-### 6d. MediaCloud Investigation
-
-**Status**: Needs API spike. MediaCloud UI search confirms historical coverage back to 2017. Need to verify programmatic access to full article text.
-
-If viable: provides media rhetoric content across all periods, filling the gap GDELT cannot (GDELT DOC API returns metadata only; Context API limited to 72-hour lookback). Would supplement or replace GDELT as media coverage content source while GDELT remains the volume/tone signal for Layer 1.
-
-**Estimated effort**: Small (API spike) → Medium (fetcher if viable)
-
-**Post-ingestion**: Recompute rhetoric-dependent baselines after CREC/agency newsroom/MediaCloud ingestion.
-
----
-
-## Phase 7 — Media Coverage as Independent Signal
-
-_Full architectural specification in `ARCHITECTURE.md` Phase 7._
-
-Post-rhetoric sprint. Media coverage patterns are themselves a democracy health indicator, independent of government rhetoric.
-
-### Threat Scenarios
-
-1. **Coverage suppression** — topic that normally generates N articles/week across diverse outlets drops to near-zero. Same architectural pattern as Layer 1 volume collapse, applied to media coverage per category.
-
-2. **Source concentration / framing diversity** — coverage from many outlets but substantively identical framing within hours. Distribution of framing diversity is a measurable signal; when it collapses, something is directing coverage.
-
-3. **Tone asymmetry** — divergence between media tone (GDELT tone scores) and the system's own Layer 2 assessments. Uniformly positive media coverage of an action that Layer 2 flags as `clearly_concerning` is informative.
-
-4. **Coverage displacement** — major government actions generating almost no media scrutiny because the media cycle is dominated by something else. System would flag action through FR/DOJ/CL sources; absence of media scrutiny is additional convergence context.
-
-### Requirements
-
-- **Category mapping**: mediaFreedom is primary home (currently nearly empty). infoAvailability gains "public reach" dimension. All categories benefit from "media scrutiny" convergence input.
-- **Media-specific structural dimensions** for Layer 1 (distinct from government document dimensions)
-- **Media-specific baselines** (media coverage has different seasonal patterns than government publishing)
-- **Integration into convergence formula** — media scrutiny as a convergence input alongside structural/AI/thematic layers
-
-**Estimated effort**: Large (new analytical framework, new baselines, convergence formula changes)
-
----
-
-## Phase 8 — Rhetoric vs. Action
-
-_Full architectural specification in `ARCHITECTURE.md` Phase 8._
-
-Requires Phase 6 rhetoric data. Measures whether and how quickly rhetoric becomes policy.
-
-### What Exists
-
-- `intent-service.ts` scores rhetoric and action keywords per policy area
-- `intent-snapshot-store.ts` saves snapshots
-- UI spec defines `/rhetoric` page with Summary and Detailed modes
-- No temporal lag analysis engine exists
-- No statement-to-action matching engine exists
-
-### Components
-
-1. **Cross-correlation lag analysis** — for each policy area, compute cross-correlation between weekly rhetoric and action score time series at lags 0-12 weeks. Peak correlation and lag position quantify "how long after officials say X does corresponding policy action appear." Store in `intent_weekly` or dedicated `rhetoric_lag` table.
-
-2. **Aggregate mode (Summary)** — per-policy-area table: top rhetoric keyword, top action keyword, lag in weeks. Available with existing keyword infrastructure. This is the V3 System Spec Phase 6 deliverable.
-
-3. **Matched-pairs mode (Detailed)** — linking _specific_ attributed statements ("Secretary of DHS said X on date Y") to _specific_ government actions ("DHS published rule Z three weeks later"). New matching engine required. Approach: embed individual rhetoric statements and action documents, find cosine-similar pairs across the temporal lag window, LLM judge confirms causal relationship. Similar to P2025 matcher pattern but operating on a rolling window.
-
-4. **Speaker-level tracking** — with `speaker` metadata from Phase 6, compute per-official rhetoric-to-action patterns. Which officials' rhetoric most reliably predicts policy action? Trial balloons (long lag, low conversion) vs. policy announcements (short lag, high conversion).
-
-5. **Ring analysis** — when Phase 6 provides rhetoric from multiple "rings" (official record, direct-to-public, surrogates), measure whether rhetoric appears in Ring 2 (social media) before Ring 1 (official record), and whether surrogate rhetoric (Ring 3, congressional allies) precedes executive action. Lag between rings is itself a signal.
-
-**Estimated effort**: Large (lag analysis: Medium; matched-pairs engine: Large; speaker tracking: Medium; ring analysis: Medium)
-
----
-
-## Phase 9 — Project 2025: Plan vs. Delivered
-
-_Full architectural specification in `ARCHITECTURE.md` Phase 9._
-
-Can begin in parallel with Phase 6. Tracks implementation progress against the published Project 2025 blueprint.
-
-### What Exists
-
-- V3 System Spec defines schema (`p2025_proposals`, `p2025_matches`), matcher service, LLM judge prompt with 4-level classification (NOT_RELATED / LOOSELY_RELATED / IMPLEMENTS / EXCEEDS)
-- 14 seed proposals in `lib/data/p2025/seed-proposals.ts`
-- UI spec defines `/p2025` page with status breakdown and per-area progress
-
-### What's Missing
-
-1. **Proposal extraction at scale** — 920-page document needs systematic extraction. **Shortcut**: Democracy Forward, Brookings P2025 tracker, and others have already extracted and categorized proposals. Their extraction could serve as seed data (with attribution) rather than doing independent extraction. Verify licensing/attribution requirements before use.
-
-2. **Status persistence** — tracking that proposal X was "in progress" last week and is now "implemented" requires state tracking over time. UI spec flags this as needing `p2025_tracking` table. Weekly snapshot records current status per proposal. Enables "implementation velocity" metric.
-
-3. **"Exceeded" detection** — LLM reasoning about whether government actions go beyond proposals. Currently a single-run assessment, not a persisted longitudinal status. Needs temporal tracking to answer "when did it cross from implements to exceeds."
-
-### Components
-
-1. **Proposal extraction sprint** — ingest existing third-party extractions or perform independent extraction. Each proposal: id, chapter, target agency, mapped dashboard category, severity, text, summary, embedding. Human review required for quality.
-
-2. **Matcher pipeline** — embed proposals, run cosine similarity against new documents weekly, LLM judge classifies top-K candidates. Store matches with confidence and reasoning. Straightforward given existing embedding infrastructure.
-
-3. **Status persistence** — `p2025_tracking` table storing proposal status over time. Weekly snapshot per proposal.
-
-4. **Category integration** — P2025 match counts become additional convergence input per category. A category with high Layer 1/2/3 scores _and_ active P2025 implementation is qualitatively different from high scores alone.
-
-**Estimated effort**: Medium–Large (extraction: depends on shortcut vs. independent; matcher: Medium; persistence: Small; integration: Small)
-
----
-
-## Phase 10 — Authoritarian Infrastructure Build-out
-
-_Full architectural specification in `ARCHITECTURE.md` Phase 10._
-
-Requires the most new data source integration. Tracks _operational capacity_ for authoritarian action — the physical, personnel, and legal infrastructure that makes authoritarian action possible at scale.
-
-_Rationale (validated 2026-03-03):_ Nobody else systematically tracks this. Plenty of organizations track executive orders and court rulings. Very few track whether the government is building the infrastructure that would make authoritarian action _possible at scale_. This is the capability dimension — "even if the government hasn't done X yet, could it do X tomorrow?"
-
-### 10a. Detention Capacity
-
-Physical infrastructure for mass detention.
-
-- **SAM.gov** (public REST API) — detention facility contracts, bed capacity expansions, facility construction. Searchable by agency (ICE, CBP), NAICS code, keyword. Historical data available.
-- **SEC EDGAR API** — quarterly filings from GEO Group (GEO) and CoreCivic (CXW). Contracted bed counts, occupancy rates, revenue per detainee, new facility announcements.
-- **DHS/ICE/CBP statistical tables** — encounters, detention bed counts, removals. Excel/PDF download, quarterly batch. _(Moved from Phase 5 — fits better as infrastructure signal.)_
-- **Metric**: Total available detention bed capacity over time.
-
-### 10b. Personnel Build-out
-
-Organizational capacity for enforcement at scale.
-
-- **USAJobs.gov** (public REST API) — hiring volume by agency (DHS, CBP, ICE, DOJ, FBI). Job postings, series/grade distributions, location patterns.
-- **GovInfo budget justifications** (already ingested) — staffing level targets, academy class sizes, personnel growth projections in CBP/ICE budget docs.
-- **Metric**: Law enforcement personnel pipeline — active postings, academy throughput, authorized vs. filled positions.
-
-### 10c. Surveillance Infrastructure
-
-Technical capacity for monitoring at scale.
-
-- **SAM.gov** — DHS technology procurement (facial recognition, border surveillance, social media monitoring, biometric databases). Searchable by NAICS codes.
-- **FBI/NSA transparency reports** — published annually, low volume, high signal. PDF extraction required.
-- **Federal grants** — DOJ grant databases for state/local surveillance equipment.
-- **Metric**: Surveillance technology spending and capability expansion over time.
-
-### 10d. Legal Infrastructure
-
-Expansion of enforcement authority and reduction of constraints.
-
-- **Already partially captured**: DOJ policy memos, consent decree withdrawals (CourtListener), AG opinions (DOJ press releases). Currently scored within lawEnforcement and civilLiberties.
-- **Additional signals**: New crime categories (LegiScan), mandatory minimum expansions (LegiScan + FR), asset forfeiture fund balances (DOJ annual), IRS enforcement budget shifts (GovInfo), OFAC sanctions expansion rate (Treasury).
-- **Metric**: Legal authority breadth — how many enforcement tools exist and how broad is their scope. Distinct from whether they're being _used_ (tracked by lawEnforcement category).
-
-### 10e. Financial Infrastructure
-
-Funding patterns enabling enforcement capacity.
-
-- DOJ asset forfeiture fund reports (annual), DHS budget execution reports (quarterly via GovInfo), ICE detention funding vs. expenditure (congressional reports).
-- **Metric**: Enforcement spending growth rate relative to overall budget.
-
-### Data Source Feasibility
-
-| Source                | API                | Historical  | Cost | Feasibility             |
-| --------------------- | ------------------ | ----------- | ---- | ----------------------- |
-| SAM.gov               | Public REST        | Years       | Free | High                    |
-| USAJobs.gov           | Public REST        | Years       | Free | High                    |
-| SEC EDGAR             | Public REST        | All filings | Free | High                    |
-| GovInfo budget docs   | Already integrated | All periods | Free | High (extend existing)  |
-| FBI/NSA transparency  | Published PDFs     | Annual      | Free | Medium (PDF extraction) |
-| State/local grant DBs | Varies             | Partial     | Free | Lower (fragmented)      |
-
-### Layer 1 Structural Dimensions
+**Layer 1 structural dimensions (new):**
 
 - **Detention**: bed capacity (contracted + operational), facility count, occupancy rate, new contract volume
 - **Personnel**: active postings by agency, hiring rate vs. attrition, academy class size, authorized-vs-filled ratio
@@ -540,40 +213,54 @@ Funding patterns enabling enforcement capacity.
 - **Legal**: enforcement authority count, asset forfeiture fund balance, consent decree status changes
 - **Financial**: enforcement budget growth rate, appropriated-vs-requested gap, interagency transfer volume
 
-### Implementation Recommendation
+**Build order:** Start with SAM.gov + USAJobs.gov (highest feasibility, most concrete indicators). Build detention capacity and personnel tracking first — least ambiguous metrics. Surveillance and legal infrastructure follow — more interpretive, require careful baseline calibration.
 
-Start with SAM.gov + USAJobs.gov (both well-documented public APIs, highest feasibility). Build detention capacity and personnel build-out first — most concrete, least ambiguous indicators. Surveillance and legal infrastructure are more interpretive and can follow. Each source follows the same pattern as existing fetchers: API query → normalize to ContentItem → category assignment → document storage → Layer 1/2/3 processing.
-
-**Harder to get**: Surveillance procurement often obscured behind vague contract descriptions. State/local enforcement capacity not centrally tracked. Infrastructure indicators like facility construction have long lead times (contract in SAM.gov months before facility operational).
-
-**Estimated effort**: Large per sub-dimension (each requires new fetcher + new structural dimensions + new baselines)
+**Effort:** Large per sub-dimension. Each requires a new fetcher, new structural dimensions, new baselines, and calibration against all analysis periods. The cross-feature convergence framework should be designed before building any individual sub-dimension, so data flows into a unified analytical framework from the start.
 
 ---
 
-## Cross-Feature Convergence Framework
+## Cross-Feature Convergence
 
-_Design before building Phases 8-10. Full specification in `ARCHITECTURE.md`._
+Releases 2, 3, and 4 are most powerful when they converge. Any single signal is informative; all four analytical dimensions lighting up simultaneously for the same policy domain tells a story that no individual data source reveals.
 
-_Rationale (validated 2026-03-03):_ Phases 8, 9, and 10 are most powerful when they converge. Any single signal is informative; all three lighting up simultaneously for the same policy domain tells a story no single data source reveals. This is a higher-order version of existing category-level convergence (structural + AI + thematic across layers). Cross-feature convergence operates across _analytical dimensions_: intent (rhetoric) + blueprint (P2025) + capability (infrastructure).
+**The convergence scenario:** (1) This language in a government document maps to Project 2025 Chapter 5's proposal to increase ICE detention capacity (Release 2 — P2025). (2) The president and DHS Secretary begin talking about "mass deportation operations" (Release 3 — Rhetoric). (3) In weeks 3-8, SAM.gov shows new detention facility contracts, USAJobs shows an ICE officer posting surge, and CBP's budget justification requests a 40% capacity increase (Release 4 — Infrastructure). (4) Meanwhile, the existing detection layers show DHS rulemaking volume spiking, CourtListener immigration filings surging, and DOJ press releases shifting topic distribution toward immigration enforcement (existing system — government document analysis).
 
-**Convergence scenario**: (1) Rhetoric: President and DHS Secretary begin talking about "mass deportation operations" in week 1. (2) P2025 match: Language maps to Chapter 5's proposal to increase ICE detention capacity. (3) Infrastructure: In weeks 3-8, SAM.gov shows new detention facility contracts, USAJobs shows ICE officer posting surge, CBP budget justification requests capacity increase.
+The cross-feature convergence score operates per category per week: not "are multiple layers concerned about lawEnforcement" (existing within-category convergence) but "are rhetoric, P2025 implementation, infrastructure build-out, and measured government action all accelerating in the same policy domain at the same time?"
 
-**Architecture**: Cross-feature convergence score per category per week. Not "are multiple layers concerned about lawEnforcement" (existing convergence) but "are rhetoric, P2025 implementation, and infrastructure build-out all accelerating in the same policy domain at the same time." Requires: (a) per-category rhetoric score from Phase 8, (b) per-category P2025 implementation velocity from Phase 9, (c) per-category infrastructure build-out rate from Phase 10. When all three are elevated simultaneously, the cross-feature convergence score amplifies the signal.
+**Design constraint:** The data model decisions for Release 3 (speaker attribution, statement-to-action linking) must anticipate Release 2 matching and Release 4 infrastructure tracking. Design the cross-feature convergence schema before building any release.
 
-**Design constraint**: Data model decisions for Phase 6 (speaker attribution, statement-to-action linking) must anticipate Phase 8 matching and Phase 10 infrastructure tracking. Design the cross-feature convergence schema before building any of the three phases.
-
-**Build order**: Phase 6 (rhetoric sources) first → Phase 9 (P2025) second → Phase 10 (infrastructure) third → Phase 8 (rhetoric vs. action) in parallel as rhetoric data becomes available → Cross-feature convergence after all three have baseline data.
-
-**Estimated effort**: Medium (schema design + convergence scoring logic), but depends on Phases 8-10 being operational
+**Build order:** Release 2 (P2025) first — matcher pipeline is well-specified and requires no new data sources. Release 3 (rhetoric sources) second — builds the primary-source data that feeds lag analysis. Release 4 (infrastructure) third — requires the most new data source integration. Cross-feature convergence ships after all three releases have baseline data.
 
 ---
 
-## Added During Implementation
+## Appendix: Technical Backlog
 
-_(Items added as work progresses — append here with date and source)_
+Items that improve the platform's internal quality but don't constitute user-facing features. These are implementation-level improvements tracked for sprint planning.
+
+| ID    | Item                                            | Layer      | Effort       | Notes                                                                                        |
+| ----- | ----------------------------------------------- | ---------- | ------------ | -------------------------------------------------------------------------------------------- |
+| R-F1  | Pass 1 pre-filtering with functional classifier | L2         | Small        | Skip P1 for `financial_regulatory`, `cultural_ceremonial` — saves ~15-20% AI cost            |
+| R-F2  | Sprint 21 keyword overlay deprecation           | Keywords   | Medium       | Simplify admin overlay for annotation use; remove scoring pathway                            |
+| R-F6  | Semantic escalation within functional buckets   | L3         | Medium-Large | Per-bucket centroid drift — catches substance changes within stable structure                |
+| R-F7  | AI model challenge set                          | L2         | Medium       | ~50-100 curated test documents for model update regression testing                           |
+| R-F8  | Semantic variance decomposition                 | L3         | Medium       | Within-cluster vs. between-cluster variance — distinguishes stylistic from substantive drift |
+| R-F11 | Pass 2 infrastructure theme tagging             | L2         | Small        | Boolean fields: detentionIncarceration, surveillanceApparatus, criminalizationOfOpposition   |
+| R-F12 | Per-category L1 threshold calibration           | L1         | Medium       | Adaptive thresholds for thin categories (<20 docs/week)                                      |
+| R-F13 | Layer 3 independent signal re-evaluation        | L3         | Medium       | Re-evaluate after clean baseline recomputation                                               |
+| —     | Oversight.gov IG reports (when API available)   | Sources    | Medium       | All 75 IGs — currently no API, community scraper spotty                                      |
+| —     | VRL calibration dataset for LegiScan            | Validation | Small        | Ground-truth labels for state voting legislation                                             |
+| —     | CBO reports pipeline                            | Sources    | Small        | Low-volume fiscal signal                                                                     |
+| —     | MediaCloud investigation                        | Sources    | Small-Medium | API spike to determine if historical full-text access is viable                              |
 
 ---
 
-## Completed
+## Status
 
-_(Move items here when implemented, with sprint reference)_
+_(Updated as releases progress)_
+
+| Release                                   | Status          | Notes                                                                                   |
+| ----------------------------------------- | --------------- | --------------------------------------------------------------------------------------- |
+| 1. Detection Quality & Platform Hardening | Planning        | Individual items at various stages of specification                                     |
+| 2. Project 2025: Plan vs. Delivered       | Design complete | Schema and matcher specified; proposal extraction pending; requires no new data sources |
+| 3. Rhetoric vs. Action                    | Design complete | Rhetoric sources validated (2026-03-03); implementation not started                     |
+| 4. Authoritarian Infrastructure Build-out | Design complete | Data source feasibility validated; implementation not started                           |
