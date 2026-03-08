@@ -174,7 +174,7 @@ export default function Home() {
         <title>Democracy Monitor</title>
         <meta
           name="description"
-          content="Automated, transparent analysis of U.S. government documents tracking institutional health across 11 categories."
+          content="Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories."
         />
       </Head>
       <main>
