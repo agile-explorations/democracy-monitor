@@ -40,8 +40,8 @@ export function DisplaySettings() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex items-center gap-2 text-xs text-dm-text-secondary">
-      <span>Display:</span>
+    <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-dm-text-secondary w-full sm:w-auto">
+      <span className="hidden sm:inline">Display:</span>
       <div className="flex rounded-full border border-dm-border bg-dm-card overflow-hidden">
         {READING_OPTIONS.map((opt) => (
           <PillButton

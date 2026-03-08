@@ -23,9 +23,18 @@ export function SiteHeader({
         alt=""
         width={140}
         height={140}
-        className="rounded -ml-6 -mb-12 shrink-0"
+        className="rounded -ml-6 -mb-12 shrink-0 hidden sm:block"
       />
-      <span className="text-2xl font-bold text-dm-text-primary pb-1">Democracy Monitor</span>
+      <Image
+        src={logoSrc}
+        alt=""
+        width={80}
+        height={80}
+        className="rounded -ml-3 -mb-6 shrink-0 sm:hidden"
+      />
+      <span className="text-lg sm:text-2xl font-bold text-dm-text-primary pb-1">
+        Democracy Monitor
+      </span>
     </div>
   );
 
@@ -57,14 +66,14 @@ export function SiteHeader({
                 {logoAndTitle}
               </Link>
             )}
-            <span className="px-1.5 py-0.5 mb-1.5 rounded border border-dm-border text-[10px] text-dm-text-secondary">
+            <span className="hidden sm:inline px-1.5 py-0.5 mb-1.5 rounded border border-dm-border text-[10px] text-dm-text-secondary">
               Experimental
             </span>
             <a
               href="https://github.com/sponsors/agile-explorations"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-2 py-0.5 mb-1.5 rounded border border-pink-300 dark:border-pink-700 text-[10px] text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"
+              className="hidden sm:inline px-2 py-0.5 mb-1.5 rounded border border-pink-300 dark:border-pink-700 text-[10px] text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"
             >
               ♥ Sponsor
             </a>
@@ -72,9 +81,9 @@ export function SiteHeader({
         </div>
 
         {/* Tagline + last updated + display settings */}
-        <div className="mt-2 ml-32 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <div className="mt-2 sm:ml-32 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <div className="flex flex-wrap items-baseline gap-x-3">
-            <p className="text-sm text-dm-text-secondary">
+            <p className="text-xs sm:text-sm text-dm-text-secondary">
               Automated analysis of the U.S. government documentary record
             </p>
             {lastUpdated && (

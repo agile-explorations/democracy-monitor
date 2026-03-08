@@ -175,7 +175,7 @@ export function CategoryStatusChart({
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 8, right: 58, bottom: 4, left: 28 }}
+          margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
           onClick={(state) => {
             const week = state?.activeLabel;
             if (typeof week === 'string' && week) onWeekClick(week);

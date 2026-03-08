@@ -78,7 +78,9 @@ export function CategoryTable({
                 ))}
               </div>
             </th>
-            <th className="py-2 px-2 font-medium align-bottom">Status Trend Line</th>
+            <th className="py-2 px-2 font-medium align-bottom hidden sm:table-cell">
+              Status Trend Line
+            </th>
             {readingLevel === 'detailed' && (
               <>
                 <th
@@ -194,7 +196,7 @@ function CategoryRow({
             <span className="text-dm-muted">{'\u2014'}</span>
           )}
         </td>
-        <td className="py-2 px-2">
+        <td className="py-2 px-2 hidden sm:table-cell">
           <div className="w-[120px]">
             <Sparkline
               data={cat.sparklineData}
@@ -228,7 +230,7 @@ function CategoryRow({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={readingLevel === 'detailed' ? 8 : 4} className="px-4 py-3 bg-dm-border/10">
+          <td colSpan={readingLevel === 'detailed' ? 8 : 5} className="px-4 py-3 bg-dm-border/10">
             <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
               {description}
             </p>

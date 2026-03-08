@@ -123,7 +123,7 @@ export function ChartLegend({
   onToggleComparison: () => void;
 }) {
   return (
-    <div className="flex items-center gap-4 text-[11px] text-dm-text-secondary mb-1">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-dm-text-secondary mb-1">
       {readingLevel === 'summary' ? (
         <span className="flex items-center gap-1">
           <Swatch color={statusColors.Elevated} opacity={0.5} />

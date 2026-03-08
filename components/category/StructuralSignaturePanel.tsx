@@ -112,13 +112,17 @@ export function StructuralSignaturePanel({ score, readingLevel }: StructuralSign
           const d = score.dimensions[dim];
           if (!d || !d.available) return null;
           return (
-            <div key={dim} className="flex items-center gap-3 text-xs">
-              <span className="w-36 text-dm-text-secondary">{DIMENSION_LABELS[dim]}</span>
+            <div key={dim} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
+              <span className="w-28 sm:w-36 text-dm-text-secondary shrink-0">
+                {DIMENSION_LABELS[dim]}
+              </span>
               <ScoreBar value={Math.abs(d.zScore)} max={4} />
               <span className="text-dm-text-primary font-mono w-12 text-right">
                 z={d.zScore.toFixed(1)}
               </span>
-              <span className="text-dm-muted w-16 text-right">{d.value.toFixed(3)}</span>
+              <span className="text-dm-muted w-16 text-right hidden sm:inline">
+                {d.value.toFixed(3)}
+              </span>
             </div>
           );
         })}
@@ -146,10 +150,10 @@ export function StructuralSignaturePanel({ score, readingLevel }: StructuralSign
       )}
 
       {/* Long horizon */}
-      <div className="text-xs text-dm-text-secondary">
+      <div className="text-xs text-dm-text-secondary flex flex-wrap gap-x-2 gap-y-0.5">
         <span>Cumulative deviation: {score.longHorizon.cumulativeDeviation.toFixed(2)}</span>
-        <span className="ml-2">over {score.longHorizon.cumulativeWindow} weeks</span>
-        <span className="ml-2">
+        <span>over {score.longHorizon.cumulativeWindow} weeks</span>
+        <span>
           Trend: {DRIFT_ARROWS[score.longHorizon.driftTrend]} {score.longHorizon.driftTrend}
         </span>
       </div>

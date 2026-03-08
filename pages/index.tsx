@@ -172,7 +172,6 @@ export default function Home() {
     <>
       <Head>
         <title>Democracy Monitor</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta
           name="description"
           content="Automated, transparent analysis of U.S. government documents tracking institutional health across 11 categories."
