@@ -40,7 +40,7 @@ databases:
   - name: epd-db
     plan: basic-1gb
     databaseName: epd
-    postgresMajorVersion: '16'
+    postgresMajorVersion: '17'
 
 # Cron jobs — uncomment after initial deployment is verified
 #
