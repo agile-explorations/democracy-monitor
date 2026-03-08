@@ -1,7 +1,7 @@
 # Democracy Monitor — Test Specification (Ship/No-Ship Gates)
 
 **Source:** ChatGPT architecture review (2026-02-25), with additions from project analysis.
-**Status:** Pre-implementation. Maps to `ARCHITECTURE_PROPOSAL.md` §Layer 1–3, §Convergence Synthesis, §Sprint R-S1.
+**Status:** Pre-implementation. Maps to `ARCHITECTURE.md` §Layer 1–3, §Convergence Synthesis, §Sprint R-S1.
 
 These are **gates**: if any item fails, you don't ship that bundle.
 

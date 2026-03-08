@@ -203,7 +203,7 @@ Adding 2 categories with new source pipelines is meaningful work. But it's paral
 2. **Rename** courts → judicialIndependence, igs → executiveOversight
 3. **Add** lawEnforcement and civilLiberties as new categories
 4. ~~**Run the LegiScan spike** to validate election bill classification~~ ✅ Done — all 8 spikes complete. See `SPIKE_FINDINGS.md`.
-5. ~~**Expand Sprint R-S1** to include DOJ/FBI/DHS/ACLU source pipelines for new categories~~ ✅ Done — Sprint R-S1 scoped with P0/P1/P2 prioritization. See `ARCHITECTURE_PROPOSAL.md` §Sprint R-S1.
+5. ~~**Expand Sprint R-S1** to include DOJ/FBI/DHS/ACLU source pipelines for new categories~~ ✅ Done — Sprint R-S1 scoped with P0/P1/P2 prioritization. See `ARCHITECTURE.md` §Sprint R-S1.
 6. **Recompute baselines** only for categories with new/changed sources (judicialIndependence, elections, mediaFreedom, executiveOversight, lawEnforcement, civilLiberties) — 6 of 13 categories
 7. **Preserve existing baselines** for the 7 unchanged categories
 8. **Document the framework alignment** in the methodology section — cite V-Dem, Freedom House, and Levitsky & Ziblatt. This gives the project instant academic credibility and demonstrates that category selection was principled, not arbitrary.

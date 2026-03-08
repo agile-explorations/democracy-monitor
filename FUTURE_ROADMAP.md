@@ -5,7 +5,7 @@
 **Relationship to other documents**:
 
 - `ROADMAP.md` — covers everything through launch (Sprints 11-21, R1-R5, R-S1, R-CL1)
-- `ARCHITECTURE_PROPOSAL.md` — contains the architectural vision for Phases 5-10 in its roadmap section; this document contains the implementation-level specifications
+- `ARCHITECTURE.md` — contains the architectural vision for Phases 5-10 in its roadmap section; this document contains the implementation-level specifications
 - `ARCHITECTURE_ROADMAP.md` — **superseded by this document** (all items migrated here)
 
 **How to use this document**: When starting sprint planning, review this list for items that may be relevant to current work. When new ideas emerge during implementation, add them to the "Added During Implementation" section with date and source attribution rather than expanding the current sprint scope.
@@ -309,7 +309,7 @@ Post-launch supplementary data sources that didn't make the R-S1 cut.
 
 ## Phase 6 — Primary-Source Rhetoric
 
-_Full architectural specification in `ARCHITECTURE_PROPOSAL.md` Phase 6._
+_Full architectural specification in `ARCHITECTURE.md` Phase 6._
 
 Post-launch, before the media sprint. Builds the primary-source rhetoric content that feeds Phases 7 and 8.
 
@@ -383,7 +383,7 @@ If viable: provides media rhetoric content across all periods, filling the gap G
 
 ## Phase 7 — Media Coverage as Independent Signal
 
-_Full architectural specification in `ARCHITECTURE_PROPOSAL.md` Phase 7._
+_Full architectural specification in `ARCHITECTURE.md` Phase 7._
 
 Post-rhetoric sprint. Media coverage patterns are themselves a democracy health indicator, independent of government rhetoric.
 
@@ -410,7 +410,7 @@ Post-rhetoric sprint. Media coverage patterns are themselves a democracy health 
 
 ## Phase 8 — Rhetoric vs. Action
 
-_Full architectural specification in `ARCHITECTURE_PROPOSAL.md` Phase 8._
+_Full architectural specification in `ARCHITECTURE.md` Phase 8._
 
 Requires Phase 6 rhetoric data. Measures whether and how quickly rhetoric becomes policy.
 
@@ -440,7 +440,7 @@ Requires Phase 6 rhetoric data. Measures whether and how quickly rhetoric become
 
 ## Phase 9 — Project 2025: Plan vs. Delivered
 
-_Full architectural specification in `ARCHITECTURE_PROPOSAL.md` Phase 9._
+_Full architectural specification in `ARCHITECTURE.md` Phase 9._
 
 Can begin in parallel with Phase 6. Tracks implementation progress against the published Project 2025 blueprint.
 
@@ -474,7 +474,7 @@ Can begin in parallel with Phase 6. Tracks implementation progress against the p
 
 ## Phase 10 — Authoritarian Infrastructure Build-out
 
-_Full architectural specification in `ARCHITECTURE_PROPOSAL.md` Phase 10._
+_Full architectural specification in `ARCHITECTURE.md` Phase 10._
 
 Requires the most new data source integration. Tracks _operational capacity_ for authoritarian action — the physical, personnel, and legal infrastructure that makes authoritarian action possible at scale.
 
@@ -552,7 +552,7 @@ Start with SAM.gov + USAJobs.gov (both well-documented public APIs, highest feas
 
 ## Cross-Feature Convergence Framework
 
-_Design before building Phases 8-10. Full specification in `ARCHITECTURE_PROPOSAL.md`._
+_Design before building Phases 8-10. Full specification in `ARCHITECTURE.md`._
 
 _Rationale (validated 2026-03-03):_ Phases 8, 9, and 10 are most powerful when they converge. Any single signal is informative; all three lighting up simultaneously for the same policy domain tells a story no single data source reveals. This is a higher-order version of existing category-level convergence (structural + AI + thematic across layers). Cross-feature convergence operates across _analytical dimensions_: intent (rhetoric) + blueprint (P2025) + capability (infrastructure).
 

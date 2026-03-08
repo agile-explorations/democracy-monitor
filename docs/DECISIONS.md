@@ -126,7 +126,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 2. **Service/query/CLI separation**: Queries files contain raw DB I/O and are excluded from coverage. Service files orchestrate queries and produce typed reports with warnings. CLI files format reports for terminal display. Website can import services directly for JSON output.
 3. **Non-zero exit on warnings**: All three commands exit with code 1 when warnings exist, 0 when all checks pass. Enables CI integration.
 4. **`validate:detection` is a thin rename**: The event-validation service/checks/queries modules were already well-structured from their original sprint. Only the CLI runner was renamed from `validate-events.ts` to `validate-detection.ts` with updated log prefix.
-5. **DECISIONS.md historical references preserved**: Sprint retrospectives that mention `backfill:verify` or `validate:events` are left as-is (they're historical records). Only active docs (PROJECT_KNOWLEDGE.md, BACKFILL_PIPELINE_REDESIGN.md, TEST_SPECIFICATION.md, ARCHITECTURE_PROPOSAL.md) were updated.
+5. **DECISIONS.md historical references preserved**: Sprint retrospectives that mention `backfill:verify` or `validate:events` are left as-is (they're historical records). Only active docs (PROJECT_KNOWLEDGE.md, BACKFILL_PIPELINE_REDESIGN.md, TEST_SPECIFICATION.md, ARCHITECTURE.md) were updated.
 
 **Lessons Learned:**
 
@@ -323,7 +323,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Scope vs. Actual:**
 
 - Planned (4 issues): maxPages bump (#196), verification cap update (#197), `--force` flag (#198), ROADMAP update (#199)
-- Actual: All 4 issues delivered plus 3 unplanned additions: (a) `backfill:verify` document coverage subtotals/totals with ANSI bold formatting, (b) ARCHITECTURE_PROPOSAL.md LegiScan sensitivity gap documentation, (c) `pnpm format:check` added to `.husky/pre-push` (CI parity fix)
+- Actual: All 4 issues delivered plus 3 unplanned additions: (a) `backfill:verify` document coverage subtotals/totals with ANSI bold formatting, (b) ARCHITECTURE.md LegiScan sensitivity gap documentation, (c) `pnpm format:check` added to `.husky/pre-push` (CI parity fix)
 - Dedup of shared CL documents between civilLiberties/lawEnforcement deferred (requires week-major backfill restructuring, daily cost negligible)
 
 **Key Decisions:**
@@ -338,7 +338,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 - **Re-backfill timing**: CL backfill for all periods (Trump T1 + Biden + Trump T2, ~155K docs) took ~2 hours total. Plan accordingly when pagination changes require full re-backfill.
 - **Terminal alignment with special characters**: Unicode checkmarks (✓/✗) and ANSI bold sequences render at different widths across terminals. Alignment required multiple iterations — test with screenshots, not just terminal output.
-- **Layer 2 false-negative clustering**: Trump T2 audit found 7/12 false negatives cluster in lawEnforcement, all LegiScan bills with `formal_override` erosion type. Source-type-specific sensitivity gaps are a real concern for Layer 2, not just Layers 1 and 3. Documented in ARCHITECTURE_PROPOSAL.md for R3 prompt development.
+- **Layer 2 false-negative clustering**: Trump T2 audit found 7/12 false negatives cluster in lawEnforcement, all LegiScan bills with `formal_override` erosion type. Source-type-specific sensitivity gaps are a real concern for Layer 2, not just Layers 1 and 3. Documented in ARCHITECTURE.md for R3 prompt development.
 
 **Spec Deviations:**
 
@@ -748,7 +748,7 @@ Added 56 operational-language keywords (Type B erosion) across 5 categories, adm
 
 ## Architecture Redesign Decision (2026-02-22)
 
-Replaced keyword-driven detection with three-layer triangulated architecture (Layer 1: structural anomaly, Layer 2: AI two-pass, Layer 3: thematic drift). Keywords became UI annotations only. Full design in `ARCHITECTURE_PROPOSAL.md`. Now fully implemented as of Sprint R-CAL1.
+Replaced keyword-driven detection with three-layer triangulated architecture (Layer 1: structural anomaly, Layer 2: AI two-pass, Layer 3: thematic drift). Keywords became UI annotations only. Full design in `ARCHITECTURE.md`. Now fully implemented as of Sprint R-CAL1.
 
 Sprint 21 code work (keywords, admin overlay) survives as annotation infrastructure. Sprints 22-29 were restructured as R1-R5.
 
@@ -771,7 +771,7 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 
 **Spec deviations:**
 
-- None. All 3 items align with `ARCHITECTURE_PROPOSAL.md` §Sprint R1.
+- None. All 3 items align with `ARCHITECTURE.md` §Sprint R1.
 
 **Lessons learned:**
 
@@ -807,7 +807,7 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 
 **Spec deviations:**
 
-- **Source convergence dimension omitted from initial release** (ARCHITECTURE_PROPOSAL.md §Layer 1): The proposal lists 6 structural dimensions; Sprint R2 ships 5. Source convergence requires per-category rhetoric aggregation that doesn't yet exist. Weight redistributed across available dimensions. No functional impact — source convergence adds fidelity but isn't required for basic structural anomaly detection.
+- **Source convergence dimension omitted from initial release** (ARCHITECTURE.md §Layer 1): The proposal lists 6 structural dimensions; Sprint R2 ships 5. Source convergence requires per-category rhetoric aggregation that doesn't yet exist. Weight redistributed across available dimensions. No functional impact — source convergence adds fidelity but isn't required for basic structural anomaly detection.
 - **Cluster shift tracking not connected to weekly scoring**: `ClusterShift` type defined but cluster analysis runs monthly (not weekly). Weekly snapshot computes centroid distance and novel doc rate; cluster-level analysis is for deeper investigation in Sprint R3/R4.
 
 **Lessons learned:**

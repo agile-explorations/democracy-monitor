@@ -5,7 +5,7 @@
 
 **Relationship to other documents**:
 
-- `ARCHITECTURE_PROPOSAL.md` — defines the three-layer architecture and convergence synthesis these tests validate
+- `ARCHITECTURE.md` — defines the three-layer architecture and convergence synthesis these tests validate
 - `FUTURE_ROADMAP.md` §R-F9 — Event Retrospective Harness (the automated version of this manual validation)
 - `TEST_SPECIFICATION.md` — ship/no-ship gate checklist (complementary; that covers unit/integration tests, this covers analytical validation)
 

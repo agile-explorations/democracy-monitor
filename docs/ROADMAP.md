@@ -4,7 +4,7 @@ This document describes the planned sprint sequence for completing the Democracy
 
 **Specification documents:**
 
-- `ARCHITECTURE_PROPOSAL.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, category framework with framework alignment mapping, and architectural vision for Phases 5-10.
+- `ARCHITECTURE.md` — **Primary spec for Sprints R1–R5 and R-S1.** Three-layer triangulated detection across 13 democratic threat vector categories (grounded in V-Dem, Freedom House, Levitsky & Ziblatt frameworks). Includes source expansion plan, Dashboard Visualization section, category framework with framework alignment mapping, and architectural vision for Phases 5-10.
 - `FUTURE_ROADMAP.md` — **Post-launch features and improvements.** Architecture improvements (R-F1–R-F11), surviving features from original Sprint 23-29 plan, and new feature phases: Phase 5 (deferred sources), Phase 6 (primary-source rhetoric), Phase 7 (media coverage), Phase 8 (rhetoric vs. action), Phase 9 (Project 2025 tracking), Phase 10 (authoritarian infrastructure build-out), and cross-feature convergence framework.
 - `CATEGORY_FRAMEWORK_ANALYSIS.md` — Analysis mapping Democracy Monitor categories against established democracy measurement frameworks. Rationale for 13-category architecture, renames (courts → judicialIndependence, igs → executiveOversight), and new categories (lawEnforcement, civilLiberties).
 - `SPIKE_FINDINGS.md` — Results from 8 source availability spikes. 7 passed (CourtListener, DOJ API, GovInfo/GAO, IG RSS, LegiScan, FEC, FCC RSS), 1 failed (GDELT diversity metrics). Validates source volumes, API access, historical depth, and metadata quality for Sprint R-S1.
@@ -42,7 +42,7 @@ The UI redesign (UI Design Specification V3) changes three foundational layers t
 
 ## Seed Data Pipeline
 
-> **Legacy (keyword-era pipeline).** This section describes the original keyword-tuning seed pipeline built in Sprints 11–15.1. Under the three-layer architecture (Sprint R2+), keywords are annotations only — they do not affect detection or baselines. The keyword-tuning infrastructure is preserved for regression comparison and UI annotation context, but **baselines are now defined by**: Layer 1 structural distributions (volume, type composition, functional distribution, agency activity, publication tempo per source type), Layer 2 AI flag rates (Pass 1 triage + Pass 2 assessment), and Layer 3 embedding centroids (per-source-type). See `ARCHITECTURE_PROPOSAL.md` §Baseline Recomputation Strategy for the current baseline approach.
+> **Legacy (keyword-era pipeline).** This section describes the original keyword-tuning seed pipeline built in Sprints 11–15.1. Under the three-layer architecture (Sprint R2+), keywords are annotations only — they do not affect detection or baselines. The keyword-tuning infrastructure is preserved for regression comparison and UI annotation context, but **baselines are now defined by**: Layer 1 structural distributions (volume, type composition, functional distribution, agency activity, publication tempo per source type), Layer 2 AI flag rates (Pass 1 triage + Pass 2 assessment), and Layer 3 embedding centroids (per-source-type). See `ARCHITECTURE.md` §Baseline Recomputation Strategy for the current baseline approach.
 
 Before any UI work begins, we need realistic data in the database. All baseline periods and the current (T2) period go through the **same** AI Skeptic + human review process. This is critical because false-positive keywords inflate baseline statistics just as they inflate current-period scores — a clean baseline requires the same keyword tuning as clean T2 data.
 
@@ -427,7 +427,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 ## Architecture Redesign: Sprints R1–R5
 
-> **Decision (2026-02-22):** Replace keyword-driven detection with three-layer triangulated architecture. See `ARCHITECTURE_PROPOSAL.md` for full design. This supersedes the old Sprint 22–29 sequence and Sprint 21 run work. Old sprint plans archived below for reference.
+> **Decision (2026-02-22):** Replace keyword-driven detection with three-layer triangulated architecture. See `ARCHITECTURE.md` for full design. This supersedes the old Sprint 22–29 sequence and Sprint 21 run work. Old sprint plans archived below for reference.
 
 ### Sprint R1: Document Corpus Fixes
 
@@ -437,7 +437,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint 21 code work (completed) + Sprint 20 (signal queries fixed)
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Sprint R1
+**Reference:** `ARCHITECTURE.md` §Sprint R1
 
 **Actual code work:**
 
@@ -453,7 +453,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint R1 (correct document corpus with `action` field and rhetoric cross-feed)
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Layer 1, §Layer 3
+**Reference:** `ARCHITECTURE.md` §Layer 1, §Layer 3
 
 **Estimated scope:** ~250–370 new/modified lines of code. Layer 3 is adaptation of existing semantic drift and clustering services, not greenfield.
 
@@ -501,7 +501,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint R2 (Layers 1 and 3 operational — convergence synthesis needs all three layers)
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Layer 2
+**Reference:** `ARCHITECTURE.md` §Layer 2
 
 **Actual:** Code work delivered. ~750 LOC production, ~450 LOC tests. 27 files changed (14 modified, 13 new), 47 new tests (1221 total). Ships Layer 2 (two-pass AI assessment with epistemic independence), source convergence (6th structural dimension), reproducibility audit script, backfill CLI, and ConfirmedConcern convergence status. Run work (baseline AI runs, ~$47-97) deferred to separate session. Key decisions in DECISIONS.md.
 
@@ -531,7 +531,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 - Pass 2 on flagged baseline docs (~$28–60)
 - Full system on Trump 2025 (~$9–18)
 
-> **Run work status: Done (2026-02-24/25).** Completed Phases 0–6: Pass 1 on all 4 baselines, Pass 2 on flagged docs, Trump 2025 full backfill (221 flags / 14,480 docs = 1.5% flag rate). Layer score enrichment across all 2,896 category-weeks. Calibration findings: STRUCTURAL_ANOMALY_THRESHOLD raised to 2.5, THEMATIC_DRIFT_ELEVATED raised to 3.5, STRUCTURAL_MIN_DOC_COUNT = 10 dampening introduced. Final results: Biden 2022 97.7% Stable, Biden 2021 95.3%, Trump 2017 92.0%, Trump 2018 89.2%, Trump 2025 84.0%. Both Biden baselines exceed >95% Stable target. AI layer fires only in Trump 2025 (8 Elevated). See `ARCHITECTURE_PROPOSAL.md` §Calibration findings for full details.
+> **Run work status: Done (2026-02-24/25).** Completed Phases 0–6: Pass 1 on all 4 baselines, Pass 2 on flagged docs, Trump 2025 full backfill (221 flags / 14,480 docs = 1.5% flag rate). Layer score enrichment across all 2,896 category-weeks. Calibration findings: STRUCTURAL_ANOMALY_THRESHOLD raised to 2.5, THEMATIC_DRIFT_ELEVATED raised to 3.5, STRUCTURAL_MIN_DOC_COUNT = 10 dampening introduced. Final results: Biden 2022 97.7% Stable, Biden 2021 95.3%, Trump 2017 92.0%, Trump 2018 89.2%, Trump 2025 84.0%. Both Biden baselines exceed >95% Stable target. AI layer fires only in Trump 2025 (8 Elevated). See `ARCHITECTURE.md` §Calibration findings for full details.
 
 ---
 
@@ -601,7 +601,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint R3 (all three layers operational + validated) + Sprint R3.2 (snapshot source parity) + Sprint R3.3 (category renames)
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §AI Narrative Generation, §Dashboard Visualization, §Role of Keywords
+**Reference:** `ARCHITECTURE.md` §AI Narrative Generation, §Dashboard Visualization, §Role of Keywords
 
 **Split into three incremental sub-sprints (R4a → R4b → R4c) to ship working slices and avoid a monolithic UI sprint.**
 
@@ -662,7 +662,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint R4 (dashboard shows three-layer results), Sprint R-S1 (source expansion complete)
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Sprint R5
+**Reference:** `ARCHITECTURE.md` §Sprint R5
 
 **Code work:**
 
@@ -677,7 +677,7 @@ gpt-4o-mini rates: $0.15/1M input, $0.60/1M output. For comparison, the same run
 
 **Depends on:** Sprint R3.3 (category renames ✅). Source availability spikes complete (✅). Can run in parallel with R4 and R5.
 
-**Reference:** `ARCHITECTURE_PROPOSAL.md` §Source Expansion, §Cross-Source Document Deduplication, §Layer 1 Multi-Source Structural Analysis, §Sprint R-S1. `SPIKE_FINDINGS.md` for source details. `TEST_SPECIFICATION.md` for ship/no-ship gates.
+**Reference:** `ARCHITECTURE.md` §Source Expansion, §Cross-Source Document Deduplication, §Layer 1 Multi-Source Structural Analysis, §Sprint R-S1. `SPIKE_FINDINGS.md` for source details. `TEST_SPECIFICATION.md` for ship/no-ship gates.
 
 #### Sprint R-S1a: Foundation + CourtListener + DOJ Integration ✅
 
@@ -692,7 +692,7 @@ Build in order of category coverage breadth and implementation simplicity:
 3. **DOJ Press Release JSON API** ✅ (Sprint R-S1a) — Enriches lawEnforcement (360-400/wk). Open JSON API. **Prerequisite:** ~~freeze stable internal taxonomy mapping (10-20 durable buckets) before integration~~ Done: `lib/data/doj-taxonomy.ts` — 15 durable internal buckets.
 4. **LegiScan pipeline wiring** → Sprint R-S1e. Fetcher (`legiscan-fetcher.ts`, 207 lines), bulk import (`legiscan-bulk.ts`, 278 lines), and 1,826 classified bills already exist in DB (T1: 627, Biden: 515, T2: 676). Free tier operational (API key in `.env.local`). Needs signal definitions, snapshot integration, and re-classification for new categories.
 5. **Coverage health monitoring** ✅ (Sprint R-S1a) — Per-source-type document count per day with alerting when a source goes silent for >2× expected cadence. Ships alongside first source integration, not after. Minimum viable: daily ingestion counts + "source silent" alerts + DOJ taxonomy change tracking. _(Elevated from R-F4 — pipeline break vs. real silence is critical with 7+ source types.)_
-6. **Cross-source document deduplication** — Add `canonical_id` column to documents table (nullable, partial unique constraint). Each fetcher extracts source-native document identifiers; normalization handles cross-source ID matching (e.g., GovInfo packageId → GAO report number). Ships with first multi-source category overlap (GovInfo + IG RSS for executiveOversight). See `ARCHITECTURE_PROPOSAL.md` §Cross-Source Document Deduplication.
+6. **Cross-source document deduplication** — Add `canonical_id` column to documents table (nullable, partial unique constraint). Each fetcher extracts source-native document identifiers; normalization handles cross-source ID matching (e.g., GovInfo packageId → GAO report number). Ships with first multi-source category overlap (GovInfo + IG RSS for executiveOversight). See `ARCHITECTURE.md` §Cross-Source Document Deduplication.
 
 **Phase 1b — P1 Enrichment sources (fast-follow or tail of Phase 1):**
 

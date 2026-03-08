@@ -152,7 +152,7 @@ Three-layer triangulated detection pipeline:
 
 Every sprint **MUST** follow this process. It may **ONLY** be skipped with explicit approval from the user.
 
-1. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Read `DECISIONS.md` for relevant prior decisions, spec deviations, and lessons learned from related sprints.
+1. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Read `docs/DECISIONS.md` for relevant prior decisions, spec deviations, and lessons learned from related sprints.
 2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
 3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
 4. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
@@ -160,7 +160,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
 7. **Post-sprint code review** — Review all files created or modified in the sprint against the checklist below. Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
 8. **Commit** — Stage, format, and commit only after the review is clean
-9. **Retrospective** — Update `DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Then review the full document and condense or remove entries that are superseded, obsolete, or codified elsewhere (e.g., lessons already in `docs/PROJECT_KNOWLEDGE.md`, decisions overridden by later ones). Keep `DECISIONS.md` lean. Annotate `docs/internal/ROADMAP.md` for the completed sprint. Update `docs/PROJECT_KNOWLEDGE.md` if new persistent patterns were discovered. The results of the retrospective **MUST** be presented to the user for approval.
+9. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Then review the full document and condense or remove entries that are superseded, obsolete, or codified elsewhere (e.g., lessons already in `docs/PROJECT_KNOWLEDGE.md`, decisions overridden by later ones). Keep `docs/DECISIONS.md` lean. Annotate `docs/ROADMAP.md` for the completed sprint. Update `docs/PROJECT_KNOWLEDGE.md` if new persistent patterns were discovered. The results of the retrospective **MUST** be presented to the user for approval.
 10. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 7–8 first.
 11. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
@@ -205,8 +205,8 @@ Configured for **Render.com** deployment via `render.yaml`:
 
 ## Project management
 
-- **`docs/internal/ROADMAP.md`** — Strategic sprint plan with goals, dependencies, cost estimates. Forward-looking; completed sprints get "Actual:" annotations.
-- **DECISIONS.md** — Sprint retrospectives: what was planned vs built, spec deviations, key decisions, lessons learned. Read before starting any sprint.
+- **`docs/ROADMAP.md`** — Strategic sprint plan with goals, dependencies, cost estimates. Forward-looking; completed sprints get "Actual:" annotations.
+- **`docs/DECISIONS.md`** — Sprint retrospectives: what was planned vs built, spec deviations, key decisions, lessons learned. Read before starting any sprint.
 - **GitHub Milestones** — One per sprint. Close when all issues in the sprint are done.
 - **GitHub Issues** — Individual work items within a sprint. Reference issue numbers in commit messages (`Fixes #N`).
 - **Labels** — `stream:{data-pipeline,backend,ui,infra}`, `type:{feature,bug,research,review-gate}`, `priority:{p0,p1,p2}`
