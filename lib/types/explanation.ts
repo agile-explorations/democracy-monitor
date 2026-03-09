@@ -8,6 +8,14 @@ export interface TierBreakdown {
   contribution: number;
 }
 
+/** Layer 2 AI assessment summary for a single document. */
+export interface DocumentAIAssessment {
+  flagged: boolean;
+  assessment: string | null;
+  erosionType: string | null;
+  reasoning: string | null;
+}
+
 /** Explanation of how a single document was scored. */
 export interface DocumentExplanation {
   url: string;
@@ -20,6 +28,7 @@ export interface DocumentExplanation {
   tierBreakdown: TierBreakdown[];
   matches: KeywordMatch[];
   suppressed: SuppressedMatch[];
+  ai?: DocumentAIAssessment;
 }
 
 /** Snapshot of the scoring configuration used at explanation time. */

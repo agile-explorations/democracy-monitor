@@ -2,13 +2,26 @@ import { useCallback, useMemo, useState } from 'react';
 import type { DocumentExplanation } from '@/lib/types/explanation';
 import { escapeCell } from '@/lib/utils/csv';
 
-type SortField = 'title' | 'documentClass' | 'finalScore' | 'matches' | 'suppressed';
+type SortField = 'title' | 'documentClass' | 'aiFlagged' | 'assessment' | 'erosionType';
 type SortDir = 'asc' | 'desc';
 
 export interface DocumentTableProps {
   documents: DocumentExplanation[];
   category: string;
   weekOf: string;
+}
+
+function getAIFlag(doc: DocumentExplanation): string {
+  if (!doc.ai) return '—';
+  return doc.ai.flagged ? 'Yes' : 'No';
+}
+
+function getAssessment(doc: DocumentExplanation): string {
+  return doc.ai?.assessment ?? '—';
+}
+
+function getErosionType(doc: DocumentExplanation): string {
+  return doc.ai?.erosionType ?? '—';
 }
 
 function sortDocuments(
@@ -25,14 +38,14 @@ function sortDocuments(
       case 'documentClass':
         cmp = a.documentClass.localeCompare(b.documentClass);
         break;
-      case 'finalScore':
-        cmp = a.finalScore - b.finalScore;
+      case 'aiFlagged':
+        cmp = getAIFlag(a).localeCompare(getAIFlag(b));
         break;
-      case 'matches':
-        cmp = a.matches.length - b.matches.length;
+      case 'assessment':
+        cmp = getAssessment(a).localeCompare(getAssessment(b));
         break;
-      case 'suppressed':
-        cmp = a.suppressed.length - b.suppressed.length;
+      case 'erosionType':
+        cmp = getErosionType(a).localeCompare(getErosionType(b));
         break;
     }
     return dir === 'asc' ? cmp : -cmp;
@@ -40,19 +53,16 @@ function sortDocuments(
 }
 
 function toCsvString(docs: DocumentExplanation[]): string {
-  const header = 'Title,URL,Class,Multiplier,Severity,Final Score,Capture,Drift,Warning,Suppressed';
+  const header = 'Title,URL,Class,AI Flagged,Assessment,Erosion Type,Reasoning';
   const rows = docs.map((d) =>
     [
       escapeCell(d.title),
       escapeCell(d.url),
       d.documentClass,
-      d.classMultiplier,
-      d.severityScore.toFixed(2),
-      d.finalScore.toFixed(2),
-      d.tierBreakdown.find((t) => t.tier === 'capture')?.count ?? 0,
-      d.tierBreakdown.find((t) => t.tier === 'drift')?.count ?? 0,
-      d.tierBreakdown.find((t) => t.tier === 'warning')?.count ?? 0,
-      d.suppressed.length,
+      getAIFlag(d),
+      getAssessment(d),
+      getErosionType(d),
+      escapeCell(d.ai?.reasoning ?? ''),
     ].join(','),
   );
   return `${header}\n${rows.join('\n')}`;
@@ -64,17 +74,19 @@ function SortHeader({
   currentField,
   currentDir,
   onSort,
+  className,
 }: {
   label: string;
   field: SortField;
   currentField: SortField;
   currentDir: SortDir;
   onSort: (f: SortField) => void;
+  className?: string;
 }) {
   const arrow = currentField === field ? (currentDir === 'asc' ? ' \u2191' : ' \u2193') : '';
   return (
     <th
-      className="px-3 py-2 text-left text-[11px] font-medium text-dm-text-secondary uppercase tracking-wider cursor-pointer hover:text-dm-text-primary select-none"
+      className={`px-3 py-2 text-left text-[11px] font-medium text-dm-text-secondary uppercase tracking-wider cursor-pointer hover:text-dm-text-primary select-none ${className ?? ''}`}
       onClick={() => onSort(field)}
     >
       {label}
@@ -83,9 +95,49 @@ function SortHeader({
   );
 }
 
+const ASSESSMENT_COLORS: Record<string, string> = {
+  clearly_concerning: 'text-status-capture',
+  potentially_concerning: 'text-status-drift',
+  novel_not_concerning: 'text-dm-text-secondary',
+  routine: 'text-dm-text-secondary',
+};
+
+const ASSESSMENT_LABELS: Record<string, string> = {
+  clearly_concerning: 'clearly concerning',
+  potentially_concerning: 'potentially concerning',
+  novel_not_concerning: 'novel, not concerning',
+  routine: 'routine',
+};
+
+const ASSESSMENT_TIPS: Record<string, string> = {
+  clearly_concerning: 'Multiple indicators of democratic erosion with clear institutional impact',
+  potentially_concerning: 'Some erosion indicators present but impact is uncertain or limited',
+  novel_not_concerning: 'Unusual activity that does not indicate democratic erosion',
+  routine: 'Normal administrative activity with no erosion signal',
+};
+
+const EROSION_TYPE_LABELS: Record<string, string> = {
+  formal_override: 'formal override',
+  operational_hollowing: 'operational hollowing',
+  noncompliance_refusal: 'noncompliance / refusal',
+  routine: 'routine',
+  unclear: 'unclear',
+};
+
+const EROSION_TYPE_TIPS: Record<string, string> = {
+  formal_override: 'Explicit legal or policy changes that remove institutional protections',
+  operational_hollowing:
+    'Staffing cuts, budget reductions, or unfilled positions that degrade capacity',
+  noncompliance_refusal:
+    'Ignoring court orders, defying oversight, or refusing information requests',
+  routine: 'Normal administrative activity with no erosion signal',
+  unclear: 'Insufficient information to classify the erosion mechanism',
+};
+
 export function DocumentTable({ documents, category, weekOf }: DocumentTableProps) {
-  const [sortField, setSortField] = useState<SortField>('finalScore');
+  const [sortField, setSortField] = useState<SortField>('aiFlagged');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [expandedUrl, setExpandedUrl] = useState<string | null>(null);
 
   const sorted = useMemo(
     () => sortDocuments(documents, sortField, sortDir),
@@ -149,51 +201,106 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                 currentField={sortField}
                 currentDir={sortDir}
                 onSort={handleSort}
+                className="hidden sm:table-cell"
               />
               <SortHeader
-                label="Score"
-                field="finalScore"
+                label="AI Flag"
+                field="aiFlagged"
                 currentField={sortField}
                 currentDir={sortDir}
                 onSort={handleSort}
               />
               <SortHeader
-                label="Matches"
-                field="matches"
+                label="Assessment"
+                field="assessment"
                 currentField={sortField}
                 currentDir={sortDir}
                 onSort={handleSort}
               />
               <SortHeader
-                label="Suppressed"
-                field="suppressed"
+                label="Erosion Type"
+                field="erosionType"
                 currentField={sortField}
                 currentDir={sortDir}
                 onSort={handleSort}
+                className="hidden sm:table-cell"
               />
+              <th className="px-3 py-2 text-left text-[11px] font-medium text-dm-text-secondary uppercase tracking-wider">
+                Reasoning
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-dm-border/50">
-            {sorted.map((doc) => (
-              <tr key={doc.url} className="hover:bg-dm-card/50">
-                <td className="px-3 py-2 max-w-xs">
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-dm-accent hover:underline line-clamp-1"
-                  >
-                    {doc.title}
-                  </a>
-                </td>
-                <td className="px-3 py-2 text-dm-text-secondary">{doc.documentClass}</td>
-                <td className="px-3 py-2 font-medium text-dm-text-primary">
-                  {doc.finalScore.toFixed(2)}
-                </td>
-                <td className="px-3 py-2 text-dm-text-secondary">{doc.matches.length}</td>
-                <td className="px-3 py-2 text-dm-text-secondary">{doc.suppressed.length}</td>
-              </tr>
-            ))}
+            {sorted.map((doc) => {
+              const assessment = getAssessment(doc);
+              const reasoning = doc.ai?.reasoning;
+              const isExpanded = expandedUrl === doc.url;
+              return (
+                <tr key={doc.url} className="hover:bg-dm-card/50">
+                  <td className="px-3 py-2 max-w-xs">
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-dm-accent hover:underline line-clamp-1"
+                    >
+                      {doc.title}
+                    </a>
+                  </td>
+                  <td className="px-3 py-2 text-dm-text-secondary hidden sm:table-cell">
+                    {doc.documentClass}
+                  </td>
+                  <td className="px-3 py-2">
+                    {doc.ai?.flagged ? (
+                      <span className="text-status-capture font-medium">Yes</span>
+                    ) : doc.ai ? (
+                      <span className="text-dm-text-secondary">No</span>
+                    ) : (
+                      <span className="text-dm-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    {assessment !== '—' ? (
+                      <span
+                        className={`${ASSESSMENT_COLORS[assessment] ?? 'text-dm-text-primary'} border-b border-dotted border-current cursor-help`}
+                        title={ASSESSMENT_TIPS[assessment]}
+                      >
+                        {ASSESSMENT_LABELS[assessment] ?? assessment.replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-dm-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 hidden sm:table-cell">
+                    {doc.ai?.erosionType && doc.ai.erosionType !== 'routine' ? (
+                      <span
+                        className="text-dm-text-secondary border-b border-dotted border-current cursor-help"
+                        title={EROSION_TYPE_TIPS[doc.ai.erosionType]}
+                      >
+                        {EROSION_TYPE_LABELS[doc.ai.erosionType] ??
+                          doc.ai.erosionType.replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-dm-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 max-w-sm">
+                    {reasoning ? (
+                      <button
+                        onClick={() => setExpandedUrl(isExpanded ? null : doc.url)}
+                        className="text-left text-dm-text-secondary hover:text-dm-text-primary cursor-pointer"
+                      >
+                        <span className={isExpanded ? 'whitespace-normal' : 'line-clamp-1'}>
+                          {reasoning}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="text-dm-muted">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

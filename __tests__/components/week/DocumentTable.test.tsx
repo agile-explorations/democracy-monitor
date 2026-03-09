@@ -17,19 +17,38 @@ function makeDoc(overrides: Partial<DocumentExplanation> = {}): DocumentExplanat
       { tier: 'drift', count: 2, weight: 2, contribution: 4 },
       { tier: 'warning', count: 0, weight: 1, contribution: 0 },
     ],
-    matches: [
-      { keyword: 'test', tier: 'capture', context: '', position: 0 },
-      { keyword: 'other', tier: 'drift', context: '', position: 0 },
-    ],
+    matches: [],
     suppressed: [],
     ...overrides,
   };
 }
 
 const docs = [
-  makeDoc({ url: 'https://example.com/1', title: 'Alpha Doc', finalScore: 5.0 }),
-  makeDoc({ url: 'https://example.com/2', title: 'Beta Doc', finalScore: 2.0 }),
-  makeDoc({ url: 'https://example.com/3', title: 'Gamma Doc', finalScore: 8.0 }),
+  makeDoc({
+    url: 'https://example.com/1',
+    title: 'Alpha Doc',
+    ai: {
+      flagged: true,
+      assessment: 'clearly_concerning',
+      erosionType: 'formal_override',
+      reasoning: 'Alpha reasoning',
+    },
+  }),
+  makeDoc({
+    url: 'https://example.com/2',
+    title: 'Beta Doc',
+    ai: { flagged: false, assessment: null, erosionType: null, reasoning: null },
+  }),
+  makeDoc({
+    url: 'https://example.com/3',
+    title: 'Gamma Doc',
+    ai: {
+      flagged: true,
+      assessment: 'not_concerning',
+      erosionType: null,
+      reasoning: 'Gamma reasoning',
+    },
+  }),
 ];
 
 describe('DocumentTable', () => {
@@ -42,28 +61,66 @@ describe('DocumentTable', () => {
     expect(getByText('Gamma Doc')).toBeTruthy();
   });
 
-  it('sorts by score descending by default', () => {
-    const { container } = render(
+  it('shows AI assessment columns', () => {
+    const { getByText } = render(
       <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
+    // AI Flag is the default sort field so it includes the arrow
+    expect(getByText(/AI Flag/)).toBeTruthy();
+    expect(getByText('Assessment')).toBeTruthy();
+    expect(getByText('Erosion Type')).toBeTruthy();
+  });
+
+  it('displays AI flag status correctly', () => {
+    const { container } = render(
+      <DocumentTable
+        documents={[docs[0], docs[1]]}
+        category="judicialIndependence"
+        weekOf="2025-02-03"
+      />,
+    );
     const rows = container.querySelectorAll('tbody tr');
-    expect(rows[0].textContent).toContain('Gamma Doc');
-    expect(rows[1].textContent).toContain('Alpha Doc');
-    expect(rows[2].textContent).toContain('Beta Doc');
+    expect(rows[0].textContent).toContain('Yes');
+    expect(rows[1].textContent).toContain('No');
+  });
+
+  it('displays assessment and erosion type with tooltips', () => {
+    const { getByText } = render(
+      <DocumentTable documents={[docs[0]]} category="judicialIndependence" weekOf="2025-02-03" />,
+    );
+    const assessmentEl = getByText('clearly concerning');
+    expect(assessmentEl.title).toContain('Multiple indicators');
+    const erosionEl = getByText('formal override');
+    expect(erosionEl.title).toContain('Explicit legal');
+  });
+
+  it('shows dash for documents without AI data', () => {
+    const docNoAI = makeDoc({ url: 'https://example.com/no-ai', title: 'No AI Doc' });
+    const { container } = render(
+      <DocumentTable documents={[docNoAI]} category="judicialIndependence" weekOf="2025-02-03" />,
+    );
+    const cells = container.querySelectorAll('tbody td');
+    // AI Flag, Assessment, Erosion Type, Reasoning should show dashes
+    expect(cells[2].textContent).toBe('—');
+    expect(cells[3].textContent).toBe('—');
+    expect(cells[5].textContent).toBe('—');
+  });
+
+  it('shows truncated reasoning that expands on click', () => {
+    const { container, getByText } = render(
+      <DocumentTable documents={[docs[0]]} category="judicialIndependence" weekOf="2025-02-03" />,
+    );
+    // Reasoning is visible but truncated (line-clamp-1)
+    const reasoningBtn = getByText('Alpha reasoning');
+    expect(reasoningBtn.className).toContain('line-clamp-1');
+    // Click to expand
+    fireEvent.click(reasoningBtn);
+    const expanded = getByText('Alpha reasoning');
+    expect(expanded.className).toContain('whitespace-normal');
+    expect(expanded.className).not.toContain('line-clamp-1');
   });
 
   it('toggles sort direction on column click', () => {
-    const { container, getByText } = render(
-      <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
-    );
-    // Click Score header to toggle to ascending
-    fireEvent.click(getByText(/Score/));
-    const rows = container.querySelectorAll('tbody tr');
-    expect(rows[0].textContent).toContain('Beta Doc');
-    expect(rows[2].textContent).toContain('Gamma Doc');
-  });
-
-  it('sorts by title when clicking Title header', () => {
     const { container, getByText } = render(
       <DocumentTable documents={docs} category="judicialIndependence" weekOf="2025-02-03" />,
     );
@@ -108,23 +165,5 @@ describe('DocumentTable', () => {
     const link = container.querySelector('a[href="https://example.com/1"]');
     expect(link).toBeTruthy();
     expect(link?.textContent).toBe('Alpha Doc');
-  });
-
-  it('shows match and suppressed counts', () => {
-    const doc = makeDoc({
-      matches: [
-        { keyword: 'a', tier: 'capture', context: '', position: 0 },
-        { keyword: 'b', tier: 'drift', context: '', position: 0 },
-        { keyword: 'c', tier: 'warning', context: '', position: 0 },
-      ],
-      suppressed: [{ keyword: 'd', tier: 'warning', rule: 'test', reason: 'test' }],
-    });
-    const { container } = render(
-      <DocumentTable documents={[doc]} category="judicialIndependence" weekOf="2025-02-03" />,
-    );
-    const cells = container.querySelectorAll('tbody td');
-    // Matches count = 3, Suppressed count = 1
-    expect(cells[3].textContent).toBe('3');
-    expect(cells[4].textContent).toBe('1');
   });
 });

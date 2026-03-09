@@ -1,6 +1,12 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { documents, documentScores, weeklyAggregates } from '@/lib/db/schema';
+import {
+  aiDocumentAssessments,
+  documents,
+  documentScores,
+  weeklyAggregates,
+} from '@/lib/db/schema';
 import {
   AUTHORITY_COUNT_MAX,
   CLASS_MULTIPLIERS,
@@ -118,6 +124,49 @@ export async function getDocumentExplanation(url: string): Promise<DocumentExpla
   });
 }
 
+interface ScoredDocRow {
+  url: string;
+  title: string | null;
+  documentClass: string;
+  classMultiplier: number;
+  severityScore: number;
+  finalScore: number;
+  captureCount: number;
+  driftCount: number;
+  warningCount: number;
+  matches: unknown[];
+  suppressed: unknown[];
+  p1Relevant: boolean | null;
+  p2Assessment: string | null;
+  p2ErosionType: string | null;
+  p2Reasoning: string | null;
+}
+
+function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
+  const explained = explainDocumentScore({
+    url: row.url,
+    title: row.title ?? undefined,
+    documentClass: row.documentClass,
+    classMultiplier: row.classMultiplier,
+    severityScore: row.severityScore,
+    finalScore: row.finalScore,
+    captureCount: row.captureCount,
+    driftCount: row.driftCount,
+    warningCount: row.warningCount,
+    matches: row.matches,
+    suppressed: row.suppressed,
+  });
+  if (row.p1Relevant != null) {
+    explained.ai = {
+      flagged: row.p1Relevant === true,
+      assessment: row.p2Assessment ?? null,
+      erosionType: row.p2ErosionType ?? null,
+      reasoning: row.p2Reasoning ?? null,
+    };
+  }
+  return explained;
+}
+
 /** Fetch top N scored documents for a category+week, joining documents table for titles. */
 async function fetchTopScoredDocuments(
   category: string,
@@ -125,6 +174,8 @@ async function fetchTopScoredDocuments(
   topN: number,
 ): Promise<DocumentExplanation[]> {
   const db = getDb();
+  const p1 = alias(aiDocumentAssessments, 'p1');
+  const p2 = alias(aiDocumentAssessments, 'p2');
   const rows = await db
     .select({
       url: documentScores.url,
@@ -138,31 +189,29 @@ async function fetchTopScoredDocuments(
       warningCount: documentScores.warningCount,
       matches: documentScores.matches,
       suppressed: documentScores.suppressed,
+      p1Relevant: p1.relevant,
+      p2Assessment: p2.assessment,
+      p2ErosionType: p2.erosionType,
+      p2Reasoning: p2.reasoning,
     })
     .from(documentScores)
     .leftJoin(
       documents,
       and(eq(documentScores.url, documents.url), eq(documentScores.category, documents.category)),
     )
+    .leftJoin(
+      p1,
+      and(eq(documentScores.url, p1.url), eq(documentScores.category, p1.category), eq(p1.pass, 1)),
+    )
+    .leftJoin(
+      p2,
+      and(eq(documentScores.url, p2.url), eq(documentScores.category, p2.category), eq(p2.pass, 2)),
+    )
     .where(and(eq(documentScores.category, category), eq(documentScores.weekOf, weekOf)))
     .orderBy(desc(documentScores.finalScore))
     .limit(topN);
 
-  return rows.map((row) =>
-    explainDocumentScore({
-      url: row.url,
-      title: row.title ?? undefined,
-      documentClass: row.documentClass,
-      classMultiplier: row.classMultiplier,
-      severityScore: row.severityScore,
-      finalScore: row.finalScore,
-      captureCount: row.captureCount,
-      driftCount: row.driftCount,
-      warningCount: row.warningCount,
-      matches: row.matches,
-      suppressed: row.suppressed,
-    }),
-  );
+  return rows.map(toDocumentExplanation);
 }
 
 /** Explain a week's aggregate for a category, including top N documents. */
