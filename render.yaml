@@ -36,14 +36,9 @@ services:
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
-databases:
-  - name: epd-db
-    plan: basic-1gb
-    databaseName: epd
-    postgresMajorVersion: '17'
-
-crons:
-  - name: weekly-dump
+  - type: cron
+    name: weekly-dump
+    runtime: node
     schedule: '0 4 * * 1'
     buildCommand: pnpm install
     startCommand: ./scripts/weekly-dump.sh
@@ -55,7 +50,9 @@ crons:
       - key: GITHUB_TOKEN
         sync: false
 
-  - name: daily-snapshot
+  - type: cron
+    name: daily-snapshot
+    runtime: node
     schedule: '0 6 * * *'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/snapshot.ts
@@ -80,7 +77,9 @@ crons:
       - key: FEC_API_KEY
         sync: false
 
-  - name: weekly-legiscan
+  - type: cron
+    name: weekly-legiscan
+    runtime: node
     schedule: '0 1 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/legiscan-bulk.ts
@@ -92,26 +91,36 @@ crons:
       - key: LEGISCAN_API_KEY
         sync: false
 
+databases:
+  - name: epd-db
+    plan: basic-1gb
+    databaseName: epd
+    postgresMajorVersion: '17'
+
 # Remaining cron jobs — uncomment when ready
 #
-#   - name: hourly-uptime
-#     schedule: '0 * * * *'
-#     buildCommand: pnpm install
-#     startCommand: npx tsx lib/cron/uptime-check.ts
-#     envVars:
-#       - key: DATABASE_URL
-#         fromDatabase:
-#           name: epd-db
-#           property: connectionString
+#  - type: cron
+#    name: hourly-uptime
+#    runtime: node
+#    schedule: '0 * * * *'
+#    buildCommand: pnpm install
+#    startCommand: npx tsx lib/cron/uptime-check.ts
+#    envVars:
+#      - key: DATABASE_URL
+#        fromDatabase:
+#          name: epd-db
+#          property: connectionString
 #
-#   - name: weekly-clustering
-#     schedule: '0 3 * * 0'
-#     buildCommand: pnpm install
-#     startCommand: npx tsx lib/cron/weekly-clustering.ts
-#     envVars:
-#       - key: DATABASE_URL
-#         fromDatabase:
-#           name: epd-db
-#           property: connectionString
-#       - key: OPENAI_API_KEY
-#         sync: false
+#  - type: cron
+#    name: weekly-clustering
+#    runtime: node
+#    schedule: '0 3 * * 0'
+#    buildCommand: pnpm install
+#    startCommand: npx tsx lib/cron/weekly-clustering.ts
+#    envVars:
+#      - key: DATABASE_URL
+#        fromDatabase:
+#          name: epd-db
+#          property: connectionString
+#      - key: OPENAI_API_KEY
+#        sync: false
