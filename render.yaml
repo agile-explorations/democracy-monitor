@@ -90,6 +90,8 @@ services:
           property: connectionString
       - key: LEGISCAN_API_KEY
         sync: false
+      - key: GOVINFO_API_KEY
+        sync: false
 
 databases:
   - name: epd-db
