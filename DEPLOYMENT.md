@@ -71,11 +71,8 @@ Cron jobs are defined in `render.yaml` but commented out until the initial deplo
 | Job                 | Schedule          | Purpose                                                        |
 | ------------------- | ----------------- | -------------------------------------------------------------- |
 | `daily-snapshot`    | 06:00 UTC daily   | Fetch sources, run Layer 1 + 2 + 3 assessment, store snapshots |
-| `daily-digest`      | 07:00 UTC daily   | Generate AI summary of the day's findings                      |
 | `hourly-uptime`     | Every hour        | Source availability monitoring                                 |
 | `weekly-clustering` | 03:00 UTC Sundays | Semantic clustering analysis                                   |
-
-`daily-digest` runs one hour after `daily-snapshot` so it has fresh data to summarize.
 
 ## Ongoing Operations
 

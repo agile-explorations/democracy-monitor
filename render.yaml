@@ -82,24 +82,6 @@ crons:
 
 # Remaining cron jobs — uncomment when ready
 #
-#   - name: daily-digest
-#     schedule: '0 7 * * *'
-#     buildCommand: pnpm install
-#     startCommand: npx tsx lib/cron/daily-digest.ts
-#     envVars:
-#       - key: DATABASE_URL
-#         fromDatabase:
-#           name: epd-db
-#           property: connectionString
-#       - key: REDIS_URL
-#         fromService:
-#           name: epd-redis
-#           type: keyvalue
-#           property: connectionString
-#       - key: OPENAI_API_KEY
-#         sync: false
-#
-#
 #   - name: hourly-uptime
 #     schedule: '0 * * * *'
 #     buildCommand: pnpm install
