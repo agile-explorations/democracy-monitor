@@ -144,7 +144,7 @@ export async function getLastDocumentDateBySource(
   const rows = await db
     .select({
       sourceOrigin: documents.sourceOrigin,
-      maxDate: sql<Date>`max(${documents.publishedAt})`,
+      maxDate: sql<string>`max(${documents.publishedAt})::text`,
     })
     .from(documents)
     .where(and(eq(documents.category, category), sql`${documents.sourceOrigin} IS NOT NULL`))
@@ -153,7 +153,7 @@ export async function getLastDocumentDateBySource(
   const result: Record<string, string> = {};
   for (const row of rows) {
     if (row.sourceOrigin && row.maxDate) {
-      result[row.sourceOrigin] = toDateString(row.maxDate);
+      result[row.sourceOrigin] = toDateString(new Date(row.maxDate));
     }
   }
   return result;
