@@ -90,13 +90,11 @@ describe('CATEGORIES', () => {
     const types = cat!.signals.map((s) => s.type);
     expect(types).toContain('govinfo');
     expect(types).toContain('oig_html');
-    expect(types).toContain('rss');
     const ids = cat!.signals.map((s) => s.id);
     expect(ids).toContain('gi_congressional_reports');
     expect(ids).toContain('oig_doj');
     expect(ids).toContain('oig_hhs');
     expect(ids).toContain('oig_ssa');
-    expect(ids).toContain('rss_dod_oig');
   });
 
   it('elections has fec_json signal type', () => {

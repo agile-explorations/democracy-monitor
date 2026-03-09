@@ -53,7 +53,6 @@
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "signals:retry": "tsx lib/cron/retry-failed-signals.ts",
     "embeddings:backfill": "tsx lib/cron/embed-missing.ts",
-    "crossfeed:rerun": "tsx lib/cron/recrossfeed-rhetoric.ts",
     "layers:enrich": "tsx lib/cron/enrich-layer-scores.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",

@@ -21,7 +21,6 @@ import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-serv
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
 import { generateNarrativesForWeek } from '@/lib/services/narrative-pipeline';
-import { crossfeedRhetoricToCategories } from '@/lib/services/rhetoric-crossfeed';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
   computeHealthSummary,
@@ -192,11 +191,8 @@ async function snapshotRhetoric(): Promise<void> {
     const statements = await fetchAllRhetoricSources();
     const contentItems = statementsToContentItems(statements);
     const stored = await storeDocuments(contentItems, 'intent');
-    const crossfed = await crossfeedRhetoricToCategories(contentItems);
     await embedUnprocessedDocuments(50);
-    console.log(
-      `[snapshot] Stored ${stored} rhetoric documents, cross-fed ${crossfed} to categories`,
-    );
+    console.log(`[snapshot] Stored ${stored} rhetoric documents`);
 
     console.log('[snapshot] Running intent assessment...');
     try {

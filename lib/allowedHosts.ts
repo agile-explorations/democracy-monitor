@@ -33,7 +33,6 @@ export function getAllowedHosts(): string[] {
     'brightlinewatch.org',
     'api.open.fec.gov',
     'www.fec.gov',
-    'www.dodig.mil',
     'oig.hhs.gov',
     'oig.justice.gov',
     'www.fcc.gov',

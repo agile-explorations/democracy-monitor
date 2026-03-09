@@ -26,41 +26,17 @@ The following is complete and working:
 - **Calibration** — Layer 2 P1 calibration (civilLiberties), NC-3 convergence calibration, L3 reinforcement-only mode. (Sprints R-CAL1, R-CAL2)
 - **Infrastructure** — Render.com config, deployment guide, fault-tolerant fetching, cron overlap protection, analysis period safeguards. (Sprints R3.1, R-S1c, R-S1e, R-AP1)
 - **Test coverage** — 2006 tests across 138 files. Branch coverage 68%+. (Sprint R-COV1)
+- **CPD gate + source cleanup** — CPD detection validated, WH/GDELT excluded via ACTIVE_SOURCES, crossfeed pipeline removed, validation commands updated. (Issues #243–#246)
+- **OIG content pipeline** — DOJ/HHS/SSA OIG HTML fetchers, oig_html signal type, PDF text extraction, OIG content backfill. DOD OIG removed (Akamai WAF blocks). (Issues #247–#253)
+- **Legacy assessment cleanup** — getCategorySummaries() uses weekly_aggregates, assessments table removed from APIs, convergence status in UI, snapshot pipeline modernized, T2 narratives via layers:enrich. (Issues #256–#260)
+- **FEC MUR enrichment** — Dispositions, commission votes, participant data extracted. AO/MUR PDF extraction via pdf-parse. Backfill integration with rate limiting.
+- **Dead code removal** — Crossfeed pipeline (rhetoric-crossfeed, rhetoric-fetcher, backfill-rhetoric, recrossfeed-rhetoric), deep-analysis.ts orphaned code removed.
 
 ---
 
 ## Remaining Work
 
-### 1. CPD Gate + Source Cleanup (Issues #243–#246)
-
-Sprint R-CPD1 shipped the GovInfo CPD fetcher and `ACTIVE_SOURCES` filter, but the validation gate and cleanup remain:
-
-- **#243 — GATE: Validate CPD detection quality vs known events.** Run backtest against known events with CPD data to confirm detection quality is maintained or improved.
-- **#244 — Exclude WH + GDELT documents and recompute baselines.** ACTIVE_SOURCES filter excludes them from scoring but old data remains in tables. Clean recompute needed.
-- **#245 — Deprecate crossfeed pipeline from active codebase.** Remove rhetoric cross-feed code paths now that CPD replaces WH/GDELT as the presidential document source.
-- **#246 — Update validation commands for new source stack.** Validation checks still reference retired sources.
-
-### 2. OIG Content Pipeline (Issues #247–#253)
-
-Inspector General reports are a key source for executiveOversight. HTML fetchers and content extraction needed:
-
-- **#247–#249 — OIG HTML fetchers** (DOJ, HHS, SSA). Scrape IG report pages, extract report metadata.
-- **#250 — Pipeline wiring.** `oig_html` signal type + backfill integration.
-- **#251 — DOD OIG RSS diagnostic.** Investigate why DOD OIG RSS isn't producing documents.
-- **#252 — PDF text extraction utility.** Many IG reports are PDF-only. `lib/utils/pdf-extractor.ts` needed for content extraction.
-- **#253 — Add OIG content backfill to backfill-content.ts.**
-
-### 3. Legacy Assessment Cleanup (Issues #256–#260)
-
-The UI and APIs still partially depend on the legacy `assessments` table (pre-three-layer architecture). These issues remove that dependency:
-
-- **#256 — Rewrite getCategorySummaries() to use weekly_aggregates.** The landing page data source still reads from the legacy table.
-- **#257 — Remove assessments table dependency from category detail + snapshot APIs.**
-- **#258 — Replace legacy status mapping with convergence status in UI.**
-- **#259 — Remove legacy assessment steps from snapshot pipeline.**
-- **#260 — Generate T2 narratives via layers:enrich --narratives.**
-
-### 4. Cron Jobs + Production Pipeline
+### 1. Cron Jobs + Production Pipeline (Issues #261–#263)
 
 The daily monitoring pipeline needs to work end-to-end:
 
@@ -73,7 +49,7 @@ The daily monitoring pipeline needs to work end-to-end:
    - `weekly-clustering` (Sun 03:00 UTC) — semantic clustering
 3. **Test the full cycle**: snapshot → layer scoring → narrative generation → UI displays fresh data.
 
-### 5. Database Dump + GitHub Release
+### 2. Database Dump + GitHub Release
 
 The deployment strategy (`DEPLOYMENT.md`) depends on database dumps stored in GitHub Release assets:
 
@@ -84,7 +60,7 @@ The deployment strategy (`DEPLOYMENT.md`) depends on database dumps stored in Gi
    - Disaster recovery backup of expensive AI assessment data (~$50–100 to regenerate)
 3. **Establish a cadence** for dump updates (weekly or after significant data changes).
 
-### 6. Launch Prep
+### 3. Launch Prep
 
 - [ ] Verify all 14 categories have current-period data (T2: Jan 2025–present)
 - [ ] Run `pnpm validate:ingest`, `pnpm validate:data`, `pnpm validate:detection` — all clean

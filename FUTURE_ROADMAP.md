@@ -8,10 +8,11 @@ This roadmap describes four planned releases that extend the platform's analytic
 
 **Release order and rationale:**
 
-1. **Detection Quality & Platform Hardening** — foundation must be solid before building on it. Every subsequent release depends on accurate, calibrated detection.
+1. **Detection Quality & Platform Hardening** — foundation must be solid before building on it. Every subsequent release depends on accurate, calibrated detection. Includes Balance of Powers Phase A (inter-branch check classification + "Checks Activated" panel in category pages) — reprocesses existing documents, no new data sources needed.
 2. **Project 2025: Plan vs. Delivered** — requires almost no new data sources (the system already ingests the government documents that implement the proposals). Proposal extraction is available from third parties. The most immediately actionable feature for the public: "34% of Project 2025 proposals show implementation activity" is a headline that drives adoption and sponsorship. Also the most analytically defensible — matching documents against published proposals is a concrete factual question, not an interpretive judgment.
-3. **Rhetoric vs. Action** — requires substantial new source integration (Congressional Record, agency newsrooms, social media archives) but those sources have independent value even before the lag analysis engine is built. The matched-pairs engine and ring analysis are the sophisticated features that take longer; the source integration delivers value immediately through the existing three-layer pipeline.
-4. **Authoritarian Infrastructure Build-out** — the most novel contribution (nobody else tracks operational capacity for authoritarian action) but requires the most new data source integration (SAM.gov, USAJobs, SEC EDGAR). Its analytical power is maximized when it converges with Releases 2 and 3, so building it last lets the convergence framework be designed with real data rather than speculatively. Exception: if a specific infrastructure signal becomes urgent (e.g., detention contracts surge), the relevant fetcher can be fast-tracked as a standalone source addition without building the full analytical framework.
+3. **Balance of Powers** — the standalone visualization of inter-branch constraint dynamics. Phase A (Release 1) generates the classified data; Phase B builds the `/balance` page with the three-branch triangle visualization, edge-first drill-down, and historical trajectory. Ships after Phase A data proves which edges have adequate signal. No new data sources — entirely derived from existing documents.
+4. **Rhetoric vs. Action** — requires substantial new source integration (Congressional Record, agency newsrooms, social media archives) but those sources have independent value even before the lag analysis engine is built. The matched-pairs engine and ring analysis are the sophisticated features that take longer; the source integration delivers value immediately through the existing three-layer pipeline.
+5. **Authoritarian Infrastructure Build-out** — the most novel contribution (nobody else tracks operational capacity for authoritarian action) but requires the most new data source integration (SAM.gov, USAJobs, SEC EDGAR). Its analytical power is maximized when it converges with Releases 2, 3, and 4, so building it last lets the convergence framework be designed with real data rather than speculatively. Exception: if a specific infrastructure signal becomes urgent (e.g., detention contracts surge), the relevant fetcher can be fast-tracked as a standalone source addition without building the full analytical framework.
 
 ---
 
@@ -45,23 +46,26 @@ This release closes every gap that can be closed with the existing source stack,
 
 **Platform polish.** First-time visitor onboarding, mobile-responsive layouts, performance optimization, and the ongoing UI improvements that make the system accessible to non-technical users.
 
+**Balance of Powers Phase A (inter-branch check classification).** The current system monitors threats but doesn't surface institutional responses — when a court blocks an executive order, the system sees the order but not the judicial check. Phase A adds a P2.5 classification pass that identifies inter-branch constraint documents (injunctions, oversight reports, rule withdrawals), extracts references to the specific actions being checked, and surfaces a "Checks Activated" panel in category detail pages. This reprocesses existing documents — no new data sources needed. Constraint rates per directional relationship (Judicial → Executive, Legislative → Executive, etc.) are computed against historical baselines, revealing whether checks and balances are strengthening, weakening, or holding steady. Full specification in `BALANCE_OF_POWERS_PROPOSAL.md`.
+
 ### Implementation Details
 
-| Item                                                     | Effort               | Prerequisite                                          |
-| -------------------------------------------------------- | -------------------- | ----------------------------------------------------- |
-| Per-category L1 threshold calibration                    | Medium               | Stable baseline data                                  |
-| Layer 3 re-evaluation with clean centroids               | Medium               | Content cleanup complete, baselines recomputed        |
-| Admin auth + review queue                                | Medium               | Dashboard operational                                 |
-| Feedback learning pipeline                               | Medium-Large         | Review queue operational                              |
-| Event retrospective harness                              | Large (~300 LOC)     | Three-layer system operational                        |
-| Cross-category synchrony detection                       | Medium (~50-80 LOC)  | Convergence synthesis operational                     |
-| Media coverage signal (GDELT Phase 7)                    | Large                | Media-specific baselines, convergence formula changes |
-| Pass 1 pre-filtering (functional classifier)             | Small (~20 LOC)      | Layer 1 functional classifier operational             |
-| AI model challenge set                                   | Medium               | Pass 1 + Pass 2 operational                           |
-| Semantic variance decomposition (within/between cluster) | Medium (~80-120 LOC) | Layer 3 operational with clustering                   |
-| Semantic escalation within functional buckets            | Medium-Large         | Layer 1 classifier + Layer 3 operational              |
-| Pass 2 infrastructure theme tagging                      | Small                | Add before next baseline re-run                       |
-| Onboarding + responsive + performance                    | Medium               | Dashboard feature-complete                            |
+| Item                                                                                | Effort               | Prerequisite                                          |
+| ----------------------------------------------------------------------------------- | -------------------- | ----------------------------------------------------- |
+| Per-category L1 threshold calibration                                               | Medium               | Stable baseline data                                  |
+| Layer 3 re-evaluation with clean centroids                                          | Medium               | Content cleanup complete, baselines recomputed        |
+| Admin auth + review queue                                                           | Medium               | Dashboard operational                                 |
+| Feedback learning pipeline                                                          | Medium-Large         | Review queue operational                              |
+| Balance of Powers Phase A (P2.5 classification + matching + Checks Activated panel) | Medium-Large         | P2 assessments operational                            |
+| Event retrospective harness                                                         | Large (~300 LOC)     | Three-layer system operational                        |
+| Cross-category synchrony detection                                                  | Medium (~50-80 LOC)  | Convergence synthesis operational                     |
+| Media coverage signal (GDELT Phase 7)                                               | Large                | Media-specific baselines, convergence formula changes |
+| Pass 1 pre-filtering (functional classifier)                                        | Small (~20 LOC)      | Layer 1 functional classifier operational             |
+| AI model challenge set                                                              | Medium               | Pass 1 + Pass 2 operational                           |
+| Semantic variance decomposition (within/between cluster)                            | Medium (~80-120 LOC) | Layer 3 operational with clustering                   |
+| Semantic escalation within functional buckets                                       | Medium-Large         | Layer 1 classifier + Layer 3 operational              |
+| Pass 2 infrastructure theme tagging                                                 | Small                | Add before next baseline re-run                       |
+| Onboarding + responsive + performance                                               | Medium               | Dashboard feature-complete                            |
 
 ---
 
@@ -111,7 +115,47 @@ The "EXCEEDS" classification is particularly important. When government actions 
 
 ---
 
-## Release 3: Rhetoric vs. Action
+## Release 3: Balance of Powers
+
+### Why It Matters
+
+Democracy Monitor currently tells you what's going wrong. It doesn't tell you whether the system is responding. When the executive branch fires 17 inspectors general in a single night, the system correctly flags executiveOversight as elevated — but it doesn't show the two federal court injunctions filed within 48 hours, the three GAO investigations launched in the following weeks, or the congressional oversight hearing convened in response. Those institutional responses are democracy _functioning_, and their presence or absence is as important as the threat that triggered them.
+
+The existing system monitors 14 threat vector categories. This release adds the complementary dimension: inter-branch constraint dynamics. It visualizes the six directional relationships between the executive, legislative, and judicial branches — not as abstract "power" but as measurable constraint activity documented in public records. A court injunction is a constraint artifact. A GAO oversight report is a constraint artifact. A rule withdrawal after an adverse ruling is a constraint artifact. Each is observable, attributable, and trackable over time.
+
+The key metric is **constraint rate**: of the actions taken by Branch A, what fraction drew a response from Branch B? Tracked against historical baselines, declining constraint rates reveal weakening checks and balances — even when individual threat categories appear stable.
+
+Phase A (Release 1) generates the classified data by adding a P2.5 check classification pass to existing documents and surfacing a "Checks Activated" panel in category detail pages. Phase B (this release) builds the standalone visualization after empirical data confirms which edges have adequate signal.
+
+### Key Features
+
+**Three-branch visualization.** A triangle/network diagram where each vertex represents a branch of government and each edge represents a directional constraint relationship. Edge thickness reflects smoothed constraint rate (rolling 4-week window). Edge color indicates above or below baseline. Tooltips show coverage percentage and match rate so users know which edges have high-confidence data and which are sparse.
+
+**Edge-first drill-down.** Users click an edge (e.g., Judicial → Executive), then filter by monitoring category (immigration, civil service, etc.), then see the specific constraint documents and linked pairs with response latency. This aligns with the "checks and balances in tension" framing — the entry point is the relationship, not the category.
+
+**Historical trajectory.** Animate or scrub the visualization over time to show how constraint rates have shifted across the Trump T2 period. Where have checks strengthened? Where have they weakened? When did the shifts happen?
+
+**Constraint asymmetry.** Per branch pair, the ratio of constraint rates in each direction. A balanced ratio (near 1.0) suggests healthy tension. A highly asymmetric ratio — one branch checking the other far more than the reverse — is a summary signal worth surfacing.
+
+**Expert enrichment.** Human experts can enhance the automated classifications: link a check precisely to the action being checked, add non-documentary knowledge about informal practices (Senate holds, back-channel negotiations), and specify dates for events that produced no document. Expert contributions are tagged with identity and timestamp, creating an audit trail and enabling inter-rater agreement measurement. Sporadic expert input is valuable — even one confirmed link per week calibrates the automated matcher.
+
+### Implementation Details
+
+**Prerequisite:** Release 1 Phase A operational — P2.5 classifications generated, coverage heatmap revealing viable edges.
+
+| Step                           | Effort | Description                                                                        |
+| ------------------------------ | ------ | ---------------------------------------------------------------------------------- |
+| Determine viable edges         | Small  | Coverage heatmap analysis — which of 6 edges have sufficient signal                |
+| Triangle/network visualization | Large  | D3 or custom React/SVG, edge thickness/color, tooltips with coverage               |
+| Edge-first drill-down          | Medium | Edge → category filter → document list with linked pairs and latency               |
+| Historical trajectory          | Medium | Time scrubber or animation over T2 period                                          |
+| Expert enrichment intake       | Medium | Extend admin review queue to accept expert check links and non-documentary entries |
+
+**Full specification:** `BALANCE_OF_POWERS_PROPOSAL.md`
+
+---
+
+## Release 4: Rhetoric vs. Action
 
 ### Why It Matters
 
@@ -166,7 +210,7 @@ Democracy Monitor can do this because it already ingests the government's formal
 
 ---
 
-## Release 4: Authoritarian Infrastructure Build-out
+## Release 5: Authoritarian Infrastructure Build-out
 
 ### Why It Matters
 
@@ -176,7 +220,7 @@ This is the capability dimension. It answers a different question than the other
 
 The distinction matters because infrastructure is often built quietly, through routine procurement and hiring processes that don't generate the kind of headlines or legal challenges that executive orders and court rulings do. A detention facility contract filed in SAM.gov, 2,000 new ICE officer postings on USAJobs, a facial recognition technology procurement — each is individually a routine government action. Together, they represent a systematic expansion of enforcement capacity that the public has a right to understand.
 
-The scenario that makes this feature urgent: the same week that P2025 matching shows implementation of Chapter 5's detention proposals (Release 2) and rhetoric escalates about "mass deportation operations" (Release 3), SAM.gov reveals new detention facility contracts and USAJobs shows an ICE hiring surge (Release 4). Any one of these signals is informative. All four together tell a story that no single data source reveals: rhetoric is being operationalized according to a published plan, and the operational capacity to execute at scale is being built in parallel.
+The scenario that makes this feature urgent: the same week that P2025 matching shows implementation of Chapter 5's detention proposals (Release 2) and rhetoric escalates about "mass deportation operations" (Release 4), SAM.gov reveals new detention facility contracts and USAJobs shows an ICE hiring surge (Release 5). Any one of these signals is informative. All four together tell a story that no single data source reveals: rhetoric is being operationalized according to a published plan, and the operational capacity to execute at scale is being built in parallel.
 
 ### Key Features
 
@@ -190,7 +234,7 @@ The scenario that makes this feature urgent: the same week that P2025 matching s
 
 **Financial infrastructure tracking.** Funding patterns that enable enforcement capacity. DOJ asset forfeiture fund reports, DHS budget execution reports, ICE detention funding vs. expenditure. The metric: enforcement spending growth rate relative to overall budget.
 
-**Cross-feature convergence.** When detention capacity, personnel build-out, and surveillance procurement all accelerate in the same policy domain in the same timeframe, while P2025 proposals for that domain are being implemented (Release 2) and rhetoric about that domain is escalating (Release 3) — that convergence across four independent analytical dimensions is the strongest signal the system can produce. This is a higher-order version of the existing three-layer convergence: not "do structural, AI, and thematic analysis agree?" but "do rhetoric, blueprint, capability, and measured action all point in the same direction?"
+**Cross-feature convergence.** When detention capacity, personnel build-out, and surveillance procurement all accelerate in the same policy domain in the same timeframe, while P2025 proposals for that domain are being implemented (Release 2) and rhetoric about that domain is escalating (Release 4) — that convergence across four independent analytical dimensions is the strongest signal the system can produce. This is a higher-order version of the existing three-layer convergence: not "do structural, AI, and thematic analysis agree?" but "do rhetoric, blueprint, capability, and measured action all point in the same direction?"
 
 ### Implementation Details
 
@@ -221,15 +265,15 @@ The scenario that makes this feature urgent: the same week that P2025 matching s
 
 ## Cross-Feature Convergence
 
-Releases 2, 3, and 4 are most powerful when they converge. Any single signal is informative; all four analytical dimensions lighting up simultaneously for the same policy domain tells a story that no individual data source reveals.
+Releases 2, 4, and 5 are most powerful when they converge. Any single signal is informative; all four analytical dimensions lighting up simultaneously for the same policy domain tells a story that no individual data source reveals. Release 3 (Balance of Powers) adds a fifth dimension — whether institutional checks are responding to the signals the other releases detect.
 
-**The convergence scenario:** (1) This language in a government document maps to Project 2025 Chapter 5's proposal to increase ICE detention capacity (Release 2 — P2025). (2) The president and DHS Secretary begin talking about "mass deportation operations" (Release 3 — Rhetoric). (3) In weeks 3-8, SAM.gov shows new detention facility contracts, USAJobs shows an ICE officer posting surge, and CBP's budget justification requests a 40% capacity increase (Release 4 — Infrastructure). (4) Meanwhile, the existing detection layers show DHS rulemaking volume spiking, CourtListener immigration filings surging, and DOJ press releases shifting topic distribution toward immigration enforcement (existing system — government document analysis).
+**The convergence scenario:** (1) A government document matches Project 2025 Chapter 5's proposal to increase ICE detention capacity (Release 2 — P2025). (2) The president and DHS Secretary begin talking about "mass deportation operations" (Release 4 — Rhetoric). (3) In weeks 3-8, SAM.gov shows new detention facility contracts, USAJobs shows an ICE officer posting surge, and CBP's budget justification requests a 40% capacity increase (Release 5 — Infrastructure). (4) Meanwhile, the existing detection layers show DHS rulemaking volume spiking, CourtListener immigration filings surging, and DOJ press releases shifting topic distribution toward immigration enforcement (existing system — government document analysis). (5) The Balance of Powers data shows the judicial constraint rate on immigration-related executive actions declining from baseline (Release 3 — institutional checks weakening as action accelerates).
 
-The cross-feature convergence score operates per category per week: not "are multiple layers concerned about lawEnforcement" (existing within-category convergence) but "are rhetoric, P2025 implementation, infrastructure build-out, and measured government action all accelerating in the same policy domain at the same time?"
+The cross-feature convergence score operates per category per week: not "are multiple layers concerned about lawEnforcement" (existing within-category convergence) but "are rhetoric, P2025 implementation, infrastructure build-out, and measured government action all accelerating in the same policy domain at the same time — and are the institutional checks keeping pace?"
 
-**Design constraint:** The data model decisions for Release 3 (speaker attribution, statement-to-action linking) must anticipate Release 2 matching and Release 4 infrastructure tracking. Design the cross-feature convergence schema before building any release.
+**Design constraint:** The data model decisions for Release 4 (speaker attribution, statement-to-action linking) must anticipate Release 2 matching and Release 5 infrastructure tracking. Design the cross-feature convergence schema before building any release.
 
-**Build order:** Release 2 (P2025) first — matcher pipeline is well-specified and requires no new data sources. Release 3 (rhetoric sources) second — builds the primary-source data that feeds lag analysis. Release 4 (infrastructure) third — requires the most new data source integration. Cross-feature convergence ships after all three releases have baseline data.
+**Build order:** Release 2 (P2025) first — matcher pipeline is well-specified and requires no new data sources. Release 3 (Balance of Powers visualization) second — builds on Phase A data from Release 1. Release 4 (rhetoric sources) third — builds the primary-source data that feeds lag analysis. Release 5 (infrastructure) fourth — requires the most new data source integration. Cross-feature convergence ships after all releases have baseline data.
 
 ---
 
@@ -258,9 +302,10 @@ Items that improve the platform's internal quality but don't constitute user-fac
 
 _(Updated as releases progress)_
 
-| Release                                   | Status          | Notes                                                                                   |
-| ----------------------------------------- | --------------- | --------------------------------------------------------------------------------------- |
-| 1. Detection Quality & Platform Hardening | Planning        | Individual items at various stages of specification                                     |
-| 2. Project 2025: Plan vs. Delivered       | Design complete | Schema and matcher specified; proposal extraction pending; requires no new data sources |
-| 3. Rhetoric vs. Action                    | Design complete | Rhetoric sources validated (2026-03-03); implementation not started                     |
-| 4. Authoritarian Infrastructure Build-out | Design complete | Data source feasibility validated; implementation not started                           |
+| Release                                   | Status          | Notes                                                                                                                   |
+| ----------------------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1. Detection Quality & Platform Hardening | Planning        | Individual items at various stages of specification; Balance of Powers Phase A included                                 |
+| 2. Project 2025: Plan vs. Delivered       | Design complete | Schema and matcher specified; proposal extraction pending; requires no new data sources                                 |
+| 3. Balance of Powers                      | Design complete | Full specification in `BALANCE_OF_POWERS_PROPOSAL.md`; Phase A (Release 1) generates data, Phase B builds visualization |
+| 4. Rhetoric vs. Action                    | Design complete | Rhetoric sources validated (2026-03-03); implementation not started                                                     |
+| 5. Authoritarian Infrastructure Build-out | Design complete | Data source feasibility validated; implementation not started                                                           |

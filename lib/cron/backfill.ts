@@ -2,7 +2,6 @@ import { and } from 'drizzle-orm';
 import { backfillCpd } from '@/lib/cron/backfill-cpd';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
-import { backfillRhetoricWithAggregation } from '@/lib/cron/backfill-rhetoric';
 import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
 import {
   buildAnalysisPeriodCondition,
@@ -44,8 +43,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   oig: 'oig_html',
 };
 
-const RHETORIC_SOURCES: ReadonlySet<string> = new Set(['gdelt']);
-const SPECIAL_SOURCES: ReadonlySet<string> = new Set([...RHETORIC_SOURCES, 'legiscan', 'cpd']);
+const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd']);
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
@@ -213,7 +211,7 @@ async function backfillCategory(
 
 function resolveSourceFilter(source?: string): string | undefined {
   if (!source) return undefined;
-  if (SPECIAL_SOURCES.has(source)) return undefined; // Rhetoric/LegiScan handled separately
+  if (SPECIAL_SOURCES.has(source)) return undefined; // LegiScan/CPD handled separately
   const signalType = SOURCE_TO_SIGNAL_TYPE[source];
   if (!signalType) {
     throw new Error(`Unknown source: ${source}. Valid: ${ALL_VALID_SOURCES.join(', ')}`);
@@ -260,13 +258,6 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
       totalDocs += r.docs;
       totalApiCalls += r.apiCalls;
     }
-  }
-
-  // Rhetoric backfill (GDELT): runs when no source filter, or when source is gdelt
-  const isRhetoricSource = options.source ? RHETORIC_SOURCES.has(options.source) : false;
-  const shouldRunRhetoric = !options.source || isRhetoricSource;
-  if (shouldRunRhetoric && !options.category) {
-    totalDocs += await backfillRhetoricWithAggregation(weeks, dryRun);
   }
 
   // CPD backfill: runs when no source filter, or when source is cpd

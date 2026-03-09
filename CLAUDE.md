@@ -19,7 +19,7 @@ pnpm db:migrate     # Apply migrations to PostgreSQL
 pnpm snapshot              # Run daily snapshot cron (incremental fetch + full assessment)
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
-pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|wh|oig|fec, --dry-run, --limit N)
+pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|oig|fec, --dry-run, --limit N)
 pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
@@ -29,7 +29,6 @@ pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
 pnpm signals:retry      # Retry failed RSS/HTML/JSON/FR signals from last snapshot
 pnpm embeddings:backfill # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
-pnpm crossfeed:rerun    # Re-route intent docs to categories via rhetoric cross-feed
 pnpm layers:enrich      # Recompute L1/L2/L3/convergence from updated layer data
 pnpm layer2:backfill    # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)
 pnpm legiscan:bulk      # Download LegiScan bulk datasets (Congress baseline periods)

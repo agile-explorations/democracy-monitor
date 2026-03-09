@@ -161,19 +161,6 @@ export const CATEGORIES: Category[] = [
         },
       },
       {
-        id: 'rss_dod_oig',
-        name: 'DOD Inspector General',
-        url: 'https://www.dodig.mil/RSS-Feed/',
-        type: 'rss',
-        note: 'DOD OIG — Akamai WAF may block; diagnostic pending (#251)',
-        health: {
-          isCanary: false,
-          expectedFrequency: 'weekly',
-          maxSilentDays: 14,
-          expectedMinWeeklyDocs: 1,
-        },
-      },
-      {
         id: 'oig_hhs',
         name: 'HHS Inspector General',
         url: 'oig://hhs',

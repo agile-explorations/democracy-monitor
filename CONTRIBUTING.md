@@ -126,7 +126,7 @@ Signal definitions live in `lib/data/categories.ts`. Each signal specifies a typ
 
 ### Adding Categories
 
-Adding a new category requires updates across several files. See `CLAUDE.md` ("Adding new categories") for the full checklist, which includes `categories.ts`, `assessment-rules.ts`, `category-maturity.ts`, `chart-colors.ts`, `doj-taxonomy.ts`, and `rhetoric-crossfeed.ts`.
+Adding a new category requires updates across several files. See `CLAUDE.md` ("Adding new categories") for the full checklist, which includes `categories.ts`, `assessment-rules.ts`, `category-maturity.ts`, `chart-colors.ts`, and `doj-taxonomy.ts`.
 
 ## Submitting a Pull Request
 
