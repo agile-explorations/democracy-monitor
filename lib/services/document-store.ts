@@ -131,18 +131,30 @@ export async function getDocumentsForWeek(
 }
 
 /**
- * Get the most recent document date for a category.
- * Used by incremental snapshot to determine the fetch window.
+ * Get the most recent document date per source origin for a category.
+ * Each source gets its own incremental window to avoid gaps when sources
+ * have different publication frequencies.
  */
-export async function getLastDocumentDate(category: string): Promise<string | null> {
-  if (!isDbAvailable()) return null;
+export async function getLastDocumentDateBySource(
+  category: string,
+): Promise<Record<string, string>> {
+  if (!isDbAvailable()) return {};
   const db = getDb();
 
-  const [row] = await db
-    .select({ maxDate: sql<Date | null>`max(${documents.publishedAt})` })
+  const rows = await db
+    .select({
+      sourceOrigin: documents.sourceOrigin,
+      maxDate: sql<Date>`max(${documents.publishedAt})`,
+    })
     .from(documents)
-    .where(eq(documents.category, category));
+    .where(and(eq(documents.category, category), sql`${documents.sourceOrigin} IS NOT NULL`))
+    .groupBy(documents.sourceOrigin);
 
-  if (!row?.maxDate) return null;
-  return toDateString(row.maxDate);
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    if (row.sourceOrigin && row.maxDate) {
+      result[row.sourceOrigin] = toDateString(row.maxDate);
+    }
+  }
+  return result;
 }

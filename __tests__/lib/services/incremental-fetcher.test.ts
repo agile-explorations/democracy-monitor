@@ -56,19 +56,19 @@ describe('fetchCategoryIncremental', () => {
   });
 
   it('returns API signal documents in results', async () => {
-    const result = await fetchCategoryIncremental(testCategory, '2026-02-20');
+    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
 
     expect(result.items).toContainEqual(expect.objectContaining({ title: 'FR Doc 1' }));
   });
 
   it('returns RSS signal documents in results', async () => {
-    const result = await fetchCategoryIncremental(testCategory, '2026-02-20');
+    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
 
     expect(result.items).toContainEqual(expect.objectContaining({ title: 'RSS Item 1' }));
   });
 
   it('combines results from API and RSS signals', async () => {
-    const result = await fetchCategoryIncremental(testCategory, '2026-02-20');
+    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
 
     // 1 FR item + 2 RSS items
     expect(result.items).toHaveLength(3);
@@ -85,7 +85,7 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(rssOnly, '2026-02-20');
+    const result = await fetchCategoryIncremental(rssOnly, {}, '2026-02-20');
     expect(result.items).toHaveLength(2);
     expect(result.signalResults).toHaveLength(1);
   });
@@ -105,7 +105,7 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(apiOnly, '2026-02-20');
+    const result = await fetchCategoryIncremental(apiOnly, {}, '2026-02-20');
     expect(result.items).toHaveLength(1);
     expect(result.signalResults).toHaveLength(1);
   });
@@ -126,7 +126,7 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(cat, '2026-02-20');
+    const result = await fetchCategoryIncremental(cat, {}, '2026-02-20');
     expect(result.signalResults[0].signalId).toBe('https://federalregister.gov/no-id');
   });
 
@@ -150,11 +150,21 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(cat, '2026-02-20');
+    const result = await fetchCategoryIncremental(cat, {}, '2026-02-20');
     const frResult = result.signalResults.find((r) => r.signalId === 'fr-err');
     expect(frResult).toBeDefined();
     expect(frResult!.success).toBe(false);
     expect(frResult!.errorMessage).toBe('API rate limit exceeded');
+  });
+
+  it('uses per-source dates when available, falls back otherwise', async () => {
+    // With a source-specific date, fetcher still produces results
+    const sourceDates = { federal_register: '2026-03-01' };
+    const result = await fetchCategoryIncremental(testCategory, sourceDates, '2026-01-01');
+
+    // Should still return documents from FR and RSS signals
+    expect(result.items).toHaveLength(3);
+    expect(result.signalResults).toHaveLength(2);
   });
 
   it('excludes results from rejected RSS signal fetches', async () => {
@@ -174,7 +184,7 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(cat, '2026-02-20');
+    const result = await fetchCategoryIncremental(cat, {}, '2026-02-20');
     // Rejected promise is silently dropped — no items, no signal results
     expect(result.items).toHaveLength(0);
     expect(result.signalResults).toHaveLength(0);

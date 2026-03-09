@@ -1,6 +1,7 @@
 /**
  * Incremental document fetcher for the snapshot pipeline.
- * API signals (FR, CL, DOJ, GovInfo, FEC) use historical fetchers with dateFrom=since.
+ * API signals (FR, CL, DOJ, GovInfo, FEC, OIG) use historical fetchers with
+ * per-source dateFrom to avoid gaps between sources with different frequencies.
  * RSS/HTML/JSON signals use existing latest-N behavior (no historical API).
  */
 
@@ -44,6 +45,16 @@ type GroupedSignals = {
   rss: Signal[];
 };
 
+/** Maps fetcher group keys to document source_origin values in the DB. */
+const GROUP_TO_SOURCE_ORIGIN: Record<string, string> = {
+  fr: 'federal_register',
+  cl: 'courtlistener',
+  doj: 'doj',
+  gi: 'govinfo',
+  fec: 'fec',
+  oig: 'oig',
+};
+
 function groupSignals(signals: Signal[]): GroupedSignals {
   return {
     fr: signals.filter((s) => s.type === 'federal_register'),
@@ -73,14 +84,14 @@ function sourceResultToSignalResult(
   };
 }
 
-/** Fetch API signals incrementally from `since` to today. */
+/** Fetch API signals incrementally, using per-source last-document dates. */
 async function fetchApiSignals(
   groups: GroupedSignals,
   categoryKey: string,
-  since: string,
+  sourceDates: Record<string, string>,
+  fallbackSince: string,
 ): Promise<{ items: ContentItem[]; signalResults: SignalFetchResult[] }> {
   const today = toDateString(new Date());
-  const week = { start: since, end: today };
   const items: ContentItem[] = [];
   const signalResults: SignalFetchResult[] = [];
 
@@ -99,10 +110,12 @@ async function fetchApiSignals(
   for (const { key, fn } of fetchers) {
     const signals = groups[key];
     if (signals.length === 0) continue;
+    const sourceOrigin = GROUP_TO_SOURCE_ORIGIN[key];
+    const since = sourceDates[sourceOrigin] ?? fallbackSince;
+    const week = { start: since, end: today };
     const start = Date.now();
     const result = await fn(signals, week, categoryKey);
     items.push(...result.items);
-    // Create a single signal result per group for health tracking
     signalResults.push(sourceResultToSignalResult(signals[0], result, start));
   }
 
@@ -130,17 +143,22 @@ async function fetchRssSignals(
 
 /**
  * Fetch category documents incrementally.
- * API signals fetch from `since` to today. RSS/HTML/JSON fetch latest-N.
+ * API signals fetch from per-source last-document dates to today.
+ * RSS/HTML/JSON signals fetch latest-N.
+ *
+ * @param sourceDates - Map of source_origin → last document date (from getLastDocumentDateBySource)
+ * @param fallbackSince - Used when a source has no stored documents yet
  */
 export async function fetchCategoryIncremental(
   cat: Category,
-  since: string,
+  sourceDates: Record<string, string>,
+  fallbackSince: string,
 ): Promise<IncrementalFetchResult> {
   const groups = groupSignals(cat.signals);
   const allItems: ContentItem[] = [];
   const allResults: SignalFetchResult[] = [];
 
-  const api = await fetchApiSignals(groups, cat.key, since);
+  const api = await fetchApiSignals(groups, cat.key, sourceDates, fallbackSince);
   allItems.push(...api.items);
   allResults.push(...api.signalResults);
 

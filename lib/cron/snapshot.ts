@@ -1,10 +1,12 @@
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
+import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
+import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import {
   getDocumentsForWeek,
-  getLastDocumentDate,
+  getLastDocumentDateBySource,
   storeDocuments,
 } from '@/lib/services/document-store';
 import { fetchCategoryFeedsWithMetadata } from '@/lib/services/feed-fetcher';
@@ -79,16 +81,17 @@ async function snapshotCategory(
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
 
-  // Try incremental fetch (API signals from last stored date, RSS latest-N)
-  const lastDate = await getLastDocumentDate(cat.key);
+  // Per-source incremental fetch — each source uses its own last-document date
+  const sourceDates = await getLastDocumentDateBySource(cat.key);
+  const hasPriorData = Object.keys(sourceDates).length > 0;
   let items: ContentItem[];
   let signalResults: import('@/lib/services/feed-fetcher').SignalFetchResult[];
 
-  if (lastDate) {
-    const result = await fetchCategoryIncremental(cat, lastDate);
+  if (hasPriorData) {
+    const result = await fetchCategoryIncremental(cat, sourceDates, '2025-01-20');
     items = result.items;
     signalResults = result.signalResults;
-    console.log(`[snapshot]   ${items.length} items fetched (incremental from ${lastDate})`);
+    console.log(`[snapshot]   ${items.length} items fetched (incremental, per-source dates)`);
   } else {
     // Fallback: no stored docs, use existing latest-N behavior
     const result = await fetchCategoryFeedsWithMetadata(cat);
@@ -223,6 +226,53 @@ async function snapshotLegislative(): Promise<void> {
   }
 }
 
+/** Store and score a single CPD document across its mapped categories. */
+async function storeCpdDoc(doc: CpdDocument): Promise<number> {
+  let stored = 0;
+  for (const category of doc.categories) {
+    stored += await storeDocuments([doc.item], category);
+    await storeDocumentScores(scoreDocumentBatch([doc.item], category));
+  }
+  return stored;
+}
+
+/** Fetch presidential documents from GovInfo CPD for the current week. */
+async function snapshotCpd(): Promise<void> {
+  console.log('[snapshot] Fetching CPD presidential documents...');
+  const weekOf = getWeekOfDate();
+  const today = toDateString(new Date());
+  try {
+    const docs = await fetchCpdHistorical({ dateFrom: weekOf, dateTo: today, fetchContent: true });
+    if (docs.length === 0) {
+      console.log('[snapshot] CPD: no new documents');
+      return;
+    }
+
+    let stored = 0;
+    const affectedCategories = new Set<string>();
+    for (const doc of docs) {
+      stored += await storeCpdDoc(doc);
+      doc.categories.forEach((c) => affectedCategories.add(c));
+    }
+
+    // Re-aggregate affected categories since CPD docs were added
+    for (const category of affectedCategories) {
+      try {
+        const agg = await computeWeeklyAggregate(category, weekOf);
+        await storeWeeklyAggregate(agg);
+      } catch (err) {
+        console.error(`[snapshot] CPD re-aggregate failed for ${category}:`, err);
+      }
+    }
+
+    console.log(
+      `[snapshot] CPD: ${docs.length} documents → ${stored} rows across ${affectedCategories.size} categories`,
+    );
+  } catch (err) {
+    console.error('[snapshot] CPD fetch failed:', err);
+  }
+}
+
 export async function runSnapshots(options: SnapshotOptions = {}): Promise<void> {
   if (options.from) {
     await runHistoricalSnapshots(options);
@@ -258,8 +308,17 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<void>
     );
   }
 
+  await snapshotCpd();
   await snapshotRhetoric();
   await snapshotLegislative();
+
+  // Embed unprocessed documents across all categories (feeds Layer 3 thematic drift)
+  try {
+    const embedded = await embedUnprocessedDocuments(100);
+    if (embedded > 0) console.log(`[snapshot] Embedded ${embedded} documents`);
+  } catch (err) {
+    console.warn('[snapshot] Embedding failed:', err);
+  }
 
   // Generate narratives for Elevated+ categories (after all aggregates are computed)
   try {
