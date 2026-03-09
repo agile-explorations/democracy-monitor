@@ -106,7 +106,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 - **Detection methodology** — Improving three-layer detection accuracy, reducing false positives in structural and AI assessment
 - **Signal coverage** — Adding data sources for under-monitored categories (state-level data, international indices)
 - **Source integrations** — New fetchers for government data sources (Oversight.gov, state-level courts)
-- **Test coverage** — 2000+ tests across 142 files; UI components and newer services need coverage
+- **Test coverage** — 2000+ tests across 138 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
 ## Sponsor This Project
