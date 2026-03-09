@@ -55,27 +55,32 @@ crons:
       - key: GITHUB_TOKEN
         sync: false
 
-# Remaining cron jobs — uncomment after initial deployment is verified
-#
-# crons:
-#   - name: daily-snapshot
-#     schedule: '0 6 * * *'
-#     buildCommand: pnpm install
-#     startCommand: npx tsx lib/cron/snapshot.ts
-#     envVars:
-#       - key: DATABASE_URL
-#         fromDatabase:
-#           name: epd-db
-#           property: connectionString
-#       - key: REDIS_URL
-#         fromService:
-#           name: epd-redis
-#           type: keyvalue
-#           property: connectionString
-#       - key: OPENAI_API_KEY
-#         sync: false
-#       - key: ANTHROPIC_API_KEY
-#         sync: false
+  - name: daily-snapshot
+    schedule: '0 6 * * *'
+    buildCommand: pnpm install
+    startCommand: npx tsx lib/cron/snapshot.ts
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis
+          type: keyvalue
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GOVINFO_API_KEY
+        sync: false
+      - key: COURTLISTENER_API_TOKEN
+        sync: false
+      - key: FEC_API_KEY
+        sync: false
+
+# Remaining cron jobs — uncomment when ready
 #
 #   - name: daily-digest
 #     schedule: '0 7 * * *'
