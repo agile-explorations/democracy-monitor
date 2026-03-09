@@ -44,7 +44,6 @@ The daily monitoring pipeline needs to work end-to-end:
 2. **Uncomment cron jobs in `render.yaml`** once snapshot is verified. Five jobs are defined but commented out:
    - `daily-snapshot` (06:00 UTC) — fetch sources, run three-layer assessment
    - `daily-digest` (07:00 UTC) — AI summary of findings
-   - `retry-failed-signals` (11:00 UTC) — retry failed signal fetches
    - `hourly-uptime` — source availability monitoring
    - `weekly-clustering` (Sun 03:00 UTC) — semantic clustering
 3. **Test the full cycle**: snapshot → layer scoring → narrative generation → UI displays fresh data.

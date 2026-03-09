@@ -7,9 +7,6 @@ type FetchStatus = 'complete' | 'partial' | 'failed';
 
 /** Signal types recorded in fetch_log from the snapshot pipeline. */
 const SNAPSHOT_LOGGED_TYPES = new Set([
-  'rss',
-  'html',
-  'json',
   'federal_register',
   'courtlistener',
   'doj_json',

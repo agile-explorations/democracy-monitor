@@ -12,13 +12,6 @@ export function toDateString(date: Date): string {
   return date.toISOString().split('T')[0];
 }
 
-/** Supreme Court term starts each October. TYear = 2-digit year the term began. */
-export function scotusTermYear(): string {
-  const now = new Date();
-  const year = now.getMonth() >= 9 ? now.getFullYear() : now.getFullYear() - 1;
-  return String(year % 100);
-}
-
 /** Get the Monday of the week for a given Date. Returns YYYY-MM-DD. */
 export function getMonday(date: Date): string {
   const d = new Date(date);

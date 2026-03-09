@@ -1,8 +1,7 @@
 /**
  * Incremental document fetcher for the snapshot pipeline.
- * API signals (FR, CL, DOJ, GovInfo, FEC, OIG) use historical fetchers with
- * per-source dateFrom to avoid gaps between sources with different frequencies.
- * RSS/HTML/JSON signals use existing latest-N behavior (no historical API).
+ * All signals use API-based historical fetchers with per-source dateFrom
+ * to avoid gaps between sources with different publication frequencies.
  */
 
 import {
@@ -15,20 +14,10 @@ import {
 } from '@/lib/cron/backfill-fetchers';
 import type { SourceFetchResult } from '@/lib/cron/backfill-fetchers';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
-import { fetchSignalWithMetadata } from '@/lib/services/feed-fetcher';
 import type { SignalFetchResult } from '@/lib/services/feed-fetcher';
 import type { Category, Signal } from '@/lib/types';
 import type { ContentItem } from '@/lib/types/assessment';
 import { toDateString } from '@/lib/utils/date-utils';
-
-const API_SIGNAL_TYPES = new Set([
-  'federal_register',
-  'courtlistener',
-  'doj_json',
-  'govinfo',
-  'fec_json',
-  'oig_html',
-]);
 
 export interface IncrementalFetchResult {
   items: ContentItem[];
@@ -42,7 +31,6 @@ type GroupedSignals = {
   gi: Signal[];
   fec: Signal[];
   oig: Signal[];
-  rss: Signal[];
 };
 
 /** Maps fetcher group keys to document source_origin values in the DB. */
@@ -63,7 +51,6 @@ function groupSignals(signals: Signal[]): GroupedSignals {
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
     oig: signals.filter((s) => s.type === 'oig_html'),
-    rss: signals.filter((s) => !API_SIGNAL_TYPES.has(s.type)),
   };
 }
 
@@ -84,16 +71,22 @@ function sourceResultToSignalResult(
   };
 }
 
-/** Fetch API signals incrementally, using per-source last-document dates. */
-async function fetchApiSignals(
-  groups: GroupedSignals,
-  categoryKey: string,
+/**
+ * Fetch category documents incrementally.
+ * Each source fetches from its own last-document date to today.
+ *
+ * @param sourceDates - Map of source_origin → last document date (from getLastDocumentDateBySource)
+ * @param fallbackSince - Used when a source has no stored documents yet
+ */
+export async function fetchCategoryIncremental(
+  cat: Category,
   sourceDates: Record<string, string>,
   fallbackSince: string,
-): Promise<{ items: ContentItem[]; signalResults: SignalFetchResult[] }> {
+): Promise<IncrementalFetchResult> {
   const today = toDateString(new Date());
-  const items: ContentItem[] = [];
-  const signalResults: SignalFetchResult[] = [];
+  const groups = groupSignals(cat.signals);
+  const allItems: ContentItem[] = [];
+  const allResults: SignalFetchResult[] = [];
 
   const fetchers: Array<{
     key: keyof GroupedSignals;
@@ -114,57 +107,10 @@ async function fetchApiSignals(
     const since = sourceDates[sourceOrigin] ?? fallbackSince;
     const week = { start: since, end: today };
     const start = Date.now();
-    const result = await fn(signals, week, categoryKey);
-    items.push(...result.items);
-    signalResults.push(sourceResultToSignalResult(signals[0], result, start));
+    const result = await fn(signals, week, cat.key);
+    allItems.push(...result.items);
+    allResults.push(sourceResultToSignalResult(signals[0], result, start));
   }
-
-  return { items, signalResults };
-}
-
-/** Fetch non-API signals (RSS/HTML/JSON) using existing latest-N behavior. */
-async function fetchRssSignals(
-  signals: Signal[],
-): Promise<{ items: ContentItem[]; signalResults: SignalFetchResult[] }> {
-  const items: ContentItem[] = [];
-  const signalResults: SignalFetchResult[] = [];
-
-  const settled = await Promise.allSettled(signals.map((s) => fetchSignalWithMetadata(s)));
-
-  for (const r of settled) {
-    if (r.status === 'fulfilled') {
-      signalResults.push(r.value);
-      items.push(...r.value.items);
-    }
-  }
-
-  return { items, signalResults };
-}
-
-/**
- * Fetch category documents incrementally.
- * API signals fetch from per-source last-document dates to today.
- * RSS/HTML/JSON signals fetch latest-N.
- *
- * @param sourceDates - Map of source_origin → last document date (from getLastDocumentDateBySource)
- * @param fallbackSince - Used when a source has no stored documents yet
- */
-export async function fetchCategoryIncremental(
-  cat: Category,
-  sourceDates: Record<string, string>,
-  fallbackSince: string,
-): Promise<IncrementalFetchResult> {
-  const groups = groupSignals(cat.signals);
-  const allItems: ContentItem[] = [];
-  const allResults: SignalFetchResult[] = [];
-
-  const api = await fetchApiSignals(groups, cat.key, sourceDates, fallbackSince);
-  allItems.push(...api.items);
-  allResults.push(...api.signalResults);
-
-  const rss = await fetchRssSignals(groups.rss);
-  allItems.push(...rss.items);
-  allResults.push(...rss.signalResults);
 
   return { items: allItems, signalResults: allResults };
 }

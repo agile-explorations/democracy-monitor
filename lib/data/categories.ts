@@ -1,5 +1,4 @@
 import type { Category, Signal } from '@/lib/types';
-import { scotusTermYear } from '@/lib/utils/date-utils';
 
 export const CATEGORIES: Category[] = [
   {
@@ -99,13 +98,6 @@ export const CATEGORIES: Category[] = [
     expertDescription:
       'Inspectors General provide independent oversight of executive agencies, with statutory protections against removal. Mass IG firings, vacancy manipulation, or resource cuts degrade the internal accountability infrastructure that deters waste, fraud, and abuse of power across the federal government.',
     signals: [
-      {
-        id: 'html_oversight_gov',
-        name: 'Oversight.gov (IG Reports)',
-        url: 'https://www.oversight.gov/',
-        type: 'html',
-        note: 'The main website for all government watchdog reports — Inspector General audits, investigations, and recommendations.',
-      },
       {
         id: 'oig_ssa',
         name: 'SSA Inspector General',
@@ -221,19 +213,6 @@ export const CATEGORIES: Category[] = [
       "Judicial independence is the cornerstone of constitutional governance. Executive non-compliance with court orders, attempts to restructure court jurisdiction, or politicized judicial appointments erode the judiciary's ability to serve as a check on executive and legislative power.",
     signals: [
       {
-        id: 'rss_scotus',
-        name: 'Supreme Court Opinions',
-        url: `https://www.supremecourt.gov/rss/slipopinion_rss.aspx?TYear=${scotusTermYear()}`,
-        type: 'rss',
-        note: 'Opinions from the highest court in America',
-        health: {
-          isCanary: false,
-          expectedFrequency: 'weekly_during_term',
-          maxSilentDays: 14,
-          expectedMinWeeklyDocs: 0,
-        },
-      },
-      {
         id: 'fr_court_compliance',
         name: 'Court Compliance Reports',
         url: '/api/federal-register?term=injunction+compliance',
@@ -271,26 +250,6 @@ export const CATEGORIES: Category[] = [
     expertDescription:
       'The Posse Comitatus Act and Insurrection Act define narrow boundaries for domestic military deployment. Expansion of emergency powers, invocation of IEEPA for domestic purposes, or National Guard deployments beyond traditional scope signal militarization of civilian governance.',
     signals: [
-      {
-        id: 'rss_dod_news',
-        name: 'Department of Defense News',
-        url: 'https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=1&Site=945',
-        type: 'rss',
-        note: 'Official news from the Pentagon (aka "Department of War" per current admin branding)',
-        health: {
-          isCanary: true,
-          expectedFrequency: 'daily',
-          maxSilentDays: 3,
-          expectedMinWeeklyDocs: 5,
-        },
-      },
-      {
-        id: 'rss_dod_contracts',
-        name: 'Military Contracts',
-        url: 'https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945',
-        type: 'rss',
-        note: 'What the military is buying (can show unusual activity)',
-      },
       {
         id: 'fr_national_emergency',
         name: 'National Emergency Declarations',
@@ -403,26 +362,6 @@ export const CATEGORIES: Category[] = [
       "Public access to government data, FOIA compliance, and publication of mandated reports form the transparency infrastructure that enables democratic accountability. Removal of datasets, website takedowns, or suppression of required disclosures reduces the public's ability to monitor government conduct.",
     signals: [
       {
-        id: 'json_uptime',
-        name: 'Government Site Uptime',
-        url: '/api/uptime/status',
-        type: 'json',
-        note: 'Monitoring whether key government websites are accessible',
-      },
-      {
-        id: 'rss_gao',
-        name: 'GAO Reports (Availability)',
-        url: 'https://www.gao.gov/rss/reports.xml',
-        type: 'rss',
-        note: 'Checking if GAO continues publishing oversight reports',
-        health: {
-          isCanary: true,
-          expectedFrequency: 'weekly',
-          maxSilentDays: 14,
-          expectedMinWeeklyDocs: 2,
-        },
-      },
-      {
         id: 'fr_foia',
         name: 'FOIA & Transparency Rules',
         url: '/api/federal-register?term=%22freedom+of+information%22+|+FOIA+|+transparency+|+disclosure',
@@ -497,26 +436,6 @@ export const CATEGORIES: Category[] = [
         url: '/api/federal-register?term=FOIA+|+%22FOIA+compliance%22+|+%22public+records%22',
         type: 'federal_register',
         note: 'Rules about government transparency and public records access',
-      },
-      {
-        id: 'rss_fcc_media',
-        name: 'FCC Media Bureau',
-        url: 'https://www.fcc.gov/news-events/rss-feeds/media-bureau',
-        type: 'rss',
-        note: 'FCC Media Bureau actions on broadcast licensing, ownership, and enforcement',
-        health: {
-          isCanary: false,
-          expectedFrequency: 'weekly',
-          maxSilentDays: 14,
-          expectedMinWeeklyDocs: 2,
-        },
-      },
-      {
-        id: 'rss_fcc_enforcement',
-        name: 'FCC Enforcement Bureau',
-        url: 'https://www.fcc.gov/news-events/rss-feeds/enforcement-bureau',
-        type: 'rss',
-        note: 'FCC Enforcement Bureau actions relevant to media regulation',
       },
     ],
   },

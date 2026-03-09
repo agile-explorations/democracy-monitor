@@ -249,13 +249,12 @@ describe('getCanarySourceIds', () => {
     const ids = getCanarySourceIds();
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toContain('fr_opm');
-    expect(ids).toContain('rss_dod_news');
-    expect(ids).toContain('rss_gao');
+    expect(ids).toContain('fr_dod');
+    expect(ids).toContain('fr_presidential_actions');
   });
 
   it('does not include non-canary signals', () => {
     const ids = getCanarySourceIds();
     expect(ids).not.toContain('fr_schedule_f');
-    expect(ids).not.toContain('html_oversight_gov');
   });
 });

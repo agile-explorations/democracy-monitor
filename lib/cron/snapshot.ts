@@ -9,7 +9,6 @@ import {
   getLastDocumentDateBySource,
   storeDocuments,
 } from '@/lib/services/document-store';
-import { fetchCategoryFeedsWithMetadata } from '@/lib/services/feed-fetcher';
 import { recordSnapshotSignalResults } from '@/lib/services/fetch-log-store';
 import { fetchCategoryIncremental } from '@/lib/services/incremental-fetcher';
 import {
@@ -83,22 +82,11 @@ async function snapshotCategory(
 
   // Per-source incremental fetch — each source uses its own last-document date
   const sourceDates = await getLastDocumentDateBySource(cat.key);
-  const hasPriorData = Object.keys(sourceDates).length > 0;
-  let items: ContentItem[];
-  let signalResults: import('@/lib/services/feed-fetcher').SignalFetchResult[];
-
-  if (hasPriorData) {
-    const result = await fetchCategoryIncremental(cat, sourceDates, '2025-01-20');
-    items = result.items;
-    signalResults = result.signalResults;
-    console.log(`[snapshot]   ${items.length} items fetched (incremental, per-source dates)`);
-  } else {
-    // Fallback: no stored docs, use existing latest-N behavior
-    const result = await fetchCategoryFeedsWithMetadata(cat);
-    items = result.items;
-    signalResults = result.signalResults;
-    console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
-  }
+  const result = await fetchCategoryIncremental(cat, sourceDates, '2025-01-20');
+  const items: ContentItem[] = result.items;
+  const signalResults: import('@/lib/services/feed-fetcher').SignalFetchResult[] =
+    result.signalResults;
+  console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
 
   const checks = await recordSourceHealthChecks(cat.key, signalResults);
   allHealthChecks.push(...checks);

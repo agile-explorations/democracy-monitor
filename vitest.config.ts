@@ -29,7 +29,6 @@ export default defineConfig({
         'lib/services/narrative-pipeline.ts',
         'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
-        'lib/cron/retry-failed-signals.ts',
       ],
       thresholds: {
         statements: 70,

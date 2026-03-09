@@ -1,4 +1,3 @@
-import { parseStringPromise } from 'xml2js';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { FEED_CACHE_TTL_S } from '@/lib/data/cache-config';
@@ -11,7 +10,7 @@ import {
 import { fetchDojRecent, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchFecRecent, parseFecParams } from '@/lib/services/fec-fetcher';
 import { fetchGovInfoRecent, parseGovInfoParams } from '@/lib/services/govinfo-fetcher';
-import type { Category, Signal } from '@/lib/types';
+import type { Signal } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
@@ -29,37 +28,11 @@ export interface SignalFetchResult {
   items: FeedItem[];
 }
 
-/** Combined result from fetching all signals in a category. */
-export interface CategoryFetchResult {
-  items: FeedItem[];
-  signalResults: SignalFetchResult[];
-}
-
 /**
- * Fetch all feeds for a single category, returning FeedItem[].
- * Runs server-side — calls external APIs directly (no localhost HTTP).
+ * Fetch a single signal and return result with metadata.
+ * Used by the snapshot pipeline for API-based signals that need
+ * individual fetch tracking (health checks, fetch logs).
  */
-export async function fetchCategoryFeeds(category: Category): Promise<FeedItem[]> {
-  const { items } = await fetchCategoryFeedsWithMetadata(category);
-  return items;
-}
-
-/** Fetch all feeds with per-signal metadata for source health tracking. */
-export async function fetchCategoryFeedsWithMetadata(
-  category: Category,
-): Promise<CategoryFetchResult> {
-  const settled = await Promise.allSettled(category.signals.map((s) => fetchSignalWithMetadata(s)));
-  const items: FeedItem[] = [];
-  const signalResults: SignalFetchResult[] = [];
-  for (const r of settled) {
-    if (r.status === 'fulfilled') {
-      signalResults.push(r.value);
-      items.push(...r.value.items);
-    }
-  }
-  return { items, signalResults };
-}
-
 export async function fetchSignalWithMetadata(signal: Signal): Promise<SignalFetchResult> {
   const start = Date.now();
   try {
@@ -104,15 +77,6 @@ async function fetchSignalInner(signal: Signal): Promise<FeedItem[]> {
   }
   if (signal.type === 'fec_json') {
     return await fetchFecJsonSignal(signal);
-  }
-  if (signal.type === 'rss') {
-    return await fetchRss(signal);
-  }
-  if (signal.type === 'json') {
-    return await fetchJson(signal);
-  }
-  if (signal.type === 'html') {
-    return await fetchHtml(signal);
   }
   return [];
 }
@@ -217,130 +181,6 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
       summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
     }),
   );
-
-  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
-  return items;
-}
-
-interface RawRssItem {
-  title?: string | { _?: string };
-  link?: string | { href?: string; _?: string };
-  id?: string;
-  pubDate?: string;
-  published?: string;
-  updated?: string;
-  description?: string | { _?: string };
-  summary?: string;
-  'content:encoded'?: string;
-}
-
-function normalizeRssItem(it: RawRssItem): FeedItem {
-  const title = typeof it.title === 'string' ? it.title : it.title?._;
-  const link =
-    typeof it.link === 'string'
-      ? it.link
-      : (it.link as { href?: string })?.href || (it.link as { _?: string })?._ || it.id;
-  const pubDate = it.pubDate || it.published || it.updated;
-  const rawSummary =
-    it['content:encoded'] ||
-    (typeof it.description === 'string' ? it.description : it.description?._) ||
-    (typeof it.summary === 'string' ? it.summary : undefined);
-  const summary =
-    rawSummary && typeof rawSummary === 'string' ? truncate(stripHtml(rawSummary)) : undefined;
-
-  return { title: title || '(item)', link, pubDate, summary };
-}
-
-async function fetchRss(signal: Signal): Promise<FeedItem[]> {
-  const cacheKey = CacheKeys.proxy(signal.url);
-  const cached = await cacheGet<FeedItem[]>(cacheKey);
-  if (cached) return cached;
-
-  const rssHeaders = {
-    'User-Agent': 'DemocracyMonitor/1.0',
-    Accept: 'application/xml, text/xml, application/rss+xml, */*',
-  };
-  const response = await fetchWithRetry(signal.url, { headers: rssHeaders }, { label: signal.id });
-
-  if (!response.ok) {
-    return [{ title: `RSS error: ${response.status}`, isError: true }];
-  }
-
-  const text = await response.text();
-  const parsed = await parseStringPromise(text, { explicitArray: false, mergeAttrs: true });
-  const rawItems = parsed?.rss?.channel?.item || parsed?.feed?.entry || [];
-  const arr = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
-
-  const items: FeedItem[] = arr.map(normalizeRssItem);
-
-  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
-  return items;
-}
-
-async function fetchJson(signal: Signal): Promise<FeedItem[]> {
-  // JSON signals with internal API URLs (e.g. /api/uptime/status)
-  // Skip these in server-side context since they need the app running
-  if (signal.url.startsWith('/api/')) {
-    return [{ title: `${signal.name}: skipped (internal API)`, isWarning: true }];
-  }
-
-  const cacheKey = CacheKeys.proxy(signal.url);
-  const cached = await cacheGet<FeedItem[]>(cacheKey);
-  if (cached) return cached;
-
-  const headers = { 'User-Agent': 'DemocracyMonitor/1.0', Accept: 'application/json' };
-  const response = await fetchWithRetry(signal.url, { headers }, { label: signal.id });
-
-  if (!response.ok) {
-    return [{ title: `JSON error: ${response.status}`, isError: true }];
-  }
-
-  const data = await response.json();
-  const items: FeedItem[] = Array.isArray(data)
-    ? data.map((d: { title?: string; link?: string; url?: string }) => ({
-        title: d.title || '(item)',
-        link: d.link || d.url,
-      }))
-    : [{ title: `${signal.name}: data received`, link: signal.url }];
-
-  await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
-  return items;
-}
-
-async function fetchHtml(signal: Signal): Promise<FeedItem[]> {
-  const cacheKey = CacheKeys.proxy(signal.url);
-  const cached = await cacheGet<FeedItem[]>(cacheKey);
-  if (cached) return cached;
-
-  const response = await fetchWithRetry(
-    signal.url,
-    {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,*/*',
-      },
-    },
-    { label: signal.id },
-  );
-
-  if (!response.ok) {
-    return [{ title: `HTML error: ${response.status}`, isError: true }];
-  }
-
-  const text = await response.text();
-  const anchors = Array.from(text.matchAll(/<a[^>]+href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/gi))
-    .slice(0, 25)
-    .map((m) => ({
-      href: m[1].startsWith('http') ? m[1] : new URL(m[1], signal.url).toString(),
-      text: m[2].replace(/<[^>]*>/g, '').trim(),
-    }))
-    .filter((item) => item.text.length > 5 && !item.href.includes('javascript:'));
-
-  const items: FeedItem[] =
-    anchors.length > 0
-      ? anchors.map((a) => ({ title: a.text, link: a.href }))
-      : [{ title: 'No links found - site may be blocking requests', isWarning: true }];
 
   await cacheSet(cacheKey, items, FEED_CACHE_TTL_S);
   return items;

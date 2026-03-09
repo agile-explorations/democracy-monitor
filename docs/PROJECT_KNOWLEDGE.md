@@ -77,8 +77,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Source health & coverage
 
-- Fault-tolerant fetching: `fetchWithRetry()` in `lib/utils/fetch-retry.ts` wraps HTTP calls with 3-attempt exponential backoff (2s, 4s). Retries on 5xx/429, returns immediately on 4xx. Used by RSS/HTML/JSON/FR signal fetchers in feed-fetcher.ts. Retry cron (`pnpm signals:retry`) runs at 11am UTC for extended outages.
-- All signal types recorded in `fetch_log` via `recordSnapshotSignalResults()` (SNAPSHOT_LOGGED_TYPES covers rss, html, json, federal_register, courtlistener, doj_json, govinfo, fec_json, oig_html)
+- Fault-tolerant fetching: `fetchWithRetry()` in `lib/utils/fetch-retry.ts` wraps HTTP calls with 3-attempt exponential backoff (2s, 4s). Retries on 5xx/429, returns immediately on 4xx. Used by API signal fetchers in feed-fetcher.ts. All signals are API-based with per-source incremental dates — failed fetches self-heal on next snapshot run.
+- All signal types recorded in `fetch_log` via `recordSnapshotSignalResults()` (SNAPSHOT_LOGGED_TYPES covers federal_register, courtlistener, doj_json, govinfo, fec_json, oig_html)
 - Source health monitoring: `source_health` table, 31 signals with stable IDs, 6 canary sources, SourceHealthCheck classification (healthy/degraded/unavailable/silent)
 - Meta-assessment: 4 integrity levels (high/moderate/low/critical) from `INTEGRITY_THRESHOLDS` in scoring-config; canary downgrade from high→moderate when ≥50% canaries critical
 - Confidence degradation: `sourceAvailability` factor (weight 0.15) in `DATA_COVERAGE_WEIGHTS`; `CRITICAL_CONFIDENCE_CAP = 0.3` hard cap
@@ -123,7 +123,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 ### Testing & coverage
 
 - 2030 tests across 142 test files
-- Coverage thresholds: statements 71%, branches 68%, functions 73%, lines 72%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps, retry-failed-signals). Pure functions tested; fetch/pagination/DB I/O not unit-testable.
+- Coverage thresholds: statements 70%, branches 67%, functions 72%, lines 71%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps). Pure functions tested; fetch/pagination/DB I/O not unit-testable.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
 ### Infrastructure
@@ -148,7 +148,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 ## Known data issues
 
 - **cl_first_amendment noise (civilLiberties)** _(resolved R-S1f)_: Old `q=first+amendment` query was unscoped — fetched any docket mentioning "first amendment" regardless of NOS code. 50,973 noise docs purged via `pnpm cl:purge-noise --confirm`; 50,223 valid docs retained. Scores, aggregates, and baselines recomputed.
-- **FCC RSS feeds down (mediaFreedom)**: `rss_fcc_media` and `rss_fcc_enforcement` time out due to Feb 2026 government shutdown. Not a config bug — will recover when FCC site comes back online. Source health service marks them `unavailable`; retry cron handles recovery automatically.
+- **RSS/HTML/JSON signals removed**: All 8 non-API signals (rss_scotus, rss_dod_news, rss_dod_contracts, rss_gao, rss_fcc_media, rss_fcc_enforcement, html_oversight_gov, json_uptime) dropped — Akamai WAF blocks most, redundant with API sources (CourtListener covers SCOTUS, GovInfo covers GAO). All signals now API-based with incremental date tracking.
 - **3 WhiteHouse docs missing scores**: Boundary condition in OFFSET pagination — 3 WH docs at exact batch boundaries (publishedAt ties with batch cutoff). Negligible impact (3 of 337,494). Will self-resolve on next full recompute.
 - **~18K documents missing weekly aggregates** _(resolved R-S1e)_: Backfill now always runs score → aggregate → embed even when ingest is skipped.
 

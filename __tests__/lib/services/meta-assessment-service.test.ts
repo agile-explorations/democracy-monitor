@@ -64,8 +64,8 @@ describe('classifyCanaryStatus', () => {
   it('returns some_silent when some canary sources down', () => {
     const checks = [
       makeCheck({ sourceId: 'fr_opm', status: 'healthy' }),
-      makeCheck({ sourceId: 'rss_dod_news', status: 'unavailable' }),
-      makeCheck({ sourceId: 'fr_dod', status: 'healthy' }),
+      makeCheck({ sourceId: 'fr_dod', status: 'unavailable' }),
+      makeCheck({ sourceId: 'fr_presidential_actions', status: 'healthy' }),
     ];
     expect(classifyCanaryStatus(checks)).toBe('some_silent');
   });
@@ -73,7 +73,7 @@ describe('classifyCanaryStatus', () => {
   it('returns critical_silent when >=50% canary sources down', () => {
     const checks = [
       makeCheck({ sourceId: 'fr_opm', status: 'unavailable' }),
-      makeCheck({ sourceId: 'rss_dod_news', status: 'silent' }),
+      makeCheck({ sourceId: 'fr_dod', status: 'silent' }),
     ];
     expect(classifyCanaryStatus(checks)).toBe('critical_silent');
   });

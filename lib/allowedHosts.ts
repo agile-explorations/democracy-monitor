@@ -5,13 +5,9 @@ export function getAllowedHosts(): string[] {
       .filter(Boolean);
   }
   return [
-    'www.gao.gov',
-    'www.defense.gov',
     'oig.ssa.gov',
     'freedomhouse.org',
-    'www.oversight.gov',
     'www.reginfo.gov',
-    'www.supremecourt.gov',
     'www.federalregister.gov',
     'osc.gov',
     'www.mspb.gov',
@@ -35,6 +31,5 @@ export function getAllowedHosts(): string[] {
     'www.fec.gov',
     'oig.hhs.gov',
     'oig.justice.gov',
-    'www.fcc.gov',
   ];
 }

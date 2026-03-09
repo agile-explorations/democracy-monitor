@@ -18,11 +18,7 @@ describe('CATEGORIES', () => {
 
   it('each signal has required fields', () => {
     const validTypes = [
-      'json',
-      'rss',
-      'html',
       'federal_register',
-      'tracker_scrape',
       'courtlistener',
       'doj_json',
       'govinfo',
@@ -84,7 +80,7 @@ describe('CATEGORIES', () => {
     expect(types).toContain('federal_register');
   });
 
-  it('executiveOversight has govinfo, oig_html, and rss (DOD) signal types', () => {
+  it('executiveOversight has govinfo and oig_html signal types', () => {
     const cat = CATEGORIES.find((c) => c.key === 'executiveOversight');
     expect(cat).toBeDefined();
     const types = cat!.signals.map((s) => s.type);
@@ -117,12 +113,11 @@ describe('CATEGORIES', () => {
     expect(ids).toContain('fr_cbp_enforcement');
   });
 
-  it('mediaFreedom has FCC RSS signals', () => {
+  it('mediaFreedom has federal_register signals', () => {
     const cat = CATEGORIES.find((c) => c.key === 'mediaFreedom');
     expect(cat).toBeDefined();
-    const ids = cat!.signals.map((s) => s.id);
-    expect(ids).toContain('rss_fcc_media');
-    expect(ids).toContain('rss_fcc_enforcement');
+    const types = cat!.signals.map((s) => s.type);
+    expect(types).toContain('federal_register');
   });
 });
 

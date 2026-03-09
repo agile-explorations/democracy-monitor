@@ -27,7 +27,6 @@ pnpm baselines:compute # Compute baseline statistics from existing aggregates/em
 pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
-pnpm signals:retry      # Retry failed RSS/HTML/JSON/FR signals from last snapshot
 pnpm embeddings:backfill # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
 pnpm layers:enrich      # Recompute L1/L2/L3/convergence from updated layer data
 pnpm layer2:backfill    # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)

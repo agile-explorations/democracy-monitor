@@ -17,24 +17,6 @@ vi.mock('@/lib/cron/backfill-fetchers', () => ({
 const { fetchWeekItemsFr } = await import('@/lib/cron/backfill-fetchers');
 const mockFetchWeekItemsFr = vi.mocked(fetchWeekItemsFr);
 
-vi.mock('@/lib/services/feed-fetcher', () => ({
-  fetchSignalWithMetadata: vi.fn().mockResolvedValue({
-    signalId: 'rss-signal-1',
-    signalName: 'RSS Feed',
-    signalType: 'rss',
-    success: true,
-    documentCount: 2,
-    durationMs: 100,
-    items: [
-      { title: 'RSS Item 1', link: 'https://example.com/rss1' },
-      { title: 'RSS Item 2', link: 'https://example.com/rss2' },
-    ],
-  }),
-}));
-
-const { fetchSignalWithMetadata } = await import('@/lib/services/feed-fetcher');
-const mockFetchSignalWithMetadata = vi.mocked(fetchSignalWithMetadata);
-
 const testCategory: Category = {
   key: 'testCategory',
   title: 'Test Category',
@@ -46,7 +28,6 @@ const testCategory: Category = {
       url: 'https://federalregister.gov/test',
       type: 'federal_register',
     },
-    { id: 'rss-1', name: 'RSS Feed', url: 'https://example.com/feed.xml', type: 'rss' },
   ],
 };
 
@@ -61,39 +42,19 @@ describe('fetchCategoryIncremental', () => {
     expect(result.items).toContainEqual(expect.objectContaining({ title: 'FR Doc 1' }));
   });
 
-  it('returns RSS signal documents in results', async () => {
+  it('returns signal results with metadata', async () => {
     const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
 
-    expect(result.items).toContainEqual(expect.objectContaining({ title: 'RSS Item 1' }));
-  });
-
-  it('combines results from API and RSS signals', async () => {
-    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
-
-    // 1 FR item + 2 RSS items
-    expect(result.items).toHaveLength(3);
-    expect(result.signalResults).toHaveLength(2);
-  });
-
-  it('handles categories with no API signals', async () => {
-    const rssOnly: Category = {
-      key: 'rssOnly',
-      title: 'RSS Only',
-      description: 'Test',
-      signals: [
-        { id: 'rss-1', name: 'RSS Feed', url: 'https://example.com/feed.xml', type: 'rss' },
-      ],
-    };
-
-    const result = await fetchCategoryIncremental(rssOnly, {}, '2026-02-20');
-    expect(result.items).toHaveLength(2);
     expect(result.signalResults).toHaveLength(1);
+    expect(result.signalResults[0].signalId).toBe('fr-1');
+    expect(result.signalResults[0].success).toBe(true);
+    expect(result.signalResults[0].documentCount).toBe(1);
   });
 
-  it('handles categories with no RSS signals', async () => {
-    const apiOnly: Category = {
-      key: 'apiOnly',
-      title: 'API Only',
+  it('skips signal groups with no signals', async () => {
+    const frOnly: Category = {
+      key: 'frOnly',
+      title: 'FR Only',
       description: 'Test',
       signals: [
         {
@@ -105,7 +66,7 @@ describe('fetchCategoryIncremental', () => {
       ],
     };
 
-    const result = await fetchCategoryIncremental(apiOnly, {}, '2026-02-20');
+    const result = await fetchCategoryIncremental(frOnly, {}, '2026-02-20');
     expect(result.items).toHaveLength(1);
     expect(result.signalResults).toHaveLength(1);
   });
@@ -158,34 +119,22 @@ describe('fetchCategoryIncremental', () => {
   });
 
   it('uses per-source dates when available, falls back otherwise', async () => {
-    // With a source-specific date, fetcher still produces results
     const sourceDates = { federal_register: '2026-03-01' };
     const result = await fetchCategoryIncremental(testCategory, sourceDates, '2026-01-01');
 
-    // Should still return documents from FR and RSS signals
-    expect(result.items).toHaveLength(3);
-    expect(result.signalResults).toHaveLength(2);
+    expect(result.items).toHaveLength(1);
+    expect(result.signalResults).toHaveLength(1);
   });
 
-  it('excludes results from rejected RSS signal fetches', async () => {
-    mockFetchSignalWithMetadata.mockRejectedValueOnce(new Error('RSS fetch failed'));
-
-    const cat: Category = {
-      key: 'rssReject',
-      title: 'RSS Reject',
+  it('handles empty category with no matching signal types', async () => {
+    const emptyCat: Category = {
+      key: 'empty',
+      title: 'Empty',
       description: 'Test',
-      signals: [
-        {
-          id: 'rss-bad',
-          name: 'Bad RSS',
-          url: 'https://example.com/bad.xml',
-          type: 'rss',
-        },
-      ],
+      signals: [],
     };
 
-    const result = await fetchCategoryIncremental(cat, {}, '2026-02-20');
-    // Rejected promise is silently dropped — no items, no signal results
+    const result = await fetchCategoryIncremental(emptyCat, {}, '2026-02-20');
     expect(result.items).toHaveLength(0);
     expect(result.signalResults).toHaveLength(0);
   });
