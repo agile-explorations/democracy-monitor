@@ -81,7 +81,7 @@ crons:
         sync: false
 
   - name: weekly-legiscan
-    schedule: '0 5 * * 1'
+    schedule: '0 1 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/legiscan-bulk.ts
     envVars:
