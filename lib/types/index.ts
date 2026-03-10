@@ -98,6 +98,8 @@ export type {
   SourceTypeBreakdown,
   NarrativeBaselineContext,
   NarrativeTrajectory,
+  NarrativeSourceHealth,
+  NarrativeThematicDocRef,
   NarrativeLayerData,
   NarrativeResult,
   MultiPassNarrativeResult,
