@@ -5,6 +5,8 @@ import type {
   NarrativeDocumentContext,
   NarrativeFlaggedDocContext,
   NarrativeLayerData,
+  NarrativeSourceHealth,
+  NarrativeThematicDocRef,
   NarrativeTrajectory,
   SourceTypeBreakdown,
   TermStatistics,
@@ -376,16 +378,123 @@ export async function getTermNarrative(): Promise<{ expert: string; public: stri
   return { expert: expert?.content ?? '', public: pub?.content ?? '' };
 }
 
+// ---------------------------------------------------------------------------
+// 11. Source health for the week
+// ---------------------------------------------------------------------------
+
+/** Get per-source fetch health for a category during a given week. */
+export async function getSourceFetchHealth(
+  category: string,
+  weekOf: string,
+): Promise<NarrativeSourceHealth[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT source_origin, status, items_fetched, errors
+    FROM fetch_log
+    WHERE category = ${category} AND week_start = ${weekOf}
+    ORDER BY source_origin
+  `);
+  return (rows.rows as Row[]).map((r) => ({
+    sourceOrigin: r.source_origin as string,
+    status: r.status as string,
+    itemsFetched: (r.items_fetched as number) ?? 0,
+    errors: r.errors as string[] | null,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// 12. Thematic drift document grounding
+// ---------------------------------------------------------------------------
+
+/**
+ * Get documents from the rolling 8-week window that are most representative
+ * of the category's recent thematic centroid (nearest-neighbor by embedding).
+ */
+export async function getTypicalDocuments(
+  category: string,
+  weekOf: string,
+  limit = 5,
+): Promise<NarrativeThematicDocRef[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  // Compute rolling centroid from prior 8 weeks, then find nearest docs in that window
+  const rows = await db.execute(sql`
+    WITH rolling_centroid AS (
+      SELECT AVG(embedding) AS centroid
+      FROM documents
+      WHERE category = ${category}
+        AND published_at >= (${weekOf}::date - interval '56 days')
+        AND published_at < ${weekOf}::date
+        AND embedding IS NOT NULL
+    )
+    SELECT d.title, d.source_type, d.published_at
+    FROM documents d, rolling_centroid rc
+    WHERE d.category = ${category}
+      AND d.published_at >= (${weekOf}::date - interval '56 days')
+      AND d.published_at < ${weekOf}::date
+      AND d.embedding IS NOT NULL
+      AND rc.centroid IS NOT NULL
+    ORDER BY d.embedding <=> rc.centroid
+    LIMIT ${limit}
+  `);
+  return (rows.rows as Row[]).map((r) => ({
+    title: (r.title as string) ?? 'Untitled',
+    sourceType: (r.source_type as string) ?? 'unknown',
+    publishedAt: toDateStr(r.published_at),
+  }));
+}
+
+/**
+ * Get this week's documents that are furthest from the rolling centroid —
+ * these are the documents most responsible for thematic drift.
+ */
+export async function getDriftDrivingDocuments(
+  category: string,
+  weekOf: string,
+  limit = 5,
+): Promise<NarrativeThematicDocRef[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const weekEnd = addDays(weekOf, 7);
+  const rows = await db.execute(sql`
+    WITH rolling_centroid AS (
+      SELECT AVG(embedding) AS centroid
+      FROM documents
+      WHERE category = ${category}
+        AND published_at >= (${weekOf}::date - interval '56 days')
+        AND published_at < ${weekOf}::date
+        AND embedding IS NOT NULL
+    )
+    SELECT d.title, d.source_type, d.published_at
+    FROM documents d, rolling_centroid rc
+    WHERE d.category = ${category}
+      AND d.published_at >= ${weekOf}::date AND d.published_at < ${weekEnd}::date
+      AND d.embedding IS NOT NULL
+      AND rc.centroid IS NOT NULL
+    ORDER BY d.embedding <=> rc.centroid DESC
+    LIMIT ${limit}
+  `);
+  return (rows.rows as Row[]).map((r) => ({
+    title: (r.title as string) ?? 'Untitled',
+    sourceType: (r.source_type as string) ?? 'unknown',
+    publishedAt: toDateStr(r.published_at),
+  }));
+}
+
 /** Enrich a NarrativeLayerData with document context, baseline, trajectory, etc. */
 export async function enrichCategoryData(data: NarrativeLayerData): Promise<void> {
-  const [docs, flagged, breakdown, baseline, trajectory, docCount] = await Promise.all([
-    getTopConcerningDocuments(data.category, data.weekOf),
-    getFlaggedRoutineDocs(data.category, data.weekOf),
-    getSourceTypeBreakdown(data.category, data.weekOf),
-    getBaselineContext(data.category),
-    getTrajectory(data.category, data.weekOf),
-    getTotalDocumentCount(data.category, data.weekOf),
-  ]);
+  const l3Elevated = data.convergenceDetail?.thematicElevated === true;
+  const [docs, flagged, breakdown, baseline, trajectory, docCount, sourceHealth] =
+    await Promise.all([
+      getTopConcerningDocuments(data.category, data.weekOf),
+      getFlaggedRoutineDocs(data.category, data.weekOf),
+      getSourceTypeBreakdown(data.category, data.weekOf),
+      getBaselineContext(data.category),
+      getTrajectory(data.category, data.weekOf),
+      getTotalDocumentCount(data.category, data.weekOf),
+      getSourceFetchHealth(data.category, data.weekOf),
+    ]);
 
   if (docs.length > 0) data.documentContext = docs;
   if (flagged.length > 0) data.flaggedRoutineContext = flagged;
@@ -393,4 +502,15 @@ export async function enrichCategoryData(data: NarrativeLayerData): Promise<void
   data.baselineContext = baseline;
   data.trajectory = trajectory;
   data.totalDocumentCount = docCount;
+  if (sourceHealth.length > 0) data.sourceHealthContext = sourceHealth;
+
+  // Thematic drift grounding — only when L3 is elevated
+  if (l3Elevated) {
+    const [typical, driftDriving] = await Promise.all([
+      getTypicalDocuments(data.category, data.weekOf),
+      getDriftDrivingDocuments(data.category, data.weekOf),
+    ]);
+    if (typical.length > 0) data.typicalDocuments = typical;
+    if (driftDriving.length > 0) data.driftDrivingDocuments = driftDriving;
+  }
 }

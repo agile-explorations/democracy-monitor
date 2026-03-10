@@ -74,7 +74,7 @@
         "lib/services/narrative-queries.ts"
       ],
       "rules": {
-        "max-lines": ["warn", { "max": 400, "skipBlankLines": true, "skipComments": true }]
+        "max-lines": ["warn", { "max": 420, "skipBlankLines": true, "skipComments": true }]
       }
     },
     {

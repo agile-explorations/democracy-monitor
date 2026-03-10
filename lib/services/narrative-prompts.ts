@@ -1,4 +1,9 @@
 import type { NarrativeLayerData, TermSummaryInput, WeeklySummaryInput } from '@/lib/types';
+import {
+  buildDualOutputFormat,
+  collectDraftSections,
+  formatDocumentSection,
+} from './narrative-format-helpers';
 
 // ---------------------------------------------------------------------------
 // Internal formatting helpers — NOT exported
@@ -56,6 +61,9 @@ function formatConvergenceBlock(data: NarrativeLayerData): string[] {
   return lines;
 }
 
+/** Threshold below which functional distribution shifts are unreliable. */
+const SMALL_SAMPLE_THRESHOLD = 20;
+
 function formatL1Block(data: NarrativeLayerData): string[] {
   const lines = ['', 'L1 Structural:'];
   if (data.structuralScore === null || !data.structuralDetail) {
@@ -63,6 +71,12 @@ function formatL1Block(data: NarrativeLayerData): string[] {
   }
   const s = data.structuralDetail;
   lines.push(`  Composite score: ${fmtNum(data.structuralScore)}`, `  Anomalous: ${s.anomalous}`);
+  if ((data.totalDocumentCount ?? 0) < SMALL_SAMPLE_THRESHOLD) {
+    lines.push(
+      `  Note: only ${data.totalDocumentCount ?? 0} documents this week — ` +
+        'functional distribution shifts have limited diagnostic value.',
+    );
+  }
   for (const [name, dim] of Object.entries(s.dimensions)) {
     if (dim && dim.available) {
       lines.push(`  ${name}: z-score ${fmtNum(dim.zScore, 2)} (value ${fmtNum(dim.value)})`);
@@ -82,7 +96,12 @@ function formatL1Block(data: NarrativeLayerData): string[] {
 function formatL2Block(data: NarrativeLayerData): string[] {
   const lines = ['', 'L2 AI Assessment:'];
   if (data.aiScore === null || !data.aiDetail) {
-    return [...lines, '  No AI assessment data available.'];
+    return [
+      ...lines,
+      '  No AI assessment data available.',
+      '  IMPORTANT: No AI content analysis was performed this week. This assessment is based',
+      '  on structural pattern detection only, not on review of document content.',
+    ];
   }
   const a = data.aiDetail;
   const d = a.concernDistribution;
@@ -133,97 +152,6 @@ function formatLayerAssessment(data: NarrativeLayerData): string {
   ].join('\n');
 }
 
-function formatDocumentSection(data: NarrativeLayerData): string {
-  const docs = data.documentContext;
-  if (!docs || docs.length === 0) {
-    return '--- KEY DOCUMENTS (P2-CONFIRMED) ---\nNo P2-confirmed documents available.';
-  }
-  const lines = ['--- KEY DOCUMENTS (P2-CONFIRMED) ---'];
-  for (const doc of docs) {
-    lines.push(`Title: ${doc.title}`);
-    lines.push(`  Source: ${doc.sourceType}${doc.sourceOrigin ? ` (${doc.sourceOrigin})` : ''}`);
-    if (doc.publishedAt) lines.push(`  Published: ${doc.publishedAt}`);
-    if (doc.url) lines.push(`  URL: ${doc.url}`);
-    if (doc.agency) lines.push(`  Agency: ${doc.agency}`);
-    lines.push(`  Assessment: ${doc.assessment}`);
-    if (doc.erosionType) lines.push(`  Erosion type: ${doc.erosionType}`);
-    if (doc.reasoning) lines.push(`  Reasoning: ${doc.reasoning}`);
-    if (doc.content) lines.push(`  Content excerpt: ${doc.content}`);
-    lines.push('');
-  }
-  return lines.join('\n');
-}
-
-function formatFlaggedRoutineSection(data: NarrativeLayerData): string {
-  const docs = data.flaggedRoutineContext;
-  if (!docs || docs.length === 0) return '';
-  const lines = ['--- REVIEWED BUT NOT CONFIRMED (P1-FLAGGED, P2-ROUTINE) ---'];
-  for (const doc of docs) {
-    const date = doc.publishedAt ? ` (${doc.publishedAt})` : '';
-    lines.push(`- ${doc.title} [${doc.sourceType}]${date}`);
-  }
-  return lines.join('\n');
-}
-
-function formatDocumentSummary(data: NarrativeLayerData): string {
-  const lines = [
-    '--- DOCUMENT SUMMARY ---',
-    `Total documents: ${data.totalDocumentCount ?? 'unknown'}`,
-  ];
-  const breakdown = data.sourceTypeBreakdown;
-  if (breakdown && breakdown.length > 0) {
-    lines.push('Source-type breakdown:');
-    for (const entry of breakdown) lines.push(`  ${entry.sourceType}: ${entry.count}`);
-  }
-  return lines.join('\n');
-}
-
-function formatBaselineSection(data: NarrativeLayerData): string {
-  const ctx = data.baselineContext;
-  if (!ctx) return '--- BASELINE CONTEXT ---\nBaseline context unavailable.';
-  return [
-    '--- BASELINE CONTEXT ---',
-    `Biden 2022 baseline: avg ${ctx.avgDocsPerWeek.toFixed(1)} docs/week, ` +
-      `${fmtPct(ctx.avgP2ConcernRate)} P2 concern rate, ` +
-      `structural score typically ${ctx.structuralScoreRange}`,
-  ].join('\n');
-}
-
-function formatTrajectorySection(data: NarrativeLayerData): string {
-  const t = data.trajectory;
-  if (!t) return '';
-  const lines = ['--- TRAJECTORY ---'];
-  if (t.previousWeekStatus) lines.push(`Previous week: ${t.previousWeekStatus}`);
-  lines.push(`Consecutive weeks at current level: ${t.consecutiveWeeksAtStatus}`);
-  return lines.join('\n');
-}
-
-/** Shared output format instructions for Pass 1 and Pass 3 drafts. */
-const DUAL_OUTPUT_FORMAT = [
-  '--- OUTPUT FORMAT ---',
-  'Produce BOTH sections in your response:',
-  '',
-  '=== EXPERT NARRATIVE ===',
-  '(400-800 words. Technical analysis for researchers. Reference specific z-scores, dimensions,',
-  'and documents by title. Include a Limitations sentence. Present counter-arguments.)',
-  '',
-  '=== PUBLIC NARRATIVE ===',
-  '(200-500 words. Plain language for journalists and citizens. No jargon. Describe what',
-  'government actions triggered this. Include a Limitations sentence. Present alternative',
-  'explanations.)',
-].join('\n');
-
-/** Collect all context sections for the draft prompt. */
-function collectDraftSections(data: NarrativeLayerData): string[] {
-  const sections = [formatDocumentSection(data)];
-  const flagged = formatFlaggedRoutineSection(data);
-  if (flagged) sections.push(flagged);
-  sections.push(formatDocumentSummary(data), formatBaselineSection(data));
-  const trajectory = formatTrajectorySection(data);
-  if (trajectory) sections.push(trajectory);
-  return sections;
-}
-
 // ---------------------------------------------------------------------------
 // Exported prompt builders
 // ---------------------------------------------------------------------------
@@ -241,10 +169,14 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
     'Reference specific documents by title.',
     'This is AI-generated analysis, not a finding of fact.',
     'Do not make claims unsupported by the data.',
+    '',
+    'For every concern you raise, include a weighted counter-argument — a plausible benign',
+    'explanation proportional to the strength of the evidence. Stronger evidence warrants a',
+    'briefer counter-argument; weaker evidence warrants a more prominent one.',
   ].join('\n');
 
   const context = [formatLayerAssessment(data), ...collectDraftSections(data)].join('\n\n');
-  return [preamble, '', context, '', DUAL_OUTPUT_FORMAT].join('\n');
+  return [preamble, '', context, '', buildDualOutputFormat(data)].join('\n');
 }
 
 /**
@@ -287,6 +219,10 @@ export function buildFeedbackPrompt(
     '',
     '(e) BALANCE — If the draft characterizes a government action, does it also note any stated',
     "justification from the administration's own documents? What's missing?",
+    '',
+    '(f) EVIDENCE SUFFICIENCY — Is the narrative length proportional to the available evidence?',
+    'If no P2-confirmed documents or L2 AI analysis are present, the narrative should be',
+    'concise. Flag any sections that pad length beyond what the data supports.',
   ].join('\n');
 }
 
@@ -316,7 +252,7 @@ export function buildRevisionPrompt(
     formatLayerAssessment(data),
     '',
     '--- REVISION INSTRUCTIONS ---',
-    'Address each feedback item (a through e):',
+    'Address each feedback item (a through f):',
     '- Revise where feedback identifies legitimate issues.',
     '- Do not fundamentally rewrite — adjust, soften, or strengthen specific claims.',
     '- If feedback identifies a factual error, correct it.',
@@ -324,8 +260,9 @@ export function buildRevisionPrompt(
     '- If feedback suggests missing counter-arguments, add them.',
     '- If feedback flags characterization concerns, revise the phrasing.',
     '- If feedback notes missing balance, incorporate stated justifications.',
+    '- If feedback flags evidence insufficiency, trim the narrative to match available data.',
     '',
-    DUAL_OUTPUT_FORMAT,
+    buildDualOutputFormat(data),
   ].join('\n');
 }
 

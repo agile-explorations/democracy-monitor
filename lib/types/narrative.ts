@@ -54,6 +54,21 @@ export interface NarrativeTrajectory {
   consecutiveWeeksAtStatus: number;
 }
 
+/** Per-source fetch health for a category-week. */
+export interface NarrativeSourceHealth {
+  sourceOrigin: string;
+  status: string;
+  itemsFetched: number;
+  errors: string[] | null;
+}
+
+/** Document reference for thematic drift grounding. */
+export interface NarrativeThematicDocRef {
+  title: string;
+  sourceType: string;
+  publishedAt: string | null;
+}
+
 /** Layer data extracted from a weekly_aggregates row, used as input for narrative generation. */
 export interface NarrativeLayerData {
   category: string;
@@ -74,6 +89,9 @@ export interface NarrativeLayerData {
   baselineContext?: NarrativeBaselineContext;
   trajectory?: NarrativeTrajectory;
   totalDocumentCount?: number;
+  sourceHealthContext?: NarrativeSourceHealth[];
+  typicalDocuments?: NarrativeThematicDocRef[];
+  driftDrivingDocuments?: NarrativeThematicDocRef[];
 }
 
 /** Result of multi-pass narrative generation for a single category-week. */

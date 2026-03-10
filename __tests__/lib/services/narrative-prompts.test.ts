@@ -84,13 +84,14 @@ describe('buildFeedbackPrompt', () => {
     expect(prompt).toContain('LAYER ASSESSMENT SUMMARY');
   });
 
-  it('includes all 5 review categories', () => {
+  it('includes all 6 review categories', () => {
     const prompt = buildFeedbackPrompt('Expert', 'Public', makeLayerData());
     expect(prompt).toContain('FACTUAL ACCURACY');
     expect(prompt).toContain('CONFIDENCE CALIBRATION');
     expect(prompt).toContain('MISSING COUNTER-ARGUMENTS');
     expect(prompt).toContain('CHARACTERIZATION CONCERNS');
     expect(prompt).toContain('BALANCE');
+    expect(prompt).toContain('EVIDENCE SUFFICIENCY');
   });
 });
 
@@ -117,7 +118,7 @@ describe('buildRevisionPrompt', () => {
   it('includes revision instructions', () => {
     const prompt = buildRevisionPrompt('E', 'P', 'F', makeLayerData());
     expect(prompt).toContain('REVISION INSTRUCTIONS');
-    expect(prompt).toContain('feedback item (a through e)');
+    expect(prompt).toContain('feedback item (a through f)');
   });
 });
 
@@ -960,5 +961,172 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
     const input = makeWeeklyInput({ failedCategories: [] });
     const prompt = buildWeeklySummaryPrompt(input, 'expert');
     expect(prompt).not.toContain('FAILED NARRATIVE GENERATION');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint R-NAR2: evidence-proportional length, source health, thematic context
+// ---------------------------------------------------------------------------
+
+describe('buildDraftPrompt — evidence-proportional length', () => {
+  it('uses longer word ranges when P2-confirmed docs are present', () => {
+    const data = makeLayerData({
+      documentContext: [
+        {
+          title: 'Confirmed doc',
+          sourceType: 'federal_register',
+          sourceOrigin: 'FR',
+          agency: null,
+          publishedAt: null,
+          url: '',
+          assessment: 'clearly_concerning',
+          erosionType: null,
+          reasoning: null,
+          content: null,
+        },
+      ],
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('400-800 words');
+    expect(prompt).toContain('200-500 words');
+    expect(prompt).not.toContain('No P2-confirmed documents or L2 AI analysis');
+  });
+
+  it('uses shorter word ranges when no P2-confirmed docs and no L2 data', () => {
+    const data = makeLayerData({
+      documentContext: [],
+      aiScore: null,
+      aiDetail: null,
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('200-400 words');
+    expect(prompt).toContain('150-300 words');
+    expect(prompt).toContain('No P2-confirmed documents or L2 AI analysis');
+  });
+
+  it('uses longer ranges when L2 data present even without P2-confirmed docs', () => {
+    const data = makeLayerData({ documentContext: [] });
+    // L2 data still present from default fixture
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('400-800 words');
+  });
+});
+
+describe('buildDraftPrompt — weighted counter-arguments', () => {
+  it('includes counter-argument instruction in preamble', () => {
+    const prompt = buildDraftPrompt(makeLayerData());
+    expect(prompt).toContain('weighted counter-argument');
+    expect(prompt).toContain('proportional to the strength of the evidence');
+  });
+});
+
+describe('buildDraftPrompt — "why this might matter"', () => {
+  it('includes "why this might matter" instruction in public output format', () => {
+    const prompt = buildDraftPrompt(makeLayerData());
+    expect(prompt).toContain('why this might matter');
+    expect(prompt).toContain('conditional language');
+  });
+});
+
+describe('buildDraftPrompt — small sample caveat', () => {
+  it('includes small-sample caveat when totalDocumentCount is below threshold', () => {
+    const data = makeLayerData({ totalDocumentCount: 10 });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('limited diagnostic value');
+  });
+
+  it('omits small-sample caveat when totalDocumentCount is above threshold', () => {
+    const data = makeLayerData({ totalDocumentCount: 50 });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).not.toContain('limited diagnostic value');
+  });
+});
+
+describe('buildDraftPrompt — L2-empty transparency', () => {
+  it('includes AI-absent transparency when L2 data is missing', () => {
+    const data = makeLayerData({ aiScore: null, aiDetail: null });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('No AI content analysis was performed this week');
+    expect(prompt).toContain('structural pattern detection only');
+  });
+});
+
+describe('buildDraftPrompt — source health warnings', () => {
+  it('includes failed source health warning', () => {
+    const data = makeLayerData({
+      sourceHealthContext: [
+        { sourceOrigin: 'FR', status: 'failed', itemsFetched: 0, errors: ['timeout'] },
+      ],
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('SOURCE HEALTH WARNINGS');
+    expect(prompt).toContain('FR: FAILED');
+    expect(prompt).toContain('timeout');
+  });
+
+  it('includes partial source health warning', () => {
+    const data = makeLayerData({
+      sourceHealthContext: [
+        { sourceOrigin: 'GovInfo', status: 'partial', itemsFetched: 5, errors: ['rate limited'] },
+      ],
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('GovInfo: PARTIAL (5 items');
+    expect(prompt).toContain('rate limited');
+  });
+
+  it('omits source health section when all sources are OK', () => {
+    const data = makeLayerData({
+      sourceHealthContext: [
+        { sourceOrigin: 'FR', status: 'success', itemsFetched: 20, errors: null },
+      ],
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).not.toContain('SOURCE HEALTH WARNINGS');
+  });
+
+  it('omits source health section when no health data', () => {
+    const data = makeLayerData();
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).not.toContain('SOURCE HEALTH WARNINGS');
+  });
+});
+
+describe('buildDraftPrompt — thematic drift context', () => {
+  it('includes typical and drift-driving documents', () => {
+    const data = makeLayerData({
+      typicalDocuments: [{ title: 'Regular doc', sourceType: 'rss', publishedAt: '2026-02-10' }],
+      driftDrivingDocuments: [
+        { title: 'Unusual doc', sourceType: 'federal_register', publishedAt: '2026-02-18' },
+      ],
+    });
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).toContain('THEMATIC DRIFT CONTEXT');
+    expect(prompt).toContain('Typical documents from the prior 8 weeks');
+    expect(prompt).toContain('Regular doc');
+    expect(prompt).toContain('most divergent from recent norms');
+    expect(prompt).toContain('Unusual doc');
+  });
+
+  it('omits thematic context when no drift documents', () => {
+    const data = makeLayerData();
+    const prompt = buildDraftPrompt(data);
+    expect(prompt).not.toContain('THEMATIC DRIFT CONTEXT');
+  });
+});
+
+describe('buildFeedbackPrompt — evidence sufficiency criterion', () => {
+  it('includes evidence sufficiency criterion (f)', () => {
+    const prompt = buildFeedbackPrompt('Expert', 'Public', makeLayerData());
+    expect(prompt).toContain('EVIDENCE SUFFICIENCY');
+    expect(prompt).toContain('proportional to the available evidence');
+  });
+});
+
+describe('buildRevisionPrompt — evidence sufficiency handling', () => {
+  it('includes instruction to trim for evidence insufficiency', () => {
+    const prompt = buildRevisionPrompt('E', 'P', 'F', makeLayerData());
+    expect(prompt).toContain('evidence insufficiency');
+    expect(prompt).toContain('trim the narrative');
   });
 });
