@@ -1076,3 +1076,31 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 2. **Pure vector similarity has corpus-size bias**: A larger corpus of Biden-era documents dominated results even for T2-specific queries. Recency boosting is necessary when the monitoring focus is on recent activity but historical baselines contain more data.
 3. **`DISTINCT ON` in PostgreSQL requires specific ORDER BY alignment**: The deduplication query required `ORDER BY url, cosine_similarity DESC` inside the `DISTINCT ON` subquery, then re-ordering by `combined_score DESC` in the outer query. PostgreSQL requires `DISTINCT ON` columns to match the leftmost ORDER BY columns.
 4. **Excluding low-value sources from research search matters**: `source_origin NOT IN ('gdelt', 'whitehouse')` in the research query prevents metadata-only GDELT stubs and WH press releases from consuming candidate slots. These sources were already filtered from scoring pipelines (ACTIVE_SOURCES) but needed explicit exclusion in search queries too.
+
+---
+
+## Sprint R-NAR2: Narrative Quality & Context Enrichment ✅
+
+**Status: Done.** Prompt refinements for evidence-proportional length, weighted counter-arguments, source health injection, thematic drift document grounding, GPT-4o evidence sufficiency criterion. Follow-up: weekly/term summary prompt improvements (synthesis framing, zero-document flagging, compression guidelines, critical evaluation). Extracted format helpers to keep file under max-lines. 6 narrative example files generated. Issues #316–#323, Milestone 48.
+
+**Scope vs. Actual:**
+
+- Planned (8 issues #316-#323): Evidence-proportional length (#316), "why this might matter" lead sentence (#317), weighted counter-arguments (#318), L2-empty transparency (#319), small-sample caveat (#320), evidence sufficiency criterion (#321), source health injection (#322), thematic drift document grounding (#323)
+- Actual: All 8 planned items delivered. Additionally: (a) extracted 10 formatting functions to `narrative-format-helpers.ts` to keep `narrative-prompts.ts` under max-lines, (b) generated 6 narrative example files (elevated, divergent, confirmed concern, full-docs, weekly summary, term summary) for quality review, (c) implemented 9 follow-up prompt improvements (A-I) for weekly/term summaries based on Claude.ai review of generated examples
+
+**Key Decisions:**
+
+1. **Evidence-proportional length via `buildDualOutputFormat(data)`**: Replaced static `DUAL_OUTPUT_FORMAT` constant with a function that inspects the data — when no P2-confirmed docs or L2 data exists, it instructs the LLM to produce shorter narratives. This prevents inflated language when evidence is thin.
+2. **Source health from `fetch_log` table**: `getSourceFetchHealth()` queries the fetch_log for the category's week, surfacing fetch failures and zero-result sources directly in narrative context. The LLM can then note data availability limitations.
+3. **Thematic drift document grounding via pgvector**: `getTypicalDocuments()` finds nearest-neighbor documents to the rolling centroid; `getDriftDrivingDocuments()` finds the furthest. These give the LLM concrete examples of what "typical" vs "drifting" looks like for a category-week.
+4. **GPT-4o evidence sufficiency criterion**: Added criterion (f) to the feedback prompt requiring GPT-4o to check whether narrative claims are proportional to the evidence. This catches the most common failure mode: over-interpreting sparse data.
+5. **Weekly synthesis framing**: "Synthesize, don't recapitulate" instruction ensures weekly summaries add cross-category value rather than repeating individual category narratives.
+6. **Zero-document stable categories flagged**: `formatWeeklyCategoryBlocks()` counts stable categories with zero documents and adds a DATA AVAILABILITY NOTE. Prompt instructions require leading with data availability limitations before interpreting silence as stability.
+7. **Term summary compression**: Word ranges reduced (expert 800-1500→600-1000, public 500-1000→400-700) with CRITICAL GUIDELINES block instructing: critical evaluation of previous summary framing, term-level (not weekly) layer patterns, summarize data sequences rather than reproducing them, "why this might matter" for cumulative trajectory.
+8. **Format helper extraction**: 10 functions moved to `narrative-format-helpers.ts` — all pure formatting/collection functions with no business logic. Kept `narrative-prompts.ts` under the 500-line max-lines limit.
+
+**Lessons Learned:**
+
+1. **Generate-and-review cycle catches prompt issues that tests miss**: Unit tests verify prompt structure (keywords present, word ranges correct) but can't evaluate output quality. Generating examples with real data and reviewing the AI output revealed 9 prompt improvements (A-I) that no test could have surfaced.
+2. **Temp scripts in project root break CI**: `generate-narrative-examples.ts` and `generate-summary-examples.ts` in the project root were caught by prettier and tsc pre-push hooks. Temp generation scripts should be in a gitignored location or deleted before pushing.
+3. **Prompt array element boundaries affect test assertions**: `expect(prompt).toContain('note the correction explicitly')` fails when the prompt array splits this phrase across two elements joined by `\n`. Test for shorter substrings that stay within a single array element.
