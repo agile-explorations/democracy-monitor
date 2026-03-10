@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import { CATEGORIES } from '@/lib/data/categories';
+import { keyToSlug } from '@/lib/data/category-slugs';
 
 const SYSTEM_LINKS = [
   { href: '/system/health', label: 'Health' },
@@ -101,7 +102,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
 
           <NavSection title="Categories">
             {CATEGORIES.map((cat) => (
-              <NavLink key={cat.key} href={`/category/${cat.key}`} label={cat.title} />
+              <NavLink key={cat.key} href={`/category/${keyToSlug(cat.key)}`} label={cat.title} />
             ))}
           </NavSection>
 

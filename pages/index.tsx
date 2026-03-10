@@ -1,4 +1,3 @@
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
@@ -11,9 +10,11 @@ import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
 import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
+import { keyToSlug } from '@/lib/data/category-slugs';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
@@ -150,7 +151,7 @@ export default function Home() {
         params.set('from', rangeDates.from);
         params.set('to', rangeDates.to);
       }
-      router.push(`/category/${category}?${params.toString()}`);
+      router.push(`/category/${keyToSlug(category)}?${params.toString()}`);
     },
     [router, rangeDates],
   );
@@ -170,13 +171,11 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Democracy Monitor</title>
-        <meta
-          name="description"
-          content="Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories."
-        />
-      </Head>
+      <SEOHead
+        title="Democracy Monitor"
+        description="Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories."
+        canonicalPath="/"
+      />
       <main>
         {/* Data integrity banner (above everything when active) */}
         {meta && (

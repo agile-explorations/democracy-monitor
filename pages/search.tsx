@@ -1,4 +1,3 @@
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -6,6 +5,7 @@ import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResul
 import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
 
@@ -148,9 +148,11 @@ export default function SearchPage() {
 
   return (
     <>
-      <Head>
-        <title>Search the Record &mdash; Democracy Monitor</title>
-      </Head>
+      <SEOHead
+        title="Search the Record"
+        description="Search government documents by topic. Research mode synthesizes answers from the documentary record; explore mode provides filtered keyword and semantic search."
+        canonicalPath="/search"
+      />
 
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview

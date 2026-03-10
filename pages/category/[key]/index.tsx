@@ -1,4 +1,3 @@
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo } from 'react';
@@ -7,16 +6,19 @@ import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
+import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 
 export default function CategoryDetailPage() {
   const router = useRouter();
   const { key, weekOf, from, to } = router.query;
-  const categoryKey = typeof key === 'string' ? key : undefined;
+  const rawKey = typeof key === 'string' ? key : undefined;
+  const categoryKey = rawKey ? (slugToKey(rawKey) ?? rawKey) : undefined;
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
 
@@ -72,9 +74,11 @@ export default function CategoryDetailPage() {
 
   return (
     <>
-      <Head>
-        <title>{title} — Democracy Monitor</title>
-      </Head>
+      <SEOHead
+        title={title}
+        description={category?.description ?? `${title} institutional health tracking.`}
+        canonicalPath={`/category/${keyToSlug(categoryKey ?? '')}`}
+      />
 
       {/* Back link */}
       <Link href="/" className="text-xs text-dm-accent hover:underline">

@@ -6,6 +6,7 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
+import { keyToSlug } from '@/lib/data/category-slugs';
 import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
 import {
   AI_FLAG_RATE_THRESHOLD,
@@ -162,7 +163,7 @@ function CategoryRow({
               {isExpanded ? '\u25BE' : '\u25B8'}
             </span>
             <Link
-              href={`/category/${cat.category}${linkParams}`}
+              href={`/category/${keyToSlug(cat.category)}${linkParams}`}
               onClick={(e) => e.stopPropagation()}
               className="text-dm-text-primary font-medium hover:text-dm-accent transition-colors"
             >

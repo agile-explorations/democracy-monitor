@@ -1,7 +1,7 @@
-import Head from 'next/head';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { SourceHealthTimeline } from '@/components/overview/SourceHealthTimeline';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { HealthSummary } from '@/components/system/HealthSummary';
 import {
   renderIngest,
@@ -107,13 +107,11 @@ export default function HealthPage() {
 
   return (
     <>
-      <Head>
-        <title>System Health — Democracy Monitor</title>
-        <meta
-          name="description"
-          content="Source availability and data quality monitoring for Democracy Monitor."
-        />
-      </Head>
+      <SEOHead
+        title="System Health"
+        description="Source availability and data quality monitoring for Democracy Monitor."
+        canonicalPath="/system/health"
+      />
 
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview

@@ -1,5 +1,5 @@
-import Head from 'next/head';
 import Link from 'next/link';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 
@@ -587,13 +587,11 @@ export default function MethodologyPage() {
 
   return (
     <>
-      <Head>
-        <title>Methodology — Democracy Monitor</title>
-        <meta
-          name="description"
-          content="How the Democracy Monitor assesses institutional health using three-layer triangulated detection."
-        />
-      </Head>
+      <SEOHead
+        title="Methodology"
+        description="How the Democracy Monitor assesses institutional health using three-layer triangulated detection."
+        canonicalPath="/system/methodology"
+      />
 
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview

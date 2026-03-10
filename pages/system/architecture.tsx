@@ -1,5 +1,5 @@
-import Head from 'next/head';
 import Link from 'next/link';
+import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 
@@ -305,13 +305,11 @@ export default function ArchitecturePage() {
 
   return (
     <>
-      <Head>
-        <title>Architecture — Democracy Monitor</title>
-        <meta
-          name="description"
-          content="System architecture and technical design of Democracy Monitor."
-        />
-      </Head>
+      <SEOHead
+        title="Architecture"
+        description="System architecture and technical design of Democracy Monitor."
+        canonicalPath="/system/architecture"
+      />
 
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview

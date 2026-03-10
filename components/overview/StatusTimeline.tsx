@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
+import { keyToSlug } from '@/lib/data/category-slugs';
 import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
 import type { ConvergenceStatus } from '@/lib/types';
 import type { StatusTimelineEntry } from '@/lib/types/overview';
@@ -151,7 +152,7 @@ function TimelineRow({
         title={entry.title}
       >
         <Link
-          href={`/category/${entry.category}${linkParams}`}
+          href={`/category/${keyToSlug(entry.category)}${linkParams}`}
           className="hover:text-dm-accent transition-colors"
         >
           {entry.title}
