@@ -6,6 +6,7 @@ export interface ResearchResult {
   dateRange: { earliest: string; latest: string };
   queryConfidence: number;
   relatedQuestions: string[];
+  corpusStats?: { totalMatching: number } | null;
   editorial?: {
     expertDraft: string;
     publicDraft: string;

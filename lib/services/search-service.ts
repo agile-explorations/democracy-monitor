@@ -75,6 +75,10 @@ export interface ResearchDocument {
   cosineSimilarity: number;
   finalScore: number | null;
   documentClass: string | null;
+  p2Assessment: string | null;
+  p2ErosionType: string | null;
+  p2Confidence: number | null;
+  p2Summary: string | null;
 }
 
 export interface SimilarDocumentResult {
@@ -146,38 +150,39 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 // Research mode: vector search for government documents
 // ---------------------------------------------------------------------------
 
-export async function searchResearch(query: string, topK = 20): Promise<ResearchDocument[]> {
-  if (!isDbAvailable()) return [];
-  const embedding = await embedText(query);
-  if (!embedding) return [];
-
-  const db = getDb();
-  const vectorStr = `[${embedding.join(',')}]`;
-
-  // 1. Retrieve candidates by vector similarity
-  // 2. Deduplicate by URL (same doc appears once per category in the corpus)
-  // 3. Re-rank with recency boost so T2-era docs surface above baseline-era
-  const candidateLimit = topK * 5;
-
-  try {
-    const results = await db.execute(sql`
+/** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
+function buildResearchQuery(
+  vectorStr: string,
+  query: string,
+  topK: number,
+  candidateLimit: number,
+) {
+  return sql`
+    SELECT r.*, ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
+      ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
+    FROM (
       SELECT id, title, content, url, published_at, source_type, source_origin, category,
         cosine_similarity, final_score, document_class,
-        (cosine_similarity * 0.7 + recency * 0.3) as combined_score
+        (cosine_similarity * 0.6 + recency * 0.2
+          + CASE WHEN keyword_match THEN 0.2 ELSE 0 END) as combined_score
       FROM (
         SELECT DISTINCT ON (url)
           id, title, content, url, published_at, source_type, source_origin, category,
-          cosine_similarity, final_score, document_class, recency
+          cosine_similarity, final_score, document_class, recency, keyword_match
         FROM (
-          SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type, d.source_origin, d.category,
+          SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type,
+            d.source_origin, d.category,
             1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
             ds.final_score, ds.document_class,
             CASE WHEN d.published_at IS NULL THEN 0
-              ELSE GREATEST(0, 1 - EXTRACT(EPOCH FROM (now() - d.published_at)) / (365.25 * 86400 * 4))
-            END as recency
+              ELSE GREATEST(0, 1 - EXTRACT(EPOCH FROM (now() - d.published_at))
+                / (365.25 * 86400 * 4))
+            END as recency,
+            (d.search_vector @@ websearch_to_tsquery('english', ${query})) as keyword_match
           FROM documents d
           LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-          WHERE d.embedding IS NOT NULL AND d.source_origin NOT IN ('gdelt', 'whitehouse')
+          WHERE d.embedding IS NOT NULL
+            AND d.source_origin NOT IN ('gdelt', 'whitehouse')
           ORDER BY d.embedding <=> ${vectorStr}::vector
           LIMIT ${candidateLimit}
         ) candidates
@@ -185,7 +190,26 @@ export async function searchResearch(query: string, topK = 20): Promise<Research
       ) deduped
       ORDER BY combined_score DESC
       LIMIT ${topK}
-    `);
+    ) r
+    LEFT JOIN ai_document_assessments ai
+      ON ai.url = r.url AND ai.category = r.category AND ai.pass = 2
+  `;
+}
+
+export async function searchResearch(
+  query: string,
+  topK = 20,
+  precomputedEmbedding?: number[],
+): Promise<ResearchDocument[]> {
+  if (!isDbAvailable()) return [];
+  const embedding = precomputedEmbedding ?? (await embedText(query));
+  if (!embedding) return [];
+
+  const db = getDb();
+  const vectorStr = `[${embedding.join(',')}]`;
+
+  try {
+    const results = await db.execute(buildResearchQuery(vectorStr, query, topK, topK * 5));
     return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
   } catch (err) {
     console.error('[search] Research search failed:', err);
@@ -206,6 +230,10 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
     cosineSimilarity: Number(row.cosine_similarity),
     finalScore: row.final_score != null ? Number(row.final_score) : null,
     documentClass: row.document_class as string | null,
+    p2Assessment: (row.p2_assessment as string) ?? null,
+    p2ErosionType: (row.p2_erosion_type as string) ?? null,
+    p2Confidence: row.p2_confidence != null ? Number(row.p2_confidence) : null,
+    p2Summary: (row.p2_summary as string) ?? null,
   };
 }
 

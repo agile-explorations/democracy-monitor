@@ -102,6 +102,7 @@ export default function SearchPage() {
       dateRange: docsData.dateRange,
       queryConfidence: docsData.queryConfidence,
       relatedQuestions: [],
+      corpusStats: docsData.corpusStats ?? null,
     });
     setLoading(false);
     setSynthesizing(true);

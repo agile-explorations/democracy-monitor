@@ -9,6 +9,7 @@
 import { getProvider } from '@/lib/ai/provider';
 import type { AICompletionResult } from '@/lib/types';
 import { buildDraftPrompt, buildFeedbackPrompt, buildRevisionPrompt } from './research-prompts';
+import type { CorpusStats } from './search-research-queries';
 import type { ResearchDocument } from './search-service';
 
 // ---------------------------------------------------------------------------
@@ -135,39 +136,32 @@ export function parseFinalResponse(response: string): { expert: string; public: 
 export async function synthesizeResearchAnswer(
   query: string,
   documents: ResearchDocument[],
+  corpusStats?: CorpusStats | null,
 ): Promise<ResearchSynthesisResult> {
   const claude = getProvider('anthropic');
   const openai = getProvider('openai');
   if (!claude.isAvailable()) throw new Error('Anthropic API key not configured');
   if (!openai.isAvailable()) throw new Error('OpenAI API key not configured');
 
-  const draftResult = await callWithRetry(
-    () =>
-      claude.complete(buildDraftPrompt(query, documents), {
-        model: DRAFT_MODEL,
-        maxTokens: 4096,
-        systemPrompt: SYSTEM_DRAFT,
-      }),
-    'Pass 1 draft',
-  );
+  const stats = corpusStats ?? null;
+  const draftResult = await runDraft(claude, query, documents, stats);
   const drafts = parseDraftResponse(draftResult.content);
-
-  const feedbackResult = await callWithRetry(
-    () =>
-      openai.complete(buildFeedbackPrompt(drafts.expert, drafts.public, query, documents), {
-        model: FEEDBACK_MODEL,
-        maxTokens: 2048,
-        systemPrompt: SYSTEM_FEEDBACK,
-      }),
-    'Pass 2 feedback',
+  const feedbackResult = await runFeedback(openai, drafts, query, documents, stats);
+  const revisionPrompt = buildRevisionPrompt(
+    drafts.expert,
+    drafts.public,
+    feedbackResult.content,
+    query,
+    documents,
+    stats,
   );
-
   const finalResult = await callWithRetry(
     () =>
-      claude.complete(
-        buildRevisionPrompt(drafts.expert, drafts.public, feedbackResult.content, query, documents),
-        { model: FINAL_MODEL, maxTokens: 4096, systemPrompt: SYSTEM_REVISION },
-      ),
+      claude.complete(revisionPrompt, {
+        model: FINAL_MODEL,
+        maxTokens: 4096,
+        systemPrompt: SYSTEM_REVISION,
+      }),
     'Pass 3 revision',
   );
   const finals = parseFinalResponse(finalResult.content);
@@ -183,4 +177,39 @@ export async function synthesizeResearchAnswer(
     feedbackModel: feedbackResult.model,
     finalModel: finalResult.model,
   };
+}
+
+async function runDraft(
+  provider: ReturnType<typeof getProvider>,
+  query: string,
+  docs: ResearchDocument[],
+  stats: CorpusStats | null,
+) {
+  return callWithRetry(
+    () =>
+      provider.complete(buildDraftPrompt(query, docs, stats), {
+        model: DRAFT_MODEL,
+        maxTokens: 4096,
+        systemPrompt: SYSTEM_DRAFT,
+      }),
+    'Pass 1 draft',
+  );
+}
+
+async function runFeedback(
+  provider: ReturnType<typeof getProvider>,
+  drafts: { expert: string; public: string },
+  query: string,
+  docs: ResearchDocument[],
+  stats: CorpusStats | null,
+) {
+  return callWithRetry(
+    () =>
+      provider.complete(buildFeedbackPrompt(drafts.expert, drafts.public, query, docs, stats), {
+        model: FEEDBACK_MODEL,
+        maxTokens: 2048,
+        systemPrompt: SYSTEM_FEEDBACK,
+      }),
+    'Pass 2 feedback',
+  );
 }

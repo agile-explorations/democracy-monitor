@@ -2,9 +2,12 @@ import { createHash } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { embedText } from '@/lib/services/embedding-service';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
+import type { CorpusStats } from '@/lib/services/search-research-queries';
+import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { ResearchDocument } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
@@ -16,6 +19,7 @@ interface CachedResearchResult {
   synthesis: ResearchSynthesisResult;
   documents: ResearchDocument[];
   queryConfidence: number;
+  corpusStats?: CorpusStats | null;
 }
 
 function hashQuery(q: string): string {
@@ -48,6 +52,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
+function emptyResearchResponse(docsOnly: boolean) {
+  return {
+    documents: [],
+    dateRange: { earliest: 'unknown', latest: 'unknown' },
+    queryConfidence: 0,
+    ...(docsOnly ? {} : { answer: emptyAnswer(), relatedQuestions: [] }),
+  };
+}
+
+/** Compute adaptive corpus stats using the least-similar retrieved doc as threshold. */
+async function adaptiveCorpusStats(
+  embedding: number[],
+  docs: ResearchDocument[],
+): Promise<CorpusStats | null> {
+  if (docs.length === 0) return null;
+  const leastSimilarity = Math.min(...docs.map((d) => d.cosineSimilarity));
+  return leastSimilarity > 0 ? searchCorpusStats(embedding, 1 - leastSimilarity) : null;
+}
+
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -57,49 +80,45 @@ async function handleResearch(
   const docsOnly = req.query.docsOnly === 'true';
   const queryHash = hashQuery(query);
 
-  // Retrieve documents (needed for both docsOnly and full)
-  const allDocs = await searchResearch(query, 20);
-  const dateRange = computeDateRange(allDocs);
-  const avgSimilarity =
-    allDocs.length > 0
-      ? allDocs.reduce((sum, d) => sum + d.cosineSimilarity, 0) / allDocs.length
-      : 0;
-
-  if (allDocs.length === 0) {
-    res.status(200).json({
-      documents: [],
-      dateRange: { earliest: 'unknown', latest: 'unknown' },
-      queryConfidence: 0,
-      ...(docsOnly ? {} : { answer: emptyAnswer(), relatedQuestions: [] }),
-    });
+  const embedding = await embedText(query);
+  if (!embedding) {
+    res.status(200).json(emptyResearchResponse(docsOnly));
     return;
   }
 
-  // Fast path: return just documents for immediate display
+  const allDocs = await searchResearch(query, 20, embedding);
+  if (allDocs.length === 0) {
+    res.status(200).json(emptyResearchResponse(docsOnly));
+    return;
+  }
+
+  const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
+  const dateRange = computeDateRange(allDocs);
+  const avgSimilarity = avgCosineSimilarity(allDocs);
+
   if (docsOnly) {
     res.status(200).json({
       documents: formatDocList(allDocs),
       dateRange,
       queryConfidence: avgSimilarity,
+      ...(corpusStats ? { corpusStats } : {}),
     });
     return;
   }
 
-  // Check cache for full synthesis
   const cached = await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
   if (cached) {
     res.status(200).json(formatResearchResponse(cached, allDocs, editorial));
     return;
   }
 
-  // Send top N to synthesis
   const contextDocs = allDocs.slice(0, RESEARCH_CONTEXT_DOCS);
-  const synthesis = await synthesizeResearchAnswer(query, contextDocs);
-
+  const synthesis = await synthesizeResearchAnswer(query, contextDocs, corpusStats);
   const result: CachedResearchResult = {
     synthesis,
     documents: allDocs,
     queryConfidence: avgSimilarity,
+    corpusStats,
   };
 
   await cacheSet(CacheKeys.searchResearch(queryHash), result, RESEARCH_CACHE_TTL);
@@ -131,6 +150,8 @@ function formatDocList(docs: ResearchDocument[]) {
     cosineSimilarity: doc.cosineSimilarity,
     finalScore: doc.finalScore,
     documentClass: doc.documentClass,
+    p2Assessment: doc.p2Assessment,
+    p2ErosionType: doc.p2ErosionType,
   }));
 }
 
@@ -139,7 +160,7 @@ function formatResearchResponse(
   allDocs: ResearchDocument[],
   editorial: boolean,
 ) {
-  const { synthesis, queryConfidence } = result;
+  const { synthesis, queryConfidence, corpusStats: stats } = result;
   const dateRange = computeDateRange(allDocs);
 
   const response: Record<string, unknown> = {
@@ -148,6 +169,7 @@ function formatResearchResponse(
     dateRange,
     queryConfidence,
     relatedQuestions: synthesis.relatedQuestions,
+    ...(stats ? { corpusStats: stats } : {}),
   };
 
   if (editorial) {
@@ -184,4 +206,8 @@ async function handleExplore(
   });
 
   res.status(200).json(result);
+}
+
+function avgCosineSimilarity(docs: ResearchDocument[]): number {
+  return docs.length > 0 ? docs.reduce((sum, d) => sum + d.cosineSimilarity, 0) / docs.length : 0;
 }
