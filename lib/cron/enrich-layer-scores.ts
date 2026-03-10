@@ -201,6 +201,8 @@ async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
     }
   }
 
+  process.stdout.write(`\r[layers:enrich] ${enriched}/${aggregates.length} enriched\n`);
+
   return { enriched, skippedNoL2, catCounts, elevatedWeeks };
 }
 
