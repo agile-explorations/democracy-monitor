@@ -266,6 +266,15 @@ export function buildRevisionPrompt(
   ].join('\n');
 }
 
+function appendZeroDocNote(lines: string[], zeroCount: number, totalStable: number): void {
+  lines.push(
+    '',
+    `DATA AVAILABILITY NOTE: ${zeroCount} of ${totalStable} stable categories had zero documents.`,
+    'Zero documents may reflect a genuinely quiet week or a gap in source coverage.',
+    'Lead with data availability limitations before interpreting silence as stability.',
+  );
+}
+
 /** Format elevated and stable category lists for the weekly summary. */
 function formatWeeklyCategoryBlocks(
   input: WeeklySummaryInput,
@@ -293,12 +302,14 @@ function formatWeeklyCategoryBlocks(
     }
   }
   if (stable.length > 0) {
+    const zeroDocCount = stable.filter((c) => !c.totalDocumentCount).length;
     lines.push('--- STABLE CATEGORIES ---');
     for (const cat of stable) {
       lines.push(
         `${cat.category}: Stable, ${cat.totalDocumentCount ?? 0} documents, no structural or AI anomalies`,
       );
     }
+    if (zeroDocCount > 0) appendZeroDocNote(lines, zeroDocCount, stable.length);
     lines.push('');
   }
   if (input.failedCategories.length > 0) {
@@ -314,9 +325,16 @@ function formatWeeklyCategoryBlocks(
 function weeklyRequirements(version: 'expert' | 'public'): string {
   const lines = [
     '--- REQUIREMENTS ---',
+    '- SYNTHESIZE, do not recapitulate. The reader has the category narratives — your job is',
+    '  cross-category patterns and connections that individual narratives cannot see.',
     '- Summarize how many categories are elevated and which layers are most active.',
     '- Note any synchrony patterns (multiple categories elevated simultaneously).',
     '- Highlight any changes from the previous week.',
+    '- If categories with zero documents exist, lead with data availability limitations before',
+    '  interpreting their silence as stability.',
+    '- Include a "why this might matter" sentence within the first two paragraphs: what does',
+    "  this week's cross-category pattern mean for democratic institutions? Use conditional",
+    '  language ("could indicate", "may reflect").',
     '- Include a Limitations sentence.',
     '- Do not make claims unsupported by the data.',
     '- This is AI-generated analysis, not a finding of fact.',
@@ -326,12 +344,12 @@ function weeklyRequirements(version: 'expert' | 'public'): string {
   if (version === 'expert') {
     lines.push(
       '- Reference specific layer patterns and convergence statuses.',
-      '- Keep the summary between 400-800 words.',
+      '- Keep the summary between 300-500 words.',
     );
   } else {
     lines.push(
       '- Avoid technical jargon. Use plain language.',
-      '- Keep the summary between 200-500 words.',
+      '- Keep the summary between 200-350 words.',
     );
   }
   return lines.join('\n');
@@ -438,7 +456,7 @@ export function buildTermSummaryPrompt(
     version === 'expert'
       ? 'Write a technical term-level summary for researchers and analysts.'
       : 'Write a plain-language term-level summary for journalists and citizens.';
-  const wordRange = version === 'expert' ? '800-1500' : '500-1000';
+  const wordRange = version === 'expert' ? '600-1000' : '400-700';
 
   return [
     `You are an analyst for a democratic institution monitoring system.\n${header}`,
@@ -450,9 +468,20 @@ export function buildTermSummaryPrompt(
     "Update the term summary to incorporate this week's developments.",
     'Maintain the narrative arc — show how the picture has evolved over time.',
     'Note any new milestones (first time a category reaches a status, longest streak, etc.).',
-    'Keep total length to 2-3 pages.',
     'Do not make claims unsupported by the data.',
     'This is AI-generated analysis, not a finding of fact.',
+    '',
+    'CRITICAL GUIDELINES:',
+    "- Critically evaluate the previous summary's framing against this week's data. If new",
+    '  data contradicts a pattern described in the previous summary, note the correction',
+    '  explicitly rather than silently revising.',
+    '- Characterize TERM-LEVEL layer patterns (e.g., "L1 has driven X% of elevations over',
+    '  N weeks"), not this week\'s specific layer configuration — that belongs in the weekly.',
+    '- Summarize long data sequences rather than reproducing them. Instead of listing every',
+    "  week's elevated count, summarize: peak, average, recent range, trend.",
+    '- Include a "why this might matter" paragraph within the first two paragraphs: what does',
+    '  the cumulative trajectory over N weeks mean for democratic institutions? Use conditional',
+    '  language ("could indicate", "may reflect").',
     '',
     '--- OUTPUT FORMAT ---',
     `Produce a single ${version === 'expert' ? 'technical' : 'plain-language'} term summary (${wordRange} words).`,

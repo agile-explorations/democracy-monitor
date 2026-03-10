@@ -304,13 +304,13 @@ describe('buildTermSummaryPrompt', () => {
 
   it('includes word range for expert version', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
-    expect(prompt).toContain('800-1500');
+    expect(prompt).toContain('600-1000');
     expect(prompt).toContain('technical');
   });
 
   it('includes word range for public version', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'public');
-    expect(prompt).toContain('500-1000');
+    expect(prompt).toContain('400-700');
     expect(prompt).toContain('plain-language');
   });
 });
@@ -825,14 +825,14 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
     const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'public');
     expect(prompt).toContain('plain-language cross-category synthesis');
     expect(prompt).toContain('Avoid technical jargon');
-    expect(prompt).toContain('200-500 words');
+    expect(prompt).toContain('200-350 words');
   });
 
   it('uses expert header for expert version', () => {
     const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'expert');
     expect(prompt).toContain('technical cross-category synthesis');
     expect(prompt).toContain('Reference specific layer patterns');
-    expect(prompt).toContain('400-800 words');
+    expect(prompt).toContain('300-500 words');
   });
 
   it('uses public narrative in elevated category section for public version', () => {
@@ -1128,5 +1128,137 @@ describe('buildRevisionPrompt — evidence sufficiency handling', () => {
     const prompt = buildRevisionPrompt('E', 'P', 'F', makeLayerData());
     expect(prompt).toContain('evidence insufficiency');
     expect(prompt).toContain('trim the narrative');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Weekly & term summary prompt improvements
+// ---------------------------------------------------------------------------
+
+describe('buildWeeklySummaryPrompt — synthesis and coverage instructions', () => {
+  function makeWeeklyInput(overrides: Partial<WeeklySummaryInput> = {}): WeeklySummaryInput {
+    return {
+      weekOf: '2026-02-17',
+      categories: [
+        makeLayerData(),
+        makeLayerData({
+          category: 'fiscal',
+          categoryTitle: 'Spending Oversight',
+          convergenceDetail: {
+            status: 'Stable',
+            structuralElevated: false,
+            aiElevated: false,
+            thematicElevated: false,
+            layersElevated: 0,
+            pattern: 'none',
+            bootstrap: false,
+          } as ConvergenceSynthesis,
+        }),
+      ],
+      categoryNarratives: new Map(),
+      failedCategories: [],
+      previousWeekSummary: null,
+      ...overrides,
+    };
+  }
+
+  it('includes synthesize-not-recapitulate instruction', () => {
+    const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'expert');
+    expect(prompt).toContain('SYNTHESIZE, do not recapitulate');
+  });
+
+  it('includes "why this might matter" instruction', () => {
+    const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'public');
+    expect(prompt).toContain('why this might matter');
+    expect(prompt).toContain('conditional');
+  });
+
+  it('flags zero-document stable categories', () => {
+    const input = makeWeeklyInput({
+      categories: [
+        makeLayerData(),
+        makeLayerData({
+          category: 'fiscal',
+          categoryTitle: 'Spending Oversight',
+          totalDocumentCount: 0,
+          convergenceDetail: {
+            status: 'Stable',
+            structuralElevated: false,
+            aiElevated: false,
+            thematicElevated: false,
+            layersElevated: 0,
+            pattern: 'none',
+            bootstrap: false,
+          } as ConvergenceSynthesis,
+        }),
+      ],
+    });
+    const prompt = buildWeeklySummaryPrompt(input, 'expert');
+    expect(prompt).toContain('DATA AVAILABILITY NOTE');
+    expect(prompt).toContain('1 of 1 stable categories had zero documents');
+  });
+
+  it('omits data availability note when all stable categories have documents', () => {
+    const input = makeWeeklyInput({
+      categories: [
+        makeLayerData({
+          category: 'fiscal',
+          categoryTitle: 'Spending Oversight',
+          totalDocumentCount: 25,
+          convergenceDetail: {
+            status: 'Stable',
+            structuralElevated: false,
+            aiElevated: false,
+            thematicElevated: false,
+            layersElevated: 0,
+            pattern: 'none',
+            bootstrap: false,
+          } as ConvergenceSynthesis,
+        }),
+      ],
+    });
+    const prompt = buildWeeklySummaryPrompt(input, 'expert');
+    expect(prompt).not.toContain('DATA AVAILABILITY NOTE');
+  });
+});
+
+describe('buildTermSummaryPrompt — critical evaluation and compression', () => {
+  function makeTermInput(overrides: Partial<TermSummaryInput> = {}): TermSummaryInput {
+    return {
+      weekOf: '2026-02-17',
+      weeklySummary: { expert: 'This week expert.', public: 'This week public.' },
+      previousTermSummary: null,
+      trajectoryTable: [],
+      statistics: {
+        weeksPerStatus: [],
+        peakConvergenceWeek: null,
+        currentTrend: [],
+      },
+      ...overrides,
+    };
+  }
+
+  it('includes critical evaluation instruction', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('Critically evaluate');
+    expect(prompt).toContain('note the correction');
+  });
+
+  it('includes term-level layer pattern instruction', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('TERM-LEVEL layer patterns');
+    expect(prompt).toContain('not this week');
+  });
+
+  it('includes summarize-not-reproduce instruction for data sequences', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('Summarize long data sequences');
+    expect(prompt).toContain('peak, average, recent range, trend');
+  });
+
+  it('includes "why this might matter" instruction', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'public');
+    expect(prompt).toContain('why this might matter');
+    expect(prompt).toContain('cumulative trajectory');
   });
 });
