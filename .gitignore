@@ -43,3 +43,6 @@ lib/seed/reports/
 
 # Internal specification/research documents (kept on disk for local reference)
 # docs/internal/
+
+# Playwright
+test-results/
