@@ -72,12 +72,18 @@ export default function CategoryDetailPage() {
 
   const latestRow = weeklyData[weeklyData.length - 1];
 
+  // When viewing a specific week via query params, point crawlers to the SSR canonical page
+  const weekOfParam = typeof weekOf === 'string' ? weekOf : undefined;
+  const slug = keyToSlug(categoryKey ?? '');
+  const hasWeekParam = !!weekOfParam;
+
   return (
     <>
       <SEOHead
         title={title}
         description={category?.description ?? `${title} institutional health tracking.`}
-        canonicalPath={`/category/${keyToSlug(categoryKey ?? '')}`}
+        canonicalPath={hasWeekParam ? `/category/${slug}/week/${weekOfParam}` : `/category/${slug}`}
+        noindex={hasWeekParam}
       />
 
       {/* Back link */}

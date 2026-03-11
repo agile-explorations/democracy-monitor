@@ -57,8 +57,8 @@ async function weeklyEntries(): Promise<SitemapEntry[]> {
     ORDER BY n.week_of DESC
   `);
 
-  return (rows.rows as { week_of: Date }[]).map((r) => {
-    const date = r.week_of.toISOString().slice(0, 10);
+  return (rows.rows as { week_of: string }[]).map((r) => {
+    const date = String(r.week_of).slice(0, 10);
     return {
       loc: `/weekly/${date}`,
       changefreq: 'weekly',
@@ -74,7 +74,7 @@ async function categoryWeekEntries(): Promise<SitemapEntry[]> {
     SELECT n.category, n.week_of
     FROM narratives n
     INNER JOIN weekly_aggregates wa
-      ON wa.category = n.category AND wa.week_of = n.week_of::text
+      ON wa.category = n.category AND wa.week_of = n.week_of
     WHERE n.version = 'expert'
       AND n.category NOT IN ('_overview', '_term_summary')
       AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
@@ -82,8 +82,8 @@ async function categoryWeekEntries(): Promise<SitemapEntry[]> {
     ORDER BY n.week_of DESC, n.category
   `);
 
-  return (rows.rows as { category: string; week_of: Date }[]).map((r) => {
-    const date = r.week_of.toISOString().slice(0, 10);
+  return (rows.rows as { category: string; week_of: string }[]).map((r) => {
+    const date = String(r.week_of).slice(0, 10);
     return {
       loc: `/category/${keyToSlug(r.category)}/week/${date}`,
       changefreq: 'weekly',

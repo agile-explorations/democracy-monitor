@@ -18,11 +18,18 @@ const nextConfig = {
       ['immigrationEnforcement', 'immigration-enforcement'],
     ];
 
-    return slugRedirects.map(([old, slug]) => ({
-      source: `/category/${old}`,
-      destination: `/category/${slug}`,
-      permanent: true,
-    }));
+    return slugRedirects.flatMap(([old, slug]) => [
+      {
+        source: `/category/${old}`,
+        destination: `/category/${slug}`,
+        permanent: true,
+      },
+      {
+        source: `/category/${old}/week/:date`,
+        destination: `/category/${slug}/week/:date`,
+        permanent: true,
+      },
+    ]);
   },
 };
 module.exports = nextConfig;

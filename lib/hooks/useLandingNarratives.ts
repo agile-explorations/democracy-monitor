@@ -46,14 +46,15 @@ export function useLandingNarratives(
   const [weeklyEditorial, setWeeklyEditorial] = useState<EditorialRecord | null>(null);
   const [weeklyNarrativeLoading, setWeeklyNarrativeLoading] = useState(false);
 
-  // Fetch term summary narrative when the latest week is known
+  // Fetch term summary narrative for the selected (or latest) week
   useEffect(() => {
-    if (!latestWeek) return;
+    const week = selectedWeek ?? latestWeek;
+    if (!week) return;
     let cancelled = false;
     setTermNarrativeLoading(true);
     (async () => {
       try {
-        const result = await fetchNarrative(`/api/narratives/term-summary?weekOf=${latestWeek}`);
+        const result = await fetchNarrative(`/api/narratives/term-summary?weekOf=${week}`);
         if (!cancelled) {
           setTermNarrative(result.narrative);
           setTermEditorial(result.editorial);
@@ -70,7 +71,7 @@ export function useLandingNarratives(
     return () => {
       cancelled = true;
     };
-  }, [latestWeek]);
+  }, [selectedWeek, latestWeek]);
 
   // Fetch weekly overview narrative when a week is selected
   useEffect(() => {
