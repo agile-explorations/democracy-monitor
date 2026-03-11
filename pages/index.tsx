@@ -9,6 +9,7 @@ import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
 import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
+import { WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -176,6 +177,7 @@ export default function Home() {
         description="Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories."
         canonicalPath="/"
       />
+      <WebSiteJsonLd />
       <main>
         {/* Data integrity banner (above everything when active) */}
         {meta && (

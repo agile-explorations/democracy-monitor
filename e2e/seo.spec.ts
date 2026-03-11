@@ -263,3 +263,160 @@ test.describe('R-SEO2: noindex on query-param pages', () => {
     expect(canonical).not.toContain('/week/');
   });
 });
+
+// ---------------------------------------------------------------------------
+// R-SEO3: Internal Linking + Structured Data
+// ---------------------------------------------------------------------------
+
+test.describe('R-SEO3: Prev/next navigation and cross-links', () => {
+  test('category-week page has prev/next nav links', async ({ request }) => {
+    const response = await request.get(`/category/${TEST_CATEGORY_SLUG}/week/${TEST_WEEK}`);
+    const body = await response.text();
+
+    // Should have a previous week link (2026-03-09 is not the first week)
+    // React SSR inserts <!-- --> comment nodes between text nodes,
+    // so we check for the link href pattern rather than visible text
+    expect(body).toContain('Previous');
+    // The prev link should point to a different category-week SSR page
+    const prevLinkMatch = body.match(
+      /href="\/category\/civil-service\/week\/(\d{4}-\d{2}-\d{2})"[^>]*>Previous/,
+    );
+    expect(prevLinkMatch).toBeTruthy();
+    expect(prevLinkMatch![1]).not.toBe(TEST_WEEK);
+  });
+
+  test('category-week page links to weekly hub', async ({ request }) => {
+    const response = await request.get(`/category/${TEST_CATEGORY_SLUG}/week/${TEST_WEEK}`);
+    const body = await response.text();
+
+    expect(body).toContain(`/weekly/${TEST_WEEK}`);
+  });
+
+  test('weekly hub page has prev/next nav links', async ({ request }) => {
+    const response = await request.get(`/weekly/${TEST_WEEK}`);
+    const body = await response.text();
+
+    expect(body).toMatch(/Previous:.*Week of/);
+    expect(body).toMatch(/\/weekly\/\d{4}-\d{2}-\d{2}/);
+  });
+});
+
+test.describe('R-SEO3: Category week archive', () => {
+  test('category landing has week archive section in HTML source', async ({ request }) => {
+    const response = await request.get(`/category/${TEST_CATEGORY_SLUG}`);
+    const body = await response.text();
+
+    // Archive section should be server-rendered
+    expect(body).toContain('Week Archive');
+    // Should contain links to category-week SSR pages
+    expect(body).toMatch(/\/category\/civil-service\/week\/\d{4}-\d{2}-\d{2}/);
+  });
+});
+
+test.describe('R-SEO3: JSON-LD structured data', () => {
+  test('category-week page has Article JSON-LD', async ({ request }) => {
+    const response = await request.get(`/category/${TEST_CATEGORY_SLUG}/week/${TEST_WEEK}`);
+    const body = await response.text();
+
+    // Extract JSON-LD blocks
+    const jsonLdMatches = body.match(/<script type="application\/ld\+json">(.*?)<\/script>/gs);
+    expect(jsonLdMatches).toBeTruthy();
+    expect(jsonLdMatches!.length).toBeGreaterThanOrEqual(2); // BreadcrumbList + Article
+
+    const jsonLds = jsonLdMatches!.map((m) => {
+      const content = m
+        .replace(/<script type="application\/ld\+json">/, '')
+        .replace(/<\/script>/, '');
+      return JSON.parse(content);
+    });
+
+    // BreadcrumbList
+    const breadcrumb = jsonLds.find((j: { '@type': string }) => j['@type'] === 'BreadcrumbList');
+    expect(breadcrumb).toBeTruthy();
+    expect(breadcrumb.itemListElement.length).toBe(3);
+
+    // Article
+    const article = jsonLds.find((j: { '@type': string }) => j['@type'] === 'Article');
+    expect(article).toBeTruthy();
+    expect(article.headline).toBeTruthy();
+    expect(article.publisher).toBeTruthy();
+    expect(article.about).toBeTruthy();
+  });
+
+  test('weekly hub page has CollectionPage JSON-LD', async ({ request }) => {
+    const response = await request.get(`/weekly/${TEST_WEEK}`);
+    const body = await response.text();
+
+    const jsonLdMatches = body.match(/<script type="application\/ld\+json">(.*?)<\/script>/gs);
+    expect(jsonLdMatches).toBeTruthy();
+
+    const jsonLds = jsonLdMatches!.map((m) => {
+      const content = m
+        .replace(/<script type="application\/ld\+json">/, '')
+        .replace(/<\/script>/, '');
+      return JSON.parse(content);
+    });
+
+    const collection = jsonLds.find((j: { '@type': string }) => j['@type'] === 'CollectionPage');
+    expect(collection).toBeTruthy();
+    expect(collection.mainEntity['@type']).toBe('ItemList');
+  });
+
+  test('homepage has WebSite JSON-LD', async ({ request }) => {
+    const response = await request.get('/');
+    const body = await response.text();
+
+    const jsonLdMatches = body.match(/<script type="application\/ld\+json">(.*?)<\/script>/gs);
+    expect(jsonLdMatches).toBeTruthy();
+
+    const jsonLds = jsonLdMatches!.map((m) => {
+      const content = m
+        .replace(/<script type="application\/ld\+json">/, '')
+        .replace(/<\/script>/, '');
+      return JSON.parse(content);
+    });
+
+    const website = jsonLds.find((j: { '@type': string }) => j['@type'] === 'WebSite');
+    expect(website).toBeTruthy();
+    expect(website.name).toBe('Democracy Monitor');
+    expect(website.publisher).toBeTruthy();
+  });
+});
+
+test.describe('R-SEO3: OG image and article metadata', () => {
+  test('category-week page has og:image and article metadata', async ({ request }) => {
+    const response = await request.get(`/category/${TEST_CATEGORY_SLUG}/week/${TEST_WEEK}`);
+    const body = await response.text();
+
+    expect(metaProperty(body, 'og:image')).toContain('og-default.png');
+    expect(metaProperty(body, 'og:type')).toBe('article');
+    // publication date may or may not be present depending on data
+  });
+
+  test('weekly hub page has og:image and article type', async ({ request }) => {
+    const response = await request.get(`/weekly/${TEST_WEEK}`);
+    const body = await response.text();
+
+    expect(metaProperty(body, 'og:image')).toContain('og-default.png');
+    expect(metaProperty(body, 'og:type')).toBe('article');
+  });
+
+  test('homepage has og:image', async ({ request }) => {
+    const response = await request.get('/');
+    const body = await response.text();
+
+    expect(metaProperty(body, 'og:image')).toContain('og-default.png');
+    expect(metaProperty(body, 'og:type')).toBe('website');
+  });
+});
+
+test.describe('R-SEO3: Weekly hub links to category landings', () => {
+  test('weekly hub has category landing links alongside week links', async ({ request }) => {
+    const response = await request.get(`/weekly/${TEST_WEEK}`);
+    const body = await response.text();
+
+    // Should have links to category landings (not just category-week pages)
+    // The "overview" link goes to the landing page
+    expect(body).toMatch(/\/category\/[a-z-]+"[^>]*>overview</i);
+  });
+});

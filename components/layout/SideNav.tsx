@@ -59,10 +59,10 @@ function SearchNavLink() {
   return (
     <Link
       href="/search"
-      className={`flex items-center gap-1.5 px-3 py-1 text-[12px] rounded transition-colors ${
+      className={`flex items-center gap-1.5 px-3 py-1.5 text-[12px] rounded-md border transition-colors ${
         isActive
-          ? 'bg-dm-accent/10 text-dm-accent font-medium'
-          : 'text-dm-text-secondary hover:text-dm-text-primary hover:bg-dm-card'
+          ? 'border-dm-accent bg-dm-accent/10 text-dm-accent font-medium'
+          : 'border-dm-accent/40 text-dm-accent hover:bg-dm-accent/10'
       }`}
     >
       <svg

@@ -1,14 +1,16 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
+import { BreadcrumbJsonLd, CollectionJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { keyToSlug } from '@/lib/data/category-slugs';
-import type { WeeklyHubPageData } from '@/lib/services/ssr-narrative-data';
+import type { AdjacentWeek, WeeklyHubPageData } from '@/lib/services/ssr-narrative-data';
 import { getWeeklyHubPageData } from '@/lib/services/ssr-narrative-data';
 import type { EditorialRecord } from '@/lib/types';
 import { formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 interface ElevatedCategory {
@@ -24,6 +26,9 @@ interface PageProps {
   termSummary: { expert: string; public: string };
   termSummaryEditorial: EditorialRecord;
   elevatedCategories: ElevatedCategory[];
+  prevWeek: AdjacentWeek | null;
+  nextWeek: AdjacentWeek | null;
+  publishedAt: string | null;
 }
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
@@ -68,9 +73,18 @@ export default function WeeklyHubPage({
   termSummary,
   termSummaryEditorial,
   elevatedCategories,
+  prevWeek,
+  nextWeek,
+  publishedAt,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { readingLevel } = useReadingLevel();
   const weekLabel = formatWeekLabelWithYear(weekOf);
+
+  // Build collection items for JSON-LD (elevated category-week pages)
+  const collectionItems = elevatedCategories.map((cat) => ({
+    name: `${cat.title} — Week of ${weekLabel}`,
+    url: `${SITE_URL}/category/${keyToSlug(cat.key)}/week/${weekOf}`,
+  }));
 
   return (
     <>
@@ -78,6 +92,21 @@ export default function WeeklyHubPage({
         title={`Weekly Summary — ${weekLabel}`}
         description={`Democracy Monitor weekly assessment summary for the week of ${weekLabel}. Cross-category institutional health analysis.`}
         canonicalPath={`/weekly/${weekOf}`}
+        ogType="article"
+        publishedAt={publishedAt}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Overview', path: '/' },
+          { name: `Week of ${weekLabel}`, path: `/weekly/${weekOf}` },
+        ]}
+      />
+      <CollectionJsonLd
+        name={`Weekly Summary — ${weekLabel}`}
+        description={`Democracy Monitor weekly assessment summary for the week of ${weekLabel}.`}
+        canonicalPath={`/weekly/${weekOf}`}
+        items={collectionItems}
+        publishedAt={publishedAt}
       />
 
       {/* Breadcrumb */}
@@ -110,21 +139,32 @@ export default function WeeklyHubPage({
           <h2 className="text-sm font-semibold text-dm-text-primary mb-2">Categories of Concern</h2>
           <div className="rounded-lg border border-dm-border bg-dm-card p-4">
             <ul className="space-y-2">
-              {elevatedCategories.map((cat) => (
-                <li key={cat.key} className="flex items-center justify-between text-sm">
-                  <Link
-                    href={`/category/${keyToSlug(cat.key)}/week/${weekOf}`}
-                    className="text-dm-accent hover:underline"
-                  >
-                    {cat.title}
-                  </Link>
-                  <span
-                    className={`text-xs font-medium ${STATUS_COLORS[cat.status] ?? 'text-dm-muted'}`}
-                  >
-                    {STATUS_LABELS[cat.status] ?? cat.status}
-                  </span>
-                </li>
-              ))}
+              {elevatedCategories.map((cat) => {
+                const catSlug = keyToSlug(cat.key);
+                return (
+                  <li key={cat.key} className="flex items-center justify-between text-sm">
+                    <div className="space-x-3">
+                      <Link
+                        href={`/category/${catSlug}/week/${weekOf}`}
+                        className="text-dm-accent hover:underline"
+                      >
+                        {cat.title}
+                      </Link>
+                      <Link
+                        href={`/category/${catSlug}`}
+                        className="text-dm-muted hover:underline text-xs"
+                      >
+                        overview
+                      </Link>
+                    </div>
+                    <span
+                      className={`text-xs font-medium ${STATUS_COLORS[cat.status] ?? 'text-dm-muted'}`}
+                    >
+                      {STATUS_LABELS[cat.status] ?? cat.status}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </section>
@@ -142,6 +182,30 @@ export default function WeeklyHubPage({
           editorial={termSummaryEditorial}
         />
       </section>
+
+      {/* Prev/next navigation */}
+      <nav className="flex items-center justify-between mb-6 py-3 border-t border-dm-border">
+        <div>
+          {prevWeek && (
+            <Link
+              href={`/weekly/${prevWeek.weekOf}`}
+              className="text-dm-accent hover:underline text-xs"
+            >
+              Previous: Week of {formatWeekLabelWithYear(prevWeek.weekOf)}
+            </Link>
+          )}
+        </div>
+        <div>
+          {nextWeek && (
+            <Link
+              href={`/weekly/${nextWeek.weekOf}`}
+              className="text-dm-accent hover:underline text-xs"
+            >
+              Next: Week of {formatWeekLabelWithYear(nextWeek.weekOf)}
+            </Link>
+          )}
+        </div>
+      </nav>
 
       {/* Link back to interactive dashboard */}
       <p className="text-xs text-dm-muted">

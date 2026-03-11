@@ -50,6 +50,7 @@
         "lib/seed/**",
         "lib/db/schema.ts",
         "__tests__/**",
+        "e2e/**",
         "**/*.test.ts",
         "**/*.test.tsx",
         "**/*.fixture.*"
@@ -71,7 +72,8 @@
         "lib/services/layer2-store.ts",
         "lib/services/ingest-validation-queries.ts",
         "lib/services/data-validation-queries.ts",
-        "lib/services/narrative-queries.ts"
+        "lib/services/narrative-queries.ts",
+        "lib/services/ssr-narrative-data.ts"
       ],
       "rules": {
         "max-lines": ["warn", { "max": 420, "skipBlankLines": true, "skipComments": true }]

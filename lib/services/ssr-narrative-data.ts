@@ -19,16 +19,32 @@ const MIN_NARRATIVE_LENGTH = 500;
 // Types
 // ---------------------------------------------------------------------------
 
+/** Adjacent week with enough context for descriptive nav links. */
+export interface AdjacentWeek {
+  weekOf: string;
+  status: string | null;
+}
+
+/** Week entry for category archive listing. */
+export interface ArchiveWeekEntry {
+  weekOf: string;
+  status: string | null;
+}
+
 export interface CategoryWeekPageData {
   categoryKey: string;
   categoryTitle: string;
   categoryDescription: string;
+  categoryExpertDescription: string;
   weekOf: string;
   narrative: { expert: string; public: string };
   editorial: EditorialRecord;
   convergenceStatus: string | null;
   convergenceScore: number | null;
   convergenceDetail: ConvergenceSynthesis | null;
+  prevWeek: AdjacentWeek | null;
+  nextWeek: AdjacentWeek | null;
+  publishedAt: string | null;
 }
 
 export interface WeeklyElevatedCategory {
@@ -44,6 +60,153 @@ export interface WeeklyHubPageData {
   termSummary: { expert: string; public: string };
   termSummaryEditorial: EditorialRecord;
   elevatedCategories: WeeklyElevatedCategory[];
+  prevWeek: AdjacentWeek | null;
+  nextWeek: AdjacentWeek | null;
+  publishedAt: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Shared queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Get the previous eligible narrative week for a category.
+ * "Eligible" = expert narrative > MIN_NARRATIVE_LENGTH chars.
+ */
+async function getPrevCategoryWeek(category: string, weekOf: string): Promise<AdjacentWeek | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT n.week_of, wa.convergence_detail->>'status' AS status
+    FROM narratives n
+    LEFT JOIN weekly_aggregates wa
+      ON wa.category = n.category AND wa.week_of = n.week_of
+    WHERE n.category = ${category}
+      AND n.version = 'expert'
+      AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
+      AND n.week_of < ${weekOf}
+    ORDER BY n.week_of DESC
+    LIMIT 1
+  `);
+  type Row = Record<string, unknown>;
+  const row = (rows.rows as Row[])[0];
+  if (!row) return null;
+  return { weekOf: String(row.week_of).slice(0, 10), status: (row.status as string) ?? null };
+}
+
+/** Get the next eligible narrative week for a category. */
+async function getNextCategoryWeek(category: string, weekOf: string): Promise<AdjacentWeek | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT n.week_of, wa.convergence_detail->>'status' AS status
+    FROM narratives n
+    LEFT JOIN weekly_aggregates wa
+      ON wa.category = n.category AND wa.week_of = n.week_of
+    WHERE n.category = ${category}
+      AND n.version = 'expert'
+      AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
+      AND n.week_of > ${weekOf}
+    ORDER BY n.week_of ASC
+    LIMIT 1
+  `);
+  type Row = Record<string, unknown>;
+  const row = (rows.rows as Row[])[0];
+  if (!row) return null;
+  return { weekOf: String(row.week_of).slice(0, 10), status: (row.status as string) ?? null };
+}
+
+/**
+ * Get the previous eligible weekly hub page.
+ * "Eligible" = both _overview and _term_summary expert narratives > MIN_NARRATIVE_LENGTH.
+ */
+async function getPrevWeeklyHub(weekOf: string): Promise<AdjacentWeek | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT n.week_of
+    FROM narratives n
+    WHERE n.category = ${OVERVIEW_CATEGORY}
+      AND n.version = 'expert'
+      AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
+      AND n.week_of < ${weekOf}
+      AND EXISTS (
+        SELECT 1 FROM narratives t
+        WHERE t.category = ${TERM_SUMMARY_CATEGORY}
+          AND t.version = 'expert'
+          AND t.week_of = n.week_of
+          AND length(t.content) > ${MIN_NARRATIVE_LENGTH}
+      )
+    ORDER BY n.week_of DESC
+    LIMIT 1
+  `);
+  type Row = Record<string, unknown>;
+  const row = (rows.rows as Row[])[0];
+  if (!row) return null;
+  return { weekOf: String(row.week_of).slice(0, 10), status: null };
+}
+
+/** Get the next eligible weekly hub page. */
+async function getNextWeeklyHub(weekOf: string): Promise<AdjacentWeek | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT n.week_of
+    FROM narratives n
+    WHERE n.category = ${OVERVIEW_CATEGORY}
+      AND n.version = 'expert'
+      AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
+      AND n.week_of > ${weekOf}
+      AND EXISTS (
+        SELECT 1 FROM narratives t
+        WHERE t.category = ${TERM_SUMMARY_CATEGORY}
+          AND t.version = 'expert'
+          AND t.week_of = n.week_of
+          AND length(t.content) > ${MIN_NARRATIVE_LENGTH}
+      )
+    ORDER BY n.week_of ASC
+    LIMIT 1
+  `);
+  type Row = Record<string, unknown>;
+  const row = (rows.rows as Row[])[0];
+  if (!row) return null;
+  return { weekOf: String(row.week_of).slice(0, 10), status: null };
+}
+
+/** Get the generatedAt timestamp for the expert narrative. */
+async function getNarrativePublishedAt(category: string, weekOf: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT generated_at FROM narratives
+    WHERE category = ${category} AND week_of = ${weekOf} AND version = 'expert'
+    LIMIT 1
+  `);
+  type Row = Record<string, unknown>;
+  const row = (rows.rows as Row[])[0];
+  if (!row?.generated_at) return null;
+  return new Date(row.generated_at as string).toISOString();
+}
+
+/**
+ * Get all narrative weeks for a category (for archive listing).
+ * Returns weeks with substantive expert narratives, most recent first.
+ */
+export async function getNarrativeWeeksForCategory(
+  categoryKey: string,
+): Promise<ArchiveWeekEntry[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT n.week_of, wa.convergence_detail->>'status' AS status
+    FROM narratives n
+    LEFT JOIN weekly_aggregates wa
+      ON wa.category = n.category AND wa.week_of = n.week_of
+    WHERE n.category = ${categoryKey}
+      AND n.version = 'expert'
+      AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
+    ORDER BY n.week_of DESC
+  `);
+  type Row = Record<string, unknown>;
+  return (rows.rows as Row[]).map((r) => ({
+    weekOf: String(r.week_of).slice(0, 10),
+    status: (r.status as string) ?? null,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -90,10 +253,13 @@ export async function getCategoryWeekPageData(
   const category = CATEGORIES.find((c) => c.key === categoryKey);
   if (!category) return null;
 
-  const [narratives, editorial, convergence] = await Promise.all([
+  const [narratives, editorial, convergence, prevWeek, nextWeek, publishedAt] = await Promise.all([
     getStoredNarratives(categoryKey, weekOf),
     getEditorialRecord(categoryKey, weekOf),
     getConvergenceData(categoryKey, weekOf),
+    getPrevCategoryWeek(categoryKey, weekOf),
+    getNextCategoryWeek(categoryKey, weekOf),
+    getNarrativePublishedAt(categoryKey, weekOf),
   ]);
 
   // Quality gate: must have expert narrative > 500 chars
@@ -105,6 +271,7 @@ export async function getCategoryWeekPageData(
     categoryKey,
     categoryTitle: category.title,
     categoryDescription: category.description,
+    categoryExpertDescription: category.expertDescription ?? category.description,
     weekOf,
     narrative: {
       expert: narratives.expert.content,
@@ -114,6 +281,9 @@ export async function getCategoryWeekPageData(
     convergenceStatus: convergence.status,
     convergenceScore: convergence.score,
     convergenceDetail: convergence.detail,
+    prevWeek,
+    nextWeek,
+    publishedAt,
   };
 }
 
@@ -149,13 +319,17 @@ async function getElevatedCategories(weekOf: string): Promise<WeeklyElevatedCate
 export async function getWeeklyHubPageData(weekOf: string): Promise<WeeklyHubPageData | null> {
   if (!isDbAvailable()) return null;
 
-  const [overviewNarr, termNarr, overviewEd, termEd, elevated] = await Promise.all([
-    getStoredNarratives(OVERVIEW_CATEGORY, weekOf),
-    getStoredNarratives(TERM_SUMMARY_CATEGORY, weekOf),
-    getEditorialRecord(OVERVIEW_CATEGORY, weekOf),
-    getEditorialRecord(TERM_SUMMARY_CATEGORY, weekOf),
-    getElevatedCategories(weekOf),
-  ]);
+  const [overviewNarr, termNarr, overviewEd, termEd, elevated, prevWeek, nextWeek, publishedAt] =
+    await Promise.all([
+      getStoredNarratives(OVERVIEW_CATEGORY, weekOf),
+      getStoredNarratives(TERM_SUMMARY_CATEGORY, weekOf),
+      getEditorialRecord(OVERVIEW_CATEGORY, weekOf),
+      getEditorialRecord(TERM_SUMMARY_CATEGORY, weekOf),
+      getElevatedCategories(weekOf),
+      getPrevWeeklyHub(weekOf),
+      getNextWeeklyHub(weekOf),
+      getNarrativePublishedAt(OVERVIEW_CATEGORY, weekOf),
+    ]);
 
   // Quality gate: both overview and term summary must have substantive expert narrative
   if (
@@ -180,5 +354,8 @@ export async function getWeeklyHubPageData(weekOf: string): Promise<WeeklyHubPag
     },
     termSummaryEditorial: termEd,
     elevatedCategories: elevated,
+    prevWeek,
+    nextWeek,
+    publishedAt,
   };
 }
