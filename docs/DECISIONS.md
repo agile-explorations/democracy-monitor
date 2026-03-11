@@ -10,6 +10,47 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-SEO2: SSR Narrative Pages ✅
+
+**Status: Done.** Server-rendered canonical pages for category-week narratives and weekly summaries. Playwright E2E tests. Sitemap bug fix. Issues #337–#341, Milestone 51.
+
+**Scope vs. Actual:**
+
+- Planned (5 issues #337-#341): SSR data utilities (#337), category-week SSR page (#338), weekly hub SSR page (#339), noindex on query-param pages (#340), SEO preflight validation (#341)
+- Actual: All 5 planned items delivered. Additionally: (a) fixed sitemap `date` type cast bug from R-SEO1 (`.toISOString()` on string values, `::text` cast on date-to-date join), (b) added Playwright E2E test suite (19 tests), (c) fixed landing page term summary to track selected week instead of always showing latest, (d) added camelCase→kebab-case 301 redirects for `/week/` paths
+
+**Key Decisions:**
+
+1. **`getServerSideProps` with quality gate**: SSR pages return 404 (not noindex) when expert narrative <500 chars. This matches the sitemap quality gate — if it's not in the sitemap, the canonical page doesn't exist.
+2. **Playwright over unit tests for SEO verification**: Meta tags, Cache-Control headers, and SSR content presence are best tested by hitting the actual server. Browser-level tests (for client-rendered noindex) use `page.goto` with `waitUntil: 'networkidle'`.
+3. **`SKIP_CACHE_TESTS` env var for dev mode**: Next.js dev server overrides Cache-Control to `no-store`. Rather than auto-detecting dev mode, use an explicit opt-out flag.
+4. **Landing page term summary tracks selected week**: The term summary is stored per-week (82 snapshots), so when the user selects a different week, they should see that week's term summary — not always the latest.
+
+**Lessons Learned:**
+
+1. **Drizzle `execute()` returns `date` columns as strings**: Raw SQL queries via `db.execute(sql\`...\`)`return PostgreSQL`date`columns as strings, not JavaScript`Date`objects. The`{ week_of: Date }` type cast from R-SEO1 caused a silent runtime error caught only by the E2E test suite.
+2. **E2E tests catch bugs that builds/lint/unit-tests miss**: The sitemap had been silently broken since R-SEO1 — the try/catch fell back to static entries, the build succeeded, and no unit test covered the runtime query. The Playwright test caught it immediately.
+3. **Next.js dev server caching of API routes**: API route changes sometimes require a full server restart to take effect. The dev server caches compiled API route modules in memory and doesn't always hot-reload SQL changes.
+
+## Sprint R-SEO1: SEO Foundation ✅
+
+**Status: Done.** robots.txt, dynamic sitemap, category slug mapping, SEOHead component, 301 redirects. Issues #330–#336, Milestone 50.
+
+**Scope vs. Actual:**
+
+- Planned (7 issues #330-#336): NEXT_PUBLIC_SITE_URL env var (#330), category slug mapping (#331), SEOHead component (#332), robots.txt (#333), dynamic sitemap (#334), adopt SEOHead in existing pages (#335), 301 redirects (#336)
+- Actual: All 7 delivered. Sitemap had a latent date-type-cast bug fixed in R-SEO2.
+
+**Key Decisions:**
+
+1. **Frozen slug mapping**: Hard-coded bidirectional table (`keyToSlug`/`slugToKey`) rather than algorithmic conversion. Ensures URL stability even if category keys change.
+2. **Quality-gated sitemap**: Only indexes pages with expert narrative >500 chars. Category-week entries additionally require Elevated+ convergence status. Weekly entries require both `_overview` and `_term_summary`.
+3. **301 redirects in next.config.js**: Handles old camelCase URLs gracefully. Next.js uses 308 (Permanent Redirect) for these.
+
+## Sprint R-SEARCH1: Research Pipeline Enhancements ✅
+
+**Status: Done.** Adaptive similarity threshold, P2 assessment integration, keyword soft-boost, citation fixes, corpus stats UI. Issues #324–#329, Milestone 49.
+
 ## Sprint R-RESP: Responsive Layout ✅
 
 **Status: Done.** Viewport meta tag, responsive header, mobile-friendly table/charts/panels. 10 files changed, CSS/layout only. Issues #301–#305.

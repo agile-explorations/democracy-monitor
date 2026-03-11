@@ -26,6 +26,7 @@ The following is complete and working:
 - **Calibration** — Layer 2 P1 calibration (civilLiberties), NC-3 convergence calibration, L3 reinforcement-only mode. (Sprints R-CAL1, R-CAL2)
 - **Infrastructure** — Render.com config, deployment guide, fault-tolerant fetching, cron overlap protection, analysis period safeguards. (Sprints R3.1, R-S1c, R-S1e, R-AP1)
 - **Test coverage** — 2006 tests across 138 files. Branch coverage 68%+. (Sprint R-COV1)
+- **SEO** — robots.txt, dynamic sitemap, slug mapping, SEOHead, SSR narrative pages (category-week + weekly hub), Playwright E2E tests. (Sprints R-SEO1, R-SEO2)
 - **CPD gate + source cleanup** — CPD detection validated, WH/GDELT excluded via ACTIVE_SOURCES, crossfeed pipeline removed, validation commands updated. (Issues #243–#246)
 - **OIG content pipeline** — DOJ/HHS/SSA OIG HTML fetchers, oig_html signal type, PDF text extraction, OIG content backfill. DOD OIG removed (Akamai WAF blocks). (Issues #247–#253)
 - **Legacy assessment cleanup** — getCategorySummaries() uses weekly_aggregates, assessments table removed from APIs, convergence status in UI, snapshot pipeline modernized, T2 narratives via layers:enrich. (Issues #256–#260)
