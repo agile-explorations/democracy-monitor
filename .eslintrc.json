@@ -82,6 +82,16 @@
       }
     },
     {
+      "files": ["lib/cron/**"],
+      "rules": {
+        "max-lines": ["warn", { "max": 520, "skipBlankLines": true, "skipComments": true }],
+        "max-lines-per-function": [
+          "warn",
+          { "max": 80, "skipBlankLines": true, "skipComments": true }
+        ]
+      }
+    },
+    {
       "files": ["lib/services/narrative-prompts.ts"],
       "rules": {
         "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]

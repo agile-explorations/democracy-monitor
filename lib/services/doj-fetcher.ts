@@ -5,7 +5,7 @@ const DOJ_API_BASE = 'https://www.justice.gov/api/v1/press_releases.json';
 const POLITENESS_DELAY_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
 const PAGE_SIZE = 50;
-const MAX_SUMMARY_LENGTH = 800;
+const MAX_CONTENT_LENGTH = 8_000;
 
 interface DojNamedRef {
   uuid: string;
@@ -47,7 +47,7 @@ export function parseDojSignalParams(signalUrl: string): {
 }
 
 function truncate(text: string): string {
-  return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '\u2026' : text;
+  return text.length > MAX_CONTENT_LENGTH ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026' : text;
 }
 
 /** Minimal HTML tag stripper for DOJ body text. */
@@ -72,7 +72,7 @@ export function toContentItem(release: DojPressRelease): ContentItem {
 
   const agency = release.component?.[0]?.name || 'Department of Justice';
 
-  const bodyText = release.teaser || release.body;
+  const bodyText = release.body || release.teaser;
   const summary = bodyText ? truncate(stripHtmlBasic(bodyText)) : undefined;
 
   return {

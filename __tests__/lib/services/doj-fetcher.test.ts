@@ -58,19 +58,19 @@ describe('toContentItem', () => {
     expect(item.pubDate).toBe(new Date(1231156800 * 1000).toISOString());
   });
 
-  it('prefers teaser over body for summary', () => {
+  it('prefers body over teaser for summary', () => {
     const item = toContentItem({
       teaser: '<p>Short teaser text</p>',
       body: '<p>Much longer body text with more detail</p>',
     });
-    expect(item.summary).toBe('Short teaser text');
+    expect(item.summary).toBe('Much longer body text with more detail');
   });
 
-  it('falls back to body when teaser is absent', () => {
+  it('falls back to teaser when body is absent', () => {
     const item = toContentItem({
-      body: '<p>Body text as fallback</p>',
+      teaser: '<p>Teaser text as fallback</p>',
     });
-    expect(item.summary).toBe('Body text as fallback');
+    expect(item.summary).toBe('Teaser text as fallback');
   });
 
   it('extracts agency from first component name', () => {
@@ -108,10 +108,10 @@ describe('toContentItem', () => {
     expect(item.sourceOrigin).toBe('doj');
   });
 
-  it('truncates long body text', () => {
-    const longBody = '<p>' + 'X'.repeat(1000) + '</p>';
+  it('truncates long body text at 8000 chars', () => {
+    const longBody = '<p>' + 'X'.repeat(10000) + '</p>';
     const item = toContentItem({ body: longBody });
-    expect(item.summary!.length).toBeLessThanOrEqual(801);
+    expect(item.summary!.length).toBeLessThanOrEqual(8001);
   });
 
   it('strips HTML tags from body', () => {
