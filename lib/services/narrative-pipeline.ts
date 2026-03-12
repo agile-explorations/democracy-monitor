@@ -1,9 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
-import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
+import { ACTIVE_SOURCES, T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { weeklyAggregates } from '@/lib/db/schema';
+import { documents, weeklyAggregates } from '@/lib/db/schema';
 import type {
   NarrativeLayerData,
   NarrativeResult,
@@ -27,6 +27,69 @@ import {
 import { storeMultiPassNarratives, storeNarratives } from './narrative-store';
 
 const SUMMARY_MODEL = 'claude-opus-4-6';
+
+/**
+ * Minimum ratio of aggregated categories to actual document categories.
+ * If weekly_aggregates covers fewer than this fraction of categories that have
+ * documents, narratives are aborted to prevent false signals from stale data.
+ */
+const MIN_CATEGORY_COVERAGE = 0.5;
+
+/** Check whether weekly_aggregates is reasonably complete for a given week. */
+async function checkAggregateCompleteness(weekOf: string): Promise<{
+  ok: boolean;
+  docCategories: number;
+  aggCategories: number;
+  message?: string;
+}> {
+  const db = getDb();
+  const nextWeek = new Date(weekOf);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+
+  const docRows = await db
+    .select({ category: documents.category, count: sql<number>`count(*)` })
+    .from(documents)
+    .where(
+      and(
+        gte(documents.publishedAt, new Date(weekOf)),
+        lt(documents.publishedAt, new Date(nextWeekStr)),
+        sql`${documents.contentType} != 'metadata_only'`,
+        sql`${documents.sourceOrigin} IN (${sql.join(
+          [...ACTIVE_SOURCES].map((s) => sql`${s}`),
+          sql`, `,
+        )})`,
+      ),
+    )
+    .groupBy(documents.category);
+
+  const aggRows = await db
+    .select({ category: weeklyAggregates.category })
+    .from(weeklyAggregates)
+    .where(eq(weeklyAggregates.weekOf, weekOf));
+
+  const docCategories = docRows.length;
+  const aggCategories = aggRows.length;
+
+  if (docCategories === 0) {
+    return { ok: true, docCategories: 0, aggCategories };
+  }
+
+  const coverage = aggCategories / docCategories;
+  if (coverage < MIN_CATEGORY_COVERAGE) {
+    return {
+      ok: false,
+      docCategories,
+      aggCategories,
+      message:
+        `weekly_aggregates covers ${aggCategories}/${docCategories} categories ` +
+        `(${(coverage * 100).toFixed(0)}%). Run scores:recompute and layers:enrich ` +
+        `for this week before generating narratives.`,
+    };
+  }
+
+  return { ok: true, docCategories, aggCategories };
+}
 
 /** Convert a weekly_aggregates row to NarrativeLayerData. */
 export function toNarrativeLayerData(
@@ -197,6 +260,18 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   }
 
   console.log(`[narratives] Generating narratives for week ${weekOf}...`);
+
+  const completeness = await checkAggregateCompleteness(weekOf);
+  if (!completeness.ok) {
+    console.error(`[narratives] ABORTING — stale data: ${completeness.message}`);
+    return;
+  }
+  if (completeness.docCategories > 0) {
+    console.log(
+      `[narratives] Data check: ${completeness.aggCategories}/${completeness.docCategories} categories aggregated`,
+    );
+  }
+
   const categories = await loadAllLayerData(weekOf);
 
   if (categories.length === 0) {

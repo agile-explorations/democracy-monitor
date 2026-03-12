@@ -5,15 +5,18 @@ import type { SignalFetchResult } from '@/lib/services/feed-fetcher';
 
 type FetchStatus = 'complete' | 'partial' | 'failed';
 
-/** Signal types recorded in fetch_log from the snapshot pipeline. */
-const SNAPSHOT_LOGGED_TYPES = new Set([
-  'federal_register',
-  'courtlistener',
-  'doj_json',
-  'govinfo',
-  'fec_json',
-  'oig_html',
-]);
+/**
+ * Map snapshot signal types to canonical source_origin names (matching documents table).
+ * Signals not in this map are excluded from fetch_log.
+ */
+const SIGNAL_TYPE_TO_SOURCE: Record<string, string> = {
+  federal_register: 'federal_register',
+  courtlistener: 'courtlistener',
+  doj_json: 'doj',
+  govinfo: 'govinfo',
+  fec_json: 'fec',
+  oig_html: 'oig',
+};
 
 interface FetchResultParams {
   sourceOrigin: string;
@@ -232,7 +235,7 @@ export async function getWeeklyFetchHealthDetailed() {
   return groupByWeek(rows);
 }
 
-/** Record RSS/HTML/JSON/FR signal results in fetch_log for gap visibility. */
+/** Record snapshot signal results in fetch_log, aggregated by canonical source origin. */
 export async function recordSnapshotSignalResults(
   category: string,
   weekStart: string,
@@ -241,17 +244,26 @@ export async function recordSnapshotSignalResults(
 ): Promise<void> {
   if (!isDbAvailable()) return;
 
+  // Aggregate signals by canonical source origin
+  const bySource = new Map<string, { itemsFetched: number; errors: string[] }>();
   for (const result of signalResults) {
-    if (!SNAPSHOT_LOGGED_TYPES.has(result.signalType)) continue;
+    const source = SIGNAL_TYPE_TO_SOURCE[result.signalType];
+    if (!source) continue;
+    const entry = bySource.get(source) ?? { itemsFetched: 0, errors: [] };
+    entry.itemsFetched += result.documentCount;
+    if (result.errorMessage) entry.errors.push(result.errorMessage);
+    bySource.set(source, entry);
+  }
 
+  for (const [source, agg] of bySource) {
     await recordFetchResult({
-      sourceOrigin: result.signalId,
+      sourceOrigin: source,
       category,
       weekStart,
       weekEnd,
-      itemsFetched: result.documentCount,
-      itemsStored: result.documentCount,
-      errors: result.errorMessage ? [result.errorMessage] : [],
+      itemsFetched: agg.itemsFetched,
+      itemsStored: agg.itemsFetched,
+      errors: agg.errors,
     });
   }
 }

@@ -58,6 +58,12 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 
 Local PostgreSQL is available at `localhost:5432/democracy_monitor` (configured in `.env.local`). The database contains backfilled baseline data and assessment snapshots. CLI scripts like `pnpm seed:review`, `pnpm backfill`, and `pnpm snapshot` can be run directly against it.
 
+### Production access
+
+**NEVER read `.env.prod.local` or any `.env*.local` file with the Read, Grep, or Glob tools.** These files contain secrets (API keys, database URLs). Reading them exposes credentials in the conversation context.
+
+To run commands against production, use `source .env.prod.local && export VAR && command` in a Bash tool call. Environment variable values flow through the shell and do not appear in the conversation context unless a command prints them to stdout/stderr.
+
 ## Database migrations
 
 **Schema-first workflow** — NEVER manually create SQL files in `drizzle/`. Always follow this process:

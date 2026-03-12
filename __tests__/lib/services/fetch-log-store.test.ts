@@ -89,9 +89,7 @@ describe('recordSnapshotSignalResults', () => {
     await recordSnapshotSignalResults('judicialIndependence', '2026-02-23', '2026-03-01', results);
   });
 
-  it('filters to SNAPSHOT_LOGGED_TYPES only', async () => {
-    // This test verifies filtering logic by checking the function
-    // doesn't throw with mixed signal types (DB unavailable = safe no-op)
+  it('filters to known signal types and aggregates by canonical source origin', async () => {
     const results: SignalFetchResult[] = [
       {
         signalId: 'rss_scotus',
