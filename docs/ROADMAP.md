@@ -32,6 +32,7 @@ The following is complete and working:
 - **Legacy assessment cleanup** — getCategorySummaries() uses weekly_aggregates, assessments table removed from APIs, convergence status in UI, snapshot pipeline modernized, T2 narratives via layers:enrich. (Issues #256–#260)
 - **FEC MUR enrichment** — Dispositions, commission votes, participant data extracted. AO/MUR PDF extraction via pdf-parse. Backfill integration with rate limiting.
 - **Dead code removal** — Crossfeed pipeline (rhetoric-crossfeed, rhetoric-fetcher, backfill-rhetoric, recrossfeed-rhetoric), deep-analysis.ts orphaned code removed.
+- **Data quality safeguards** — fetch_log source_origin naming normalized (snapshot signal IDs → canonical source types), narrative pipeline completeness guard (aborts when weekly_aggregates covers <50% of document categories). (Sprint R-DQ1, Issues #362–#364)
 
 ---
 

@@ -10,6 +10,29 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DQ1: Data Quality Safeguards ✅
+
+**Status: Done.** Production data fix (Mar 2 week), fetch_log naming normalization, narrative pipeline safety net. Issues #362-#364, Milestone 54.
+
+**Scope vs. Actual:**
+
+- Planned (3 issues): Fix Mar 2 stale data (#362), normalize fetch_log naming (#363), narrative completeness guard (#364)
+- Actual: All 3 delivered. Additionally: (a) consolidated 21 signal-ID fetch_log rows in production Mar 9 data, (b) documented production access safety pattern in CLAUDE.md
+
+**Key Decisions:**
+
+1. **Abort-not-auto-reconcile for stale data**: The narrative safety net aborts with a clear message rather than auto-running `scores:recompute`. Auto-reconcile would add complexity and hide pipeline failures that operators should investigate. The error message tells the operator exactly what to run.
+2. **50% category coverage threshold**: `MIN_CATEGORY_COVERAGE = 0.5` — if fewer than half the categories with documents have weekly_aggregates, something is clearly wrong. This catches the Mar 2 scenario (3/14 = 21%) while allowing minor discrepancies from legitimate gaps (e.g., `intent` category with only inactive-source docs).
+3. **Canonical source_origin vocabulary**: Normalized to match `documents.source_origin` values (the most authoritative source). This means `doj_json` → `doj`, `fec_json` → `fec`, `oig_html` → `oig`. The mapping lives in `SIGNAL_TYPE_TO_SOURCE` in `fetch-log-store.ts`.
+
+**Lessons Learned:**
+
+1. **Pipeline ordering creates data quality gaps**: The backfill pipeline adds documents, but `scores:recompute` + `layers:enrich` must be run afterward to populate `weekly_aggregates`. When these steps are skipped or run out of order, downstream consumers (narratives, health dashboard) see incomplete data that can be worse than no data — partial truth is more dangerous than obvious absence.
+2. **fetch_log and documents.source_origin should use the same vocabulary**: The snapshot pipeline's signal-level granularity (`fr_opm`) is useful for debugging but wrong for the fetch_log, which serves as a source-level health indicator consumed by the health dashboard and narrative pipeline. Source-level aggregation matches the vocabulary consumers expect.
+3. **Production DB requires `?sslmode=require` on DATABASE_URL**: The Drizzle ORM client reads `DATABASE_URL` directly. Raw `node -e` queries need `ssl: { rejectUnauthorized: false }`. Neither the `.env.prod.local` URL nor the Drizzle client config includes SSL settings by default.
+
+---
+
 ## Sprint R-NAR3: Narrative Prompt Compliance ✅
 
 **Status: Done.** 9 prompt changes from NARRATIVE_GENERATION_SPEC.md Phase 1, 3-pass safety net reinforcement, validation script. Issues #347-#348, #355-#361, Milestone 53.
