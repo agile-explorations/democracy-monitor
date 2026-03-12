@@ -41,7 +41,7 @@ services:
   - type: cron
     name: weekly-dump
     runtime: node
-    schedule: '0 4 * * 1'
+    schedule: '0 5 * * 1'
     buildCommand: pnpm install
     startCommand: ./scripts/weekly-dump.sh
     envVars:
@@ -53,9 +53,9 @@ services:
         sync: false
 
   - type: cron
-    name: daily-snapshot
+    name: weekly-snapshot
     runtime: node
-    schedule: '0 6 * * *'
+    schedule: '0 3 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/snapshot.ts
     envVars:

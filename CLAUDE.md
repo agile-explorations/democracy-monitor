@@ -16,7 +16,7 @@ pnpm test:coverage  # Run tests with coverage thresholds
 pnpm test:watch     # Run Vitest in watch mode
 pnpm db:generate    # Generate Drizzle migrations from schema
 pnpm db:migrate     # Apply migrations to PostgreSQL
-pnpm snapshot              # Run daily snapshot cron (incremental fetch + full assessment)
+pnpm snapshot              # Run weekly snapshot cron (incremental fetch + full assessment)
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
 pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|oig|fec, --dry-run, --limit N)
@@ -204,7 +204,7 @@ Configured for **Render.com** deployment via `render.yaml`:
 - Web Service (Next.js app)
 - PostgreSQL (Drizzle ORM, pgvector embeddings)
 - Redis Key-Value store (caching)
-- 5 Cron jobs (commented out until initial deployment is verified)
+- 3 Weekly cron jobs: LegiScan fetch (Mon 01:00 UTC) → snapshot (Mon 03:00 UTC) → DB dump (Mon 05:00 UTC)
 
 Database is bootstrapped from a `pg_dump` stored in GitHub Release assets. On first deploy, `pnpm db:init` detects an empty database, downloads the latest dump, restores it, then runs Drizzle migrations. See `DEPLOYMENT.md`.
 

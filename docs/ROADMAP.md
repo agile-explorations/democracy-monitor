@@ -40,15 +40,15 @@ The following is complete and working:
 
 ### 1. Cron Jobs + Production Pipeline (Issues #261–#263)
 
-The daily monitoring pipeline needs to work end-to-end:
+The weekly monitoring pipeline needs to work end-to-end:
 
-1. **Verify `pnpm snapshot` runs successfully** against the current database. The snapshot pipeline (`lib/cron/snapshot.ts`) exists but hasn't been run as a daily cron in production.
-2. **Uncomment cron jobs in `render.yaml`** once snapshot is verified. Five jobs are defined but commented out:
-   - `daily-snapshot` (06:00 UTC) — fetch sources, run three-layer assessment
-   - `daily-digest` (07:00 UTC) — AI summary of findings
-   - `hourly-uptime` — source availability monitoring
-   - `weekly-clustering` (Sun 03:00 UTC) — semantic clustering
-3. **Test the full cycle**: snapshot → layer scoring → narrative generation → UI displays fresh data.
+1. **Verify `pnpm snapshot` runs successfully** against the current database. The snapshot pipeline (`lib/cron/snapshot.ts`) exists but hasn't been run as a weekly cron in production.
+2. **Uncomment cron jobs in `render.yaml`** once snapshot is verified. Active weekly jobs:
+   - `weekly-legiscan` (Mon 01:00 UTC) — download bulk legislative datasets
+   - `weekly-snapshot` (Mon 03:00 UTC) — fetch sources, score, L2 assessment, aggregate, narratives
+   - `weekly-dump` (Mon 05:00 UTC) — database backup to GitHub Release
+   - Commented out: `hourly-uptime`, `weekly-clustering`
+3. **Test the full cycle**: LegiScan fetch → snapshot (fetch + score + aggregate + narratives) → UI displays fresh data for completed week.
 
 ### 2. Database Dump + GitHub Release
 
