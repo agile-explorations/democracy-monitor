@@ -18,7 +18,7 @@ import {
   CONVERGENCE_STATUS_COLORS,
 } from '@/lib/data/chart-colors';
 import type { SynchronyPoint } from '@/lib/types/overview';
-import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
 import type { StatusColorMap, TrendPoint } from './SynchronyChartParts';
 import { ChartLegend, DetailedTooltip, SummaryTooltip } from './SynchronyChartParts';
@@ -69,7 +69,7 @@ export function SynchronyChart({
     const startWeek = data[startIdx]?.week;
     const endWeek = data[endIdx]?.week;
     if (!startWeek || !endWeek) return '';
-    return `${formatWeekLabel(startWeek)} \u2013 ${formatWeekLabel(endWeek)}`;
+    return `${formatWeekLabelWithYear(startWeek)} \u2013 ${formatWeekLabelWithYear(endWeek)}`;
   }, [data, startIdx, endIdx]);
 
   if (data.length === 0) {
@@ -77,7 +77,7 @@ export function SynchronyChart({
   }
 
   return (
-    <div>
+    <div className="[&_svg.recharts-surface]:overflow-visible">
       <ChartLegend
         readingLevel={readingLevel}
         statusColors={statusColors}
@@ -90,7 +90,7 @@ export function SynchronyChart({
       <ResponsiveContainer width="100%" height={250}>
         <ComposedChart
           data={trendData}
-          margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+          margin={{ top: 8, right: 70, bottom: 4, left: 10 }}
           onClick={
             onWeekClick
               ? (state) => {

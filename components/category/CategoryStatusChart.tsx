@@ -15,7 +15,7 @@ import {
 import { CHART_COLORS, CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
 import type { WeeklyRow } from '@/lib/hooks/useCategoryDetail';
 import type { ConvergenceStatus } from '@/lib/types/structural';
-import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
 
 export interface CategoryStatusChartProps {
@@ -130,7 +130,7 @@ export function CategoryStatusChart({
     const startWeek = data[startIdx]?.weekOf;
     const endWeek = data[endIdx]?.weekOf;
     if (!startWeek || !endWeek) return '';
-    return `${formatWeekLabel(startWeek)} \u2013 ${formatWeekLabel(endWeek)}`;
+    return `${formatWeekLabelWithYear(startWeek)} \u2013 ${formatWeekLabelWithYear(endWeek)}`;
   }, [data, startIdx, endIdx]);
 
   const chartData: ChartPoint[] = useMemo(() => {
@@ -159,7 +159,7 @@ export function CategoryStatusChart({
   }
 
   return (
-    <div>
+    <div className="[&_svg.recharts-surface]:overflow-visible">
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mb-3 text-[11px] text-dm-text-secondary">
         <span className="flex items-center gap-1.5">
@@ -183,7 +183,7 @@ export function CategoryStatusChart({
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart
           data={chartData}
-          margin={{ top: 8, right: 16, bottom: 4, left: 0 }}
+          margin={{ top: 8, right: 70, bottom: 4, left: 10 }}
           onClick={(state) => {
             const week = state?.activeLabel;
             if (typeof week === 'string' && week) onWeekClick(week);
