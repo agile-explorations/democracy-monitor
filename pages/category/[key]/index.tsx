@@ -196,8 +196,14 @@ export default function CategoryDetailPage({
 
           {/* Status-over-time chart */}
           <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-              Convergence Score Over Time
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3 flex items-center gap-1.5">
+              Convergence Status Over Time
+              <span
+                className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-dm-border text-[10px] font-normal normal-case tracking-normal cursor-help"
+                title="Stable = no layers elevated. Elevated = 1 layer deviating from baseline. Divergent = 2+ layers deviating. Confirmed Concern = 2+ layers deviating with high AI concern rate."
+              >
+                ?
+              </span>
             </h2>
             <CategoryStatusChart
               data={weeklyData}

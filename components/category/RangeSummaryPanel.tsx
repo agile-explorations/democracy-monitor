@@ -43,7 +43,7 @@ export function RangeSummaryPanel({ weeklyData, startIndex, endIndex }: RangeSum
             {rangeStats.avgScore != null ? rangeStats.avgScore.toFixed(2) : '—'}
           </p>
           <p className="text-[10px] text-dm-muted mt-0.5">
-            Combined signal across all three detection layers (0–3 scale)
+            Stable (0) → Elevated (1) → Divergent (2) → Concern (3)
           </p>
         </div>
 

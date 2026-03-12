@@ -49,6 +49,14 @@ const STATUS_BAR_HEIGHT: Record<ConvergenceStatus, number> = {
   ConfirmedConcern: 3,
 };
 
+/** Y-axis tick labels: show status names instead of bare numbers */
+const SCORE_TICK_LABELS: Record<number, string> = {
+  0: 'Stable',
+  1: 'Elevated',
+  2: 'Divergent',
+  3: 'Concern',
+};
+
 /** Stable shape renderer for status bars — avoids Cell+Brush index misalignment */
 function StatusBarShape(props: unknown): ReactElement | null {
   const { x, y, width, height, payload } = props as {
@@ -192,10 +200,11 @@ export function CategoryStatusChart({
           />
           <YAxis
             yAxisId="score"
-            tick={{ fontSize: 11, fill: colors.textSecondary }}
+            tick={{ fontSize: 10, fill: colors.textSecondary }}
+            tickFormatter={(v: number) => SCORE_TICK_LABELS[v] ?? ''}
             tickLine={false}
             axisLine={false}
-            width={40}
+            width={60}
             domain={[0, 3]}
             ticks={[0, 1, 2, 3]}
           />
