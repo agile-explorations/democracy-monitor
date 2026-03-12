@@ -21,7 +21,7 @@ The following is complete and working:
 - **Source expansion** — 7 source types: Federal Register, GovInfo/GAO/CPD, CourtListener, DOJ, FEC, LegiScan, RSS (IG/FCC). 14 categories with signals. (Sprints R-S1a–R-S1g, R-CPD1–R-CPD2)
 - **Baselines** — 4 baselines (Biden 2021/2022, Trump 2017/2018) with AI assessment. Cycle-aware adjustments. (Sprints 14–15.1, R3-RUN)
 - **Dashboard UI** — Overview page (heatmap, timeline, synchrony chart), category detail (3-layer panels), week detail (document table with AI assessment data, CSV export), search (research + explore modes), system pages (health, architecture, methodology), left nav, responsive layout. (Sprints 16–19, R4a–R4c, R-UI1, Search, R-RESP)
-- **AI narratives** — 3-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision), weekly summaries, term summaries, editorial transparency. (Sprints R4a, R-NAR1)
+- **AI narratives** — 3-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision), weekly summaries, term summaries, editorial transparency. Spec-compliant prompts with safety-net criteria for "why this might matter," small-sample caveats, counter-argument limits. validate:narratives QA script. (Sprints R4a, R-NAR1, R-NAR3)
 - **Validation** — Three validation commands (`validate:ingest`, `validate:data`, `validate:detection`), historical backtesting, known-event detection. (Sprints R-VAL1, R-AP1)
 - **Calibration** — Layer 2 P1 calibration (civilLiberties), NC-3 convergence calibration, L3 reinforcement-only mode. (Sprints R-CAL1, R-CAL2)
 - **Infrastructure** — Render.com config, deployment guide, fault-tolerant fetching, cron overlap protection, analysis period safeguards. (Sprints R3.1, R-S1c, R-S1e, R-AP1)

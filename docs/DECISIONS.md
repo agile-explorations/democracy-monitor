@@ -10,6 +10,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-NAR3: Narrative Prompt Compliance ✅
+
+**Status: Done.** 9 prompt changes from NARRATIVE_GENERATION_SPEC.md Phase 1, 3-pass safety net reinforcement, validation script. Issues #347-#348, #355-#361, Milestone 53.
+
+**Scope vs. Actual:**
+
+- Planned (9 issues): Counter-argument limits (#355), L2-empty transparency (#348), small-sample caveats (#356), weekly "what to watch" + paragraph structure (#357), zero-doc format (#358), term critical evaluation + layer cap (#347), public term opening framing (#359), "why this might matter" examples (#360), validation script (#361)
+- Actual: All 9 planned items delivered. Additionally: (a) "why this might matter" 4-layer reinforcement across Pass 1/2/3, (b) small-sample Pass 2 criterion (h) safety net, (c) counter-argument count Pass 2 criterion, (d) very-low-volume instruction (< 10 docs), (e) word count tightening ("aim for lower end"), (f) refactored layer assessment formatting into narrative-format-helpers.ts
+
+**Key Decisions:**
+
+1. **4-layer reinforcement pattern for critical requirements**: For "why this might matter," small-sample caveats, and counter-argument limits, the same approach works: Pass 1 instruction → Pass 1 output format → Pass 2 GPT-4o criterion → Pass 3 mandatory revision. This took "why this might matter" from ~88% to 100% compliance.
+2. **Conditional Pass 2 criteria**: Small-sample criterion (h) and counter-argument count criterion only appear when relevant (doc count < 20, or always for counter-args). The criterion letter adjusts dynamically (h/i vs h).
+3. **Validation script in scripts/ not **tests**/**: The validate:narratives script makes real API calls (Claude + GPT-4o), costs money, takes minutes, and has stochastic results. It's a manual QA tool like `pnpm backtest`, not an automated test.
+4. **Very-low-volume threshold at < 10 docs**: Separate from the small-sample threshold (< 20). When doc count is under 10, the prompt instructs the model to summarize structural anomaly in 1-2 sentences and prioritize document analysis over z-score exposition.
+
+**Lessons Learned:**
+
+1. **Validator pattern matching must be generous**: LLMs use synonyms — "small sample" vs "small document sample" vs "very small number of documents" all convey the same meaning. The validator needed patterns like `only \d+ documents?` and `small document sample` alongside the literal `small sample`.
+2. **Pass 2 GPT-4o is an effective safety net**: In every validation run, GPT-4o correctly flagged criterion (g)/(h) issues. It catches what Pass 1 misses, and Pass 3 incorporates the fix. The 3-pass pipeline is the right architecture for LLM compliance.
+3. **Word count instruction wording matters**: "Aim for the LOWER end of each word range unless the evidence demands the upper end" reduced expert word counts by 78-124 words across test categories without losing substance.
+
+---
+
 ## Sprint R-SEO2: SSR Narrative Pages ✅
 
 **Status: Done.** Server-rendered canonical pages for category-week narratives and weekly summaries. Playwright E2E tests. Sitemap bug fix. Issues #337–#341, Milestone 51.
