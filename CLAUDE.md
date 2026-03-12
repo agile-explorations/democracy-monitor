@@ -23,6 +23,7 @@ pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|oig
 pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
+pnpm validate:narratives   # Narrative quality: 3-pass generation + spec criteria (--type, --category, --week, --output)
 pnpm baselines:compute # Compute baseline statistics from existing aggregates/embeddings
 pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots

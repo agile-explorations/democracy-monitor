@@ -93,6 +93,23 @@ describe('buildFeedbackPrompt', () => {
     expect(prompt).toContain('BALANCE');
     expect(prompt).toContain('EVIDENCE SUFFICIENCY');
   });
+
+  it('includes small-sample criterion (h) when doc count < 20', () => {
+    const small = buildFeedbackPrompt('E', 'P', makeLayerData({ totalDocumentCount: 9 }));
+    expect(small).toContain('(h) SMALL SAMPLE SIZE');
+    expect(small).toContain('9 documents');
+
+    const large = buildFeedbackPrompt('E', 'P', makeLayerData({ totalDocumentCount: 50 }));
+    expect(large).not.toContain('(h) SMALL SAMPLE SIZE');
+  });
+
+  it('always includes counter-argument count criterion', () => {
+    const small = buildFeedbackPrompt('E', 'P', makeLayerData({ totalDocumentCount: 9 }));
+    expect(small).toContain('(i) COUNTER-ARGUMENT COUNT');
+
+    const large = buildFeedbackPrompt('E', 'P', makeLayerData({ totalDocumentCount: 50 }));
+    expect(large).toContain('(h) COUNTER-ARGUMENT COUNT');
+  });
 });
 
 describe('buildRevisionPrompt', () => {
@@ -115,10 +132,18 @@ describe('buildRevisionPrompt', () => {
     expect(prompt).toContain('=== PUBLIC NARRATIVE ===');
   });
 
-  it('includes revision instructions', () => {
-    const prompt = buildRevisionPrompt('E', 'P', 'F', makeLayerData());
-    expect(prompt).toContain('REVISION INSTRUCTIONS');
-    expect(prompt).toContain('feedback item (a through f)');
+  it('includes revision instructions with criterion range matching doc count', () => {
+    const smallSample = buildRevisionPrompt('E', 'P', 'F', makeLayerData());
+    expect(smallSample).toContain('REVISION INSTRUCTIONS');
+    expect(smallSample).toContain('feedback item (a through i)');
+
+    const largeSample = buildRevisionPrompt(
+      'E',
+      'P',
+      'F',
+      makeLayerData({ totalDocumentCount: 50 }),
+    );
+    expect(largeSample).toContain('feedback item (a through h)');
   });
 });
 
@@ -1013,10 +1038,11 @@ describe('buildDraftPrompt — evidence-proportional length', () => {
 });
 
 describe('buildDraftPrompt — weighted counter-arguments', () => {
-  it('includes counter-argument instruction in preamble', () => {
+  it('includes counter-argument instruction with limits in preamble', () => {
     const prompt = buildDraftPrompt(makeLayerData());
-    expect(prompt).toContain('weighted counter-argument');
-    expect(prompt).toContain('proportional to the strength of the evidence');
+    expect(prompt).toContain('Rank alternative');
+    expect(prompt).toContain('2-3 alternative explanations');
+    expect(prompt).toContain('3-4 in the EXPERT');
   });
 });
 

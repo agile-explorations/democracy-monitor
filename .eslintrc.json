@@ -49,6 +49,7 @@
         "lib/demo/**",
         "lib/seed/**",
         "lib/db/schema.ts",
+        "scripts/**",
         "__tests__/**",
         "e2e/**",
         "**/*.test.ts",
@@ -73,7 +74,8 @@
         "lib/services/ingest-validation-queries.ts",
         "lib/services/data-validation-queries.ts",
         "lib/services/narrative-queries.ts",
-        "lib/services/ssr-narrative-data.ts"
+        "lib/services/ssr-narrative-data.ts",
+        "lib/services/narrative-format-helpers.ts"
       ],
       "rules": {
         "max-lines": ["warn", { "max": 420, "skipBlankLines": true, "skipComments": true }]

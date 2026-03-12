@@ -56,6 +56,7 @@
     "layers:enrich": "tsx lib/cron/enrich-layer-scores.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
+    "validate:narratives": "tsx scripts/validate-narratives.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
     "prepare": "husky"
   },

@@ -3,154 +3,8 @@ import {
   buildDualOutputFormat,
   collectDraftSections,
   formatDocumentSection,
+  formatLayerAssessment,
 } from './narrative-format-helpers';
-
-// ---------------------------------------------------------------------------
-// Internal formatting helpers — NOT exported
-// ---------------------------------------------------------------------------
-
-function fmtPct(n: number): string {
-  return `${(n * 100).toFixed(1)}%`;
-}
-
-function fmtNum(n: number, decimals = 3): string {
-  return n.toFixed(decimals);
-}
-
-function layersFiredSummary(data: NarrativeLayerData): string {
-  const cd = data.convergenceDetail;
-  if (!cd) return 'Convergence data unavailable.';
-  const fired: string[] = [];
-  if (cd.structuralElevated) fired.push('L1 (structural)');
-  if (cd.aiElevated) fired.push('L2 (AI)');
-  if (cd.thematicElevated) fired.push('L3 (thematic)');
-  return fired.length === 0 ? 'No layers elevated.' : `Layers fired: ${fired.join(', ')}.`;
-}
-
-function statusExplanation(data: NarrativeLayerData): string {
-  const cd = data.convergenceDetail;
-  if (!cd) return '';
-  const parts: string[] = [];
-  if (cd.structuralElevated && data.structuralScore !== null) {
-    parts.push(
-      `L1 structural score ${fmtNum(data.structuralScore)} with ${data.totalDocumentCount ?? 0} documents`,
-    );
-  }
-  if (cd.aiElevated && data.aiDetail) {
-    parts.push(
-      `L2 corroborated with ${fmtPct(data.aiDetail.concernRate)} concern rate (baseline: ${fmtPct(data.aiDetail.baselineFlagRate)})`,
-    );
-  }
-  if (cd.thematicElevated && data.thematicScore !== null) {
-    parts.push(`L3 thematic drift score ${fmtNum(data.thematicScore)}`);
-  }
-  return parts.length === 0
-    ? `${cd.status}: ${cd.pattern}.`
-    : `${cd.status} because ${parts.join('. ')}.`;
-}
-
-function formatConvergenceBlock(data: NarrativeLayerData): string[] {
-  const cd = data.convergenceDetail;
-  if (!cd) return ['Convergence data: unavailable.'];
-  const lines = [
-    `Convergence status: ${cd.status} (${cd.layersElevated} of 3 layers elevated)`,
-    `Pattern: ${cd.pattern}`,
-    layersFiredSummary(data),
-  ];
-  if (cd.bootstrap) lines.push('Note: L3 (thematic) is in bootstrap mode — reduced confidence.');
-  return lines;
-}
-
-/** Threshold below which functional distribution shifts are unreliable. */
-const SMALL_SAMPLE_THRESHOLD = 20;
-
-function formatL1Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L1 Structural:'];
-  if (data.structuralScore === null || !data.structuralDetail) {
-    return [...lines, '  No structural data available.'];
-  }
-  const s = data.structuralDetail;
-  lines.push(`  Composite score: ${fmtNum(data.structuralScore)}`, `  Anomalous: ${s.anomalous}`);
-  if ((data.totalDocumentCount ?? 0) < SMALL_SAMPLE_THRESHOLD) {
-    lines.push(
-      `  Note: only ${data.totalDocumentCount ?? 0} documents this week — ` +
-        'functional distribution shifts have limited diagnostic value.',
-    );
-  }
-  for (const [name, dim] of Object.entries(s.dimensions)) {
-    if (dim && dim.available) {
-      lines.push(`  ${name}: z-score ${fmtNum(dim.zScore, 2)} (value ${fmtNum(dim.value)})`);
-    }
-  }
-  if (s.functionalShifts.length > 0) {
-    lines.push('  Functional shifts:');
-    for (const shift of s.functionalShifts) {
-      lines.push(
-        `    ${shift.bucket}: ${fmtPct(shift.baselineRate)} -> ${fmtPct(shift.currentRate)} (${shift.direction})`,
-      );
-    }
-  }
-  return lines;
-}
-
-function formatL2Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L2 AI Assessment:'];
-  if (data.aiScore === null || !data.aiDetail) {
-    return [
-      ...lines,
-      '  No AI assessment data available.',
-      '  IMPORTANT: No AI content analysis was performed this week. This assessment is based',
-      '  on structural pattern detection only, not on review of document content.',
-    ];
-  }
-  const a = data.aiDetail;
-  const d = a.concernDistribution;
-  lines.push(
-    `  AI score: ${fmtNum(data.aiScore)}`,
-    `  P1 flag rate: ${fmtPct(a.flagRate)} (${a.flagCount}/${a.totalDocuments} docs)`,
-    `  Baseline flag rate: ${fmtPct(a.baselineFlagRate)}`,
-    `  Flag rate z-score: ${fmtNum(a.flagRateZScore, 2)}`,
-    `  P2 concern rate: ${fmtPct(a.concernRate)}`,
-    `  Concern distribution: routine=${d.routine}, novel_not_concerning=${d.novelNotConcerning}, ` +
-      `potentially_concerning=${d.potentiallyConcerning}, clearly_concerning=${d.clearlyConcerning}`,
-  );
-  return lines;
-}
-
-function formatL3Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L3 Thematic Drift:'];
-  if (data.thematicScore === null || !data.thematicDetail) {
-    return [...lines, '  No thematic drift data available.'];
-  }
-  const t = data.thematicDetail;
-  const reinforcing = data.convergenceDetail?.thematicElevated ? 'reinforcing' : 'not reinforcing';
-  lines.push(
-    `  Thematic score: ${fmtNum(data.thematicScore)}`,
-    `  Centroid distance: ${fmtNum(t.rollingCentroidDistance, 4)}`,
-    `  Z-score: ${fmtNum(t.zScore, 2)}`,
-    `  Novel document rate: ${fmtPct(t.novelDocumentRate)}`,
-    `  Variance ratio: ${fmtNum(t.varianceRatio)}`,
-  );
-  if (t.bootstrap) lines.push('  Bootstrap mode: yes (rolling window still establishing)');
-  lines.push(`  Direction: ${reinforcing}`);
-  return lines;
-}
-
-/** Layer assessment summary shared across Pass 1, Pass 2, and Pass 3. */
-function formatLayerAssessment(data: NarrativeLayerData): string {
-  return [
-    '--- LAYER ASSESSMENT SUMMARY ---',
-    `Category: ${data.categoryTitle}`,
-    `Description: ${data.categoryDescription}`,
-    `Week of: ${data.weekOf}`,
-    ...formatConvergenceBlock(data),
-    ...formatL1Block(data),
-    ...formatL2Block(data),
-    ...formatL3Block(data),
-    '',
-    statusExplanation(data),
-  ].join('\n');
-}
 
 // ---------------------------------------------------------------------------
 // Exported prompt builders
@@ -170,9 +24,15 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
     'This is AI-generated analysis, not a finding of fact.',
     'Do not make claims unsupported by the data.',
     '',
-    'For every concern you raise, include a weighted counter-argument — a plausible benign',
-    'explanation proportional to the strength of the evidence. Stronger evidence warrants a',
-    'briefer counter-argument; weaker evidence warrants a more prominent one.',
+    'CRITICAL: Your second paragraph in BOTH narratives MUST include a "why this might matter"',
+    'sentence connecting the pattern to the specific democratic institution at stake.',
+    '',
+    'COUNTER-ARGUMENTS:',
+    'For every concern you raise, include a weighted counter-argument. Rank alternative',
+    'explanations by plausibility — lead with the most likely benign explanation. Stronger',
+    'evidence warrants a briefer counter-argument; weaker evidence warrants a more prominent one.',
+    'Limit to 2-3 alternative explanations in the PUBLIC narrative, 3-4 in the EXPERT narrative.',
+    'Do not list all possibilities with equal weight.',
   ].join('\n');
 
   const context = [formatLayerAssessment(data), ...collectDraftSections(data)].join('\n\n');
@@ -183,6 +43,29 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
  * Pass 2 — Feedback prompt for GPT-4o.
  * Reviews both drafts against the source data.
  */
+/** Build conditional feedback criteria (h+) based on document count. */
+function buildConditionalCriteria(data: NarrativeLayerData): string[] {
+  const smallSample = (data.totalDocumentCount ?? 0) < 20;
+  const counterArgLetter = smallSample ? 'i' : 'h';
+  const lines: string[] = [];
+  if (smallSample) {
+    lines.push(
+      '',
+      `(h) SMALL SAMPLE SIZE — This week has only ${data.totalDocumentCount ?? 0} documents.`,
+      'Do both narratives acknowledge the small sample size and its implications for',
+      'statistical reliability? A single document entering or leaving a sample this small',
+      'can dramatically shift percentages. If neither narrative mentions this, flag it.',
+    );
+  }
+  lines.push(
+    '',
+    `(${counterArgLetter}) COUNTER-ARGUMENT COUNT — The expert narrative should have 3-4 alternative`,
+    'explanations and the public narrative 2-3. If either exceeds these limits, flag the excess',
+    'items for removal (drop the least plausible ones).',
+  );
+  return lines;
+}
+
 export function buildFeedbackPrompt(
   expertDraft: string,
   publicDraft: string,
@@ -223,6 +106,13 @@ export function buildFeedbackPrompt(
     '(f) EVIDENCE SUFFICIENCY — Is the narrative length proportional to the available evidence?',
     'If no P2-confirmed documents or L2 AI analysis are present, the narrative should be',
     'concise. Flag any sections that pad length beyond what the data supports.',
+    '',
+    '(g) "WHY THIS MIGHT MATTER" — Do both narratives include a sentence within the first two',
+    'substantive paragraphs that connects the observed pattern to a specific democratic institution',
+    'or protection at stake? The sentence must use conditional language ("could affect",',
+    '"may indicate"). If this sentence is missing from either narrative, flag it as the',
+    'highest-priority revision item.',
+    ...buildConditionalCriteria(data),
   ].join('\n');
 }
 
@@ -252,7 +142,7 @@ export function buildRevisionPrompt(
     formatLayerAssessment(data),
     '',
     '--- REVISION INSTRUCTIONS ---',
-    'Address each feedback item (a through f):',
+    `Address each feedback item (a through ${(data.totalDocumentCount ?? 0) < 20 ? 'i' : 'h'}):`,
     '- Revise where feedback identifies legitimate issues.',
     '- Do not fundamentally rewrite — adjust, soften, or strengthen specific claims.',
     '- If feedback identifies a factual error, correct it.',
@@ -261,6 +151,10 @@ export function buildRevisionPrompt(
     '- If feedback flags characterization concerns, revise the phrasing.',
     '- If feedback notes missing balance, incorporate stated justifications.',
     '- If feedback flags evidence insufficiency, trim the narrative to match available data.',
+    '- If feedback flags a missing "why this might matter" sentence, ADD ONE. This is mandatory.',
+    '- If feedback flags missing small-sample acknowledgment, add a note about limited statistical',
+    '  reliability due to the small document count.',
+    '- If feedback flags excess counter-arguments, remove the least plausible ones to meet the limit.',
     '',
     buildDualOutputFormat(data),
   ].join('\n');
@@ -273,6 +167,12 @@ function appendZeroDocNote(lines: string[], zeroCount: number, totalStable: numb
     'Zero documents may reflect a genuinely quiet week or a gap in source coverage.',
     'Lead with data availability limitations before interpreting silence as stability.',
   );
+}
+
+function formatStableLine(category: string, docCount: number): string {
+  return docCount === 0
+    ? `${category}: Stable, 0 documents (NO DATA — coverage gap or quiet week)`
+    : `${category}: Stable, ${docCount} documents, no structural or AI anomalies`;
 }
 
 /** Format elevated and stable category lists for the weekly summary. */
@@ -305,9 +205,7 @@ function formatWeeklyCategoryBlocks(
     const zeroDocCount = stable.filter((c) => !c.totalDocumentCount).length;
     lines.push('--- STABLE CATEGORIES ---');
     for (const cat of stable) {
-      lines.push(
-        `${cat.category}: Stable, ${cat.totalDocumentCount ?? 0} documents, no structural or AI anomalies`,
-      );
+      lines.push(formatStableLine(cat.category, cat.totalDocumentCount ?? 0));
     }
     if (zeroDocCount > 0) appendZeroDocNote(lines, zeroDocCount, stable.length);
     lines.push('');
@@ -332,14 +230,22 @@ function weeklyRequirements(version: 'expert' | 'public'): string {
     '- Highlight any changes from the previous week.',
     '- If categories with zero documents exist, lead with data availability limitations before',
     '  interpreting their silence as stability.',
-    '- Include a "why this might matter" sentence within the first two paragraphs: what does',
-    "  this week's cross-category pattern mean for democratic institutions? Use conditional",
-    '  language ("could indicate", "may reflect").',
+    '',
+    'STRUCTURAL REQUIREMENT — "why this might matter":',
+    "Your second paragraph MUST include a sentence explaining what this week's cross-category",
+    'pattern could mean for democratic institutions. Use conditional language ("could indicate",',
+    '"may reflect"). Name the cross-category pattern and the institutional significance.',
+    'Example: "Five categories elevated simultaneously might matter because coordinated',
+    'multi-category activation can indicate system-wide institutional pressure."',
+    'This is not optional — omitting it is a structural failure.',
+    '',
     '- Include a Limitations sentence.',
     '- Do not make claims unsupported by the data.',
     '- This is AI-generated analysis, not a finding of fact.',
     '- Do NOT include individual document details, layer scores, or baseline data.',
     '- Focus on the cross-category picture.',
+    '- End with a "what to watch" sentence: the key question or threshold for next week.',
+    '- Structure as 3-4 paragraphs, not 7 sections with horizontal rules.',
   ];
   if (version === 'expert') {
     lines.push(
@@ -447,6 +353,64 @@ function collectTermDataSections(input: TermSummaryInput, version: 'expert' | 'p
   return sections.join('\n');
 }
 
+function termCriticalGuidelines(): string[] {
+  return [
+    'CRITICAL GUIDELINES:',
+    "- Critically evaluate the previous summary's framing against this week's data. If new",
+    '  data contradicts a pattern described in the previous summary, note the correction',
+    '  explicitly rather than silently revising.',
+    '- Characterize TERM-LEVEL layer patterns (e.g., "L1 has driven X% of elevations over',
+    '  N weeks"), not this week\'s specific layer configuration — that belongs in the weekly.',
+    "  Do not spend more than 2-3 sentences on this week's specific layer activity.",
+    '- Summarize long data sequences rather than reproducing them. Instead of listing every',
+    "  week's elevated count, summarize: peak, average, recent range, trend.",
+    '- Do not inherit framings uncritically from the previous summary. Each claim in the',
+    '  updated summary should be justified by the current data.',
+  ];
+}
+
+function termInstructions(version: 'expert' | 'public'): string {
+  const wordRange = version === 'expert' ? '600-1000' : '400-700';
+  return [
+    '--- STRUCTURE ---',
+    'The term summary MUST follow this two-part structure:',
+    '',
+    'PART 1 — TERM-WIDE TRAJECTORY (majority of the summary):',
+    'Summarize the full arc of the administration term up to and including this week.',
+    'Cover: overall institutional health trend, which categories have been most active,',
+    'cumulative milestones (first elevations, longest streaks, peak convergence weeks),',
+    'and the dominant layer patterns across the full term. This is a standalone summary',
+    'that a reader encountering the term for the first time could understand.',
+    '',
+    "PART 2 — THIS WEEK'S DELTA (final section):",
+    "Describe how this week's developments changed the overall picture. What shifted,",
+    'what stayed the same, and whether the trajectory is accelerating, decelerating, or stable.',
+    '',
+    '--- INSTRUCTIONS ---',
+    'Do not make claims unsupported by the data.',
+    'This is AI-generated analysis, not a finding of fact.',
+    '',
+    'STRUCTURAL REQUIREMENT — "why this might matter":',
+    'Your second paragraph MUST include a sentence explaining what the cumulative trajectory',
+    'over the term could mean for democratic institutions. Use conditional language',
+    '("could indicate", "may reflect"). This is not optional — omitting it is a structural failure.',
+    '',
+    ...termCriticalGuidelines(),
+    '',
+    ...(version === 'public'
+      ? [
+          'OPENING FRAMING (public version):',
+          'Begin with a 2-3 sentence paragraph that answers "why should I care about this',
+          'summary?" before diving into the arc. State what the system monitors, which categories',
+          "have been most persistently active, and what this week's reading is.",
+          '',
+        ]
+      : []),
+    '--- OUTPUT FORMAT ---',
+    `Produce a single ${version === 'expert' ? 'technical' : 'plain-language'} term summary (${wordRange} words).`,
+  ].join('\n');
+}
+
 /** Term summary prompt — incremental update. Single pass for expert or public. */
 export function buildTermSummaryPrompt(
   input: TermSummaryInput,
@@ -456,7 +420,6 @@ export function buildTermSummaryPrompt(
     version === 'expert'
       ? 'Write a technical term-level summary for researchers and analysts.'
       : 'Write a plain-language term-level summary for journalists and citizens.';
-  const wordRange = version === 'expert' ? '600-1000' : '400-700';
 
   return [
     `You are an analyst for a democratic institution monitoring system.\n${header}`,
@@ -464,26 +427,6 @@ export function buildTermSummaryPrompt(
     `Current week: ${input.weekOf}`,
     '',
     collectTermDataSections(input, version),
-    '--- INSTRUCTIONS ---',
-    "Update the term summary to incorporate this week's developments.",
-    'Maintain the narrative arc — show how the picture has evolved over time.',
-    'Note any new milestones (first time a category reaches a status, longest streak, etc.).',
-    'Do not make claims unsupported by the data.',
-    'This is AI-generated analysis, not a finding of fact.',
-    '',
-    'CRITICAL GUIDELINES:',
-    "- Critically evaluate the previous summary's framing against this week's data. If new",
-    '  data contradicts a pattern described in the previous summary, note the correction',
-    '  explicitly rather than silently revising.',
-    '- Characterize TERM-LEVEL layer patterns (e.g., "L1 has driven X% of elevations over',
-    '  N weeks"), not this week\'s specific layer configuration — that belongs in the weekly.',
-    '- Summarize long data sequences rather than reproducing them. Instead of listing every',
-    "  week's elevated count, summarize: peak, average, recent range, trend.",
-    '- Include a "why this might matter" paragraph within the first two paragraphs: what does',
-    '  the cumulative trajectory over N weeks mean for democratic institutions? Use conditional',
-    '  language ("could indicate", "may reflect").',
-    '',
-    '--- OUTPUT FORMAT ---',
-    `Produce a single ${version === 'expert' ? 'technical' : 'plain-language'} term summary (${wordRange} words).`,
+    termInstructions(version),
   ].join('\n');
 }
