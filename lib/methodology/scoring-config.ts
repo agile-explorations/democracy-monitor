@@ -158,8 +158,10 @@ export const STRUCTURAL_ANOMALY_THRESHOLD = 2.5;
  * noisy z-scores even with dampening.
  */
 export const CATEGORY_STRUCTURAL_THRESHOLDS: Partial<Record<string, number>> = {
-  // Thin categories (<20 avg docs/week) — raised to reduce false positives
-  // Values will be set based on l1:distributions diagnostic output
+  // judicialIndependence: thin (6 avg docs/week), 23.1% L1-elevated at 2.5 → 3.8 passes NC-3
+  judicialIndependence: 3.8,
+  // executiveOversight: 5.8% L1-elevated at 2.5 (NC-3 limit 5%) → 2.8 passes NC-3
+  executiveOversight: 2.8,
 };
 
 /** Look up the structural anomaly threshold for a given category. */
