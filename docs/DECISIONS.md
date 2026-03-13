@@ -10,6 +10,29 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-P0: Content Enrichment + Tiered Narratives ✅
+
+**Status: Done.** FR full-text expansion, DOJ full-body fix, tiered narrative generation. Issues #365-#367, Milestone 55.
+
+**Scope vs. Actual:**
+
+- Planned (Phase 0 from Release 1 Implementation Plan): 0.1 FR full-text enrichment, 0.2 DOJ full-body fix, 0.5 tiered narrative generation
+- Actual: All 3 delivered. Additionally: (a) DOJ backfill CLI added to `backfill:content` (new `--source doj` option), (b) FR enrichment expanded from "Presidential Documents with null content" to "all FR docs with null or stub content (<400 chars)", (c) ESLint cron override (max-lines 520, max-lines-per-function 80)
+
+**Key Decisions:**
+
+1. **FR enrichment: `raw_text_url` with `body_html_url` fallback**: The FR API provides `raw_text_url` (clean text) and `body_html_url` (HTML). Raw text is preferred for embeddings; HTML fallback catches the ~5% of docs that lack raw text.
+2. **DOJ backfill: full URL map + capped updates**: The DOJ API paginates chronologically (DESC). Loading ALL candidate URLs into a lookup map and capping successful updates (not map size) was necessary because matches are sparse across API pages. Initial approach of limiting the map to N entries yielded 0 matches across 19 pages.
+3. **DOJ body preference flip**: Changed `release.teaser || release.body` → `release.body || release.teaser`. The teaser was being preferred, truncating content to ~800 chars. Now stores full body (up to 8,000 chars). Affects both new fetches and backfill.
+4. **Tiered narrative generation**: Stable = template (no API call), Elevated = single Claude pass, Divergent/ConfirmedConcern = full 3-pass pipeline (Claude draft → GPT-4o feedback → Claude revision). Reduces API cost for the ~80% of elevated categories that don't need adversarial review.
+
+**Lessons Learned:**
+
+1. **`--limit` semantics must match the data access pattern**: When an API paginates through data sequentially but matches are sparse, limiting the search space (URL map) instead of the results (successful updates) makes the limit parameter useless. Always apply limits at the output boundary, not the input boundary.
+2. **Production enrichment jobs should use Render one-off jobs**: Running long-running backfills via `nohup ssh` ties up a terminal. Render one-off jobs inherit the service's build artifact and env vars, run in isolation, and have built-in logging. Use `POST /v1/services/SERVICE_ID/jobs` with the command in `startCommand`.
+
+---
+
 ## Sprint R-DQ1: Data Quality Safeguards ✅
 
 **Status: Done.** Production data fix (Mar 2 week), fetch_log naming normalization, narrative pipeline safety net. Issues #362-#364, Milestone 54.

@@ -33,6 +33,7 @@ The following is complete and working:
 - **FEC MUR enrichment** — Dispositions, commission votes, participant data extracted. AO/MUR PDF extraction via pdf-parse. Backfill integration with rate limiting.
 - **Dead code removal** — Crossfeed pipeline (rhetoric-crossfeed, rhetoric-fetcher, backfill-rhetoric, recrossfeed-rhetoric), deep-analysis.ts orphaned code removed.
 - **Data quality safeguards** — fetch_log source_origin naming normalized (snapshot signal IDs → canonical source types), narrative pipeline completeness guard (aborts when weekly_aggregates covers <50% of document categories). (Sprint R-DQ1, Issues #362–#364)
+- **Release 1 Phase 0** — FR full-text enrichment (all document types), DOJ full-body fix + backfill CLI, tiered narrative generation (single-pass for Elevated, 3-pass for Divergent/ConfirmedConcern). (Sprint R1-P0, Issues #365–#367). Actual: code complete, enrichment jobs run on production. Remaining: re-embed + recompute baselines + backtest after enrichment completes.
 
 ---
 

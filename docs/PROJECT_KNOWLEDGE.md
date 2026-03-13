@@ -98,8 +98,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Narrative generation
 
-- `lib/services/narrative-generation-service.ts` (Opus 4.6), `narrative-store.ts` (DB), `narrative-pipeline.ts` (orchestration)
-- Dual audience: expert (400-800 words, technical) + public (200-500 words, plain language). Stable → template, Elevated+ → AI.
+- `lib/services/narrative-generation-service.ts` (status routing), `narrative-multipass.ts` (generation), `narrative-store.ts` (DB), `narrative-pipeline.ts` (orchestration)
+- Dual audience: expert (400-800 words, technical) + public (200-500 words, plain language). Tiered: Stable → template, Elevated → single-pass (Claude Opus), Divergent/ConfirmedConcern → 3-pass (Claude draft → GPT-4o feedback → Claude revision).
 - `narratives` table: category, weekOf, version ('expert'|'public'), content, model, generatedAt. Unique on (category, weekOf, version).
 
 ### Rhetoric & crossfeed
@@ -334,4 +334,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-SEO3: Internal linking + structured data — prev/next narrative week navigation, category week archive section, JSON-LD (Article, CollectionPage, BreadcrumbList, WebSite), static OG image, article publication metadata, weekly hub→category landing links, category intro text. Issues #342-#346.
 - Sprint R-NAR3: Narrative prompt compliance — 9 spec gap fixes (counter-argument limits, "why this might matter" reinforcement, small-sample caveats, L2-empty transparency, weekly/term structural requirements), 3-pass safety net criteria, validate:narratives script, layer assessment refactor. Issues #347-#348, #355-#361.
 - Sprint R-DQ1: Data quality safeguards — Fixed Mar 2 production data (re-scored 811 docs across 13 categories, regenerated narratives). Normalized fetch_log source_origin naming (snapshot signal IDs → canonical source types matching backfill). Added narrative pipeline safety net: `checkAggregateCompleteness()` aborts generation when weekly_aggregates covers <50% of document categories. Issues #362-#364.
-- Sprints remaining: Phase 2-4 baseline computation + source expansion, R5 = cross-architecture validation + launch prep. See `docs/ROADMAP.md`.
+- Sprint R1-P0: Content enrichment + tiered narratives — FR full-text enrichment expanded to all document types (not just Presidential Documents), DOJ fetcher fixed to prefer body over teaser (8K limit), DOJ backfill CLI added. Tiered narrative generation: Elevated → single-pass, Divergent/ConfirmedConcern → 3-pass. Issues #365-#367.
+- Sprints remaining: Release 1A phases (A1: L3 baseline recomputation, A2: per-category L1 thresholds, A3: event retrospective, B3: P1 calibration). See `docs/ROADMAP.md` and `docs/internal/RELEASE_1_IMPLEMENTATION_PLAN.md`.
