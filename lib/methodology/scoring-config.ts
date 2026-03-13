@@ -151,6 +151,22 @@ export const STRUCTURAL_DIMENSION_WEIGHTS = {
 /** Composite structural score above this threshold is considered anomalous. */
 export const STRUCTURAL_ANOMALY_THRESHOLD = 2.5;
 
+/**
+ * Per-category structural anomaly threshold overrides.
+ * Categories not listed here use the global STRUCTURAL_ANOMALY_THRESHOLD.
+ * Thin categories get higher thresholds because small doc counts produce
+ * noisy z-scores even with dampening.
+ */
+export const CATEGORY_STRUCTURAL_THRESHOLDS: Partial<Record<string, number>> = {
+  // Thin categories (<20 avg docs/week) — raised to reduce false positives
+  // Values will be set based on l1:distributions diagnostic output
+};
+
+/** Look up the structural anomaly threshold for a given category. */
+export function getStructuralThreshold(category: string): number {
+  return CATEGORY_STRUCTURAL_THRESHOLDS[category] ?? STRUCTURAL_ANOMALY_THRESHOLD;
+}
+
 /** Minimum documents in a category-week for full structural score weight. Below this, dampen. */
 export const STRUCTURAL_MIN_DOC_COUNT = 10;
 

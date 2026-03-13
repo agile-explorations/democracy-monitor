@@ -4,7 +4,7 @@ import {
   AI_FLAG_RATE_MIN_DOCS,
   AI_FLAG_RATE_STRONG_THRESHOLD,
   AI_FLAG_RATE_THRESHOLD,
-  STRUCTURAL_ANOMALY_THRESHOLD,
+  getStructuralThreshold,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
 import type {
@@ -37,8 +37,9 @@ export function synthesizeConvergence(
   structural: StructuralScore | null,
   aiAssessment: AIAssessmentSummary | null,
   thematic: ThematicDriftScore | null,
+  category?: string,
 ): ConvergenceSynthesis {
-  const structuralElevated = isStructuralElevated(structural);
+  const structuralElevated = isStructuralElevated(structural, category);
   const aiElevated = isAIElevated(aiAssessment);
   const thematicElevated = isThematicElevated(thematic);
   const isBootstrap = thematic?.bootstrap ?? true;
@@ -59,9 +60,10 @@ export function synthesizeConvergence(
   };
 }
 
-function isStructuralElevated(structural: StructuralScore | null): boolean {
+function isStructuralElevated(structural: StructuralScore | null, category?: string): boolean {
   if (!structural) return false;
-  return structural.composite > STRUCTURAL_ANOMALY_THRESHOLD;
+  const threshold = getStructuralThreshold(category ?? '');
+  return structural.composite > threshold;
 }
 
 function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {

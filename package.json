@@ -41,6 +41,7 @@
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
     "scores:recompute": "tsx lib/cron/recompute-scores.ts",
     "backtest": "tsx lib/cron/run-backtest.ts",
+    "retrospective": "tsx lib/cron/run-retrospective.ts",
     "baselines:compute": "tsx lib/cron/compute-baseline-stats.ts",
     "seed:review": "tsx lib/seed/review-report.ts",
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
@@ -56,6 +57,7 @@
     "layers:enrich": "tsx lib/cron/enrich-layer-scores.ts",
     "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
+    "l1:distributions": "tsx lib/cron/l1-distributions.ts",
     "validate:narratives": "tsx scripts/validate-narratives.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
     "prepare": "husky"

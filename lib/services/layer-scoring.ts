@@ -44,7 +44,12 @@ export async function enrichWithLayerScores(
       computeRollingThematicDrift(agg.category, agg.weekOf),
     ]);
 
-    const convergence = synthesizeConvergence(structural, aiSummary ?? null, thematic);
+    const convergence = synthesizeConvergence(
+      structural,
+      aiSummary ?? null,
+      thematic,
+      agg.category,
+    );
 
     return {
       ...agg,

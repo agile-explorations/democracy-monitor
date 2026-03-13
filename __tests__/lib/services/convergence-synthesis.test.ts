@@ -1,10 +1,23 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+vi.mock('@/lib/methodology/scoring-config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/methodology/scoring-config')>();
+  return {
+    ...actual,
+    getStructuralThreshold: vi.fn((category?: string) => {
+      // By default, delegate to actual implementation
+      return actual.getStructuralThreshold(category ?? '');
+    }),
+  };
+});
+import { getStructuralThreshold } from '@/lib/methodology/scoring-config';
 import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
 import type {
   AIAssessmentSummary,
   StructuralScore,
   ThematicDriftScore,
 } from '@/lib/types/structural';
+
+const mockGetStructuralThreshold = vi.mocked(getStructuralThreshold);
 
 function makeStructuralScore(overrides?: Partial<StructuralScore>): StructuralScore {
   const dim = { value: 0, baselineMean: 0, baselineStdDev: 1, zScore: 0, available: true };
@@ -376,6 +389,76 @@ describe('synthesizeConvergence', () => {
       const thematic = makeThematicDrift({ zScore: 4.0, bootstrap: true });
       const result = synthesizeConvergence(structural, null, thematic);
       expect(result.pattern).toContain('reduced confidence');
+    });
+  });
+
+  describe('per-category structural threshold (A2)', () => {
+    beforeEach(() => {
+      mockGetStructuralThreshold.mockReset();
+    });
+
+    it('uses per-category threshold when category is provided', () => {
+      // A composite of 3.0 is above global 2.5 but below a category override of 5.0
+      mockGetStructuralThreshold.mockReturnValue(5.0);
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const result = synthesizeConvergence(structural, null, makeThematicDrift(), 'thin_category');
+      // With threshold at 5.0, composite 3.0 should NOT be elevated
+      expect(result.structuralElevated).toBe(false);
+      expect(result.status).toBe('Stable');
+    });
+
+    it('uses global threshold when category is omitted (backward compat)', () => {
+      // Return the real global threshold (2.5) when called with empty string
+      mockGetStructuralThreshold.mockReturnValue(2.5);
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const result = synthesizeConvergence(structural, null, makeThematicDrift());
+      // With threshold at 2.5, composite 3.0 should be elevated
+      expect(result.structuralElevated).toBe(true);
+      expect(result.status).toBe('Elevated');
+    });
+
+    it('category threshold affects ConfirmedConcern determination', () => {
+      // With high category threshold, structural won't be elevated, preventing ConfirmedConcern
+      mockGetStructuralThreshold.mockReturnValue(5.0);
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.3 });
+      const result = synthesizeConvergence(structural, ai, makeThematicDrift(), 'thin_category');
+      // Only AI is elevated (1 layer), structural gated off by high threshold
+      expect(result.structuralElevated).toBe(false);
+      expect(result.aiElevated).toBe(true);
+      expect(result.layersElevated).toBe(1);
+      expect(result.status).toBe('Elevated');
+    });
+
+    it('same score triggers Elevated with global but not with raised category threshold', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+
+      // With raised category threshold: NOT elevated
+      mockGetStructuralThreshold.mockReturnValue(5.0);
+      const resultWithCategory = synthesizeConvergence(
+        structural,
+        null,
+        makeThematicDrift(),
+        'thin_category',
+      );
+      expect(resultWithCategory.structuralElevated).toBe(false);
+
+      // With global threshold: elevated
+      mockGetStructuralThreshold.mockReturnValue(2.5);
+      const resultWithoutCategory = synthesizeConvergence(structural, null, makeThematicDrift());
+      expect(resultWithoutCategory.structuralElevated).toBe(true);
+    });
+
+    it('different categories can have different thresholds', () => {
+      const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
+      // Category with raised threshold: NOT elevated
+      mockGetStructuralThreshold.mockReturnValue(5.0);
+      const r1 = synthesizeConvergence(structural, null, null, 'elections');
+      expect(r1.structuralElevated).toBe(false);
+      // Category with lower threshold: elevated
+      mockGetStructuralThreshold.mockReturnValue(2.0);
+      const r2 = synthesizeConvergence(structural, null, null, 'fiscal');
+      expect(r2.structuralElevated).toBe(true);
     });
   });
 });

@@ -35,6 +35,8 @@ pnpm legiscan:bulk      # Download LegiScan bulk datasets (Congress baseline per
 pnpm cl:purge-noise     # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
 pnpm backtest       # Run historical backtesting
+pnpm l1:distributions  # Show per-category L1 structural score distributions (Biden 2022)
+pnpm retrospective     # Re-run detection pipeline on known events (--event, --all, --period)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.

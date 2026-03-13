@@ -10,7 +10,7 @@
  * (requires ANTHROPIC_API_KEY).
  */
 
-import { and, eq, gte, lt, lte, sql } from 'drizzle-orm';
+import { and, eq, gte, lte } from 'drizzle-orm';
 import {
   getAnalysisPeriods,
   ALL_DATES_WARNING,
@@ -18,14 +18,12 @@ import {
 } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { aiDocumentAssessments, weeklyAggregates } from '@/lib/db/schema';
+import { weeklyAggregates } from '@/lib/db/schema';
 import { enrichWithLayerScores } from '@/lib/services/layer-scoring';
-import { computeAIAssessmentSummary } from '@/lib/services/layer2-assessment-service';
-import type { Pass1Result, Pass2Result } from '@/lib/services/layer2-assessment-service';
-import { getBaselineAIFlagRate } from '@/lib/services/layer2-store';
+import { buildAISummaryFromDB } from '@/lib/services/layer2-summary';
 import { storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
-import type { AIAssessmentSummary, ConvergenceSynthesis } from '@/lib/types/structural';
+import type { ConvergenceSynthesis } from '@/lib/types/structural';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 interface EnrichOptions {
@@ -34,98 +32,6 @@ interface EnrichOptions {
   category?: string;
   allDates?: boolean;
   narratives?: boolean;
-}
-
-/** Build an AIAssessmentSummary from stored ai_document_assessments rows. */
-async function buildAISummaryFromDB(
-  category: string,
-  weekOf: string,
-): Promise<AIAssessmentSummary | null> {
-  const db = getDb(); // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block
-
-  // Match L2 rows whose week_of falls within the Monday–Sunday window.
-  const nextWeek = new Date(weekOf);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
-
-  const weekRange = and(
-    eq(aiDocumentAssessments.category, category),
-    gte(aiDocumentAssessments.weekOf, weekOf),
-    lt(aiDocumentAssessments.weekOf, nextWeekStr),
-  );
-
-  const pass1Rows = await db
-    .select({
-      url: aiDocumentAssessments.url,
-      relevant: aiDocumentAssessments.relevant,
-      confidence: aiDocumentAssessments.confidence,
-      erosionType: aiDocumentAssessments.erosionType,
-      signals: aiDocumentAssessments.signals,
-      model: aiDocumentAssessments.model,
-      provider: aiDocumentAssessments.provider,
-    })
-    .from(aiDocumentAssessments)
-    .where(and(weekRange, eq(aiDocumentAssessments.pass, 1)));
-
-  if (pass1Rows.length === 0) return null;
-
-  const pass2Rows = await db
-    .select({
-      url: aiDocumentAssessments.url,
-      assessment: aiDocumentAssessments.assessment,
-      confidence: aiDocumentAssessments.confidence,
-      erosionType: aiDocumentAssessments.erosionType,
-      signals: aiDocumentAssessments.signals,
-      reasoning: aiDocumentAssessments.reasoning,
-      comparativeContext: aiDocumentAssessments.comparativeContext,
-      citedPassages: aiDocumentAssessments.citedPassages,
-      counterArguments: aiDocumentAssessments.counterArguments,
-      model: aiDocumentAssessments.model,
-      provider: aiDocumentAssessments.provider,
-      isAuditSample: aiDocumentAssessments.isAuditSample,
-    })
-    .from(aiDocumentAssessments)
-    .where(and(weekRange, eq(aiDocumentAssessments.pass, 2)));
-
-  const pass1Results: Pass1Result[] = pass1Rows.map((r) => ({
-    url: r.url,
-    response: {
-      relevant: r.relevant ?? false,
-      confidence: r.confidence ?? 0,
-      erosionType: (r.erosionType ?? 'unclear') as Pass1Result['response']['erosionType'],
-      signals: (r.signals as string[]) ?? [],
-    },
-    meta: { model: r.model, provider: r.provider, tokensInput: 0, tokensOutput: 0, latencyMs: 0 },
-  }));
-
-  const pass2Results: Pass2Result[] = pass2Rows.map((r) => ({
-    url: r.url,
-    isAuditSample: r.isAuditSample ?? false,
-    response: {
-      assessment: (r.assessment ?? 'routine') as Pass2Result['response']['assessment'],
-      confidence: r.confidence ?? 0,
-      erosionType: (r.erosionType ?? 'unclear') as Pass2Result['response']['erosionType'],
-      signals: (r.signals as string[]) ?? [],
-      reasoning: r.reasoning ?? '',
-      comparativeContext: r.comparativeContext ?? '',
-      citedPassages: (r.citedPassages as string[]) ?? [],
-      counterArguments: (r.counterArguments as string[]) ?? [],
-    },
-    meta: { model: r.model, provider: r.provider, tokensInput: 0, tokensOutput: 0, latencyMs: 0 },
-  }));
-
-  const pass1Model = pass1Rows[0]?.model ?? 'unknown';
-  const pass2Model = pass2Rows[0]?.model ?? 'unknown';
-  const baseline = await getBaselineAIFlagRate(category, 'biden_2022');
-
-  return computeAIAssessmentSummary(
-    pass1Results,
-    pass2Results,
-    baseline?.rate ?? 0,
-    baseline?.stdDev ?? 0,
-    pass1Model,
-    pass2Model,
-  );
 }
 
 /** Load existing weekly aggregates from DB as WeeklyAggregate objects. */

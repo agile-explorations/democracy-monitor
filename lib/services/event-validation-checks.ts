@@ -4,8 +4,8 @@
  */
 
 import {
-  STRUCTURAL_ANOMALY_THRESHOLD,
   AI_FLAG_RATE_THRESHOLD,
+  getStructuralThreshold,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
 import type { ConvergenceStatus } from '@/lib/types/structural';
@@ -52,8 +52,9 @@ export interface LayerAttribution {
 // ---------------------------------------------------------------------------
 
 /** Determine if L1 (structural) fired based on score threshold. */
-export function l1Fired(structuralScore: number | null): boolean {
-  return structuralScore != null && structuralScore > STRUCTURAL_ANOMALY_THRESHOLD;
+export function l1Fired(structuralScore: number | null, category?: string): boolean {
+  const threshold = getStructuralThreshold(category ?? '');
+  return structuralScore != null && structuralScore > threshold;
 }
 
 /** Determine if L2 (AI) fired based on score threshold. */
@@ -222,7 +223,7 @@ export function evaluateEventDetection(
     structuralScore: weekData?.structuralScore ?? null,
     aiScore: weekData?.aiScore ?? null,
     thematicScore: weekData?.thematicScore ?? null,
-    l1Fired: l1Fired(weekData?.structuralScore ?? null),
+    l1Fired: l1Fired(weekData?.structuralScore ?? null, event.category),
     l2Fired: l2Fired(weekData?.aiScore ?? null),
     l3Fired: l3Fired(weekData?.thematicScore ?? null),
     detected: status != null && convergenceStatusAtLeast(status, event.expectedMinStatus),
