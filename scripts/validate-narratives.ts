@@ -14,9 +14,13 @@ import { getDb } from '../lib/db';
 import { weeklyAggregates } from '../lib/db/schema';
 import {
   isElevatedStatus,
+  needsMultiPass,
   buildStableTemplate,
 } from '../lib/services/narrative-generation-service';
-import { generateMultiPassNarrative } from '../lib/services/narrative-multipass';
+import {
+  generateMultiPassNarrative,
+  generateSinglePassNarrative,
+} from '../lib/services/narrative-multipass';
 import { toNarrativeLayerData } from '../lib/services/narrative-pipeline';
 import {
   buildWeeklySummaryPrompt,
@@ -139,48 +143,76 @@ async function validateCategoryWeek(category: string, weekOf: string): Promise<C
   console.log(
     `  P2 docs: ${data.documentContext?.length ?? 0}, L2 available: ${hasL2}, substantive: ${substantive}`,
   );
-  console.log(
-    '  Generating 3-pass narrative (Claude draft → GPT-4o feedback → Claude revision)...',
-  );
 
-  const result = await generateMultiPassNarrative(data);
+  const useMultiPass = needsMultiPass(data.convergenceDetail);
+  let expert: string;
+  let pub: string;
 
-  console.log(
-    `  Pass 1 draft — Expert: ${wordCount(result.expertDraft)} words, Public: ${wordCount(result.publicDraft)} words`,
-  );
-  const feedbackHasCriterionG =
-    result.feedback.toLowerCase().includes('(g)') ||
-    result.feedback.toLowerCase().includes('why this might matter');
-  console.log(`  Pass 2 feedback — Criterion (g) flagged: ${feedbackHasCriterionG ? 'YES' : 'no'}`);
-  const expert = result.expert;
-  const pub = result.public;
-  console.log(
-    `  Pass 3 final — Expert: ${wordCount(expert)} words, Public: ${wordCount(pub)} words`,
-  );
-
-  narrativeOutput.push(
-    `${'='.repeat(80)}`,
-    `CATEGORY-WEEK: ${category} ${weekOf}`,
-    `Status: ${status} | Docs: ${totalDocs} | P2: ${data.documentContext?.length ?? 0} | L2: ${hasL2}`,
-    `${'='.repeat(80)}`,
-    '',
-    `--- PASS 1 DRAFT: EXPERT (${wordCount(result.expertDraft)} words) ---`,
-    result.expertDraft,
-    '',
-    `--- PASS 1 DRAFT: PUBLIC (${wordCount(result.publicDraft)} words) ---`,
-    result.publicDraft,
-    '',
-    `--- PASS 2 FEEDBACK ---`,
-    result.feedback,
-    '',
-    `--- PASS 3 FINAL: EXPERT (${wordCount(expert)} words) ---`,
-    expert,
-    '',
-    `--- PASS 3 FINAL: PUBLIC (${wordCount(pub)} words) ---`,
-    pub,
-    '',
-    '',
-  );
+  if (useMultiPass) {
+    console.log(
+      '  Generating 3-pass narrative (Claude draft → GPT-4o feedback → Claude revision)...',
+    );
+    const result = await generateMultiPassNarrative(data);
+    console.log(
+      `  Pass 1 draft — Expert: ${wordCount(result.expertDraft)} words, Public: ${wordCount(result.publicDraft)} words`,
+    );
+    const feedbackHasCriterionG =
+      result.feedback.toLowerCase().includes('(g)') ||
+      result.feedback.toLowerCase().includes('why this might matter');
+    console.log(
+      `  Pass 2 feedback — Criterion (g) flagged: ${feedbackHasCriterionG ? 'YES' : 'no'}`,
+    );
+    expert = result.expert;
+    pub = result.public;
+    console.log(
+      `  Pass 3 final — Expert: ${wordCount(expert)} words, Public: ${wordCount(pub)} words`,
+    );
+    narrativeOutput.push(
+      `${'='.repeat(80)}`,
+      `CATEGORY-WEEK: ${category} ${weekOf}`,
+      `Status: ${status} | Docs: ${totalDocs} | P2: ${data.documentContext?.length ?? 0} | L2: ${hasL2} | Pipeline: 3-pass`,
+      `${'='.repeat(80)}`,
+      '',
+      `--- PASS 1 DRAFT: EXPERT (${wordCount(result.expertDraft)} words) ---`,
+      result.expertDraft,
+      '',
+      `--- PASS 1 DRAFT: PUBLIC (${wordCount(result.publicDraft)} words) ---`,
+      result.publicDraft,
+      '',
+      `--- PASS 2 FEEDBACK ---`,
+      result.feedback,
+      '',
+      `--- PASS 3 FINAL: EXPERT (${wordCount(expert)} words) ---`,
+      expert,
+      '',
+      `--- PASS 3 FINAL: PUBLIC (${wordCount(pub)} words) ---`,
+      pub,
+      '',
+      '',
+    );
+  } else {
+    console.log('  Generating single-pass narrative (Claude draft only, Elevated status)...');
+    const result = await generateSinglePassNarrative(data);
+    expert = result.expert;
+    pub = result.public;
+    console.log(
+      `  Single-pass — Expert: ${wordCount(expert)} words, Public: ${wordCount(pub)} words`,
+    );
+    narrativeOutput.push(
+      `${'='.repeat(80)}`,
+      `CATEGORY-WEEK: ${category} ${weekOf}`,
+      `Status: ${status} | Docs: ${totalDocs} | P2: ${data.documentContext?.length ?? 0} | L2: ${hasL2} | Pipeline: single-pass`,
+      `${'='.repeat(80)}`,
+      '',
+      `--- SINGLE-PASS: EXPERT (${wordCount(expert)} words) ---`,
+      expert,
+      '',
+      `--- SINGLE-PASS: PUBLIC (${wordCount(pub)} words) ---`,
+      pub,
+      '',
+      '',
+    );
+  }
 
   const results: CheckResult[] = [];
 

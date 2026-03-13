@@ -14,8 +14,12 @@ import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import type { ConvergenceSynthesis, StructuralScore } from '@/lib/types/structural';
 import { formatError } from '@/lib/utils/api-helpers';
 import { recordFailure, resolveFailure } from './narrative-failure-store';
-import { buildStableTemplate, isElevatedStatus } from './narrative-generation-service';
-import { generateMultiPassNarrative } from './narrative-multipass';
+import {
+  buildStableTemplate,
+  isElevatedStatus,
+  needsMultiPass,
+} from './narrative-generation-service';
+import { generateMultiPassNarrative, generateSinglePassNarrative } from './narrative-multipass';
 import { buildTermSummaryPrompt, buildWeeklySummaryPrompt } from './narrative-prompts';
 import {
   enrichCategoryData,
@@ -187,12 +191,19 @@ async function generateCategoryNarratives(
     }
     try {
       await enrichCategoryData(data);
-      const result = await generateMultiPassNarrative(data);
-      await storeMultiPassNarratives(data.category, weekOf, result);
+      const multiPass = needsMultiPass(data.convergenceDetail);
+      if (multiPass) {
+        const result = await generateMultiPassNarrative(data);
+        await storeMultiPassNarratives(data.category, weekOf, result);
+        narratives.set(data.category, { expert: result.expert, public: result.public });
+      } else {
+        const result = await generateSinglePassNarrative(data);
+        await storeNarratives(data.category, weekOf, result);
+        narratives.set(data.category, { expert: result.expert, public: result.public });
+      }
       await resolveFailure(data.category, weekOf);
-      narratives.set(data.category, { expert: result.expert, public: result.public });
       console.log(
-        `[narratives]   ${data.category}: stored (docs=${data.documentContext?.length ?? 0})`,
+        `[narratives]   ${data.category}: stored ${multiPass ? '3-pass' : 'single-pass'} (docs=${data.documentContext?.length ?? 0})`,
       );
     } catch (err) {
       const passInfo = (err as { passInfo?: { pass: number } }).passInfo;

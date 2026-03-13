@@ -2,11 +2,18 @@ import type { NarrativeLayerData, NarrativeResult } from '@/lib/types';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 
 const ELEVATED_STATUSES = new Set<ConvergenceStatus>(['Elevated', 'Divergent', 'ConfirmedConcern']);
+const MULTIPASS_STATUSES = new Set<ConvergenceStatus>(['Divergent', 'ConfirmedConcern']);
 
 /** Returns true if the convergence status warrants AI narrative generation. */
 export function isElevatedStatus(detail: NarrativeLayerData['convergenceDetail']): boolean {
   if (!detail) return false;
   return ELEVATED_STATUSES.has(detail.status);
+}
+
+/** Returns true if the status warrants the full 3-pass pipeline (Divergent/ConfirmedConcern). */
+export function needsMultiPass(detail: NarrativeLayerData['convergenceDetail']): boolean {
+  if (!detail) return false;
+  return MULTIPASS_STATUSES.has(detail.status);
 }
 
 /** Generate a stable-category template narrative (no AI call). */

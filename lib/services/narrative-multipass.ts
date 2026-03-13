@@ -6,7 +6,12 @@
  */
 
 import { getProvider } from '@/lib/ai/provider';
-import type { AICompletionResult, MultiPassNarrativeResult, NarrativeLayerData } from '@/lib/types';
+import type {
+  AICompletionResult,
+  MultiPassNarrativeResult,
+  NarrativeLayerData,
+  NarrativeResult,
+} from '@/lib/types';
 import { buildDraftPrompt, buildFeedbackPrompt, buildRevisionPrompt } from './narrative-prompts';
 
 const DRAFT_MODEL = 'claude-opus-4-6';
@@ -162,4 +167,28 @@ export async function generateMultiPassNarrative(
     feedbackModel: feedbackResult.model,
     finalModel: finalResult.model,
   };
+}
+
+/**
+ * Generate a category-week narrative using a single Claude pass (no feedback/revision).
+ * Used for Elevated status where the full 3-pass pipeline is unnecessary.
+ */
+export async function generateSinglePassNarrative(
+  data: NarrativeLayerData,
+): Promise<NarrativeResult> {
+  const claude = getProvider('anthropic');
+  if (!claude.isAvailable()) {
+    throw new Error('Anthropic API key not configured — cannot generate narratives');
+  }
+
+  const draftResult = await runPass(
+    claude,
+    buildDraftPrompt(data),
+    { model: DRAFT_MODEL, maxTokens: 4096, systemPrompt: SYSTEM_PROMPT_DRAFT },
+    1,
+    `Single-pass draft [${data.category}]`,
+  );
+  const drafts = parseDraftResponse(draftResult.content);
+
+  return { expert: drafts.expert, public: drafts.public, model: draftResult.model };
 }
