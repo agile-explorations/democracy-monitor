@@ -10,6 +10,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-A2A3: Per-Category L1 Thresholds + Event Retrospective ✅
+
+**Status: Done.** Per-category structural thresholds for NC-3, event retrospective harness, L1 distributions diagnostic. Issues #368-#378, Milestone 56. A2.5 (#372) deferred to production re-enrichment.
+
+**Scope vs. Actual:**
+
+- Planned (11 issues): A2.1-A2.6 (per-category L1 threshold map, convergence wiring, distributions diagnostic, threshold values, re-enrichment, tests) + A3.1-A3.5 (retrospective core, L2 summary extraction, CLI, diff mode, tests)
+- Actual: 10 of 11 delivered. A2.5 (#372, re-run `layers:enrich` for Biden 2022) deferred to production — requires running against production DB after content enrichment jobs complete. Additionally: (a) `buildAISummaryFromDB` extracted from `enrich-layer-scores.ts` to shared `layer2-summary.ts` for reuse by both enrichment and retrospective, (b) retrospective validates both recomputed and stored status vs expected
+
+**Key Decisions:**
+
+1. **Per-category thresholds via lookup function, not config change**: `CATEGORY_STRUCTURAL_THRESHOLDS` is a sparse `Partial<Record<string, number>>` map — only categories needing overrides are listed. `getStructuralThreshold(category)` falls through to `STRUCTURAL_ANOMALY_THRESHOLD = 2.5` for unlisted categories. This avoids maintaining a 14-entry map.
+2. **NC-3 limits**: ≤5% Elevated+ weeks for categories with ≥20 avg docs/week, ≤10% for thin categories (<20 docs/week). Thin categories produce noisier z-scores from small sample sizes.
+3. **Threshold values from distributions diagnostic**: judicialIndependence 3.8 (thin, 6 docs/week, 23.1% → 7.7% elevated), executiveOversight 2.8 (43 docs/week, 5.8% → 3.8% elevated). Both selected as minimum values that pass NC-3.
+4. **Accepted detection regression**: New thresholds lose 3 borderline detections (69% vs 72%), but 2/3 are covered by alternate categories. Only T2-8 judicialIndependence (DOJ firings, L1=3.55) is a net loss. Trade-off: eliminating 23%/5.8% baseline false-positive rates.
+5. **Retrospective re-runs all layers from scratch**: No API calls — uses stored documents for L1, stored `ai_document_assessments` for L2, stored embeddings for L3. This validates current thresholds against historical data without regeneration cost.
+
+**Lessons Learned:**
+
+1. **NC-3 checks stored convergence, not L1 scores**: The `l1:distributions` tool's NC-3 column reads `convergence_detail->>'status'` from `weekly_aggregates`, which was computed with old thresholds. Setting new threshold values in code doesn't fix NC-3 until `layers:enrich` re-runs. This is why A2.5 is a separate step.
+2. **Shared service extraction pays for itself**: `buildAISummaryFromDB` was buried in `enrich-layer-scores.ts` (90 lines). Extracting to `layer2-summary.ts` made retrospective possible without duplicating DB query logic. The extraction also revealed a type error (Pass2 `signals` field that doesn't exist on `Pass2Response`).
+
+---
+
 ## Sprint R1-P0: Content Enrichment + Tiered Narratives ✅
 
 **Status: Done.** FR full-text expansion, DOJ full-body fix, tiered narrative generation. Issues #365-#367, Milestone 55.

@@ -34,6 +34,7 @@ The following is complete and working:
 - **Dead code removal** — Crossfeed pipeline (rhetoric-crossfeed, rhetoric-fetcher, backfill-rhetoric, recrossfeed-rhetoric), deep-analysis.ts orphaned code removed.
 - **Data quality safeguards** — fetch_log source_origin naming normalized (snapshot signal IDs → canonical source types), narrative pipeline completeness guard (aborts when weekly_aggregates covers <50% of document categories). (Sprint R-DQ1, Issues #362–#364)
 - **Release 1 Phase 0** — FR full-text enrichment (all document types), DOJ full-body fix + backfill CLI, tiered narrative generation (single-pass for Elevated, 3-pass for Divergent/ConfirmedConcern). (Sprint R1-P0, Issues #365–#367). Actual: code complete, enrichment jobs run on production. Remaining: re-embed + recompute baselines + backtest after enrichment completes.
+- **Release 1 A2+A3** — Per-category L1 structural thresholds (judicialIndependence 3.8, executiveOversight 2.8) for NC-3 compliance. Event retrospective harness (`pnpm retrospective`) re-runs L1/L2/L3 + convergence from stored data. L1 distributions diagnostic (`pnpm l1:distributions`). `buildAISummaryFromDB` extracted to shared module. (Sprint R1-A2A3, Issues #368–#378). Actual: 10/11 issues done; A2.5 (production re-enrichment) deferred to after content backfill completes.
 
 ---
 

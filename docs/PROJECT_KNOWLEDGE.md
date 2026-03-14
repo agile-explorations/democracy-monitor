@@ -122,7 +122,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### Testing & coverage
 
-- 2030 tests across 142 test files
+- 2016 tests across 137 test files
 - Coverage thresholds: statements 70%, branches 67%, functions 72%, lines 71%. I/O-heavy modules excluded from coverage: fetchers (courtlistener, doj, fec, govinfo), document-embedder, stores (fetch-log, snapshot, narrative), narrative-pipeline, CLI scripts (backfill-gaps). Pure functions tested; fetch/pagination/DB I/O not unit-testable.
 - `pnpm test:coverage` in `.husky/pre-push` — catches coverage threshold regressions before push
 
@@ -335,4 +335,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-NAR3: Narrative prompt compliance — 9 spec gap fixes (counter-argument limits, "why this might matter" reinforcement, small-sample caveats, L2-empty transparency, weekly/term structural requirements), 3-pass safety net criteria, validate:narratives script, layer assessment refactor. Issues #347-#348, #355-#361.
 - Sprint R-DQ1: Data quality safeguards — Fixed Mar 2 production data (re-scored 811 docs across 13 categories, regenerated narratives). Normalized fetch_log source_origin naming (snapshot signal IDs → canonical source types matching backfill). Added narrative pipeline safety net: `checkAggregateCompleteness()` aborts generation when weekly_aggregates covers <50% of document categories. Issues #362-#364.
 - Sprint R1-P0: Content enrichment + tiered narratives — FR full-text enrichment expanded to all document types (not just Presidential Documents), DOJ fetcher fixed to prefer body over teaser (8K limit), DOJ backfill CLI added. Tiered narrative generation: Elevated → single-pass, Divergent/ConfirmedConcern → 3-pass. Issues #365-#367.
-- Sprints remaining: Release 1A phases (A1: L3 baseline recomputation, A2: per-category L1 thresholds, A3: event retrospective, B3: P1 calibration). See `docs/ROADMAP.md` and `docs/internal/RELEASE_1_IMPLEMENTATION_PLAN.md`.
+- Sprint R1-A2A3: Per-category L1 thresholds + event retrospective — `CATEGORY_STRUCTURAL_THRESHOLDS` map + `getStructuralThreshold()` lookup in scoring-config.ts, convergence synthesis category-aware, `l1:distributions` diagnostic, `retrospective` CLI harness. `buildAISummaryFromDB` extracted to shared `layer2-summary.ts`. judicialIndependence threshold 3.8, executiveOversight 2.8. Issues #368-#378.
+- Sprints remaining: Release 1A phases (A1: L3 baseline recomputation, A2.5: production re-enrichment, B3: P1 calibration). See `docs/ROADMAP.md` and `docs/internal/RELEASE_1_IMPLEMENTATION_PLAN.md`.
