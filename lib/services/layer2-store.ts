@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Pass1Response } from '@/lib/ai/schemas/layer2-response';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { aiDocumentAssessments, documents } from '@/lib/db/schema';
 import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
@@ -216,7 +217,10 @@ export async function getBaselineAIFlagRate(
   if (!isDbAvailable()) return null;
   const db = getDb();
 
-  // Compute from weekly rates during the baseline period
+  // Compute from weekly flag rates during the specified baseline period
+  const config = BASELINE_CONFIGS.find((c) => c.id === baselineId);
+  if (!config) return null;
+
   const rows = await db.execute(sql`
     SELECT
       ${aiDocumentAssessments.weekOf} AS week_of,
@@ -225,11 +229,8 @@ export async function getBaselineAIFlagRate(
     FROM ${aiDocumentAssessments}
     WHERE ${aiDocumentAssessments.category} = ${category}
       AND ${aiDocumentAssessments.pass} = 1
-      AND ${aiDocumentAssessments.weekOf} IN (
-        SELECT DISTINCT week_of FROM ${aiDocumentAssessments}
-        WHERE category = ${category}
-        LIMIT 52
-      )
+      AND ${aiDocumentAssessments.weekOf} >= ${config.from}
+      AND ${aiDocumentAssessments.weekOf} <= ${config.to}
     GROUP BY ${aiDocumentAssessments.weekOf}
   `);
 
