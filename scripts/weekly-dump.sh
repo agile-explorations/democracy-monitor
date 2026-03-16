@@ -62,13 +62,13 @@ if [ -z "${NEW_RELEASE_ID}" ] || [ "${NEW_RELEASE_ID}" = "undefined" ] || [ "${N
 fi
 echo "Created release ${NEW_RELEASE_ID}"
 
-# 4. Upload asset
+# 4. Upload asset (use -T to stream from disk instead of buffering in memory)
 echo "Uploading dump (this may take several minutes)..."
 curl -f -X POST \
   -H "${AUTH}" \
   -H "Content-Type: application/octet-stream" \
   --retry 3 --retry-delay 10 \
-  --data-binary "@${DUMP_FILE}" \
+  -T "${DUMP_FILE}" \
   "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=data-dump.pgdump"
 echo "Upload complete."
 
