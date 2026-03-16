@@ -12,6 +12,17 @@ export interface BaselineConfig {
   sourceNotes?: string; // human-readable explanation of source limitations
 }
 
+/**
+ * Find the Biden baseline config matching a given cycle year.
+ * Falls back to the first available Biden baseline if no exact match exists.
+ */
+export function getBaselineConfigForCycleYear(cycleYear: number): BaselineConfig | undefined {
+  return (
+    BASELINE_CONFIGS.find((c) => c.administration === 'biden' && c.cycleYear === cycleYear) ??
+    BASELINE_CONFIGS.find((c) => c.administration === 'biden')
+  );
+}
+
 export const BASELINE_CONFIGS: BaselineConfig[] = [
   {
     id: 'biden_2022',

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { getCycleYearForDate } from '@/lib/methodology/scoring-config';
 import {
   extractWeekMetadata,
   computeBaselineStructuralDistribution,
@@ -33,11 +34,31 @@ vi.mock('@/lib/services/convergence-synthesis', () => ({
 }));
 
 vi.mock('@/lib/data/baselines', () => ({
-  BASELINE_CONFIGS: [{ id: 'biden_2022', from: '2022-01-20', to: '2023-01-19' }],
+  BASELINE_CONFIGS: [
+    {
+      id: 'biden_2021',
+      cycleYear: 1,
+      administration: 'biden',
+      from: '2021-01-20',
+      to: '2022-01-19',
+    },
+    {
+      id: 'biden_2022',
+      cycleYear: 2,
+      administration: 'biden',
+      from: '2022-01-20',
+      to: '2023-01-19',
+    },
+  ],
+  getBaselineConfigForCycleYear: vi.fn((cy: number) => {
+    if (cy === 1) return { id: 'biden_2021', cycleYear: 1, administration: 'biden' };
+    return { id: 'biden_2022', cycleYear: 2, administration: 'biden' };
+  }),
 }));
 
 vi.mock('@/lib/methodology/scoring-config', () => ({
   PRIMARY_BASELINE_ID: 'biden_2022',
+  getCycleYearForDate: vi.fn(() => 2),
 }));
 
 vi.mock('@/lib/services/layer2-assessment-service', () => ({
@@ -161,6 +182,37 @@ describe('computeStructuralLayer', () => {
     vi.mocked(computeBaselineStructuralDistribution).mockResolvedValue(null);
     const result = await computeStructuralLayer('civilService', '2025-02-17');
     expect(result).toBeNull();
+  });
+
+  it('uses cycle-year-matched baseline and returns its structural score', async () => {
+    // getCycleYearForDate mock returns 1 → getBaselineConfigForCycleYear returns biden_2021
+    vi.mocked(getCycleYearForDate).mockReturnValue(1);
+    vi.mocked(extractWeekMetadata).mockResolvedValue({
+      category: 'civilService',
+      weekOf: '2025-02-17',
+      documentCount: 10,
+      typeDistribution: { Notice: 1 },
+      functionalDistribution: { rulemaking: 1 } as Record<string, number>,
+      agencyDistribution: { DOJ: 1 },
+      dailyCounts: [1, 2, 3, 1, 2, 1, 0],
+    });
+    vi.mocked(computeBaselineStructuralDistribution).mockResolvedValue({
+      baselineId: 'biden_2021',
+      category: 'civilService',
+      meanDocCount: 12,
+      stdDevDocCount: 4,
+      typeDistribution: { Notice: 1 },
+      functionalDistribution: { rulemaking: 1 } as Record<string, number>,
+      agencyDistribution: { DOJ: 1 },
+      meanDailyVariance: 1,
+      stdDevDailyVariance: 0.5,
+    });
+    const expected = makeStructural({ composite: 1.8 });
+    vi.mocked(computeStructuralScore).mockReturnValue(expected);
+
+    const result = await computeStructuralLayer('civilService', '2025-02-17');
+    expect(result).toBe(expected);
+    expect(result?.composite).toBe(1.8);
   });
 
   it('returns structural score when both metadata and baseline are available', async () => {

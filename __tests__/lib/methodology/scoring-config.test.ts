@@ -14,6 +14,7 @@ import {
   SOURCE_DIVERSITY_MAX,
   TIER_WEIGHTS,
   computeSeverityScore,
+  getCycleYearForDate,
 } from '@/lib/methodology/scoring-config';
 
 describe('scoring-config', () => {
@@ -81,6 +82,37 @@ describe('scoring-config', () => {
 
     it('has positive convergence threshold', () => {
       expect(CONVERGENCE_ENTRENCHED_THRESHOLD).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getCycleYearForDate', () => {
+    it.each([
+      // Trump 2017 term (Year 1)
+      ['2017-01-20', 1],
+      ['2017-06-15', 1],
+      ['2018-01-19', 1],
+      // Trump 2017 term (Year 2)
+      ['2018-01-20', 2],
+      ['2018-06-15', 2],
+      // Biden 2021 term (Year 1)
+      ['2021-01-20', 1],
+      ['2021-12-31', 1],
+      ['2022-01-19', 1],
+      // Biden 2021 term (Year 2)
+      ['2022-01-20', 2],
+      ['2022-06-15', 2],
+      // Biden 2021 term (Year 4)
+      ['2024-06-15', 4],
+      ['2025-01-19', 4],
+      // Trump 2025 term (Year 1)
+      ['2025-01-20', 1],
+      ['2025-06-15', 1],
+      ['2026-01-19', 1],
+      // Trump 2025 term (Year 2)
+      ['2026-01-20', 2],
+      ['2026-06-15', 2],
+    ])('returns correct cycle year for %s → Year %d', (dateStr, expected) => {
+      expect(getCycleYearForDate(dateStr)).toBe(expected);
     });
   });
 

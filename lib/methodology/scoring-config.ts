@@ -119,6 +119,9 @@ const TERM_START_MONTH = 0; // January
 const TERM_START_DAY = 20;
 const TERM_START_YEAR = 2025;
 
+/** First inauguration year in the modern 4-year cycle pattern. */
+const INAUGURATION_EPOCH = 2017;
+
 /**
  * Determine which year (1–4) of the presidential term a given date falls in.
  * Jan 20 2025 = Year 1, Jan 20 2026 = Year 2, etc. Clamped to 1–4.
@@ -134,6 +137,25 @@ export function getCurrentCycleYear(date?: Date): number {
     year--;
   }
   return Math.max(1, Math.min(4, year));
+}
+
+/**
+ * Determine which year (1–4) of the presidential term a date string falls in.
+ * Works for any date across all presidential terms (2017, 2021, 2025, ...).
+ * Uses the inauguration pattern: terms start Jan 20 every 4 years from 2017.
+ */
+export function getCycleYearForDate(dateStr: string): number {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  let calYear = d.getUTCFullYear();
+  // If before Jan 20, the "political year" belongs to the previous calendar year
+  if (
+    d.getUTCMonth() < TERM_START_MONTH ||
+    (d.getUTCMonth() === TERM_START_MONTH && d.getUTCDate() < TERM_START_DAY)
+  ) {
+    calYear--;
+  }
+  const inaugYear = INAUGURATION_EPOCH + 4 * Math.floor((calYear - INAUGURATION_EPOCH) / 4);
+  return Math.max(1, Math.min(4, calYear - inaugYear + 1));
 }
 
 // --- Structural anomaly (Layer 1) ---

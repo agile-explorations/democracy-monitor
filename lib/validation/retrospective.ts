@@ -5,9 +5,9 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { BASELINE_CONFIGS } from '@/lib/data/baselines';
+import { getBaselineConfigForCycleYear } from '@/lib/data/baselines';
 import { getDb } from '@/lib/db';
-import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
+import { getCycleYearForDate } from '@/lib/methodology/scoring-config';
 import {
   computeBaselineStructuralDistribution,
   extractWeekMetadata,
@@ -76,14 +76,15 @@ async function fetchStoredWeekData(
 /** Run the retrospective for a single known event. */
 export async function evaluateEvent(event: KnownEvent): Promise<RetrospectiveResult> {
   const weekOf = getMonday(new Date(event.date));
-  const primaryConfig = BASELINE_CONFIGS.find((c) => c.id === PRIMARY_BASELINE_ID);
+  const cycleYear = getCycleYearForDate(weekOf);
+  const config = getBaselineConfigForCycleYear(cycleYear);
 
   // L1: Recompute structural score
   let structural: StructuralScore | null = null;
-  if (primaryConfig) {
+  if (config) {
     const weekMetadata = await extractWeekMetadata(event.category, weekOf);
     const baselineDistribution = await computeBaselineStructuralDistribution(
-      primaryConfig,
+      config,
       event.category,
     );
     if (weekMetadata && baselineDistribution) {

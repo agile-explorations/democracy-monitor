@@ -1,5 +1,5 @@
-import { BASELINE_CONFIGS } from '@/lib/data/baselines';
-import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
+import { getBaselineConfigForCycleYear } from '@/lib/data/baselines';
+import { getCycleYearForDate } from '@/lib/methodology/scoring-config';
 import {
   computeBaselineStructuralDistribution,
   extractWeekMetadata,
@@ -21,10 +21,11 @@ export async function computeStructuralLayer(
   const weekMetadata = await extractWeekMetadata(category, weekOf);
   if (!weekMetadata) return null;
 
-  const primaryConfig = BASELINE_CONFIGS.find((c) => c.id === PRIMARY_BASELINE_ID);
-  if (!primaryConfig) return null;
+  const cycleYear = getCycleYearForDate(weekOf);
+  const config = getBaselineConfigForCycleYear(cycleYear);
+  if (!config) return null;
 
-  const baselineDistribution = await computeBaselineStructuralDistribution(primaryConfig, category);
+  const baselineDistribution = await computeBaselineStructuralDistribution(config, category);
   if (!baselineDistribution) return null;
 
   return computeStructuralScore(weekMetadata, baselineDistribution);
