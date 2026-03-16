@@ -31,23 +31,35 @@ echo "Dump complete: ${SIZE}"
 
 # 2. Delete existing release if present
 echo "Checking for existing release..."
-RELEASE_ID=$(curl -sf -H "${AUTH}" "${API}/releases/tags/${TAG}" \
-  | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).id' 2>/dev/null) || true
+RELEASE_RESPONSE=$(curl -s -H "${AUTH}" "${API}/releases/tags/${TAG}" 2>/dev/null) || true
+RELEASE_ID=$(echo "${RELEASE_RESPONSE}" | node -p 'try { JSON.parse(require("fs").readFileSync(0,"utf8")).id } catch { "" }' 2>/dev/null) || true
 
-if [ -n "${RELEASE_ID}" ] && [ "${RELEASE_ID}" != "undefined" ]; then
+if [ -n "${RELEASE_ID}" ] && [ "${RELEASE_ID}" != "undefined" ] && [ "${RELEASE_ID}" != "" ]; then
   echo "Deleting release ${RELEASE_ID}..."
-  curl -f -X DELETE -H "${AUTH}" "${API}/releases/${RELEASE_ID}" > /dev/null 2>&1 || echo "Warning: release delete returned error (may already be gone)"
-  curl -f -X DELETE -H "${AUTH}" "${API}/git/refs/tags/${TAG}" > /dev/null 2>&1 || true
+  curl -X DELETE -H "${AUTH}" "${API}/releases/${RELEASE_ID}" > /dev/null 2>&1 || echo "Warning: release delete failed"
+  sleep 2
 fi
+
+# Always try to delete the tag (may exist independently of the release)
+curl -X DELETE -H "${AUTH}" "${API}/git/refs/tags/${TAG}" > /dev/null 2>&1 || true
+sleep 2
 
 # 3. Create new release
 echo "Creating release..."
-NEW_RELEASE_ID=$(curl -sf -X POST \
+CREATE_RESPONSE=$(curl -s -X POST \
   -H "${AUTH}" \
   -H "Content-Type: application/json" \
   -d "{\"tag_name\":\"${TAG}\",\"name\":\"Database snapshot\",\"body\":\"Weekly database dump ($(date -u +%Y-%m-%d))\"}" \
-  "${API}/releases" \
-  | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).id')
+  "${API}/releases" 2>&1)
+
+NEW_RELEASE_ID=$(echo "${CREATE_RESPONSE}" | node -p 'try { JSON.parse(require("fs").readFileSync(0,"utf8")).id } catch { "" }' 2>/dev/null) || true
+
+if [ -z "${NEW_RELEASE_ID}" ] || [ "${NEW_RELEASE_ID}" = "undefined" ] || [ "${NEW_RELEASE_ID}" = "" ]; then
+  echo "ERROR: Failed to create release. Response:"
+  echo "${CREATE_RESPONSE}"
+  rm -f "${DUMP_FILE}"
+  exit 1
+fi
 echo "Created release ${NEW_RELEASE_ID}"
 
 # 4. Upload asset
