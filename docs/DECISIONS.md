@@ -10,6 +10,27 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-CRON: Weekly Cron Job Fixes ✅
+
+**Status: Done.** Fixed two production cron failures. Issues #390-#392, Milestone 58.
+
+**Scope vs. Actual:**
+
+- Planned (3 issues): Free base64 after ZIP decode, add NODE_OPTIONS heap limit, make dump script DELETE non-fatal
+- Actual: All 3 delivered as planned. No scope changes.
+
+**Key Decisions:**
+
+1. **Simple memory fix over callback refactor**: Could have restructured `fetchDataset` to use a callback/generator pattern (process bills inline, never hold all in memory). Instead chose the minimal fix: free the base64 string after decoding + bump heap to 1024 MB. This gives 3-4x headroom with one line of code. The callback refactor is available if datasets grow further.
+2. **weekly-dump.sh DELETE was the failure point**: The output showed "Deleting release..." then crash. The `curl -sf -X DELETE` returned HTTP error (404 or 403) which `set -e` caught. The tag deletion already had `|| true` but the release deletion didn't. Made both non-fatal.
+
+**Lessons Learned:**
+
+1. **Render cron jobs default to 512 MB heap**: No plan/memory specification in render.yaml for cron jobs. Large ZIP processing (45.8 MB compressed → ~250 MB peak) exceeds this. Always set `NODE_OPTIONS` for memory-intensive cron jobs.
+2. **`set -e` + `curl -f` is fragile for cleanup operations**: DELETE operations that might 404 (resource already gone) should always be non-fatal. The pattern `curl -f ... || echo "Warning: ..."` preserves diagnostics without crashing the script.
+
+---
+
 ## Sprint R1-CAL2: Detection Calibration + Backtest Redesign ✅
 
 **Status: Done.** P1 calibration for 5 categories, high-significance position lookup, backtest metric redesign. Issues #382-#389, Milestone 57.
