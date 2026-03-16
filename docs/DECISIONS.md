@@ -10,6 +10,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-CAL2: Detection Calibration + Backtest Redesign ✅
+
+**Status: Done.** P1 calibration for 5 categories, high-significance position lookup, backtest metric redesign. Issues #382-#389, Milestone 57.
+
+**Scope vs. Actual:**
+
+- Planned (8 issues): Audit P1/P2 flag rates, rewrite descriptions for 5 categories, position lookup, backtest metric redesign + tests, production L2 re-assessment, post-sprint validation
+- Actual: All 8 delivered. Production audit revealed only lawEnforcement truly failed NC-3 (11.5% Elevated, L2-driven). The other 4 categories already passed but benefited from threat-vector reframing. Also fixed pre-existing `backfill-opinions.ts` max-lines-per-function lint warning.
+
+**Key Decisions:**
+
+1. **Only lawEnforcement failed NC-3**: Production audit showed executiveOversight at 3.8% (passes <5%), elections and judicialIndependence at 7.7% (pass <10% thin limit), infoAvailability at 0%. Previous reports of executiveOversight failing NC-3 were from pre-remediation state. Still rewrote all 5 descriptions since the effort is minimal and improves P1 precision.
+2. **lawEnforcement root cause — sparse flag statistics**: 0.8% baseline P1 flag rate (~0.4 flags/week). Even 2-3 extra flags in one week of 40-60 docs produced Z-scores of 1.85-4.53 against the tiny baseline stddev (1.7%). The description "Is federal law enforcement being used selectively or politically?" matched routine DOJ civil rights enforcement (police investigations, voting rights lawsuits) as "relevant to politicization."
+3. **Position lookup in system prompt, not per-category**: Added to PASS1_SYSTEM_PROMPT (global). 6 positions: FBI Director, AG, Deputy AG, IGs, Special Counsel, federal judges. Keeps architecture-consistent — no per-category prompt fields.
+4. **Backtest metrics are additive**: Kept `falseAlarms` and `detectionRate` for backward compatibility. Added `baselineNoise`, `signalPrecision`, `totalElevatedWeeks`, `eventElevatedWeeks`. CLI legend explains all metrics.
+
+**Lessons Learned:**
+
+1. **NC-3 failures can resolve through remediation**: executiveOversight was reported failing NC-3 pre-remediation but passed (3.8%) after L2 re-assessment + baseline recomputation. Always re-verify before adding code fixes.
+2. **Sparse binary data produces noisy Z-scores**: When baseline flag rate is <1%, the stddev is also tiny, making Z-scores hypersensitive to 1-2 extra flags. The fix is reducing absolute flag count (better descriptions), not adjusting Z-score thresholds (which would affect all categories).
+3. **Audit-only P2 during baseline is expected**: All P2 assessments in Biden 2022 baseline had `relevant IS NULL` (audit samples). This is correct — P1 flag rates should be low enough that few or no docs are P1-flagged for non-audit P2 review during baseline periods.
+
+---
+
 ## Production Remediation: Content Enrichment Pipeline ✅
 
 **Status: Done.** Full remediation pipeline on production after content enrichment: scores:recompute → L2 re-assessment (FR+DOJ) → baselines:compute → layers:enrich → backtest → l1:distributions. Bug fixes for CLI scripts discovered during the process.
