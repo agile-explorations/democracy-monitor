@@ -44,6 +44,14 @@ export interface BacktestResult {
   missedEvents: KnownEvent[];
   falseAlarms: number;
   detectionRate: number;
+  /** Elevated+ non-event weeks / total weeks — measures persistent baseline mismatch */
+  baselineNoise: number;
+  /** Event-elevated weeks / all elevated weeks — 1.0 = all elevation is signal */
+  signalPrecision: number;
+  /** Total Elevated+ weeks */
+  totalElevatedWeeks: number;
+  /** Elevated+ weeks that correspond to known events */
+  eventElevatedWeeks: number;
 }
 
 /** Get the Monday (ISO week start) for a date string. Delegates to shared utility. */
@@ -99,6 +107,10 @@ function evaluateCategoryBacktest(
   missedEvents: KnownEvent[];
   falseAlarms: number;
   detectionRate: number;
+  baselineNoise: number;
+  signalPrecision: number;
+  totalElevatedWeeks: number;
+  eventElevatedWeeks: number;
 } {
   let peakWeek = '';
   let peakScore = 0;
@@ -125,13 +137,25 @@ function evaluateCategoryBacktest(
   }
 
   let falseAlarms = 0;
+  let totalElevatedWeeks = 0;
+  let eventElevatedWeeks = 0;
   for (const ws of weeklyScores) {
+    const isElevated = convergenceStatusAtLeast(ws.status, 'Elevated');
+    if (isElevated) {
+      totalElevatedWeeks++;
+      if (eventWeeks.has(ws.weekOf)) {
+        eventElevatedWeeks++;
+      }
+    }
     if (convergenceStatusAtLeast(ws.status, 'Divergent') && !eventWeeks.has(ws.weekOf)) {
       falseAlarms++;
     }
   }
 
   const detectionRate = catEvents.length > 0 ? detected.length / catEvents.length : 0;
+  const nonEventElevated = totalElevatedWeeks - eventElevatedWeeks;
+  const baselineNoise = weeklyScores.length > 0 ? nonEventElevated / weeklyScores.length : 0;
+  const signalPrecision = totalElevatedWeeks > 0 ? eventElevatedWeeks / totalElevatedWeeks : 1;
 
   return {
     peakWeek,
@@ -140,6 +164,10 @@ function evaluateCategoryBacktest(
     missedEvents: missed,
     falseAlarms,
     detectionRate,
+    baselineNoise,
+    signalPrecision,
+    totalElevatedWeeks,
+    eventElevatedWeeks,
   };
 }
 

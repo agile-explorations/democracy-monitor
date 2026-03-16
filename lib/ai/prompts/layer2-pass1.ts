@@ -4,7 +4,12 @@ institutional erosion in a specific governance category.
 
 You MUST respond with a single JSON object. No prose, no markdown fences.
 Be conservative: flag documents only when they contain genuine signals of institutional change,
-not routine administrative activity.`;
+not routine administrative activity.
+
+IMPORTANT: Always flag personnel actions (appointment, removal, forced resignation, or vacancy)
+involving these high-significance positions, even if the document language appears routine:
+FBI Director, Attorney General, Deputy AG, Inspectors General, Special Counsel, federal judges.
+These roles have institutional independence protections; personnel changes are inherently significant.`;
 
 export function buildPass1Prompt(
   title: string,

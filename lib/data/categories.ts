@@ -94,7 +94,7 @@ export const CATEGORIES: Category[] = [
     key: 'executiveOversight',
     title: 'Government Watchdogs (Inspectors General)',
     description:
-      'Inspectors General (IGs) are like detectives who check if government agencies are doing their jobs correctly. Can they do their work without being fired or blocked?',
+      'Government actions that weaken independent oversight — firing or sidelining Inspectors General, blocking investigations, cutting audit resources, or leaving watchdog positions vacant to reduce accountability.',
     expertDescription:
       'Inspectors General provide independent oversight of executive agencies, with statutory protections against removal. Mass IG firings, vacancy manipulation, or resource cuts degrade the internal accountability infrastructure that deters waste, fraud, and abuse of power across the federal government.',
     signals: [
@@ -208,7 +208,7 @@ export const CATEGORIES: Category[] = [
     key: 'judicialIndependence',
     title: 'Following Court Orders',
     description:
-      'When a judge orders the government to do something (or stop doing something), does the President follow those orders? This is a key part of our system of checks and balances.',
+      'Government actions that undermine judicial independence — defying court orders, retaliating against judges, politicizing judicial appointments, or restructuring court jurisdiction to avoid oversight.',
     expertDescription:
       "Judicial independence is the cornerstone of constitutional governance. Executive non-compliance with court orders, attempts to restructure court jurisdiction, or politicized judicial appointments erode the judiciary's ability to serve as a check on executive and legislative power.",
     signals: [
@@ -357,7 +357,7 @@ export const CATEGORIES: Category[] = [
     key: 'infoAvailability',
     title: 'Information Availability',
     description:
-      'Are government websites, reports, and data still publicly accessible? Tracks whether critical transparency infrastructure is online and whether expected reports are being published.',
+      'Government actions that reduce public access to information — removing datasets, taking down websites, suppressing mandated reports, restricting FOIA compliance, or defunding transparency infrastructure.',
     expertDescription:
       "Public access to government data, FOIA compliance, and publication of mandated reports form the transparency infrastructure that enables democratic accountability. Removal of datasets, website takedowns, or suppression of required disclosures reduces the public's ability to monitor government conduct.",
     signals: [
@@ -381,7 +381,7 @@ export const CATEGORIES: Category[] = [
     key: 'elections',
     title: 'Free and Fair Elections',
     description:
-      'Are elections being administered fairly and without interference? Tracks changes to election infrastructure, voter access, and election administration independence.',
+      'Government actions that undermine free and fair elections — restricting voter access, defunding election security, weakening FEC enforcement, interfering with election certification, or politicizing election administration.',
     expertDescription:
       'Free and fair elections require independent administration, equitable ballot access, and transparent campaign finance. Federal actions that alter voter eligibility rules, defund election security, weaken FEC enforcement, or challenge certification processes threaten the foundational mechanism of democratic legitimacy.',
     signals: [
@@ -443,7 +443,7 @@ export const CATEGORIES: Category[] = [
     key: 'lawEnforcement',
     title: 'Federal Law Enforcement',
     description:
-      'Is federal law enforcement being used selectively or politically? Tracks DOJ prosecution patterns, enforcement priorities, and potential politicization of the justice system.',
+      'Government actions that politicize federal law enforcement — selective prosecution of political opponents, dropped investigations of allies, retaliation against career prosecutors, or weaponizing enforcement authority to suppress protected activity.',
     expertDescription:
       'Independent prosecutorial discretion is central to rule of law. Politicized DOJ priorities — selective prosecution of political opponents, dropped investigations of allies, or retaliation against career prosecutors — transform law enforcement from a neutral institution into an instrument of political power.',
     signals: [

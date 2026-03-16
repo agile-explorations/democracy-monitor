@@ -153,6 +153,75 @@ describe('runBacktest', () => {
     expect(results[0].falseAlarms).toBe(1);
   });
 
+  it('computes baseline noise as non-event elevated weeks / total weeks', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.5,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-30',
+        total_severity: 2.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-02-06',
+        total_severity: 7.0,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: null,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-02-13',
+        total_severity: 9.0,
+        status: 'Divergent',
+        structural_score: 4.0,
+        ai_score: 3.0,
+        thematic_score: 4.0,
+      },
+    ]);
+
+    // Event in week 2017-01-23 only
+    const results = await runBacktest('2017-01-20', '2017-03-01', [EVENTS[0]]);
+    // Total weeks: 4, Elevated+: 3 (01-23 event, 02-06 non-event, 02-13 non-event)
+    // Event elevated: 1, Non-event elevated: 2
+    expect(results[0].totalElevatedWeeks).toBe(3);
+    expect(results[0].eventElevatedWeeks).toBe(1);
+    expect(results[0].baselineNoise).toBe(2 / 4); // 50%
+    expect(results[0].signalPrecision).toBeCloseTo(1 / 3); // 33%
+  });
+
+  it('returns signalPrecision 1.0 when no elevated weeks exist', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 1.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-03-01', [EVENTS[0]]);
+    expect(results[0].totalElevatedWeeks).toBe(0);
+    expect(results[0].signalPrecision).toBe(1);
+    expect(results[0].baselineNoise).toBe(0);
+  });
+
   it('handles empty data gracefully', async () => {
     mockDb([]);
 

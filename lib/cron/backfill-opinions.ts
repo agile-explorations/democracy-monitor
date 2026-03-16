@@ -179,6 +179,15 @@ async function run(options: BackfillOptions): Promise<void> {
     }
   }
 
+  printSummary(processed, skipped, opinionsFound, documentsCreated);
+}
+
+function printSummary(
+  processed: number,
+  skipped: number,
+  opinionsFound: number,
+  documentsCreated: number,
+): void {
   const totalApiCalls = processed - skipped;
   const hitRate = totalApiCalls > 0 ? ((opinionsFound / totalApiCalls) * 100).toFixed(1) : '0';
 

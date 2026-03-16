@@ -46,18 +46,40 @@ Options:
     return;
   }
 
-  console.log(
-    `\n${'Category'.padEnd(20)} ${'Detection'.padEnd(12)} ${'Detected'.padEnd(10)} ${'Missed'.padEnd(10)} ${'False Alarms'.padEnd(14)} ${'Peak Week'.padEnd(12)} Peak Score`,
-  );
-  console.log('-'.repeat(90));
+  printResults(results);
+}
+
+function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
+  const hdr =
+    `${'Category'.padEnd(22)}` +
+    `${'Detect'.padStart(7)}` +
+    `${'Hit'.padStart(5)}` +
+    `${'Miss'.padStart(6)}` +
+    `${'Elev'.padStart(6)}` +
+    `${'Noise'.padStart(7)}` +
+    `${'Precis'.padStart(8)}` +
+    `${'FA(D+)'.padStart(8)}` +
+    `${'Peak'.padStart(12)}`;
+  console.log(`\n${hdr}`);
+  console.log('-'.repeat(hdr.length));
 
   let totalDetected = 0;
   let totalEvents = 0;
 
   for (const r of results) {
     const rate = `${(r.detectionRate * 100).toFixed(0)}%`;
+    const noise = `${(r.baselineNoise * 100).toFixed(0)}%`;
+    const precision = `${(r.signalPrecision * 100).toFixed(0)}%`;
     console.log(
-      `${r.category.padEnd(20)} ${rate.padEnd(12)} ${String(r.detectedEvents.length).padEnd(10)} ${String(r.missedEvents.length).padEnd(10)} ${String(r.falseAlarms).padEnd(14)} ${(r.peakWeek || 'n/a').padEnd(12)} ${r.peakScore.toFixed(1)}`,
+      `${r.category.padEnd(22)}` +
+        `${rate.padStart(7)}` +
+        `${String(r.detectedEvents.length).padStart(5)}` +
+        `${String(r.missedEvents.length).padStart(6)}` +
+        `${String(r.totalElevatedWeeks).padStart(6)}` +
+        `${noise.padStart(7)}` +
+        `${precision.padStart(8)}` +
+        `${String(r.falseAlarms).padStart(8)}` +
+        `${(r.peakWeek || 'n/a').padStart(12)}`,
     );
 
     totalDetected += r.detectedEvents.length;
@@ -70,11 +92,25 @@ Options:
     }
   }
 
-  console.log('-'.repeat(90));
+  console.log('-'.repeat(hdr.length));
   const overallRate = totalEvents > 0 ? ((totalDetected / totalEvents) * 100).toFixed(0) : '0';
   console.log(
-    `${'OVERALL'.padEnd(20)} ${(overallRate + '%').padEnd(12)} ${String(totalDetected).padEnd(10)} ${String(totalEvents - totalDetected).padEnd(10)}`,
+    `${'OVERALL'.padEnd(22)}` +
+      `${(overallRate + '%').padStart(7)}` +
+      `${String(totalDetected).padStart(5)}` +
+      `${String(totalEvents - totalDetected).padStart(6)}`,
   );
+
+  printLegend();
+}
+
+function printLegend(): void {
+  console.log(`\nMetrics:`);
+  console.log(`  Detect  = Event sensitivity (detected / total known events)`);
+  console.log(`  Elev    = Total Elevated+ weeks (event + non-event)`);
+  console.log(`  Noise   = Baseline noise (non-event elevated / total weeks)`);
+  console.log(`  Precis  = Signal precision (event-elevated / all elevated)`);
+  console.log(`  FA(D+)  = False alarms (Divergent+ non-event weeks, legacy metric)`);
 }
 
 main()
