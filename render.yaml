@@ -41,6 +41,7 @@ services:
   - type: cron
     name: weekly-dump
     runtime: node
+    plan: standard
     schedule: '0 5 * * 1'
     buildCommand: pnpm install
     startCommand: ./scripts/weekly-dump.sh
