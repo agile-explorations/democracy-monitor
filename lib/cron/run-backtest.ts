@@ -4,7 +4,9 @@ import { checkHelp } from '@/lib/utils/cli-help';
 import { runBacktest } from '@/lib/validation/historical-backtest';
 import { TRUMP_T1_EVENTS } from '@/lib/validation/known-events';
 
+const savedDbUrl = process.env.DATABASE_URL;
 loadEnvConfig(process.cwd());
+if (savedDbUrl) process.env.DATABASE_URL = savedDbUrl;
 
 const DEFAULT_FROM = '2017-01-20';
 const DEFAULT_TO = '2018-01-19';

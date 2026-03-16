@@ -10,9 +10,36 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Production Remediation: Content Enrichment Pipeline ✅
+
+**Status: Done.** Full remediation pipeline on production after content enrichment: scores:recompute → L2 re-assessment (FR+DOJ) → baselines:compute → layers:enrich → backtest → l1:distributions. Bug fixes for CLI scripts discovered during the process.
+
+**What was done:**
+
+1. **L2 re-assessment** of enriched FR and DOJ documents on production (~118K P1 assessments regenerated, P2 re-run on flagged docs)
+2. **Full pipeline recomputation**: scores, baselines, layer enrichment, backtest validation
+3. **Bug fixes**: `loadEnvConfig` overwriting sourced DATABASE_URL in 5 CLI scripts (validate-detection, validate-data, validate-ingest, run-backtest, l1-distributions)
+4. **l1:distributions display fix**: NC-3 column now shows `FAIL(L2)` when failure is driven by L2 convergence elevation rather than L1 threshold breach; added `Elev` column showing convergence-elevated week count
+5. **Regression analysis documented** in `docs/internal/CONTENT_ENRICHMENT_REGRESSION_ANALYSIS.md`
+
+**Key Findings:**
+
+- Post-remediation backtest: 50% T1 detection (7/14), 7 false alarms. Net change from pre-enrichment: -1 detection (Comey), -3 false alarms
+- Comey firing (2017) is an architectural limitation: termination letter is routine personnel action, both P1 and P2 correctly assessed document language but missed contextual significance (investigation context not in the letter). Release 4 (rhetoric sources) is the natural fix
+- NC-3: 13/14 pass L1 thresholds. lawEnforcement and executiveOversight fail via L2-driven convergence elevation — pre-existing, not caused by remediation
+- Cross-admin baseline tension confirmed: Trump T1 executiveActions produces 100% persistent elevation against Biden Year 2 baseline. Cycle-year matching (R-F14) identified as first-step fix
+
+**Lessons Learned:**
+
+1. **`loadEnvConfig` overwrites shell environment**: `@next/env`'s `loadEnvConfig(process.cwd())` loads `.env.local` which overwrites pre-set `DATABASE_URL`. All CLI scripts that source production env must preserve and restore DATABASE_URL around the call. Pattern: `const saved = process.env.DATABASE_URL; loadEnvConfig(cwd); if (saved) process.env.DATABASE_URL = saved;`
+2. **P1 cache lookup doesn't scope by source_origin**: `getExistingPass1Urls()` matches by URL+category+pass only. Using `--fresh` (which deletes by source_origin) doesn't clear cached assessments for URLs that exist under multiple sources. Direct SQL delete required.
+3. **`findPass2GapWeeks` filters on content length**: Documents with `content IS NULL` or `length(content) < 100` are excluded from P2 gap detection — CourtListener stubs and LegiScan summaries can't meaningfully be assessed by P2.
+
+---
+
 ## Sprint R1-A2A3: Per-Category L1 Thresholds + Event Retrospective ✅
 
-**Status: Done.** Per-category structural thresholds for NC-3, event retrospective harness, L1 distributions diagnostic. Issues #368-#378, Milestone 56. A2.5 (#372) deferred to production re-enrichment.
+**Status: Done.** Per-category structural thresholds for NC-3, event retrospective harness, L1 distributions diagnostic. Issues #368-#378, Milestone 56.
 
 **Scope vs. Actual:**
 

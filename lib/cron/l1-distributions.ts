@@ -24,6 +24,7 @@ interface CategoryStats {
   max: number;
   elevatedCount: number;
   elevatedPct: number;
+  convergenceElevatedCount: number;
   threshold: number;
   isThin: boolean;
   nc3Limit: number;
@@ -52,14 +53,23 @@ function printTable(stats: CategoryStats[]): void {
     'Thresh'.padStart(6),
     'L1>T'.padStart(5),
     'L1%'.padStart(6),
+    'Elev'.padStart(5),
     'Thin'.padStart(5),
-    'NC3'.padStart(4),
+    'NC3'.padStart(8),
   ].join(' ');
 
   console.log(header);
   console.log('-'.repeat(header.length));
 
   for (const s of stats) {
+    // NC-3 checks convergence status, not just L1. Show driver when they differ.
+    let nc3Label: string;
+    if (s.nc3Pass) {
+      nc3Label = 'PASS';
+    } else {
+      const l1WouldPass = (s.elevatedCount / s.weeks) * 100 <= s.nc3Limit;
+      nc3Label = l1WouldPass ? 'FAIL(L2)' : 'FAIL';
+    }
     const row = [
       s.category.padEnd(24),
       String(s.weeks).padStart(5),
@@ -72,8 +82,9 @@ function printTable(stats: CategoryStats[]): void {
       s.threshold.toFixed(1).padStart(6),
       String(s.elevatedCount).padStart(5),
       `${s.elevatedPct.toFixed(1)}%`.padStart(6),
+      String(s.convergenceElevatedCount).padStart(5),
       (s.isThin ? 'YES' : '').padStart(5),
-      (s.nc3Pass ? 'PASS' : 'FAIL').padStart(4),
+      nc3Label.padStart(8),
     ].join(' ');
     console.log(row);
   }
@@ -134,6 +145,7 @@ function computeStats(byCat: Map<string, CatRow[]>): CategoryStats[] {
       max: scores[scores.length - 1],
       elevatedCount: elevated,
       elevatedPct: (elevated / data.length) * 100,
+      convergenceElevatedCount: convergenceElevated,
       threshold,
       isThin,
       nc3Limit: nc3Limit * 100,
@@ -159,7 +171,9 @@ Shows per-category structural score distributions from Biden 2022 baseline.
 Used to set per-category thresholds for NC-3 compliance.`,
   );
 
+  const savedDbUrl = process.env.DATABASE_URL;
   loadEnvConfig(process.cwd());
+  if (savedDbUrl) process.env.DATABASE_URL = savedDbUrl;
   if (!isDbAvailable()) {
     console.error('[l1:distributions] DATABASE_URL not configured');
     process.exit(1);

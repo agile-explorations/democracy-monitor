@@ -216,8 +216,10 @@ function parseCliArgs(args: string[]): CliOptions {
 }
 
 if (require.main === module) {
+  const savedDbUrl = process.env.DATABASE_URL;
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
+  if (savedDbUrl) process.env.DATABASE_URL = savedDbUrl;
   const argv = process.argv.slice(2);
   checkHelp(
     argv,

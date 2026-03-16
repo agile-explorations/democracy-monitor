@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-07)
+## Current state (as of 2026-03-15)
 
 ### Categories & baselines
 
@@ -114,7 +114,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 - `buildMetadata(item)` in document-store.ts: pure function returning `{agency?, action?, subtype?}` or null; replaces inline `{agency}` construction
 - Extracted services: convergence-service, proxy-parser, tracker-service, intent-orchestrator
-- Cron scripts: loadEnvConfig moved to CLI entry blocks for testability; process.exit→throw in exported functions
+- Cron scripts: loadEnvConfig moved to CLI entry blocks for testability; process.exit→throw in exported functions. **loadEnvConfig overwrites shell env** — CLI scripts must preserve/restore DATABASE_URL around `loadEnvConfig(process.cwd())` when sourced against production: `const saved = process.env.DATABASE_URL; loadEnvConfig(cwd); if (saved) process.env.DATABASE_URL = saved;`
 - Shared utils: lib/utils/async.ts (sleep, mapConcurrent), lib/utils/collections.ts (deduplicateByUrl), lib/types/category-card.ts (AutoStatus, EnhancedData)
 - AIProvider.complete() signature: (prompt: string, options?: AICompletionOptions) → result.content (not result.text)
 - ESLint max-lines (300) + max-lines-per-function (50) enforced; data/schema/test/demo/seed/hooks/component/cron files exempt
@@ -135,7 +135,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ## Database gotchas
 
-- `ai_document_assessments` Pass 1 uses `relevant` (boolean) for flags, Pass 2 uses `assessment` (varchar) for classification. Pass 1 `assessment` column is always NULL.
+- `ai_document_assessments` Pass 1 uses `relevant` (boolean) for flags, Pass 2 uses `assessment` (varchar) for classification. Pass 1 `assessment` column is always NULL. All 192K+ rows have `document_id = NULL` — must join to documents via `url + category`, not `document_id`.
 - `source_type` in documents table is inconsistent (#28): FR docs have doc types (`Notice`, `Rule`), WH/GDELT have `'rhetoric'`. **Partially resolved** by `source_origin` column (Sprint R-S1a) — tracks data provenance separately from document type.
 - `source_origin` column on documents table: tracks data provenance (federal_register, whitehouse, gdelt, courtlistener, doj, etc.). `SourceOrigin` type in `lib/types/categories.ts`. `inferSourceOrigin()` in document-store.ts for backward compat.
 - `documents` table unique constraint: `(url, category)` composite (not `url` alone) — allows same URL under multiple categories for rhetoric cross-feed
@@ -336,4 +336,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-DQ1: Data quality safeguards — Fixed Mar 2 production data (re-scored 811 docs across 13 categories, regenerated narratives). Normalized fetch_log source_origin naming (snapshot signal IDs → canonical source types matching backfill). Added narrative pipeline safety net: `checkAggregateCompleteness()` aborts generation when weekly_aggregates covers <50% of document categories. Issues #362-#364.
 - Sprint R1-P0: Content enrichment + tiered narratives — FR full-text enrichment expanded to all document types (not just Presidential Documents), DOJ fetcher fixed to prefer body over teaser (8K limit), DOJ backfill CLI added. Tiered narrative generation: Elevated → single-pass, Divergent/ConfirmedConcern → 3-pass. Issues #365-#367.
 - Sprint R1-A2A3: Per-category L1 thresholds + event retrospective — `CATEGORY_STRUCTURAL_THRESHOLDS` map + `getStructuralThreshold()` lookup in scoring-config.ts, convergence synthesis category-aware, `l1:distributions` diagnostic, `retrospective` CLI harness. `buildAISummaryFromDB` extracted to shared `layer2-summary.ts`. judicialIndependence threshold 3.8, executiveOversight 2.8. Issues #368-#378.
-- Sprints remaining: Release 1A phases (A1: L3 baseline recomputation, A2.5: production re-enrichment, B3: P1 calibration). See `docs/ROADMAP.md` and `docs/internal/RELEASE_1_IMPLEMENTATION_PLAN.md`.
+- Production remediation: Full pipeline recomputation after content enrichment (scores → L2 re-assessment → baselines → layers → backtest). loadEnvConfig bug fixed in 5 CLI scripts. l1:distributions NC-3 display improved (FAIL(L2) + Elev column). Regression analysis documented. Post-remediation: 50% T1 detection (7/14), 7 false alarms.
+- Sprints remaining: Release 1A phases (R-F16: L2 baseline calibration, B3: P1 calibration expansion, R-F15: backtest framework redesign). Release 1B (R-F14: cycle-year matching, R-F13: L3 re-evaluation). See `docs/ROADMAP.md` and `FUTURE_ROADMAP.md`.
