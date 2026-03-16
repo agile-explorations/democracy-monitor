@@ -332,6 +332,25 @@ function parseSnapshotArgs(args: string[]): SnapshotOptions {
   return opts;
 }
 
+/** Validate that required environment variables are set. Exits with error if not. */
+function validateEnvVars(): void {
+  const required = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'];
+  const optional = ['GOVINFO_API_KEY', 'COURTLISTENER_API_TOKEN', 'FEC_API_KEY'];
+
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`[snapshot] FATAL: Missing required env vars: ${missing.join(', ')}`);
+    console.error('[snapshot] L2 assessment and narrative generation require these keys.');
+    process.exit(1);
+  }
+
+  const missingOptional = optional.filter((k) => !process.env[k]);
+  if (missingOptional.length > 0) {
+    console.warn(`[snapshot] Warning: Missing optional env vars: ${missingOptional.join(', ')}`);
+    console.warn('[snapshot] Some data sources will be skipped.');
+  }
+}
+
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');
   loadEnvConfig(process.cwd());
@@ -346,6 +365,7 @@ Options:
   --category <key>    Process a single category
   --force-unlock      Clear stale cron lock before running`,
   );
+  validateEnvVars();
   const opts = parseSnapshotArgs(argv);
   withCronLock('snapshot', () => runSnapshots(opts), undefined, opts.forceUnlock)
     .then((ran) => process.exit(ran ? 0 : 0))
