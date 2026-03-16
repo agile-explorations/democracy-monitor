@@ -36,8 +36,8 @@ RELEASE_ID=$(curl -sf -H "${AUTH}" "${API}/releases/tags/${TAG}" \
 
 if [ -n "${RELEASE_ID}" ] && [ "${RELEASE_ID}" != "undefined" ]; then
   echo "Deleting release ${RELEASE_ID}..."
-  curl -sf -X DELETE -H "${AUTH}" "${API}/releases/${RELEASE_ID}" > /dev/null
-  curl -sf -X DELETE -H "${AUTH}" "${API}/git/refs/tags/${TAG}" > /dev/null 2>&1 || true
+  curl -f -X DELETE -H "${AUTH}" "${API}/releases/${RELEASE_ID}" > /dev/null 2>&1 || echo "Warning: release delete returned error (may already be gone)"
+  curl -f -X DELETE -H "${AUTH}" "${API}/git/refs/tags/${TAG}" > /dev/null 2>&1 || true
 fi
 
 # 3. Create new release
@@ -52,11 +52,12 @@ echo "Created release ${NEW_RELEASE_ID}"
 
 # 4. Upload asset
 echo "Uploading dump (this may take several minutes)..."
-curl -sf -X POST \
+curl -f -X POST \
   -H "${AUTH}" \
   -H "Content-Type: application/octet-stream" \
+  --retry 3 --retry-delay 10 \
   --data-binary "@${DUMP_FILE}" \
-  "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=data-dump.pgdump" > /dev/null
+  "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=data-dump.pgdump"
 echo "Upload complete."
 
 # 5. Cleanup

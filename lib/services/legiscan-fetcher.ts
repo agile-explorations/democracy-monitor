@@ -112,6 +112,8 @@ export async function fetchDataset(
   }
 
   const zipBuffer = Buffer.from(data.dataset.zip, 'base64');
+  // Free the base64 string (~61 MB for 119th Congress) for GC
+  data.dataset.zip = '';
   const zip = new AdmZip(zipBuffer);
   const bills: LegiScanBill[] = [];
 
