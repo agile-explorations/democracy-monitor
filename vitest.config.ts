@@ -19,6 +19,7 @@ export default defineConfig({
         'lib/services/fec-fetcher.ts',
         'lib/services/federal-register-fetcher.ts',
         'lib/services/govinfo-fetcher.ts',
+        'lib/services/crec-fetcher.ts',
         // Embedding pipeline — DB I/O + OpenAI API calls, not unit-testable
         'lib/services/document-embedder.ts',
         // DB I/O and CLI modules — pure functions tested, DB ops need integration tests
