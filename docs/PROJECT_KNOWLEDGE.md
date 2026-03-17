@@ -14,7 +14,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
-## Current state (as of 2026-03-15)
+## Current state (as of 2026-03-16)
 
 ### Categories & baselines
 
@@ -339,4 +339,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Production remediation: Full pipeline recomputation after content enrichment (scores → L2 re-assessment → baselines → layers → backtest). loadEnvConfig bug fixed in 5 CLI scripts. l1:distributions NC-3 display improved (FAIL(L2) + Elev column). Regression analysis documented. Post-remediation: 50% T1 detection (7/14), 7 false alarms.
 - Sprint R1-CAL2: Detection calibration + backtest redesign — P1 calibration for 5 categories (lawEnforcement, executiveOversight, elections, infoAvailability, judicialIndependence), high-significance position lookup, backtest metric redesign. Issues #382-#389, Milestone 57.
 - Sprint R1-CRON: Weekly cron job fixes — LegiScan OOM (free base64 after decode + NODE_OPTIONS heap limit), weekly-dump.sh DELETE made non-fatal + upload retry. Issues #390-#392, Milestone 58.
-- Sprints remaining: Release 1B (R-F14: cycle-year matching, R-F13: L3 re-evaluation). See `docs/ROADMAP.md` and `FUTURE_ROADMAP.md`.
+- Sprint R1-F14: Cycle-year baseline matching — L1 selects Biden baseline by cycle year (Year 1 → biden_2021, Year 2 → biden_2022). Fixed L2 baseline contamination (`getBaselineAIFlagRate` ignored `baselineId`). Detection: 24/39 (62%), NC-3: 5/6 passing. Issues #393-#397, Milestone 59.
+- Sprints remaining: Release 1B (R-F13: L3 re-evaluation). See `docs/ROADMAP.md`.

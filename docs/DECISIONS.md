@@ -10,6 +10,40 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-F14: Cycle-Year Baseline Matching ✅
+
+**Status: Done.** L1 structural scoring now selects the Biden baseline matching the cycle year of the week being scored. Also fixed a pre-existing L2 baseline contamination bug. Issues #393-#397, Milestone 59.
+
+**Scope vs. Actual:**
+
+- Planned (5 issues): `getCycleYearForDate` helper (#393), cycle-year selection in `computeStructuralLayer` (#394), fix `retrospective.ts` (#395), tests (#396), production recomputation + backtest validation (#397)
+- Actual: All 5 delivered. Also discovered and fixed a pre-existing bug in `getBaselineAIFlagRate` (ignored `baselineId` parameter, contaminating L2 z-scores with T2 event data).
+
+**Key Decisions:**
+
+1. **General `getCycleYearForDate()` over extending `getCurrentCycleYear()`**: The existing function was hardcoded to `TERM_START_YEAR = 2025` and returned 1 for all pre-2025 dates (via `Math.max(1, ...)`). Rather than parameterizing it, added a new function using the inauguration epoch pattern (2017, 2021, 2025, ...) that works for any historical date. `getCurrentCycleYear()` retained for display-layer consumers.
+2. **Biden-only baseline fallback**: `getBaselineConfigForCycleYear()` searches Biden baselines by cycle year, falls back to the first Biden baseline if no exact match. Trump baselines are never selected as L1 reference — they exist for cross-admin analysis, not as "normal governance" reference.
+3. **Display-layer consumers left on `PRIMARY_BASELINE_ID`**: `category-summary-service.ts` and `pages/api/category/[key].ts` use `PRIMARY_BASELINE_ID` for fetching baseline avg/stddev for UI context. These are display concerns, not scoring decisions — updating them is a separate scope.
+
+**Production Results:**
+
+- **NC-3**: 5/6 passing. executiveOversight (9.6%) and fiscal (5.8%) now fail. Previous judicialIndependence (23.1%) failure is resolved.
+- **Detection**: 24/39 known events detected (62%). Trump T1: 7/14 (50%), Trump T2: 17/25 (68%).
+- **T1 misses are all L1-only** (no L2 data for 2017). T2 misses split between thin-category L1 threshold issues and events where neither L1 nor L2 fires.
+
+**Bugs Found:**
+
+1. **`scores:recompute` is destructive to layer scores**: It overwrites `weekly_aggregates` with keyword-only aggregates, nulling all L1/L2/L3/convergence columns. Must always be followed by `pnpm layers:enrich`. This was not documented.
+2. **`getBaselineAIFlagRate` ignored `baselineId`**: The function selected an arbitrary 52 weeks via `LIMIT` without `ORDER BY` or date filtering. As T2 data accumulated, high-flag-rate event weeks contaminated the "baseline" sample, suppressing L2 z-scores. Fixed by filtering to the baseline config's date range.
+
+**Lessons Learned:**
+
+1. **`pnpm scores:recompute` must always be followed by `pnpm layers:enrich`**: Document this dependency. Better yet, have `scores:recompute` call enrichment automatically (future work).
+2. **Never trust stale stored data for validation**: Local `validate:detection` against production DB showed different results than on-server runs because the local run read pre-recompute stored values. Always validate on the same machine that ran the pipeline.
+3. **L2 baseline query was a silent regression**: The `baselineId` parameter existed but was unused — a classic dead-parameter bug. Without integration tests exercising the actual SQL, this went undetected for multiple sprints.
+
+---
+
 ## Sprint R1-CRON: Weekly Cron Job Fixes ✅
 
 **Status: Done.** Fixed two production cron failures. Issues #390-#392, Milestone 58.
