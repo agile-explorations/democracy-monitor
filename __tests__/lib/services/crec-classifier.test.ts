@@ -2,49 +2,49 @@ import { describe, it, expect } from 'vitest';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 
 describe('classifyCrecToCategories', () => {
-  it('classifies speech containing civilService keywords', () => {
+  it('routes speech about federal workforce to civilService', () => {
     const categories = classifyCrecToCategories(
-      'Schedule F',
-      'The proposed rule would allow mass termination of federal employees in policy-influencing positions.',
+      'Federal Workforce Challenges',
+      'We must protect federal employees from political retaliation.',
     );
     expect(categories).toContain('civilService');
   });
 
-  it('classifies speech containing immigrationEnforcement keywords', () => {
+  it('routes speech mentioning immigration to immigrationEnforcement', () => {
     const categories = classifyCrecToCategories(
       'Border Security',
-      'The policy of expedited removal expanded to cover individuals found within 100 miles of the border.',
+      'The immigration crisis at our southern border demands immediate action.',
     );
     expect(categories).toContain('immigrationEnforcement');
   });
 
-  it('classifies speech containing executiveOversight keywords', () => {
+  it('routes speech about inspector general to executiveOversight', () => {
     const categories = classifyCrecToCategories(
       'Independent Oversight',
-      'The inspector general removed from office last Friday had been investigating waste in the agency.',
+      'The inspector general was removed from office last Friday.',
     );
     expect(categories).toContain('executiveOversight');
   });
 
-  it('classifies speech containing judicialIndependence keywords', () => {
+  it('routes speech about court orders to judicialIndependence', () => {
     const categories = classifyCrecToCategories(
-      'Rule of Law',
-      'The Administration has defied court order and shown contempt of court in this matter.',
+      'Judicial Independence',
+      'The Administration must comply with the court order issued last week.',
     );
     expect(categories).toContain('judicialIndependence');
   });
 
-  it('returns multiple categories for cross-cutting speech', () => {
+  it('routes to multiple categories for cross-cutting speech', () => {
     const categories = classifyCrecToCategories(
-      'Government Workforce',
-      'The mass termination of probationary employees and the inspector general removed from the agency.',
+      'Government Oversight',
+      'The probationary employee firings and the inspector general removal demand answers.',
     );
     expect(categories.length).toBeGreaterThanOrEqual(2);
     expect(categories).toContain('civilService');
     expect(categories).toContain('executiveOversight');
   });
 
-  it('returns empty array for content matching no keywords', () => {
+  it('returns empty array for off-topic content', () => {
     const categories = classifyCrecToCategories(
       'HONORING JONES DAIRY',
       'I rise today to honor Jones Dairy in my district for their anniversary of serving fresh milk.',
@@ -53,15 +53,57 @@ describe('classifyCrecToCategories', () => {
   });
 
   it('matches on title alone when text is null', () => {
-    const categories = classifyCrecToCategories('Mass termination of federal employees');
+    const categories = classifyCrecToCategories('Protecting Federal Employees');
     expect(categories).toContain('civilService');
   });
 
   it('is case-insensitive', () => {
     const categories = classifyCrecToCategories(
-      'INSPECTOR GENERAL REMOVED',
-      'THE IG FIRED WITHOUT CAUSE.',
+      'INSPECTOR GENERAL OVERSIGHT',
+      'THE IG WAS FIRED WITHOUT CAUSE.',
     );
     expect(categories).toContain('executiveOversight');
+  });
+
+  // These tests verify that broad topic routing works where narrow
+  // ASSESSMENT_RULES keywords would miss (the original 0-match problem)
+  it('routes general immigration debate (not just erosion phrases)', () => {
+    const categories = classifyCrecToCategories(
+      'COMPREHENSIVE IMMIGRATION REFORM',
+      'We need to address the asylum backlog and improve our immigration courts.',
+    );
+    expect(categories).toContain('immigrationEnforcement');
+  });
+
+  it('routes general oversight debate (not just "ig fired")', () => {
+    const categories = classifyCrecToCategories(
+      'GOVERNMENT ACCOUNTABILITY',
+      'The GAO report found significant waste in this program. We need stronger oversight.',
+    );
+    expect(categories).toContain('executiveOversight');
+  });
+
+  it('routes executive order debate without erosion language', () => {
+    const categories = classifyCrecToCategories(
+      'PRESIDENTIAL AUTHORITY',
+      'The executive order signed yesterday exceeds the authority granted under Article II.',
+    );
+    expect(categories).toContain('executiveActions');
+  });
+
+  it('routes DOJ discussion to lawEnforcement', () => {
+    const categories = classifyCrecToCategories(
+      'DEPARTMENT OF JUSTICE PRIORITIES',
+      'The Attorney General testified before the judiciary committee on FBI operations.',
+    );
+    expect(categories).toContain('lawEnforcement');
+  });
+
+  it('routes budget debate to fiscal', () => {
+    const categories = classifyCrecToCategories(
+      'FISCAL YEAR 2026 BUDGET',
+      'The continuing resolution expires next week and we face a government shutdown.',
+    );
+    expect(categories).toContain('fiscal');
   });
 });

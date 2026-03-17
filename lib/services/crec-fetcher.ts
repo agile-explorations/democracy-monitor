@@ -87,6 +87,17 @@ const PROCEDURAL_TITLE_PATTERNS = [
   /^RECOGNITION OF THE MINORITY LEADER$/i,
   /^ORDERS FOR /i,
   /^MEASURES? (READ THE FIRST TIME|PLACED ON|REFERRED)$/i,
+  /^Constitutional Authority Statement/i,
+  /^LEGISLATIVE SESSION( *--|$)/i,
+  /^EXECUTIVE SESSION( *--|$)/i,
+  /^EXECUTIVE CALENDAR/i,
+  /^(CERTIFICATES? OF ELECTION|ADMINISTRATION OF OATHS?)$/i,
+  /^Cloture Motion/i,
+  /^(ADDITIONAL SPONSORS|ADDITIONAL COSPONSORS)$/i,
+  /^ANNOUNCEMENT BY THE /i,
+  /^EXECUTIVE COMMUNICATIONS?,? ETC/i,
+  /^PUBLIC BILLS AND RESOLUTIONS$/i,
+  /^INTRODUCTION OF BILLS AND JOINT RESOLUTIONS$/i,
 ];
 
 /** Check if a granule is procedural noise that should be filtered out. */
@@ -272,8 +283,17 @@ export async function fetchGranuleText(
   const html = await fetchText(url);
   if (!html) return null;
 
-  const text = stripHtml(html).replace(/\0/g, '').trim();
+  let text = stripHtml(html).replace(/\0/g, '').trim();
   if (!text) return null;
+
+  // Strip the Congressional Record header that appears in every granule:
+  // "Congressional Record, Volume NNN Issue NN (...) [...] [Page XXXX] From the ... [ www.gpo.gov ]"
+  const headerEnd = text.indexOf('www.gpo.gov');
+  if (headerEnd !== -1) {
+    const afterHeader = text.slice(headerEnd + 'www.gpo.gov'.length).replace(/^[\s\]]+/, '');
+    if (afterHeader.length > 0) text = afterHeader;
+  }
+
   return text.length > MAX_CONTENT_LENGTH ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026' : text;
 }
 
