@@ -37,11 +37,13 @@ export type {
   NegativeControlResult,
   CategoryControlDetail,
   LayerAttribution,
+  MissReason,
 } from './event-validation-checks';
 export {
   l1Fired,
   l2Fired,
   l3Fired,
+  computeMissReason,
   evaluateNc1BidenP1FlagRate,
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
@@ -171,6 +173,7 @@ function runEventDetection(events: readonly KnownEvent[], lookup: Map<string, We
             structuralScore: row.structural_score,
             aiScore: row.ai_score,
             thematicScore: row.thematic_score,
+            convergenceAiElevated: row.convergence_ai_elevated,
           }
         : null,
     );

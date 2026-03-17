@@ -16,6 +16,7 @@ export interface WeekRow {
   ai_score: number | null;
   thematic_score: number | null;
   status: string | null;
+  convergence_ai_elevated: boolean | null;
 }
 
 export interface EvidenceDoc {
@@ -36,7 +37,8 @@ export async function fetchWeeklyData(
   const result = await db.execute(sql`
     SELECT category, week_of, document_count,
       structural_score, ai_score, thematic_score,
-      convergence_detail->>'status' as status
+      convergence_detail->>'status' as status,
+      (convergence_detail->>'aiElevated')::boolean as convergence_ai_elevated
     FROM weekly_aggregates
     WHERE week_of >= ${from} AND week_of <= ${to}
     ${catClause}

@@ -340,4 +340,5 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R1-CAL2: Detection calibration + backtest redesign — P1 calibration for 5 categories (lawEnforcement, executiveOversight, elections, infoAvailability, judicialIndependence), high-significance position lookup, backtest metric redesign. Issues #382-#389, Milestone 57.
 - Sprint R1-CRON: Weekly cron job fixes — LegiScan OOM (free base64 after decode + NODE_OPTIONS heap limit), weekly-dump.sh DELETE made non-fatal + upload retry. Issues #390-#392, Milestone 58.
 - Sprint R1-F14: Cycle-year baseline matching — L1 selects Biden baseline by cycle year (Year 1 → biden_2021, Year 2 → biden_2022). Fixed L2 baseline contamination (`getBaselineAIFlagRate` ignored `baselineId`). Detection: 24/39 (62%), NC-3: 5/6 passing. Issues #393-#397, Milestone 59.
-- Sprints remaining: Release 1B (R-F13: L3 re-evaluation). See `docs/ROADMAP.md`.
+- Sprint R1-F15: Detection calibration closure — Fix l2Fired() display bug (expose raw + converged columns), add missReason classification to validation harness, freeze T1 backtest reference after L2 backfill. Issues #398-#400, Milestone 60.
+- Sprints remaining: Source expansion (Congressional Record, DOJ speeches, contextual P2). See `docs/ROADMAP.md`.

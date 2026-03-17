@@ -3,6 +3,7 @@ import {
   l1Fired,
   l2Fired,
   l3Fired,
+  computeMissReason,
   evaluateNc1BidenP1FlagRate,
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
@@ -205,6 +206,7 @@ describe('evaluateEventDetection', () => {
     });
     expect(result.detected).toBe(true);
     expect(result.convergenceStatus).toBe('Elevated');
+    expect(result.missReason).toBeNull();
   });
 
   it('detects event when status exceeds expectedMinStatus', () => {
@@ -215,6 +217,7 @@ describe('evaluateEventDetection', () => {
       thematicScore: 5.0,
     });
     expect(result.detected).toBe(true);
+    expect(result.missReason).toBeNull();
   });
 
   it('does not detect when status is below expectedMinStatus', () => {
@@ -225,12 +228,14 @@ describe('evaluateEventDetection', () => {
       thematicScore: 1.0,
     });
     expect(result.detected).toBe(false);
+    expect(result.missReason).toBe('scoring_miss');
   });
 
   it('does not detect when no data exists', () => {
     const result = evaluateEventDetection(baseEvent, null);
     expect(result.detected).toBe(false);
     expect(result.convergenceStatus).toBeNull();
+    expect(result.missReason).toBe('data_absent');
   });
 
   it('correctly identifies layer firing', () => {
@@ -243,6 +248,40 @@ describe('evaluateEventDetection', () => {
     expect(result.l1Fired).toBe(true);
     expect(result.l2Fired).toBe(false);
     expect(result.l3Fired).toBe(false);
+  });
+
+  it('distinguishes l2Fired (raw) from l2Converged', () => {
+    const result = evaluateEventDetection(baseEvent, {
+      status: 'Elevated',
+      structuralScore: 3.0,
+      aiScore: 2.0,
+      thematicScore: null,
+      convergenceAiElevated: false,
+    });
+    expect(result.l2Fired).toBe(true);
+    expect(result.l2Converged).toBe(false);
+  });
+
+  it('l2Converged reflects convergenceAiElevated from weekly_aggregates', () => {
+    const result = evaluateEventDetection(baseEvent, {
+      status: 'Elevated',
+      structuralScore: 3.0,
+      aiScore: 2.0,
+      thematicScore: null,
+      convergenceAiElevated: true,
+    });
+    expect(result.l2Fired).toBe(true);
+    expect(result.l2Converged).toBe(true);
+  });
+
+  it('l2Converged defaults to false when convergenceAiElevated is null', () => {
+    const result = evaluateEventDetection(baseEvent, {
+      status: 'Elevated',
+      structuralScore: 3.0,
+      aiScore: 2.0,
+      thematicScore: null,
+    });
+    expect(result.l2Converged).toBe(false);
   });
 
   it('preserves event metadata', () => {
@@ -266,5 +305,90 @@ describe('evaluateEventDetection', () => {
     const fridayEvent: KnownEvent = { ...baseEvent, date: '2025-01-24' };
     const fridayResult = evaluateEventDetection(fridayEvent, null);
     expect(fridayResult.weekOf).toBe('2025-01-20');
+  });
+});
+
+// --- Miss reason classification ---
+
+describe('computeMissReason', () => {
+  const event: KnownEvent = {
+    id: 'T2-1',
+    date: '2025-01-20',
+    category: 'executiveActions',
+    description: 'Day One EO blitz',
+    period: 'trump_t2',
+    expectedMinStatus: 'Elevated',
+    signalDensity: 'strong',
+  };
+
+  it('returns null for detected events', () => {
+    expect(computeMissReason(event, { status: 'Elevated', aiScore: 2.0 }, true)).toBeNull();
+  });
+
+  it('returns data_absent when no week data exists', () => {
+    expect(computeMissReason(event, null, false)).toBe('data_absent');
+  });
+
+  it('returns data_absent when status is null', () => {
+    expect(computeMissReason(event, { status: null, aiScore: null }, false)).toBe('data_absent');
+  });
+
+  it('returns pending_backfill for T1 events expecting L2 with no L2 data', () => {
+    const t1Event: KnownEvent = {
+      ...event,
+      period: 'trump_t1',
+      expectedLayers: { l2: true },
+    };
+    expect(computeMissReason(t1Event, { status: 'Stable', aiScore: null }, false)).toBe(
+      'pending_backfill',
+    );
+  });
+
+  it('returns scoring_miss for T1 events expecting L2 when L2 data exists', () => {
+    const t1Event: KnownEvent = {
+      ...event,
+      period: 'trump_t1',
+      expectedLayers: { l2: true },
+    };
+    expect(computeMissReason(t1Event, { status: 'Stable', aiScore: 0.5 }, false)).toBe(
+      'scoring_miss',
+    );
+  });
+
+  it('returns source_gap for events with "Expected miss" notes', () => {
+    const gapEvent: KnownEvent = {
+      ...event,
+      notes: 'Expected miss — signal in media/rhetoric',
+    };
+    expect(computeMissReason(gapEvent, { status: 'Stable', aiScore: 0.5 }, false)).toBe(
+      'source_gap',
+    );
+  });
+
+  it('returns thin_category for thin signal density events', () => {
+    const thinEvent: KnownEvent = {
+      ...event,
+      signalDensity: 'thin',
+    };
+    expect(computeMissReason(thinEvent, { status: 'Stable', aiScore: 0.5 }, false)).toBe(
+      'thin_category',
+    );
+  });
+
+  it('returns scoring_miss for generic misses', () => {
+    expect(computeMissReason(event, { status: 'Stable', aiScore: 0.5 }, false)).toBe(
+      'scoring_miss',
+    );
+  });
+
+  it('does not return pending_backfill for T2 events', () => {
+    const t2Event: KnownEvent = {
+      ...event,
+      period: 'trump_t2',
+      expectedLayers: { l2: true },
+    };
+    expect(computeMissReason(t2Event, { status: 'Stable', aiScore: null }, false)).not.toBe(
+      'pending_backfill',
+    );
   });
 });

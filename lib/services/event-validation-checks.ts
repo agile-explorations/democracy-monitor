@@ -28,6 +28,13 @@ export interface CategoryControlDetail {
   pass: boolean;
 }
 
+export type MissReason =
+  | 'data_absent'
+  | 'source_gap'
+  | 'thin_category'
+  | 'scoring_miss'
+  | 'pending_backfill';
+
 export interface LayerAttribution {
   eventId: string;
   eventDate: string;
@@ -40,9 +47,11 @@ export interface LayerAttribution {
   thematicScore: number | null;
   l1Fired: boolean;
   l2Fired: boolean;
+  l2Converged: boolean;
   l3Fired: boolean;
   detected: boolean;
   expectedMinStatus: ConvergenceStatus;
+  missReason: MissReason | null;
   signalDensity?: string;
   notes?: string;
 }
@@ -200,6 +209,22 @@ export function evaluateNc6T2RoutineRate(rate: number): NegativeControlResult {
 // Event detection evaluator
 // ---------------------------------------------------------------------------
 
+/** Classify why a known event was missed. Returns null if detected. */
+export function computeMissReason(
+  event: KnownEvent,
+  weekData: { status: ConvergenceStatus | null; aiScore: number | null } | null,
+  detected: boolean,
+): MissReason | null {
+  if (detected) return null;
+  if (!weekData || weekData.status === null) return 'data_absent';
+  if (event.period === 'trump_t1' && event.expectedLayers?.l2 && weekData.aiScore === null) {
+    return 'pending_backfill';
+  }
+  if (event.notes?.toLowerCase().includes('expected miss')) return 'source_gap';
+  if (event.signalDensity === 'thin') return 'thin_category';
+  return 'scoring_miss';
+}
+
 /** Evaluate a single known event against weekly_aggregates data. */
 export function evaluateEventDetection(
   event: KnownEvent,
@@ -208,10 +233,12 @@ export function evaluateEventDetection(
     structuralScore: number | null;
     aiScore: number | null;
     thematicScore: number | null;
+    convergenceAiElevated?: boolean | null;
   } | null,
 ): LayerAttribution {
   const weekOf = getMonday(new Date(event.date));
   const status = weekData?.status ?? null;
+  const detected = status != null && convergenceStatusAtLeast(status, event.expectedMinStatus);
 
   return {
     eventId: event.id,
@@ -225,9 +252,11 @@ export function evaluateEventDetection(
     thematicScore: weekData?.thematicScore ?? null,
     l1Fired: l1Fired(weekData?.structuralScore ?? null, event.category),
     l2Fired: l2Fired(weekData?.aiScore ?? null),
+    l2Converged: weekData?.convergenceAiElevated ?? false,
     l3Fired: l3Fired(weekData?.thematicScore ?? null),
-    detected: status != null && convergenceStatusAtLeast(status, event.expectedMinStatus),
+    detected,
     expectedMinStatus: event.expectedMinStatus,
+    missReason: computeMissReason(event, weekData, detected),
     signalDensity: event.signalDensity,
     notes: event.notes,
   };

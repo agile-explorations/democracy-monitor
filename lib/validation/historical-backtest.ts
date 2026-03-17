@@ -1,5 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { computeMissReason } from '@/lib/services/event-validation-checks';
+import type { MissReason } from '@/lib/services/event-validation-checks';
 import type { ConvergenceStatus } from '@/lib/types/structural';
 import { getMonday, toDateString } from '@/lib/utils/date-utils';
 import type { KnownEvent } from './known-events';
@@ -33,6 +35,11 @@ export interface WeekData {
   thematicScore: number | null;
 }
 
+export interface MissedEvent {
+  event: KnownEvent;
+  missReason: MissReason;
+}
+
 export interface BacktestResult {
   period: string;
   category: string;
@@ -41,7 +48,7 @@ export interface BacktestResult {
   peakScore: number;
   knownEvents: KnownEvent[];
   detectedEvents: KnownEvent[];
-  missedEvents: KnownEvent[];
+  missedEvents: MissedEvent[];
   falseAlarms: number;
   detectionRate: number;
   /** Elevated+ non-event weeks / total weeks — measures persistent baseline mismatch */
@@ -104,7 +111,7 @@ function evaluateCategoryBacktest(
   peakWeek: string;
   peakScore: number;
   detectedEvents: KnownEvent[];
-  missedEvents: KnownEvent[];
+  missedEvents: MissedEvent[];
   falseAlarms: number;
   detectionRate: number;
   baselineNoise: number;
@@ -122,17 +129,23 @@ function evaluateCategoryBacktest(
   }
 
   const detected: KnownEvent[] = [];
-  const missed: KnownEvent[] = [];
+  const missed: MissedEvent[] = [];
   const eventWeeks = new Set<string>();
 
   for (const event of catEvents) {
     const monday = getWeekMonday(event.date);
     eventWeeks.add(monday);
     const weekData = catData?.get(monday);
-    if (weekData && convergenceStatusAtLeast(weekData.status, event.expectedMinStatus)) {
+    const isDetected =
+      weekData != null && convergenceStatusAtLeast(weekData.status, event.expectedMinStatus);
+    if (isDetected) {
       detected.push(event);
     } else {
-      missed.push(event);
+      const dataForReason = weekData
+        ? { status: weekData.status as ConvergenceStatus | null, aiScore: weekData.aiScore }
+        : null;
+      const reason = computeMissReason(event, dataForReason, false) ?? 'scoring_miss';
+      missed.push({ event, missReason: reason });
     }
   }
 

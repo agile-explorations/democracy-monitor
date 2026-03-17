@@ -66,6 +66,23 @@ function printNegativeControls(controls: NegativeControlResult[]): void {
   }
 }
 
+function missReasonLabel(reason: string | null): string {
+  switch (reason) {
+    case 'data_absent':
+      return '[no data]';
+    case 'source_gap':
+      return '[source gap]';
+    case 'thin_category':
+      return '[thin cat]';
+    case 'scoring_miss':
+      return '[scoring]';
+    case 'pending_backfill':
+      return '[pending L2]';
+    default:
+      return '';
+  }
+}
+
 function printEventDetection(events: LayerAttribution[], verbose: boolean): void {
   console.log('\n=== Known Event Detection ===');
   const STATUS_WIDTH = 42;
@@ -75,7 +92,8 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
     `${'Category'.padEnd(26)}` +
     `${'Status'.padEnd(STATUS_WIDTH)}` +
     `${'L1'.padStart(4)}` +
-    `${'L2'.padStart(4)}` +
+    `${'L2r'.padStart(5)}` +
+    `${'L2c'.padStart(5)}` +
     `${'L3'.padStart(4)}` +
     `${'Det'.padStart(5)}`;
   console.log(hdr);
@@ -86,8 +104,10 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
     const statusText = e.detected ? status : `${status} (expected ≥${e.expectedMinStatus})`;
     const det = statusIcon(e.detected, hasData);
     const l1 = layerIcon(e.l1Fired, e.structuralScore);
-    const l2 = layerIcon(e.l2Fired, e.aiScore);
+    const l2r = layerIcon(e.l2Fired, e.aiScore);
+    const l2c = layerIcon(e.l2Converged, e.aiScore);
     const l3 = layerIcon(e.l3Fired, e.thematicScore);
+    const reason = e.detected ? '' : ` ${missReasonLabel(e.missReason)}`;
 
     console.log(
       `  ${e.eventId.padEnd(8)}` +
@@ -95,11 +115,12 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
         `${e.category.padEnd(26)}` +
         `${statusText.padEnd(STATUS_WIDTH)}` +
         `${l1.padStart(4)}` +
-        `${l2.padStart(4)}` +
+        `${l2r.padStart(5)}` +
+        `${l2c.padStart(5)}` +
         `${l3.padStart(4)}` +
         `${det.padStart(5)}`,
     );
-    console.log(`           ${e.description}`);
+    console.log(`           ${e.description}${reason}`);
 
     if (verbose) {
       const scores = [
@@ -115,6 +136,9 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
   console.log('');
   console.log(
     `  Legend: ${PASS} layer fired / event detected   \u00B7 layer below threshold   ${FAIL} event missed   ${SKIP} no data`,
+  );
+  console.log(
+    `  L2r = L2 raw (z-score > 1.5)   L2c = L2 converged (min docs + z-score + P2 corroboration)`,
   );
 }
 
@@ -151,6 +175,21 @@ function printDetectionBreakdown(events: LayerAttribution[]): void {
     for (const [cat, data] of missed) {
       const pct = ((data.detected / data.total) * 100).toFixed(0);
       console.log(`  ${FAIL} ${cat.padEnd(26)} ${data.detected}/${data.total} detected (${pct}%)`);
+    }
+  }
+
+  // By miss reason
+  const byReason = new Map<string, number>();
+  for (const e of events) {
+    if (e.missReason) {
+      byReason.set(e.missReason, (byReason.get(e.missReason) ?? 0) + 1);
+    }
+  }
+  if (byReason.size > 0) {
+    const totalMisses = [...byReason.values()].reduce((a, b) => a + b, 0);
+    console.log(`\n=== Miss Reasons (${totalMisses} total) ===`);
+    for (const [reason, count] of [...byReason.entries()].sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${missReasonLabel(reason).padEnd(16)} ${count}`);
     }
   }
 }

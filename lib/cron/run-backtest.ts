@@ -86,8 +86,11 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
     totalEvents += r.knownEvents.length;
 
     if (r.missedEvents.length > 0) {
-      for (const e of r.missedEvents) {
-        console.log(`  MISSED: ${e.date} — ${e.description} (expected ${e.expectedMinStatus})`);
+      for (const m of r.missedEvents) {
+        const reasonTag = m.missReason === 'scoring_miss' ? '' : ` [${m.missReason}]`;
+        console.log(
+          `  MISSED: ${m.event.date} — ${m.event.description} (expected ${m.event.expectedMinStatus})${reasonTag}`,
+        );
       }
     }
   }

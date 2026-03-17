@@ -124,6 +124,8 @@ describe('runBacktest', () => {
     expect(results).toHaveLength(1);
     expect(results[0].detectedEvents).toHaveLength(0);
     expect(results[0].missedEvents).toHaveLength(1);
+    expect(results[0].missedEvents[0].event).toEqual(EVENTS[1]);
+    expect(results[0].missedEvents[0].missReason).toBeDefined();
     expect(results[0].detectionRate).toBe(0);
   });
 
@@ -231,6 +233,9 @@ describe('runBacktest', () => {
       expect(r.weeklyScores).toHaveLength(0);
       expect(r.detectionRate).toBe(0);
       expect(r.falseAlarms).toBe(0);
+      for (const m of r.missedEvents) {
+        expect(m.missReason).toBe('data_absent');
+      }
     }
   });
 
@@ -278,6 +283,7 @@ describe('runBacktest', () => {
     const results = await runBacktest('2017-01-20', '2017-06-01', events);
     expect(results[0].detectedEvents).toHaveLength(1);
     expect(results[0].missedEvents).toHaveLength(1);
+    expect(results[0].missedEvents[0].event.description).toBe('Event 2');
     expect(results[0].detectionRate).toBe(0.5);
   });
 
