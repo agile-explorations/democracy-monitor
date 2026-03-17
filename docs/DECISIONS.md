@@ -10,6 +10,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-F15: Detection Calibration Closure ✅
+
+**Status: Done (issues #398-#399).** Issue #400 (freeze T1 backtest reference) pending L2 backfill completion. Milestone 60.
+
+**Context:** After R1-F14, detection was 24/39 (62%) with NC-3 regressions. External review (Claude.ai) identified that further calibration was yielding diminishing returns — the root constraint is data coverage, not scoring precision. This sprint delivers minimal calibration closure before shifting to source expansion.
+
+**Scope vs. Actual:**
+
+- Planned (3 issues): Fix l2Fired() display bug (#398), add missReason classification (#399), freeze T1 backtest reference after L2 backfill (#400)
+- Actual: #398 and #399 delivered. #400 pending — T1 L2 backfill is running on production.
+
+**Key Decisions:**
+
+1. **Expose both L2 raw and L2 converged columns**: Rather than replacing `l2Fired` with a corrected version, added `l2Converged` alongside it. The raw signal (z-score > 1.5) is diagnostic — it shows whether L2 _saw_ something but was suppressed by min-docs or P2 corroboration, versus L2 seeing nothing at all. These are different problems requiring different fixes.
+2. **`computeMissReason` is a shared pure function**: Called from both `evaluateEventDetection` (validate:detection) and `evaluateCategoryBacktest` (backtest). Single source of truth for miss classification, preventing divergent logic.
+3. **`pending_backfill` is T1-only**: Only T1 events expecting L2 with `aiScore === null` get this classification. T2 events with null L2 data are classified as `data_absent` (different root cause — missing weekly_aggregates, not missing assessment data).
+4. **Strategic shift to source expansion**: Claude.ai review concluded that 68% T2 detection and 13/14 NC-3 passing is "good enough" for a live system. The remaining misses are constrained by data coverage (personnel actions not in FR, DOGE in media before formal channels, etc.), not scoring precision. Deferred: P2 corroboration tightening, known-event expectation adjustments, thin-category scoring redesign, historical detection audit.
+
+**Lessons Learned:**
+
+1. **External review catches strategic blind spots**: Three sprints of calibration work (R-CAL2, R1-A2A3, R1-F14) were individually defensible but collectively showed diminishing returns. The external review identified the pattern and redirected effort toward higher-impact work (source expansion).
+2. **missReason classification eliminates repeated manual analysis**: The detection regression document (DETECTION_REGRESSION_ANALYSIS.md) manually classified each miss. Now the harness does it automatically every run, making future calibration sprints immediately diagnostic.
+
+---
+
 ## Sprint R1-F14: Cycle-Year Baseline Matching ✅
 
 **Status: Done.** L1 structural scoring now selects the Biden baseline matching the cycle year of the week being scored. Also fixed a pre-existing L2 baseline contamination bug. Issues #393-#397, Milestone 59.
