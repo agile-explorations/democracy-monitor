@@ -38,6 +38,12 @@ export function inferSourceOrigin(item: ContentItem): string | null {
   return null;
 }
 
+/** Extract speaker name from CREC metadata, if present. */
+function extractSpeaker(item: ContentItem): string | null {
+  const speakers = item.metadata?.speakers as Array<{ memberName: string }> | undefined;
+  return speakers?.[0]?.memberName ?? null;
+}
+
 /**
  * Upsert documents from feed items into the database for RAG retrieval.
  * No-op when DATABASE_URL is not configured.
@@ -65,6 +71,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           metadata: buildMetadata(item),
           sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
           caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
+          speaker: extractSpeaker(item),
         })
         .onConflictDoUpdate({
           target: [documents.url, documents.category],
@@ -75,6 +82,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
             metadata: sql`excluded.metadata`,
             sourceOrigin: sql`excluded.source_origin`,
             caseId: sql`excluded.case_id`,
+            speaker: sql`excluded.speaker`,
           },
         });
       stored++;

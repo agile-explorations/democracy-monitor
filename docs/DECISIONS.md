@@ -12,14 +12,14 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ## Sprint R1-F15: Detection Calibration Closure ✅
 
-**Status: Done (issues #398-#399).** Issue #400 (freeze T1 backtest reference) pending L2 backfill completion. Milestone 60.
+**Status: Done (issues #398-#400).** Milestone 60 closed.
 
 **Context:** After R1-F14, detection was 24/39 (62%) with NC-3 regressions. External review (Claude.ai) identified that further calibration was yielding diminishing returns — the root constraint is data coverage, not scoring precision. This sprint delivers minimal calibration closure before shifting to source expansion.
 
 **Scope vs. Actual:**
 
 - Planned (3 issues): Fix l2Fired() display bug (#398), add missReason classification (#399), freeze T1 backtest reference after L2 backfill (#400)
-- Actual: #398 and #399 delivered. #400 pending — T1 L2 backfill is running on production.
+- Actual: All 3 delivered. #400 frozen after T1 L2 backfill completed on production.
 
 **Key Decisions:**
 
@@ -32,6 +32,16 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 1. **External review catches strategic blind spots**: Three sprints of calibration work (R-CAL2, R1-A2A3, R1-F14) were individually defensible but collectively showed diminishing returns. The external review identified the pattern and redirected effort toward higher-impact work (source expansion).
 2. **missReason classification eliminates repeated manual analysis**: The detection regression document (DETECTION_REGRESSION_ANALYSIS.md) manually classified each miss. Now the harness does it automatically every run, making future calibration sprints immediately diagnostic.
+
+**Frozen reference state (post-T1 L2 backfill, 2026-03-17):**
+
+- Backtest: T1 43% (6/14), Overall 24/39 (62%)
+- validate:detection: T1 50% (7/14), T2 68% (17/25), Overall 24/39 (62%)
+- NC-3: 2 failures (executiveOversight 9.6%, fiscal 5.8%) — both L2-convergence-driven
+- NC-1 through NC-6 all pass except NC-3
+- All 15 misses classified as `[scoring]` — no `pending_backfill` remains
+- L2 coverage: 98% (808/829 category-weeks with all three layers)
+- T1 L2 contribution: Travel ban (immigrationEnforcement) now ConfirmedConcern via L2r+L2c. No other T1 events gained L2 signal.
 
 ---
 

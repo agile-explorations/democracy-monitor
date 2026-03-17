@@ -1,7 +1,9 @@
+import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
+import { fetchCrecRecent } from '@/lib/services/crec-fetcher';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import {
@@ -261,6 +263,52 @@ async function snapshotCpd(): Promise<void> {
   }
 }
 
+/** Fetch recent CREC floor speeches, classify into categories, store + score. */
+async function snapshotCrec(): Promise<void> {
+  console.log('[snapshot] Fetching CREC (Congressional Record)...');
+  const weekOf = getWeekOfDate();
+  try {
+    const items = await fetchCrecRecent({ chambers: ['SENATE', 'HOUSE'] });
+    if (items.length === 0) {
+      console.log('[snapshot] CREC: no new entries');
+      return;
+    }
+
+    const routed = routeItemsToCategories(items);
+    if (routed.length === 0) {
+      console.log(`[snapshot] CREC: ${items.length} entries, 0 matched categories`);
+      return;
+    }
+
+    let stored = 0;
+    const affectedCategories = new Set<string>();
+    for (const doc of routed) {
+      for (const category of doc.categories) {
+        stored += await storeDocuments([doc.item], category);
+        await storeDocumentScores(scoreDocumentBatch([doc.item], category));
+        affectedCategories.add(category);
+      }
+    }
+
+    // Re-aggregate affected categories since CREC docs were added
+    for (const category of affectedCategories) {
+      try {
+        const agg = await computeWeeklyAggregate(category, weekOf);
+        await storeWeeklyAggregate(agg);
+      } catch (err) {
+        console.error(`[snapshot] CREC re-aggregate failed for ${category}:`, err);
+      }
+    }
+
+    console.log(
+      `[snapshot] CREC: ${items.length} entries → ${routed.length} classified → ` +
+        `${stored} rows across ${affectedCategories.size} categories`,
+    );
+  } catch (err) {
+    console.error('[snapshot] CREC fetch failed:', err);
+  }
+}
+
 export async function runSnapshots(options: SnapshotOptions = {}): Promise<void> {
   if (options.from) {
     await runHistoricalSnapshots(options);
@@ -297,6 +345,7 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<void>
   }
 
   await snapshotCpd();
+  await snapshotCrec();
   await snapshotRhetoric();
   await snapshotLegislative();
 

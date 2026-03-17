@@ -225,6 +225,13 @@
       "when": 1773148340000,
       "tag": "0031_search_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1773767912350,
+      "tag": "0032_violet_tyrannus",
+      "breakpoints": true
     }
   ]
 }

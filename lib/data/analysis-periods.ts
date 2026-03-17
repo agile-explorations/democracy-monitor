@@ -73,6 +73,7 @@ export const ACTIVE_SOURCES: ReadonlySet<string> = new Set([
   'govinfo_cpd',
   'legiscan',
   'oig',
+  'crec',
 ]);
 
 /**

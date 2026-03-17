@@ -69,6 +69,7 @@
     },
     {
       "files": [
+        "lib/services/crec-fetcher.ts",
         "lib/services/fec-fetcher.ts",
         "lib/services/layer2-store.ts",
         "lib/services/ingest-validation-queries.ts",

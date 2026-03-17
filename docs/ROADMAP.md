@@ -18,7 +18,7 @@ Post-launch features and improvements are tracked in `FUTURE_ROADMAP.md`.
 The following is complete and working:
 
 - **Three-layer detection pipeline** — Layer 1 (structural anomaly), Layer 2 (AI two-pass: GPT-4o-mini + Claude Sonnet), Layer 3 (thematic drift). Convergence synthesis. (Sprints R1–R3)
-- **Source expansion** — 7 source types: Federal Register, GovInfo/GAO/CPD, CourtListener, DOJ, FEC, LegiScan, RSS (IG/FCC). 14 categories with signals. (Sprints R-S1a–R-S1g, R-CPD1–R-CPD2)
+- **Source expansion** — 8 source types: Federal Register, GovInfo/GAO/CPD, CourtListener, DOJ, FEC, LegiScan, CREC, RSS (IG/FCC). 14 categories with signals. (Sprints R-S1a–R-S1g, R-CPD1–R-CPD2, R1-SX1)
 - **Baselines** — 4 baselines (Biden 2021/2022, Trump 2017/2018) with AI assessment. Cycle-aware adjustments. (Sprints 14–15.1, R3-RUN)
 - **Dashboard UI** — Overview page (heatmap, timeline, synchrony chart), category detail (3-layer panels), week detail (document table with AI assessment data, CSV export), search (research + explore modes), system pages (health, architecture, methodology), left nav, responsive layout. (Sprints 16–19, R4a–R4c, R-UI1, Search, R-RESP)
 - **AI narratives** — 3-pass multi-model pipeline (Opus draft → GPT-4o feedback → Opus revision), weekly summaries, term summaries, editorial transparency. Spec-compliant prompts with safety-net criteria for "why this might matter," small-sample caveats, counter-argument limits. validate:narratives QA script. (Sprints R4a, R-NAR1, R-NAR3)

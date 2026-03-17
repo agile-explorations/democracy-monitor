@@ -1,5 +1,6 @@
 import { and } from 'drizzle-orm';
 import { backfillCpd } from '@/lib/cron/backfill-cpd';
+import { backfillCrec } from '@/lib/cron/backfill-crec';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
 import type { WeekFetchResult } from '@/lib/cron/backfill-fetchers';
 import { backfillLegiscan } from '@/lib/cron/legiscan-bulk';
@@ -43,7 +44,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   oig: 'oig_html',
 };
 
-const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd']);
+const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd', 'crec']);
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
@@ -263,6 +264,11 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   // CPD backfill: runs when no source filter, or when source is cpd
   if ((!options.source || options.source === 'cpd') && !options.category) {
     totalDocs += await backfillCpd(weeks, dryRun);
+  }
+
+  // CREC backfill: runs when no source filter, or when source is crec
+  if ((!options.source || options.source === 'crec') && !options.category) {
+    totalDocs += await backfillCrec(weeks, dryRun);
   }
 
   // LegiScan backfill: runs when no source filter, or when source is legiscan

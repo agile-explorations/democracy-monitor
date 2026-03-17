@@ -52,6 +52,7 @@ export const documents = pgTable(
     sourceOrigin: varchar('source_origin', { length: 30 }),
     contentType: varchar('content_type', { length: 20 }).notNull().default('full_text'),
     caseId: varchar('case_id', { length: 100 }),
+    speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
   },
