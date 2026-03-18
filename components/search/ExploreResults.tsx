@@ -124,20 +124,28 @@ export function ExploreFilters({
           </option>
         ))}
       </select>
-      <input
-        type="date"
-        value={filterDateFrom}
-        onChange={(e) => setFilterDateFrom(e.target.value)}
-        placeholder="From"
-        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
-      />
-      <input
-        type="date"
-        value={filterDateTo}
-        onChange={(e) => setFilterDateTo(e.target.value)}
-        placeholder="To"
-        className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
-      />
+      <div className="relative">
+        <label className="absolute -top-2 left-2 px-0.5 text-[10px] text-dm-muted bg-dm-card">
+          From
+        </label>
+        <input
+          type="date"
+          value={filterDateFrom}
+          onChange={(e) => setFilterDateFrom(e.target.value)}
+          className="w-full px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+        />
+      </div>
+      <div className="relative">
+        <label className="absolute -top-2 left-2 px-0.5 text-[10px] text-dm-muted bg-dm-card">
+          To
+        </label>
+        <input
+          type="date"
+          value={filterDateTo}
+          onChange={(e) => setFilterDateTo(e.target.value)}
+          className="w-full px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
+        />
+      </div>
       <select
         value={filterSource}
         onChange={(e) => setFilterSource(e.target.value)}
@@ -154,6 +162,7 @@ export function ExploreFilters({
         <option value="fec">FEC</option>
         <option value="legiscan">LegiScan</option>
         <option value="oig">OIG</option>
+        <option value="crec">CREC</option>
       </select>
       <select
         value={filterSort}
