@@ -221,6 +221,7 @@ export default function SearchPage() {
                 }}
                 onClear={clearHistory}
                 onClose={() => setShowHistory(false)}
+                showCurated={mode === 'research'}
               />
             )}
           </div>

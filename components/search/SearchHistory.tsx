@@ -93,12 +93,16 @@ export function SearchHistoryDropdown({
   onSelect,
   onClear,
   onClose,
+  showCurated = true,
 }: {
   history: string[];
   onSelect: (query: string) => void;
   onClear: () => void;
   onClose: () => void;
+  showCurated?: boolean;
 }) {
+  if (!showCurated && history.length === 0) return null;
+
   return (
     <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-dm-border bg-dm-card shadow-lg overflow-hidden max-h-96 overflow-y-auto">
       {history.length > 0 && (
@@ -107,8 +111,12 @@ export function SearchHistoryDropdown({
           <SuggestionList items={history} onSelect={onSelect} onClose={onClose} />
         </>
       )}
-      <SectionHeader label="Curated searches" />
-      <SuggestionList items={CURATED_SEARCHES} onSelect={onSelect} onClose={onClose} />
+      {showCurated && (
+        <>
+          <SectionHeader label="Curated searches" />
+          <SuggestionList items={CURATED_SEARCHES} onSelect={onSelect} onClose={onClose} />
+        </>
+      )}
     </div>
   );
 }
