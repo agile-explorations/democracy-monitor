@@ -42,4 +42,39 @@ export class AnthropicProvider implements AIProvider {
       latencyMs: Date.now() - start,
     };
   }
+
+  async *completeStream(
+    prompt: string,
+    options?: AICompletionOptions,
+  ): AsyncGenerator<string, AICompletionResult> {
+    const start = Date.now();
+    const client = this.getClient();
+
+    const stream = client.messages.stream({
+      model: options?.model || 'claude-sonnet-4-5-20250929',
+      max_tokens: options?.maxTokens || 1024,
+      system: options?.systemPrompt || '',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield event.delta.text;
+      }
+    }
+
+    const finalMessage = await stream.finalMessage();
+    return {
+      content: finalMessage.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join(''),
+      model: finalMessage.model,
+      tokensUsed: {
+        input: finalMessage.usage.input_tokens,
+        output: finalMessage.usage.output_tokens,
+      },
+      latencyMs: Date.now() - start,
+    };
+  }
 }

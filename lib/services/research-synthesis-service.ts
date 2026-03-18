@@ -8,7 +8,12 @@
 
 import { getProvider } from '@/lib/ai/provider';
 import type { AICompletionResult } from '@/lib/types';
-import { buildDraftPrompt, buildFeedbackPrompt, buildRevisionPrompt } from './research-prompts';
+import {
+  buildDraftPrompt,
+  buildFeedbackPrompt,
+  buildRevisionPrompt,
+  buildSinglePassPrompt,
+} from './research-prompts';
 import type { CorpusStats } from './search-research-queries';
 import type { ResearchDocument } from './search-service';
 
@@ -19,6 +24,7 @@ import type { ResearchDocument } from './search-service';
 const DRAFT_MODEL = 'claude-opus-4-6';
 const FEEDBACK_MODEL = 'gpt-4o';
 const FINAL_MODEL = 'claude-opus-4-6';
+const SINGLE_PASS_MODEL = 'claude-sonnet-4-6';
 
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = [1000, 3000, 8000];
@@ -212,4 +218,53 @@ async function runFeedback(
       }),
     'Pass 2 feedback',
   );
+}
+
+// ---------------------------------------------------------------------------
+// Single-pass synthesis (Claude Sonnet with self-verification)
+// ---------------------------------------------------------------------------
+
+const SYSTEM_SINGLE_PASS =
+  'You are a research analyst answering questions about U.S. government actions. ' +
+  'Your answers are grounded exclusively in the provided government documents. ' +
+  'Apply the self-verification checklist before finalizing your answer.';
+
+export interface SinglePassSynthesisResult {
+  expert: string;
+  public: string;
+  relatedQuestions: string[];
+  model: string;
+  latencyMs: number;
+  tokensUsed: { input: number; output: number };
+}
+
+export async function synthesizeResearchAnswerSinglePass(
+  query: string,
+  documents: ResearchDocument[],
+  corpusStats?: CorpusStats | null,
+): Promise<SinglePassSynthesisResult> {
+  const claude = getProvider('anthropic');
+  if (!claude.isAvailable()) throw new Error('Anthropic API key not configured');
+
+  const prompt = buildSinglePassPrompt(query, documents, corpusStats);
+  const result = await callWithRetry(
+    () =>
+      claude.complete(prompt, {
+        model: SINGLE_PASS_MODEL,
+        maxTokens: 4096,
+        systemPrompt: SYSTEM_SINGLE_PASS,
+      }),
+    'Single-pass synthesis',
+  );
+
+  const parsed = parseDraftResponse(result.content);
+
+  return {
+    expert: parsed.expert,
+    public: parsed.public,
+    relatedQuestions: parsed.relatedQuestions,
+    model: result.model,
+    latencyMs: result.latencyMs,
+    tokensUsed: result.tokensUsed,
+  };
 }

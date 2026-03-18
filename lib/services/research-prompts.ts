@@ -1,7 +1,4 @@
-/**
- * Prompt builders for the research synthesis 3-pass pipeline.
- */
-
+/** Prompt builders for the research synthesis pipeline. */
 import type { CorpusStats } from './search-research-queries';
 import type { ResearchDocument } from './search-service';
 
@@ -114,11 +111,12 @@ function draftRules(p2Count: number, totalDocs: number): string[] {
   return rules;
 }
 
-export function buildDraftPrompt(
+/** Shared preamble + documents section for draft and single-pass prompts. */
+function buildPromptBody(
   query: string,
   docs: ResearchDocument[],
-  corpusStats?: CorpusStats | null,
-): string {
+  corpusStats: CorpusStats | null,
+): string[] {
   const p2Count = docs.filter((d) => d.p2Assessment).length;
   return [
     'You are answering a question about U.S. government actions based solely on the',
@@ -130,11 +128,16 @@ export function buildDraftPrompt(
     '--- USER QUESTION ---',
     query,
     '',
-    buildCoverageSection(docs, corpusStats ?? null),
+    buildCoverageSection(docs, corpusStats),
     '',
     '--- GOVERNMENT DOCUMENTS ---',
     formatDocumentContext(docs),
-    '',
+  ];
+}
+
+/** Shared output format instructions. */
+function outputFormatSection(): string[] {
+  return [
     '--- OUTPUT FORMAT ---',
     'Use markdown formatting: **bold** for emphasis, bullet lists (- ) for enumerating',
     'cases or points, and blank lines between paragraphs. Do not use headings (#).',
@@ -154,7 +157,17 @@ export function buildDraftPrompt(
     '',
     QUESTIONS_HEADER,
     '(Exactly 3 follow-up questions the user might want to explore based on this topic.)',
-  ].join('\n');
+  ];
+}
+
+export function buildDraftPrompt(
+  query: string,
+  docs: ResearchDocument[],
+  corpusStats?: CorpusStats | null,
+): string {
+  return [...buildPromptBody(query, docs, corpusStats ?? null), '', ...outputFormatSection()].join(
+    '\n',
+  );
 }
 
 export function buildFeedbackPrompt(
@@ -207,25 +220,40 @@ export function buildFeedbackPrompt(
   ].join('\n');
 }
 
-function revisionInstructions(hasCorpusStats: boolean): string[] {
-  const reviewItems = hasCorpusStats ? 'a through g' : 'a through f';
+function selfVerificationChecklist(hasCorpusStats: boolean): string[] {
   const lines = [
-    '--- REVISION INSTRUCTIONS ---',
-    `Address each feedback item (${reviewItems}):`,
-    '- Correct any factual errors or unsupported claims.',
-    '- Fix incorrect [Doc N] citations.',
-    '- Soften overstated language.',
-    '- Add missing counter-arguments or alternative explanations.',
-    '- Incorporate stated justifications for balance.',
-    '- Add coverage gap caveats where needed.',
+    '--- SELF-VERIFICATION CHECKLIST ---',
+    'Before writing your final answer, mentally verify each item:',
+    '(a) FACTUAL ACCURACY — Every claim is supported by a provided document.',
+    '(b) CITATION ACCURACY — [Doc N] numbers match the correct documents.',
+    '(c) CONFIDENCE CALIBRATION — Use hedging ("documents suggest", "based on available',
+    '    records") rather than definitive claims. Avoid overstating certainty.',
+    '(d) COUNTER-ARGUMENTS — Include plausible alternative explanations where they exist.',
+    '(e) BALANCE — Present stated justifications from the documents, not just critiques.',
+    '(f) COVERAGE GAPS — Acknowledge limitations of the documentary record.',
   ];
   if (hasCorpusStats) {
     lines.push(
-      '- Ensure corpus-wide statistics are properly distinguished from the retrieved sample.',
+      '(g) CORPUS STATISTICS — Distinguish claims about the retrieved sample from the',
+      '    full corpus. Note if many matching documents fall outside the retrieval window.',
     );
   }
-  lines.push('- Do not fundamentally rewrite — adjust specific claims and phrasing.');
   return lines;
+}
+
+export function buildSinglePassPrompt(
+  query: string,
+  docs: ResearchDocument[],
+  corpusStats?: CorpusStats | null,
+): string {
+  const stats = corpusStats ?? null;
+  return [
+    ...buildPromptBody(query, docs, stats),
+    '',
+    ...selfVerificationChecklist(!!stats),
+    '',
+    ...outputFormatSection(),
+  ].join('\n');
 }
 
 export function buildRevisionPrompt(
@@ -236,38 +264,26 @@ export function buildRevisionPrompt(
   docs: ResearchDocument[],
   corpusStats?: CorpusStats | null,
 ): string {
+  const hasStats = !!corpusStats;
+  const items = hasStats ? 'a through g' : 'a through f';
+  const statsLine = hasStats ? ['- Distinguish corpus-wide statistics from retrieved sample.'] : [];
   return [
-    'You are revising AI-generated answers to a government document search query',
-    'based on structured editorial feedback.',
+    'Revise the answers based on editorial feedback.',
     '',
-    '--- USER QUESTION ---',
-    query,
+    `--- USER QUESTION ---\n${query}`,
+    `--- ORIGINAL EXPERT DRAFT ---\n${expertDraft}`,
+    `--- ORIGINAL PUBLIC DRAFT ---\n${publicDraft}`,
+    `--- EDITORIAL FEEDBACK ---\n${feedback}`,
+    `--- SOURCE DOCUMENTS ---\n${formatDocumentContext(docs)}`,
+    ...(corpusStats ? [formatCorpusStats(corpusStats)] : []),
     '',
-    '--- ORIGINAL EXPERT DRAFT ---',
-    expertDraft,
+    `--- REVISION INSTRUCTIONS ---\nAddress feedback items (${items}):`,
+    '- Correct unsupported claims. Fix [Doc N] citations. Soften overstated language.',
+    '- Add counter-arguments, stated justifications, and coverage gap caveats.',
+    ...statsLine,
+    '- Do not fundamentally rewrite — adjust specific claims and phrasing.',
     '',
-    '--- ORIGINAL PUBLIC DRAFT ---',
-    publicDraft,
-    '',
-    '--- EDITORIAL FEEDBACK ---',
-    feedback,
-    '',
-    '--- SOURCE DOCUMENTS (for verification) ---',
-    formatDocumentContext(docs),
-    '',
-    ...(corpusStats ? [formatCorpusStats(corpusStats), ''] : []),
-    ...revisionInstructions(!!corpusStats),
-    '',
-    '--- OUTPUT FORMAT ---',
-    'Use markdown formatting: **bold** for emphasis, bullet lists (- ) for enumerating',
-    'cases or points, and blank lines between paragraphs. Do not use headings (#).',
-    '',
-    'Produce BOTH sections in your response:',
-    '',
-    EXPERT_HEADER,
-    '(Revised expert answer, 400-800 words.)',
-    '',
-    PUBLIC_HEADER,
-    '(Revised public answer, 200-500 words.)',
+    `Produce ${EXPERT_HEADER} (400-800 words) and ${PUBLIC_HEADER} (200-500 words).`,
+    `Use markdown. ${EXPERT_HEADER}\n\n${PUBLIC_HEADER}`,
   ].join('\n');
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
+import { parseStreamingSections } from '@/components/search/helpers';
 import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
@@ -96,27 +97,58 @@ export default function SearchPage() {
     const docsData = await docsRes.json();
 
     // Show docs while synthesis runs
-    setResearchResult({
+    const baseResult: ResearchResult = {
       answer: { expert: '', public: '' },
       documents: docsData.documents,
       dateRange: docsData.dateRange,
       queryConfidence: docsData.queryConfidence,
       relatedQuestions: [],
       corpusStats: docsData.corpusStats ?? null,
-    });
+    };
+    setResearchResult(baseResult);
     setLoading(false);
     setSynthesizing(true);
 
-    // Phase 2: Fetch full synthesis (slow — 3-pass RAG)
+    // Phase 2: Stream single-pass Sonnet synthesis via SSE
     try {
-      const synthParams = new URLSearchParams(urlParams);
-      synthParams.set('editorial', 'true');
-      const synthRes = await fetch(`/api/search?${synthParams.toString()}`);
-      if (!synthRes.ok) {
-        const body = await synthRes.json().catch(() => ({}));
-        throw new Error(body.error || `Synthesis failed (${synthRes.status})`);
-      }
-      setResearchResult((await synthRes.json()) as ResearchResult);
+      const streamParams = new URLSearchParams({ q });
+      const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
+      let accumulated = '';
+
+      await new Promise<void>((resolve, reject) => {
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'chunk') {
+            accumulated += data.text;
+            const parsed = parseStreamingSections(accumulated);
+            setResearchResult((prev) =>
+              prev ? { ...prev, answer: { expert: parsed.expert, public: parsed.public } } : prev,
+            );
+          } else if (data.type === 'done') {
+            eventSource.close();
+            const final = parseStreamingSections(accumulated);
+            setResearchResult((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    answer: { expert: final.expert, public: final.public },
+                    relatedQuestions: final.relatedQuestions,
+                  }
+                : prev,
+            );
+            resolve();
+          } else if (data.type === 'error') {
+            eventSource.close();
+            reject(new Error(data.message));
+          }
+        };
+
+        eventSource.onerror = () => {
+          eventSource.close();
+          reject(new Error('Stream connection lost'));
+        };
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Answer generation failed');
     } finally {

@@ -202,7 +202,7 @@ describe('buildRevisionPrompt', () => {
       [makeDoc()],
       makeStats(),
     );
-    expect(prompt).toContain('corpus-wide statistics are properly distinguished');
+    expect(prompt).toContain('corpus-wide statistics from retrieved sample');
   });
 
   it('omits corpus stats scoping instruction without stats', () => {
