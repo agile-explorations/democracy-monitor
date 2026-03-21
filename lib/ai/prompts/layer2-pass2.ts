@@ -7,16 +7,82 @@ could be routine governance. Cite specific passages from the document text.
 
 You MUST respond with a single JSON object. No prose, no markdown fences.`;
 
+/**
+ * Week-level context injected into P2 prompts (B-E variant).
+ * Built by the orchestrator from P1 results + database queries.
+ */
+export interface Pass2WeekContext {
+  categoryTitle: string;
+  expertDescription: string;
+  totalDocs: number;
+  flaggedDocs: number;
+  flagRate: number;
+  baselineAvgFlagRate: number;
+  flaggedPeers: Array<{ title: string; erosionType: string }>;
+  priorWeekTotalDocs: number;
+  priorWeekFlaggedDocs: number;
+  priorWeekFlagRate: number;
+  priorWeekPeers: Array<{ title: string; erosionType: string }>;
+  trajectory: string;
+}
+
+const TEXT_EXCERPT_LENGTH = 4000;
+
+/**
+ * Build the P2 user prompt.
+ *
+ * When `weekContext` is provided, generates the B-E format with:
+ *   - Expert institutional framing
+ *   - P1 stats and peer titles for the current + prior week
+ *   - Trajectory label
+ *   - Rhetoric framing for congressional floor speeches
+ *
+ * When `weekContext` is omitted, falls back to the original format (backward compat).
+ */
 export function buildPass2Prompt(
   title: string,
   fullText: string | undefined,
   pass1Signals: string[],
   pass1ErosionType: string,
   categoryDescription: string,
+  weekContext?: Pass2WeekContext,
+  docType?: string,
+  docLink?: string,
 ): string {
-  const textExcerpt = fullText ? fullText.slice(0, 4000) : '(full text not available)';
+  const textExcerpt = fullText
+    ? fullText.slice(0, TEXT_EXCERPT_LENGTH)
+    : '(full text not available)';
 
-  const parts = [
+  if (!weekContext) {
+    return buildBaselinePrompt(
+      title,
+      textExcerpt,
+      pass1Signals,
+      pass1ErosionType,
+      categoryDescription,
+    );
+  }
+
+  return buildContextualPrompt(
+    title,
+    textExcerpt,
+    pass1Signals,
+    pass1ErosionType,
+    weekContext,
+    docType,
+    docLink,
+  );
+}
+
+/** Original A-format prompt (no week context). */
+function buildBaselinePrompt(
+  title: string,
+  textExcerpt: string,
+  pass1Signals: string[],
+  pass1ErosionType: string,
+  categoryDescription: string,
+): string {
+  return [
     `Category concern: ${categoryDescription}`,
     '',
     `Pass 1 flagged this document with signals: ${pass1Signals.join(', ') || '(none)'}`,
@@ -24,16 +90,102 @@ export function buildPass2Prompt(
     '',
     `Document title: ${title}`,
     '',
-    `Document text (excerpt):`,
+    'Document text (excerpt):',
     textExcerpt,
     '',
+    buildErosionFramework(),
+    '',
+    buildResponseSchema(),
+  ].join('\n');
+}
+
+/** Build the week-context header lines from Pass2WeekContext. */
+function buildContextHeader(ctx: Pass2WeekContext): string[] {
+  const flagPct = (ctx.flagRate * 100).toFixed(1);
+  const baselinePct = (ctx.baselineAvgFlagRate * 100).toFixed(1);
+  const priorPct = (ctx.priorWeekFlagRate * 100).toFixed(1);
+
+  const lines = [
+    `Category context for ${ctx.categoryTitle}:`,
+    `  Institutional framing: ${ctx.expertDescription}`,
+    `  This week: ${ctx.totalDocs} documents assessed, ${ctx.flaggedDocs} flagged by Pass 1 (${flagPct}%)`,
+    `  Baseline average flag rate: ${baselinePct}%`,
+  ];
+
+  if (ctx.flaggedPeers.length > 0) {
+    lines.push('  Notable flagged peers this week:');
+    for (const peer of ctx.flaggedPeers) lines.push(`    - "${peer.title}" (${peer.erosionType})`);
+  }
+
+  lines.push(
+    `  Prior week: ${ctx.priorWeekTotalDocs} documents, ${ctx.priorWeekFlaggedDocs} flagged (${priorPct}%)`,
+  );
+  if (ctx.priorWeekPeers.length > 0) {
+    lines.push('  Notable flagged peers last week:');
+    for (const peer of ctx.priorWeekPeers)
+      lines.push(`    - "${peer.title}" (${peer.erosionType})`);
+  }
+  lines.push(`  Trajectory: ${ctx.trajectory}`);
+  return lines;
+}
+
+/** CREC rhetoric framing note for congressional floor speeches. */
+const CREC_FRAMING = [
+  'Note: This is a congressional floor speech. Congressional rhetoric is analytically',
+  'significant because it reflects how legislators characterize government actions.',
+  'Assess whether the rhetoric signals institutional pressure, policy intent, or erosion',
+  'framing — not just whether a formal government action is described. A floor speech',
+  'denouncing an executive action IS evidence of institutional conflict.',
+  '',
+].join('\n');
+
+/** B-E format prompt with week context, peer titles, and rhetoric framing. */
+function buildContextualPrompt(
+  title: string,
+  textExcerpt: string,
+  pass1Signals: string[],
+  pass1ErosionType: string,
+  ctx: Pass2WeekContext,
+  docType?: string,
+  docLink?: string,
+): string {
+  const parts = [
+    ...buildContextHeader(ctx),
+    '',
+    `Pass 1 flagged this document with signals: ${pass1Signals.join(', ') || '(none)'}`,
+    `Pass 1 erosion type: ${pass1ErosionType}`,
+    '',
+    `Document title: ${title}`,
+    '',
+    'Document text (excerpt):',
+    textExcerpt,
+    '',
+  ];
+
+  if (isCRECDocument(docType, docLink)) parts.push(CREC_FRAMING);
+  parts.push(buildErosionFramework(), '', buildResponseSchema());
+  return parts.join('\n');
+}
+
+function isCRECDocument(docType?: string, docLink?: string): boolean {
+  if (docType === 'floor_speech') return true;
+  if (docLink?.includes('/CREC-')) return true;
+  return false;
+}
+
+function buildErosionFramework(): string {
+  return [
     'Erosion type framework:',
     '  - formal_override: explicit legal/policy changes that remove protections',
     '  - operational_hollowing: staffing cuts, budget reductions, unfilled positions that degrade capacity',
     '  - noncompliance_refusal: ignoring court orders, defying oversight, refusing information requests',
     '  - routine: normal administrative activity with no erosion signal',
     '  - unclear: insufficient information to classify',
-    '',
+  ].join('\n');
+}
+
+function buildResponseSchema(): string {
+  return [
     'Respond with JSON:',
     '{',
     '  "assessment": "routine" | "novel_not_concerning" | "potentially_concerning" | "clearly_concerning",',
@@ -44,7 +196,5 @@ export function buildPass2Prompt(
     '  "erosionType": "formal_override" | "operational_hollowing" | "noncompliance_refusal" | "routine" | "unclear",',
     '  "counterArguments": string[] (reasons this might NOT be concerning)',
     '}',
-  ];
-
-  return parts.join('\n');
+  ].join('\n');
 }

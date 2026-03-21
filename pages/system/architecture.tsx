@@ -10,13 +10,13 @@ function SummaryContent() {
         <p>
           Democracy Monitor is a Next.js application backed by PostgreSQL (with pgvector for
           embeddings) and Redis for caching. It ingests documents from 7 government data sources,
-          processes them through a three-layer detection pipeline, and presents findings via an
+          processes them through a multi-layer detection pipeline, and presents findings via an
           interactive dashboard.
         </p>
         <p>
           A daily cron job fetches new documents, scores them, computes weekly aggregates, generates
-          embeddings, runs the three-layer assessment, and produces narrative summaries. The entire
-          pipeline is automated and requires no manual intervention.
+          embeddings, runs detection (AI content assessment + silence detection), and produces
+          narrative summaries. The entire pipeline is automated and requires no manual intervention.
         </p>
       </Section>
 
@@ -24,8 +24,9 @@ function SummaryContent() {
         <p>
           Documents flow through a multi-stage pipeline: fetch from external sources, store in
           PostgreSQL, score with keyword annotations, aggregate weekly, embed with OpenAI, assess
-          across three independent layers (structural anomaly, AI document review, thematic drift),
-          and generate narratives for elevated categories.
+          with two active detection layers (AI content review + silence detection) plus descriptive
+          context layers (structural anomaly + thematic drift), and generate narratives for elevated
+          categories.
         </p>
       </Section>
 

@@ -24,9 +24,9 @@ describe('ConvergenceIndicator', () => {
       <ConvergenceIndicator structural={true} ai={false} thematic={true} />,
     );
     const dots = container.querySelectorAll('span.inline-block');
-    expect(dots[0].getAttribute('title')).toContain('L1 Structural: elevated');
-    expect(dots[1].getAttribute('title')).toContain('L2 AI: normal');
-    expect(dots[2].getAttribute('title')).toContain('L3 Thematic: elevated');
+    expect(dots[0].getAttribute('title')).toContain('L1 Structural (context): elevated');
+    expect(dots[1].getAttribute('title')).toContain('L2 AI (active): normal');
+    expect(dots[2].getAttribute('title')).toContain('L3 Thematic (context): elevated');
   });
 
   it('renders all dots with no errors when all elevated', () => {
@@ -47,9 +47,9 @@ describe('ConvergenceIndicator', () => {
       />,
     );
     const dots = container.querySelectorAll('span.inline-block');
-    expect(dots[0].getAttribute('title')).toContain('L1 Structural: elevated (3.2)');
-    expect(dots[1].getAttribute('title')).toContain('L2 AI: normal (0.8)');
-    expect(dots[2].getAttribute('title')).toContain('L3 Thematic: elevated (4.1)');
+    expect(dots[0].getAttribute('title')).toContain('L1 Structural (context): elevated (3.2)');
+    expect(dots[1].getAttribute('title')).toContain('L2 AI (active): normal (0.8)');
+    expect(dots[2].getAttribute('title')).toContain('L3 Thematic (context): elevated (4.1)');
   });
 
   it('omits score suffix when scores are null', () => {
@@ -62,8 +62,8 @@ describe('ConvergenceIndicator', () => {
       />,
     );
     const dots = container.querySelectorAll('span.inline-block');
-    expect(dots[0].getAttribute('title')).toContain('L1 Structural: normal');
-    expect(dots[1].getAttribute('title')).toContain('L2 AI: normal');
-    expect(dots[2].getAttribute('title')).toContain('L3 Thematic: normal');
+    expect(dots[0].getAttribute('title')).toContain('L1 Structural (context): normal');
+    expect(dots[1].getAttribute('title')).toContain('L2 AI (active): normal');
+    expect(dots[2].getAttribute('title')).toContain('L3 Thematic (context): normal');
   });
 });

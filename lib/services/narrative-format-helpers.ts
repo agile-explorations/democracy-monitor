@@ -196,29 +196,39 @@ export function formatThematicContextSection(data: NarrativeLayerData): string {
 function layersFiredSummary(data: NarrativeLayerData): string {
   const cd = data.convergenceDetail;
   if (!cd) return 'Convergence data unavailable.';
-  const fired: string[] = [];
-  if (cd.structuralElevated) fired.push('L1 (structural)');
-  if (cd.aiElevated) fired.push('L2 (AI)');
-  if (cd.thematicElevated) fired.push('L3 (thematic)');
-  return fired.length === 0 ? 'No layers elevated.' : `Layers fired: ${fired.join(', ')}.`;
+  const active: string[] = [];
+  const context: string[] = [];
+  if (cd.aiElevated) active.push('L2 AI content assessment');
+  if (cd.silenceElevated) active.push('L1v2 silence detection');
+  if (cd.structuralElevated) context.push('L1 structural anomaly');
+  if (cd.thematicElevated) context.push('L3 thematic drift');
+  const parts: string[] = [];
+  if (active.length > 0) parts.push(`Active detection layers elevated: ${active.join(', ')}`);
+  if (context.length > 0) parts.push(`Descriptive context elevated: ${context.join(', ')}`);
+  return parts.length === 0 ? 'No layers elevated.' : `${parts.join('. ')}.`;
 }
 
 function statusExplanation(data: NarrativeLayerData): string {
   const cd = data.convergenceDetail;
   if (!cd) return '';
   const parts: string[] = [];
-  if (cd.structuralElevated && data.structuralScore !== null) {
-    parts.push(
-      `L1 structural score ${fmtNum(data.structuralScore)} with ${data.totalDocumentCount ?? 0} documents`,
-    );
-  }
+  // Active detection layers (drive convergence status)
   if (cd.aiElevated && data.aiDetail) {
     parts.push(
-      `L2 corroborated with ${fmtPct(data.aiDetail.concernRate)} concern rate (baseline: ${fmtPct(data.aiDetail.baselineFlagRate)})`,
+      `L2 AI content assessment elevated with ${fmtPct(data.aiDetail.concernRate)} concern rate (baseline: ${fmtPct(data.aiDetail.baselineFlagRate)})`,
+    );
+  }
+  if (cd.silenceElevated) {
+    parts.push('L1v2 conspicuous government silence detected');
+  }
+  // Descriptive context (does not drive status, but provides narrative grounding)
+  if (cd.structuralElevated && data.structuralScore !== null) {
+    parts.push(
+      `L1 structural context: score ${fmtNum(data.structuralScore)} with ${data.totalDocumentCount ?? 0} documents (descriptive only)`,
     );
   }
   if (cd.thematicElevated && data.thematicScore !== null) {
-    parts.push(`L3 thematic drift score ${fmtNum(data.thematicScore)}`);
+    parts.push(`L3 thematic drift context: score ${fmtNum(data.thematicScore)} (descriptive only)`);
   }
   return parts.length === 0
     ? `${cd.status}: ${cd.pattern}.`
@@ -229,7 +239,9 @@ function formatConvergenceBlock(data: NarrativeLayerData): string[] {
   const cd = data.convergenceDetail;
   if (!cd) return ['Convergence data: unavailable.'];
   const lines = [
-    `Convergence status: ${cd.status} (${cd.layersElevated} of 3 layers elevated)`,
+    `Convergence status: ${cd.status} (${cd.layersElevated} of 2 active detection layers elevated)`,
+    `Active layers: L2 (AI content assessment) + L1v2 (silence detection)`,
+    `Descriptive context: L1 (structural anomaly) + L3 (thematic drift) — do not drive status`,
     `Pattern: ${cd.pattern}`,
     layersFiredSummary(data),
   ];

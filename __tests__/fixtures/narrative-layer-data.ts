@@ -86,11 +86,12 @@ export function makeLayerData(overrides: Partial<NarrativeLayerData> = {}): Narr
       status: 'Elevated',
       structuralElevated: true,
       aiElevated: false,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 1,
       pattern: 'structural only',
       bootstrap: false,
-    } as ConvergenceSynthesis,
+    },
     ...overrides,
   };
 }

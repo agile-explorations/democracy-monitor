@@ -29,6 +29,11 @@ vi.mock('@/lib/services/semantic-drift-service', () => ({
   computeRollingThematicDrift: vi.fn(),
 }));
 
+vi.mock('@/lib/services/silence-detection-service', () => ({
+  computeSilenceScore: vi.fn().mockResolvedValue(null),
+  SILENCE_Z_THRESHOLD: 1.5,
+}));
+
 vi.mock('@/lib/services/convergence-synthesis', () => ({
   synthesizeConvergence: vi.fn(),
 }));
@@ -256,6 +261,7 @@ describe('enrichWithLayerScores', () => {
       status: 'Elevated' as const,
       structuralElevated: true,
       aiElevated: false,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 1,
       pattern: 'structural anomaly detected',
@@ -306,6 +312,7 @@ describe('enrichWithLayerScores', () => {
       status: 'Stable',
       structuralElevated: false,
       aiElevated: false,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 0,
       pattern: 'All layers within baseline ranges',
@@ -327,6 +334,7 @@ describe('enrichWithLayerScores', () => {
       status: 'Stable',
       structuralElevated: false,
       aiElevated: false,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 0,
       pattern: 'All layers within baseline ranges',
@@ -357,6 +365,7 @@ describe('enrichWithLayerScores', () => {
       status: 'Stable',
       structuralElevated: false,
       aiElevated: false,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 0,
       pattern: 'All layers within baseline ranges',
@@ -378,6 +387,7 @@ describe('enrichWithLayerScores', () => {
       status: 'Elevated',
       structuralElevated: false,
       aiElevated: true,
+      silenceElevated: false,
       thematicElevated: false,
       layersElevated: 1,
       pattern: 'AI flag rate elevated',

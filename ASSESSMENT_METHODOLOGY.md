@@ -44,29 +44,20 @@ The system monitors 14 institutional categories, aligned to frameworks used by V
 | **Civil Liberties**          | Protection of constitutional rights, due process, and equal protection             |
 | **Immigration Enforcement**  | Detention, removal, asylum restrictions, and enforcement apparatus patterns        |
 
-## Three-Layer Detection
+## Detection Architecture
 
-Rather than relying on any single detection method, Democracy Monitor uses three independent layers. Each layer analyzes different aspects of the data and can operate without the others. This triangulated approach reduces false positives (a single noisy signal cannot trigger high-severity findings) and false negatives (different layers catch different kinds of shifts).
+Democracy Monitor uses multiple analysis layers, but only two **active detection layers** drive convergence status. Two additional layers provide **descriptive context** for narratives and research without influencing the status determination.
 
-### Layer 1: Structural Anomaly Detection
+### Active Detection Layers
 
-Layer 1 is fully deterministic and uses only document metadata — no text analysis. It compares the current week's document patterns against historical baselines across six dimensions:
+These layers determine the convergence status:
 
-- **Volume** — Document count relative to baseline mean and standard deviation. A spike or drop in the number of documents published in a category may indicate unusual activity.
-- **Type Composition** — Distribution of document types (executive orders, rules, notices, proclamations). Measured using Jensen-Shannon divergence, which quantifies how much the current distribution differs from the baseline.
-- **Functional Distribution** — Shifts across eleven institutional function buckets (rulemaking, executive action, personnel action, administrative procedure, organizational change, financial/regulatory, cultural/ceremonial, news/rhetoric, enforcement action, judicial action, unclassified). Detects when the _kind_ of government activity changes, not just the volume.
-- **Agency Activity** — Changes in which agencies are publishing documents. Unusual concentration or absence of specific agencies can signal institutional disruption.
-- **Publication Tempo** — Daily variance within the week. A pattern where all documents arrive on one day rather than being spread across the week may indicate coordinated activity.
-- **Source Convergence** — Ratio of government-origin documents to rhetoric/news sources. Large imbalances may indicate that government actions are generating disproportionate external attention, or that government publishing has gone quiet.
-
-Each dimension produces a z-score. The composite structural score is a weighted average with exponential dampening for mild z-scores (to avoid noise from routine variation) and a cap on JSD outliers. A long-horizon component tracks cumulative deviation over 12 weeks to detect slow-building trends that wouldn't appear in any single week.
-
-### Layer 2: AI Document Assessment
+#### Layer 2: AI Document Assessment (Primary Detection)
 
 Layer 2 uses artificial intelligence to read and evaluate individual documents. To reduce single-provider bias, it uses a two-pass design with different AI providers:
 
 - **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
-- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots.
+- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots. Pass 2 receives week-level context (flag rate, peer titles, trajectory) to inform its assessment.
 
 Two aggregate metrics determine whether Layer 2 is elevated:
 
@@ -75,29 +66,55 @@ Two aggregate metrics determine whether Layer 2 is elevated:
 
 An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
-### Layer 3: Thematic Drift
+#### Silence Detection (L1v2)
 
-Layer 3 uses embedding-based analysis to detect when the _topics_ discussed in a category shift away from recent norms. Unlike Layers 1 and 2, it operates on an intra-administration rolling window (8 weeks), comparing the current week against the administration's own recent output rather than a historical baseline:
+Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo) have gone unusually quiet while independent-branch sources (CourtListener, congressional records, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression.
 
-- **Centroid Distance** — How far the current week's document embeddings are from the rolling centroid of recent weeks. Large distances indicate the topics being discussed have shifted.
-- **Novel Document Rate** — Fraction of documents dissimilar to any document in the rolling window. High novelty rates mean the government is publishing about topics it hasn't addressed recently.
-- **Variance Ratio** — Whether document diversity is expanding or contracting. A sudden narrowing of topics may indicate focused institutional activity.
-- **Cross-Administration Distance** — When available, comparison against a prior administration's baseline to contextualize whether a drift is historically unusual.
+- Uses an 8-week intra-administration rolling window to establish "normal" government volume
+- Computes a z-score for government-source volume deviation
+- Requires both government silence (z > 1.5σ below mean) AND independent activity to be conspicuous
+- Cold-start periods (fewer than 4 weeks of data) are flagged as low confidence
 
-During the bootstrap period (first weeks of a new administration), confidence is reduced because the rolling window lacks sufficient history for meaningful comparison.
+### Descriptive Context Layers
+
+These layers are computed and stored for narrative grounding and research, but **do not influence convergence status**:
+
+#### Layer 1: Structural Anomaly Detection (Descriptive Only)
+
+Layer 1 is fully deterministic and uses only document metadata — no text analysis. It compares the current week's document patterns against historical baselines across six dimensions:
+
+- **Volume** — Document count relative to baseline mean and standard deviation
+- **Type Composition** — Distribution of document types, measured using Jensen-Shannon divergence
+- **Functional Distribution** — Shifts across eleven institutional function buckets
+- **Agency Activity** — Changes in which agencies are publishing documents
+- **Publication Tempo** — Daily variance within the week
+- **Source Convergence** — Ratio of government-origin to rhetoric/news sources
+
+Each dimension produces a z-score. The composite structural score is a weighted average with exponential dampening for mild z-scores and a cap on JSD outliers. A long-horizon component tracks cumulative deviation over 12 weeks. Structural anomalies are preserved as metadata for narrative context but do not trigger status escalation.
+
+#### Layer 3: Thematic Drift (Descriptive Only)
+
+Layer 3 uses embedding-based analysis to detect when the _topics_ discussed in a category shift away from recent norms. It operates on an intra-administration rolling window (8 weeks):
+
+- **Centroid Distance** — Distance from the rolling centroid of recent weeks
+- **Novel Document Rate** — Fraction of documents dissimilar to any in the rolling window
+- **Variance Ratio** — Whether document diversity is expanding or contracting
+- **Cross-Administration Distance** — Comparison against a prior administration's baseline
+
+Thematic drift signals are preserved for research visualization but do not drive convergence status.
 
 ## Convergence Synthesis
 
-The three layers are combined into a single convergence status for each category. Each layer independently determines whether it is "elevated" (showing anomalous signals). The convergence status reflects how many layers agree:
+The two active detection layers (L2 AI + L1v2 silence) are combined into a single convergence status for each category:
 
 | Status                | Meaning                                                                                                                |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Stable**            | No layers elevated. Patterns are within normal baseline range.                                                         |
-| **Elevated**          | One layer elevated. May reflect a single-dimension anomaly worth monitoring.                                           |
-| **Divergent**         | Two or more layers independently flag anomalies. Multiple detection methods see something unusual.                     |
-| **Confirmed Concern** | Two or more layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings. |
+| **Stable**            | No active detection layers elevated. Patterns are within normal baseline range.                                        |
+| **Elevated**          | One active layer elevated. May reflect a single-dimension anomaly worth monitoring.                                    |
+| **Divergent**         | Both active layers independently flag anomalies. AI content concerns coincide with government silence.                 |
+| **Confirmed Concern** | Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings. |
 
-The key design principle is that **no single layer can escalate a category beyond Elevated on its own**. Divergent and Confirmed Concern require agreement from multiple independent detection methods. This prevents any one noisy signal — a spike in document volume, a single AI misjudgment, or a thematic shift from a policy change — from triggering high-severity findings.
+The key design principle is that **no single detection layer can escalate a category beyond Elevated on its own**. Divergent and Confirmed Concern require agreement from both active layers. This prevents a single noisy signal from triggering high-severity findings. Structural anomaly and thematic drift scores are reported as descriptive metadata alongside the convergence status.
 
 ## Baselines
 

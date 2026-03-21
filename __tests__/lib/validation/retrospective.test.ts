@@ -9,6 +9,10 @@ vi.mock('@/lib/services/layer2-summary', () => ({
 vi.mock('@/lib/services/semantic-drift-service', () => ({
   computeRollingThematicDrift: vi.fn(),
 }));
+vi.mock('@/lib/services/silence-detection-service', () => ({
+  computeSilenceScore: vi.fn().mockResolvedValue(null),
+  SILENCE_Z_THRESHOLD: 1.5,
+}));
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({
     execute: vi.fn().mockResolvedValue({ rows: [] }),
@@ -61,37 +65,29 @@ describe('evaluateEvent', () => {
   });
 
   it('detects event when convergence meets expected status', async () => {
-    // Make L1 fire by providing structural data
-    const weekMeta = {
-      category: 'civilLiberties',
-      weekOf: '2025-02-03',
-      documentCount: 50,
-      typeDistribution: { Notice: 0.8, Rule: 0.2 },
-      functionalDistribution: { regulatory_action: 0.5, oversight: 0.3, routine_admin: 0.2 },
-      agencyDistribution: { DOJ: 0.5, DHS: 0.5 },
-      dailyCounts: [10, 8, 7, 8, 9, 5, 3],
-      sourceConvergenceRatio: 0.5,
-    };
-    mockExtractWeekMetadata.mockResolvedValue(weekMeta as any);
-    mockComputeBaseline.mockResolvedValue({
-      baselineId: 'biden_2022',
-      category: 'civilLiberties',
-      meanDocCount: 10,
-      stdDevDocCount: 3,
-      typeDistribution: { Notice: 0.9, Rule: 0.1 },
-      functionalDistribution: { regulatory_action: 0.5, oversight: 0.3, routine_admin: 0.2 },
-      agencyDistribution: { DOJ: 0.5, DHS: 0.5 },
-      meanDailyVariance: 2,
-      stdDevDailyVariance: 1,
-      meanSourceConvergenceRatio: 0.5,
-      stdDevSourceConvergenceRatio: 0.1,
-    } as any);
+    // Make L2 AI fire — AI is an active detection layer that drives convergence
+    mockBuildAISummary.mockResolvedValue({
+      flagCount: 8,
+      totalDocuments: 50,
+      flagRate: 0.16,
+      baselineFlagRate: 0.05,
+      flagRateZScore: 2.5,
+      concernDistribution: {
+        routine: 2,
+        novelNotConcerning: 1,
+        potentiallyConcerning: 3,
+        clearlyConcerning: 2,
+      },
+      concernRate: 0.625,
+      auditSample: { sampled: 2, falseNegatives: 0, falseNegativeRate: 0 },
+      pass1Model: 'gpt-4o-mini',
+      pass2Model: 'claude-sonnet',
+    });
 
     const result = await evaluateEvent(makeEvent({ expectedMinStatus: 'Elevated' }));
-    // With 50 docs vs baseline mean 10 (stddev 3), volume z-score = (50-10)/3 = 13.3
-    // This should produce a high structural score -> Elevated
-    expect(result.recomputed.structural).not.toBeNull();
-    expect(result.recomputed.structural!.composite).toBeGreaterThan(2.5);
+    // AI flag rate z-score 2.5 > 1.5 threshold with concern → Elevated
+    expect(result.recomputed.convergence.aiElevated).toBe(true);
+    expect(result.recomputed.convergence.status).toBe('Elevated');
     expect(result.recomputedDetected).toBe(true);
   });
 

@@ -47,58 +47,63 @@ function SummaryContent() {
         </p>
       </Section>
 
-      {/* Three-Layer Detection */}
-      <Section title="Three-Layer Detection">
+      {/* Detection Architecture */}
+      <Section title="Detection Architecture">
         <p>
-          Rather than relying on any single detection method, Democracy Monitor uses three
-          independent layers. Each layer analyzes different aspects of the data and can operate
-          without the others. This triangulated approach reduces false positives and false
-          negatives.
+          Democracy Monitor uses two <strong>active detection layers</strong> that drive convergence
+          status, plus two <strong>descriptive context layers</strong> that provide narrative
+          grounding without influencing the status determination.
         </p>
         <p>
-          <strong>Layer 1: Structural Anomaly Detection</strong> — Fully deterministic,
-          metadata-only. Compares the current week&apos;s document patterns against historical
-          baselines across six dimensions: volume, type composition, functional distribution, agency
-          activity, publication tempo, and source convergence.
-        </p>
-        <p>
-          <strong>Layer 2: AI Document Assessment</strong> — Two-pass AI review using different
+          <strong>AI Content Assessment (active)</strong> — Two-pass AI review using different
           providers (OpenAI for screening, Anthropic for detailed review) to ensure epistemic
-          independence. Documents are classified from routine to clearly concerning.
+          independence. Pass 2 receives week-level context including peer document titles and flag
+          rate trajectory. Documents are classified from routine to clearly concerning.
         </p>
         <p>
-          <strong>Layer 3: Thematic Drift</strong> — Embedding-based analysis detecting when the
-          topics discussed in a category shift away from recent norms, using an 8-week
-          intra-administration rolling window.
+          <strong>Silence Detection (active)</strong> — Measures whether government-controlled
+          sources have gone unusually quiet while independent-branch sources (courts, Congress)
+          remain active. Uses an 8-week intra-administration rolling window.
+        </p>
+        <p>
+          <strong>Structural Anomaly (descriptive only)</strong> — Deterministic, metadata-only
+          analysis across six dimensions: volume, type composition, functional distribution, agency
+          activity, publication tempo, and source convergence. Provides context for narratives.
+        </p>
+        <p>
+          <strong>Thematic Drift (descriptive only)</strong> — Embedding-based analysis detecting
+          topic shifts using an 8-week intra-administration rolling window. Provides research
+          context.
         </p>
       </Section>
 
       {/* Convergence */}
       <Section title="Convergence Synthesis">
         <p>
-          The three layers are combined into a single convergence status. No single layer can
-          escalate a category beyond Elevated on its own.
+          The two active detection layers (AI content assessment + silence detection) are combined
+          into a single convergence status. No single layer can escalate a category beyond Elevated
+          on its own.
         </p>
         <div className="space-y-2 ml-2">
           <ConvergenceStatus
             className="bg-dm-border"
             label="Stable"
-            description="No layers elevated. Patterns are within normal baseline range."
+            description="No active detection layers elevated. Patterns are within normal baseline range."
           />
           <ConvergenceStatus
             className="bg-dm-accent"
             label="Elevated"
-            description="One layer elevated. May reflect a single-dimension anomaly worth monitoring."
+            description="One active layer elevated. Worth monitoring but not yet corroborated."
           />
           <ConvergenceStatus
             color="#8b5cf6"
             label="Divergent"
-            description="Two or more layers independently flag anomalies. Multiple detection methods see something unusual."
+            description="Both active layers independently flag anomalies. AI content concerns coincide with government silence."
           />
           <ConvergenceStatus
             className="bg-status-capture"
             label="Confirmed Concern"
-            description="Two or more layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings."
+            description="Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings."
           />
         </div>
       </Section>
@@ -254,7 +259,7 @@ function DetailedContent() {
       </Section>
 
       {/* Layer 1 */}
-      <Section title="Layer 1: Structural Anomaly Detection">
+      <Section title="Structural Anomaly Detection (Descriptive Context)">
         <p>
           Layer 1 is fully deterministic and uses only document metadata — no text analysis. It
           compares the current week&apos;s document patterns against historical baselines across six
@@ -304,7 +309,7 @@ function DetailedContent() {
       </Section>
 
       {/* Layer 2 */}
-      <Section title="Layer 2: AI Document Assessment">
+      <Section title="AI Document Assessment (Active Detection)">
         <p>
           Layer 2 uses artificial intelligence to read and evaluate individual documents. To reduce
           single-provider bias, it uses a two-pass design with different AI providers:
@@ -346,7 +351,7 @@ function DetailedContent() {
       </Section>
 
       {/* Layer 3 */}
-      <Section title="Layer 3: Thematic Drift">
+      <Section title="Thematic Drift (Descriptive Context)">
         <p>
           Layer 3 uses embedding-based analysis to detect when the topics discussed in a category
           shift away from recent norms. Unlike Layers 1 and 2, it operates on an
@@ -380,33 +385,32 @@ function DetailedContent() {
       {/* Convergence */}
       <Section title="Convergence Synthesis">
         <p>
-          The three layers are combined into a single convergence status for each category. Each
-          layer independently determines whether it is &quot;elevated.&quot; The convergence status
-          reflects how many layers agree:
+          The two active detection layers (AI content assessment + silence detection) are combined
+          into a single convergence status for each category. Structural anomaly and thematic drift
+          scores are preserved as descriptive metadata but do not influence the status.
         </p>
         <DataTable
           headers={['Status', 'Meaning']}
           rows={[
-            ['Stable', 'No layers elevated. Patterns are within normal baseline range.'],
             [
-              'Elevated',
-              'One layer elevated. May reflect a single-dimension anomaly worth monitoring.',
+              'Stable',
+              'No active detection layers elevated. Patterns are within normal baseline range.',
             ],
+            ['Elevated', 'One active layer elevated. Worth monitoring but not yet corroborated.'],
             [
               'Divergent',
-              'Two or more layers independently flag anomalies. Multiple detection methods see something unusual.',
+              'Both active layers independently flag anomalies. AI content concerns coincide with government silence.',
             ],
             [
               'Confirmed Concern',
-              'Two or more layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings.',
+              'Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings.',
             ],
           ]}
         />
         <p>
           The key design principle is that{' '}
           <strong>no single layer can escalate a category beyond Elevated on its own</strong>.
-          Divergent and Confirmed Concern require agreement from multiple independent detection
-          methods.
+          Divergent and Confirmed Concern require agreement from both active detection layers.
         </p>
       </Section>
 
@@ -445,8 +449,8 @@ function DetailedContent() {
       {/* Keywords */}
       <Section title="Keywords as Annotations">
         <p>
-          Keywords were Democracy Monitor&apos;s original detection mechanism, but as the
-          three-layer architecture was developed, their role changed. Keywords now serve as{' '}
+          Keywords were Democracy Monitor&apos;s original detection mechanism, but as the detection
+          architecture evolved, their role changed. Keywords now serve as{' '}
           <strong>contextual annotations</strong> — they help explain what the system is detecting,
           but they do not drive the convergence status.
         </p>
@@ -589,7 +593,7 @@ export default function MethodologyPage() {
     <>
       <SEOHead
         title="Methodology"
-        description="How the Democracy Monitor assesses institutional health using three-layer triangulated detection."
+        description="How Democracy Monitor assesses institutional health using AI content assessment and silence detection."
         canonicalPath="/system/methodology"
       />
 

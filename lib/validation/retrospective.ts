@@ -15,6 +15,8 @@ import {
 import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
 import { buildAISummaryFromDB } from '@/lib/services/layer2-summary';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
+import { computeSilenceScore } from '@/lib/services/silence-detection-service';
+import type { SilenceScore } from '@/lib/services/silence-detection-service';
 import { computeStructuralScore } from '@/lib/services/structural-anomaly-service';
 import type {
   AIAssessmentSummary,
@@ -103,8 +105,16 @@ export async function evaluateEvent(event: KnownEvent): Promise<RetrospectiveRes
     // L3 may fail if embeddings/baselines are missing
   }
 
+  // L1v2: Compute silence score
+  let silence: SilenceScore | null = null;
+  try {
+    silence = await computeSilenceScore(event.category, weekOf);
+  } catch {
+    // Silence detection may fail if source data is missing
+  }
+
   // Convergence synthesis with current thresholds
-  const convergence = synthesizeConvergence(structural, ai, thematic, event.category);
+  const convergence = synthesizeConvergence(structural, ai, thematic, event.category, silence);
 
   // Fetch stored data for comparison
   const stored = await fetchStoredWeekData(event.category, weekOf);

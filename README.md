@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and public APIs, then uses three-layer triangulated detection (structural anomaly, AI assessment, thematic drift) to assess whether democratic checks and balances are functioning normally.
+A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and public APIs, then uses AI content assessment and silence detection to assess whether democratic checks and balances are functioning normally.
 
 ## What It Does
 
@@ -10,20 +10,21 @@ The dashboard tracks **14 institutional categories** — civil service protectio
 
 | Status                | Meaning                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Stable**            | No layers elevated — institutions functioning normally                                                     |
-| **Elevated**          | One detection layer flagging anomalies — worth monitoring                                                  |
-| **Divergent**         | Two or more independent layers flag anomalies — multiple methods see something unusual                     |
-| **Confirmed Concern** | Two or more layers elevated AND high AI concern rate — independent methods converge on concerning findings |
+| **Stable**            | No active detection layers elevated — institutions functioning normally                                    |
+| **Elevated**          | One active detection layer flagging anomalies — worth monitoring                                           |
+| **Divergent**         | Both active layers flag anomalies — AI content concerns coincide with government silence                   |
+| **Confirmed Concern** | Both active layers elevated AND high AI concern rate — independent methods converge on concerning findings |
 
 No single detection layer can escalate a category beyond Elevated on its own. Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
 
 ## How It Works
 
-1. **Data collection** — Cron jobs fetch from multiple source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, GDELT) plus FCC RSS feeds, storing documents in PostgreSQL
-2. **Layer 1 — Structural anomaly** — Deterministic, metadata-only analysis: volume spikes, document-type shifts, functional distribution changes, agency concentration, publication tempo, and source convergence. Uses Jensen-Shannon divergence and z-scores against historical baselines.
-3. **Layer 2 — AI assessment** — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document, then Claude evaluates flagged documents. Different providers ensure independent evaluation. Tracks flag rates and concern rates against baselines.
-4. **Layer 3 — Thematic drift** — Embedding-based intra-administration rolling window (8 weeks) detecting semantic shifts in government output that wouldn't appear in structural metadata
-5. **Convergence synthesis** — Combines all three layers into a single status, requiring multi-layer agreement for escalation beyond Elevated
+1. **Data collection** — Cron jobs fetch from multiple source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, GDELT) plus RSS feeds, storing documents in PostgreSQL
+2. **AI content assessment** (active) — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document, then Claude evaluates flagged documents with week-level context. Different providers ensure independent evaluation. Tracks flag rates and concern rates against baselines.
+3. **Silence detection** (active) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active, using an 8-week intra-administration rolling window.
+4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive convergence status.
+5. **Thematic drift** (descriptive context) — Embedding-based 8-week rolling window detecting semantic shifts in government output. Provides research context but does not drive convergence status.
+6. **Convergence synthesis** — Combines the two active layers into a single status, requiring both to agree for escalation beyond Elevated
 
 For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md).
 

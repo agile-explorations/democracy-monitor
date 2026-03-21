@@ -1,3 +1,4 @@
+import type { Pass2WeekContext } from '@/lib/ai/prompts/layer2-pass2';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
@@ -17,18 +18,18 @@ import {
   getBaselineAIFlagRate,
   getExistingPass1Urls,
   loadStoredPass1Results,
-  findPass2Gaps,
+  getWeekP1Context,
 } from './layer2-store';
+import type { Layer2Options, PriorWeekData } from './layer2-week-context';
+import {
+  buildBaseContext,
+  buildPeerList,
+  buildPerDocContext,
+  getPriorWeekOf,
+} from './layer2-week-context';
 
-export interface Layer2Options {
-  pass1Provider?: 'openai' | 'anthropic';
-  pass1Model?: string;
-  pass2Provider?: 'openai' | 'anthropic';
-  pass2Model?: string;
-  auditSampleRate?: number;
-  dryRun?: boolean;
-  verbose?: boolean;
-}
+export type { Layer2Options } from './layer2-week-context';
+export { retryMissingPass2 } from './layer2-retry';
 
 const DEFAULT_PASS1_PROVIDER = 'openai';
 const DEFAULT_PASS1_MODEL = 'gpt-4o-mini';
@@ -36,7 +37,6 @@ const DEFAULT_PASS2_PROVIDER = 'anthropic';
 const DEFAULT_PASS2_MODEL = 'claude-sonnet-4-5-20250929';
 const PASS1_CONCURRENCY = 5;
 const PASS2_CONCURRENCY = 3;
-const RETRY_CONCURRENCY = 3;
 
 interface ResolvedOptions {
   p1Provider: ReturnType<typeof getProvider>;
@@ -96,6 +96,13 @@ export async function runLayer2Assessment(
   );
   if (pass1Results.length === 0) return null;
 
+  // Fetch baseline and prior week context before P2 (needed for B-E prompt)
+  const priorWeek = getPriorWeekOf(weekOf);
+  const [baseline, priorWeekCtx] = await Promise.all([
+    getBaselineAIFlagRate(categoryKey, 'biden_2022'),
+    getWeekP1Context(categoryKey, priorWeek),
+  ]);
+
   const pass2Results = await runPass2FromPass1(
     items,
     pass1Results,
@@ -103,9 +110,12 @@ export async function runLayer2Assessment(
     category.description,
     categoryKey,
     weekOf,
+    category.title,
+    category.expertDescription,
+    baseline?.rate ?? 0,
+    priorWeekCtx,
   );
 
-  const baseline = await getBaselineAIFlagRate(categoryKey, 'biden_2022');
   return computeAIAssessmentSummary(
     pass1Results,
     pass2Results,
@@ -123,10 +133,23 @@ async function runPass2FromPass1(
   categoryDescription: string,
   categoryKey: string,
   weekOf: string,
+  categoryTitle: string,
+  expertDescription: string,
+  baselineAvgFlagRate: number,
+  priorWeek: PriorWeekData,
 ): Promise<Pass2Result[]> {
   const flaggedUrls = new Set(pass1Results.filter((r) => r.response.relevant).map((r) => r.url));
   const unflaggedUrls = pass1Results.filter((r) => !r.response.relevant).map((r) => r.url);
   const auditUrls = new Set(selectAuditSample(unflaggedUrls, resolved.auditRate));
+  const allPeers = buildPeerList(pass1Results, items);
+  const ctx = buildBaseContext(
+    pass1Results,
+    flaggedUrls.size,
+    priorWeek,
+    categoryTitle,
+    expertDescription,
+    baselineAvgFlagRate,
+  );
 
   return runPass2Phase(
     items,
@@ -139,6 +162,8 @@ async function runPass2FromPass1(
     categoryKey,
     weekOf,
     resolved.dryRun,
+    ctx,
+    allPeers,
   );
 }
 
@@ -153,7 +178,6 @@ async function runPass1Phase(
 ): Promise<Pass1Result[]> {
   const results: Pass1Result[] = [];
 
-  // Skip URLs that already have Pass 1 assessments for this category + model
   const itemUrls = items.map((i) => i.link || i.title).filter(Boolean) as string[];
   const existingUrls = dryRun
     ? new Set<string>()
@@ -163,12 +187,9 @@ async function runPass1Phase(
   results.push(...existingResults);
 
   const newItems = items.filter((i) => !existingUrls.has(i.link ?? i.title ?? ''));
-
   const newResults = await mapConcurrent(newItems, PASS1_CONCURRENCY, async (item) => {
     const result = await assessPass1(item, categoryDescription, provider, model);
-    if (result && !dryRun) {
-      await storePass1Assessment(result, categoryKey, weekOf);
-    }
+    if (result && !dryRun) await storePass1Assessment(result, categoryKey, weekOf);
     return result;
   });
   for (const r of newResults) {
@@ -197,30 +218,30 @@ async function runPass2Phase(
   categoryKey: string,
   weekOf: string,
   dryRun?: boolean,
+  baseContext?: Omit<Pass2WeekContext, 'flaggedPeers'>,
+  allPeers?: Array<{ url: string; title: string; erosionType: string }>,
 ): Promise<Pass2Result[]> {
   const results: Pass2Result[] = [];
   const pass1ByUrl = new Map(pass1Results.map((r) => [r.url, r]));
   const itemByUrl = new Map(items.map((i) => [i.link || i.title, i]));
-
   const urlsToProcess = [...flaggedUrls, ...auditUrls];
-
   const validUrls = urlsToProcess.filter((url) => itemByUrl.has(url) && pass1ByUrl.has(url));
+
   const pass2Results = await mapConcurrent(validUrls, PASS2_CONCURRENCY, async (url) => {
     const item = itemByUrl.get(url)!;
     const pass1 = pass1ByUrl.get(url)!;
-    const isAudit = auditUrls.has(url);
+    const weekContext = buildPerDocContext(baseContext, allPeers, url);
     const result = await assessPass2(
       item,
       pass1.response.signals,
       pass1.response.erosionType,
       categoryDescription,
       provider,
-      isAudit,
+      auditUrls.has(url),
       model,
+      weekContext,
     );
-    if (result && !dryRun) {
-      await storePass2Assessment(result, categoryKey, weekOf);
-    }
+    if (result && !dryRun) await storePass2Assessment(result, categoryKey, weekOf);
     return result;
   });
   for (const r of pass2Results) {
@@ -229,60 +250,4 @@ async function runPass2Phase(
 
   console.log(`[layer2] Pass 2: ${results.length} assessed (${auditUrls.size} audit samples)`);
   return results;
-}
-
-/**
- * Retry Pass 2 for flagged docs in a category-week that are missing Pass 2.
- * Returns the number of successfully retried assessments.
- */
-export async function retryMissingPass2(
-  categoryKey: string,
-  weekOf: string,
-  options?: Layer2Options,
-): Promise<number> {
-  const resolved = resolveOptions(options);
-  if (!resolved) return 0;
-
-  const category = CATEGORIES.find((c) => c.key === categoryKey);
-  if (!category) return 0;
-
-  const gaps = await findPass2Gaps(categoryKey, weekOf);
-  if (gaps.length === 0) return 0;
-
-  // Skip gaps with insufficient content — matches backfill-layer2.ts L2 eligibility (>= 100 chars)
-  const MIN_CONTENT_LENGTH = 100;
-  const viable = gaps.filter((g) => g.content && g.content.length >= MIN_CONTENT_LENGTH);
-  const skipped = gaps.length - viable.length;
-  if (skipped > 0 && options?.verbose) {
-    console.warn(
-      `[layer2] Skipping ${skipped}/${gaps.length} gaps with insufficient content ` +
-        `for ${categoryKey} / ${weekOf}`,
-    );
-  }
-  if (viable.length === 0) return 0;
-
-  console.log(`[layer2] Retrying ${viable.length} missing Pass 2 for ${categoryKey} / ${weekOf}`);
-
-  const retryResults = await mapConcurrent(viable, RETRY_CONCURRENCY, async (gap) => {
-    const doc: ContentItem = { title: gap.title ?? '', summary: gap.content ?? '', link: gap.url };
-    const result = await assessPass2(
-      doc,
-      gap.signals,
-      gap.erosionType,
-      category.description,
-      resolved.p2Provider,
-      false,
-      resolved.p2Model,
-    );
-    if (result && !resolved.dryRun) {
-      await storePass2Assessment(result, categoryKey, weekOf);
-      return 1;
-    }
-    if (!result && options?.verbose) {
-      console.warn(`[layer2] Pass 2 retry failed for ${gap.url}`);
-    }
-    return 0;
-  });
-
-  return retryResults.reduce<number>((sum, n) => sum + n, 0);
 }

@@ -139,17 +139,26 @@ async function fetchLatestConvergence(
 
 /** Build a human-readable summary from convergence synthesis. */
 function buildConvergenceSummary(convergence: ConvergenceSynthesis): string {
-  const { status, structuralElevated, aiElevated, thematicElevated, pattern } = convergence;
+  const { status, aiElevated, silenceElevated, structuralElevated, thematicElevated, pattern } =
+    convergence;
 
   if (status === 'Stable') return 'All detection layers within normal parameters.';
 
-  const layers: string[] = [];
-  if (structuralElevated) layers.push('structural anomaly');
-  if (aiElevated) layers.push('AI assessment');
-  if (thematicElevated) layers.push('thematic drift');
+  // Active detection layers (drive convergence status)
+  const active: string[] = [];
+  if (aiElevated) active.push('AI content assessment');
+  if (silenceElevated) active.push('silence detection');
 
-  if (layers.length === 0) return `Status: ${status}. Pattern: ${pattern}.`;
-  return `${status}: elevated signal in ${layers.join(', ')}. Pattern: ${pattern}.`;
+  // Descriptive context (does not drive status)
+  const context: string[] = [];
+  if (structuralElevated) context.push('structural anomaly');
+  if (thematicElevated) context.push('thematic drift');
+
+  const parts: string[] = [`${status}`];
+  if (active.length > 0) parts.push(`elevated: ${active.join(', ')}`);
+  if (context.length > 0) parts.push(`context: ${context.join(', ')}`);
+  parts.push(`Pattern: ${pattern}`);
+  return `${parts.join('. ')}.`;
 }
 
 /**

@@ -13,7 +13,7 @@ export interface ConvergenceIndicatorProps {
   };
 }
 
-const LABELS = ['L1 Structural', 'L2 AI', 'L3 Thematic'] as const;
+const LABELS = ['L1 Structural (context)', 'L2 AI (active)', 'L3 Thematic (context)'] as const;
 const SCORE_KEYS = ['structural', 'ai', 'thematic'] as const;
 
 export function ConvergenceIndicator({

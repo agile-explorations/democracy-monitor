@@ -287,6 +287,122 @@ describe('runBacktest', () => {
     expect(results[0].detectionRate).toBe(0.5);
   });
 
+  it('detects event via latency window when following week meets threshold', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 2.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-30',
+        total_severity: 8.0,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
+    expect(results[0].detectedEvents).toHaveLength(0);
+    expect(results[0].latencyDetectedEvents).toHaveLength(1);
+    expect(results[0].latencyDetectedEvents[0]).toEqual(EVENTS[0]);
+    expect(results[0].missedEvents).toHaveLength(0);
+    expect(results[0].detectionRate).toBe(1);
+  });
+
+  it('prefers exact-week detection over latency detection', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 8.0,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-30',
+        total_severity: 9.0,
+        status: 'Divergent',
+        structural_score: 4.0,
+        ai_score: 3.0,
+        thematic_score: null,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
+    // Should be detected in its own week, not latency
+    expect(results[0].detectedEvents).toHaveLength(1);
+    expect(results[0].latencyDetectedEvents).toHaveLength(0);
+  });
+
+  it('latency-detected event marks following week as event week for precision', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 2.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-30',
+        total_severity: 8.0,
+        status: 'Elevated',
+        structural_score: 3.0,
+        ai_score: 2.0,
+        thematic_score: null,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
+    // 2017-01-30 should be counted as event-elevated (latency detection)
+    expect(results[0].totalElevatedWeeks).toBe(1);
+    expect(results[0].eventElevatedWeeks).toBe(1);
+    expect(results[0].signalPrecision).toBe(1);
+  });
+
+  it('still misses event when neither event week nor following week meets threshold', async () => {
+    mockDb([
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-23',
+        total_severity: 2.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+      {
+        category: 'civilLiberties',
+        week_of: '2017-01-30',
+        total_severity: 3.0,
+        status: 'Stable',
+        structural_score: null,
+        ai_score: null,
+        thematic_score: null,
+      },
+    ]);
+
+    const results = await runBacktest('2017-01-20', '2017-06-01', [EVENTS[0]]);
+    expect(results[0].detectedEvents).toHaveLength(0);
+    expect(results[0].latencyDetectedEvents).toHaveLength(0);
+    expect(results[0].missedEvents).toHaveLength(1);
+    expect(results[0].detectionRate).toBe(0);
+  });
+
   it('includes layer scores in weekly data', async () => {
     mockDb([
       {

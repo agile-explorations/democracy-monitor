@@ -48,6 +48,8 @@ export interface BacktestResult {
   peakScore: number;
   knownEvents: KnownEvent[];
   detectedEvents: KnownEvent[];
+  /** Events detected in the following week (1-week latency window) */
+  latencyDetectedEvents: KnownEvent[];
   missedEvents: MissedEvent[];
   falseAlarms: number;
   detectionRate: number;
@@ -103,6 +105,13 @@ function buildWeeklyTimeline(
     .sort((a, b) => a.weekOf.localeCompare(b.weekOf));
 }
 
+/** Compute the Monday 7 days after a given Monday. */
+function nextWeekMonday(monday: string): string {
+  const d = new Date(monday + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 7);
+  return toDateString(d);
+}
+
 function evaluateCategoryBacktest(
   catData: Map<string, WeekData> | undefined,
   catEvents: KnownEvent[],
@@ -111,6 +120,7 @@ function evaluateCategoryBacktest(
   peakWeek: string;
   peakScore: number;
   detectedEvents: KnownEvent[];
+  latencyDetectedEvents: KnownEvent[];
   missedEvents: MissedEvent[];
   falseAlarms: number;
   detectionRate: number;
@@ -129,7 +139,9 @@ function evaluateCategoryBacktest(
   }
 
   const detected: KnownEvent[] = [];
+  const latencyDetected: KnownEvent[] = [];
   const missed: MissedEvent[] = [];
+  // Track event weeks and latency weeks for false alarm / precision calculations
   const eventWeeks = new Set<string>();
 
   for (const event of catEvents) {
@@ -138,15 +150,30 @@ function evaluateCategoryBacktest(
     const weekData = catData?.get(monday);
     const isDetected =
       weekData != null && convergenceStatusAtLeast(weekData.status, event.expectedMinStatus);
+
     if (isDetected) {
       detected.push(event);
-    } else {
-      const dataForReason = weekData
-        ? { status: weekData.status as ConvergenceStatus | null, aiScore: weekData.aiScore }
-        : null;
-      const reason = computeMissReason(event, dataForReason, false) ?? 'scoring_miss';
-      missed.push({ event, missReason: reason });
+      continue;
     }
+
+    // 1-week latency window: check the following week
+    const followingMonday = nextWeekMonday(monday);
+    const followingData = catData?.get(followingMonday);
+    const isLatencyDetected =
+      followingData != null &&
+      convergenceStatusAtLeast(followingData.status, event.expectedMinStatus);
+
+    if (isLatencyDetected) {
+      latencyDetected.push(event);
+      eventWeeks.add(followingMonday);
+      continue;
+    }
+
+    const dataForReason = weekData
+      ? { status: weekData.status as ConvergenceStatus | null, aiScore: weekData.aiScore }
+      : null;
+    const reason = computeMissReason(event, dataForReason, false) ?? 'scoring_miss';
+    missed.push({ event, missReason: reason });
   }
 
   let falseAlarms = 0;
@@ -165,7 +192,9 @@ function evaluateCategoryBacktest(
     }
   }
 
-  const detectionRate = catEvents.length > 0 ? detected.length / catEvents.length : 0;
+  // Detection rate includes both exact-week and latency detections
+  const totalDetected = detected.length + latencyDetected.length;
+  const detectionRate = catEvents.length > 0 ? totalDetected / catEvents.length : 0;
   const nonEventElevated = totalElevatedWeeks - eventElevatedWeeks;
   const baselineNoise = weeklyScores.length > 0 ? nonEventElevated / weeklyScores.length : 0;
   const signalPrecision = totalElevatedWeeks > 0 ? eventElevatedWeeks / totalElevatedWeeks : 1;
@@ -174,6 +203,7 @@ function evaluateCategoryBacktest(
     peakWeek,
     peakScore,
     detectedEvents: detected,
+    latencyDetectedEvents: latencyDetected,
     missedEvents: missed,
     falseAlarms,
     detectionRate,

@@ -371,23 +371,26 @@ describe('buildDraftPrompt — missing branch coverage', () => {
     expect(prompt).toContain('No layers elevated.');
   });
 
-  it('shows all three layers fired', () => {
+  it('shows active and descriptive layers', () => {
     const data = makeLayerData({
       convergenceDetail: {
         status: 'ConfirmedConcern',
         structuralElevated: true,
         aiElevated: true,
+        silenceElevated: true,
         thematicElevated: true,
-        layersElevated: 3,
+        layersElevated: 2,
         pattern: 'full convergence',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      },
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('L1 (structural)');
-    expect(prompt).toContain('L2 (AI)');
-    expect(prompt).toContain('L3 (thematic)');
-    expect(prompt).toContain('Layers fired:');
+    expect(prompt).toContain('L2 AI content assessment');
+    expect(prompt).toContain('L1v2 silence detection');
+    expect(prompt).toContain('L1 structural anomaly');
+    expect(prompt).toContain('L3 thematic drift');
+    expect(prompt).toContain('Active detection layers elevated');
+    expect(prompt).toContain('Descriptive context elevated');
   });
 
   it('shows bootstrap note when convergence is in bootstrap mode', () => {
@@ -446,23 +449,24 @@ describe('buildDraftPrompt — missing branch coverage', () => {
     expect(prompt).toContain('increased');
   });
 
-  it('includes status explanation with structural elevated', () => {
+  it('includes status explanation with structural elevated (descriptive only)', () => {
     const data = makeLayerData({
       convergenceDetail: {
-        status: 'Elevated',
+        status: 'Stable',
         structuralElevated: true,
         aiElevated: false,
+        silenceElevated: false,
         thematicElevated: false,
-        layersElevated: 1,
-        pattern: 'structural only',
+        layersElevated: 0,
+        pattern: 'structural only (descriptive)',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      },
       totalDocumentCount: 42,
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('L1 structural score');
+    expect(prompt).toContain('L1 structural context');
     expect(prompt).toContain('42 documents');
-    expect(prompt).toContain('Elevated because');
+    expect(prompt).toContain('descriptive only');
   });
 
   it('includes status explanation with AI elevated', () => {
@@ -471,32 +475,35 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         status: 'Elevated',
         structuralElevated: false,
         aiElevated: true,
+        silenceElevated: false,
         thematicElevated: false,
         layersElevated: 1,
         pattern: 'ai only',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      },
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('L2 corroborated');
+    expect(prompt).toContain('L2 AI content assessment elevated');
     expect(prompt).toContain('concern rate');
     expect(prompt).toContain('baseline:');
   });
 
-  it('includes status explanation with thematic elevated', () => {
+  it('includes status explanation with thematic elevated (descriptive only)', () => {
     const data = makeLayerData({
       convergenceDetail: {
-        status: 'Elevated',
+        status: 'Stable',
         structuralElevated: false,
         aiElevated: false,
+        silenceElevated: false,
         thematicElevated: true,
-        layersElevated: 1,
-        pattern: 'thematic only',
+        layersElevated: 0,
+        pattern: 'thematic only (descriptive)',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      },
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('L3 thematic drift score');
+    expect(prompt).toContain('L3 thematic drift context');
+    expect(prompt).toContain('descriptive only');
   });
 
   it('shows pattern-only status when no layers elevated in convergence', () => {

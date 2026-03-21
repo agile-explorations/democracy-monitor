@@ -253,6 +253,7 @@ export interface Pass2Gap {
   erosionType: string;
   title: string | null;
   content: string | null;
+  sourceType: string | null;
 }
 
 /**
@@ -262,7 +263,7 @@ export async function findPass2Gaps(category: string, weekOf: string): Promise<P
   if (!isDbAvailable()) return [];
   const db = getDb();
   const rows = await db.execute(sql`
-    SELECT a1.url, a1.signals, a1.erosion_type, d.title, d.content
+    SELECT a1.url, a1.signals, a1.erosion_type, d.title, d.content, d.source_type
     FROM ${aiDocumentAssessments} a1
     JOIN ${documents} d ON d.url = a1.url AND d.category = a1.category
     WHERE a1.pass = 1
@@ -282,6 +283,7 @@ export async function findPass2Gaps(category: string, weekOf: string): Promise<P
     erosionType: (r.erosion_type as string) ?? 'unknown',
     title: r.title as string | null,
     content: r.content as string | null,
+    sourceType: (r.source_type as string) ?? null,
   }));
 }
 
@@ -325,4 +327,63 @@ export async function findPass2GapWeeks(
     weekOf: String(r.week_of).slice(0, 10),
     gapCount: r.gap_count as number,
   }));
+}
+
+export interface WeekP1Context {
+  totalDocs: number;
+  flaggedDocs: number;
+  flaggedPeers: Array<{ url: string; title: string; erosionType: string }>;
+}
+
+/**
+ * Get P1 assessment stats and top flagged peer titles for a category-week.
+ * Used to build Pass2WeekContext for the B-E contextual prompt.
+ */
+export async function getWeekP1Context(category: string, weekOf: string): Promise<WeekP1Context> {
+  const empty = { totalDocs: 0, flaggedDocs: 0, flaggedPeers: [] };
+  if (!isDbAvailable()) return empty;
+  const db = getDb();
+
+  const weekEnd = new Date(weekOf);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+
+  const statsRows = await db.execute(sql`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE ${aiDocumentAssessments.relevant} = true)::int AS flagged
+    FROM ${aiDocumentAssessments}
+    WHERE ${aiDocumentAssessments.category} = ${category}
+      AND ${aiDocumentAssessments.pass} = 1
+      AND ${aiDocumentAssessments.weekOf} >= ${weekOf}
+      AND ${aiDocumentAssessments.weekOf} < ${weekEndStr}
+  `);
+
+  const stats = statsRows.rows[0] as Record<string, number> | undefined;
+  const totalDocs = stats?.total ?? 0;
+  const flaggedDocs = stats?.flagged ?? 0;
+
+  const peerRows = await db.execute(sql`
+    SELECT
+      a.url,
+      COALESCE(d.title, a.url) AS title,
+      COALESCE(a.erosion_type, 'unclear') AS erosion_type
+    FROM ${aiDocumentAssessments} a
+    LEFT JOIN ${documents} d ON d.url = a.url AND d.category = a.category
+    WHERE a.category = ${category}
+      AND a.pass = 1
+      AND a.relevant = true
+      AND a.week_of >= ${weekOf}
+      AND a.week_of < ${weekEndStr}
+    ORDER BY a.confidence DESC NULLS LAST
+    LIMIT 10
+  `);
+
+  const flaggedPeers = (peerRows.rows as Array<Record<string, unknown>>).map((r) => ({
+    url: r.url as string,
+    title: r.title as string,
+    erosionType: (r.erosion_type as string) ?? 'unclear',
+  }));
+
+  return { totalDocs, flaggedDocs, flaggedPeers };
 }

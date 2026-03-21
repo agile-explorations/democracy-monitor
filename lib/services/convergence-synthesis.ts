@@ -7,6 +7,8 @@ import {
   getStructuralThreshold,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
+import type { SilenceScore } from '@/lib/services/silence-detection-service';
+import { SILENCE_Z_THRESHOLD } from '@/lib/services/silence-detection-service';
 import type {
   AIAssessmentSummary,
   ConvergenceStatus,
@@ -16,7 +18,7 @@ import type {
 } from '@/lib/types/structural';
 
 /**
- * Synthesize convergence status from Layer 1 (structural) + Layer 2 (AI) + Layer 3 (thematic).
+ * Synthesize convergence status from L2 (AI) + L1v2 (silence detection).
  *
  * Status determination:
  *   Stable           — all layers within baseline ranges
@@ -24,35 +26,42 @@ import type {
  *   Divergent        — two or more layers deviating
  *   ConfirmedConcern — two or more layers deviating AND high AI concern rate
  *
- * L3 operates in reinforcement-only mode: thematic drift can upgrade a signal
- * that L1 or L2 already flagged (Elevated → Divergent), but cannot independently
- * trigger Elevated status. Empirical validation shows L3 has high false-positive
- * rate (~44% of baseline weeks) with zero independent true detections, due to
- * baseline contamination from content-less stubs and metadata-only embeddings.
- * Re-evaluate after clean baseline recomputation.
+ * Active detection layers:
+ *   L2  — AI two-pass content assessment (primary detection)
+ *   L1v2 — silence detection (government quiet + independent active)
  *
- * AI layer is not affected by bootstrap.
+ * Descriptive context only (not scored):
+ *   L1  — structural anomaly (preserved for narrative metadata)
+ *   L3  — thematic drift (preserved for narrative/research visualization)
  */
 export function synthesizeConvergence(
   structural: StructuralScore | null,
   aiAssessment: AIAssessmentSummary | null,
   thematic: ThematicDriftScore | null,
   category?: string,
+  silence?: SilenceScore | null,
 ): ConvergenceSynthesis {
   const structuralElevated = isStructuralElevated(structural, category);
   const aiElevated = isAIElevated(aiAssessment);
+  const silenceElevated = isSilenceElevated(silence);
   const thematicElevated = isThematicElevated(thematic);
   const isBootstrap = thematic?.bootstrap ?? true;
 
-  const layersElevated = countElevatedLayers(structuralElevated, aiElevated, thematicElevated);
+  const layersElevated = countElevatedLayers(aiElevated, silenceElevated);
   const highConcern = isHighConcern(aiAssessment);
   const status = determineStatus(layersElevated, highConcern);
-  const pattern = describePattern(structuralElevated, aiElevated, thematicElevated, isBootstrap);
+  const pattern = describePattern(
+    structuralElevated,
+    aiElevated,
+    silenceElevated,
+    thematicElevated,
+  );
 
   return {
     status,
     structuralElevated,
     aiElevated,
+    silenceElevated,
     thematicElevated,
     layersElevated,
     pattern,
@@ -76,6 +85,11 @@ function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {
   );
 }
 
+function isSilenceElevated(silence: SilenceScore | null | undefined): boolean {
+  if (!silence) return false;
+  return silence.conspicuous;
+}
+
 function isThematicElevated(thematic: ThematicDriftScore | null): boolean {
   if (!thematic) return false;
   return Math.abs(thematic.zScore) > THEMATIC_DRIFT_ELEVATED;
@@ -90,18 +104,15 @@ function isHighConcern(aiAssessment: AIAssessmentSummary | null): boolean {
   return aiAssessment.concernRate > AI_CONCERN_THRESHOLD;
 }
 
-function countElevatedLayers(
-  structuralElevated: boolean,
-  aiElevated: boolean,
-  thematicElevated: boolean,
-): number {
+/**
+ * Count actively-scored elevated layers.
+ * L2 (AI content assessment) + L1v2 (silence detection) = max 2.
+ * L1 structural and L3 thematic are descriptive only.
+ */
+function countElevatedLayers(aiElevated: boolean, silenceElevated: boolean): number {
   let count = 0;
-  if (structuralElevated) count++;
   if (aiElevated) count++;
-  // L3 reinforcement-only: thematic drift can upgrade existing L1/L2 signals
-  // but cannot independently trigger elevation (insufficient specificity for
-  // standalone detection — re-evaluate after clean baseline recomputation)
-  if (thematicElevated && (structuralElevated || aiElevated)) count++;
+  if (silenceElevated) count++;
   return count;
 }
 
@@ -115,23 +126,21 @@ function determineStatus(layersElevated: number, highConcern: boolean): Converge
 function describePattern(
   structuralElevated: boolean,
   aiElevated: boolean,
+  silenceElevated: boolean,
   thematicElevated: boolean,
-  isBootstrap: boolean,
 ): string {
-  if (!structuralElevated && !aiElevated && !thematicElevated) {
-    return 'All layers within baseline ranges';
-  }
-
   const parts: string[] = [];
-  if (structuralElevated) parts.push('structural anomaly detected');
+
+  // Active detection layers
   if (aiElevated) parts.push('AI flag rate elevated');
+  if (silenceElevated) parts.push('conspicuous government silence detected');
+
+  // Descriptive context (not scored)
+  if (structuralElevated) parts.push('structural anomaly detected (descriptive only)');
   if (thematicElevated) {
-    parts.push(
-      isBootstrap
-        ? 'thematic drift detected (bootstrap, reduced confidence)'
-        : 'thematic drift detected',
-    );
+    parts.push('thematic drift detected (descriptive only, not scored)');
   }
 
+  if (parts.length === 0) return 'All layers within baseline ranges';
   return parts.join('; ');
 }

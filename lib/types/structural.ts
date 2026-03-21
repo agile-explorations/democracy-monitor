@@ -72,8 +72,12 @@ export type ConvergenceStatus = 'Stable' | 'Elevated' | 'Divergent' | 'Confirmed
 /** Result of combining L1 + L2 + L3. */
 export interface ConvergenceSynthesis {
   status: ConvergenceStatus;
+  /** L1 structural anomaly — descriptive only, does not influence convergence status */
   structuralElevated: boolean;
   aiElevated: boolean;
+  /** L1v2 silence detection — counts toward convergence (replaces L1 structural) */
+  silenceElevated: boolean;
+  /** L3 thematic drift — descriptive only, does not influence convergence status */
   thematicElevated: boolean;
   layersElevated: number;
   pattern: string;

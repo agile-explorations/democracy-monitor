@@ -1,4 +1,5 @@
 import { buildPass1Prompt, PASS1_SYSTEM_PROMPT } from '@/lib/ai/prompts/layer2-pass1';
+import type { Pass2WeekContext } from '@/lib/ai/prompts/layer2-pass2';
 import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/layer2-pass2';
 import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/layer2-response';
 import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/layer2-response';
@@ -84,6 +85,7 @@ export async function assessPass2(
   provider: AIProvider,
   isAuditSample: boolean,
   model?: string,
+  weekContext?: Pass2WeekContext,
 ): Promise<Pass2Result | null> {
   const prompt = buildPass2Prompt(
     doc.title ?? '',
@@ -91,6 +93,9 @@ export async function assessPass2(
     pass1Signals,
     pass1ErosionType,
     categoryDescription,
+    weekContext,
+    doc.type,
+    doc.link,
   );
 
   try {

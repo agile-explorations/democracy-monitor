@@ -54,6 +54,7 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
     `${'Category'.padEnd(22)}` +
     `${'Detect'.padStart(7)}` +
     `${'Hit'.padStart(5)}` +
+    `${'Late'.padStart(6)}` +
     `${'Miss'.padStart(6)}` +
     `${'Elev'.padStart(6)}` +
     `${'Noise'.padStart(7)}` +
@@ -64,6 +65,7 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
   console.log('-'.repeat(hdr.length));
 
   let totalDetected = 0;
+  let totalLatency = 0;
   let totalEvents = 0;
 
   for (const r of results) {
@@ -74,6 +76,7 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
       `${r.category.padEnd(22)}` +
         `${rate.padStart(7)}` +
         `${String(r.detectedEvents.length).padStart(5)}` +
+        `${String(r.latencyDetectedEvents.length).padStart(6)}` +
         `${String(r.missedEvents.length).padStart(6)}` +
         `${String(r.totalElevatedWeeks).padStart(6)}` +
         `${noise.padStart(7)}` +
@@ -83,25 +86,30 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
     );
 
     totalDetected += r.detectedEvents.length;
+    totalLatency += r.latencyDetectedEvents.length;
     totalEvents += r.knownEvents.length;
 
-    if (r.missedEvents.length > 0) {
-      for (const m of r.missedEvents) {
-        const reasonTag = m.missReason === 'scoring_miss' ? '' : ` [${m.missReason}]`;
-        console.log(
-          `  MISSED: ${m.event.date} — ${m.event.description} (expected ${m.event.expectedMinStatus})${reasonTag}`,
-        );
-      }
+    for (const le of r.latencyDetectedEvents) {
+      console.log(`  LATENCY: ${le.date} — ${le.description} (detected following week)`);
+    }
+
+    for (const m of r.missedEvents) {
+      const reasonTag = m.missReason === 'scoring_miss' ? '' : ` [${m.missReason}]`;
+      console.log(
+        `  MISSED: ${m.event.date} — ${m.event.description} (expected ${m.event.expectedMinStatus})${reasonTag}`,
+      );
     }
   }
 
   console.log('-'.repeat(hdr.length));
-  const overallRate = totalEvents > 0 ? ((totalDetected / totalEvents) * 100).toFixed(0) : '0';
+  const allDetected = totalDetected + totalLatency;
+  const overallRate = totalEvents > 0 ? ((allDetected / totalEvents) * 100).toFixed(0) : '0';
   console.log(
     `${'OVERALL'.padEnd(22)}` +
       `${(overallRate + '%').padStart(7)}` +
       `${String(totalDetected).padStart(5)}` +
-      `${String(totalEvents - totalDetected).padStart(6)}`,
+      `${String(totalLatency).padStart(6)}` +
+      `${String(totalEvents - allDetected).padStart(6)}`,
   );
 
   printLegend();
@@ -109,7 +117,9 @@ function printResults(results: Awaited<ReturnType<typeof runBacktest>>): void {
 
 function printLegend(): void {
   console.log(`\nMetrics:`);
-  console.log(`  Detect  = Event sensitivity (detected / total known events)`);
+  console.log(`  Detect  = Event sensitivity (detected + latency / total known events)`);
+  console.log(`  Hit     = Detected in event week`);
+  console.log(`  Late    = Detected in following week (1-week latency window)`);
   console.log(`  Elev    = Total Elevated+ weeks (event + non-event)`);
   console.log(`  Noise   = Baseline noise (non-event elevated / total weeks)`);
   console.log(`  Precis  = Signal precision (event-elevated / all elevated)`);

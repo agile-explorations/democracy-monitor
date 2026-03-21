@@ -6,6 +6,7 @@ import {
 } from '@/lib/services/baseline-distributions';
 import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
+import { computeSilenceScore } from '@/lib/services/silence-detection-service';
 import { computeStructuralScore } from '@/lib/services/structural-anomaly-service';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { AIAssessmentSummary, StructuralScore } from '@/lib/types/structural';
@@ -40,9 +41,10 @@ export async function enrichWithLayerScores(
   aiSummary?: AIAssessmentSummary | null,
 ): Promise<WeeklyAggregate> {
   try {
-    const [structural, thematic] = await Promise.all([
+    const [structural, thematic, silence] = await Promise.all([
       computeStructuralLayer(agg.category, agg.weekOf),
       computeRollingThematicDrift(agg.category, agg.weekOf),
+      computeSilenceScore(agg.category, agg.weekOf),
     ]);
 
     const convergence = synthesizeConvergence(
@@ -50,6 +52,7 @@ export async function enrichWithLayerScores(
       aiSummary ?? null,
       thematic,
       agg.category,
+      silence,
     );
 
     return {

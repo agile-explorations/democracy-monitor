@@ -1,0 +1,215 @@
+import { sql } from 'drizzle-orm';
+import { getDb, isDbAvailable } from '@/lib/db';
+import { documents } from '@/lib/db/schema';
+
+/**
+ * Source origin classification for silence detection.
+ *
+ * Government-controlled: sources whose output is determined by executive branch decisions.
+ * When these go silent, the absence may reflect deliberate information suppression.
+ *
+ * Independent-branch: congressional, judicial, and legislative-branch oversight sources
+ * whose output is not controlled by the executive. Continued activity in these sources
+ * while government sources are silent creates the contrast signal that L1v2 detects.
+ *
+ * Note: `govinfo` publishes GAO reports, congressional reports, and public laws —
+ * all legislative-branch outputs. `govinfo_cpd` (Presidential Documents) is separate
+ * and correctly classified as government-controlled.
+ */
+export const GOVERNMENT_SOURCES = new Set(['federal_register', 'doj', 'govinfo_cpd', 'oig', 'fec']);
+
+export const INDEPENDENT_SOURCES = new Set(['courtlistener', 'crec', 'legiscan', 'govinfo']);
+
+/** Rolling window size for intra-admin baseline (weeks). */
+const ROLLING_WINDOW_SIZE = 8;
+/** Minimum weeks of data required before silence detection is meaningful. */
+const MIN_WINDOW_SIZE = 4;
+/** Government volume z-score threshold for silence (1.5σ below mean). */
+export const SILENCE_Z_THRESHOLD = 1.5;
+
+export interface SilenceScore {
+  /** Government-source doc count this week */
+  govDocCount: number;
+  /** Independent-source doc count this week */
+  independentDocCount: number;
+  /** Rolling mean of gov doc count (past N weeks, same admin) */
+  rollingGovMean: number;
+  /** Rolling stddev of gov doc count */
+  rollingGovStdDev: number;
+  /** Z-score: how far below the rolling mean (positive = quieter than usual) */
+  govSilenceZ: number;
+  /** Composite silence score: govSilenceZ * log-scaled independent activity */
+  silenceScore: number;
+  /** Whether silence is conspicuous (gov quiet + independent active) */
+  conspicuous: boolean;
+  /** Rolling window size used */
+  windowSize: number;
+  /** True if below MIN_WINDOW_SIZE (score is low-confidence) */
+  coldStart: boolean;
+}
+
+/**
+ * Compute a silence detection score for a category-week.
+ *
+ * Measures whether government-controlled sources have gone unusually quiet
+ * while independent-branch sources remain active. Uses an intra-admin rolling
+ * window (not cross-admin baselines) to establish "normal" government volume.
+ *
+ * Returns null if no data is available or database is not connected.
+ */
+export async function computeSilenceScore(
+  category: string,
+  weekOf: string,
+): Promise<SilenceScore | null> {
+  if (!isDbAvailable()) return null;
+
+  const [currentWeek, rollingWindow] = await Promise.all([
+    getWeekSourceCounts(category, weekOf),
+    getRollingGovCounts(category, weekOf),
+  ]);
+
+  if (!currentWeek) return null;
+
+  const govDocCount = currentWeek.govCount;
+  const independentDocCount = currentWeek.independentCount;
+  const windowSize = rollingWindow.length;
+  const coldStart = windowSize < MIN_WINDOW_SIZE;
+
+  // Compute rolling stats from prior weeks' government volume
+  const { mean, stdDev } = computeStats(rollingWindow);
+
+  // Government silence z-score (positive = quieter than usual)
+  // Capped at 0 when gov volume is at or above mean
+  const rawZ = stdDev > 0 ? (mean - govDocCount) / stdDev : 0;
+  const govSilenceZ = Math.max(0, rawZ);
+
+  // Independent activity: log-scaled presence
+  // 0 docs → 0, 1 doc → 1, 10 docs → ~4.3, 100 docs → ~7.6
+  const independentActivity = independentDocCount > 0 ? 1 + Math.log2(independentDocCount) : 0;
+
+  const silenceScore = govSilenceZ * independentActivity;
+  const conspicuous = govSilenceZ > SILENCE_Z_THRESHOLD && independentDocCount > 0;
+
+  return {
+    govDocCount,
+    independentDocCount,
+    rollingGovMean: Math.round(mean * 100) / 100,
+    rollingGovStdDev: Math.round(stdDev * 100) / 100,
+    govSilenceZ: Math.round(govSilenceZ * 100) / 100,
+    silenceScore: Math.round(silenceScore * 100) / 100,
+    conspicuous,
+    windowSize,
+    coldStart,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Database queries
+// ---------------------------------------------------------------------------
+
+interface WeekSourceCounts {
+  govCount: number;
+  independentCount: number;
+}
+
+/** Count documents by source classification for a single category-week. */
+async function getWeekSourceCounts(
+  category: string,
+  weekOf: string,
+): Promise<WeekSourceCounts | null> {
+  const db = getDb();
+  const weekEnd = addDays(weekOf, 7);
+
+  const rows = await db.execute(sql`
+    SELECT
+      ${documents.sourceOrigin} AS source_origin,
+      COUNT(*)::int AS doc_count
+    FROM ${documents}
+    WHERE ${documents.category} = ${category}
+      AND ${documents.sourceOrigin} IS NOT NULL
+      AND ${documents.publishedAt} >= ${weekOf}
+      AND ${documents.publishedAt} < ${weekEnd}
+    GROUP BY ${documents.sourceOrigin}
+  `);
+
+  let govCount = 0;
+  let independentCount = 0;
+  for (const row of rows.rows as Array<Record<string, unknown>>) {
+    const origin = row.source_origin as string;
+    const count = row.doc_count as number;
+    if (GOVERNMENT_SOURCES.has(origin)) govCount += count;
+    else if (INDEPENDENT_SOURCES.has(origin)) independentCount += count;
+  }
+
+  return { govCount, independentCount };
+}
+
+/**
+ * Get government-source document counts for the rolling window (prior N weeks).
+ * Stays within the same administration period by clamping the window start
+ * to the inauguration date of the current administration.
+ */
+async function getRollingGovCounts(category: string, weekOf: string): Promise<number[]> {
+  const db = getDb();
+  const govSourceList = [...GOVERNMENT_SOURCES];
+
+  // Rolling window: up to ROLLING_WINDOW_SIZE weeks before weekOf,
+  // clamped to stay within the same administration period.
+  const rawWindowStart = addDays(weekOf, -7 * ROLLING_WINDOW_SIZE);
+  const adminStart = getAdminInaugurationDate(weekOf);
+  const windowStart = rawWindowStart > adminStart ? rawWindowStart : adminStart;
+
+  const rows = await db.execute(sql`
+    SELECT
+      date_trunc('week', ${documents.publishedAt}::date)::date AS week_start,
+      COUNT(*)::int AS gov_count
+    FROM ${documents}
+    WHERE ${documents.category} = ${category}
+      AND ${documents.sourceOrigin} IN ${sql`(${sql.join(
+        govSourceList.map((s) => sql`${s}`),
+        sql`, `,
+      )})`}
+      AND ${documents.publishedAt} >= ${windowStart}
+      AND ${documents.publishedAt} < ${weekOf}
+    GROUP BY week_start
+    ORDER BY week_start
+  `);
+
+  return (rows.rows as Array<Record<string, unknown>>).map((r) => r.gov_count as number);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers (exported for unit testing)
+// ---------------------------------------------------------------------------
+
+/** Inauguration dates in descending order. */
+const INAUGURATION_DATES = [
+  '2025-01-20', // Trump T2
+  '2021-01-20', // Biden
+  '2017-01-20', // Trump T1
+];
+
+/**
+ * Return the inauguration date of the administration that covers `weekOf`.
+ * Falls back to the earliest known inauguration if weekOf predates all entries.
+ */
+export function getAdminInaugurationDate(weekOf: string): string {
+  for (const date of INAUGURATION_DATES) {
+    if (weekOf >= date) return date;
+  }
+  return INAUGURATION_DATES[INAUGURATION_DATES.length - 1];
+}
+
+export function computeStats(values: number[]): { mean: number; stdDev: number } {
+  if (values.length === 0) return { mean: 0, stdDev: 0 };
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  if (values.length < 2) return { mean, stdDev: 0 };
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / (values.length - 1);
+  return { mean, stdDev: Math.sqrt(variance) };
+}
+
+export function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
