@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { toCsv } from '@/lib/utils/csv';
+import { flattenWeeklyRow } from '@/lib/utils/csv-flatten';
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,11 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(MAX_EXPORT_ROWS);
 
     if (format === 'csv') {
-      const csvRows = rows.map((r) => ({
-        ...r,
-        topKeywords: JSON.stringify(r.topKeywords),
-        computedAt: r.computedAt.toISOString(),
-      }));
+      const csvRows = rows.map((r) => flattenWeeklyRow({ ...r, computedAt: r.computedAt }));
       const csv = toCsv(csvRows);
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="weekly-aggregates.csv"');

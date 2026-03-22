@@ -106,6 +106,10 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
             ))}
           </NavSection>
 
+          <NavSection title="Data">
+            <NavLink href="/data" label="Downloads & API" />
+          </NavSection>
+
           <NavSection title="System">
             {SYSTEM_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} label={link.label} />

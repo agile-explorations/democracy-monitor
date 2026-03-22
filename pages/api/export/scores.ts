@@ -5,6 +5,7 @@ import { getDb } from '@/lib/db';
 import { documentScores } from '@/lib/db/schema';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { toCsv } from '@/lib/utils/csv';
+import { flattenScoresRow } from '@/lib/utils/csv-flatten';
 import { checkRateLimit, getClientIp } from '@/lib/utils/rate-limit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -41,12 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(MAX_EXPORT_ROWS);
 
     if (format === 'csv') {
-      const csvRows = rows.map((r) => ({
-        ...r,
-        matches: JSON.stringify(r.matches),
-        suppressed: JSON.stringify(r.suppressed),
-        scoredAt: r.scoredAt.toISOString(),
-      }));
+      const csvRows = rows.map((r) => flattenScoresRow({ ...r, scoredAt: r.scoredAt }));
       const csv = toCsv(csvRows);
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="document-scores.csv"');

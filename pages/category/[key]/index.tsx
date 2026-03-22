@@ -2,7 +2,7 @@ import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
-import { CategoryStatusChart } from '@/components/category/CategoryStatusChart';
+import { CategoryChartCard } from '@/components/category/CategoryChartCard';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
@@ -195,26 +195,15 @@ export default function CategoryDetailPage({
           <TimeRangeBar rangeLabel={rangeLabel} selected={rangePreset} onChange={setRangePreset} />
 
           {/* Status-over-time chart */}
-          <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3 flex items-center gap-1.5">
-              Concern Status Over Time
-              <span
-                className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-dm-border text-[10px] font-normal normal-case tracking-normal cursor-help"
-                title="Stable = AI within baseline. Elevated = AI flags anomalous content with P2 corroboration. Confirmed Concern = AI elevated with high P2 concern rate (>20%)."
-              >
-                ?
-              </span>
-            </h2>
-            <CategoryStatusChart
-              data={weeklyData}
-              mode={resolvedMode}
-              brushStartIndex={brushStartIndex}
-              brushEndIndex={brushEndIndex}
-              onRangeChange={setBrushRange}
-              selectedWeek={selectedWeek}
-              onWeekClick={selectWeek}
-            />
-          </div>
+          <CategoryChartCard
+            data={weeklyData}
+            mode={resolvedMode}
+            brushStartIndex={brushStartIndex}
+            brushEndIndex={brushEndIndex}
+            onRangeChange={setBrushRange}
+            selectedWeek={selectedWeek}
+            onWeekClick={selectWeek}
+          />
 
           {/* Range summary */}
           {weeklyData.length > 0 && (

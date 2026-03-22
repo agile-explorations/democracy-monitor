@@ -39,3 +39,9 @@ export const CONCERN_LEVEL_COLORS = {
     ConfirmedConcern: '#f87171',
   },
 } as const;
+
+/** Structural/AI/thematic metric line colors (sky/orange/violet). */
+export const METRIC_LINE_COLORS = {
+  light: { structural: '#0ea5e9', ai: '#f97316', thematic: '#8b5cf6' },
+  dark: { structural: '#38bdf8', ai: '#fb923c', thematic: '#a78bfa' },
+} as const;
