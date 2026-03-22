@@ -1,5 +1,4 @@
 import { desc, sql } from 'drizzle-orm';
-import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
@@ -12,7 +11,12 @@ import type {
 } from '@/lib/types/overview';
 import type { ConcernAssessment } from '@/lib/types/structural';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
-import { movingAverage } from '@/lib/utils/math';
+import {
+  getInaugurationDate,
+  getPeriodRange,
+  smoothByOffset,
+  weekOffset,
+} from './overview-comparison';
 
 /** Weeks since inauguration (Jan 20, 2025) — used as default overview window. */
 const ADMIN_START = new Date('2025-01-20T00:00:00Z');
@@ -39,49 +43,7 @@ interface AggregateRow {
   structural_detail: unknown;
 }
 
-const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
 const COMPARISON_TREND_WINDOW = 4;
-
-/** Get inauguration date (cycleYear 1 start) for an administration. */
-function getInaugurationDate(administration: string): string | null {
-  const config = BASELINE_CONFIGS.find(
-    (c) => c.administration === administration && c.cycleYear === 1,
-  );
-  return config?.from ?? null;
-}
-
-/** Get combined date range across all baseline configs for an administration. */
-function getPeriodRange(administration: string): { from: string; to: string } | null {
-  const configs = BASELINE_CONFIGS.filter((c) => c.administration === administration);
-  if (configs.length === 0) return null;
-  let from = configs[0].from;
-  let to = configs[0].to;
-  for (const c of configs) {
-    if (c.from < from) from = c.from;
-    if (c.to > to) to = c.to;
-  }
-  return { from, to };
-}
-
-/** Compute week offset (0-based) from a period start date. */
-function weekOffset(weekDate: string, periodStart: string): number {
-  const d = new Date(weekDate + 'T00:00:00Z');
-  const s = new Date(periodStart + 'T00:00:00Z');
-  return Math.round((d.getTime() - s.getTime()) / MS_PER_WEEK);
-}
-
-/** Apply moving-average smoothing to scores indexed by week offset. */
-function smoothByOffset(scores: Map<number, number>, window: number): Map<number, number> {
-  if (scores.size === 0) return new Map();
-  const sortedOffsets = Array.from(scores.keys()).sort((a, b) => a - b);
-  const values = sortedOffsets.map((o) => scores.get(o)!);
-  const smoothed = movingAverage(values, window);
-  const result = new Map<number, number>();
-  for (let i = 0; i < sortedOffsets.length; i++) {
-    result.set(sortedOffsets[i], smoothed[i]);
-  }
-  return result;
-}
 
 /**
  * Group aggregate rows by week, compute weighted concern score per week,

@@ -40,6 +40,12 @@ export const CONCERN_LEVEL_COLORS = {
   },
 } as const;
 
+/** Diverging z-score color scale for structural dimension heatmap. */
+export const Z_SCORE_SCALE_COLORS = {
+  light: { low: '#2563eb', mid: '#f1f5f9', high: '#dc2626' },
+  dark: { low: '#60a5fa', mid: '#1e293b', high: '#f87171' },
+} as const;
+
 /** Structural/AI/thematic metric line colors (sky/orange/violet). */
 export const METRIC_LINE_COLORS = {
   light: { structural: '#0ea5e9', ai: '#f97316', thematic: '#8b5cf6' },

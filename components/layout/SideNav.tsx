@@ -108,6 +108,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
 
           <NavSection title="Data">
             <NavLink href="/data" label="Downloads & API" />
+            <NavLink href="/data/structural" label="Structural Dimensions" />
           </NavSection>
 
           <NavSection title="System">

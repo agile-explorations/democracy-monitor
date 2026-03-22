@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import DataPage from '@/pages/data';
+import DataPage from '@/pages/data/index';
 
 // Mock Next.js modules
 vi.mock('next/head', () => ({

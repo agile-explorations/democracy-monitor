@@ -1,5 +1,24 @@
 import type { ConcernLevel } from './structural';
 
+export type StructuralDimension =
+  | 'volume'
+  | 'typeComposition'
+  | 'functionalDistribution'
+  | 'agencyActivity'
+  | 'publicationTempo'
+  | 'sourceConvergence';
+
+export interface StructuralHeatmapRow {
+  category: string;
+  title: string;
+  weeks: Array<{
+    week: string;
+    dimensions: Partial<Record<StructuralDimension, number | null>>;
+    composite: number | null;
+    anomalous: boolean;
+  }>;
+}
+
 export interface HeatmapRow {
   category: string;
   title: string;

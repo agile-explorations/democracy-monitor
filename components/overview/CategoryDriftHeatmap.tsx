@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { HeatmapRow } from '@/lib/types/overview';
+import { lerpColor } from '@/lib/utils/color';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export interface CategoryDriftHeatmapProps {
@@ -29,21 +30,6 @@ function scoreToColor(score: number | null, mode: 'light' | 'dark'): string | nu
   if (t < 0.33) return lerpColor('#f1f5f9', '#c7d2fe', t / 0.33);
   if (t < 0.66) return lerpColor('#c7d2fe', '#c4b5fd', (t - 0.33) / 0.33);
   return lerpColor('#c4b5fd', '#fca5a5', (t - 0.66) / 0.34);
-}
-
-/** Linear interpolate between two hex colors. */
-function lerpColor(a: string, b: string, t: number): string {
-  const parse = (hex: string) => [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ];
-  const ca = parse(a);
-  const cb = parse(b);
-  const r = Math.round(ca[0] + (cb[0] - ca[0]) * t);
-  const g = Math.round(ca[1] + (cb[1] - ca[1]) * t);
-  const bl = Math.round(ca[2] + (cb[2] - ca[2]) * t);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`;
 }
 
 /** SVG pattern ID for null/no-data cells. */

@@ -3,6 +3,10 @@ import {
   buildOverviewFromRows,
   computeWeeklyWeightedScores,
 } from '@/lib/services/overview-service';
+import {
+  buildStructuralHeatmapRows,
+  parseStructuralDimensions,
+} from '@/lib/services/structural-heatmap-service';
 
 function makeRow(
   category: string,
@@ -351,5 +355,124 @@ describe('buildOverviewFromRows — additional branch coverage', () => {
     // Latest week (2026-01-20): civilService=ConfirmedConcern, rest Stable
     expect(result.statusCounts.ConfirmedConcern).toBe(1);
     expect(result.statusCounts.Stable).toBe(13);
+  });
+});
+
+function makeDimensionScore(zScore: number, available = true) {
+  return { value: 0, baselineMean: 0, baselineStdDev: 1, zScore, available };
+}
+
+describe('parseStructuralDimensions', () => {
+  it('returns empty dimensions for null detail', () => {
+    const result = parseStructuralDimensions(null);
+    expect(result.dimensions).toEqual({});
+    expect(result.composite).toBeNull();
+    expect(result.anomalous).toBe(false);
+  });
+
+  it('returns empty dimensions for non-object detail', () => {
+    expect(parseStructuralDimensions('string').dimensions).toEqual({});
+    expect(parseStructuralDimensions(42).dimensions).toEqual({});
+  });
+
+  it('extracts z-scores from available dimensions', () => {
+    const detail = {
+      composite: 2.5,
+      anomalous: true,
+      dimensions: {
+        volume: makeDimensionScore(1.2),
+        typeComposition: makeDimensionScore(-0.5),
+        functionalDistribution: makeDimensionScore(0.8),
+        agencyActivity: makeDimensionScore(3.1),
+        publicationTempo: makeDimensionScore(-1.0),
+        sourceConvergence: makeDimensionScore(0.3),
+      },
+      functionalShifts: [],
+      longHorizon: { cumulativeDeviation: 0, cumulativeWindow: 0, driftTrend: 'stable' },
+    };
+    const result = parseStructuralDimensions(detail);
+    expect(result.composite).toBe(2.5);
+    expect(result.anomalous).toBe(true);
+    expect(result.dimensions.volume).toBe(1.2);
+    expect(result.dimensions.typeComposition).toBe(-0.5);
+    expect(result.dimensions.agencyActivity).toBe(3.1);
+    expect(result.dimensions.sourceConvergence).toBe(0.3);
+  });
+
+  it('returns null z-score for unavailable dimensions', () => {
+    const detail = {
+      composite: 1.0,
+      anomalous: false,
+      dimensions: {
+        volume: makeDimensionScore(1.0, true),
+        typeComposition: makeDimensionScore(0, false),
+        functionalDistribution: makeDimensionScore(0, false),
+        agencyActivity: makeDimensionScore(0, false),
+        publicationTempo: makeDimensionScore(0, false),
+      },
+      functionalShifts: [],
+      longHorizon: { cumulativeDeviation: 0, cumulativeWindow: 0, driftTrend: 'stable' },
+    };
+    const result = parseStructuralDimensions(detail);
+    expect(result.dimensions.volume).toBe(1.0);
+    expect(result.dimensions.typeComposition).toBeNull();
+  });
+
+  it('handles missing dimensions object', () => {
+    const detail = { composite: 0.5, anomalous: false };
+    const result = parseStructuralDimensions(detail);
+    expect(result.dimensions).toEqual({});
+    expect(result.composite).toBe(0.5);
+  });
+});
+
+describe('buildStructuralHeatmapRows', () => {
+  it('returns all 14 categories for empty input', () => {
+    const result = buildStructuralHeatmapRows([]);
+    expect(result).toHaveLength(14);
+    for (const row of result) {
+      expect(row.weeks).toHaveLength(0);
+    }
+  });
+
+  it('builds rows with structural dimension data', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', null, null, {
+        composite: 2.0,
+        anomalous: false,
+        dimensions: {
+          volume: makeDimensionScore(1.5),
+          typeComposition: makeDimensionScore(-0.3),
+          functionalDistribution: makeDimensionScore(0.8),
+          agencyActivity: makeDimensionScore(0.2),
+          publicationTempo: makeDimensionScore(1.0),
+        },
+        functionalShifts: [],
+        longHorizon: { cumulativeDeviation: 0, cumulativeWindow: 0, driftTrend: 'stable' },
+      }),
+    ];
+    const result = buildStructuralHeatmapRows(rows);
+    const cs = result.find((r) => r.category === 'civilService')!;
+    expect(cs.weeks).toHaveLength(1);
+    expect(cs.weeks[0].composite).toBe(2.0);
+    expect(cs.weeks[0].dimensions.volume).toBe(1.5);
+    expect(cs.weeks[0].anomalous).toBe(false);
+  });
+
+  it('fills null dimensions for categories without structural data', () => {
+    const rows = [
+      makeRow('civilService', '2026-01-06', null, null, {
+        composite: 1.0,
+        anomalous: false,
+        dimensions: { volume: makeDimensionScore(1.0) },
+        functionalShifts: [],
+        longHorizon: { cumulativeDeviation: 0, cumulativeWindow: 0, driftTrend: 'stable' },
+      }),
+      makeRow('fiscal', '2026-01-06', null, null, null),
+    ];
+    const result = buildStructuralHeatmapRows(rows);
+    const fiscal = result.find((r) => r.category === 'fiscal')!;
+    expect(fiscal.weeks[0].composite).toBeNull();
+    expect(fiscal.weeks[0].dimensions).toEqual({});
   });
 });
