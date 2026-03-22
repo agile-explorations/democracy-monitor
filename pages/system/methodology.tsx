@@ -80,30 +80,29 @@ function SummaryContent() {
       {/* Convergence */}
       <Section title="Convergence Synthesis">
         <p>
-          The two active detection layers (AI content assessment + silence detection) are combined
-          into a single convergence status. No single layer can escalate a category beyond Elevated
-          on its own.
+          L2 AI content assessment is the sole active detection layer driving convergence status.
+          Structural anomaly, silence detection, and thematic drift provide descriptive context.
         </p>
         <div className="space-y-2 ml-2">
           <ConvergenceStatus
             className="bg-dm-border"
             label="Stable"
-            description="No active detection layers elevated. Patterns are within normal baseline range."
+            description="AI content assessment within baseline range. No concerns detected."
           />
           <ConvergenceStatus
             className="bg-dm-accent"
             label="Elevated"
-            description="One active layer elevated. Worth monitoring but not yet corroborated."
+            description="AI two-pass review flags anomalous content with Pass 2 corroboration."
           />
           <ConvergenceStatus
             color="#8b5cf6"
             label="Divergent"
-            description="Both active layers independently flag anomalies. AI content concerns coincide with government silence."
+            description="Legacy status from prior detection model. No longer produced by the current pipeline."
           />
           <ConvergenceStatus
             className="bg-status-capture"
             label="Confirmed Concern"
-            description="Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings."
+            description="AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination."
           />
         </div>
       </Section>
@@ -329,16 +328,21 @@ function DetailedContent() {
             independent.
           </li>
         </ul>
-        <p>Two aggregate metrics determine whether Layer 2 is elevated:</p>
+        <p>
+          Convergence status is determined by absolute Pass 2 classification counts — no
+          cross-administration baseline comparison is needed:
+        </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <strong>Flag rate</strong> — The fraction of documents flagged by Pass 1, compared
-            against baseline flag rates using z-scores.
+            <strong>Stable</strong> — Pass 2 found no concerning documents (0 clearly concerning, ≤1
+            potentially concerning)
           </li>
           <li>
-            <strong>Concern rate</strong> — The fraction of Pass 2-reviewed documents classified as
-            &quot;potentially concerning&quot; or &quot;clearly concerning.&quot; When this exceeds
-            20%, the layer is considered elevated.
+            <strong>Elevated</strong> — ≥1 clearly concerning OR ≥2 potentially concerning documents
+          </li>
+          <li>
+            <strong>Confirmed Concern</strong> — ≥2 clearly concerning, OR ≥3 concerning documents
+            with ≥20% concern rate
           </li>
         </ul>
         <p>
@@ -516,14 +520,10 @@ function DetailedContent() {
           ). Key values include:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
-          <li>Structural anomaly threshold: composite z-score &gt; 2.5</li>
-          <li>AI flag rate threshold: z-score &gt; 1.5</li>
-          <li>AI concern rate threshold: 20% of reviewed documents</li>
-          <li>
-            Convergence escalation: AI elevated = Elevated, AI elevated + high concern = Confirmed
-            Concern
-          </li>
-          <li>Thematic drift window: 8 weeks rolling</li>
+          <li>Structural anomaly threshold: composite z-score &gt; 2.5 (descriptive only)</li>
+          <li>P2 Elevated: ≥1 clearly concerning OR ≥2 potentially concerning</li>
+          <li>P2 Confirmed Concern: ≥2 clearly concerning, OR ≥3 concerning with ≥20% rate</li>
+          <li>Thematic drift window: 8 weeks rolling (descriptive only)</li>
           <li>Long-horizon cumulative tracking: 12 weeks</li>
           <li>Structural dampening: exponential decay for mild z-scores, JSD outlier cap</li>
         </ul>
@@ -590,7 +590,7 @@ export default function MethodologyPage() {
     <>
       <SEOHead
         title="Methodology"
-        description="How Democracy Monitor assesses institutional health using AI content assessment and silence detection."
+        description="How Democracy Monitor assesses institutional health using AI two-pass content assessment."
         canonicalPath="/system/methodology"
       />
 

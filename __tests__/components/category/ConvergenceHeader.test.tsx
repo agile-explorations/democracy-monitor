@@ -29,38 +29,37 @@ describe('ConvergenceHeader', () => {
   it('renders Stable status', () => {
     render(<ConvergenceHeader synthesis={makeSynthesis()} />);
     expect(screen.getByText('Stable')).toBeDefined();
-    expect(screen.getByText('0 of 3 layers elevated')).toBeDefined();
+    expect(screen.getByText('No layers elevated')).toBeDefined();
   });
 
-  it('renders Elevated status with 1 layer', () => {
+  it('renders Elevated status with AI layer', () => {
     render(
       <ConvergenceHeader
         synthesis={makeSynthesis({
           status: 'Elevated',
-          structuralElevated: true,
+          aiElevated: true,
           layersElevated: 1,
-          pattern: 'Structural anomaly only',
+          pattern: 'AI content assessment elevated',
         })}
       />,
     );
     expect(screen.getByText('Elevated')).toBeDefined();
-    expect(screen.getByText('1 of 3 layers elevated')).toBeDefined();
-    expect(screen.getByText('Structural anomaly only')).toBeDefined();
+    expect(screen.getByText('AI layer elevated')).toBeDefined();
+    expect(screen.getByText('AI content assessment elevated')).toBeDefined();
   });
 
-  it('renders Divergent status', () => {
+  it('renders Divergent status (legacy)', () => {
     render(
       <ConvergenceHeader
         synthesis={makeSynthesis({
           status: 'Divergent',
-          structuralElevated: true,
           aiElevated: true,
-          layersElevated: 2,
+          layersElevated: 1,
         })}
       />,
     );
     expect(screen.getByText('Divergent')).toBeDefined();
-    expect(screen.getByText('2 of 3 layers elevated')).toBeDefined();
+    expect(screen.getByText('AI layer elevated')).toBeDefined();
   });
 
   it('renders ConfirmedConcern status', () => {
@@ -68,15 +67,13 @@ describe('ConvergenceHeader', () => {
       <ConvergenceHeader
         synthesis={makeSynthesis({
           status: 'ConfirmedConcern',
-          structuralElevated: true,
           aiElevated: true,
-          thematicElevated: true,
-          layersElevated: 3,
+          layersElevated: 1,
         })}
       />,
     );
     expect(screen.getByText('ConfirmedConcern')).toBeDefined();
-    expect(screen.getByText('3 of 3 layers elevated')).toBeDefined();
+    expect(screen.getByText('AI layer elevated')).toBeDefined();
   });
 
   it('shows bootstrap badge', () => {

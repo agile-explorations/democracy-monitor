@@ -380,7 +380,14 @@ describe('enrichWithLayerScores', () => {
   });
 
   it('passes AI summary through to convergence synthesis', async () => {
-    const aiSummary = makeAISummary({ flagRateZScore: 2.0 });
+    const aiSummary = makeAISummary({
+      concernDistribution: {
+        routine: 3,
+        novelNotConcerning: 0,
+        potentiallyConcerning: 0,
+        clearlyConcerning: 1,
+      },
+    });
     vi.mocked(computeRollingThematicDrift).mockResolvedValue(null);
     vi.mocked(extractWeekMetadata).mockResolvedValue(null);
     vi.mocked(synthesizeConvergence).mockReturnValue({
@@ -390,7 +397,7 @@ describe('enrichWithLayerScores', () => {
       silenceElevated: false,
       thematicElevated: false,
       layersElevated: 1,
-      pattern: 'AI flag rate elevated',
+      pattern: 'AI content assessment elevated',
       bootstrap: true,
     });
 

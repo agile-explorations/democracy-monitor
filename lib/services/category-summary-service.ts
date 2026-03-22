@@ -144,13 +144,13 @@ function buildConvergenceSummary(convergence: ConvergenceSynthesis): string {
 
   if (status === 'Stable') return 'All detection layers within normal parameters.';
 
-  // Active detection layers (drive convergence status)
+  // Active detection layer (drives convergence status)
   const active: string[] = [];
   if (aiElevated) active.push('AI content assessment');
-  if (silenceElevated) active.push('silence detection');
 
   // Descriptive context (does not drive status)
   const context: string[] = [];
+  if (silenceElevated) context.push('silence (source health)');
   if (structuralElevated) context.push('structural anomaly');
   if (thematicElevated) context.push('thematic drift');
 

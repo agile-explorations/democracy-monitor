@@ -50,7 +50,7 @@ export function ConvergenceHeader({ synthesis }: ConvergenceHeaderProps) {
 
         {/* Right: layers count */}
         <p className="text-xs text-dm-text-secondary whitespace-nowrap">
-          {synthesis.layersElevated} of 3 layers elevated
+          {synthesis.layersElevated === 1 ? 'AI layer elevated' : 'No layers elevated'}
         </p>
       </div>
 

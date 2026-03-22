@@ -225,20 +225,34 @@ export const BOOTSTRAP_CONFIDENCE = 0.5;
 
 // --- Layer 2 (AI two-pass assessment) ---
 
-/** Z-score threshold for AI flag rate to be considered elevated (requires P2 corroboration). */
+/** Z-score threshold for AI flag rate (used by event-validation, NOT convergence). */
 export const AI_FLAG_RATE_THRESHOLD = 1.5;
 
-/** Z-score threshold for AI flag rate to fire without P2 corroboration (very strong signal). */
+/** Z-score threshold for strong AI flag rate (used by event-validation, NOT convergence). */
 export const AI_FLAG_RATE_STRONG_THRESHOLD = 3.0;
 
-/** Fraction of Pass 2 docs at potentially/clearly concerning to trigger high concern. */
+/** Minimum total documents required for AI flag rate z-score (event-validation only). */
+export const AI_FLAG_RATE_MIN_DOCS = 10;
+
+// --- Convergence thresholds (absolute P2 counts, no baseline comparison) ---
+
+/** Minimum clearly_concerning docs to trigger Elevated (1 is sufficient). */
+export const P2_ELEVATED_MIN_CLEARLY = 1;
+
+/** Minimum potentially_concerning docs to trigger Elevated (without clearly_concerning). */
+export const P2_ELEVATED_MIN_POTENTIALLY = 2;
+
+/** Minimum clearly_concerning docs that alone trigger ConfirmedConcern. */
+export const P2_CONFIRMED_MIN_CLEARLY = 2;
+
+/** Minimum total concerning (potentially + clearly) for ConfirmedConcern via rate path. */
+export const P2_CONFIRMED_MIN_CONCERNING = 3;
+
+/** Concern rate threshold for ConfirmedConcern (when min count is met). */
 export const AI_CONCERN_THRESHOLD = 0.2;
 
-/** Minimum non-audit Pass 2 assessments required for concern rate to be meaningful. */
+/** Minimum Pass 2 assessments required for concern rate to be meaningful. */
 export const AI_CONCERN_MIN_SAMPLE = 3;
-
-/** Minimum total documents required for AI flag rate z-score to trigger elevation. */
-export const AI_FLAG_RATE_MIN_DOCS = 10;
 
 /** Default fraction of unflagged docs to audit with Pass 2. */
 export const AUDIT_SAMPLE_RATE = 0.03;

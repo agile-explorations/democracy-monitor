@@ -15,8 +15,8 @@ function SummaryContent() {
         </p>
         <p>
           A daily cron job fetches new documents, scores them, computes weekly aggregates, generates
-          embeddings, runs detection (AI content assessment + silence detection), and produces
-          narrative summaries. The entire pipeline is automated and requires no manual intervention.
+          embeddings, runs AI two-pass content assessment, and produces narrative summaries. The
+          entire pipeline is automated and requires no manual intervention.
         </p>
       </Section>
 
@@ -24,9 +24,9 @@ function SummaryContent() {
         <p>
           Documents flow through a multi-stage pipeline: fetch from external sources, store in
           PostgreSQL, score with keyword annotations, aggregate weekly, embed with OpenAI, assess
-          with two active detection layers (AI content review + silence detection) plus descriptive
-          context layers (structural anomaly + thematic drift), and generate narratives for elevated
-          categories.
+          with L2 AI content assessment (sole active detection layer) plus descriptive context
+          layers (structural anomaly, silence/source health, thematic drift), and generate
+          narratives for elevated categories.
         </p>
       </Section>
 

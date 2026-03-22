@@ -131,46 +131,28 @@ describe('synthesizeConvergence', () => {
     });
   });
 
-  describe('AI layer elevation (L2)', () => {
-    it('AI triggers Elevated when P1 flag rate elevated AND P2 confirms concern', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
+  describe('AI layer elevation (L2) — absolute P2 thresholds', () => {
+    it('Elevated when ≥1 clearly_concerning', () => {
+      const ai = makeAISummary({
+        concernDistribution: {
+          routine: 3,
+          novelNotConcerning: 1,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 1,
+        },
+      });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('Elevated');
       expect(result.aiElevated).toBe(true);
       expect(result.layersElevated).toBe(1);
     });
 
-    it('AI below threshold does not trigger', () => {
-      const ai = makeAISummary({ flagRateZScore: 1.0 });
-      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.status).toBe('Stable');
-      expect(result.aiElevated).toBe(false);
-    });
-
-    it('AI does NOT trigger when P1 elevated but P2 found nothing concerning', () => {
+    it('Elevated when ≥2 potentially_concerning (no clearly)', () => {
       const ai = makeAISummary({
-        flagRateZScore: 2.0,
-        concernRate: 0,
         concernDistribution: {
-          routine: 5,
+          routine: 3,
           novelNotConcerning: 0,
-          potentiallyConcerning: 0,
-          clearlyConcerning: 0,
-        },
-      });
-      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.status).toBe('Stable');
-      expect(result.aiElevated).toBe(false);
-    });
-
-    it('AI triggers without P2 concern when flag rate is very strong (>3.0)', () => {
-      const ai = makeAISummary({
-        flagRateZScore: 3.5,
-        concernRate: 0,
-        concernDistribution: {
-          routine: 5,
-          novelNotConcerning: 0,
-          potentiallyConcerning: 0,
+          potentiallyConcerning: 2,
           clearlyConcerning: 0,
         },
       });
@@ -179,18 +161,36 @@ describe('synthesizeConvergence', () => {
       expect(result.aiElevated).toBe(true);
     });
 
-    it('AI does NOT trigger at exactly strong threshold without P2 concern', () => {
+    it('Stable when only 1 potentially_concerning and 0 clearly_concerning', () => {
       const ai = makeAISummary({
-        flagRateZScore: 3.0,
-        concernRate: 0,
         concernDistribution: {
           routine: 5,
           novelNotConcerning: 0,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 0,
+        },
+      });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Stable');
+      expect(result.aiElevated).toBe(false);
+    });
+
+    it('Stable when P2 found nothing concerning', () => {
+      const ai = makeAISummary({
+        concernDistribution: {
+          routine: 5,
+          novelNotConcerning: 2,
           potentiallyConcerning: 0,
           clearlyConcerning: 0,
         },
       });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('Stable');
+      expect(result.aiElevated).toBe(false);
+    });
+
+    it('null AI assessment stays Stable', () => {
+      const result = synthesizeConvergence(makeStructuralScore(), null, makeThematicDrift());
       expect(result.status).toBe('Stable');
       expect(result.aiElevated).toBe(false);
     });
@@ -224,7 +224,14 @@ describe('synthesizeConvergence', () => {
 
   describe('AI + silence (silence does not affect status)', () => {
     it('AI elevated + silence → Elevated (not Divergent)', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
+      const ai = makeAISummary({
+        concernDistribution: {
+          routine: 3,
+          novelNotConcerning: 1,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 1,
+        },
+      });
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(null, ai, null, undefined, silence);
       expect(result.status).toBe('Elevated');
@@ -233,7 +240,15 @@ describe('synthesizeConvergence', () => {
     });
 
     it('AI elevated + silence + high concern → ConfirmedConcern', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.3 });
+      const ai = makeAISummary({
+        concernRate: 0.4,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 2,
+          clearlyConcerning: 1,
+        },
+      });
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(null, ai, null, undefined, silence);
       expect(result.status).toBe('ConfirmedConcern');
@@ -241,34 +256,69 @@ describe('synthesizeConvergence', () => {
     });
   });
 
-  describe('ConfirmedConcern gating (L2-only)', () => {
-    it('triggers when AI elevated AND high concern rate', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.5 });
+  describe('ConfirmedConcern gating (absolute P2 thresholds)', () => {
+    it('triggers via ≥2 clearly_concerning path', () => {
+      const ai = makeAISummary({
+        concernRate: 0.5,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 1,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 2,
+        },
+      });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('ConfirmedConcern');
       expect(result.layersElevated).toBe(1);
     });
 
-    it('does NOT trigger when concern rate is high but Pass 2 sample too small', () => {
+    it('triggers via ≥3 concerning + ≥20% concern rate path', () => {
       const ai = makeAISummary({
-        flagRateZScore: 2.0,
+        concernRate: 0.3,
+        concernDistribution: {
+          routine: 5,
+          novelNotConcerning: 2,
+          potentiallyConcerning: 2,
+          clearlyConcerning: 1,
+        },
+      });
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('ConfirmedConcern');
+    });
+
+    it('does NOT trigger when Pass 2 sample too small', () => {
+      const ai = makeAISummary({
         concernRate: 1.0,
         concernDistribution: {
           routine: 0,
           novelNotConcerning: 0,
-          potentiallyConcerning: 1,
+          potentiallyConcerning: 2,
           clearlyConcerning: 0,
         },
       });
+      // Only 2 Pass 2 docs < min sample of 3 → highConcern gated → Elevated
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      // Only 1 Pass 2 doc → highConcern gated off → Elevated
+      expect(result.status).toBe('Elevated');
+    });
+
+    it('does NOT trigger when concerning count < 3 and clearly < 2', () => {
+      const ai = makeAISummary({
+        concernRate: 0.25,
+        concernDistribution: {
+          routine: 4,
+          novelNotConcerning: 2,
+          potentiallyConcerning: 1,
+          clearlyConcerning: 1,
+        },
+      });
+      // 2 concerning (1+1) < 3 and 1 clearly < 2 → Elevated only
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('Elevated');
     });
 
     it('triggers at exactly the minimum sample size', () => {
       const ai = makeAISummary({
-        flagRateZScore: 2.0,
-        concernRate: 0.33,
+        concernRate: 0.67,
         concernDistribution: {
           routine: 1,
           novelNotConcerning: 0,
@@ -276,25 +326,25 @@ describe('synthesizeConvergence', () => {
           clearlyConcerning: 1,
         },
       });
-      // 3 Pass 2 docs — at minimum, 2/3 = 0.67 > 0.2 concern rate
-      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.status).toBe('ConfirmedConcern');
-    });
-  });
-
-  describe('AI minimum document gate', () => {
-    it('high z-score with <10 docs stays Stable', () => {
-      const ai = makeAISummary({ flagRateZScore: 3.0, totalDocuments: 5, flagCount: 3 });
-      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.status).toBe('Stable');
-      expect(result.aiElevated).toBe(false);
-    });
-
-    it('exactly 10 docs triggers Elevated', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, totalDocuments: 10, flagCount: 5 });
+      // 3 Pass 2 docs (at min), 2 concerning, but only 1 clearly → rate path: 2 < 3 → no
+      // clearly path: 1 < 2 → no → Elevated only
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('Elevated');
-      expect(result.aiElevated).toBe(true);
+    });
+
+    it('triggers at min sample with 3 concerning', () => {
+      const ai = makeAISummary({
+        concernRate: 0.75,
+        concernDistribution: {
+          routine: 1,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 2,
+          clearlyConcerning: 1,
+        },
+      });
+      // 4 P2 docs ≥ 3, 3 concerning ≥ 3, 0.75 > 0.2 → ConfirmedConcern
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      expect(result.status).toBe('ConfirmedConcern');
     });
   });
 
@@ -304,10 +354,17 @@ describe('synthesizeConvergence', () => {
       expect(result.pattern).toBe('All layers within baseline ranges');
     });
 
-    it('describes AI flag rate elevated', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0 });
+    it('describes AI content assessment elevated', () => {
+      const ai = makeAISummary({
+        concernDistribution: {
+          routine: 3,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 1,
+        },
+      });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.pattern).toContain('AI flag rate elevated');
+      expect(result.pattern).toContain('AI content assessment elevated');
     });
 
     it('describes conspicuous silence as source health indicator', () => {
@@ -332,11 +389,18 @@ describe('synthesizeConvergence', () => {
 
     it('describes all layers', () => {
       const structural = makeStructuralScore({ composite: 3.0, anomalous: true });
-      const ai = makeAISummary({ flagRateZScore: 2.0 });
+      const ai = makeAISummary({
+        concernDistribution: {
+          routine: 3,
+          novelNotConcerning: 0,
+          potentiallyConcerning: 0,
+          clearlyConcerning: 1,
+        },
+      });
       const thematic = makeThematicDrift({ zScore: 4.0 });
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(structural, ai, thematic, undefined, silence);
-      expect(result.pattern).toContain('AI flag rate');
+      expect(result.pattern).toContain('AI content assessment');
       expect(result.pattern).toContain('silence');
       expect(result.pattern).toContain('structural anomaly');
       expect(result.pattern).toContain('thematic drift');

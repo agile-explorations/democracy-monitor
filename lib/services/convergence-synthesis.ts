@@ -1,9 +1,10 @@
 import {
   AI_CONCERN_MIN_SAMPLE,
   AI_CONCERN_THRESHOLD,
-  AI_FLAG_RATE_MIN_DOCS,
-  AI_FLAG_RATE_STRONG_THRESHOLD,
-  AI_FLAG_RATE_THRESHOLD,
+  P2_CONFIRMED_MIN_CLEARLY,
+  P2_CONFIRMED_MIN_CONCERNING,
+  P2_ELEVATED_MIN_CLEARLY,
+  P2_ELEVATED_MIN_POTENTIALLY,
   getStructuralThreshold,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
@@ -20,10 +21,10 @@ import type {
 /**
  * Synthesize convergence status from L2 (AI content assessment).
  *
- * Status determination (L2-only):
- *   Stable           — L2 within baseline range
- *   Elevated         — L2 flag rate elevated with P2 corroboration
- *   ConfirmedConcern — L2 elevated AND high P2 concern rate
+ * Status determination (absolute P2 thresholds, no baseline comparison):
+ *   Stable           — P2 found no concerning documents
+ *   Elevated         — ≥1 clearly_concerning OR ≥2 potentially_concerning
+ *   ConfirmedConcern — ≥2 clearly_concerning, OR ≥3 concerning with ≥20% rate
  *
  * Active detection layer:
  *   L2  — AI two-pass content assessment (sole detection layer)
@@ -76,12 +77,11 @@ function isStructuralElevated(structural: StructuralScore | null, category?: str
 
 function isAIElevated(aiAssessment: AIAssessmentSummary | null): boolean {
   if (!aiAssessment) return false;
-  if (aiAssessment.totalDocuments < AI_FLAG_RATE_MIN_DOCS) return false;
-  if (aiAssessment.flagRateZScore <= AI_FLAG_RATE_THRESHOLD) return false;
-  // P1 flag rate is elevated — require P2 corroboration or very strong flag rate
-  return (
-    aiAssessment.concernRate > 0 || aiAssessment.flagRateZScore > AI_FLAG_RATE_STRONG_THRESHOLD
-  );
+  const { concernDistribution: d } = aiAssessment;
+  // Absolute P2 thresholds — no baseline comparison needed
+  if (d.clearlyConcerning >= P2_ELEVATED_MIN_CLEARLY) return true;
+  if (d.potentiallyConcerning >= P2_ELEVATED_MIN_POTENTIALLY) return true;
+  return false;
 }
 
 function isSilenceElevated(silence: SilenceScore | null | undefined): boolean {
@@ -100,7 +100,13 @@ function isHighConcern(aiAssessment: AIAssessmentSummary | null): boolean {
   const pass2Count =
     d.routine + d.novelNotConcerning + d.potentiallyConcerning + d.clearlyConcerning;
   if (pass2Count < AI_CONCERN_MIN_SAMPLE) return false;
-  return aiAssessment.concernRate > AI_CONCERN_THRESHOLD;
+  // Path 1: multiple clearly_concerning docs alone trigger ConfirmedConcern
+  if (d.clearlyConcerning >= P2_CONFIRMED_MIN_CLEARLY) return true;
+  // Path 2: enough concerning docs with high concern rate
+  const concerning = d.potentiallyConcerning + d.clearlyConcerning;
+  return (
+    concerning >= P2_CONFIRMED_MIN_CONCERNING && aiAssessment.concernRate > AI_CONCERN_THRESHOLD
+  );
 }
 
 /**
@@ -127,7 +133,7 @@ function describePattern(
   const parts: string[] = [];
 
   // Active detection layer
-  if (aiElevated) parts.push('AI flag rate elevated');
+  if (aiElevated) parts.push('AI content assessment elevated');
 
   // Descriptive context (not scored)
   if (silenceElevated) parts.push('government silence detected (source health indicator)');

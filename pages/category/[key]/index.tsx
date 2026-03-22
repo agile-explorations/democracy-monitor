@@ -200,7 +200,7 @@ export default function CategoryDetailPage({
               Convergence Status Over Time
               <span
                 className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-dm-border text-[10px] font-normal normal-case tracking-normal cursor-help"
-                title="Stable = no layers elevated. Elevated = 1 layer deviating from baseline. Divergent = 2+ layers deviating. Confirmed Concern = 2+ layers deviating with high AI concern rate."
+                title="Stable = AI within baseline. Elevated = AI flags anomalous content with P2 corroboration. Confirmed Concern = AI elevated with high P2 concern rate (>20%)."
               >
                 ?
               </span>

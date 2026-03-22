@@ -85,7 +85,7 @@ describe('evaluateEvent', () => {
     });
 
     const result = await evaluateEvent(makeEvent({ expectedMinStatus: 'Elevated' }));
-    // AI flag rate z-score 2.5 > 1.5 threshold with high concern → ConfirmedConcern (L2-only)
+    // 2 clearly_concerning ≥ P2_CONFIRMED_MIN_CLEARLY → ConfirmedConcern
     expect(result.recomputed.convergence.aiElevated).toBe(true);
     expect(result.recomputed.convergence.status).toBe('ConfirmedConcern');
     expect(result.recomputedDetected).toBe(true);

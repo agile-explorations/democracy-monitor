@@ -59,10 +59,11 @@ Layer 2 uses artificial intelligence to read and evaluate individual documents. 
 - **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
 - **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots. Pass 2 receives week-level context (flag rate, peer titles, trajectory) to inform its assessment.
 
-Two aggregate metrics determine whether Layer 2 is elevated:
+Convergence status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
 
-- **Flag rate** — The fraction of documents flagged by Pass 1, compared against baseline flag rates using z-scores. A significantly higher flag rate than the baseline suggests more documents warranting attention.
-- **Concern rate** — The fraction of Pass 2-reviewed documents classified as "potentially concerning" or "clearly concerning." When this exceeds 20%, the layer is considered elevated.
+- **Stable** — Pass 2 found no concerning documents (0 clearly concerning, ≤1 potentially concerning)
+- **Elevated** — ≥1 clearly concerning OR ≥2 potentially concerning documents
+- **Confirmed Concern** — ≥2 clearly concerning, OR ≥3 concerning documents with ≥20% concern rate
 
 An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
@@ -180,11 +181,10 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 
 All scoring thresholds, dimension weights, and configuration constants are defined in a single file: [`lib/methodology/scoring-config.ts`](lib/methodology/scoring-config.ts). Key values include:
 
-- Structural anomaly threshold: composite z-score > 2.5
-- AI flag rate threshold: z-score > 1.5
-- AI concern rate threshold: 20% of reviewed documents
-- Convergence escalation: AI elevated = Elevated, AI elevated + high concern = Confirmed Concern
-- Thematic drift window: 8 weeks rolling
+- Structural anomaly threshold: composite z-score > 2.5 (descriptive only)
+- P2 Elevated: ≥1 clearly concerning OR ≥2 potentially concerning
+- P2 Confirmed Concern: ≥2 clearly concerning, OR ≥3 concerning with ≥20% rate
+- Thematic drift window: 8 weeks rolling (descriptive only)
 - Long-horizon cumulative tracking: 12 weeks
 - Structural dampening: exponential decay for mild z-scores, JSD outlier cap
 
