@@ -10,6 +10,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-CLN: Layer & Convergence Terminology Cleanup ✅
+
+**Status: Done (issues #420-#431).** Milestone 63 closed.
+
+**Context:** After R1-DET's detection architecture transition (L2-only convergence, Divergent retired), the codebase retained legacy naming: "convergence" (→ concern), "layer2" (→ document-review), "Layer N:" labels, and the deleted Divergent status in charts. This sprint renames internal terminology to match the current architecture.
+
+**Scope vs. Actual:**
+
+- Planned (12 issues): Remove Assessment Layers column (#420), delete ConvergenceIndicator (#421), rename chart labels (#422), remove Divergent from charts (#423), remove Layer N: labels (#424), simplify ConcernHeader (#425), rename types (#426), rename 15 files (#427), rename constants (#428), rename component files (#429), update package.json scripts (#430), update documentation (#431)
+- Actual: All 12 delivered. Additionally: extracted `document-review-queries.ts` from `document-review-store.ts` to fix max-lines lint, removed 5 unused exports (`DIGEST_CACHE_TTL_S`, `allSlugs()`, `DigestEntry`, `AI_FLAG_RATE_STRONG_THRESHOLD`, `AI_FLAG_RATE_MIN_DOCS`), removed deprecated type aliases (`ConvergenceStatus`, `ConvergenceSynthesis`), added `scripts/**/*.ts` to Knip entry points, fixed pre-existing `useState` destructuring mismatch, added `nosemgrep` annotations for `backfill-document-review.ts`.
+
+**Key Decisions:**
+
+1. **`convergenceStatus` field name kept**: The `convergenceStatus` field appears in API responses, component props, DB queries, and validation code (~50 references). Renaming it to `concernStatus` would require a database migration and API contract change — deferred to a future sprint if needed.
+2. **`convergenceStatusAtLeast()` kept**: Used in validation/backtest code. The function name refers to the DB field, not the architecture concept.
+3. **Chart Y-axis compressed 0-3 → 0-2**: With Divergent removed, the chart scale only needs Stable (0), Elevated (1), ConfirmedConcern (2). Status-to-number mapping updated in `chart-colors.ts`.
+4. **nosemgrep over top-level loadEnvConfig**: `backfill-document-review.ts` (renamed from `backfill-layer2.ts`) has `getDb()` calls in helper functions with `loadEnvConfig` in the `require.main` CLI entry block. Used `nosemgrep` annotations matching the pattern in `enrich-weekly-scores.ts` and `purge-cl-noise.ts`.
+
+**Lessons Learned:**
+
+1. **Rename sprints surface pre-existing lint issues**: The pre-commit hook runs ESLint on all staged files, not just changed files. This surfaced a pre-existing `useState` destructuring mismatch (`[convergenceStatus, setConcernLevel]`) and import order violations in renamed files. Budget time for fixing these in rename-heavy sprints.
+2. **File renames need OpenGrep re-evaluation**: Renamed cron files may lose `nosemgrep` annotations that were on the original. The OpenGrep `cron-needs-env-config` rule flagged `backfill-document-review.ts` because the original `backfill-layer2.ts` relied on having `loadEnvConfig` annotations that weren't carried over in the rename.
+
+---
+
 ## Sprint R1-DET: Detection Architecture Transition ✅
 
 **Status: Done (issues #410-#418).** Milestone 62 closed. Threshold tuning deferred to #419.
