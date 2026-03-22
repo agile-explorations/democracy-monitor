@@ -117,4 +117,5 @@ rules:
     paths:
       exclude:
         - lib/utils/api-helpers.ts
+        - 'pages/data/*.tsx' # client-side pages can't import api-helpers (pulls in pg/fs)
         - '*.test.*'

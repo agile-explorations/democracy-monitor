@@ -6,7 +6,6 @@ import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import type { StructuralHeatmapRow } from '@/lib/types/overview';
-import { formatError } from '@/lib/utils/api-helpers';
 
 export default function StructuralDimensionsPage() {
   const { resolvedMode: mode } = useTheme();
@@ -23,7 +22,7 @@ export default function StructuralDimensionsPage() {
         const data = await res.json();
         setRows(data.rows);
       } catch (err) {
-        setError(formatError(err));
+        setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
       }
