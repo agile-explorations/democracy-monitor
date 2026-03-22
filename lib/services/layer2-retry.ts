@@ -1,10 +1,10 @@
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
-import type { ContentItem } from '@/lib/types';
+import type { AIProvider, ContentItem } from '@/lib/types';
 import { mapConcurrent } from '@/lib/utils/async';
 import { assessPass2 } from './layer2-assessment-service';
 import { findPass2Gaps, storePass2Assessment } from './layer2-store';
-import type { Layer2Options } from './layer2-week-context';
+import type { Layer2Options, RetryWeekContext } from './layer2-week-context';
 import { buildPerDocContext, buildRetryWeekContext } from './layer2-week-context';
 
 const DEFAULT_PASS2_PROVIDER = 'anthropic';
@@ -54,32 +54,54 @@ export async function retryMissingPass2(
     category.expertDescription,
   );
 
-  const retryResults = await mapConcurrent(viable, RETRY_CONCURRENCY, async (gap) => {
-    const doc: ContentItem = {
-      title: gap.title ?? '',
-      summary: gap.content ?? '',
-      link: gap.url,
-      type: gap.sourceType ?? undefined,
-    };
-    const docContext = buildPerDocContext(weekContext, weekContext?.flaggedPeers, gap.url);
-    const result = await assessPass2(
-      doc,
-      gap.signals,
-      gap.erosionType,
-      category.description,
-      p2Provider,
-      false,
-      p2Model,
-      docContext,
-    );
-    if (result && !options?.dryRun) {
-      await storePass2Assessment(result, categoryKey, weekOf);
-    }
-    if (!result && options?.verbose) {
-      console.warn(`[layer2] Pass 2 retry failed for ${gap.url}`);
-    }
-    return result ? 1 : 0;
-  });
-
+  const retryResults = await mapConcurrent(viable, RETRY_CONCURRENCY, (gap) =>
+    retryGap(gap, weekContext ?? undefined, category.description, p2Provider, p2Model, {
+      categoryKey,
+      weekOf,
+      dryRun: options?.dryRun,
+      verbose: options?.verbose,
+    }),
+  );
   return retryResults.reduce<number>((sum, n) => sum + n, 0);
+}
+
+interface RetryGapOpts {
+  categoryKey: string;
+  weekOf: string;
+  dryRun?: boolean;
+  verbose?: boolean;
+}
+
+async function retryGap(
+  gap: Pass2Gap,
+  weekContext: Omit<RetryWeekContext, never> | undefined,
+  categoryDescription: string,
+  p2Provider: AIProvider,
+  p2Model: string,
+  opts: RetryGapOpts,
+): Promise<number> {
+  const doc: ContentItem = {
+    title: gap.title ?? '',
+    summary: gap.content ?? '',
+    link: gap.url,
+    type: gap.sourceType ?? undefined,
+  };
+  const docContext = buildPerDocContext(weekContext, weekContext?.flaggedPeers, gap.url);
+  const result = await assessPass2(
+    doc,
+    gap.signals,
+    gap.erosionType,
+    categoryDescription,
+    p2Provider,
+    false,
+    p2Model,
+    docContext,
+  );
+  if (result && !opts.dryRun) {
+    await storePass2Assessment(result, opts.categoryKey, opts.weekOf);
+  }
+  if (!result && opts.verbose) {
+    console.warn(`[layer2] Pass 2 retry failed for ${gap.url}`);
+  }
+  return result ? 1 : 0;
 }
