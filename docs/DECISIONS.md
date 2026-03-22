@@ -10,6 +10,32 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R1-DET: Detection Architecture Transition ✅
+
+**Status: Done (issues #410-#418).** Milestone 62 closed. Threshold tuning deferred to #419.
+
+**Context:** After R1-F15's strategic shift, the detection model relied on cross-administration baseline z-scores (P1 flag rate compared to Biden baseline) to gate convergence. This created a fundamental dependency on baselines not being contaminated. The sprint transitions to an L2-only convergence architecture with absolute P2 thresholds.
+
+**Scope vs. Actual:**
+
+- Planned (9 issues): Demote L3 from convergence (#410), ship B-E contextual P2 prompt (#411), re-run L2 on full corpus (#412), build L1v2 silence detection (#413), demote L1 structural (#414), validation harness latency window (#415), recompute convergence + backtest (#416), tests (#417), close stale issues + update docs (#418)
+- Actual: All 9 delivered. Additionally: absolute P2 thresholds replaced baseline z-score comparison (scope expansion discovered mid-sprint). UI audit caught stale references across 6 pages. Layer2 backfill (`--fresh`) in progress at sprint close — threshold tuning deferred to #419.
+
+**Key Decisions:**
+
+1. **L2-only convergence**: L2 AI content assessment is the sole detection layer driving convergence status. L1 (structural), L1v2 (silence), and L3 (thematic drift) are descriptive context only — computed and stored for narratives/visualization but do not drive Stable/Elevated/ConfirmedConcern.
+2. **Absolute P2 thresholds replace baseline z-scores**: Instead of comparing P1 flag rate against baseline flag rates using z-scores (which inherits all baseline contamination risks), convergence is now determined by direct P2 concern distribution counts: Elevated ≥1 clearly_concerning OR ≥2 potentially_concerning; ConfirmedConcern ≥2 clearly_concerning OR ≥3 concerning with ≥20% rate.
+3. **Divergent status retired**: Removed from production path. Kept in ConvergenceStatus type union, chart colors, and display constants for backward compatibility with legacy DB records.
+4. **MULTIPASS_STATUSES narrowed to ConfirmedConcern only**: 3-pass narrative generation (Opus draft → GPT-4o feedback → Opus revision) now only runs for ConfirmedConcern. Elevated gets single-pass. This is consistent with Divergent being retired.
+5. **P2 reasoning enhancements**: Added contextual connections (how this doc connects to broader category patterns), specific mechanism identification (which erosion type), and CREC Congressional Record response identification to Pass 2 prompt.
+6. **Silence as descriptive context**: L1v2 silence detection was already built in a prior sprint. This sprint demoted it from active layer to descriptive context (stored as `silenceElevated` metadata but does not affect `layersElevated` count or status determination).
+
+**Lessons Learned:**
+
+1. **Baseline dependencies compound**: The P1 flag rate z-score baseline comparison inherited the same contamination problem that affected L1 structural scoring. Moving to absolute P2 counts eliminates this entire class of problems — the system no longer needs to compare current behavior to historical "normal" for its core detection decision.
+2. **UI audit is essential after architectural changes**: The L2-only transition touched convergence-synthesis.ts and narrative helpers, but stale references to "two active detection layers" and "flag rate z-scores" persisted in 6 UI/doc files (architecture page, methodology page quick-reference, category tooltip, ConvergenceHeader layer count display, assessment methodology doc). A systematic audit caught all of them.
+3. **Pattern text matters for tests**: Changing `'AI flag rate elevated'` to `'AI content assessment elevated'` in convergence pattern descriptions broke pattern-matching assertions in 4 test files. Pattern text is effectively an API — changes must be grep-audited.
+
 ## Sprint R1-F15: Detection Calibration Closure ✅
 
 **Status: Done (issues #398-#400).** Milestone 60 closed.

@@ -6,7 +6,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ## Architecture decisions
 
-- **L2-only detection architecture** (2026-03-21, updated from three-layer triangulation): L2 AI two-pass assessment is the sole active detection layer driving convergence status. L1 structural anomaly, L1v2 silence detection, and L3 thematic drift provide descriptive context only. Convergence: Stable / Elevated / ConfirmedConcern (Divergent retained in type for legacy DB records but no longer produced). Keywords are annotations only. Full design: `ARCHITECTURE.md`
+- **L2-only detection architecture** (2026-03-22, updated from three-layer triangulation): L2 AI two-pass assessment is the sole active detection layer driving convergence status via absolute P2 thresholds (no baseline z-score comparison). L1 structural anomaly, L1v2 silence detection, and L3 thematic drift provide descriptive context only. Convergence: Stable / Elevated / ConfirmedConcern (Divergent retained in type for legacy DB records but no longer produced). Keywords are annotations only. Full design: `ARCHITECTURE.md`
 - Sprint sequence: R1 (document corpus fixes) → R2 (Layer 1 + Layer 3) → R3 (Layer 2) → R4 (narrative + dashboard) → R5 (immigration + validation)
 - Sprint 21 run work (keyword baseline regen) superseded — keywords are annotations, not detection gates
 - Sprint 22 (rhetoric cross-feed) absorbed into Sprint R1
@@ -69,7 +69,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `ai_document_assessments` table, `aiScore`/`aiDetail` on `weekly_aggregates`, `runLayer2Assessment()` in orchestrator, `pnpm layer2:backfill` CLI
 - Pass 1 = gpt-4o-mini (OpenAI), Pass 2 = claude-sonnet-4-5-20250929 (Anthropic) — different providers for epistemic independence
 - Thresholds in scoring-config: `AI_FLAG_RATE_THRESHOLD = 1.5` (z-score), `AI_CONCERN_THRESHOLD = 0.2` (20% concern rate), `AUDIT_SAMPLE_RATE = 0.03`
-- ConvergenceStatus: Stable / Elevated / ConfirmedConcern (L2-only: AI elevated = Elevated, AI elevated + high P2 concern = ConfirmedConcern). Divergent retained in type union for legacy DB records but no longer produced.
+- ConvergenceStatus: Stable / Elevated / ConfirmedConcern (absolute P2 thresholds: ≥1 clearly_concerning or ≥2 potentially_concerning = Elevated; ≥2 clearly_concerning or ≥3 concerning with ≥20% rate = ConfirmedConcern). Divergent retained in type union for legacy DB records but no longer produced.
 - Source convergence: 6th structural dimension, log2((gov+1)/(rhetoric+1)), weight 0.13 in STRUCTURAL_DIMENSION_WEIGHTS
 - All 4 Layer 2 baselines complete (2026-02-24): flag rates 0.34-0.64%, Pass 2 non-concerning 98.4-99.9%, audit FN rate 0.07%
 - civilLiberties P1 calibrated (2026-03-03): flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7% (1/147). Fix: erosion framework in P1 prompt + threat-vector description. Architecture-consistent (no per-category prompt fields)
@@ -342,4 +342,4 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R1-F14: Cycle-year baseline matching — L1 selects Biden baseline by cycle year (Year 1 → biden_2021, Year 2 → biden_2022). Fixed L2 baseline contamination (`getBaselineAIFlagRate` ignored `baselineId`). Detection: 24/39 (62%), NC-3: 5/6 passing. Issues #393-#397, Milestone 59.
 - Sprint R1-F15: Detection calibration closure — Fix l2Fired() display bug (expose raw + converged columns), add missReason classification to validation harness, freeze T1 backtest reference after L2 backfill. Issues #398-#400, Milestone 60.
 - Sprint R1-SX1: Source expansion — Congressional Record (CREC) integration via GovInfo Granules API, contextual P2 prompt enhancement with empirical variant testing. DOJ speeches descoped (no API exists). Architecture decisions in `docs/internal/CREC_ARCHITECTURE_QUESTIONS.md`. Issues #401-#409, Milestone 61.
-- Sprint R1-DET: Detection architecture transition — L3 demotion from convergence, B-E contextual P2 prompt, L1v2 silence detection, L1 structural demotion, validation harness latency window. Two defensible detection layers (L2 content + L1v2 silence) replacing three noisy layers. Issues #410-#418, Milestone 62.
+- Sprint R1-DET: Detection architecture transition — L2-only convergence (L1/L1v2/L3 demoted to descriptive context), absolute P2 thresholds (no baseline z-score comparison), Divergent retired, P2 reasoning enhancements. Threshold tuning deferred to #419. Issues #410-#418, Milestone 62.
