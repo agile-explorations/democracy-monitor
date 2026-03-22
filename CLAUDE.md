@@ -88,7 +88,7 @@ The dashboard monitors executive-power signals across 14 institutional categorie
 2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs three-layer assessment (structural anomaly → AI two-pass → thematic drift) → convergence synthesis → stores assessment snapshots
 3. **API routes** (`/api/proxy`, `/api/federal-register`, `/api/scrape-tracker`) act as server-side proxies with Redis caching (in-memory fallback)
 4. **UI** reads stored snapshots and documents via API routes; progressive disclosure surfaces assessment details on demand
-5. Assessment returns a convergence status (Stable → Elevated → Divergent → Confirmed Concern) with layer scores, AI review, and reasoning
+5. Assessment returns a convergence status (Stable → Elevated → ConfirmedConcern) driven by L2 AI content assessment, with descriptive context from structural, silence, and thematic layers
 
 ### Directory structure
 
@@ -126,7 +126,7 @@ __tests__/        # Vitest test files mirroring lib/ structure
 - **`lib/services/ai-assessment-service.ts`** — AI Skeptic review layer (runs after keyword assessment).
 - **`lib/services/structural-scoring-service.ts`** — Layer 1: structural anomaly detection (JSD, z-scores, 5 dimensions).
 - **`lib/services/thematic-drift-service.ts`** — Layer 3: rolling thematic drift (8-week intra-admin window).
-- **`lib/services/convergence-service.ts`** — Convergence synthesis across all three layers.
+- **`lib/services/convergence-synthesis.ts`** — Convergence synthesis (L2-only detection, descriptive context from L1/L1v2/L3).
 - **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
 - **`lib/methodology/scoring-config.ts`** — Tier weights, class multipliers, volume thresholds, named constants.
 - **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → three-layer assess → convergence → store.
@@ -145,13 +145,13 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 ### Assessment methodology
 
-Three-layer triangulated detection pipeline:
+Detection pipeline with L2 as sole active detection layer:
 
-1. **Layer 1: Structural anomaly** (`structural-scoring-service.ts`) — deterministic, metadata-only. Functional classifier (9 buckets, 4 tiers), 5+1 structural dimensions (volume, composition, authority, timing, velocity, source convergence), JSD + z-score against baselines.
-2. **Layer 2: AI two-pass assessment** (`ai-assessment-service.ts`, `ai_document_assessments`) — Pass 1 (gpt-4o-mini) flags potentially concerning documents, Pass 2 (Claude Sonnet) classifies flagged docs. Different providers for epistemic independence.
-3. **Layer 3: Thematic drift** (`thematic-drift-service.ts`) — rolling 8-week intra-admin window, detects topic distribution shifts.
+1. **Layer 1: Structural anomaly** (`structural-scoring-service.ts`) — deterministic, metadata-only. Descriptive context only — does not drive convergence status.
+2. **Layer 2: AI two-pass assessment** (`ai-assessment-service.ts`, `ai_document_assessments`) — Pass 1 (gpt-4o-mini) flags potentially concerning documents, Pass 2 (Claude Sonnet) classifies flagged docs. Different providers for epistemic independence. **Sole active detection layer driving convergence status.**
+3. **Layer 3: Thematic drift** (`thematic-drift-service.ts`) — rolling 8-week intra-admin window. Descriptive context only — does not drive convergence status.
 
-**Convergence synthesis** (`convergence-service.ts`) combines all three layers into a single status: Stable → Elevated → Divergent → Confirmed Concern. Keywords serve as annotations only (not detection gates). Documented in `ASSESSMENT_METHODOLOGY.md`.
+**Convergence synthesis** (`convergence-synthesis.ts`) — L2 drives status: Stable → Elevated → ConfirmedConcern. L1 structural, L1v2 silence, and L3 thematic provide descriptive context. Keywords serve as annotations only (not detection gates). Documented in `ASSESSMENT_METHODOLOGY.md`.
 
 ## Sprint process
 

@@ -6,7 +6,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ## Architecture decisions
 
-- **Three-layer triangulated detection** (2026-02-22): Replaces keyword-driven detection. Layer 1 = structural anomaly (deterministic, metadata-only), Layer 2 = AI two-pass assessment (every document), Layer 3 = thematic drift (embedding-based, intra-admin rolling window). Convergence synthesis: Stable / Elevated / Divergent / Confirmed Concern. Keywords become annotations only. Full design: `ARCHITECTURE.md`
+- **L2-only detection architecture** (2026-03-21, updated from three-layer triangulation): L2 AI two-pass assessment is the sole active detection layer driving convergence status. L1 structural anomaly, L1v2 silence detection, and L3 thematic drift provide descriptive context only. Convergence: Stable / Elevated / ConfirmedConcern (Divergent retained in type for legacy DB records but no longer produced). Keywords are annotations only. Full design: `ARCHITECTURE.md`
 - Sprint sequence: R1 (document corpus fixes) → R2 (Layer 1 + Layer 3) → R3 (Layer 2) → R4 (narrative + dashboard) → R5 (immigration + validation)
 - Sprint 21 run work (keyword baseline regen) superseded — keywords are annotations, not detection gates
 - Sprint 22 (rhetoric cross-feed) absorbed into Sprint R1
@@ -69,7 +69,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `ai_document_assessments` table, `aiScore`/`aiDetail` on `weekly_aggregates`, `runLayer2Assessment()` in orchestrator, `pnpm layer2:backfill` CLI
 - Pass 1 = gpt-4o-mini (OpenAI), Pass 2 = claude-sonnet-4-5-20250929 (Anthropic) — different providers for epistemic independence
 - Thresholds in scoring-config: `AI_FLAG_RATE_THRESHOLD = 1.5` (z-score), `AI_CONCERN_THRESHOLD = 0.2` (20% concern rate), `AUDIT_SAMPLE_RATE = 0.03`
-- ConvergenceStatus: Stable / Elevated / Divergent / ConfirmedConcern (R3 added ConfirmedConcern — requires 2+ layers elevated AND high AI concern rate)
+- ConvergenceStatus: Stable / Elevated / ConfirmedConcern (L2-only: AI elevated = Elevated, AI elevated + high P2 concern = ConfirmedConcern). Divergent retained in type union for legacy DB records but no longer produced.
 - Source convergence: 6th structural dimension, log2((gov+1)/(rhetoric+1)), weight 0.13 in STRUCTURAL_DIMENSION_WEIGHTS
 - All 4 Layer 2 baselines complete (2026-02-24): flag rates 0.34-0.64%, Pass 2 non-concerning 98.4-99.9%, audit FN rate 0.07%
 - civilLiberties P1 calibrated (2026-03-03): flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7% (1/147). Fix: erosion framework in P1 prompt + threat-vector description. Architecture-consistent (no per-category prompt fields)

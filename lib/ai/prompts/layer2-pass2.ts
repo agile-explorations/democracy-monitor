@@ -137,6 +137,10 @@ const CREC_FRAMING = [
   'framing — not just whether a formal government action is described. A floor speech',
   'denouncing an executive action IS evidence of institutional conflict.',
   '',
+  'In your reasoning, identify what specific executive action or policy this speech is',
+  'responding to (e.g., "This floor speech responds to the mass IG firing of January 24.',
+  'The speaker characterizes it as undermining congressional oversight authority.").',
+  '',
 ].join('\n');
 
 /** B-E format prompt with week context, peer titles, and rhetoric framing. */
@@ -163,7 +167,7 @@ function buildContextualPrompt(
   ];
 
   if (isCRECDocument(docType, docLink)) parts.push(CREC_FRAMING);
-  parts.push(buildErosionFramework(), '', buildResponseSchema());
+  parts.push(buildErosionFramework(), '', buildReasoningGuidance(), '', buildResponseSchema());
   return parts.join('\n');
 }
 
@@ -181,6 +185,17 @@ function buildErosionFramework(): string {
     '  - noncompliance_refusal: ignoring court orders, defying oversight, refusing information requests',
     '  - routine: normal administrative activity with no erosion signal',
     '  - unclear: insufficient information to classify',
+  ].join('\n');
+}
+
+function buildReasoningGuidance(): string {
+  return [
+    'Reasoning guidance:',
+    '  - Name the specific institutional protection affected and the specific mechanism',
+    '    by which it is weakened (e.g., "removes the employee grievance pathway for',
+    '    performance ratings" not "represents a potential erosion of civil service protections").',
+    '  - If other flagged documents this week relate to the same policy action or',
+    '    institutional pressure, note the connection in your reasoning.',
   ].join('\n');
 }
 

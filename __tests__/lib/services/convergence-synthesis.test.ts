@@ -196,65 +196,57 @@ describe('synthesizeConvergence', () => {
     });
   });
 
-  describe('silence detection elevation (L1v2)', () => {
-    it('conspicuous silence triggers Elevated', () => {
+  describe('silence detection (descriptive only — does NOT drive status)', () => {
+    it('conspicuous silence tracked as metadata but does NOT elevate status', () => {
       const silence = makeSilenceScore({ conspicuous: true, govSilenceZ: 2.0, silenceScore: 5.0 });
       const result = synthesizeConvergence(null, null, null, undefined, silence);
-      expect(result.status).toBe('Elevated');
+      expect(result.status).toBe('Stable');
       expect(result.silenceElevated).toBe(true);
-      expect(result.layersElevated).toBe(1);
+      expect(result.layersElevated).toBe(0);
     });
 
-    it('non-conspicuous silence does not trigger', () => {
+    it('non-conspicuous silence does not flag', () => {
       const silence = makeSilenceScore({ conspicuous: false });
       const result = synthesizeConvergence(null, null, null, undefined, silence);
-      expect(result.status).toBe('Stable');
       expect(result.silenceElevated).toBe(false);
     });
 
-    it('null silence does not trigger', () => {
+    it('null silence does not flag', () => {
       const result = synthesizeConvergence(null, null, null, undefined, null);
-      expect(result.status).toBe('Stable');
       expect(result.silenceElevated).toBe(false);
     });
 
-    it('silence not provided (undefined) does not trigger', () => {
+    it('silence not provided (undefined) does not flag', () => {
       const result = synthesizeConvergence(null, null, null);
-      expect(result.status).toBe('Stable');
       expect(result.silenceElevated).toBe(false);
     });
   });
 
-  describe('two-layer convergence (AI + silence)', () => {
-    it('AI + silence → Divergent', () => {
+  describe('AI + silence (silence does not affect status)', () => {
+    it('AI elevated + silence → Elevated (not Divergent)', () => {
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(null, ai, null, undefined, silence);
-      expect(result.status).toBe('Divergent');
-      expect(result.layersElevated).toBe(2);
+      expect(result.status).toBe('Elevated');
+      expect(result.layersElevated).toBe(1);
+      expect(result.silenceElevated).toBe(true);
     });
 
-    it('AI + silence + high concern → ConfirmedConcern', () => {
+    it('AI elevated + silence + high concern → ConfirmedConcern', () => {
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.3 });
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(null, ai, null, undefined, silence);
       expect(result.status).toBe('ConfirmedConcern');
-      expect(result.layersElevated).toBe(2);
-    });
-
-    it('AI + silence + low concern → Divergent (not ConfirmedConcern)', () => {
-      const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.1 });
-      const silence = makeSilenceScore({ conspicuous: true });
-      const result = synthesizeConvergence(null, ai, null, undefined, silence);
-      expect(result.status).toBe('Divergent');
+      expect(result.layersElevated).toBe(1);
     });
   });
 
-  describe('ConfirmedConcern gating', () => {
-    it('does NOT trigger with high concern but only 1 layer elevated (AI only)', () => {
+  describe('ConfirmedConcern gating (L2-only)', () => {
+    it('triggers when AI elevated AND high concern rate', () => {
       const ai = makeAISummary({ flagRateZScore: 2.0, concernRate: 0.5 });
       const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
-      expect(result.status).toBe('Elevated');
+      expect(result.status).toBe('ConfirmedConcern');
+      expect(result.layersElevated).toBe(1);
     });
 
     it('does NOT trigger when concern rate is high but Pass 2 sample too small', () => {
@@ -268,13 +260,12 @@ describe('synthesizeConvergence', () => {
           clearlyConcerning: 0,
         },
       });
-      const silence = makeSilenceScore({ conspicuous: true });
-      const result = synthesizeConvergence(null, ai, null, undefined, silence);
-      // 2 layers elevated but only 1 Pass 2 doc → highConcern gated off → Divergent
-      expect(result.status).toBe('Divergent');
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
+      // Only 1 Pass 2 doc → highConcern gated off → Elevated
+      expect(result.status).toBe('Elevated');
     });
 
-    it('triggers at exactly the minimum sample size with 2 layers', () => {
+    it('triggers at exactly the minimum sample size', () => {
       const ai = makeAISummary({
         flagRateZScore: 2.0,
         concernRate: 0.33,
@@ -285,9 +276,8 @@ describe('synthesizeConvergence', () => {
           clearlyConcerning: 1,
         },
       });
-      const silence = makeSilenceScore({ conspicuous: true });
-      // 3 Pass 2 docs — at minimum, 2/3 = 0.67 > 0.2 concern rate, 2 layers
-      const result = synthesizeConvergence(null, ai, null, undefined, silence);
+      // 3 Pass 2 docs — at minimum, 2/3 = 0.67 > 0.2 concern rate
+      const result = synthesizeConvergence(makeStructuralScore(), ai, makeThematicDrift());
       expect(result.status).toBe('ConfirmedConcern');
     });
   });
@@ -320,10 +310,10 @@ describe('synthesizeConvergence', () => {
       expect(result.pattern).toContain('AI flag rate elevated');
     });
 
-    it('describes conspicuous silence', () => {
+    it('describes conspicuous silence as source health indicator', () => {
       const silence = makeSilenceScore({ conspicuous: true });
       const result = synthesizeConvergence(null, null, null, undefined, silence);
-      expect(result.pattern).toContain('conspicuous government silence');
+      expect(result.pattern).toContain('government silence detected (source health indicator)');
     });
 
     it('describes structural anomaly as descriptive only', () => {

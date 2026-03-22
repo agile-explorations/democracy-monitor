@@ -199,7 +199,7 @@ function layersFiredSummary(data: NarrativeLayerData): string {
   const active: string[] = [];
   const context: string[] = [];
   if (cd.aiElevated) active.push('L2 AI content assessment');
-  if (cd.silenceElevated) active.push('L1v2 silence detection');
+  if (cd.silenceElevated) context.push('L1v2 silence (source health indicator)');
   if (cd.structuralElevated) context.push('L1 structural anomaly');
   if (cd.thematicElevated) context.push('L3 thematic drift');
   const parts: string[] = [];
@@ -218,10 +218,10 @@ function statusExplanation(data: NarrativeLayerData): string {
       `L2 AI content assessment elevated with ${fmtPct(data.aiDetail.concernRate)} concern rate (baseline: ${fmtPct(data.aiDetail.baselineFlagRate)})`,
     );
   }
-  if (cd.silenceElevated) {
-    parts.push('L1v2 conspicuous government silence detected');
-  }
   // Descriptive context (does not drive status, but provides narrative grounding)
+  if (cd.silenceElevated) {
+    parts.push('L1v2 conspicuous government silence detected (source health indicator)');
+  }
   if (cd.structuralElevated && data.structuralScore !== null) {
     parts.push(
       `L1 structural context: score ${fmtNum(data.structuralScore)} with ${data.totalDocumentCount ?? 0} documents (descriptive only)`,
@@ -239,9 +239,9 @@ function formatConvergenceBlock(data: NarrativeLayerData): string[] {
   const cd = data.convergenceDetail;
   if (!cd) return ['Convergence data: unavailable.'];
   const lines = [
-    `Convergence status: ${cd.status} (${cd.layersElevated} of 2 active detection layers elevated)`,
-    `Active layers: L2 (AI content assessment) + L1v2 (silence detection)`,
-    `Descriptive context: L1 (structural anomaly) + L3 (thematic drift) — do not drive status`,
+    `Convergence status: ${cd.status} (${cd.layersElevated} of 1 active detection layer elevated)`,
+    `Active layer: L2 (AI content assessment) — sole detection layer driving status`,
+    `Descriptive context: L1 (structural), L1v2 (silence/source health), L3 (thematic) — do not drive status`,
     `Pattern: ${cd.pattern}`,
     layersFiredSummary(data),
   ];

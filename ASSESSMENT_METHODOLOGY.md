@@ -105,16 +105,15 @@ Thematic drift signals are preserved for research visualization but do not drive
 
 ## Convergence Synthesis
 
-The two active detection layers (L2 AI + L1v2 silence) are combined into a single convergence status for each category:
+L2 AI content assessment is the sole active detection layer, combined into a convergence status for each category:
 
-| Status                | Meaning                                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Stable**            | No active detection layers elevated. Patterns are within normal baseline range.                                        |
-| **Elevated**          | One active layer elevated. May reflect a single-dimension anomaly worth monitoring.                                    |
-| **Divergent**         | Both active layers independently flag anomalies. AI content concerns coincide with government silence.                 |
-| **Confirmed Concern** | Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings. |
+| Status                | Meaning                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| **Stable**            | AI content assessment within baseline range. No concerns detected.                               |
+| **Elevated**          | AI two-pass review flags anomalous content with Pass 2 corroboration.                            |
+| **Confirmed Concern** | AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination. |
 
-The key design principle is that **no single detection layer can escalate a category beyond Elevated on its own**. Divergent and Confirmed Concern require agreement from both active layers. This prevents a single noisy signal from triggering high-severity findings. Structural anomaly and thematic drift scores are reported as descriptive metadata alongside the convergence status.
+Structural anomaly (L1), silence detection (L1v2), and thematic drift (L3) provide descriptive context but do not influence the convergence status. This architecture was adopted after empirical validation showed that non-AI layers could not reliably distinguish signal from noise.
 
 ## Baselines
 
@@ -184,7 +183,7 @@ All scoring thresholds, dimension weights, and configuration constants are defin
 - Structural anomaly threshold: composite z-score > 2.5
 - AI flag rate threshold: z-score > 1.5
 - AI concern rate threshold: 20% of reviewed documents
-- Convergence escalation: 1 layer = Elevated, 2+ layers = Divergent, 2+ layers + high AI concern = Confirmed Concern
+- Convergence escalation: AI elevated = Elevated, AI elevated + high concern = Confirmed Concern
 - Thematic drift window: 8 weeks rolling
 - Long-horizon cumulative tracking: 12 weeks
 - Structural dampening: exponential decay for mild z-scores, JSD outlier cap

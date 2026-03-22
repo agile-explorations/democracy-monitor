@@ -386,7 +386,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
     });
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('L2 AI content assessment');
-    expect(prompt).toContain('L1v2 silence detection');
+    expect(prompt).toContain('L1v2 silence (source health indicator)');
     expect(prompt).toContain('L1 structural anomaly');
     expect(prompt).toContain('L3 thematic drift');
     expect(prompt).toContain('Active detection layers elevated');

@@ -385,32 +385,29 @@ function DetailedContent() {
       {/* Convergence */}
       <Section title="Convergence Synthesis">
         <p>
-          The two active detection layers (AI content assessment + silence detection) are combined
-          into a single convergence status for each category. Structural anomaly and thematic drift
-          scores are preserved as descriptive metadata but do not influence the status.
+          L2 AI content assessment drives the convergence status for each category. Structural
+          anomaly, silence detection, and thematic drift scores are preserved as descriptive
+          metadata but do not influence the status.
         </p>
         <DataTable
           headers={['Status', 'Meaning']}
           rows={[
-            [
-              'Stable',
-              'No active detection layers elevated. Patterns are within normal baseline range.',
-            ],
-            ['Elevated', 'One active layer elevated. Worth monitoring but not yet corroborated.'],
+            ['Stable', 'AI content assessment within baseline range. No concerns detected.'],
+            ['Elevated', 'AI two-pass review flags anomalous content with Pass 2 corroboration.'],
             [
               'Divergent',
-              'Both active layers independently flag anomalies. AI content concerns coincide with government silence.',
+              'Legacy status from prior detection model. No longer produced by the current pipeline.',
             ],
             [
               'Confirmed Concern',
-              'Both active layers elevated AND the AI concern rate is above 20%. Independent methods converge on concerning findings.',
+              'AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination.',
             ],
           ]}
         />
         <p>
-          The key design principle is that{' '}
-          <strong>no single layer can escalate a category beyond Elevated on its own</strong>.
-          Divergent and Confirmed Concern require agreement from both active detection layers.
+          L2 AI content assessment is the <strong>sole active detection layer</strong> driving
+          convergence status. Structural anomaly, silence detection, and thematic drift provide
+          descriptive context but do not influence the convergence status.
         </p>
       </Section>
 
@@ -523,8 +520,8 @@ function DetailedContent() {
           <li>AI flag rate threshold: z-score &gt; 1.5</li>
           <li>AI concern rate threshold: 20% of reviewed documents</li>
           <li>
-            Convergence escalation: 1 layer = Elevated, 2+ layers = Divergent, 2+ layers + high AI
-            concern = Confirmed Concern
+            Convergence escalation: AI elevated = Elevated, AI elevated + high concern = Confirmed
+            Concern
           </li>
           <li>Thematic drift window: 8 weeks rolling</li>
           <li>Long-horizon cumulative tracking: 12 weeks</li>

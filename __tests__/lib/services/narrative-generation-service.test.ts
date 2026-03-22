@@ -30,7 +30,7 @@ describe('isElevatedStatus', () => {
     expect(isElevatedStatus(makeConvergence('Elevated', 1))).toBe(true);
   });
 
-  it('returns true for Divergent status', () => {
+  it('returns true for Divergent status (legacy)', () => {
     expect(isElevatedStatus(makeConvergence('Divergent', 2))).toBe(true);
   });
 

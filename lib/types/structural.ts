@@ -69,13 +69,14 @@ export interface ThematicDriftScore {
 /** Convergence synthesis status levels. */
 export type ConvergenceStatus = 'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConcern';
 
-/** Result of combining L1 + L2 + L3. */
+/** Result of L2 AI assessment synthesis. */
 export interface ConvergenceSynthesis {
   status: ConvergenceStatus;
   /** L1 structural anomaly — descriptive only, does not influence convergence status */
   structuralElevated: boolean;
+  /** L2 AI content assessment — sole active detection layer driving convergence status */
   aiElevated: boolean;
-  /** L1v2 silence detection — counts toward convergence (replaces L1 structural) */
+  /** L1v2 silence detection — descriptive only (source health indicator) */
   silenceElevated: boolean;
   /** L3 thematic drift — descriptive only, does not influence convergence status */
   thematicElevated: boolean;

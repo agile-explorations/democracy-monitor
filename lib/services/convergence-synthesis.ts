@@ -18,21 +18,20 @@ import type {
 } from '@/lib/types/structural';
 
 /**
- * Synthesize convergence status from L2 (AI) + L1v2 (silence detection).
+ * Synthesize convergence status from L2 (AI content assessment).
  *
- * Status determination:
- *   Stable           — all layers within baseline ranges
- *   Elevated         — one layer showing significant deviation
- *   Divergent        — two or more layers deviating
- *   ConfirmedConcern — two or more layers deviating AND high AI concern rate
+ * Status determination (L2-only):
+ *   Stable           — L2 within baseline range
+ *   Elevated         — L2 flag rate elevated with P2 corroboration
+ *   ConfirmedConcern — L2 elevated AND high P2 concern rate
  *
- * Active detection layers:
- *   L2  — AI two-pass content assessment (primary detection)
- *   L1v2 — silence detection (government quiet + independent active)
+ * Active detection layer:
+ *   L2  — AI two-pass content assessment (sole detection layer)
  *
  * Descriptive context only (not scored):
- *   L1  — structural anomaly (preserved for narrative metadata)
- *   L3  — thematic drift (preserved for narrative/research visualization)
+ *   L1    — structural anomaly (narrative metadata)
+ *   L1v2  — silence detection (source health indicator)
+ *   L3    — thematic drift (narrative/research visualization)
  */
 export function synthesizeConvergence(
   structural: StructuralScore | null,
@@ -47,9 +46,9 @@ export function synthesizeConvergence(
   const thematicElevated = isThematicElevated(thematic);
   const isBootstrap = thematic?.bootstrap ?? true;
 
-  const layersElevated = countElevatedLayers(aiElevated, silenceElevated);
+  const layersElevated = countElevatedLayers(aiElevated);
   const highConcern = isHighConcern(aiAssessment);
-  const status = determineStatus(layersElevated, highConcern);
+  const status = determineStatus(aiElevated, highConcern);
   const pattern = describePattern(
     structuralElevated,
     aiElevated,
@@ -106,20 +105,16 @@ function isHighConcern(aiAssessment: AIAssessmentSummary | null): boolean {
 
 /**
  * Count actively-scored elevated layers.
- * L2 (AI content assessment) + L1v2 (silence detection) = max 2.
- * L1 structural and L3 thematic are descriptive only.
+ * L2 (AI content assessment) is the sole detection layer.
+ * Silence, structural, and thematic are descriptive context only.
  */
-function countElevatedLayers(aiElevated: boolean, silenceElevated: boolean): number {
-  let count = 0;
-  if (aiElevated) count++;
-  if (silenceElevated) count++;
-  return count;
+function countElevatedLayers(aiElevated: boolean): number {
+  return aiElevated ? 1 : 0;
 }
 
-function determineStatus(layersElevated: number, highConcern: boolean): ConvergenceStatus {
-  if (layersElevated >= 2 && highConcern) return 'ConfirmedConcern';
-  if (layersElevated >= 2) return 'Divergent';
-  if (layersElevated === 1) return 'Elevated';
+function determineStatus(aiElevated: boolean, highConcern: boolean): ConvergenceStatus {
+  if (aiElevated && highConcern) return 'ConfirmedConcern';
+  if (aiElevated) return 'Elevated';
   return 'Stable';
 }
 
@@ -131,14 +126,14 @@ function describePattern(
 ): string {
   const parts: string[] = [];
 
-  // Active detection layers
+  // Active detection layer
   if (aiElevated) parts.push('AI flag rate elevated');
-  if (silenceElevated) parts.push('conspicuous government silence detected');
 
   // Descriptive context (not scored)
+  if (silenceElevated) parts.push('government silence detected (source health indicator)');
   if (structuralElevated) parts.push('structural anomaly detected (descriptive only)');
   if (thematicElevated) {
-    parts.push('thematic drift detected (descriptive only, not scored)');
+    parts.push('thematic drift detected (descriptive only)');
   }
 
   if (parts.length === 0) return 'All layers within baseline ranges';
