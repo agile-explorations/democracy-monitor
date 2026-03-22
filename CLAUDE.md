@@ -157,6 +157,8 @@ Detection pipeline with AI document review as sole active detection mechanism:
 
 Every sprint **MUST** follow this process. It may **ONLY** be skipped with explicit approval from the user.
 
+**IMPORTANT:** Always use Plan Mode (`/plan`) for sprint work. The analysis, proposal, and approval steps (1–3) should happen inside plan mode. Exit plan mode only when moving to implementation (step 6).
+
 1. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Read `docs/DECISIONS.md` for relevant prior decisions, spec deviations, and lessons learned from related sprints.
 2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
 3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
