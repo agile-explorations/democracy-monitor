@@ -24,6 +24,7 @@ export default defineConfig({
         'lib/services/document-embedder.ts',
         // DB I/O and CLI modules — pure functions tested, DB ops need integration tests
         'lib/services/data-validation-queries.ts',
+        'lib/services/document-review-queries.ts',
         'lib/services/ingest-validation-queries.ts',
         'lib/services/fetch-log-store.ts',
         'lib/services/snapshot-store.ts',
