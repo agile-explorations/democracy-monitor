@@ -10,6 +10,32 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DATA1: Researcher Data Access ✅
+
+**Status: Done (issues #434-#439).** Milestone 64.
+
+**Context:** Structural/AI/thematic metrics were computed per category-week but only visible in week-detail drill-down. CSV export endpoints existed but jsonb columns rendered as raw JSON blobs — unusable in Excel/R/pandas. Researchers needed downloadable data and at-a-glance time-series.
+
+**Scope vs. Actual:** All 6 issues implemented as planned. No scope changes.
+
+1. CSV flattening utility (`flattenWeeklyRow`, `flattenScoresRow`) — extracts jsonb into individual columns
+2. Integrated flattening into `/api/export/weekly` and `/api/export/scores` CSV branches
+3. `/data` page with download cards, full database section, API docs, column reference
+4. `METRIC_LINE_COLORS` (sky/orange/violet) in chart-colors.ts
+5. `DescriptiveMetricsChart` — 3 Line series on 0-100 scale with tooltip, legend, brush
+6. `CategoryChartCard` extracted from category detail page with concern/metrics toggle
+
+**Key decisions:**
+
+- Separate `DescriptiveMetricsChart` component (not a mode on `CategoryStatusChart`) — different Y-axis (0-100 vs 0-2), different chart type (LineChart vs ComposedChart), and `CategoryStatusChart` was already at 270/300 line limit.
+- Extracted `CategoryChartCard` to keep category detail page under 300 lines (was 297, toggle would add ~15 lines).
+- `flattenWeeklyRow` decomposed into 4 helper functions (`flattenStructural`, `flattenAi`, `flattenThematic`, `flattenConcern`) to stay under ESLint `max-lines-per-function` limit.
+- Data nav section placed between Categories and System in SideNav.
+
+**Lessons:** None — straightforward implementation sprint with clear spec.
+
+---
+
 ## Sprint R1-CLN: Layer & Convergence Terminology Cleanup ✅
 
 **Status: Done (issues #420-#431).** Milestone 63 closed.
