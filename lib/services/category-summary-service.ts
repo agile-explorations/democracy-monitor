@@ -3,11 +3,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { baselines, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
-import type {
-  AIAssessmentSummary,
-  ConvergenceStatus,
-  ConvergenceSynthesis,
-} from '@/lib/types/structural';
+import type { AIAssessmentSummary, ConcernLevel, ConcernAssessment } from '@/lib/types/structural';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
 const SPARKLINE_WEEKS = 8;
@@ -15,7 +11,7 @@ const SPARKLINE_WEEKS = 8;
 export interface CategorySummary {
   category: string;
   title: string;
-  convergenceStatus: ConvergenceStatus | null;
+  convergenceStatus: ConcernLevel | null;
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
@@ -85,7 +81,7 @@ async function fetchSparklineData(
 }
 
 interface ConvergenceRow {
-  synthesis: ConvergenceSynthesis;
+  synthesis: ConcernAssessment;
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
@@ -120,7 +116,7 @@ async function fetchLatestConvergence(
   const result: Record<string, ConvergenceRow> = {};
   for (const row of rows.rows) {
     const r = row as Record<string, unknown>;
-    const detail = r.convergence_detail as ConvergenceSynthesis | null;
+    const detail = r.convergence_detail as ConcernAssessment | null;
     if (detail) {
       const aiDetail = r.ai_detail as AIAssessmentSummary | null;
       result[r.category as string] = {
@@ -138,7 +134,7 @@ async function fetchLatestConvergence(
 }
 
 /** Build a human-readable summary from convergence synthesis. */
-function buildConvergenceSummary(convergence: ConvergenceSynthesis): string {
+function buildConvergenceSummary(convergence: ConcernAssessment): string {
   const { status, aiElevated, silenceElevated, structuralElevated, thematicElevated, pattern } =
     convergence;
 

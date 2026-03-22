@@ -1,8 +1,8 @@
 import type { NarrativeLayerData, NarrativeResult } from '@/lib/types';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 
-const ELEVATED_STATUSES = new Set<ConvergenceStatus>(['Elevated', 'Divergent', 'ConfirmedConcern']);
-const MULTIPASS_STATUSES = new Set<ConvergenceStatus>(['ConfirmedConcern']);
+const ELEVATED_STATUSES = new Set<ConcernLevel>(['Elevated', 'Divergent', 'ConfirmedConcern']);
+const MULTIPASS_STATUSES = new Set<ConcernLevel>(['ConfirmedConcern']);
 
 /** Returns true if the convergence status warrants AI narrative generation. */
 export function isElevatedStatus(detail: NarrativeLayerData['convergenceDetail']): boolean {

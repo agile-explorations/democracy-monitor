@@ -3,14 +3,14 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
-import type { ConvergenceStatus } from '@/lib/types';
+import type { ConcernLevel } from '@/lib/types';
 import type {
   HeatmapRow,
   OverviewSummary,
   StatusTimelineEntry,
   SynchronyPoint,
 } from '@/lib/types/overview';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import type { ConcernAssessment } from '@/lib/types/structural';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
 
@@ -22,9 +22,9 @@ function weeksSinceAdminStart(): number {
   return Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
 }
 
-const ELEVATED_STATUSES = new Set<ConvergenceStatus>(['Elevated', 'Divergent', 'ConfirmedConcern']);
+const ELEVATED_STATUSES = new Set<ConcernLevel>(['Elevated', 'Divergent', 'ConfirmedConcern']);
 
-const STATUS_WEIGHT: Record<ConvergenceStatus, number> = {
+const STATUS_WEIGHT: Record<ConcernLevel, number> = {
   Stable: 0,
   Elevated: 1,
   Divergent: 2,
@@ -174,9 +174,9 @@ async function fetchPeriodAggregates(from: string, to: string): Promise<Aggregat
 }
 
 /** Extract convergence status from JSONB detail, returning null when not computed. */
-function parseStatus(detail: unknown): ConvergenceStatus | null {
+function parseStatus(detail: unknown): ConcernLevel | null {
   if (!detail || typeof detail !== 'object') return null;
-  const d = detail as Partial<ConvergenceSynthesis>;
+  const d = detail as Partial<ConcernAssessment>;
   const s = d.status;
   if (s === 'Elevated' || s === 'Divergent' || s === 'ConfirmedConcern') return s;
   if (s === 'Stable') return 'Stable';
@@ -187,7 +187,7 @@ type ElevatedStatus = 'Elevated' | 'Divergent' | 'ConfirmedConcern';
 
 /** Accumulate elevated and per-status counts from a category's segments. */
 function accumulateSegmentCounts(
-  segments: Array<{ week: string; status: ConvergenceStatus | null }>,
+  segments: Array<{ week: string; status: ConcernLevel | null }>,
   weekElevatedCounts: Map<string, number>,
   weekStatusCounts: Map<string, Record<ElevatedStatus, number>>,
 ) {
@@ -218,7 +218,7 @@ function buildCategoryRows(
     weekStatusCounts.set(week, { Elevated: 0, Divergent: 0, ConfirmedConcern: 0 });
   }
 
-  const statusCounts: Record<ConvergenceStatus, number> = {
+  const statusCounts: Record<ConcernLevel, number> = {
     Stable: 0,
     Elevated: 0,
     Divergent: 0,

@@ -1,6 +1,6 @@
 import type {
   AIAssessmentSummary,
-  ConvergenceSynthesis,
+  ConcernAssessment,
   StructuralScore,
   ThematicDriftScore,
 } from './structural';
@@ -82,7 +82,7 @@ export interface NarrativeLayerData {
   thematicScore: number | null;
   thematicDetail: ThematicDriftScore | null;
   convergenceScore: number | null;
-  convergenceDetail: ConvergenceSynthesis | null;
+  convergenceDetail: ConcernAssessment | null;
   documentContext?: NarrativeDocumentContext[];
   flaggedRoutineContext?: NarrativeFlaggedDocContext[];
   sourceTypeBreakdown?: SourceTypeBreakdown[];

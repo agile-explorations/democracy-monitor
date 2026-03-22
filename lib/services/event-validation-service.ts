@@ -7,7 +7,7 @@
 
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { isDbAvailable } from '@/lib/db';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 import { getMonday } from '@/lib/utils/date-utils';
 import { convergenceStatusAtLeast } from '@/lib/validation/historical-backtest';
 import { ALL_KNOWN_EVENTS } from '@/lib/validation/known-events';
@@ -136,7 +136,7 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
     const entry = byCat.get(row.category)!;
     entry.total++;
     entry.totalDocs += row.document_count ?? 0;
-    if (row.status && convergenceStatusAtLeast(row.status as ConvergenceStatus, 'Elevated')) {
+    if (row.status && convergenceStatusAtLeast(row.status as ConcernLevel, 'Elevated')) {
       entry.elevated++;
     }
   }
@@ -169,7 +169,7 @@ function runEventDetection(events: readonly KnownEvent[], lookup: Map<string, We
       event,
       row
         ? {
-            status: row.status as ConvergenceStatus | null,
+            status: row.status as ConcernLevel | null,
             structuralScore: row.structural_score,
             aiScore: row.ai_score,
             thematicScore: row.thematic_score,

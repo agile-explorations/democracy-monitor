@@ -12,8 +12,8 @@ import type { SilenceScore } from '@/lib/services/silence-detection-service';
 import { SILENCE_Z_THRESHOLD } from '@/lib/services/silence-detection-service';
 import type {
   AIAssessmentSummary,
-  ConvergenceStatus,
-  ConvergenceSynthesis,
+  ConcernLevel,
+  ConcernAssessment,
   StructuralScore,
   ThematicDriftScore,
 } from '@/lib/types/structural';
@@ -40,7 +40,7 @@ export function synthesizeConvergence(
   thematic: ThematicDriftScore | null,
   category?: string,
   silence?: SilenceScore | null,
-): ConvergenceSynthesis {
+): ConcernAssessment {
   const structuralElevated = isStructuralElevated(structural, category);
   const aiElevated = isAIElevated(aiAssessment);
   const silenceElevated = isSilenceElevated(silence);
@@ -118,7 +118,7 @@ function countElevatedLayers(aiElevated: boolean): number {
   return aiElevated ? 1 : 0;
 }
 
-function determineStatus(aiElevated: boolean, highConcern: boolean): ConvergenceStatus {
+function determineStatus(aiElevated: boolean, highConcern: boolean): ConcernLevel {
   if (aiElevated && highConcern) return 'ConfirmedConcern';
   if (aiElevated) return 'Elevated';
   return 'Stable';

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { WeekMap } from '@/lib/services/convergence-service';
+import type { WeekMap } from '@/lib/services/concern-service';
 import {
   computeConvergenceSeries,
   fetchWeeklyConvergenceData,
-} from '@/lib/services/convergence-service';
+} from '@/lib/services/concern-service';
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),

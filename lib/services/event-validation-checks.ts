@@ -8,7 +8,7 @@ import {
   getStructuralThreshold,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 import { getMonday } from '@/lib/utils/date-utils';
 import { convergenceStatusAtLeast } from '@/lib/validation/historical-backtest';
 import type { KnownEvent } from '@/lib/validation/known-events';
@@ -41,7 +41,7 @@ export interface LayerAttribution {
   weekOf: string;
   category: string;
   description: string;
-  convergenceStatus: ConvergenceStatus | null;
+  convergenceStatus: ConcernLevel | null;
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
@@ -50,7 +50,7 @@ export interface LayerAttribution {
   l2Converged: boolean;
   l3Fired: boolean;
   detected: boolean;
-  expectedMinStatus: ConvergenceStatus;
+  expectedMinStatus: ConcernLevel;
   missReason: MissReason | null;
   signalDensity?: string;
   notes?: string;
@@ -212,7 +212,7 @@ export function evaluateNc6T2RoutineRate(rate: number): NegativeControlResult {
 /** Classify why a known event was missed. Returns null if detected. */
 export function computeMissReason(
   event: KnownEvent,
-  weekData: { status: ConvergenceStatus | null; aiScore: number | null } | null,
+  weekData: { status: ConcernLevel | null; aiScore: number | null } | null,
   detected: boolean,
 ): MissReason | null {
   if (detected) return null;
@@ -229,7 +229,7 @@ export function computeMissReason(
 export function evaluateEventDetection(
   event: KnownEvent,
   weekData: {
-    status: ConvergenceStatus | null;
+    status: ConcernLevel | null;
     structuralScore: number | null;
     aiScore: number | null;
     thematicScore: number | null;

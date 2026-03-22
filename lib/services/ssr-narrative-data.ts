@@ -9,7 +9,7 @@
 import { sql } from 'drizzle-orm';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
-import type { ConvergenceSynthesis, EditorialRecord } from '@/lib/types';
+import type { ConcernAssessment, EditorialRecord } from '@/lib/types';
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import { getEditorialRecord, getStoredNarratives } from './narrative-store';
 
@@ -41,7 +41,7 @@ export interface CategoryWeekPageData {
   editorial: EditorialRecord;
   convergenceStatus: string | null;
   convergenceScore: number | null;
-  convergenceDetail: ConvergenceSynthesis | null;
+  convergenceDetail: ConcernAssessment | null;
   prevWeek: AdjacentWeek | null;
   nextWeek: AdjacentWeek | null;
   publishedAt: string | null;
@@ -220,7 +220,7 @@ async function getConvergenceData(
 ): Promise<{
   status: string | null;
   score: number | null;
-  detail: ConvergenceSynthesis | null;
+  detail: ConcernAssessment | null;
 }> {
   const db = getDb();
   const rows = await db.execute(sql`
@@ -232,7 +232,7 @@ async function getConvergenceData(
   type Row = Record<string, unknown>;
   const row = (rows.rows as Row[])[0];
   if (!row) return { status: null, score: null, detail: null };
-  const detail = row.convergence_detail as ConvergenceSynthesis | null;
+  const detail = row.convergence_detail as ConcernAssessment | null;
   return {
     status: detail?.status ?? null,
     score: (row.convergence_score as number) ?? null,

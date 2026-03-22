@@ -36,8 +36,3 @@ export function keyToSlug(key: string): string {
 export function slugToKey(slug: string): string | undefined {
   return SLUG_TO_KEY[slug];
 }
-
-/** All valid URL slugs. */
-export function allSlugs(): string[] {
-  return Object.values(KEY_TO_SLUG);
-}

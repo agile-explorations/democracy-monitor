@@ -24,16 +24,16 @@ vi.mock('@/lib/db/schema', () => ({
 
 const mockRunLayer2Assessment = vi.fn().mockResolvedValue({ totalDocuments: 0, flagCount: 0 });
 const mockRetryMissingPass2 = vi.fn().mockResolvedValue(0);
-vi.mock('@/lib/services/layer2-orchestrator', () => ({
+vi.mock('@/lib/services/document-review-orchestrator', () => ({
   runLayer2Assessment: (...args: unknown[]) => mockRunLayer2Assessment(...args),
   retryMissingPass2: (...args: unknown[]) => mockRetryMissingPass2(...args),
 }));
 
-vi.mock('@/lib/services/layer2-store', () => ({
+vi.mock('@/lib/services/document-review-store', () => ({
   getPass1Count: vi.fn().mockResolvedValue(0),
 }));
 
-describe('backfill-layer2', () => {
+describe('backfill-document-review', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: select returns empty (no docs for any week)
@@ -60,7 +60,7 @@ describe('backfill-layer2', () => {
       return Promise.resolve({ totalDocuments: 0, flagCount: 0 });
     });
 
-    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-layer2');
+    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-document-review');
     await runBackfillLayer2({
       from: '2025-01-20',
       to: '2025-01-27',
@@ -92,7 +92,7 @@ describe('backfill-layer2', () => {
       return Promise.resolve({ totalDocuments: 0, flagCount: 0 });
     });
 
-    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-layer2');
+    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-document-review');
     await runBackfillLayer2({
       from: '2025-01-20',
       to: '2025-01-27',
@@ -112,7 +112,7 @@ describe('backfill-layer2', () => {
     const { isDbAvailable } = await import('@/lib/db');
     vi.mocked(isDbAvailable).mockReturnValue(false);
 
-    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-layer2');
+    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-document-review');
     await expect(
       runBackfillLayer2({
         from: '2025-01-20',
@@ -130,7 +130,7 @@ describe('backfill-layer2', () => {
 
     vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-layer2');
+    const { runBackfillLayer2 } = await import('@/lib/cron/backfill-document-review');
     // Should not throw — previously this would throw "Provide --baseline or --from/--to"
     await expect(
       runBackfillLayer2({

@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
-import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
+import { ConcernLevelPill } from '@/components/ui/ConcernLevelPill';
 import { Sparkline } from '@/components/ui/Sparkline';
 import {
   AI_FLAG_RATE_THRESHOLD,
   STRUCTURAL_ANOMALY_THRESHOLD,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 
 export interface CategoryCardProps {
   category: string;
@@ -25,7 +24,7 @@ export interface CategoryCardProps {
   readingLevel: 'summary' | 'detailed';
   showExperimentalBadge?: boolean;
   linkBase?: string;
-  convergenceStatus?: ConvergenceStatus | null;
+  convergenceStatus?: ConcernLevel | null;
   structuralElevated?: boolean;
   aiElevated?: boolean;
   thematicElevated?: boolean;
@@ -78,21 +77,15 @@ export function CategoryCard({
             No Data
           </span>
         ) : convergenceStatus ? (
-          <ConvergenceStatusPill status={convergenceStatus} />
+          <ConcernLevelPill status={convergenceStatus} />
         ) : (
           <span className="text-[10px] text-dm-muted">{'\u2014'}</span>
         )}
       </div>
 
-      {/* Convergence indicator */}
+      {/* Concern level */}
       {convergenceStatus && (
         <div className="flex items-center gap-2 mt-1">
-          <ConvergenceIndicator
-            structural={structuralElevated}
-            ai={aiElevated}
-            thematic={thematicElevated}
-            scores={{ structural: structuralScore, ai: aiScore, thematic: thematicScore }}
-          />
           <span className="text-[10px] text-dm-text-secondary">{convergenceStatus}</span>
         </div>
       )}

@@ -1,13 +1,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
-import { ConvergenceIndicator } from '@/components/ui/ConvergenceIndicator';
-import { ConvergenceStatusPill } from '@/components/ui/ConvergenceStatusPill';
+import { ConcernLevelPill } from '@/components/ui/ConcernLevelPill';
 import { Sparkline } from '@/components/ui/Sparkline';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
-import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
 import {
   AI_FLAG_RATE_THRESHOLD,
   STRUCTURAL_ANOMALY_THRESHOLD,
@@ -36,7 +35,7 @@ export function CategoryTable({
 }: CategoryTableProps) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const { resolvedMode } = useTheme();
-  const elevatedColor = CONVERGENCE_STATUS_COLORS[resolvedMode].Elevated;
+  const elevatedColor = CONCERN_LEVEL_COLORS[resolvedMode].Elevated;
 
   const descriptionMap = new Map(CATEGORIES.map((c) => [c.key, c.description]));
 
@@ -44,41 +43,9 @@ export function CategoryTable({
     <div className="overflow-x-auto md:overflow-visible">
       <table className="w-full text-xs border-collapse">
         <thead>
-          {readingLevel === 'detailed' && (
-            <tr className="text-dm-muted">
-              <th colSpan={4} style={{ paddingTop: 52 }} />
-              <th
-                colSpan={3}
-                className="px-2 pb-0 font-medium text-center text-xs align-bottom border-b border-dm-border/30"
-                style={{ paddingTop: 52 }}
-              >
-                Assessment Layers
-              </th>
-              <th style={{ paddingTop: 52 }} />
-            </tr>
-          )}
           <tr className="border-b border-dm-border text-left text-dm-muted">
             <th className="py-2 pr-3 font-medium align-bottom">Category</th>
             <th className="py-2 px-2 font-medium align-bottom">Status</th>
-            <th
-              className="px-2 pb-2 font-medium hidden md:table-cell align-bottom"
-              style={readingLevel === 'detailed' ? undefined : { paddingTop: 64 }}
-            >
-              <div className="flex items-end gap-2.5">
-                {['Structural', 'AI', 'Thematic'].map((label) => (
-                  <span
-                    key={label}
-                    className="text-xs text-dm-muted leading-none w-2.5 whitespace-nowrap"
-                    style={{
-                      transform: 'translateX(3px) rotate(-60deg)',
-                      transformOrigin: 'bottom center',
-                    }}
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
-            </th>
             <th className="py-2 px-2 font-medium align-bottom hidden sm:table-cell">
               Status Trend Line
             </th>
@@ -86,19 +53,19 @@ export function CategoryTable({
               <>
                 <th
                   className="py-2 px-2 font-medium text-right align-bottom"
-                  title="L1: Structural Diff (composite anomaly score)"
+                  title="Structural anomaly composite score"
                 >
                   Structural
                 </th>
                 <th
                   className="py-2 px-2 font-medium text-right align-bottom"
-                  title="L2: AI Assessment (flag rate z-score)"
+                  title="AI document review flag rate z-score"
                 >
                   AI
                 </th>
                 <th
                   className="py-2 px-2 font-medium text-right align-bottom"
-                  title="L3: Thematic Diff (drift z-score)"
+                  title="Thematic drift z-score"
                 >
                   Thematic
                 </th>
@@ -176,25 +143,9 @@ function CategoryRow({
         </td>
         <td className="py-2 px-2">
           {cat.convergenceStatus ? (
-            <ConvergenceStatusPill status={cat.convergenceStatus} />
+            <ConcernLevelPill status={cat.convergenceStatus} />
           ) : (
             <span className="text-[10px] text-dm-muted">No Data</span>
-          )}
-        </td>
-        <td className="py-2 px-2 hidden md:table-cell">
-          {cat.convergenceStatus ? (
-            <ConvergenceIndicator
-              structural={cat.structuralElevated}
-              ai={cat.aiElevated}
-              thematic={cat.thematicElevated}
-              scores={{
-                structural: cat.structuralScore,
-                ai: cat.aiScore,
-                thematic: cat.thematicScore,
-              }}
-            />
-          ) : (
-            <span className="text-dm-muted">{'\u2014'}</span>
           )}
         </td>
         <td className="py-2 px-2 hidden sm:table-cell">
@@ -231,7 +182,7 @@ function CategoryRow({
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={readingLevel === 'detailed' ? 8 : 5} className="px-4 py-3 bg-dm-border/10">
+          <td colSpan={readingLevel === 'detailed' ? 7 : 3} className="px-4 py-3 bg-dm-border/10">
             <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
               {description}
             </p>

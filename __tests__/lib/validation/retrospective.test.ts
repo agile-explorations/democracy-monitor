@@ -3,7 +3,7 @@ vi.mock('@/lib/services/baseline-distributions', () => ({
   extractWeekMetadata: vi.fn(),
   computeBaselineStructuralDistribution: vi.fn(),
 }));
-vi.mock('@/lib/services/layer2-summary', () => ({
+vi.mock('@/lib/services/document-review-summary', () => ({
   buildAISummaryFromDB: vi.fn(),
 }));
 vi.mock('@/lib/services/semantic-drift-service', () => ({
@@ -23,7 +23,7 @@ import {
   extractWeekMetadata,
   computeBaselineStructuralDistribution,
 } from '@/lib/services/baseline-distributions';
-import { buildAISummaryFromDB } from '@/lib/services/layer2-summary';
+import { buildAISummaryFromDB } from '@/lib/services/document-review-summary';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
 import type { KnownEvent } from '@/lib/validation/known-events';
 import { evaluateEvent } from '@/lib/validation/retrospective';

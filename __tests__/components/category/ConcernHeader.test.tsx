@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import { ConcernHeader } from '@/components/category/ConcernHeader';
+import type { ConcernAssessment } from '@/lib/types/structural';
 
 vi.mock('@/lib/contexts/ThemeContext', () => ({
   useTheme: () => ({ resolvedMode: 'light' }),
 }));
 
-function makeSynthesis(overrides: Partial<ConvergenceSynthesis> = {}): ConvergenceSynthesis {
+function makeSynthesis(overrides: Partial<ConcernAssessment> = {}): ConcernAssessment {
   return {
     status: 'Stable',
     structuralElevated: false,
@@ -20,21 +20,20 @@ function makeSynthesis(overrides: Partial<ConvergenceSynthesis> = {}): Convergen
   };
 }
 
-describe('ConvergenceHeader', () => {
-  it('shows "no convergence data" when synthesis is null', () => {
-    render(<ConvergenceHeader synthesis={null} />);
-    expect(screen.getByText('No convergence data available.')).toBeDefined();
+describe('ConcernHeader', () => {
+  it('shows "no concern data" when synthesis is null', () => {
+    render(<ConcernHeader synthesis={null} />);
+    expect(screen.getByText('No concern data available.')).toBeDefined();
   });
 
   it('renders Stable status', () => {
-    render(<ConvergenceHeader synthesis={makeSynthesis()} />);
+    render(<ConcernHeader synthesis={makeSynthesis()} />);
     expect(screen.getByText('Stable')).toBeDefined();
-    expect(screen.getByText('No layers elevated')).toBeDefined();
   });
 
-  it('renders Elevated status with AI layer', () => {
+  it('renders Elevated status with pattern', () => {
     render(
-      <ConvergenceHeader
+      <ConcernHeader
         synthesis={makeSynthesis({
           status: 'Elevated',
           aiElevated: true,
@@ -44,13 +43,12 @@ describe('ConvergenceHeader', () => {
       />,
     );
     expect(screen.getByText('Elevated')).toBeDefined();
-    expect(screen.getByText('AI layer elevated')).toBeDefined();
     expect(screen.getByText('AI content assessment elevated')).toBeDefined();
   });
 
   it('renders Divergent status (legacy)', () => {
     render(
-      <ConvergenceHeader
+      <ConcernHeader
         synthesis={makeSynthesis({
           status: 'Divergent',
           aiElevated: true,
@@ -59,12 +57,11 @@ describe('ConvergenceHeader', () => {
       />,
     );
     expect(screen.getByText('Divergent')).toBeDefined();
-    expect(screen.getByText('AI layer elevated')).toBeDefined();
   });
 
   it('renders ConfirmedConcern status', () => {
     render(
-      <ConvergenceHeader
+      <ConcernHeader
         synthesis={makeSynthesis({
           status: 'ConfirmedConcern',
           aiElevated: true,
@@ -73,23 +70,20 @@ describe('ConvergenceHeader', () => {
       />,
     );
     expect(screen.getByText('ConfirmedConcern')).toBeDefined();
-    expect(screen.getByText('AI layer elevated')).toBeDefined();
   });
 
   it('shows bootstrap badge', () => {
-    render(<ConvergenceHeader synthesis={makeSynthesis({ bootstrap: true })} />);
+    render(<ConcernHeader synthesis={makeSynthesis({ bootstrap: true })} />);
     expect(screen.getByText('Bootstrap')).toBeDefined();
   });
 
   it('hides bootstrap badge when false', () => {
-    render(<ConvergenceHeader synthesis={makeSynthesis({ bootstrap: false })} />);
+    render(<ConcernHeader synthesis={makeSynthesis({ bootstrap: false })} />);
     expect(screen.queryByText('Bootstrap')).toBeNull();
   });
 
   it('shows pattern text', () => {
-    render(
-      <ConvergenceHeader synthesis={makeSynthesis({ pattern: 'Test pattern description' })} />,
-    );
+    render(<ConcernHeader synthesis={makeSynthesis({ pattern: 'Test pattern description' })} />);
     expect(screen.getByText('Test pattern description')).toBeDefined();
   });
 });

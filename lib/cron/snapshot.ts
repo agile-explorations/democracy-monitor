@@ -19,7 +19,6 @@ import {
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
-import { enrichWithLayerScores } from '@/lib/services/layer-scoring';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
@@ -34,6 +33,7 @@ import {
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
+import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ContentItem } from '@/lib/types/assessment';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
@@ -54,7 +54,7 @@ async function runLayersAndAggregate(
 ): Promise<void> {
   let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
   try {
-    const { runLayer2Assessment } = await import('@/lib/services/layer2-orchestrator');
+    const { runLayer2Assessment } = await import('@/lib/services/document-review-orchestrator');
     aiSummary = await runLayer2Assessment(items, category, weekOf);
     if (aiSummary) {
       console.log(

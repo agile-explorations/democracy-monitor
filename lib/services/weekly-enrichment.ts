@@ -4,7 +4,7 @@ import {
   computeBaselineStructuralDistribution,
   extractWeekMetadata,
 } from '@/lib/services/baseline-distributions';
-import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
+import { synthesizeConvergence } from '@/lib/services/concern-synthesis';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
 import { computeSilenceScore } from '@/lib/services/silence-detection-service';
 import { computeStructuralScore } from '@/lib/services/structural-anomaly-service';
@@ -67,7 +67,7 @@ export async function enrichWithLayerScores(
       aiDetail: aiSummary ?? undefined,
     };
   } catch (err) {
-    console.warn(`[layer-scoring] Failed for ${agg.category}/${agg.weekOf}:`, err);
+    console.warn(`[weekly-enrichment] Failed for ${agg.category}/${agg.weekOf}:`, err);
     return agg;
   }
 }

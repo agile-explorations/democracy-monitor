@@ -4,11 +4,11 @@ import {
   extractWeekMetadata,
   computeBaselineStructuralDistribution,
 } from '@/lib/services/baseline-distributions';
-import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
-import { computeStructuralLayer, enrichWithLayerScores } from '@/lib/services/layer-scoring';
+import { synthesizeConvergence } from '@/lib/services/concern-synthesis';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
 import { computeStructuralScore } from '@/lib/services/structural-anomaly-service';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
+import { computeStructuralLayer, enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type {
   AIAssessmentSummary,
   StructuralScore,
@@ -34,7 +34,7 @@ vi.mock('@/lib/services/silence-detection-service', () => ({
   SILENCE_Z_THRESHOLD: 1.5,
 }));
 
-vi.mock('@/lib/services/convergence-synthesis', () => ({
+vi.mock('@/lib/services/concern-synthesis', () => ({
   synthesizeConvergence: vi.fn(),
 }));
 
@@ -66,11 +66,11 @@ vi.mock('@/lib/methodology/scoring-config', () => ({
   getCycleYearForDate: vi.fn(() => 2),
 }));
 
-vi.mock('@/lib/services/layer2-assessment-service', () => ({
+vi.mock('@/lib/services/document-review-assessment-service', () => ({
   computeAIAssessmentSummary: vi.fn(),
 }));
 
-vi.mock('@/lib/services/layer2-store', () => ({
+vi.mock('@/lib/services/document-review-store', () => ({
   getBaselineAIFlagRate: vi.fn(),
 }));
 

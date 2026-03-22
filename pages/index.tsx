@@ -19,7 +19,7 @@ import { keyToSlug } from '@/lib/data/category-slugs';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
-import type { ConvergenceStatus } from '@/lib/types';
+import type { ConcernLevel } from '@/lib/types';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export default function Home() {
@@ -59,7 +59,7 @@ export default function Home() {
 
   // Aggregate status counts across all category-weeks in the filtered range
   const filteredStatusCounts = useMemo(() => {
-    const counts: Record<ConvergenceStatus, number> = {
+    const counts: Record<ConcernLevel, number> = {
       Stable: 0,
       Elevated: 0,
       Divergent: 0,

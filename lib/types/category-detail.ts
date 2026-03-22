@@ -1,6 +1,6 @@
 import type {
   AIAssessmentSummary,
-  ConvergenceSynthesis,
+  ConcernAssessment,
   StructuralScore,
   ThematicDriftScore,
 } from './structural';
@@ -15,5 +15,5 @@ export interface CategoryDetailLatestWeek {
   thematicScore: number | null;
   thematicDetail: ThematicDriftScore | null;
   convergenceScore: number | null;
-  convergenceDetail: ConvergenceSynthesis | null;
+  convergenceDetail: ConcernAssessment | null;
 }

@@ -54,10 +54,10 @@
     "cl:purge-noise": "tsx lib/cron/purge-cl-noise.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "embeddings:backfill": "tsx lib/cron/embed-missing.ts",
-    "layers:enrich": "tsx lib/cron/enrich-layer-scores.ts",
-    "layer2:backfill": "tsx lib/cron/backfill-layer2.ts",
+    "scores:enrich": "tsx lib/cron/enrich-weekly-scores.ts",
+    "review:backfill": "tsx lib/cron/backfill-document-review.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
-    "l1:distributions": "tsx lib/cron/l1-distributions.ts",
+    "structural:distributions": "tsx lib/cron/structural-distributions.ts",
     "validate:narratives": "tsx scripts/validate-narratives.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
     "prepare": "husky"

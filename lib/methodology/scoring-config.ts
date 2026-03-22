@@ -225,16 +225,10 @@ export const BOOTSTRAP_CONFIDENCE = 0.5;
 
 // --- Layer 2 (AI two-pass assessment) ---
 
-/** Z-score threshold for AI flag rate (used by event-validation, NOT convergence). */
+/** Z-score threshold for AI flag rate (used by event-validation only). */
 export const AI_FLAG_RATE_THRESHOLD = 1.5;
 
-/** Z-score threshold for strong AI flag rate (used by event-validation, NOT convergence). */
-export const AI_FLAG_RATE_STRONG_THRESHOLD = 3.0;
-
-/** Minimum total documents required for AI flag rate z-score (event-validation only). */
-export const AI_FLAG_RATE_MIN_DOCS = 10;
-
-// --- Convergence thresholds (absolute P2 counts, no baseline comparison) ---
+// --- Concern thresholds (absolute P2 counts, no baseline comparison) ---
 
 /** Minimum clearly_concerning docs to trigger Elevated (1 is sufficient). */
 export const P2_ELEVATED_MIN_CLEARLY = 1;

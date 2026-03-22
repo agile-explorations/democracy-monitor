@@ -4,7 +4,7 @@ import {
   parsePass2Response,
   Pass1ResponseSchema,
   Pass2ResponseSchema,
-} from '@/lib/ai/schemas/layer2-response';
+} from '@/lib/ai/schemas/document-review-response';
 
 describe('Pass1ResponseSchema', () => {
   it('validates a correct response', () => {

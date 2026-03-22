@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { isElevatedStatus, buildStableTemplate } from '@/lib/services/narrative-generation-service';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import type { ConcernAssessment } from '@/lib/types/structural';
 
 function makeConvergence(
-  status: ConvergenceSynthesis['status'],
+  status: ConcernAssessment['status'],
   layersElevated = 0,
-): ConvergenceSynthesis {
+): ConcernAssessment {
   return {
     status,
     structuralElevated: layersElevated > 0,

@@ -66,26 +66,27 @@ export interface ThematicDriftScore {
   bootstrap: boolean;
 }
 
-/** Convergence synthesis status levels. */
-export type ConvergenceStatus = 'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConcern';
+/** Erosion concern level. Divergent retained for legacy DB records but no longer produced. */
+export type ConcernLevel = 'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConcern';
 
-/** Result of L2 AI assessment synthesis. */
-export interface ConvergenceSynthesis {
-  status: ConvergenceStatus;
-  /** L1 structural anomaly — descriptive only, does not influence convergence status */
+/** Result of erosion concern assessment for a category-week. */
+export interface ConcernAssessment {
+  status: ConcernLevel;
+  /** Structural anomaly — descriptive context, does not drive concern level */
   structuralElevated: boolean;
-  /** L2 AI content assessment — sole active detection layer driving convergence status */
+  /** AI document review — sole detection mechanism driving concern level */
   aiElevated: boolean;
-  /** L1v2 silence detection — descriptive only (source health indicator) */
+  /** Silence detection — descriptive context (source health indicator) */
   silenceElevated: boolean;
-  /** L3 thematic drift — descriptive only, does not influence convergence status */
+  /** Thematic drift — descriptive context, does not drive concern level */
   thematicElevated: boolean;
+  /** @deprecated Always 0 or 1. Retained for serialized DB JSON compatibility. */
   layersElevated: number;
   pattern: string;
   bootstrap: boolean;
 }
 
-/** Summary of Layer 2 AI assessment results for a category-week. */
+/** Summary of AI document review results for a category-week. */
 export interface AIAssessmentSummary {
   flagCount: number;
   totalDocuments: number;

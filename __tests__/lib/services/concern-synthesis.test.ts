@@ -9,7 +9,7 @@ vi.mock('@/lib/methodology/scoring-config', async (importOriginal) => {
   };
 });
 import { getStructuralThreshold } from '@/lib/methodology/scoring-config';
-import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
+import { synthesizeConvergence } from '@/lib/services/concern-synthesis';
 import type { SilenceScore } from '@/lib/services/silence-detection-service';
 import type {
   AIAssessmentSummary,

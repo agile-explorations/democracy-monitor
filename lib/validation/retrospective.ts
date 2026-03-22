@@ -12,16 +12,16 @@ import {
   computeBaselineStructuralDistribution,
   extractWeekMetadata,
 } from '@/lib/services/baseline-distributions';
-import { synthesizeConvergence } from '@/lib/services/convergence-synthesis';
-import { buildAISummaryFromDB } from '@/lib/services/layer2-summary';
+import { synthesizeConvergence } from '@/lib/services/concern-synthesis';
+import { buildAISummaryFromDB } from '@/lib/services/document-review-summary';
 import { computeRollingThematicDrift } from '@/lib/services/semantic-drift-service';
 import { computeSilenceScore } from '@/lib/services/silence-detection-service';
 import type { SilenceScore } from '@/lib/services/silence-detection-service';
 import { computeStructuralScore } from '@/lib/services/structural-anomaly-service';
 import type {
   AIAssessmentSummary,
-  ConvergenceStatus,
-  ConvergenceSynthesis,
+  ConcernLevel,
+  ConcernAssessment,
   StructuralScore,
   ThematicDriftScore,
 } from '@/lib/types/structural';
@@ -37,11 +37,11 @@ export interface RetrospectiveResult {
     structural: StructuralScore | null;
     ai: AIAssessmentSummary | null;
     thematic: ThematicDriftScore | null;
-    convergence: ConvergenceSynthesis;
+    convergence: ConcernAssessment;
   };
   /** Stored in weekly_aggregates */
   stored: {
-    status: ConvergenceStatus | null;
+    status: ConcernLevel | null;
     structuralScore: number | null;
     aiScore: number | null;
     thematicScore: number | null;
@@ -68,7 +68,7 @@ async function fetchStoredWeekData(
   const row = rows.rows[0] as Record<string, unknown> | undefined;
   if (!row) return { status: null, structuralScore: null, aiScore: null, thematicScore: null };
   return {
-    status: (row.status as ConvergenceStatus) ?? null,
+    status: (row.status as ConcernLevel) ?? null,
     structuralScore: row.structural_score != null ? Number(row.structural_score) : null,
     aiScore: row.ai_score != null ? Number(row.ai_score) : null,
     thematicScore: row.thematic_score != null ? Number(row.thematic_score) : null,

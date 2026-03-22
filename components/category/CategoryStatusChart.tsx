@@ -12,9 +12,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { CHART_COLORS, CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
+import { CHART_COLORS, CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
 import type { WeeklyRow } from '@/lib/hooks/useCategoryDetail';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
 
@@ -35,26 +35,25 @@ interface ChartPoint {
   convergenceScore: number | null;
   trend: number | null;
   documentCount: number;
-  status: ConvergenceStatus | null;
+  status: ConcernLevel | null;
   statusValue: number;
   statusFill: string;
   statusOpacity: number;
 }
 
-/** Fixed bar heights per status on the 0–3 score axis */
-const STATUS_BAR_HEIGHT: Record<ConvergenceStatus, number> = {
+/** Fixed bar heights per status on the 0–2 score axis */
+const STATUS_BAR_HEIGHT: Record<ConcernLevel, number> = {
   Stable: 0,
   Elevated: 1,
-  Divergent: 2,
-  ConfirmedConcern: 3,
+  Divergent: 1, // Legacy status — mapped to Elevated visually
+  ConfirmedConcern: 2,
 };
 
 /** Y-axis tick labels: show status names instead of bare numbers */
 const SCORE_TICK_LABELS: Record<number, string> = {
   0: 'Stable',
   1: 'Elevated',
-  2: 'Divergent',
-  3: 'Concern',
+  2: 'Concern',
 };
 
 /** Stable shape renderer for status bars — avoids Cell+Brush index misalignment */
@@ -91,7 +90,7 @@ function StatusTooltip({
 }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
-  const statusColors = CONVERGENCE_STATUS_COLORS[mode];
+  const statusColors = CONCERN_LEVEL_COLORS[mode];
 
   return (
     <div className="rounded-md border border-dm-border bg-dm-card px-3 py-2 shadow-md text-xs">
@@ -121,7 +120,7 @@ export function CategoryStatusChart({
   onWeekClick,
 }: CategoryStatusChartProps) {
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
-  const statusColors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
+  const statusColors = useMemo(() => CONCERN_LEVEL_COLORS[mode], [mode]);
 
   const startIdx = brushStartIndex ?? 0;
   const endIdx = brushEndIndex ?? data.length - 1;
@@ -169,7 +168,7 @@ export function CategoryStatusChart({
           />
           Trend
         </span>
-        {(['Elevated', 'Divergent', 'ConfirmedConcern'] as ConvergenceStatus[]).map((s) => (
+        {(['Elevated', 'ConfirmedConcern'] as ConcernLevel[]).map((s) => (
           <span key={s} className="flex items-center gap-1.5">
             <span
               className="inline-block w-3 h-3 rounded-sm"
@@ -205,8 +204,8 @@ export function CategoryStatusChart({
             tickLine={false}
             axisLine={false}
             width={60}
-            domain={[0, 3]}
-            ticks={[0, 1, 2, 3]}
+            domain={[0, 2]}
+            ticks={[0, 1, 2]}
           />
           <Tooltip content={<StatusTooltip mode={mode} />} />
 

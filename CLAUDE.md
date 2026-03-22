@@ -29,13 +29,13 @@ pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods onl
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots
 pnpm seed:review    # Generate AI Skeptic disagreement report for human review
 pnpm embeddings:backfill # Embed documents missing embeddings (analysis periods only; --all-dates for everything)
-pnpm layers:enrich      # Recompute L1/L2/L3/convergence from updated layer data
-pnpm layer2:backfill    # Backfill Layer 2 AI assessments (defaults to analysis periods; --baseline or --from/--to for custom)
+pnpm scores:enrich      # Recompute structural/AI/thematic/concern scores from updated data
+pnpm review:backfill    # Backfill AI document review assessments (defaults to analysis periods; --baseline or --from/--to for custom)
 pnpm legiscan:bulk      # Download LegiScan bulk datasets (Congress baseline periods)
 pnpm cl:purge-noise     # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
 pnpm backtest       # Run historical backtesting
-pnpm l1:distributions  # Show per-category L1 structural score distributions (Biden 2022)
+pnpm structural:distributions  # Show per-category structural score distributions (Biden 2022)
 pnpm retrospective     # Re-run detection pipeline on known events (--event, --all, --period)
 ```
 
@@ -98,11 +98,11 @@ lib/
   data/           # Static data (CATEGORIES array, ASSESSMENT_RULES, DOJ taxonomy, chart colors)
   parsers/        # Feed response parsers
   hooks/          # React hooks (useLocalStorage, useAutoRefresh)
-  services/       # Business logic (assessment, convergence, structural, narrative, fetchers)
+  services/       # Business logic (assessment, concern synthesis, structural, narrative, document review, fetchers)
   db/             # Drizzle ORM (schema, client, migrations)
   cache/          # Redis + in-memory fallback cache layer
   ai/             # AI provider abstraction (OpenAI, Anthropic) + prompt templates
-  cron/           # Scheduled tasks (snapshot, backfill, embeddings, scores, layers)
+  cron/           # Scheduled tasks (snapshot, backfill, embeddings, scores, enrichment)
   methodology/    # Scoring config, named constants, thresholds
   utils/          # Pure utility functions (async, collections, date, math, ai)
   seed/           # AI assessment review pipeline (seed:review, seed:apply)
@@ -123,13 +123,13 @@ __tests__/        # Vitest test files mirroring lib/ structure
 - **`lib/data/categories.ts`** — All 14 category and signal definitions. This is where signals are added/removed.
 - **`lib/data/assessment-rules.ts`** — Keyword dictionaries per category and severity tier (annotation layer).
 - **`lib/services/assessment-service.ts`** — Keyword-based assessment engine with authority weighting and volume thresholds.
-- **`lib/services/ai-assessment-service.ts`** — AI Skeptic review layer (runs after keyword assessment).
-- **`lib/services/structural-scoring-service.ts`** — Layer 1: structural anomaly detection (JSD, z-scores, 5 dimensions).
-- **`lib/services/thematic-drift-service.ts`** — Layer 3: rolling thematic drift (8-week intra-admin window).
-- **`lib/services/convergence-synthesis.ts`** — Convergence synthesis (L2-only detection, descriptive context from L1/L1v2/L3).
+- **`lib/services/ai-assessment-service.ts`** — AI Skeptic review (runs after keyword assessment).
+- **`lib/services/structural-scoring-service.ts`** — Structural anomaly detection (JSD, z-scores, 5 dimensions).
+- **`lib/services/thematic-drift-service.ts`** — Rolling thematic drift (8-week intra-admin window).
+- **`lib/services/concern-synthesis.ts`** — Concern synthesis (AI review drives status; structural/silence/thematic provide context).
 - **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
 - **`lib/methodology/scoring-config.ts`** — Tier weights, class multipliers, volume thresholds, named constants.
-- **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → three-layer assess → convergence → store.
+- **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → assess → concern synthesis → store.
 - **`lib/cron/backfill.ts`** — Historical backfill (FR + WH + GDELT + CourtListener + DOJ + GovInfo + FEC) with AI assessment.
 - **`lib/cache/index.ts`** — Redis cache with automatic in-memory fallback when Redis is unavailable.
 - **`lib/ai/provider.ts`** — AI provider factory (OpenAI, Anthropic) with availability checks.
@@ -145,13 +145,13 @@ __tests__/        # Vitest test files mirroring lib/ structure
 
 ### Assessment methodology
 
-Detection pipeline with L2 as sole active detection layer:
+Detection pipeline with AI document review as sole active detection mechanism:
 
-1. **Layer 1: Structural anomaly** (`structural-scoring-service.ts`) — deterministic, metadata-only. Descriptive context only — does not drive convergence status.
-2. **Layer 2: AI two-pass assessment** (`ai-assessment-service.ts`, `ai_document_assessments`) — Pass 1 (gpt-4o-mini) flags potentially concerning documents, Pass 2 (Claude Sonnet) classifies flagged docs. Different providers for epistemic independence. **Sole active detection layer driving convergence status.**
-3. **Layer 3: Thematic drift** (`thematic-drift-service.ts`) — rolling 8-week intra-admin window. Descriptive context only — does not drive convergence status.
+1. **Structural anomaly** (`structural-scoring-service.ts`) — deterministic, metadata-only. Descriptive context only — does not drive concern status.
+2. **AI document review** (`document-review-orchestrator.ts`, `ai_document_assessments`) — Pass 1 (gpt-4o-mini) flags potentially concerning documents, Pass 2 (Claude Sonnet) classifies flagged docs. Different providers for epistemic independence. **Sole active detection mechanism driving concern status.**
+3. **Thematic drift** (`thematic-drift-service.ts`) — rolling 8-week intra-admin window. Descriptive context only — does not drive concern status.
 
-**Convergence synthesis** (`convergence-synthesis.ts`) — L2 drives status: Stable → Elevated → ConfirmedConcern. L1 structural, L1v2 silence, and L3 thematic provide descriptive context. Keywords serve as annotations only (not detection gates). Documented in `ASSESSMENT_METHODOLOGY.md`.
+**Concern synthesis** (`concern-synthesis.ts`) — AI review drives status: Stable → Elevated → ConfirmedConcern. Structural, silence, and thematic scores provide descriptive context. Keywords serve as annotations only (not detection gates). Documented in `ASSESSMENT_METHODOLOGY.md`.
 
 ## Sprint process
 

@@ -28,17 +28,3 @@ export interface SemanticCluster {
   centroid?: number[];
   createdAt: string;
 }
-
-export interface DigestEntry {
-  date: string;
-  summary: string;
-  summaryExpert?: string;
-  highlights: string[];
-  categorySummaries: Record<string, string>;
-  categorySummariesExpert?: Record<string, string>;
-  anomalies: TrendAnomaly[];
-  overallAssessment: string;
-  provider: string;
-  model: string;
-  createdAt: string;
-}

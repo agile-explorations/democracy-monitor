@@ -197,7 +197,7 @@ export default function CategoryDetailPage({
           {/* Status-over-time chart */}
           <div className="rounded-lg border border-dm-border bg-dm-card p-5 mb-6">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3 flex items-center gap-1.5">
-              Convergence Status Over Time
+              Concern Status Over Time
               <span
                 className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-dm-border text-[10px] font-normal normal-case tracking-normal cursor-help"
                 title="Stable = AI within baseline. Elevated = AI flags anomalous content with P2 corroboration. Confirmed Concern = AI elevated with high P2 concern rate (>20%)."

@@ -1,4 +1,4 @@
-import type { ConvergenceStatus } from './structural';
+import type { ConcernLevel } from './structural';
 
 export interface HeatmapRow {
   category: string;
@@ -9,7 +9,7 @@ export interface HeatmapRow {
 export interface StatusTimelineEntry {
   category: string;
   title: string;
-  segments: Array<{ week: string; status: ConvergenceStatus | null }>;
+  segments: Array<{ week: string; status: ConcernLevel | null }>;
 }
 
 export interface SynchronyPoint {
@@ -44,6 +44,6 @@ export interface OverviewSummary {
   heatmap: HeatmapRow[];
   statusTimeline: StatusTimelineEntry[];
   synchrony: SynchronyPoint[];
-  statusCounts: Record<ConvergenceStatus, number>;
+  statusCounts: Record<ConcernLevel, number>;
   weekRange: { from: string; to: string };
 }

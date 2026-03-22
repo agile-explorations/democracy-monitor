@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPass1Prompt, PASS1_SYSTEM_PROMPT } from '@/lib/ai/prompts/layer2-pass1';
+import { buildPass1Prompt, PASS1_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass1';
 
 describe('PASS1_SYSTEM_PROMPT', () => {
   it('instructs conservative flagging', () => {

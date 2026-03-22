@@ -34,7 +34,7 @@ import {
   getTrajectoryTable,
 } from '../lib/services/narrative-queries';
 import type { NarrativeLayerData, TermSummaryInput, WeeklySummaryInput } from '../lib/types';
-import type { ConvergenceSynthesis, StructuralScore } from '../lib/types/structural';
+import type { ConcernAssessment, StructuralScore } from '../lib/types/structural';
 
 const SUMMARY_MODEL = 'claude-opus-4-6';
 

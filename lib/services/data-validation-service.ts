@@ -245,12 +245,12 @@ function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
   const warnings: string[] = [];
   if (nc.missingWeeks > 0) {
     warnings.push(
-      `${nc.missingWeeks} elevated category-weeks missing narratives (run: pnpm layers:enrich --narratives)`,
+      `${nc.missingWeeks} elevated category-weeks missing narratives (run: pnpm scores:enrich --narratives)`,
     );
   }
   if (nc.missingSummaryWeeks > 0) {
     warnings.push(
-      `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm layers:enrich --narratives)`,
+      `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm scores:enrich --narratives)`,
     );
   }
   if (nc.staleWeeks > 0) {
@@ -293,7 +293,7 @@ export function collectWarnings(report: DataReport): string[] {
 
   for (const p of report.layerScorePopulation) {
     if (p.totalWeeks > 0 && p.withAllLayers === 0) {
-      warnings.push(`${p.period}: no weeks have all three layer scores (run: pnpm layers:enrich)`);
+      warnings.push(`${p.period}: no weeks have all three layer scores (run: pnpm scores:enrich)`);
     } else if (p.totalWeeks > 0 && p.withAllLayers < p.totalWeeks) {
       const pct = ((p.withAllLayers / p.totalWeeks) * 100).toFixed(0);
       warnings.push(

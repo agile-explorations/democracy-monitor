@@ -4,8 +4,8 @@ import {
   computeAIAssessmentSummary,
   assessPass1,
   assessPass2,
-} from '@/lib/services/layer2-assessment-service';
-import type { Pass1Result, Pass2Result } from '@/lib/services/layer2-assessment-service';
+} from '@/lib/services/document-review-assessment-service';
+import type { Pass1Result, Pass2Result } from '@/lib/services/document-review-assessment-service';
 import type { AIProvider, ContentItem } from '@/lib/types';
 
 function makePass1(url: string, relevant: boolean): Pass1Result {

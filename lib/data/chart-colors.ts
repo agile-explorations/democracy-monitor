@@ -24,8 +24,8 @@ export const COMPARISON_COLORS = {
   dark: { trumpT1: '#fb7185', bidenT1: '#60a5fa' },
 } as const;
 
-/** Per-convergence-status colors for heatmap/timeline visualizations. */
-export const CONVERGENCE_STATUS_COLORS = {
+/** Per-concern-level colors for heatmap/timeline visualizations. */
+export const CONCERN_LEVEL_COLORS = {
   light: {
     Stable: '#94a3b8',
     Elevated: '#6366f1',

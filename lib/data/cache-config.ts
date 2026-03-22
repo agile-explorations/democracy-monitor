@@ -13,8 +13,5 @@ export const AI_CACHE_TTL_S = 6 * 60 * 60;
 /** 6-hour window in milliseconds for time-bucketed AI cache keys. */
 export const AI_CACHE_BUCKET_MS = 6 * 60 * 60 * 1000;
 
-/** 24-hour TTL for daily digest caches. */
-export const DIGEST_CACHE_TTL_S = 24 * 60 * 60;
-
 /** Maximum rows returned by export endpoints. */
 export const MAX_EXPORT_ROWS = 10_000;

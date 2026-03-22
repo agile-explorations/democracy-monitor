@@ -2,10 +2,11 @@ import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
 import type { AIProvider, ContentItem } from '@/lib/types';
 import { mapConcurrent } from '@/lib/utils/async';
-import { assessPass2 } from './layer2-assessment-service';
-import { findPass2Gaps, storePass2Assessment } from './layer2-store';
-import type { Layer2Options, RetryWeekContext } from './layer2-week-context';
-import { buildPerDocContext, buildRetryWeekContext } from './layer2-week-context';
+import { assessPass2 } from './document-review-assessment-service';
+import { findPass2Gaps } from './document-review-queries';
+import { storePass2Assessment } from './document-review-store';
+import type { Layer2Options, RetryWeekContext } from './document-review-week-context';
+import { buildPerDocContext, buildRetryWeekContext } from './document-review-week-context';
 
 const DEFAULT_PASS2_PROVIDER = 'anthropic';
 const DEFAULT_PASS2_MODEL = 'claude-sonnet-4-5-20250929';

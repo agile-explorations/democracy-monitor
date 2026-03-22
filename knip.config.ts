@@ -1,8 +1,13 @@
 import type { KnipConfig } from 'knip';
 
 const config: KnipConfig = {
-  // Cron scripts are entry points invoked via render.yaml, not imported by app code
-  entry: ['pages/**/*.{ts,tsx}', 'lib/cron/uptime-check.ts', 'lib/cron/weekly-clustering.ts'],
+  // Cron scripts and diagnostic scripts are entry points, not imported by app code
+  entry: [
+    'pages/**/*.{ts,tsx}',
+    'lib/cron/uptime-check.ts',
+    'lib/cron/weekly-clustering.ts',
+    'scripts/**/*.ts',
+  ],
 
   // @next/env is bundled with next but imported directly by cron scripts
   ignoreDependencies: ['@next/env'],

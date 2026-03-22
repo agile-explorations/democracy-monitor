@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EditorialRecord } from '@/lib/types';
 import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import type { WeekExplanation } from '@/lib/types/explanation';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import type { ConcernAssessment } from '@/lib/types/structural';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export type TimeRangePreset = '3mo' | '6mo' | '1yr' | 'all';
@@ -51,7 +51,7 @@ export interface WeeklyRow {
   aiScore: number | null;
   thematicScore: number | null;
   convergenceScore: number | null;
-  convergenceDetail: ConvergenceSynthesis | null;
+  convergenceDetail: ConcernAssessment | null;
 }
 
 interface WeekData {
@@ -65,7 +65,7 @@ export interface CategoryDetailState {
   weeklyData: WeeklyRow[];
   baseline: { avg: number; stddev: number };
   title: string;
-  convergenceStatus: ConvergenceSynthesis | null;
+  convergenceStatus: ConcernAssessment | null;
   rangePreset: TimeRangePreset;
   brushStartIndex: number | undefined;
   brushEndIndex: number | undefined;
@@ -86,7 +86,7 @@ export function useCategoryDetail(
   const [weeklyData, setWeeklyData] = useState<WeeklyRow[]>([]);
   const [baseline, setBaseline] = useState({ avg: 0, stddev: 0 });
   const [title, setTitle] = useState('');
-  const [convergenceStatus, setConvergenceStatus] = useState<ConvergenceSynthesis | null>(null);
+  const [convergenceStatus, setConvergenceStatus] = useState<ConcernAssessment | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Range state

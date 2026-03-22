@@ -1,4 +1,4 @@
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 
 export interface KnownEvent {
   id: string;
@@ -6,7 +6,7 @@ export interface KnownEvent {
   category: string;
   description: string;
   period: 'trump_t1' | 'biden_2021' | 'biden_2022' | 'trump_t2';
-  expectedMinStatus: ConvergenceStatus;
+  expectedMinStatus: ConcernLevel;
   expectedLayers?: { l1?: boolean; l2?: boolean; l3?: boolean };
   expectedErosionType?: string;
   signalDensity?: 'strong' | 'moderate' | 'thin';

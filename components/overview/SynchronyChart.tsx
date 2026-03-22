@@ -12,11 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
-import {
-  CHART_COLORS,
-  COMPARISON_COLORS,
-  CONVERGENCE_STATUS_COLORS,
-} from '@/lib/data/chart-colors';
+import { CHART_COLORS, COMPARISON_COLORS, CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
 import type { SynchronyPoint } from '@/lib/types/overview';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
@@ -48,7 +44,7 @@ export function SynchronyChart({
 }: SynchronyChartProps) {
   const [showComparison, setShowComparison] = useState(false);
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
-  const statusColors: StatusColorMap = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
+  const statusColors: StatusColorMap = useMemo(() => CONCERN_LEVEL_COLORS[mode], [mode]);
   const comparisonColors = useMemo(() => COMPARISON_COLORS[mode], [mode]);
   const trendColor = mode === 'dark' ? '#f1f5f9' : '#334155';
   const hasComparison = useMemo(

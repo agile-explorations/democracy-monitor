@@ -269,7 +269,7 @@ export function renderDataReport(data: any) {
       {data.layer2Completeness?.length > 0 && (
         <>
           <SubsectionHeading
-            title="Layer 2 Coverage"
+            title="AI Document Review Coverage"
             description="AI two-pass assessment progress per analysis period. P1 screens all docs; P2 deep-reviews flagged docs."
           />
           <DataTable
@@ -299,11 +299,11 @@ export function renderDataReport(data: any) {
       {data.layerScorePopulation?.length > 0 && (
         <>
           <SubsectionHeading
-            title="Layer Score Population"
-            description="Weeks with computed scores for each detection layer and convergence synthesis."
+            title="Score Population"
+            description="Weeks with computed scores for each assessment dimension and concern synthesis."
           />
           <DataTable
-            headers={['Period', 'Weeks', 'L1', 'L2', 'L3', 'Convergence', 'All Layers']}
+            headers={['Period', 'Weeks', 'Structural', 'AI', 'Thematic', 'Concern', 'All']}
             rows={data.layerScorePopulation.map((r: any) => [
               r.label,
               String(r.totalWeeks),

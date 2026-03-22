@@ -7,7 +7,7 @@ import {
   buildTermSummaryPrompt,
 } from '@/lib/services/narrative-prompts';
 import type { WeeklySummaryInput, TermSummaryInput } from '@/lib/types';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import type { ConcernAssessment } from '@/lib/types/structural';
 import { makeLayerData } from '../../fixtures/narrative-layer-data';
 
 describe('buildDraftPrompt', () => {
@@ -164,7 +164,7 @@ describe('buildWeeklySummaryPrompt', () => {
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
       categoryNarratives: new Map([
@@ -365,7 +365,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         layersElevated: 0,
         pattern: 'none',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      } as ConcernAssessment,
     });
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('No layers elevated.');
@@ -403,7 +403,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         layersElevated: 1,
         pattern: 'structural only',
         bootstrap: true,
-      } as ConvergenceSynthesis,
+      } as ConcernAssessment,
     });
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('bootstrap mode');
@@ -516,7 +516,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         layersElevated: 0,
         pattern: 'none',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      } as ConcernAssessment,
     });
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('Stable: none.');
@@ -667,7 +667,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         layersElevated: 1,
         pattern: 'thematic only',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      } as ConcernAssessment,
     });
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('Direction: reinforcing');
@@ -752,7 +752,7 @@ describe('buildDraftPrompt — missing branch coverage', () => {
         layersElevated: 1,
         pattern: 'structural only',
         bootstrap: false,
-      } as ConvergenceSynthesis,
+      } as ConcernAssessment,
       // no totalDocumentCount
     });
     const prompt = buildDraftPrompt(data);
@@ -841,7 +841,7 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
       categoryNarratives: new Map([
@@ -898,7 +898,7 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
     });
@@ -919,7 +919,7 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
             layersElevated: 1,
             pattern: 'structural only',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
     });
@@ -959,7 +959,7 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
             layersElevated: 2,
             pattern: 'dual convergence',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
       categoryNarratives: new Map(),
@@ -980,7 +980,7 @@ describe('buildWeeklySummaryPrompt — missing branch coverage', () => {
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
           // no totalDocumentCount
         }),
       ],
@@ -1185,7 +1185,7 @@ describe('buildWeeklySummaryPrompt — synthesis and coverage instructions', () 
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
       categoryNarratives: new Map(),
@@ -1222,7 +1222,7 @@ describe('buildWeeklySummaryPrompt — synthesis and coverage instructions', () 
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
     });
@@ -1246,7 +1246,7 @@ describe('buildWeeklySummaryPrompt — synthesis and coverage instructions', () 
             layersElevated: 0,
             pattern: 'none',
             bootstrap: false,
-          } as ConvergenceSynthesis,
+          } as ConcernAssessment,
         }),
       ],
     });

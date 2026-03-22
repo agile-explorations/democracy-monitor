@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
-import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
-import type { ConvergenceStatus } from '@/lib/types';
+import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import type { ConcernLevel } from '@/lib/types';
 import type { StatusTimelineEntry } from '@/lib/types/overview';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
@@ -15,17 +15,16 @@ export interface StatusTimelineProps {
   linkParams?: string;
 }
 
-const STATUS_LABELS: Record<ConvergenceStatus, string> = {
+const STATUS_LABELS: Record<ConcernLevel, string> = {
   Stable: 'Stable',
   Elevated: 'Elevated',
-  Divergent: 'Divergent',
+  Divergent: 'Elevated', // Legacy status — display as Elevated
   ConfirmedConcern: 'Confirmed Concern',
 };
 
-const LEGEND_ITEMS: Array<{ status: ConvergenceStatus; label: string }> = [
+const LEGEND_ITEMS: Array<{ status: ConcernLevel; label: string }> = [
   { status: 'Stable', label: 'Stable' },
   { status: 'Elevated', label: 'Elevated' },
-  { status: 'Divergent', label: 'Divergent' },
   { status: 'ConfirmedConcern', label: 'Confirmed Concern' },
 ];
 
@@ -69,7 +68,7 @@ export function StatusTimeline({
   selectedWeek,
   linkParams = '',
 }: StatusTimelineProps) {
-  const colors = useMemo(() => CONVERGENCE_STATUS_COLORS[mode], [mode]);
+  const colors = useMemo(() => CONCERN_LEVEL_COLORS[mode], [mode]);
 
   if (entries.length === 0) {
     return <p className="text-sm text-dm-text-secondary py-4">No timeline data available.</p>;

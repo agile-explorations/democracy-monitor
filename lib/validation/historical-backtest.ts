@@ -2,34 +2,26 @@ import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { computeMissReason } from '@/lib/services/event-validation-checks';
 import type { MissReason } from '@/lib/services/event-validation-checks';
-import type { ConvergenceStatus } from '@/lib/types/structural';
+import type { ConcernLevel } from '@/lib/types/structural';
 import { getMonday, toDateString } from '@/lib/utils/date-utils';
 import type { KnownEvent } from './known-events';
 
-const CONVERGENCE_ORDER: ConvergenceStatus[] = [
-  'Stable',
-  'Elevated',
-  'Divergent',
-  'ConfirmedConcern',
-];
+const CONVERGENCE_ORDER: ConcernLevel[] = ['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'];
 
-/** Returns 0–3 numeric index for a ConvergenceStatus. */
-export function convergenceIndex(status: ConvergenceStatus): number {
+/** Returns 0–3 numeric index for a ConcernLevel. */
+export function convergenceIndex(status: ConcernLevel): number {
   const idx = CONVERGENCE_ORDER.indexOf(status);
   return idx >= 0 ? idx : 0;
 }
 
 /** Returns true if `actual` is at least as severe as `threshold`. */
-export function convergenceStatusAtLeast(
-  actual: ConvergenceStatus,
-  threshold: ConvergenceStatus,
-): boolean {
+export function convergenceStatusAtLeast(actual: ConcernLevel, threshold: ConcernLevel): boolean {
   return convergenceIndex(actual) >= convergenceIndex(threshold);
 }
 
 export interface WeekData {
   totalSeverity: number;
-  status: ConvergenceStatus;
+  status: ConcernLevel;
   structuralScore: number | null;
   aiScore: number | null;
   thematicScore: number | null;
@@ -79,8 +71,8 @@ function buildWeeklyLookup(rows: Record<string, unknown>[]): WeeklyLookup {
     const weekOf = toDateString(new Date(r.week_of as string));
     const totalSeverity = Number(r.total_severity ?? 0);
     const rawStatus = (r.status as string) ?? 'Stable';
-    const status = CONVERGENCE_ORDER.includes(rawStatus as ConvergenceStatus)
-      ? (rawStatus as ConvergenceStatus)
+    const status = CONVERGENCE_ORDER.includes(rawStatus as ConcernLevel)
+      ? (rawStatus as ConcernLevel)
       : 'Stable';
 
     if (!weeklyData.has(category)) weeklyData.set(category, new Map());
@@ -170,7 +162,7 @@ function evaluateCategoryBacktest(
     }
 
     const dataForReason = weekData
-      ? { status: weekData.status as ConvergenceStatus | null, aiScore: weekData.aiScore }
+      ? { status: weekData.status as ConcernLevel | null, aiScore: weekData.aiScore }
       : null;
     const reason = computeMissReason(event, dataForReason, false) ?? 'scoring_miss';
     missed.push({ event, missReason: reason });

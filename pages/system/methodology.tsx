@@ -3,7 +3,7 @@ import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 
-function ConvergenceStatus({
+function ConcernLevel({
   color,
   label,
   description,
@@ -50,8 +50,8 @@ function SummaryContent() {
       {/* Detection Architecture */}
       <Section title="Detection Architecture">
         <p>
-          Democracy Monitor uses two <strong>active detection layers</strong> that drive convergence
-          status, plus two <strong>descriptive context layers</strong> that provide narrative
+          Democracy Monitor uses two <strong>active detection methods</strong> that drive concern
+          status, plus two <strong>descriptive context methods</strong> that provide narrative
           grounding without influencing the status determination.
         </p>
         <p>
@@ -77,29 +77,29 @@ function SummaryContent() {
         </p>
       </Section>
 
-      {/* Convergence */}
-      <Section title="Convergence Synthesis">
+      {/* Concern Synthesis */}
+      <Section title="Concern Synthesis">
         <p>
-          L2 AI content assessment is the sole active detection layer driving convergence status.
+          AI document review is the primary active detection method driving concern status.
           Structural anomaly, silence detection, and thematic drift provide descriptive context.
         </p>
         <div className="space-y-2 ml-2">
-          <ConvergenceStatus
+          <ConcernLevel
             className="bg-dm-border"
             label="Stable"
             description="AI content assessment within baseline range. No concerns detected."
           />
-          <ConvergenceStatus
+          <ConcernLevel
             className="bg-dm-accent"
             label="Elevated"
             description="AI two-pass review flags anomalous content with Pass 2 corroboration."
           />
-          <ConvergenceStatus
+          <ConcernLevel
             color="#8b5cf6"
             label="Divergent"
             description="Legacy status from prior detection model. No longer produced by the current pipeline."
           />
-          <ConvergenceStatus
+          <ConcernLevel
             className="bg-status-capture"
             label="Confirmed Concern"
             description="AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination."
@@ -257,12 +257,12 @@ function DetailedContent() {
         />
       </Section>
 
-      {/* Layer 1 */}
+      {/* Structural Anomaly */}
       <Section title="Structural Anomaly Detection (Descriptive Context)">
         <p>
-          Layer 1 is fully deterministic and uses only document metadata — no text analysis. It
-          compares the current week&apos;s document patterns against historical baselines across six
-          dimensions:
+          Structural anomaly detection is fully deterministic and uses only document metadata — no
+          text analysis. It compares the current week&apos;s document patterns against historical
+          baselines across six dimensions:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
@@ -307,11 +307,12 @@ function DetailedContent() {
         </p>
       </Section>
 
-      {/* Layer 2 */}
-      <Section title="AI Document Assessment (Active Detection)">
+      {/* AI Document Review */}
+      <Section title="AI Document Review (Active Detection)">
         <p>
-          Layer 2 uses artificial intelligence to read and evaluate individual documents. To reduce
-          single-provider bias, it uses a two-pass design with different AI providers:
+          The AI document review uses artificial intelligence to read and evaluate individual
+          documents. To reduce single-provider bias, it uses a two-pass design with different AI
+          providers:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
@@ -329,7 +330,7 @@ function DetailedContent() {
           </li>
         </ul>
         <p>
-          Convergence status is determined by absolute Pass 2 classification counts — no
+          Concern status is determined by absolute Pass 2 classification counts — no
           cross-administration baseline comparison is needed:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
@@ -354,12 +355,12 @@ function DetailedContent() {
         </p>
       </Section>
 
-      {/* Layer 3 */}
+      {/* Thematic Drift */}
       <Section title="Thematic Drift (Descriptive Context)">
         <p>
-          Layer 3 uses embedding-based analysis to detect when the topics discussed in a category
-          shift away from recent norms. Unlike Layers 1 and 2, it operates on an
-          intra-administration rolling window (8 weeks):
+          Thematic drift uses embedding-based analysis to detect when the topics discussed in a
+          category shift away from recent norms. It operates on an intra-administration rolling
+          window (8 weeks):
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
@@ -386,12 +387,12 @@ function DetailedContent() {
         </p>
       </Section>
 
-      {/* Convergence */}
-      <Section title="Convergence Synthesis">
+      {/* Concern Synthesis */}
+      <Section title="Concern Synthesis">
         <p>
-          L2 AI content assessment drives the convergence status for each category. Structural
-          anomaly, silence detection, and thematic drift scores are preserved as descriptive
-          metadata but do not influence the status.
+          AI document review drives the concern status for each category. Structural anomaly,
+          silence detection, and thematic drift scores are preserved as descriptive metadata but do
+          not influence the status.
         </p>
         <DataTable
           headers={['Status', 'Meaning']}
@@ -399,19 +400,15 @@ function DetailedContent() {
             ['Stable', 'AI content assessment within baseline range. No concerns detected.'],
             ['Elevated', 'AI two-pass review flags anomalous content with Pass 2 corroboration.'],
             [
-              'Divergent',
-              'Legacy status from prior detection model. No longer produced by the current pipeline.',
-            ],
-            [
               'Confirmed Concern',
               'AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination.',
             ],
           ]}
         />
         <p>
-          L2 AI content assessment is the <strong>sole active detection layer</strong> driving
-          convergence status. Structural anomaly, silence detection, and thematic drift provide
-          descriptive context but do not influence the convergence status.
+          AI document review is the <strong>primary active detection method</strong> driving concern
+          status. Structural anomaly, silence detection, and thematic drift provide descriptive
+          context but do not influence the concern status.
         </p>
       </Section>
 
@@ -453,7 +450,7 @@ function DetailedContent() {
           Keywords were Democracy Monitor&apos;s original detection mechanism, but as the detection
           architecture evolved, their role changed. Keywords now serve as{' '}
           <strong>contextual annotations</strong> — they help explain what the system is detecting,
-          but they do not drive the convergence status.
+          but they do not drive the concern status.
         </p>
         <p>
           Each category has curated keyword dictionaries organized by severity tier (capture, drift,
@@ -490,7 +487,7 @@ function DetailedContent() {
       <Section title="AI Narrative Generation">
         <p>
           For categories at Elevated status or above, the system generates plain-language narrative
-          summaries explaining what the detection layers found and why. Narratives are produced in
+          summaries explaining what the detection system found and why. Narratives are produced in
           two versions:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
@@ -547,9 +544,9 @@ function DetailedContent() {
             verbal directives, or unpublished documents are invisible.
           </li>
           <li>
-            <strong>Structural detection is descriptive, not evaluative</strong> — Layer 1
-            identifies statistical departures from baselines. It cannot determine whether a
-            departure is concerning or benign.
+            <strong>Structural detection is descriptive, not evaluative</strong> — Structural
+            anomaly detection identifies statistical departures from baselines. It cannot determine
+            whether a departure is concerning or benign.
           </li>
           <li>
             <strong>AI assessment limitations</strong> — AI quality depends on the models used. The
@@ -569,8 +566,8 @@ function DetailedContent() {
             time.
           </li>
           <li>
-            <strong>Embedding coverage gaps</strong> — Layer 3 depends on document embeddings. Not
-            all documents may have embeddings available.
+            <strong>Embedding coverage gaps</strong> — Thematic drift depends on document
+            embeddings. Not all documents may have embeddings available.
           </li>
           <li>
             <strong>Automation bias</strong> — Presenting automated assessments alongside official

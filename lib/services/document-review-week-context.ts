@@ -1,6 +1,6 @@
-import type { Pass2WeekContext } from '@/lib/ai/prompts/layer2-pass2';
-import type { Pass1Result } from './layer2-assessment-service';
-import { getBaselineAIFlagRate, getWeekP1Context } from './layer2-store';
+import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
+import type { Pass1Result } from './document-review-assessment-service';
+import { getBaselineAIFlagRate, getWeekP1Context } from './document-review-store';
 
 export interface Layer2Options {
   pass1Provider?: 'openai' | 'anthropic';

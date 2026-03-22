@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm layers:enrich [--from <date>] [--to <date>] [--category <key>] [--narratives]
+ * CLI: pnpm scores:enrich [--from <date>] [--to <date>] [--category <key>] [--narratives]
  *
  * Enriches existing weekly aggregates with L1 (structural), L2 (AI summary from
  * stored assessments), L3 (thematic drift), and convergence scores. NO API calls
@@ -19,11 +19,11 @@ import {
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
-import { enrichWithLayerScores } from '@/lib/services/layer-scoring';
-import { buildAISummaryFromDB } from '@/lib/services/layer2-summary';
+import { buildAISummaryFromDB } from '@/lib/services/document-review-summary';
 import { storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
-import type { ConvergenceSynthesis } from '@/lib/types/structural';
+import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
+import type { ConcernAssessment } from '@/lib/types/structural';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 interface EnrichOptions {
@@ -97,17 +97,17 @@ async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
     enriched++;
     catCounts[agg.category] = (catCounts[agg.category] || 0) + 1;
 
-    const detail = result.convergenceDetail as ConvergenceSynthesis | undefined;
+    const detail = result.convergenceDetail as ConcernAssessment | undefined;
     if (detail && ELEVATED_STATUSES.has(detail.status)) {
       elevatedWeeks.add(agg.weekOf);
     }
 
     if (enriched % 100 === 0) {
-      process.stdout.write(`\r[layers:enrich] ${enriched}/${aggregates.length} enriched`);
+      process.stdout.write(`\r[scores:enrich] ${enriched}/${aggregates.length} enriched`);
     }
   }
 
-  process.stdout.write(`\r[layers:enrich] ${enriched}/${aggregates.length} enriched\n`);
+  process.stdout.write(`\r[scores:enrich] ${enriched}/${aggregates.length} enriched\n`);
 
   return { enriched, skippedNoL2, catCounts, elevatedWeeks };
 }
@@ -117,13 +117,13 @@ async function run(options: EnrichOptions): Promise<void> {
   loadEnvConfig(process.cwd());
 
   if (!isDbAvailable()) {
-    console.error('[layers:enrich] DATABASE_URL not configured');
+    console.error('[scores:enrich] DATABASE_URL not configured');
     process.exit(1);
   }
 
   const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
   if (cats.length === 0) {
-    console.error(`[layers:enrich] Unknown category: ${options.category}`);
+    console.error(`[scores:enrich] Unknown category: ${options.category}`);
     process.exit(1);
   }
 
@@ -139,13 +139,13 @@ async function run(options: EnrichOptions): Promise<void> {
 
   if (useAnalysisPeriods) {
     const periods = getAnalysisPeriods();
-    console.log(`[layers:enrich] Defaulting to ${periods.length} analysis periods`);
+    console.log(`[scores:enrich] Defaulting to ${periods.length} analysis periods`);
 
     for (const period of periods) {
-      console.log(`\n[layers:enrich] === ${period.label} (${period.from} → ${period.to}) ===`);
+      console.log(`\n[scores:enrich] === ${period.label} (${period.from} → ${period.to}) ===`);
       const aggregates = await loadAggregates({ ...options, from: period.from, to: period.to });
       if (aggregates.length === 0) continue;
-      console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
+      console.log(`[scores:enrich] ${aggregates.length} aggregates to enrich`);
 
       const { enriched, skippedNoL2, catCounts, elevatedWeeks } =
         await enrichAggregates(aggregates);
@@ -157,9 +157,9 @@ async function run(options: EnrichOptions): Promise<void> {
       elevatedWeeks.forEach((w) => allElevatedWeeks.add(w));
     }
   } else {
-    console.log('[layers:enrich] Loading weekly aggregates...');
+    console.log('[scores:enrich] Loading weekly aggregates...');
     const aggregates = await loadAggregates(options);
-    console.log(`[layers:enrich] ${aggregates.length} aggregates to enrich`);
+    console.log(`[scores:enrich] ${aggregates.length} aggregates to enrich`);
 
     const { enriched, skippedNoL2, catCounts, elevatedWeeks } = await enrichAggregates(aggregates);
     totalEnriched = enriched;
@@ -168,11 +168,11 @@ async function run(options: EnrichOptions): Promise<void> {
     elevatedWeeks.forEach((w) => allElevatedWeeks.add(w));
   }
 
-  console.log(`\n[layers:enrich] ${totalEnriched} total enriched`);
+  console.log(`\n[scores:enrich] ${totalEnriched} total enriched`);
   console.log(
-    `[layers:enrich] ${totalSkippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
+    `[scores:enrich] ${totalSkippedNoL2} weeks had no L2 data (L1/L3/convergence still computed)`,
   );
-  console.log('[layers:enrich] Per category:');
+  console.log('[scores:enrich] Per category:');
   for (const [cat, count] of Object.entries(allCatCounts).sort(([a], [b]) => a.localeCompare(b))) {
     console.log(`  ${cat}: ${count} weeks`);
   }
@@ -183,17 +183,17 @@ async function run(options: EnrichOptions): Promise<void> {
     const sortedWeeks = Array.from(allElevatedWeeks)
       .filter((w) => w >= T2_INAUGURATION)
       .sort();
-    console.log(`\n[layers:enrich] Generating narratives for ${sortedWeeks.length} elevated weeks`);
+    console.log(`\n[scores:enrich] Generating narratives for ${sortedWeeks.length} elevated weeks`);
     let narrated = 0;
     for (const weekOf of sortedWeeks) {
       try {
         await generateNarrativesForWeek(weekOf);
         narrated++;
       } catch (err) {
-        console.error(`[layers:enrich] Narrative failed for ${weekOf}:`, err);
+        console.error(`[scores:enrich] Narrative failed for ${weekOf}:`, err);
       }
     }
-    console.log(`[layers:enrich] ${narrated}/${sortedWeeks.length} narrative weeks completed`);
+    console.log(`[scores:enrich] ${narrated}/${sortedWeeks.length} narrative weeks completed`);
   }
 }
 
@@ -202,7 +202,7 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   checkHelp(
     args,
-    `Usage: pnpm layers:enrich [options]
+    `Usage: pnpm scores:enrich [options]
 
 Options:
   --from <date>       Start date (YYYY-MM-DD)
@@ -236,7 +236,7 @@ Options:
   run(options)
     .then(() => process.exit(0))
     .catch((err) => {
-      console.error('[layers:enrich] Fatal:', err);
+      console.error('[scores:enrich] Fatal:', err);
       process.exit(1);
     });
 }

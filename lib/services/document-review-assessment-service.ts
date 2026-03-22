@@ -1,8 +1,8 @@
-import { buildPass1Prompt, PASS1_SYSTEM_PROMPT } from '@/lib/ai/prompts/layer2-pass1';
-import type { Pass2WeekContext } from '@/lib/ai/prompts/layer2-pass2';
-import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/layer2-pass2';
-import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/layer2-response';
-import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/layer2-response';
+import { buildPass1Prompt, PASS1_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass1';
+import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
+import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass2';
+import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/document-review-response';
+import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/document-review-response';
 import type { AIProvider, ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
 

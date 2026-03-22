@@ -46,20 +46,20 @@ The system monitors 14 institutional categories, aligned to frameworks used by V
 
 ## Detection Architecture
 
-Democracy Monitor uses multiple analysis layers, but only two **active detection layers** drive convergence status. Two additional layers provide **descriptive context** for narratives and research without influencing the status determination.
+Democracy Monitor uses multiple analysis methods. Two **active detection methods** drive concern status. Two additional methods provide **descriptive context** for narratives and research without influencing the status determination.
 
-### Active Detection Layers
+### Active Detection Methods
 
-These layers determine the convergence status:
+These methods determine the concern status:
 
-#### Layer 2: AI Document Assessment (Primary Detection)
+#### AI Document Review (Primary Detection)
 
-Layer 2 uses artificial intelligence to read and evaluate individual documents. To reduce single-provider bias, it uses a two-pass design with different AI providers:
+The AI document review uses artificial intelligence to read and evaluate individual documents. To reduce single-provider bias, it uses a two-pass design with different AI providers:
 
 - **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
 - **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots. Pass 2 receives week-level context (flag rate, peer titles, trajectory) to inform its assessment.
 
-Convergence status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
+Concern status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
 
 - **Stable** — Pass 2 found no concerning documents (0 clearly concerning, ≤1 potentially concerning)
 - **Elevated** — ≥1 clearly concerning OR ≥2 potentially concerning documents
@@ -67,7 +67,7 @@ Convergence status is determined by absolute Pass 2 classification counts — no
 
 An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
-#### Silence Detection (L1v2)
+#### Silence Detection
 
 Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo) have gone unusually quiet while independent-branch sources (CourtListener, congressional records, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression.
 
@@ -76,13 +76,13 @@ Silence detection measures whether government-controlled sources (Federal Regist
 - Requires both government silence (z > 1.5σ below mean) AND independent activity to be conspicuous
 - Cold-start periods (fewer than 4 weeks of data) are flagged as low confidence
 
-### Descriptive Context Layers
+### Descriptive Context Methods
 
-These layers are computed and stored for narrative grounding and research, but **do not influence convergence status**:
+These methods are computed and stored for narrative grounding and research, but **do not influence concern status**:
 
-#### Layer 1: Structural Anomaly Detection (Descriptive Only)
+#### Structural Anomaly Detection (Descriptive Only)
 
-Layer 1 is fully deterministic and uses only document metadata — no text analysis. It compares the current week's document patterns against historical baselines across six dimensions:
+Structural anomaly detection is fully deterministic and uses only document metadata — no text analysis. It compares the current week's document patterns against historical baselines across six dimensions:
 
 - **Volume** — Document count relative to baseline mean and standard deviation
 - **Type Composition** — Distribution of document types, measured using Jensen-Shannon divergence
@@ -93,20 +93,20 @@ Layer 1 is fully deterministic and uses only document metadata — no text analy
 
 Each dimension produces a z-score. The composite structural score is a weighted average with exponential dampening for mild z-scores and a cap on JSD outliers. A long-horizon component tracks cumulative deviation over 12 weeks. Structural anomalies are preserved as metadata for narrative context but do not trigger status escalation.
 
-#### Layer 3: Thematic Drift (Descriptive Only)
+#### Thematic Drift (Descriptive Only)
 
-Layer 3 uses embedding-based analysis to detect when the _topics_ discussed in a category shift away from recent norms. It operates on an intra-administration rolling window (8 weeks):
+Thematic drift uses embedding-based analysis to detect when the _topics_ discussed in a category shift away from recent norms. It operates on an intra-administration rolling window (8 weeks):
 
 - **Centroid Distance** — Distance from the rolling centroid of recent weeks
 - **Novel Document Rate** — Fraction of documents dissimilar to any in the rolling window
 - **Variance Ratio** — Whether document diversity is expanding or contracting
 - **Cross-Administration Distance** — Comparison against a prior administration's baseline
 
-Thematic drift signals are preserved for research visualization but do not drive convergence status.
+Thematic drift signals are preserved for research visualization but do not drive concern status.
 
-## Convergence Synthesis
+## Concern Synthesis
 
-L2 AI content assessment is the sole active detection layer, combined into a convergence status for each category:
+AI document review is the primary active detection method, combined into a concern status for each category:
 
 | Status                | Meaning                                                                                          |
 | --------------------- | ------------------------------------------------------------------------------------------------ |
@@ -114,7 +114,7 @@ L2 AI content assessment is the sole active detection layer, combined into a con
 | **Elevated**          | AI two-pass review flags anomalous content with Pass 2 corroboration.                            |
 | **Confirmed Concern** | AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination. |
 
-Structural anomaly (L1), silence detection (L1v2), and thematic drift (L3) provide descriptive context but do not influence the convergence status. This architecture was adopted after empirical validation showed that non-AI layers could not reliably distinguish signal from noise.
+Structural anomaly, silence detection, and thematic drift provide descriptive context but do not influence the concern status. This architecture was adopted after empirical validation showed that non-AI methods could not reliably distinguish signal from noise.
 
 ## Baselines
 
@@ -133,9 +133,9 @@ All four baselines cover the same core data sources (Federal Register, CourtList
 
 ## Keywords as Annotations
 
-Keywords were Democracy Monitor's original detection mechanism, but as the three-layer architecture was developed, their role changed. Keywords now serve as **contextual annotations** — they help explain what the system is detecting, but they do not drive the convergence status.
+Keywords were Democracy Monitor's original detection mechanism, but as the three-layer architecture was developed, their role changed. Keywords now serve as **contextual annotations** — they help explain what the system is detecting, but they do not drive the concern status.
 
-Each category has curated keyword dictionaries organized by severity tier (capture, drift, warning). When documents contain these keywords, the matches are displayed alongside the three-layer assessment to provide interpretive context. An administration-specific keyword overlay adds time-bounded terms relevant to the current administration. Baselines use only the core keyword set to avoid anachronistic false positives.
+Each category has curated keyword dictionaries organized by severity tier (capture, drift, warning). When documents contain these keywords, the matches are displayed alongside the assessment to provide interpretive context. An administration-specific keyword overlay adds time-bounded terms relevant to the current administration. Baselines use only the core keyword set to avoid anachronistic false positives.
 
 ## Source Health Monitoring
 
@@ -156,7 +156,7 @@ Source silence detection compares each source's output against its expected publ
 
 ## AI Narrative Generation
 
-For categories at Elevated status or above, the system generates plain-language narrative summaries explaining what the detection layers found and why. Narratives are produced in two versions:
+For categories at Elevated status or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
 
 - **Expert** — Technical analysis (400-800 words) for researchers and policy analysts, citing specific metrics, z-scores, and document references.
 - **Public** — Accessible summary (200-500 words) for general audiences, avoiding jargon and focusing on what the findings mean in practical terms.
@@ -169,12 +169,12 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 
 - **Federal focus** — The system monitors federal government activity. State and local government actions, which can significantly affect democratic governance, are not covered.
 - **Public information only** — The system analyzes publicly available documents. Actions taken through informal channels, verbal directives, or documents not yet published are invisible to the system.
-- **Structural detection is descriptive, not evaluative** — Layer 1 identifies statistical departures from baselines. It cannot determine whether a departure is concerning or benign — a spike in executive orders could reflect either an emergency response or a power grab.
+- **Structural detection is descriptive, not evaluative** — Structural anomaly detection identifies statistical departures from baselines. It cannot determine whether a departure is concerning or benign — a spike in executive orders could reflect either an emergency response or a power grab.
 - **AI assessment limitations** — AI quality depends on the models used and their training data. The two-pass design mitigates single-provider bias but cannot eliminate it entirely. AI models may also have difficulty with highly technical legal or regulatory language.
-- **Thematic drift requires volume** — Categories with few documents per week produce noisy drift signals. The system reduces confidence during low-volume periods, but sparse categories may generate unreliable Layer 3 results.
+- **Thematic drift requires volume** — Categories with few documents per week produce noisy drift signals. The system reduces confidence during low-volume periods, but sparse categories may generate unreliable thematic drift results.
 - **Source availability dependence** — The system depends on government websites remaining accessible and APIs remaining stable. Deliberate restriction of government data sources would degrade the system's ability to detect other changes.
 - **Baseline assumptions** — Baselines reflect specific historical periods. Structural changes in government publishing practices (new document formats, API changes, publication frequency shifts) could invalidate baseline comparisons over time.
-- **Embedding coverage gaps** — Layer 3 thematic drift analysis depends on document embeddings. Not all documents may have embeddings available, particularly older documents or those from newer source types.
+- **Embedding coverage gaps** — Thematic drift analysis depends on document embeddings. Not all documents may have embeddings available, particularly older documents or those from newer source types.
 - **Automation bias** — Presenting automated assessments alongside official government documents risks creating an impression of certainty that the methodology does not support. All findings are indicators warranting human review, not conclusions.
 
 ## Reproducibility

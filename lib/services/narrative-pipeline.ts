@@ -11,7 +11,7 @@ import type {
   WeeklySummaryInput,
 } from '@/lib/types';
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
-import type { ConvergenceSynthesis, StructuralScore } from '@/lib/types/structural';
+import type { ConcernAssessment, StructuralScore } from '@/lib/types/structural';
 import { formatError } from '@/lib/utils/api-helpers';
 import { recordFailure, resolveFailure } from './narrative-failure-store';
 import {
@@ -87,7 +87,7 @@ async function checkAggregateCompleteness(weekOf: string): Promise<{
       aggCategories,
       message:
         `weekly_aggregates covers ${aggCategories}/${docCategories} categories ` +
-        `(${(coverage * 100).toFixed(0)}%). Run scores:recompute and layers:enrich ` +
+        `(${(coverage * 100).toFixed(0)}%). Run scores:recompute and scores:enrich ` +
         `for this week before generating narratives.`,
     };
   }
@@ -112,7 +112,7 @@ export function toNarrativeLayerData(
     thematicScore: row.thematicScore,
     thematicDetail: row.thematicDetail as NarrativeLayerData['thematicDetail'],
     convergenceScore: row.convergenceScore,
-    convergenceDetail: row.convergenceDetail as ConvergenceSynthesis | null,
+    convergenceDetail: row.convergenceDetail as ConcernAssessment | null,
   };
 }
 

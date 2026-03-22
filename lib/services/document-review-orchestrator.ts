@@ -1,17 +1,17 @@
-import type { Pass2WeekContext } from '@/lib/ai/prompts/layer2-pass2';
+import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
 import { mapConcurrent } from '@/lib/utils/async';
-import type { Pass1Result, Pass2Result } from './layer2-assessment-service';
+import type { Pass1Result, Pass2Result } from './document-review-assessment-service';
 import {
   assessPass1,
   assessPass2,
   selectAuditSample,
   computeAIAssessmentSummary,
-} from './layer2-assessment-service';
+} from './document-review-assessment-service';
 import {
   storePass1Assessment,
   storePass2Assessment,
@@ -19,17 +19,17 @@ import {
   getExistingPass1Urls,
   loadStoredPass1Results,
   getWeekP1Context,
-} from './layer2-store';
-import type { Layer2Options, PriorWeekData } from './layer2-week-context';
+} from './document-review-store';
+import type { Layer2Options, PriorWeekData } from './document-review-week-context';
 import {
   buildBaseContext,
   buildPeerList,
   buildPerDocContext,
   getPriorWeekOf,
-} from './layer2-week-context';
+} from './document-review-week-context';
 
-export type { Layer2Options } from './layer2-week-context';
-export { retryMissingPass2 } from './layer2-retry';
+export type { Layer2Options } from './document-review-week-context';
+export { retryMissingPass2 } from './document-review-retry';
 
 const DEFAULT_PASS1_PROVIDER = 'openai';
 const DEFAULT_PASS1_MODEL = 'gpt-4o-mini';

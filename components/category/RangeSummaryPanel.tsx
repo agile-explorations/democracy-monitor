@@ -37,13 +37,13 @@ export function RangeSummaryPanel({ weeklyData, startIndex, endIndex }: RangeSum
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-lg border border-dm-border bg-dm-card p-4">
           <p className="text-[11px] uppercase tracking-wider text-dm-text-secondary mb-1">
-            Avg Convergence
+            Avg Concern
           </p>
           <p className="text-lg font-semibold text-dm-text-primary">
             {rangeStats.avgScore != null ? rangeStats.avgScore.toFixed(2) : '—'}
           </p>
           <p className="text-[10px] text-dm-muted mt-0.5">
-            Stable (0) → Elevated (1) → Divergent (2) → Concern (3)
+            Stable (0) → Elevated (1) → Confirmed Concern (2)
           </p>
         </div>
 

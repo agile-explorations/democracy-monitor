@@ -1,5 +1,5 @@
 import type { NarrativeLayerData } from '@/lib/types';
-import type { ConvergenceSynthesis, ThematicDriftScore } from '@/lib/types/structural';
+import type { ConcernAssessment, ThematicDriftScore } from '@/lib/types/structural';
 
 /** Build a NarrativeLayerData fixture with sensible defaults and optional overrides. */
 export function makeLayerData(overrides: Partial<NarrativeLayerData> = {}): NarrativeLayerData {

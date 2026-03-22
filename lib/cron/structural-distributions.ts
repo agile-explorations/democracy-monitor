@@ -165,7 +165,7 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   checkHelp(
     args,
-    `Usage: pnpm l1:distributions
+    `Usage: pnpm structural:distributions
 
 Shows per-category structural score distributions from Biden 2022 baseline.
 Used to set per-category thresholds for NC-3 compliance.`,
@@ -175,7 +175,7 @@ Used to set per-category thresholds for NC-3 compliance.`,
   loadEnvConfig(process.cwd());
   if (savedDbUrl) process.env.DATABASE_URL = savedDbUrl;
   if (!isDbAvailable()) {
-    console.error('[l1:distributions] DATABASE_URL not configured');
+    console.error('[structural:distributions] DATABASE_URL not configured');
     process.exit(1);
   }
 
@@ -225,6 +225,6 @@ Used to set per-category thresholds for NC-3 compliance.`,
 main()
   .then(() => process.exit(0))
   .catch((err) => {
-    console.error('[l1:distributions] Fatal:', err);
+    console.error('[structural:distributions] Fatal:', err);
     process.exit(1);
   });

@@ -2,13 +2,13 @@
  * Backfill Layer 2 AI assessments on historical data.
  *
  * Usage:
- *   pnpm layer2:backfill --baseline biden_2022 --pass 1
- *   pnpm layer2:backfill --baseline biden_2022 --pass 2
- *   pnpm layer2:backfill --from 2025-01-20 --to 2026-02-22 --category civilService
- *   pnpm layer2:backfill --source fec --fresh --confirm   # re-assess all FEC docs
- *   pnpm layer2:backfill --retry-p2                       # fast: retry only missing P2 assessments
- *   pnpm layer2:backfill --retry-p2 --category elections  # scoped to one category
- *   pnpm layer2:backfill --dry-run
+ *   pnpm review:backfill --baseline biden_2022 --pass 1
+ *   pnpm review:backfill --baseline biden_2022 --pass 2
+ *   pnpm review:backfill --from 2025-01-20 --to 2026-02-22 --category civilService
+ *   pnpm review:backfill --source fec --fresh --confirm   # re-assess all FEC docs
+ *   pnpm review:backfill --retry-p2                       # fast: retry only missing P2 assessments
+ *   pnpm review:backfill --retry-p2 --category elections  # scoped to one category
+ *   pnpm review:backfill --dry-run
  */
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { getAnalysisPeriods } from '@/lib/data/analysis-periods';
@@ -16,9 +16,13 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents, aiDocumentAssessments } from '@/lib/db/schema';
-import type { Layer2Options } from '@/lib/services/layer2-orchestrator';
-import { runLayer2Assessment, retryMissingPass2 } from '@/lib/services/layer2-orchestrator';
-import { getPass1Count, findPass2GapWeeks } from '@/lib/services/layer2-store';
+import type { Layer2Options } from '@/lib/services/document-review-orchestrator';
+import {
+  runLayer2Assessment,
+  retryMissingPass2,
+} from '@/lib/services/document-review-orchestrator';
+import { findPass2GapWeeks } from '@/lib/services/document-review-queries';
+import { getPass1Count } from '@/lib/services/document-review-store';
 import type { ContentItem } from '@/lib/types';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
@@ -107,6 +111,7 @@ async function getDocumentsForCategoryWeek(
   weekOf: string,
   source?: string,
 ): Promise<ContentItem[]> {
+  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const weekEnd = addDays(weekOf, 7);
 
@@ -157,6 +162,7 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
       );
       return;
     }
+    // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
     const db = getDb();
     const scopeLabels: string[] = [];
     if (args.source) scopeLabels.push(`source=${args.source}`);
@@ -269,7 +275,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv.slice(2),
-    `Usage: pnpm layer2:backfill [options]
+    `Usage: pnpm review:backfill [options]
 
 Options:
   --baseline <id>     Run for a specific baseline period (e.g. biden_2022)

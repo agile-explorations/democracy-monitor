@@ -6,8 +6,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ## Architecture decisions
 
-- **L2-only detection architecture** (2026-03-22, updated from three-layer triangulation): L2 AI two-pass assessment is the sole active detection layer driving convergence status via absolute P2 thresholds (no baseline z-score comparison). L1 structural anomaly, L1v2 silence detection, and L3 thematic drift provide descriptive context only. Convergence: Stable / Elevated / ConfirmedConcern (Divergent retained in type for legacy DB records but no longer produced). Keywords are annotations only. Full design: `ARCHITECTURE.md`
-- Sprint sequence: R1 (document corpus fixes) → R2 (Layer 1 + Layer 3) → R3 (Layer 2) → R4 (narrative + dashboard) → R5 (immigration + validation)
+- **AI-review-driven detection architecture** (2026-03-22): AI document review (two-pass: P1 screening, P2 detailed review) is the sole active detection mechanism driving concern status via absolute P2 thresholds. Structural anomaly, silence detection, and thematic drift provide descriptive context only. Concern levels: Stable / Elevated / ConfirmedConcern (Divergent retained in type for legacy DB records but no longer produced). Keywords are annotations only. Full design: `ARCHITECTURE.md`
+- Sprint sequence: R1 (document corpus fixes) → R2 (structural + thematic) → R3 (AI document review) → R4 (narrative + dashboard) → R5 (immigration + validation)
 - Sprint 21 run work (keyword baseline regen) superseded — keywords are annotations, not detection gates
 - Sprint 22 (rhetoric cross-feed) absorbed into Sprint R1
 - Sprints 23-29 restructured as R4 + Post-R5
@@ -28,9 +28,9 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### UI pages & APIs
 
-- Landing page = overview page: convergence heatmap (13×16) + status timeline + synchrony chart + status summary + category cards grid
-- Overview API: `/api/overview/summary` — convergence heatmap, status timeline, synchrony, status counts from weekly_aggregates
-- Category detail page: `/category/[key]` — ConvergenceHeader, StructuralSignaturePanel, AIAssessmentPanel, ThematicDriftPanel, TrendChart, EvidencePanel
+- Landing page = overview page: concern heatmap (13×16) + status timeline + synchrony chart + status summary + category cards grid
+- Overview API: `/api/overview/summary` — concern heatmap, status timeline, synchrony, status counts from weekly_aggregates
+- Category detail page: `/category/[key]` — ConcernHeader, StructuralSignaturePanel, AIAssessmentPanel, ThematicDriftPanel, TrendChart, EvidencePanel
 - Category API: `/api/category/[key]` returns latest assessment + baseline; `?weekOf=` param for historical; reuses `/api/history/weekly-scores` for chart data
 - Week detail page: `/category/[key]/week/[date]` — summary cards, sparkline with highlight, keyword matches, DocumentTable with CSV export
 - Narrative API: `/api/narratives/[category]` + `/api/narratives/overview`. Read-only from stored narratives (no on-demand generation). `?editorial=true` returns drafts + GPT-4o feedback. `_overview` = weekly summary, `_term_summary` = incremental term summary
@@ -42,7 +42,7 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 ### UI patterns
 
-- Shared chart colors: `lib/data/chart-colors.ts` — CHART_COLORS, CATEGORY_COLORS, CONVERGENCE_STATUS_COLORS
+- Shared chart colors: `lib/data/chart-colors.ts` — CHART_COLORS, CATEGORY_COLORS, CONCERN_LEVEL_COLORS
 - Design tokens: indigo-scale, CategoryCard/Sparkline/StatusPill components, /api/categories/summary endpoint
 - Dark mode: ThemeContext with `prefers-color-scheme` listener, `localStorage('dm_theme')`, `.dark` class on `<html>`
 - Reading level: ReadingLevelContext with `'summary' | 'detailed'`, `localStorage('dm_reading_level')`
@@ -64,14 +64,14 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `getCurrentCycleYear()` in scoring-config.ts: UTC-safe, returns 1-4 based on Jan 20 term anniversaries
 - Cycle factors thread through assessment pipeline: `analyzeContent(items, category, cycleFactors?)` → `assessByVolume` multiplies volume thresholds
 
-### Layer 2 AI assessment
+### AI document review
 
-- `ai_document_assessments` table, `aiScore`/`aiDetail` on `weekly_aggregates`, `runLayer2Assessment()` in orchestrator, `pnpm layer2:backfill` CLI
+- `ai_document_assessments` table, `aiScore`/`aiDetail` on `weekly_aggregates`, `runLayer2Assessment()` in orchestrator, `pnpm review:backfill` CLI
 - Pass 1 = gpt-4o-mini (OpenAI), Pass 2 = claude-sonnet-4-5-20250929 (Anthropic) — different providers for epistemic independence
-- Thresholds in scoring-config: `AI_FLAG_RATE_THRESHOLD = 1.5` (z-score), `AI_CONCERN_THRESHOLD = 0.2` (20% concern rate), `AUDIT_SAMPLE_RATE = 0.03`
-- ConvergenceStatus: Stable / Elevated / ConfirmedConcern (absolute P2 thresholds: ≥1 clearly_concerning or ≥2 potentially_concerning = Elevated; ≥2 clearly_concerning or ≥3 concerning with ≥20% rate = ConfirmedConcern). Divergent retained in type union for legacy DB records but no longer produced.
+- Thresholds in scoring-config: `AI_FLAG_RATE_THRESHOLD = 1.5` (z-score, event-validation only), `AI_CONCERN_THRESHOLD = 0.2` (20% concern rate), `AUDIT_SAMPLE_RATE = 0.03`
+- ConcernLevel: Stable / Elevated / ConfirmedConcern (absolute P2 thresholds: ≥1 clearly_concerning or ≥2 potentially_concerning = Elevated; ≥2 clearly_concerning or ≥3 concerning with ≥20% rate = ConfirmedConcern). Divergent retained in type union for legacy DB records but no longer produced.
 - Source convergence: 6th structural dimension, log2((gov+1)/(rhetoric+1)), weight 0.13 in STRUCTURAL_DIMENSION_WEIGHTS
-- All 4 Layer 2 baselines complete (2026-02-24): flag rates 0.34-0.64%, Pass 2 non-concerning 98.4-99.9%, audit FN rate 0.07%
+- All 4 AI review baselines complete (2026-02-24): flag rates 0.34-0.64%, Pass 2 non-concerning 98.4-99.9%, audit FN rate 0.07%
 - civilLiberties P1 calibrated (2026-03-03): flag rate 73% → 3.1%, P2 confirmation 1.5% → 20.3%, audit FN 0.7% (1/147). Fix: erosion framework in P1 prompt + threat-vector description. Architecture-consistent (no per-category prompt fields)
 - Structural dampening: `DAMPENING_THRESHOLD` and `JSD_Z_SCORE_CAP` in scoring-config.ts — exponential decay for mild z-scores, cap on JSD outliers
 
@@ -221,7 +221,7 @@ pnpm backfill --source doj --from 2025-01-20
 All pipeline commands are idempotent — safe to re-run on existing data:
 
 - `pnpm backfill`: skips completed ingest via `fetch_log`, always re-scores/aggregates, skips already-embedded docs. Use `--force` to bypass `fetch_log` and re-fetch all weeks (needed after pagination cap changes)
-- `pnpm layer2:backfill`: skips weeks where Pass 1 count >= document count
+- `pnpm review:backfill`: skips weeks where Pass 1 count >= document count
 - `pnpm scores:recompute`: re-scores from `documents` table and re-aggregates (no API calls)
 - `pnpm baselines:compute`: recomputes from existing aggregates/embeddings
 
@@ -231,7 +231,7 @@ Full repair workflow (from `BACKFILL_PIPELINE_REDESIGN.md`):
 pnpm backfill --from 2017-01-20 --to 2019-01-19
 pnpm backfill --from 2021-01-20 --to 2023-01-19
 pnpm backfill --from 2025-01-20
-pnpm layer2:backfill --from 2025-01-20
+pnpm review:backfill --from 2025-01-20
 pnpm validate:ingest
 pnpm validate:data
 ```
@@ -317,7 +317,7 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-CAL1: Layer 2 P1 calibration for civilLiberties — erosion type framework added to P1 prompt (global), civilLiberties description tightened from topic-area to threat-vector framing. P1 flag rate 73% → 3.1%, P2 confirmation rate 1.5% → 20.3%, audit FN rate 0.7% (1/147). 22 weeks backfilled (4,947 docs, 154 flagged). 7 new tests (1553 total across 128 files).
 - Sprint R-CL1: CourtListener opinion ingestion — `case_id` column + migration (0028), `fetchOpinionText` (two-step clusters→opinions API, concatenates all substantive sub_opinions with type labels), `buildOpinionContentItem`, `extractDocketId`, `backfill:opinions` CLI, forward pipeline auto-ingestion via `fillClOpinions`, Layer 1 volume dedup by case_id, `backfill:verify` CL opinion coverage. 164K existing rows backfilled with case_id. Issues #206-#215. 16 new tests (1569 total across 129 files).
 - Sprint R-P2: Phase 2 data reprocessing prep — `document_scores` composite unique `(url, category)` (migration 0029), `content_type` column (`full_text`/`metadata_only`) for GDELT discrimination, embedding + Layer 2 pipelines exclude `metadata_only`, WH content backfill source (`pnpm backfill:content --source wh`), `--fresh --confirm` flag for full L2 rerun, verification reporting for metadata-only counts + origin-based content completeness. Extracted `backfill-verification-layer2.ts` (fixed pre-existing lint warnings). Issues #216-#222. 18 new tests (1587 total across 132 files).
-- Sprint R-AP1: Analysis period safeguards — `lib/data/analysis-periods.ts` single source of truth (BASELINE_CONFIGS + T2). Pipeline commands (`scores:recompute`, `embeddings:backfill`, `layers:enrich`, `layer2:backfill`) default to analysis periods only; `--all-dates` override for gap years. `backfill.ts` embed step filtered. 12 new tests (1683 total across 135 files).
+- Sprint R-AP1: Analysis period safeguards — `lib/data/analysis-periods.ts` single source of truth (BASELINE_CONFIGS + T2). Pipeline commands (`scores:recompute`, `embeddings:backfill`, `scores:enrich`, `review:backfill`) default to analysis periods only; `--all-dates` override for gap years. `backfill.ts` embed step filtered. 12 new tests (1683 total across 135 files).
 - Sprint R-VAL1: Validation command refactor — replaced `backfill:verify` + `validate:events` with three non-overlapping commands: `validate:ingest` (source coverage, content completeness, pagination fitness), `validate:data` (scores, embeddings, baselines, L2 coverage, layer scores, metadata_only classification), `validate:detection` (known events, negative controls, layer attribution). New checks: `getLayerScorePopulation`, `getMetadataOnlyClassification`. Service/query/CLI separation. Issues #234-#238. 1678 tests across 135 files.
 - Sprint R-CPD1: CPD source swap — GovInfo CPD fetcher with NARA subject-based category routing (164 mapped terms, 13 categories). `ACTIVE_SOURCES` filter excludes whitehouse/gdelt from scoring/embedding/backfill. Backfilled 5 analysis periods. Pre-gate (#239-#242) complete; gate (#243) + post-gate cleanup (#244-#246) pending. 11 files, 1102 lines added, 1694 tests.
 - Sprint R-CPD2: Validated document database — non-Monday week_of fix (getWeekRanges Monday-alignment + DB cleanup: 2,825 deletes, 143 updates), WH scraper removal (rhetoric-fetcher, backfill-rhetoric, backfill-content, baselines, intent-data-service), fetcher error handling (all 8 gov-doc fetchers throw on HTTP errors for retry/logging), pre-existing TS fixes (oig_html SignalType, domhandler Element), SNAPSHOT_LOGGED_TYPES expansion, event expectation adjustments (T2-1/T2-9/T2-11 thin signals, NC-2 threshold 10%→8%). NC-3 calibration diagnosed (L1 thin-category sensitivity + L2 high-volume over-flagging) and deferred to #267. Issues #261-#267. 1722 tests across 139 files.
@@ -335,7 +335,7 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-NAR3: Narrative prompt compliance — 9 spec gap fixes (counter-argument limits, "why this might matter" reinforcement, small-sample caveats, L2-empty transparency, weekly/term structural requirements), 3-pass safety net criteria, validate:narratives script, layer assessment refactor. Issues #347-#348, #355-#361.
 - Sprint R-DQ1: Data quality safeguards — Fixed Mar 2 production data (re-scored 811 docs across 13 categories, regenerated narratives). Normalized fetch_log source_origin naming (snapshot signal IDs → canonical source types matching backfill). Added narrative pipeline safety net: `checkAggregateCompleteness()` aborts generation when weekly_aggregates covers <50% of document categories. Issues #362-#364.
 - Sprint R1-P0: Content enrichment + tiered narratives — FR full-text enrichment expanded to all document types (not just Presidential Documents), DOJ fetcher fixed to prefer body over teaser (8K limit), DOJ backfill CLI added. Tiered narrative generation: Elevated → single-pass, Divergent/ConfirmedConcern → 3-pass. Issues #365-#367.
-- Sprint R1-A2A3: Per-category L1 thresholds + event retrospective — `CATEGORY_STRUCTURAL_THRESHOLDS` map + `getStructuralThreshold()` lookup in scoring-config.ts, convergence synthesis category-aware, `l1:distributions` diagnostic, `retrospective` CLI harness. `buildAISummaryFromDB` extracted to shared `layer2-summary.ts`. judicialIndependence threshold 3.8, executiveOversight 2.8. Issues #368-#378.
+- Sprint R1-A2A3: Per-category L1 thresholds + event retrospective — `CATEGORY_STRUCTURAL_THRESHOLDS` map + `getStructuralThreshold()` lookup in scoring-config.ts, convergence synthesis category-aware, `structural:distributions` diagnostic, `retrospective` CLI harness. `buildAISummaryFromDB` extracted to shared `layer2-summary.ts`. judicialIndependence threshold 3.8, executiveOversight 2.8. Issues #368-#378.
 - Production remediation: Full pipeline recomputation after content enrichment (scores → L2 re-assessment → baselines → layers → backtest). loadEnvConfig bug fixed in 5 CLI scripts. l1:distributions NC-3 display improved (FAIL(L2) + Elev column). Regression analysis documented. Post-remediation: 50% T1 detection (7/14), 7 false alarms.
 - Sprint R1-CAL2: Detection calibration + backtest redesign — P1 calibration for 5 categories (lawEnforcement, executiveOversight, elections, infoAvailability, judicialIndependence), high-significance position lookup, backtest metric redesign. Issues #382-#389, Milestone 57.
 - Sprint R1-CRON: Weekly cron job fixes — LegiScan OOM (free base64 after decode + NODE_OPTIONS heap limit), weekly-dump.sh DELETE made non-fatal + upload retry. Issues #390-#392, Milestone 58.
@@ -343,3 +343,4 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R1-F15: Detection calibration closure — Fix l2Fired() display bug (expose raw + converged columns), add missReason classification to validation harness, freeze T1 backtest reference after L2 backfill. Issues #398-#400, Milestone 60.
 - Sprint R1-SX1: Source expansion — Congressional Record (CREC) integration via GovInfo Granules API, contextual P2 prompt enhancement with empirical variant testing. DOJ speeches descoped (no API exists). Architecture decisions in `docs/internal/CREC_ARCHITECTURE_QUESTIONS.md`. Issues #401-#409, Milestone 61.
 - Sprint R1-DET: Detection architecture transition — L2-only convergence (L1/L1v2/L3 demoted to descriptive context), absolute P2 thresholds (no baseline z-score comparison), Divergent retired, P2 reasoning enhancements. Threshold tuning deferred to #419. Issues #410-#418, Milestone 62.
+- Sprint R1-CLN: Layer & convergence terminology cleanup — Remove "layer" and "convergence" naming from code and UI. Rename to domain-specific terms: ConcernLevel, ConcernAssessment, document-review-_, concern-_. Remove Divergent from charts, delete ConvergenceIndicator, simplify ConcernHeader. Issues #420-#431, Milestone 63.

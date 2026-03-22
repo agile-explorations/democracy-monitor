@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 import { useTheme } from '@/lib/contexts/ThemeContext';
-import { CONVERGENCE_STATUS_COLORS } from '@/lib/data/chart-colors';
-import type { ConvergenceStatus } from '@/lib/types';
+import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import type { ConcernLevel } from '@/lib/types';
 
 export interface OverviewStatusSummaryProps {
-  statusCounts: Record<ConvergenceStatus, number>;
+  statusCounts: Record<ConcernLevel, number>;
 }
 
-const STATUS_ORDER: ConvergenceStatus[] = ['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'];
+const STATUS_ORDER: ConcernLevel[] = ['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'];
 
-const STATUS_LABELS: Record<ConvergenceStatus, string> = {
+const STATUS_LABELS: Record<ConcernLevel, string> = {
   Stable: 'Stable',
   Elevated: 'Elevated',
   Divergent: 'Divergent',
@@ -21,7 +21,7 @@ const MIN_SEGMENT_PCT = 3;
 
 export function OverviewStatusSummary({ statusCounts }: OverviewStatusSummaryProps) {
   const { resolvedMode } = useTheme();
-  const colors = CONVERGENCE_STATUS_COLORS[resolvedMode];
+  const colors = CONCERN_LEVEL_COLORS[resolvedMode];
 
   const { total, segments } = useMemo(() => {
     const t = STATUS_ORDER.reduce((sum, s) => sum + (statusCounts[s] ?? 0), 0);

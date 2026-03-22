@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
-import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
+import { ConcernHeader } from '@/components/category/ConcernHeader';
 import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
@@ -97,7 +97,7 @@ export function WeekDetailPanel({
       ) : (
         <>
           {/* Convergence status */}
-          <ConvergenceHeader synthesis={layers?.convergenceDetail ?? null} />
+          <ConcernHeader synthesis={layers?.convergenceDetail ?? null} />
 
           {/* Narrative */}
           <NarrativeSection
@@ -106,19 +106,19 @@ export function WeekDetailPanel({
             editorial={editorial}
           />
 
-          {/* Three-layer panels — collapsed by default */}
-          <CollapsiblePanel title="Layer 1: Structural Anomaly">
+          {/* Detail panels — collapsed by default */}
+          <CollapsiblePanel title="Structural Anomaly">
             <StructuralSignaturePanel
               score={layers?.structuralDetail ?? null}
               readingLevel={readingLevel}
             />
           </CollapsiblePanel>
 
-          <CollapsiblePanel title="Layer 2: AI Assessment">
+          <CollapsiblePanel title="AI Document Review">
             <AIAssessmentPanel summary={layers?.aiDetail ?? null} readingLevel={readingLevel} />
           </CollapsiblePanel>
 
-          <CollapsiblePanel title="Layer 3: Thematic Drift">
+          <CollapsiblePanel title="Thematic Drift">
             <ThematicDriftPanel
               drift={layers?.thematicDetail ?? null}
               readingLevel={readingLevel}

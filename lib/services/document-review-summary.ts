@@ -1,14 +1,14 @@
 /**
  * Build AIAssessmentSummary from stored ai_document_assessments rows.
- * Shared by enrich-layer-scores.ts and retrospective.ts.
+ * Shared by enrich-weekly-scores.ts and retrospective.ts.
  */
 
 import { and, eq, gte, lt } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { aiDocumentAssessments } from '@/lib/db/schema';
-import { computeAIAssessmentSummary } from '@/lib/services/layer2-assessment-service';
-import type { Pass1Result, Pass2Result } from '@/lib/services/layer2-assessment-service';
-import { getBaselineAIFlagRate } from '@/lib/services/layer2-store';
+import { computeAIAssessmentSummary } from '@/lib/services/document-review-assessment-service';
+import type { Pass1Result, Pass2Result } from '@/lib/services/document-review-assessment-service';
+import { getBaselineAIFlagRate } from '@/lib/services/document-review-store';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
 
 const STUB_META = { tokensInput: 0, tokensOutput: 0, latencyMs: 0 };

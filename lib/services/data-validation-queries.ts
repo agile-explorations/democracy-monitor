@@ -57,7 +57,7 @@ async function queryL2DocAndP1(from: string, to: string, category?: string) {
   const db = getDb();
   const { dateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
 
-  // L2-eligible docs: non-metadata_only, content >= 100 chars (matches backfill-layer2.ts filter)
+  // Review-eligible docs: non-metadata_only, content >= 100 chars (matches backfill-document-review.ts filter)
   const l2Eligible = and(
     dateFilter,
     catFilter,

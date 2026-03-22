@@ -144,7 +144,7 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
     `  ${covMark} Category: ${nc.narrativeWeeks} / ${nc.elevatedWeeks} elevated category-weeks have narratives (${covPct}%)`,
   );
   if (nc.missingWeeks > 0) {
-    console.log(`    ${nc.missingWeeks} missing (run: pnpm layers:enrich --narratives)`);
+    console.log(`    ${nc.missingWeeks} missing (run: pnpm scores:enrich --narratives)`);
   }
   const summaryExpected = nc.weeksWithNarratives;
   const summaryCovered = summaryExpected - nc.missingSummaryWeeks;
@@ -153,7 +153,7 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
     `  ${summaryMark} Weekly:   ${summaryCovered} / ${summaryExpected} narrated weeks have weekly summaries (${nc.weeksWithSummary} total)`,
   );
   if (nc.missingSummaryWeeks > 0) {
-    console.log(`    ${nc.missingSummaryWeeks} missing (run: pnpm layers:enrich --narratives)`);
+    console.log(`    ${nc.missingSummaryWeeks} missing (run: pnpm scores:enrich --narratives)`);
   }
   const termMark = nc.weeksWithTermSummary > 0 ? PASS : WARN;
   console.log(`  ${termMark} Term:     ${nc.weeksWithTermSummary} term summary snapshots stored`);

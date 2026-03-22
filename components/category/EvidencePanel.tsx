@@ -75,8 +75,8 @@ export function EvidencePanel({
       </h2>
       {annotationMode && (
         <p className="text-[11px] text-dm-muted mb-3">
-          Keywords provide context but do not drive the assessment. The three-layer convergence
-          system above determines status.
+          Keywords provide context but do not drive the assessment. The concern assessment system
+          above determines status.
         </p>
       )}
       {!annotationMode && <div className="mb-2" />}

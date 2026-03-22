@@ -1,6 +1,6 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
-import { ConvergenceHeader } from '@/components/category/ConvergenceHeader';
+import { ConcernHeader } from '@/components/category/ConcernHeader';
 import { ArticleJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -8,7 +8,7 @@ import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
 import type { AdjacentWeek, CategoryWeekPageData } from '@/lib/services/ssr-narrative-data';
 import { getCategoryWeekPageData } from '@/lib/services/ssr-narrative-data';
-import type { ConvergenceSynthesis, EditorialRecord } from '@/lib/types';
+import type { ConcernAssessment, EditorialRecord } from '@/lib/types';
 import { formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,7 +30,7 @@ interface PageProps {
   editorial: EditorialRecord;
   convergenceStatus: string | null;
   convergenceScore: number | null;
-  convergenceDetail: ConvergenceSynthesis | null;
+  convergenceDetail: ConcernAssessment | null;
   prevWeek: AdjacentWeek | null;
   nextWeek: AdjacentWeek | null;
   publishedAt: string | null;
@@ -141,7 +141,7 @@ export default function CategoryWeekPage({
 
       {/* Convergence status */}
       <div className="mb-6">
-        <ConvergenceHeader synthesis={convergenceDetail ?? null} />
+        <ConcernHeader synthesis={convergenceDetail ?? null} />
       </div>
 
       {/* Narrative */}

@@ -43,7 +43,7 @@ export type {
 } from './resilience';
 export type { DebateRole, DebateMessage, DebateVerdict, DebateResult } from './debate';
 export type { LegalDocument, LegalCitation, LegalAnalysisResult } from './legal';
-export type { KeywordTrend, TrendAnomaly, SemanticCluster, DigestEntry } from './trends';
+export type { KeywordTrend, TrendAnomaly, SemanticCluster } from './trends';
 export type {
   InfrastructureTheme,
   ConvergenceLevel,
@@ -64,8 +64,8 @@ export type {
   FunctionalShift,
   StructuralScore,
   ThematicDriftScore,
-  ConvergenceStatus,
-  ConvergenceSynthesis,
+  ConcernLevel,
+  ConcernAssessment,
   AIAssessmentSummary,
   WeekMetadata,
   BaselineDistribution,
