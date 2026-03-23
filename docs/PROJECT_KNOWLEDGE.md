@@ -101,6 +101,8 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - `lib/services/narrative-generation-service.ts` (status routing), `narrative-multipass.ts` (generation), `narrative-store.ts` (DB), `narrative-pipeline.ts` (orchestration)
 - Dual audience: expert (400-800 words, technical) + public (200-500 words, plain language). Tiered: Stable → template, Elevated → single-pass (Claude Opus), Divergent/ConfirmedConcern → 3-pass (Claude draft → GPT-4o feedback → Claude revision).
 - `narratives` table: category, weekOf, version ('expert'|'public'), content, model, generatedAt. Unique on (category, weekOf, version).
+- Prompt data: `narrative-format-helpers.ts` formats document sections (P2 reasoning with `>>> WHY THIS WAS FLAGGED:` prefix), trajectory summary (pre-computed stats: peak, mean, activations, streaks, transitions — replaces raw week-status table). `narrative-prompts.ts` builds prompts with markdown link instructions and P2 grounding. Content excerpts: 4000 chars (`narrative-queries.ts`).
+- Validation: `validate:narratives` checks T-NAR-12 (no raw data sequences, regex catches arrow-separated + comma-separated), T-NAR-16 (document references by title or URL match).
 
 ### Rhetoric & crossfeed
 
@@ -346,3 +348,4 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R1-CLN: Layer & convergence terminology cleanup — Remove "layer" and "convergence" naming from code and UI. Rename to domain-specific terms: ConcernLevel, ConcernAssessment, document-review-_, concern-_. Remove Divergent from charts, delete ConvergenceIndicator, simplify ConcernHeader. Issues #420-#431, Milestone 63.
 - Sprint R-DATA1: Researcher data access — Data page with CSV/database downloads and API docs, time-series toggle on category detail for structural/AI/thematic metrics, CSV flattening for jsonb columns. Issues #434-#439, Milestone 64.
 - Sprint R-SIG: FR signal contamination fix — Multi-agency support in FR fetcher, 16 signals scoped with agency restrictions, 1 signal terms tightened, validate:fr-signals and fr:purge-noise CLIs, OpenGrep guardrail rule. Issues #451-#455, Milestone 67.
+- Sprint R-NAR: Narrative quality — Pre-computed trajectory summary (replaces raw week-status table), P2 reasoning prominence (`>>> WHY THIS WAS FLAGGED:`), document markdown links across all narrative levels, content excerpts 2000→4000 chars, T-NAR-12/T-NAR-16 validation. Issues #460-#464, Milestone 69.
