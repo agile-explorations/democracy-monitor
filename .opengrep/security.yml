@@ -100,6 +100,28 @@ rules:
         - lib/cron/backfill-layer2.ts
         - lib/cron/legiscan-bulk.ts
 
+  # WHY: FR signal URLs with `term=` but no `agency=` or `type=` param will
+  # search ALL federal agencies, pulling thousands of irrelevant documents.
+  # Every term-based signal must be scoped to relevant agencies (agency=) or
+  # a document type (type=). Cross-agency signals (FOIA, IG) that are
+  # intentionally unscoped should add a `# nosemgrep: opengrep.unscoped-fr-signal`
+  # suppression comment with justification.
+  - id: unscoped-fr-signal
+    patterns:
+      - pattern-regex: "url:\\s*['\"]\\s*/api/federal-register\\?term=[^'\"]*['\"]"
+      - pattern-not-regex: 'agency='
+    message: >-
+      FR signal has term= but no agency= or type= restriction. This searches
+      ALL federal agencies and will contaminate the category with noise.
+      Add agency= to scope to relevant agencies, or add type= to narrow by
+      document type. If intentionally unscoped (cross-agency topic), add
+      nosemgrep suppression with justification.
+    languages: [typescript]
+    severity: ERROR
+    paths:
+      include:
+        - lib/data/categories.ts
+
   # WHY: Asserting on mock call arguments (toHaveBeenCalledWith) or
   # inspecting mock internals (.mock.calls) tests HOW code works, not
   # WHAT it produces. These tests break on refactors that preserve the

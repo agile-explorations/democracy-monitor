@@ -25,7 +25,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_schedule_f',
         name: 'Schedule F Rules Search',
-        url: '/api/federal-register?term=%22schedule+f%22',
+        url: '/api/federal-register?term=%22schedule+f%22&agency=personnel-management-office,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Looking for rules that could let the President fire career workers',
       },
@@ -39,14 +39,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_workforce',
         name: 'Federal Workforce Actions',
-        url: '/api/federal-register?term=%22reduction+in+force%22+|+%22federal+workforce%22+|+%22government+employee%22+|+%22personnel+management%22',
+        url: '/api/federal-register?term=%22reduction+in+force%22+|+%22federal+workforce%22+|+%22government+employee%22+|+%22personnel+management%22&agency=personnel-management-office,executive-office-of-the-president,management-and-budget-office',
         type: 'federal_register',
         note: 'Operational workforce actions including RIFs and personnel changes',
       },
       {
         id: 'fr_restructuring',
         name: 'Agency Restructuring',
-        url: '/api/federal-register?term=restructuring+|+reorganization+|+%22workforce+reshaping%22+|+%22agency+realignment%22',
+        url: '/api/federal-register?term=restructuring+|+reorganization+|+%22workforce+reshaping%22+|+%22agency+realignment%22&agency=personnel-management-office,executive-office-of-the-president,management-and-budget-office,general-services-administration',
         type: 'federal_register',
         note: 'Structural changes to federal agencies and workforce',
       },
@@ -63,14 +63,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_impoundment',
         name: 'Impoundment & Rescission',
-        url: '/api/federal-register?term=impoundment+|+rescission+|+deferral+|+withholding+|+appropriation',
+        url: '/api/federal-register?term=impoundment+|+rescission+|+deferral+|+withholding+|+appropriation&agency=management-and-budget-office,executive-office-of-the-president,treasury-department',
         type: 'federal_register',
         note: 'Executive actions to delay or block congressionally approved spending',
       },
       {
         id: 'fr_anti_deficiency',
         name: 'Anti-Deficiency & Spending Authority',
-        url: '/api/federal-register?term=%22anti-deficiency%22+|+apportionment+|+obligation+|+sequestration+|+impound',
+        url: '/api/federal-register?term=%22anti-deficiency%22+|+apportionment+|+obligation+|+sequestration+|+impound&agency=management-and-budget-office,executive-office-of-the-president,treasury-department',
         type: 'federal_register',
         note: 'Legal compliance with congressional spending authority',
       },
@@ -84,7 +84,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_spending',
         name: 'Spending Actions',
-        url: '/api/federal-register?term=%22spending+freeze%22+|+%22funding+pause%22+|+%22program+termination%22+|+%22agency+closure%22+|+%22grant+suspension%22',
+        url: '/api/federal-register?term=%22spending+freeze%22+|+%22funding+pause%22+|+%22program+termination%22+|+%22agency+closure%22+|+%22grant+suspension%22&agency=management-and-budget-office,executive-office-of-the-president,treasury-department',
         type: 'federal_register',
         note: 'Operational fiscal actions including freezes, pauses, and suspensions',
       },
@@ -114,6 +114,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_inspector_general',
         name: 'Inspector General Activity',
+        // nosemgrep: opengrep.unscoped-fr-signal — IGs exist in every agency; scoping would miss relevant documents
         url: '/api/federal-register?term=%22inspector+general%22',
         type: 'federal_register',
         note: 'Federal Register documents mentioning Inspector General activities',
@@ -121,7 +122,8 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_oversight',
         name: 'Oversight & Accountability',
-        url: '/api/federal-register?term=oversight+|+accountability+|+watchdog',
+        // nosemgrep: opengrep.unscoped-fr-signal — oversight bodies exist cross-agency; terms tightened to IG/GAO/boards
+        url: '/api/federal-register?term=%22inspector+general%22+|+%22government+accountability%22+|+%22oversight+board%22',
         type: 'federal_register',
         note: 'Broader oversight and accountability documents',
       },
@@ -135,6 +137,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_ig_personnel',
         name: 'IG Personnel Changes',
+        // nosemgrep: opengrep.unscoped-fr-signal — IG personnel changes happen cross-agency
         url: '/api/federal-register?term=%22inspector+general%22+(removal+|+vacancy+|+acting+|+appointment)',
         type: 'federal_register',
         note: 'Inspector General removals, vacancies, and appointments',
@@ -191,7 +194,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_hatch_act',
         name: 'Hatch Act News',
-        url: '/api/federal-register?term=%22hatch+act%22',
+        url: '/api/federal-register?term=%22hatch+act%22&agency=special-counsel-office,personnel-management-office,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Reports about government workers breaking the rule against campaigning',
       },
@@ -215,21 +218,21 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_court_compliance',
         name: 'Court Compliance Reports',
-        url: '/api/federal-register?term=injunction+compliance',
+        url: '/api/federal-register?term=injunction+compliance&agency=justice-department,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Looking for reports about following (or not following) court orders',
       },
       {
         id: 'fr_judicial_nominations',
         name: 'Judicial Nominations',
-        url: '/api/federal-register?term=%22judicial+nomination%22+|+%22judicial+appointment%22',
+        url: '/api/federal-register?term=%22judicial+nomination%22+|+%22judicial+appointment%22&agency=justice-department,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Tracking judicial nominations and appointments',
       },
       {
         id: 'fr_court_structure',
         name: 'Court Structure Changes',
-        url: '/api/federal-register?term=%22court+jurisdiction%22+|+%22judicial+reform%22',
+        url: '/api/federal-register?term=%22court+jurisdiction%22+|+%22judicial+reform%22&agency=justice-department,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Changes to court jurisdiction or judicial reform proposals',
       },
@@ -253,14 +256,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_national_emergency',
         name: 'National Emergency Declarations',
-        url: '/api/federal-register?term=%22national+emergency%22',
+        url: '/api/federal-register?term=%22national+emergency%22&agency=executive-office-of-the-president,defense-department,homeland-security-department',
         type: 'federal_register',
         note: 'National emergency declarations, IEEPA, and related executive emergency actions',
       },
       {
         id: 'fr_national_guard',
         name: 'National Guard & Domestic Deployment',
-        url: '/api/federal-register?term=%22national+guard%22+deployment',
+        url: '/api/federal-register?term=%22national+guard%22+deployment&agency=defense-department,homeland-security-department,executive-office-of-the-president',
         type: 'federal_register',
         note: 'National Guard mobilizations and domestic military deployment orders',
       },
@@ -297,14 +300,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_exec_regulatory',
         name: 'Executive Regulatory Control',
-        url: '/api/federal-register?term=%22executive+order%22+|+%22regulatory+review%22+|+%22independent+agency%22',
+        url: '/api/federal-register?term=%22executive+order%22+|+%22regulatory+review%22+|+%22independent+agency%22&agency=management-and-budget-office,executive-office-of-the-president',
         type: 'federal_register',
         note: 'Executive interventions in independent agency rulemaking',
       },
       {
         id: 'fr_oira',
         name: 'OIRA Regulatory Review',
-        url: '/api/federal-register?term=oira+|+%22regulatory+review%22+|+%22regulatory+clearance%22+|+%22executive+oversight%22',
+        url: '/api/federal-register?term=oira+|+%22regulatory+review%22+|+%22regulatory+clearance%22+|+%22executive+oversight%22&agency=management-and-budget-office,executive-office-of-the-president',
         type: 'federal_register',
         note: 'White House regulatory review and centralized control',
       },
@@ -364,6 +367,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_foia',
         name: 'FOIA & Transparency Rules',
+        // nosemgrep: opengrep.unscoped-fr-signal — FOIA applies to every federal agency
         url: '/api/federal-register?term=%22freedom+of+information%22+|+FOIA+|+transparency+|+disclosure',
         type: 'federal_register',
         note: 'FOIA-related Federal Register documents',
@@ -371,6 +375,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_open_data',
         name: 'Public Records & Data Access',
+        // nosemgrep: opengrep.unscoped-fr-signal — open government applies cross-agency
         url: '/api/federal-register?term=%22open+government%22+|+%22data+access%22+|+%22public+records%22',
         type: 'federal_register',
         note: 'Open government and data access documents',
@@ -388,14 +393,14 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_election_integrity',
         name: 'Election Integrity & Interference',
-        url: '/api/federal-register?term=%22election+integrity%22+|+%22election+interference%22+|+%22voting+rights%22+|+%22ballot+access%22',
+        url: '/api/federal-register?term=%22election+integrity%22+|+%22election+interference%22+|+%22voting+rights%22+|+%22ballot+access%22&agency=justice-department,election-assistance-commission,federal-election-commission',
         type: 'federal_register',
         note: 'Federal actions affecting election integrity and voter access',
       },
       {
         id: 'fr_election_admin',
         name: 'Election Administration Changes',
-        url: '/api/federal-register?term=%22election+commission%22+|+%22election+certification%22+|+recount+|+%22polling+place%22',
+        url: '/api/federal-register?term=%22election+commission%22+|+%22election+certification%22+|+recount+|+%22polling+place%22&agency=justice-department,election-assistance-commission,federal-election-commission',
         type: 'federal_register',
         note: 'Changes to election administration and oversight',
       },
@@ -426,6 +431,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_press_foia',
         name: 'Press & FOIA Rules',
+        // nosemgrep: opengrep.unscoped-fr-signal — FOIA/press access applies cross-agency
         url: '/api/federal-register?term=%22freedom+of+information%22+|+%22press+credentials%22',
         type: 'federal_register',
         note: 'Rules about press access and freedom of information',
@@ -433,6 +439,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_foia_compliance',
         name: 'FOIA Compliance',
+        // nosemgrep: opengrep.unscoped-fr-signal — FOIA compliance applies cross-agency
         url: '/api/federal-register?term=FOIA+|+%22FOIA+compliance%22+|+%22public+records%22',
         type: 'federal_register',
         note: 'Rules about government transparency and public records access',
@@ -523,7 +530,7 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_civil_rights',
         name: 'Civil Rights FR Documents',
-        url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22',
+        url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22&agency=justice-department,homeland-security-department,education-department,health-and-human-services-department,equal-employment-opportunity-commission,civil-rights-commission',
         type: 'federal_register',
         note: 'Federal Register documents on civil rights and due process',
       },

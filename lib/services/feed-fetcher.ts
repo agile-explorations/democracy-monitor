@@ -129,21 +129,28 @@ async function fetchFecJsonSignal(signal: Signal): Promise<FeedItem[]> {
   return items;
 }
 
-async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
-  // Parse the internal API URL to extract query params
-  const parsed = new URL(signal.url, 'http://localhost');
-  const agency = parsed.searchParams.get('agency');
+function buildFrRecentUrl(signalUrl: string): string {
+  const parsed = new URL(signalUrl, 'http://localhost');
+  const agencyRaw = parsed.searchParams.get('agency');
   const type = parsed.searchParams.get('type');
   const term = parsed.searchParams.get('term');
 
   const params = new URLSearchParams();
   params.set('per_page', '20');
   params.set('order', 'newest');
-  if (agency) params.set('conditions[agencies][]', agency);
+  if (agencyRaw) {
+    for (const slug of agencyRaw.split(',').map((s) => s.trim())) {
+      params.append('conditions[agencies][]', slug);
+    }
+  }
   if (type) params.set('conditions[type][]', type);
   if (term) params.set('conditions[term]', term);
 
-  const url = `https://www.federalregister.gov/api/v1/documents.json?${params.toString()}`;
+  return `https://www.federalregister.gov/api/v1/documents.json?${params.toString()}`;
+}
+
+async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
+  const url = buildFrRecentUrl(signal.url);
   const cacheKey = CacheKeys.federalRegister(url);
 
   const cached = await cacheGet<FeedItem[]>(cacheKey);

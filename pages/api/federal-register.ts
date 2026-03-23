@@ -24,7 +24,11 @@ function buildFederalRegisterQuery(query: NextApiRequest['query']): {
   params.set('per_page', '20');
   params.set('order', 'newest');
 
-  if (agency) params.set('conditions[agencies][]', agency as string);
+  if (agency) {
+    for (const slug of (agency as string).split(',').map((s) => s.trim())) {
+      params.append('conditions[agencies][]', slug);
+    }
+  }
   if (type) params.set('conditions[type][]', type as string);
   if (term) params.set('conditions[term]', term as string);
 

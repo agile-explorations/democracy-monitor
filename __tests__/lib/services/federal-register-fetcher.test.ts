@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { CATEGORIES } from '@/lib/data/categories';
 import {
   buildFrApiUrl,
   parseSignalParams,
@@ -16,9 +17,21 @@ describe('buildFrApiUrl', () => {
     expect(url).toContain('order=oldest');
   });
 
-  it('includes agency when provided', () => {
-    const url = buildFrApiUrl({ agency: 'epa' }, 1, '2025-01-01', '2025-01-31', 20);
+  it('includes single agency when provided', () => {
+    const url = buildFrApiUrl({ agencies: ['epa'] }, 1, '2025-01-01', '2025-01-31', 20);
     expect(url).toContain('conditions%5Bagencies%5D%5B%5D=epa');
+  });
+
+  it('includes multiple agencies when provided', () => {
+    const url = buildFrApiUrl(
+      { agencies: ['personnel-management-office', 'executive-office-of-the-president'] },
+      1,
+      '2025-01-01',
+      '2025-01-31',
+      20,
+    );
+    expect(url).toContain('conditions%5Bagencies%5D%5B%5D=personnel-management-office');
+    expect(url).toContain('conditions%5Bagencies%5D%5B%5D=executive-office-of-the-president');
   });
 
   it('includes type when provided', () => {
@@ -45,11 +58,22 @@ describe('buildFrApiUrl', () => {
 });
 
 describe('parseSignalParams', () => {
-  it('extracts agency from signal URL', () => {
+  it('extracts single agency from signal URL', () => {
     const params = parseSignalParams('/api/federal-register?agency=personnel-management-office');
-    expect(params.agency).toBe('personnel-management-office');
+    expect(params.agencies).toEqual(['personnel-management-office']);
     expect(params.type).toBeUndefined();
     expect(params.term).toBeUndefined();
+  });
+
+  it('extracts comma-separated agencies from signal URL', () => {
+    const params = parseSignalParams(
+      '/api/federal-register?agency=personnel-management-office,executive-office-of-the-president,management-and-budget-office',
+    );
+    expect(params.agencies).toEqual([
+      'personnel-management-office',
+      'executive-office-of-the-president',
+      'management-and-budget-office',
+    ]);
   });
 
   it('extracts type from signal URL', () => {
@@ -72,7 +96,7 @@ describe('parseSignalParams', () => {
 
   it('returns all undefined for URL with no params', () => {
     const params = parseSignalParams('/api/federal-register');
-    expect(params.agency).toBeUndefined();
+    expect(params.agencies).toBeUndefined();
     expect(params.type).toBeUndefined();
     expect(params.term).toBeUndefined();
   });
@@ -137,5 +161,41 @@ describe('toContentItem', () => {
   it('returns undefined summary when no abstract', () => {
     const item = toContentItem({ title: 'No abstract doc' });
     expect(item.summary).toBeUndefined();
+  });
+});
+
+describe('signal URL regression', () => {
+  const frSignals = CATEGORIES.flatMap((cat) =>
+    cat.signals
+      .filter((s) => s.type === 'federal_register')
+      .map((s) => ({ categoryKey: cat.key, signal: s })),
+  );
+
+  it('all FR signal URLs parse without error', () => {
+    for (const { signal } of frSignals) {
+      expect(() => parseSignalParams(signal.url)).not.toThrow();
+    }
+  });
+
+  it('no term-only FR signal lacks both agency and type params', () => {
+    const unscoped: string[] = [];
+    for (const { categoryKey, signal } of frSignals) {
+      const params = parseSignalParams(signal.url);
+      if (params.term && !params.agencies && !params.type) {
+        unscoped.push(`${categoryKey}/${signal.id}`);
+      }
+    }
+    // These signals are intentionally unscoped (cross-agency topics)
+    const allowedUnscoped = new Set([
+      'executiveOversight/fr_inspector_general',
+      'executiveOversight/fr_oversight',
+      'executiveOversight/fr_ig_personnel',
+      'infoAvailability/fr_foia',
+      'infoAvailability/fr_open_data',
+      'mediaFreedom/fr_press_foia',
+      'mediaFreedom/fr_foia_compliance',
+    ]);
+    const unexpected = unscoped.filter((id) => !allowedUnscoped.has(id));
+    expect(unexpected).toEqual([]);
   });
 });

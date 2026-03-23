@@ -12,7 +12,7 @@ function truncate(text: string): string {
 
 export function buildFrApiUrl(
   params: {
-    agency?: string;
+    agencies?: string[];
     type?: string;
     term?: string;
   },
@@ -27,7 +27,9 @@ export function buildFrApiUrl(
   qs.set('order', 'oldest');
   qs.set('conditions[publication_date][gte]', dateFrom);
   qs.set('conditions[publication_date][lte]', dateTo);
-  if (params.agency) qs.set('conditions[agencies][]', params.agency);
+  if (params.agencies) {
+    for (const slug of params.agencies) qs.append('conditions[agencies][]', slug);
+  }
   if (params.type) qs.set('conditions[type][]', params.type);
   if (params.term) qs.set('conditions[term]', params.term);
   return `https://www.federalregister.gov/api/v1/documents.json?${qs.toString()}`;
@@ -90,7 +92,7 @@ export async function fetchFrRawText(rawTextUrl: string): Promise<string | null>
  * Used by the backfill script — calls FR API directly (no caching).
  */
 export async function fetchFederalRegisterHistorical(options: {
-  agency?: string;
+  agencies?: string[];
   type?: string;
   term?: string;
   dateFrom: string;
@@ -98,12 +100,12 @@ export async function fetchFederalRegisterHistorical(options: {
   perPage?: number;
   delayMs?: number;
 }): Promise<ContentItem[]> {
-  const { agency, type, term, dateFrom, dateTo, perPage = 1000, delayMs = 200 } = options;
+  const { agencies, type, term, dateFrom, dateTo, perPage = 1000, delayMs = 200 } = options;
   const allItems: ContentItem[] = [];
   let page = 1;
 
   while (true) {
-    const url = buildFrApiUrl({ agency, type, term }, page, dateFrom, dateTo, perPage);
+    const url = buildFrApiUrl({ agencies, type, term }, page, dateFrom, dateTo, perPage);
 
     const response = await fetch(url, {
       headers: {
@@ -134,13 +136,14 @@ export async function fetchFederalRegisterHistorical(options: {
  * Parse a category signal URL to extract FR API parameters.
  */
 export function parseSignalParams(signalUrl: string): {
-  agency?: string;
+  agencies?: string[];
   type?: string;
   term?: string;
 } {
   const parsed = new URL(signalUrl, 'http://localhost');
+  const agencyRaw = parsed.searchParams.get('agency') || undefined;
   return {
-    agency: parsed.searchParams.get('agency') || undefined,
+    agencies: agencyRaw ? agencyRaw.split(',').map((s) => s.trim()) : undefined,
     type: parsed.searchParams.get('type') || undefined,
     term: parsed.searchParams.get('term') || undefined,
   };

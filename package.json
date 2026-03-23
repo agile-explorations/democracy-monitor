@@ -52,6 +52,8 @@
     "validate:ingest": "tsx lib/cron/validate-ingest.ts",
     "validate:data": "tsx lib/cron/validate-data.ts",
     "cl:purge-noise": "tsx lib/cron/purge-cl-noise.ts",
+    "fr:purge-noise": "tsx lib/cron/purge-fr-noise.ts",
+    "validate:fr-signals": "tsx lib/cron/validate-fr-signals.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "embeddings:backfill": "tsx lib/cron/embed-missing.ts",
     "scores:enrich": "tsx lib/cron/enrich-weekly-scores.ts",
