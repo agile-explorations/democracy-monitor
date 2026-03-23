@@ -59,17 +59,34 @@ interface MatchEntry {
   [key: string]: unknown;
 }
 
+function flattenDimension(
+  dim: { value: number; baselineMean: number; baselineStdDev: number; zScore: number } | undefined,
+  prefix: string,
+): Record<string, FlatValue> {
+  return {
+    [`${prefix}`]: dim?.zScore ?? '',
+    [`${prefix}_raw`]: dim?.value ?? '',
+    [`${prefix}_baselineMean`]: dim?.baselineMean ?? '',
+    [`${prefix}_baselineStdDev`]: dim?.baselineStdDev ?? '',
+  };
+}
+
 function flattenStructural(s: StructuralScore | null): Record<string, FlatValue> {
+  const shifts = s?.functionalShifts ?? [];
   return {
     structural_composite: s?.composite ?? '',
-    structural_volume: s?.dimensions?.volume?.zScore ?? '',
-    structural_typeComposition: s?.dimensions?.typeComposition?.zScore ?? '',
-    structural_functionalDistribution: s?.dimensions?.functionalDistribution?.zScore ?? '',
-    structural_agencyActivity: s?.dimensions?.agencyActivity?.zScore ?? '',
-    structural_publicationTempo: s?.dimensions?.publicationTempo?.zScore ?? '',
-    structural_sourceConvergence: s?.dimensions?.sourceConvergence?.zScore ?? '',
+    ...flattenDimension(s?.dimensions?.volume, 'structural_volume'),
+    ...flattenDimension(s?.dimensions?.typeComposition, 'structural_typeComposition'),
+    ...flattenDimension(s?.dimensions?.functionalDistribution, 'structural_functionalDistribution'),
+    ...flattenDimension(s?.dimensions?.agencyActivity, 'structural_agencyActivity'),
+    ...flattenDimension(s?.dimensions?.publicationTempo, 'structural_publicationTempo'),
+    ...flattenDimension(s?.dimensions?.sourceConvergence, 'structural_sourceConvergence'),
     structural_anomalous: s ? (s.anomalous ? 1 : 0) : '',
     structural_driftTrend: s?.longHorizon?.driftTrend ?? '',
+    structural_longHorizon_cumulativeDeviation: s?.longHorizon?.cumulativeDeviation ?? '',
+    structural_longHorizon_cumulativeWindow: s?.longHorizon?.cumulativeWindow ?? '',
+    structural_functionalShifts:
+      shifts.length > 0 ? shifts.map((sh) => `${sh.bucket}:${sh.direction}`).join(', ') : '',
   };
 }
 
@@ -94,6 +111,11 @@ function flattenThematic(t: ThematicDriftScore | null): Record<string, FlatValue
     thematic_novelDocRate: t?.novelDocumentRate ?? '',
     thematic_varianceRatio: t?.varianceRatio ?? '',
     thematic_crossAdminDistance: t?.crossAdminDistance ?? '',
+    thematic_rollingWindow_weeks: t?.rollingWindow?.weeks ?? '',
+    thematic_rollingWindow_meanDistance: t?.rollingWindow?.meanDistance ?? '',
+    thematic_rollingWindow_stdDev: t?.rollingWindow?.stdDev ?? '',
+    thematic_crossAdminBaseline: t?.crossAdminBaseline ?? '',
+    thematic_bootstrap: t ? (t.bootstrap ? 1 : 0) : '',
   };
 }
 

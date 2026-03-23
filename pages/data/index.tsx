@@ -155,9 +155,11 @@ export default function DataPage() {
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li>
-              <strong>structural_*</strong> — Composite score, dimension z-scores (volume, type
-              composition, functional distribution, agency activity, publication tempo, source
-              convergence), anomalous flag, drift trend
+              <strong>structural_*</strong> — Composite score, per-dimension z-scores with raw
+              values, baseline means, and baseline standard deviations (volume, type composition,
+              functional distribution, agency activity, publication tempo, source convergence),
+              anomalous flag, drift trend, long-horizon cumulative deviation/window, functional
+              shifts (bucket:direction pairs)
             </li>
             <li>
               <strong>ai_*</strong> — Flag count, total documents, flag/concern rates, P2
@@ -166,7 +168,8 @@ export default function DataPage() {
             </li>
             <li>
               <strong>thematic_*</strong> — Centroid distance, z-score, novel document rate,
-              variance ratio, cross-admin distance
+              variance ratio, cross-admin distance, rolling window metadata (weeks, mean distance,
+              std dev), cross-admin baseline period, bootstrap flag
             </li>
             <li>
               <strong>concern_*</strong> — Status, pattern description, per-layer elevation flags

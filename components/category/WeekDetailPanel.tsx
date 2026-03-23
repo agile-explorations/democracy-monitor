@@ -122,6 +122,8 @@ export function WeekDetailPanel({
             <ThematicDriftPanel
               drift={layers?.thematicDetail ?? null}
               readingLevel={readingLevel}
+              category={categoryKey}
+              weekOf={weekOf}
             />
           </CollapsiblePanel>
 

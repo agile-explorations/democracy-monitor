@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lerpColor, divergingZScoreColor } from '@/lib/utils/color';
+import { lerpColor, divergingZScoreColor, sequentialScaleColor } from '@/lib/utils/color';
 
 describe('lerpColor', () => {
   it('returns first color at t=0', () => {
@@ -70,5 +70,48 @@ describe('divergingZScoreColor', () => {
     // All should be different
     expect(atZero).not.toBe(atTwo);
     expect(atTwo).not.toBe(atFour);
+  });
+});
+
+describe('sequentialScaleColor', () => {
+  it('returns null for null value', () => {
+    expect(sequentialScaleColor(null, 1, 'light')).toBeNull();
+  });
+
+  it('returns null for max <= 0', () => {
+    expect(sequentialScaleColor(0.5, 0, 'light')).toBeNull();
+    expect(sequentialScaleColor(0.5, -1, 'light')).toBeNull();
+  });
+
+  it('returns low color at value 0', () => {
+    const color = sequentialScaleColor(0, 1, 'light');
+    expect(color).toBe('#f1f5f9');
+  });
+
+  it('returns high color at value = max', () => {
+    const color = sequentialScaleColor(1, 1, 'light');
+    expect(color).toBe('#dc2626');
+  });
+
+  it('clamps values above max', () => {
+    expect(sequentialScaleColor(2, 1, 'light')).toBe(sequentialScaleColor(1, 1, 'light'));
+  });
+
+  it('clamps values below 0', () => {
+    expect(sequentialScaleColor(-1, 1, 'light')).toBe(sequentialScaleColor(0, 1, 'light'));
+  });
+
+  it('produces different colors for light and dark modes', () => {
+    const light = sequentialScaleColor(0.5, 1, 'light');
+    const dark = sequentialScaleColor(0.5, 1, 'dark');
+    expect(light).not.toBe(dark);
+  });
+
+  it('produces colors between low and high at midpoint', () => {
+    const atZero = sequentialScaleColor(0, 1, 'light');
+    const atHalf = sequentialScaleColor(0.5, 1, 'light');
+    const atOne = sequentialScaleColor(1, 1, 'light');
+    expect(atZero).not.toBe(atHalf);
+    expect(atHalf).not.toBe(atOne);
   });
 });

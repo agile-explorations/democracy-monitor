@@ -46,6 +46,12 @@ export const Z_SCORE_SCALE_COLORS = {
   dark: { low: '#60a5fa', mid: '#1e293b', high: '#f87171' },
 } as const;
 
+/** Sequential scale for non-z-score thematic metrics (neutral → orange → red). */
+export const SEQUENTIAL_SCALE_COLORS = {
+  light: { low: '#f1f5f9', mid: '#f97316', high: '#dc2626' },
+  dark: { low: '#1e293b', mid: '#fb923c', high: '#f87171' },
+} as const;
+
 /** Structural/AI/thematic metric line colors (sky/orange/violet). */
 export const METRIC_LINE_COLORS = {
   light: { structural: '#0ea5e9', ai: '#f97316', thematic: '#8b5cf6' },

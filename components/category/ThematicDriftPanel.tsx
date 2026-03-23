@@ -1,11 +1,80 @@
+import { useCallback, useEffect, useState } from 'react';
 import type { ThematicDriftScore } from '@/lib/types/structural';
+
+interface ShiftLabels {
+  fromTerms: string[];
+  toTerms: string[];
+}
 
 export interface ThematicDriftPanelProps {
   drift: ThematicDriftScore | null;
   readingLevel: 'summary' | 'detailed';
+  category?: string;
+  weekOf?: string;
 }
 
-export function ThematicDriftPanel({ drift, readingLevel }: ThematicDriftPanelProps) {
+function ShiftLabelsDisplay({ labels }: { labels: ShiftLabels }) {
+  if (labels.fromTerms.length === 0 && labels.toTerms.length === 0) {
+    return (
+      <p className="text-[11px] text-dm-muted italic mt-3">
+        Insufficient data for shift label computation.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-3 text-xs">
+      <p className="text-dm-text-secondary">
+        {labels.fromTerms.length > 0 && (
+          <>
+            <span className="text-dm-muted">Shifting from: </span>
+            <span className="font-medium text-dm-text-primary">{labels.fromTerms.join(', ')}</span>
+          </>
+        )}
+        {labels.fromTerms.length > 0 && labels.toTerms.length > 0 && (
+          <span className="text-dm-muted mx-1.5">&rarr;</span>
+        )}
+        {labels.toTerms.length > 0 && (
+          <>
+            <span className="text-dm-muted">to: </span>
+            <span className="font-medium text-dm-text-primary">{labels.toTerms.join(', ')}</span>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+export function ThematicDriftPanel({
+  drift,
+  readingLevel,
+  category,
+  weekOf,
+}: ThematicDriftPanelProps) {
+  const [shiftLabels, setShiftLabels] = useState<ShiftLabels | null>(null);
+  const [loadingLabels, setLoadingLabels] = useState(false);
+
+  const loadShiftLabels = useCallback(async () => {
+    if (!category || !weekOf || loadingLabels || shiftLabels) return;
+    setLoadingLabels(true);
+    try {
+      const res = await fetch(
+        `/api/data/thematic-detail?category=${encodeURIComponent(category)}&weekOf=${encodeURIComponent(weekOf)}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setShiftLabels(data.shiftLabels);
+      }
+    } finally {
+      setLoadingLabels(false);
+    }
+  }, [category, weekOf, loadingLabels, shiftLabels]);
+
+  useEffect(() => {
+    if (readingLevel === 'detailed' && category && weekOf && drift) {
+      loadShiftLabels();
+    }
+  }, [readingLevel, category, weekOf, drift, loadShiftLabels]);
+
   if (!drift) {
     return (
       <section>
@@ -17,7 +86,6 @@ export function ThematicDriftPanel({ drift, readingLevel }: ThematicDriftPanelPr
     );
   }
 
-  // Summary mode
   if (readingLevel === 'summary') {
     return (
       <section>
@@ -45,7 +113,6 @@ export function ThematicDriftPanel({ drift, readingLevel }: ThematicDriftPanelPr
     );
   }
 
-  // Detailed mode
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
@@ -89,8 +156,12 @@ export function ThematicDriftPanel({ drift, readingLevel }: ThematicDriftPanelPr
         )}
       </div>
 
+      {/* Shift labels */}
+      {loadingLabels && <p className="text-[11px] text-dm-muted mt-3">Loading shift labels...</p>}
+      {shiftLabels && <ShiftLabelsDisplay labels={shiftLabels} />}
+
       {/* Rolling window info */}
-      <div className="text-[11px] text-dm-muted">
+      <div className="text-[11px] text-dm-muted mt-3">
         Rolling window: {drift.rollingWindow.weeks} weeks &middot; Mean distance:{' '}
         {drift.rollingWindow.meanDistance.toFixed(4)} &middot; Std dev:{' '}
         {drift.rollingWindow.stdDev.toFixed(4)}

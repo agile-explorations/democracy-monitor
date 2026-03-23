@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import type { ThematicDriftScore } from '@/lib/types/structural';
 
@@ -18,6 +18,19 @@ function makeDrift(overrides: Partial<ThematicDriftScore> = {}): ThematicDriftSc
 }
 
 describe('ThematicDriftPanel', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            shiftLabels: { fromTerms: ['routine', 'standard'], toTerms: ['emergency', 'action'] },
+          }),
+      }),
+    );
+  });
+
   it('shows "no thematic data" when drift is null', () => {
     render(<ThematicDriftPanel drift={null} readingLevel="summary" />);
     expect(screen.getByText('No thematic data available.')).toBeDefined();

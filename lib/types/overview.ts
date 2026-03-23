@@ -1,5 +1,26 @@
 import type { ConcernLevel } from './structural';
 
+export type ThematicMetric =
+  | 'zScore'
+  | 'centroidDistance'
+  | 'novelDocRate'
+  | 'varianceRatio'
+  | 'crossAdminDistance';
+
+export interface ThematicHeatmapRow {
+  category: string;
+  title: string;
+  weeks: Array<{
+    week: string;
+    zScore: number | null;
+    centroidDistance: number | null;
+    novelDocRate: number | null;
+    varianceRatio: number | null;
+    crossAdminDistance: number | null;
+    bootstrap: boolean;
+  }>;
+}
+
 export type StructuralDimension =
   | 'volume'
   | 'typeComposition'

@@ -1,4 +1,4 @@
-import { Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
+import { SEQUENTIAL_SCALE_COLORS, Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
 
 /** Linear interpolate between two hex colors. t is clamped to [0, 1]. */
 export function lerpColor(a: string, b: string, t: number): string {
@@ -31,5 +31,24 @@ export function divergingZScoreColor(zScore: number | null, mode: 'light' | 'dar
     return lerpColor(colors.low, colors.mid, t / 0.5);
   }
   // neutral → red
+  return lerpColor(colors.mid, colors.high, (t - 0.5) / 0.5);
+}
+
+/**
+ * Map a sequential value [0, max] to a neutral → warm color scale.
+ * Null values return null. Values are clamped to [0, max].
+ */
+export function sequentialScaleColor(
+  value: number | null,
+  max: number,
+  mode: 'light' | 'dark',
+): string | null {
+  if (value === null || max <= 0) return null;
+  const colors = SEQUENTIAL_SCALE_COLORS[mode];
+  const clamped = Math.max(0, Math.min(max, value));
+  const t = clamped / max;
+  if (t < 0.5) {
+    return lerpColor(colors.low, colors.mid, t / 0.5);
+  }
   return lerpColor(colors.mid, colors.high, (t - 0.5) / 0.5);
 }

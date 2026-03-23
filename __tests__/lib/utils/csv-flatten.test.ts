@@ -94,7 +94,14 @@ describe('flattenWeeklyRow', () => {
           },
         },
         anomalous: true,
-        functionalShifts: [],
+        functionalShifts: [
+          {
+            bucket: 'rulemaking',
+            baselineRate: 0.3,
+            currentRate: 0.5,
+            direction: 'increased' as const,
+          },
+        ],
         longHorizon: {
           cumulativeDeviation: 3.5,
           cumulativeWindow: 8,
@@ -105,10 +112,18 @@ describe('flattenWeeklyRow', () => {
     const flat = flattenWeeklyRow(row);
     expect(flat.structural_composite).toBe(55);
     expect(flat.structural_volume).toBe(1.2);
+    expect(flat.structural_volume_raw).toBe(10);
+    expect(flat.structural_volume_baselineMean).toBe(8);
+    expect(flat.structural_volume_baselineStdDev).toBe(2);
     expect(flat.structural_agencyActivity).toBe(2.1);
+    expect(flat.structural_agencyActivity_raw).toBe(7);
     expect(flat.structural_sourceConvergence).toBe(1.8);
+    expect(flat.structural_sourceConvergence_raw).toBe(0.9);
     expect(flat.structural_anomalous).toBe(1);
     expect(flat.structural_driftTrend).toBe('increasing');
+    expect(flat.structural_longHorizon_cumulativeDeviation).toBe(3.5);
+    expect(flat.structural_longHorizon_cumulativeWindow).toBe(8);
+    expect(flat.structural_functionalShifts).toBe('rulemaking:increased');
   });
 
   it('flattens aiDetail when present', () => {
@@ -160,6 +175,11 @@ describe('flattenWeeklyRow', () => {
     expect(flat.thematic_zScore).toBe(1.67);
     expect(flat.thematic_novelDocRate).toBe(0.25);
     expect(flat.thematic_crossAdminDistance).toBe(0.3);
+    expect(flat.thematic_rollingWindow_weeks).toBe(8);
+    expect(flat.thematic_rollingWindow_meanDistance).toBe(0.1);
+    expect(flat.thematic_rollingWindow_stdDev).toBe(0.03);
+    expect(flat.thematic_crossAdminBaseline).toBe('biden-2022');
+    expect(flat.thematic_bootstrap).toBe(0);
   });
 
   it('flattens convergenceDetail when present', () => {
