@@ -10,6 +10,33 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-NOISE: CREC & LegiScan Classification Noise Reduction ✅
+
+**Status: Done (issues #465-#469).** Milestone 70.
+
+**Context:** Two classification noise problems inflated document counts and diluted detection signal quality. CREC amendment text boilerplate (44.8% of CREC docs) — raw "Text of Senate Amendment NNNN" dumps passed the procedural filter because their subGranuleClass values weren't in PROCEDURAL_SUBCLASSES. LegiScan broad-term noise — bills matching generic terms like "regulation", "oversight" got routed to categories where they don't belong, despite having subject metadata that could filter this.
+
+**Scope vs. Actual:** All 5 issues implemented as planned. No scope changes.
+
+1. Add 3 amendment subGranuleClass values to PROCEDURAL_SUBCLASSES filter (#465)
+2. Create CREC noise purge script (purge-crec-noise.ts) with FK-safe delete order (#466)
+3. Define LEGISCAN_SUBJECT_MAP (14 categories) and LEGISCAN_BROAD_TERMS (7 categories) in topic-routing-terms.ts (#467)
+4. Implement filterBySubjectRelevance() in classifyBill() — subject co-requirement for broad-term matches, fallback for bills without subjects (#468)
+5. Fix validate:legiscan pub_date → published_at column name (#469)
+
+**Key decisions:**
+
+- **Subject co-requirement over keyword restriction:** Rather than removing broad terms (which would lose valid matches), we added a subject-confirmation gate. Bills matching only broad terms must have a confirming LegiScan subject. This preserves recall for bills with specific terms while cutting noise from generic matches.
+- **Exported matchesTerm from crec-classifier.ts:** Reused the existing term-matching function (with word-boundary logic for short terms) rather than duplicating it in legiscan-fetcher. Single `export` keyword change.
+- **No fetch_log clearing in CREC purge:** Unlike the CL purge script, CREC backfill is date-range based, not fetch-log tracked. Surgical delete of noise docs only; valid CREC docs remain untouched.
+- **Fallback for bills without subjects (2%):** Bills with empty subjects arrays pass through unfiltered to avoid false negatives on the small percentage of LegiScan bills lacking subject metadata.
+
+**Lessons:**
+
+- **Metadata-driven filtering scales better than keyword tightening.** CREC amendment noise couldn't be solved by tightening routing terms (the terms are correct — they just match inside 8K-char amendment dumps). The subGranuleClass metadata provides a clean structural filter. Same pattern for LegiScan: subject metadata (98% coverage) is more reliable than trying to make routing terms less ambiguous.
+
+---
+
 ## Sprint R-NAR: Narrative Quality — Event-Driven Content & Pre-Computed Summaries ✅
 
 **Status: Done (issues #460-#464).** Milestone 69.
