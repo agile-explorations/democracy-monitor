@@ -75,6 +75,14 @@ describe('isTokenLimitError', () => {
     expect(isTokenLimitError(err)).toBe(true);
   });
 
+  it('returns true for OpenAI input length errors', () => {
+    const err = Object.assign(
+      new Error("Invalid 'input[1]': maximum input length is 8192 tokens."),
+      { status: 400 },
+    );
+    expect(isTokenLimitError(err)).toBe(true);
+  });
+
   it('returns false for other 400 errors', () => {
     const err = Object.assign(new Error('Invalid API key'), { status: 400 });
     expect(isTokenLimitError(err)).toBe(false);

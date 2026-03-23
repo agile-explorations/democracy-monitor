@@ -30,12 +30,10 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
 }
 
 export function isTokenLimitError(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    'status' in err &&
-    (err as { status: number }).status === 400 &&
-    err.message.includes('maximum context length')
-  );
+  if (!(err instanceof Error) || !('status' in err)) return false;
+  if ((err as { status: number }).status !== 400) return false;
+  const msg = err.message;
+  return msg.includes('maximum context length') || msg.includes('maximum input length');
 }
 
 /** Compute the element-wise mean of a set of embedding vectors. */
