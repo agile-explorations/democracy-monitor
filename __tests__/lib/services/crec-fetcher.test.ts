@@ -54,6 +54,18 @@ describe('isProceduralGranule', () => {
     expect(isProceduralGranule('House of Representatives')).toBe(true);
   });
 
+  it('filters SAMENDMENTTEXTIND subGranuleClass', () => {
+    expect(isProceduralGranule('Text of Senate Amendment 1234', 'SAMENDMENTTEXTIND')).toBe(true);
+  });
+
+  it('filters SAMENDMENTTEXT subGranuleClass', () => {
+    expect(isProceduralGranule('TEXT OF AMENDMENTS', 'SAMENDMENTTEXT')).toBe(true);
+  });
+
+  it('filters SAMENDMENTSSUB subGranuleClass', () => {
+    expect(isProceduralGranule('AMENDMENTS SUBMITTED AND PROPOSED', 'SAMENDMENTSSUB')).toBe(true);
+  });
+
   it('allows substantive entries through', () => {
     expect(isProceduralGranule('Government Funding')).toBe(false);
     expect(isProceduralGranule("DELIVERING ON PRESIDENT TRUMP'S PROMISES")).toBe(false);

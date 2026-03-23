@@ -48,7 +48,7 @@ async function getCategoryStats(
     const count = Number(row.count);
 
     const samplesResult = await db.execute(sql`
-      SELECT title, pub_date FROM documents
+      SELECT title, published_at FROM documents
       WHERE source_origin = 'legiscan' AND category = ${cat}
       ORDER BY random()
       LIMIT ${sampleSize}
@@ -59,7 +59,7 @@ async function getCategoryStats(
       count,
       samples: samplesResult.rows.map((r) => ({
         title: String(r.title ?? '(untitled)'),
-        pubDate: String(r.pub_date ?? '').slice(0, 10),
+        pubDate: String(r.published_at ?? '').slice(0, 10),
       })),
     });
   }

@@ -19,7 +19,7 @@ const WORD_BOUNDARY_THRESHOLD = 5;
  */
 const regexCache = new Map<string, RegExp>();
 
-function matchesTerm(searchText: string, term: string): boolean {
+export function matchesTerm(searchText: string, term: string): boolean {
   const termLower = term.toLowerCase();
   if (termLower.length >= WORD_BOUNDARY_THRESHOLD) {
     return searchText.includes(termLower);

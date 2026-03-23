@@ -198,6 +198,71 @@ describe('classifyBill', () => {
   });
 });
 
+describe('classifyBill subject filtering', () => {
+  it('matches bill with broad term + relevant subject', () => {
+    const bill = makeBill({
+      title: 'Regulation Reform Act',
+      description: 'A bill to reform regulation of federal agencies',
+      subjects: [{ subject_id: 1, subject_name: 'Administrative law and regulatory procedures' }],
+    });
+    const categories = classifyBill(bill);
+    expect(categories).toContain('rulemaking');
+  });
+
+  it('drops bill with broad term + irrelevant subject', () => {
+    const bill = makeBill({
+      title: 'SHOWER Act',
+      description: 'A bill about energy regulation standards',
+      subjects: [{ subject_id: 1, subject_name: 'Energy' }],
+    });
+    const categories = classifyBill(bill);
+    expect(categories).not.toContain('rulemaking');
+  });
+
+  it('keeps bill with broad term + no subjects (fallback)', () => {
+    const bill = makeBill({
+      title: 'Oversight Enhancement Act',
+      description: 'A bill to strengthen oversight of federal programs',
+      subjects: [],
+    });
+    const categories = classifyBill(bill);
+    expect(categories).toContain('executiveOversight');
+  });
+
+  it('keeps bill with non-broad term regardless of subjects', () => {
+    const bill = makeBill({
+      title: 'Inspector General Protection Act',
+      description: 'Preventing removal of inspectors general without cause',
+      subjects: [{ subject_id: 1, subject_name: 'Energy' }],
+    });
+    const categories = classifyBill(bill);
+    expect(categories).toContain('executiveOversight');
+  });
+
+  it('keeps both categories when one broad + one specific', () => {
+    const bill = makeBill({
+      title: 'Inspector General and Regulation Reform Act',
+      description: 'A bill about inspector general and regulation reform',
+      subjects: [{ subject_id: 1, subject_name: 'Energy' }],
+    });
+    const categories = classifyBill(bill);
+    // 'executiveOversight' kept via specific term 'inspector general'
+    expect(categories).toContain('executiveOversight');
+    // 'rulemaking' dropped — only broad term 'regulation' matched, subject is 'Energy'
+    expect(categories).not.toContain('rulemaking');
+  });
+
+  it('keeps bill with broad term + empty subjects array (fallback)', () => {
+    const bill = makeBill({
+      title: 'Federal Deficit Reduction Act',
+      description: 'A bill to reduce the deficit',
+      subjects: [],
+    });
+    const categories = classifyBill(bill);
+    expect(categories).toContain('fiscal');
+  });
+});
+
 describe('isBillInDateRange', () => {
   it('returns true when status_date is within range', () => {
     const bill = makeBill({ status_date: '2025-06-15' });

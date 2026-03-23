@@ -14,6 +14,63 @@
  * - Recompute baselines after backfill to account for volume changes
  */
 
+/**
+ * LegiScan subject names that confirm a bill is relevant to each category.
+ * Used by filterBySubjectRelevance() to validate broad-term matches.
+ * Derived from prod data (top subjects per category with >5 bills).
+ */
+export const LEGISCAN_SUBJECT_MAP: Record<string, string[]> = {
+  rulemaking: ['Administrative law and regulatory procedures'],
+  lawEnforcement: [
+    'Crime and law enforcement',
+    'Criminal investigation, prosecution, interrogation',
+    'Law enforcement administration and funding',
+  ],
+  military: [
+    'Armed forces and national security',
+    'Military personnel and dependents',
+    'Department of Defense',
+  ],
+  civilLiberties: ['Civil rights and liberties, minority issues'],
+  executiveOversight: ['Congressional oversight', 'Government studies and investigations'],
+  immigrationEnforcement: [
+    'Immigration',
+    'Immigration status and procedures',
+    'Border security and unlawful immigration',
+    'Immigrant health and welfare',
+  ],
+  fiscal: ['Economics and public finance', 'Appropriations', 'Budget deficits and national debt'],
+  civilService: ['Government employee pay, benefits, personnel management'],
+  elections: ['Elections, voting, political campaign regulation', 'Voting rights'],
+  judicialIndependence: ['Law', 'Civil actions and liability'],
+  executiveActions: ['Presidents and presidential powers, Vice Presidents'],
+  infoAvailability: ['Government information and archives'],
+  mediaFreedom: ['News media and reporting'],
+  hatch: ['Federal officials'],
+};
+
+/**
+ * Terms that require subject co-occurrence for LegiScan bills.
+ * Only categories with empirically validated noise from broad-term matching.
+ * If a bill matches ONLY broad terms (no specific terms), its subjects
+ * must include at least one entry from LEGISCAN_SUBJECT_MAP for that category.
+ */
+export const LEGISCAN_BROAD_TERMS: Record<string, string[]> = {
+  rulemaking: ['regulation', 'regulatory'],
+  lawEnforcement: [
+    'law enforcement',
+    'Department of Justice',
+    'Attorney General',
+    'sentencing',
+    'criminal justice',
+  ],
+  military: ['Department of Defense', 'national emergency', 'defense authorization'],
+  civilLiberties: ['discrimination', 'privacy', 'surveillance'],
+  executiveOversight: ['oversight'],
+  immigrationEnforcement: ['detention', 'visa', 'refugee'],
+  fiscal: ['deficit'],
+};
+
 export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
   civilService: [
     'federal employee',

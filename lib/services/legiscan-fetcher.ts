@@ -1,4 +1,10 @@
 import AdmZip from 'adm-zip';
+import {
+  LEGISCAN_BROAD_TERMS,
+  LEGISCAN_SUBJECT_MAP,
+  TOPIC_ROUTING_TERMS,
+} from '@/lib/data/topic-routing-terms';
+import { matchesTerm } from '@/lib/services/crec-classifier';
 import { classifyLegislativeRelevance } from '@/lib/services/legislative-fetcher';
 import type { ContentItem } from '@/lib/types';
 
@@ -170,9 +176,43 @@ export function buildBillMetadata(bill: LegiScanBill): Record<string, string | n
   return meta;
 }
 
-/** Classify bill into dashboard categories using title + description. */
+/** Classify bill into dashboard categories using title + description + subject filtering. */
 export function classifyBill(bill: LegiScanBill): string[] {
-  return classifyLegislativeRelevance(bill.title, bill.description);
+  const categories = classifyLegislativeRelevance(bill.title, bill.description);
+  if (categories.length === 0) return categories;
+  return filterBySubjectRelevance(categories, bill);
+}
+
+/**
+ * Filter categories matched by broad terms unless confirmed by bill subjects.
+ *
+ * For each matched category:
+ * - If category has no broad terms defined → keep
+ * - If bill text matches a non-broad term for this category → keep
+ * - Otherwise (only broad terms matched):
+ *   - If bill has no subjects → keep (fallback for ~2% without subjects)
+ *   - If any bill subject is in LEGISCAN_SUBJECT_MAP for this category → keep
+ *   - Otherwise → drop
+ */
+export function filterBySubjectRelevance(categories: string[], bill: LegiScanBill): string[] {
+  const searchText = `${bill.title} ${bill.description}`.toLowerCase();
+  const billSubjects = bill.subjects?.map((s) => s.subject_name) ?? [];
+
+  return categories.filter((category) => {
+    const broadTerms = LEGISCAN_BROAD_TERMS[category];
+    if (!broadTerms) return true;
+
+    const allTerms = TOPIC_ROUTING_TERMS[category] ?? [];
+    const nonBroadTerms = allTerms.filter((t) => !broadTerms.includes(t));
+    const matchedSpecific = nonBroadTerms.some((term) => matchesTerm(searchText, term));
+    if (matchedSpecific) return true;
+
+    // Only broad terms matched — require subject confirmation
+    if (billSubjects.length === 0) return true;
+
+    const validSubjects = LEGISCAN_SUBJECT_MAP[category] ?? [];
+    return billSubjects.some((s) => validSubjects.includes(s));
+  });
 }
 
 /** Check if a bill's status_date falls within a date range (inclusive). */

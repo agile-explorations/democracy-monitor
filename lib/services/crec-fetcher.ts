@@ -71,6 +71,9 @@ const PROCEDURAL_SUBCLASSES = new Set([
   'RECESS',
   'DESIGNATIONSPEAKER',
   'HJOURNAL',
+  'SAMENDMENTTEXTIND',
+  'SAMENDMENTTEXT',
+  'SAMENDMENTSSUB',
 ]);
 
 /** Titles that indicate procedural entries to skip. */
