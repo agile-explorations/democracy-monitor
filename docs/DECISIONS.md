@@ -10,6 +10,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-SIG: FR Signal Contamination Fix ✅
+
+**Status: Done (issues #451-#455).** Milestone 67.
+
+**Context:** Term-based FR signals in `categories.ts` searched ALL federal agencies via the FR API when no `agency` parameter was specified. This polluted every affected category with noise documents from unrelated agencies — civilService had 91% noise (5,105 FR docs, only 451 from OPM). Systemic: 26 of 32 FR signals lacked agency restrictions. This reframes prior debugging (thin-category problems, L1 false positives, low P2 confirmation rates) as partly corpus contamination.
+
+**Scope vs. Actual:** All 5 issues implemented as planned. No scope changes.
+
+1. Multi-agency support in FR fetcher stack — `parseSignalParams` returns `agencies[]`, `buildFrApiUrl` loop-appends, feed-fetcher and API route updated (#451)
+2. 16 signals scoped with `agency=` restrictions, 1 signal terms tightened (`fr_oversight`), 7 cross-agency signals kept intentionally unscoped with nosemgrep comments (#452)
+3. `validate:fr-signals` CLI — spot-checks signal queries against FR API for one week (#453)
+4. `fr:purge-noise` CLI — deletes FR-sourced documents + derived data per category, respects FK constraints (#454)
+5. OpenGrep `unscoped-fr-signal` rule prevents future unscoped signals (#455)
+
+**Key decisions:**
+
+- **Comma-separated agency param** (`agency=opm,eop,omb`) over array param — minimal parser change, backward-compatible with existing single-agency signals.
+- **PRESDOCU and executiveActions kept unscoped** — presidential documents are already narrow by type; `fr_all_rules` intentionally captures ALL rules for volume measurement.
+- **7 cross-agency signals kept unscoped** — IG oversight, FOIA, media freedom apply to every agency. Restricting would miss relevant docs. L2 AI assessment is the right filter layer.
+- **Agency slugs validated against live FR API** — caught `commission-on-civil-rights` → `civil-rights-commission` before commit. Would have silently returned 0 results for civilLiberties.
+- **`buildFrRecentUrl` extracted** from `fetchFederalRegister` in feed-fetcher.ts — multi-agency loop pushed function over ESLint max-lines-per-function limit.
+
+**Lessons:**
+
+- **Validate API identifiers against the live API before committing.** Agency slugs are not documented and can't be guessed from agency names (`commission-on-civil-rights` vs `civil-rights-commission`). The validation script would have caught this post-commit, but pre-commit validation is cheaper.
+- **LegiScan has the same class of problem** — pure keyword matching on bill title/description, no structural scoping via subjects/committee/bill-type metadata. Lower volume (1,845 docs) but same contamination risk. Must audit next.
+
+---
+
 ## Sprint R-DATA1: Researcher Data Access ✅
 
 **Status: Done (issues #434-#439).** Milestone 64.
