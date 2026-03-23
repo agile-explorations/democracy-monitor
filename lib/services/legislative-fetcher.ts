@@ -1,4 +1,4 @@
-import { ASSESSMENT_RULES } from '@/lib/data/assessment-rules';
+import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { LegislativeItem, LegislativeItemType } from '@/lib/types/legislative';
 import { sleep } from '@/lib/utils/async';
 
@@ -44,27 +44,10 @@ interface GovInfoSummary {
 
 /**
  * Classify a legislative item's relevance to dashboard categories
- * by matching title/summary text against assessment-rules keyword dictionaries.
+ * using topic-routing terms (shared with CREC classification).
  */
 export function classifyLegislativeRelevance(title: string, summary?: string): string[] {
-  const text = `${title} ${summary || ''}`.toLowerCase();
-  const matched = new Set<string>();
-
-  for (const [category, rules] of Object.entries(ASSESSMENT_RULES)) {
-    const allKeywords = [
-      ...rules.keywords.capture,
-      ...rules.keywords.drift,
-      ...rules.keywords.warning,
-    ];
-    for (const kw of allKeywords) {
-      if (text.includes(kw.toLowerCase())) {
-        matched.add(category);
-        break;
-      }
-    }
-  }
-
-  return Array.from(matched);
+  return classifyCrecToCategories(title, summary);
 }
 
 /**

@@ -26,7 +26,9 @@ describe('classifyLegislativeRelevance', () => {
   });
 
   it('matches civil service text', () => {
-    const categories = classifyLegislativeRelevance('Schedule F reclassification hearing');
+    const categories = classifyLegislativeRelevance(
+      'Schedule F civil service reclassification hearing',
+    );
     expect(categories).toContain('civilService');
   });
 
@@ -37,7 +39,7 @@ describe('classifyLegislativeRelevance', () => {
 
   it('matches multiple categories from combined text', () => {
     const categories = classifyLegislativeRelevance(
-      'IG fired amid contempt of court finding against executive branch',
+      'Inspector general fired amid contempt of court finding against executive branch',
     );
     expect(categories).toContain('executiveOversight');
     expect(categories).toContain('judicialIndependence');
@@ -49,6 +51,26 @@ describe('classifyLegislativeRelevance', () => {
       'Discussion of schedule f and merit system violations',
     );
     expect(categories).toContain('civilService');
+  });
+
+  it('does not match generic health education bill', () => {
+    const categories = classifyLegislativeRelevance('AN ACT relating to health education');
+    expect(categories).toEqual([]);
+  });
+
+  it('does not match National Puppy Day resolution', () => {
+    const categories = classifyLegislativeRelevance(
+      'National Puppy Day Resolution',
+      'Designating March 23 as National Puppy Day',
+    );
+    expect(categories).toEqual([]);
+  });
+
+  it('matches law enforcement bill with "law enforcement" in title', () => {
+    const categories = classifyLegislativeRelevance(
+      'Fleeing or Attempting to Elude a Law Enforcement Officer',
+    );
+    expect(categories).toContain('lawEnforcement');
   });
 });
 

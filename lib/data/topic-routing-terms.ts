@@ -1,8 +1,9 @@
 /**
- * Topic-level routing terms for CREC (Congressional Record) classification.
+ * Topic-level routing terms for classifying congressional text into dashboard categories.
  *
- * These terms answer "is this speech ABOUT this category?" — NOT "does this
- * speech contain erosion evidence?" That assessment question is handled
+ * Used by both CREC (Congressional Record) and LegiScan (bill) classification.
+ * These terms answer "is this text ABOUT this category?" — NOT "does this
+ * text contain erosion evidence?" That assessment question is handled
  * downstream by L1 (structural), L2 (AI), and L3 (thematic drift).
  *
  * Design principles:
@@ -10,10 +11,10 @@
  * - Prefer 2-3 word phrases over single words to reduce false routing
  * - Single words only for highly specific terms (e.g., "DOGE", "FOIA", "ICE")
  * - Over-inclusive is better than under-inclusive (missed routing = missed data)
- * - Recompute baselines after backfill to account for CREC volume changes
+ * - Recompute baselines after backfill to account for volume changes
  */
 
-export const CREC_ROUTING_TERMS: Record<string, string[]> = {
+export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
   civilService: [
     'federal employee',
     'federal worker',
@@ -41,6 +42,10 @@ export const CREC_ROUTING_TERMS: Record<string, string[]> = {
     'government efficiency',
     'government reorganization',
     'agency restructuring',
+    'Merit Systems Protection Board',
+    'MSPB',
+    'General Schedule',
+    'excepted service',
   ],
 
   fiscal: [
@@ -66,6 +71,9 @@ export const CREC_ROUTING_TERMS: Record<string, string[]> = {
     'balanced budget',
     'spending bill',
     'funding bill',
+    'Impoundment Control Act',
+    'Congressional Budget Act',
+    'appropriated funds',
   ],
 
   executiveOversight: [
@@ -87,6 +95,8 @@ export const CREC_ROUTING_TERMS: Record<string, string[]> = {
     'testimony refused',
     'obstruction of Congress',
     'oversight committee',
+    'Inspectors General',
+    'CIGIE',
   ],
 
   hatch: [
@@ -124,6 +134,7 @@ export const CREC_ROUTING_TERMS: Record<string, string[]> = {
     'threatened judge',
     'impeach the judge',
     'jurisdiction stripping',
+    'court expansion',
   ],
 
   military: [

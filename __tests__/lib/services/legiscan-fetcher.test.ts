@@ -156,10 +156,10 @@ describe('classifyBill', () => {
     expect(categories).toContain('judicialIndependence');
   });
 
-  it('matches civil service keywords', () => {
+  it('matches civil service via topic routing terms', () => {
     const bill = makeBill({
       title: 'Preventing Schedule F Act',
-      description: 'To prevent reclassification of civil servants',
+      description: 'To protect the merit system for civil servants',
     });
 
     const categories = classifyBill(bill);
@@ -185,6 +185,16 @@ describe('classifyBill', () => {
 
     const categories = classifyBill(bill);
     expect(categories.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('does not match generic health education bill', () => {
+    const bill = makeBill({
+      title: 'AN ACT relating to health education',
+      description: 'Providing for health education in public schools',
+    });
+
+    const categories = classifyBill(bill);
+    expect(categories).toEqual([]);
   });
 });
 

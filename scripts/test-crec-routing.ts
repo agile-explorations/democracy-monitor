@@ -4,7 +4,7 @@
  * Default: 2025-01-20 → 2025-01-24 (inauguration week)
  */
 
-import { CREC_ROUTING_TERMS } from '@/lib/data/crec-routing-terms';
+import { TOPIC_ROUTING_TERMS } from '@/lib/data/topic-routing-terms';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import { fetchCrecHistorical } from '@/lib/services/crec-fetcher';
 import type { ContentItem } from '@/lib/types';
@@ -21,7 +21,7 @@ interface RoutedDoc {
 function findMatchedTerms(searchText: string, categories: string[]): Record<string, string[]> {
   const result: Record<string, string[]> = {};
   for (const cat of categories) {
-    const terms = CREC_ROUTING_TERMS[cat] || [];
+    const terms = TOPIC_ROUTING_TERMS[cat] || [];
     result[cat] = terms.filter((t) => {
       const tl = t.toLowerCase();
       if (tl.length >= 5) return searchText.includes(tl);

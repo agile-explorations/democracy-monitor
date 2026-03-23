@@ -1,12 +1,13 @@
 /**
- * Topic-level category routing for CREC (Congressional Record) documents.
+ * Topic-level category routing for congressional text (CREC floor speeches,
+ * LegiScan bills, GovInfo packages).
  *
- * Routes floor speeches to monitoring categories using broad topic terms,
+ * Routes documents to monitoring categories using broad topic terms,
  * NOT the narrow erosion-detection keywords from ASSESSMENT_RULES.
  * The three-layer pipeline (L1/L2/L3) handles the actual assessment.
  */
 
-import { CREC_ROUTING_TERMS } from '@/lib/data/crec-routing-terms';
+import { TOPIC_ROUTING_TERMS } from '@/lib/data/topic-routing-terms';
 
 /** Threshold below which terms get word-boundary matching to avoid substring false positives. */
 const WORD_BOUNDARY_THRESHOLD = 5;
@@ -45,7 +46,7 @@ export function classifyCrecToCategories(title: string, text?: string | null): s
   const searchText = `${title} ${text || ''}`.toLowerCase();
   const matched = new Set<string>();
 
-  for (const [category, terms] of Object.entries(CREC_ROUTING_TERMS)) {
+  for (const [category, terms] of Object.entries(TOPIC_ROUTING_TERMS)) {
     for (const term of terms) {
       if (matchesTerm(searchText, term)) {
         matched.add(category);
