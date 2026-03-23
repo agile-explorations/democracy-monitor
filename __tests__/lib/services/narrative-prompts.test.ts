@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  formatTrajectorySummary,
+  formatDocumentSection,
+} from '@/lib/services/narrative-format-helpers';
+import {
   buildDraftPrompt,
   buildFeedbackPrompt,
   buildRevisionPrompt,
@@ -251,9 +255,9 @@ describe('buildTermSummaryPrompt', () => {
     expect(prompt).toContain('This week expert.');
   });
 
-  it('includes trajectory table', () => {
+  it('includes trajectory summary', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
-    expect(prompt).toContain('TRAJECTORY TABLE');
+    expect(prompt).toContain('TRAJECTORY SUMMARY');
     expect(prompt).toContain('civilService');
   });
 
@@ -296,6 +300,7 @@ describe('buildTermSummaryPrompt', () => {
   it('handles empty trajectory table', () => {
     const input = makeTermInput({ trajectoryTable: [] });
     const prompt = buildTermSummaryPrompt(input, 'expert');
+    expect(prompt).toContain('TRAJECTORY SUMMARY');
     expect(prompt).toContain('No trajectory data available.');
   });
 
@@ -548,11 +553,11 @@ describe('buildDraftPrompt — missing branch coverage', () => {
     const prompt = buildDraftPrompt(data);
     expect(prompt).toContain('Minimal doc');
     expect(prompt).toContain('Source: rss');
-    // Should NOT include agency/published/erosion/reasoning/content lines
-    expect(prompt).not.toContain('Agency:');
-    expect(prompt).not.toContain('Published:');
-    expect(prompt).not.toContain('Erosion type:');
-    expect(prompt).not.toContain('Reasoning:');
+    // Condensed format: no separate Agency/Published lines, no Erosion in assess line
+    expect(prompt).not.toContain('| Agency:');
+    expect(prompt).not.toContain('| Published:');
+    expect(prompt).not.toContain('| Erosion type:');
+    expect(prompt).not.toContain('>>> WHY THIS WAS FLAGGED:');
     expect(prompt).not.toContain('Content excerpt:');
   });
 
@@ -1283,15 +1288,171 @@ describe('buildTermSummaryPrompt — critical evaluation and compression', () =>
     expect(prompt).toContain('not this week');
   });
 
-  it('includes summarize-not-reproduce instruction for data sequences', () => {
+  it('includes pre-computed trajectory instruction', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
-    expect(prompt).toContain('Summarize long data sequences');
-    expect(prompt).toContain('peak, average, recent range, trend');
+    expect(prompt).toContain('pre-computed');
+    expect(prompt).toContain('do not reconstruct per-week data sequences');
   });
 
   it('includes "why this might matter" instruction', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'public');
     expect(prompt).toContain('why this might matter');
     expect(prompt).toContain('cumulative trajectory');
+  });
+
+  it('includes link preservation instruction', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('preserve its markdown link');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint R-NAR: trajectory summary, P2 prominence, document links
+// ---------------------------------------------------------------------------
+
+describe('formatTrajectorySummary', () => {
+  it('returns empty message for empty input', () => {
+    const result = formatTrajectorySummary([]);
+    expect(result).toContain('TRAJECTORY SUMMARY');
+    expect(result).toContain('No trajectory data available.');
+  });
+
+  it('computes peak, mean, and activation rates for single category', () => {
+    const table = [
+      { category: 'civilService', weekOf: '2026-01-06', status: 'Stable' },
+      { category: 'civilService', weekOf: '2026-01-13', status: 'Elevated' },
+      { category: 'civilService', weekOf: '2026-01-20', status: 'Elevated' },
+      { category: 'civilService', weekOf: '2026-01-27', status: 'Stable' },
+    ];
+    const result = formatTrajectorySummary(table);
+    expect(result).toContain('TRAJECTORY SUMMARY');
+    expect(result).toContain('Term span: 2026-01-06 to 2026-01-27 (4 weeks)');
+    expect(result).toContain('Peak: 1');
+    expect(result).toContain('civilService: 2/4 weeks (50.0%)');
+  });
+
+  it('computes multi-category statistics correctly', () => {
+    const table = [
+      { category: 'civilService', weekOf: '2026-01-06', status: 'Elevated' },
+      { category: 'civilService', weekOf: '2026-01-13', status: 'Elevated' },
+      { category: 'civilService', weekOf: '2026-01-20', status: 'Stable' },
+      { category: 'elections', weekOf: '2026-01-06', status: 'Stable' },
+      { category: 'elections', weekOf: '2026-01-13', status: 'Elevated' },
+      { category: 'elections', weekOf: '2026-01-20', status: 'Elevated' },
+    ];
+    const result = formatTrajectorySummary(table);
+    // Peak: 2 categories elevated on 2026-01-13
+    expect(result).toContain('Peak: 2');
+    // Both categories at 2/3 weeks
+    expect(result).toContain('(66.7%)');
+    // Consecutive streak: both have 2-week streaks
+    expect(result).toContain('Longest consecutive elevated streaks');
+  });
+
+  it('detects status transitions', () => {
+    const table = [
+      { category: 'civilService', weekOf: '2026-01-06', status: 'Stable' },
+      { category: 'civilService', weekOf: '2026-01-13', status: 'Elevated' },
+    ];
+    const result = formatTrajectorySummary(table);
+    expect(result).toContain('Recent transitions');
+    expect(result).toContain('Stable → Elevated');
+  });
+
+  it('omits streaks section when no streaks longer than 1 week', () => {
+    const table = [
+      { category: 'civilService', weekOf: '2026-01-06', status: 'Elevated' },
+      { category: 'civilService', weekOf: '2026-01-13', status: 'Stable' },
+      { category: 'civilService', weekOf: '2026-01-20', status: 'Elevated' },
+    ];
+    const result = formatTrajectorySummary(table);
+    expect(result).not.toContain('Longest consecutive elevated streaks');
+  });
+
+  it('handles ConfirmedConcern and Divergent as elevated', () => {
+    const table = [
+      { category: 'civilService', weekOf: '2026-01-06', status: 'ConfirmedConcern' },
+      { category: 'civilService', weekOf: '2026-01-13', status: 'Divergent' },
+    ];
+    const result = formatTrajectorySummary(table);
+    expect(result).toContain('2/2 weeks (100.0%)');
+  });
+});
+
+describe('formatDocumentSection — P2 reasoning prominence', () => {
+  it('includes WHY THIS WAS FLAGGED when reasoning is present', () => {
+    const data = makeLayerData({
+      documentContext: [
+        {
+          title: 'Test Doc',
+          sourceType: 'federal_register',
+          sourceOrigin: 'FR',
+          agency: 'DOJ',
+          publishedAt: '2026-02-18',
+          url: 'https://example.com/doc',
+          assessment: 'clearly_concerning',
+          erosionType: 'formal_override',
+          reasoning: 'This order removes protections for civil servants.',
+          content: 'Full text here.',
+        },
+      ],
+    });
+    const result = formatDocumentSection(data);
+    expect(result).toContain('>>> WHY THIS WAS FLAGGED: This order removes protections');
+    expect(result).toContain('Source: federal_register (FR) | Published: 2026-02-18 | Agency: DOJ');
+    expect(result).toContain('Assessment: clearly_concerning | Erosion type: formal_override');
+  });
+
+  it('omits WHY THIS WAS FLAGGED when reasoning is null', () => {
+    const data = makeLayerData({
+      documentContext: [
+        {
+          title: 'No reasoning doc',
+          sourceType: 'rss',
+          sourceOrigin: null,
+          agency: null,
+          publishedAt: null,
+          url: '',
+          assessment: 'routine',
+          erosionType: null,
+          reasoning: null,
+          content: null,
+        },
+      ],
+    });
+    const result = formatDocumentSection(data);
+    expect(result).not.toContain('WHY THIS WAS FLAGGED');
+  });
+});
+
+describe('buildDraftPrompt — P2 grounding and link instructions', () => {
+  it('contains P2 grounding instruction', () => {
+    const prompt = buildDraftPrompt(makeLayerData());
+    expect(prompt).toContain('WHY THIS WAS FLAGGED');
+    expect(prompt).toContain('event-level descriptions');
+  });
+
+  it('contains markdown link instruction', () => {
+    const prompt = buildDraftPrompt(makeLayerData());
+    expect(prompt).toContain('markdown links');
+    expect(prompt).toContain('[document title](URL)');
+  });
+});
+
+describe('buildWeeklySummaryPrompt — link preservation', () => {
+  function makeWeeklyInput(overrides: Partial<WeeklySummaryInput> = {}): WeeklySummaryInput {
+    return {
+      weekOf: '2026-02-17',
+      categories: [makeLayerData()],
+      categoryNarratives: new Map(),
+      failedCategories: [],
+      previousWeekSummary: null,
+      ...overrides,
+    };
+  }
+
+  it('contains link preservation instruction', () => {
+    const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'expert');
+    expect(prompt).toContain('preserve its markdown link');
   });
 });

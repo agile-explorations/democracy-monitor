@@ -1,4 +1,5 @@
 import type { NarrativeLayerData } from '@/lib/types';
+import { mean } from '@/lib/utils/math';
 
 // ---------------------------------------------------------------------------
 // Draft-context formatting helpers extracted from narrative-prompts.ts
@@ -87,13 +88,17 @@ export function formatDocumentSection(data: NarrativeLayerData): string {
   const lines = ['--- KEY DOCUMENTS (P2-CONFIRMED) ---'];
   for (const doc of docs) {
     lines.push(`Title: ${doc.title}`);
-    lines.push(`  Source: ${doc.sourceType}${doc.sourceOrigin ? ` (${doc.sourceOrigin})` : ''}`);
-    if (doc.publishedAt) lines.push(`  Published: ${doc.publishedAt}`);
+    const meta: string[] = [
+      `Source: ${doc.sourceType}${doc.sourceOrigin ? ` (${doc.sourceOrigin})` : ''}`,
+    ];
+    if (doc.publishedAt) meta.push(`Published: ${doc.publishedAt}`);
+    if (doc.agency) meta.push(`Agency: ${doc.agency}`);
+    lines.push(`  ${meta.join(' | ')}`);
     if (doc.url) lines.push(`  URL: ${doc.url}`);
-    if (doc.agency) lines.push(`  Agency: ${doc.agency}`);
-    lines.push(`  Assessment: ${doc.assessment}`);
-    if (doc.erosionType) lines.push(`  Erosion type: ${doc.erosionType}`);
-    if (doc.reasoning) lines.push(`  Reasoning: ${doc.reasoning}`);
+    const assess: string[] = [`Assessment: ${doc.assessment}`];
+    if (doc.erosionType) assess.push(`Erosion type: ${doc.erosionType}`);
+    lines.push(`  ${assess.join(' | ')}`);
+    if (doc.reasoning) lines.push(`  >>> WHY THIS WAS FLAGGED: ${doc.reasoning}`);
     if (doc.content) lines.push(`  Content excerpt: ${doc.content}`);
     lines.push('');
   }
@@ -185,6 +190,169 @@ export function formatThematicContextSection(data: NarrativeLayerData): string {
       lines.push(`  - ${d.title} [${d.sourceType}]${date}`);
     }
     lines.push('Characterize the nature of the thematic shift based on these document titles.');
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Trajectory summary (pre-computed for term summary prompts)
+// ---------------------------------------------------------------------------
+
+const ELEVATED_STATUSES = new Set(['Elevated', 'Divergent', 'ConfirmedConcern']);
+
+function trendWord(weekCounts: number[], avg: number): string {
+  const halfIdx = Math.floor(weekCounts.length / 2);
+  const firstHalfAvg = mean(weekCounts.slice(0, halfIdx));
+  const secondHalfAvg = mean(weekCounts.slice(halfIdx));
+  const recentAvg = mean(weekCounts.slice(-4));
+  if (recentAvg > avg * 1.3) return 'rising recently';
+  if (firstHalfAvg > 0 && secondHalfAvg < firstHalfAvg * 0.7) return 'declining from early peak';
+  if (firstHalfAvg > 0 && Math.abs(secondHalfAvg - firstHalfAvg) / firstHalfAvg < 0.2) {
+    return 'relatively stable';
+  }
+  if (secondHalfAvg > firstHalfAvg) return 'gradually increasing';
+  return 'gradually declining';
+}
+
+type TrajectoryRow = { category: string; weekOf: string; status: string };
+type StatusLookup = Map<string, Map<string, string>>;
+
+function buildStatusLookup(table: TrajectoryRow[]): StatusLookup {
+  const lookup: StatusLookup = new Map();
+  for (const row of table) {
+    if (!lookup.has(row.category)) lookup.set(row.category, new Map());
+    lookup.get(row.category)!.set(row.weekOf, row.status);
+  }
+  return lookup;
+}
+
+function computeStreaks(
+  categories: string[],
+  weeks: string[],
+  lookup: StatusLookup,
+): Array<{ category: string; length: number; start: string; end: string }> {
+  const streaks: Array<{ category: string; length: number; start: string; end: string }> = [];
+  for (const c of categories) {
+    const catWeeks = lookup.get(c)!;
+    let maxLen = 0,
+      maxStart = '',
+      maxEnd = '',
+      curLen = 0,
+      curStart = '';
+    for (const w of weeks) {
+      const s = catWeeks.get(w);
+      if (s != null && ELEVATED_STATUSES.has(s)) {
+        if (curLen === 0) curStart = w;
+        curLen++;
+        if (curLen > maxLen) {
+          maxLen = curLen;
+          maxStart = curStart;
+          maxEnd = w;
+        }
+      } else {
+        curLen = 0;
+      }
+    }
+    if (maxLen > 1) streaks.push({ category: c, length: maxLen, start: maxStart, end: maxEnd });
+  }
+  return streaks.sort((a, b) => b.length - a.length);
+}
+
+function computeTransitions(
+  categories: string[],
+  weeks: string[],
+  lookup: StatusLookup,
+): Array<{ category: string; from: string; to: string; week: string }> {
+  const transitions: Array<{ category: string; from: string; to: string; week: string }> = [];
+  for (const c of categories) {
+    const catWeeks = lookup.get(c)!;
+    for (let i = weeks.length - 1; i >= 1 && i >= weeks.length - 4; i--) {
+      const prev = catWeeks.get(weeks[i - 1]);
+      const cur = catWeeks.get(weeks[i]);
+      if (prev && cur && prev !== cur) {
+        transitions.push({ category: c, from: prev, to: cur, week: weeks[i] });
+      }
+    }
+  }
+  return transitions.sort((a, b) => b.week.localeCompare(a.week));
+}
+
+function computeActivations(
+  categories: string[],
+  weeks: string[],
+  lookup: StatusLookup,
+): Array<{ category: string; elev: number; total: number; rate: number; current: string }> {
+  return categories
+    .map((c) => {
+      const cw = lookup.get(c)!;
+      const total = cw.size;
+      const elev = [...cw.values()].filter((s) => ELEVATED_STATUSES.has(s)).length;
+      return {
+        category: c,
+        elev,
+        total,
+        rate: total > 0 ? elev / total : 0,
+        current: cw.get(weeks[weeks.length - 1]) ?? 'unknown',
+      };
+    })
+    .sort((a, b) => b.rate - a.rate);
+}
+
+function computeWeekCounts(
+  weeks: string[],
+  categories: string[],
+  lookup: StatusLookup,
+): Array<{ week: string; count: number }> {
+  return weeks.map((w) => ({
+    week: w,
+    count: categories.filter((c) => {
+      const s = lookup.get(c)?.get(w);
+      return s != null && ELEVATED_STATUSES.has(s);
+    }).length,
+  }));
+}
+
+/** Pre-computed trajectory summary replacing the raw per-week trajectory table. */
+export function formatTrajectorySummary(table: TrajectoryRow[]): string {
+  if (table.length === 0) return '--- TRAJECTORY SUMMARY ---\nNo trajectory data available.';
+
+  const weeks = [...new Set(table.map((r) => r.weekOf))].sort();
+  const categories = [...new Set(table.map((r) => r.category))].sort();
+  const lookup = buildStatusLookup(table);
+  const weekCounts = computeWeekCounts(weeks, categories, lookup);
+  const peak = weekCounts.reduce((best, e) => (e.count > best.count ? e : best), weekCounts[0]);
+  const counts = weekCounts.map((e) => e.count);
+  const avg = mean(counts);
+  const activations = computeActivations(categories, weeks, lookup);
+  const streaks = computeStreaks(categories, weeks, lookup);
+  const transitions = computeTransitions(categories, weeks, lookup);
+  const last4 = weekCounts.slice(-4).map((e) => e.count);
+
+  const lines = [
+    '--- TRAJECTORY SUMMARY ---',
+    `Term span: ${weeks[0]} to ${weeks[weeks.length - 1]} (${weeks.length} weeks)`,
+    '',
+    'Per-week elevated-or-above count:',
+    `  Peak: ${peak.count} (week of ${peak.week})`,
+    `  Average: ${avg.toFixed(1)}/week`,
+    `  Recent 4 weeks: ${last4.join(', ')}`,
+    `  Trend: ${trendWord(counts, avg)}`,
+    '',
+    'Most active categories (by % of weeks elevated-or-above):',
+  ];
+  for (const a of activations.slice(0, 6)) {
+    lines.push(
+      `  ${a.category}: ${a.elev}/${a.total} weeks (${(a.rate * 100).toFixed(1)}%) — currently ${a.current}`,
+    );
+  }
+  if (streaks.length > 0) {
+    lines.push('', 'Longest consecutive elevated streaks:');
+    for (const s of streaks.slice(0, 4))
+      lines.push(`  ${s.category}: ${s.length} weeks (${s.start} → ${s.end})`);
+  }
+  if (transitions.length > 0) {
+    lines.push('', 'Recent transitions (last 4 weeks):');
+    for (const t of transitions) lines.push(`  ${t.category}: ${t.from} → ${t.to} (${t.week})`);
   }
   return lines.join('\n');
 }

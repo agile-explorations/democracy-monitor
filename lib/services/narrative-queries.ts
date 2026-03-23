@@ -55,7 +55,7 @@ export async function getTopConcerningDocuments(
     SELECT d.title, d.source_type, d.source_origin,
       d.metadata->>'agency' AS agency, d.published_at, d.url,
       a2.assessment, a2.erosion_type, a2.reasoning,
-      LEFT(d.content, 2000) AS content
+      LEFT(d.content, 4000) AS content
     FROM ai_document_assessments a2
     JOIN documents d ON d.url = a2.url AND d.category = a2.category
     WHERE a2.category = ${category} AND a2.week_of = ${weekOf}

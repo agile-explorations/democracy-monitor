@@ -314,6 +314,34 @@ async function validateCategoryWeek(category: string, weekOf: string): Promise<C
     );
   }
 
+  // T-NAR-12: No raw data sequences (applied to category-week too)
+  const rawSeqPattern = /(\d+\s*[→→>,-]\s*){8,}|(\d+\s*,\s*){8,}/;
+  const hasRawSeq = rawSeqPattern.test(expert) || rawSeqPattern.test(pub);
+  results.push(
+    check(
+      'T-NAR-12 no raw data sequences',
+      !hasRawSeq,
+      hasRawSeq ? 'FOUND raw sequence >8 values' : 'No raw sequences',
+    ),
+  );
+
+  // T-NAR-16: Document reference when P2 docs available (title or URL)
+  if (hasP2Docs && data.documentContext && data.documentContext.length > 0) {
+    const expertLow = expert.toLowerCase();
+    const anyDocReferenced = data.documentContext.some(
+      (d) => expertLow.includes(d.title.toLowerCase()) || (d.url && expert.includes(d.url)),
+    );
+    results.push(
+      check(
+        'T-NAR-16 document reference',
+        anyDocReferenced,
+        anyDocReferenced
+          ? 'At least one document title or URL found in expert narrative'
+          : 'NO document titles or URLs found in expert narrative',
+      ),
+    );
+  }
+
   return results;
 }
 
@@ -554,14 +582,14 @@ async function validateTermSummary(weekOf: string): Promise<CheckResult[]> {
     ),
   );
 
-  // T-NAR-12: No raw data sequences
-  const rawSeqPattern = /(\d+\s*[→→>,-]\s*){8,}/;
+  // T-NAR-12: No raw data sequences (strengthened: also catches comma-separated)
+  const rawSeqPattern = /(\d+\s*[→→>,-]\s*){8,}|(\d+\s*,\s*){8,}/;
   const hasRawSeq = rawSeqPattern.test(expert) || rawSeqPattern.test(pub);
   results.push(
     check(
       'T-NAR-12 no raw data sequences',
       !hasRawSeq,
-      hasRawSeq ? 'FOUND raw sequence >10 values' : 'No raw sequences',
+      hasRawSeq ? 'FOUND raw sequence >8 values' : 'No raw sequences',
     ),
   );
 

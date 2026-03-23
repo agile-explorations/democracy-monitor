@@ -23,6 +23,16 @@ const components: Components = {
       {children}
     </blockquote>
   ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-dm-accent hover:underline"
+    >
+      {children}
+    </a>
+  ),
 };
 
 interface MarkdownProps {

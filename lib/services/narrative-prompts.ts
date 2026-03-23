@@ -4,6 +4,7 @@ import {
   collectDraftSections,
   formatDocumentSection,
   formatLayerAssessment,
+  formatTrajectorySummary,
 } from './narrative-format-helpers';
 
 // ---------------------------------------------------------------------------
@@ -20,7 +21,9 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
     'Generate both an expert and a public narrative for this category-week assessment.',
     'Focus on what happened in the real world, not how the monitoring system works.',
     'Minimize self-referential language about "our system" or "our layers".',
-    'Reference specific documents by title.',
+    "Reference specific documents as markdown links: [document title](URL). Use the URL from each document's metadata.",
+    'When describing what happened, ground claims in the "WHY THIS WAS FLAGGED" reasoning for',
+    'each document — it contains event-level descriptions from a separate AI review of the full text.',
     'This is AI-generated analysis, not a finding of fact.',
     'Do not make claims unsupported by the data.',
     '',
@@ -242,7 +245,7 @@ function weeklyRequirements(version: 'expert' | 'public'): string {
     '- Include a Limitations sentence.',
     '- Do not make claims unsupported by the data.',
     '- This is AI-generated analysis, not a finding of fact.',
-    '- Do NOT include individual document details, layer scores, or baseline data.',
+    '- Do NOT include layer scores or baseline data. When referencing a specific document by name, preserve its markdown link from the category narrative.',
     '- Focus on the cross-category picture.',
     '- End with a "what to watch" sentence: the key question or threshold for next week.',
     '- Structure as 3-4 paragraphs, not 7 sections with horizontal rules.',
@@ -297,24 +300,6 @@ export function buildWeeklySummaryPrompt(
   return sections.join('\n');
 }
 
-/** Format trajectory table rows grouped by category. */
-function formatTrajectoryTable(
-  table: Array<{ category: string; weekOf: string; status: string }>,
-): string {
-  if (table.length === 0) return 'No trajectory data available.';
-  const byCategory = new Map<string, string[]>();
-  for (const row of table) {
-    const entries = byCategory.get(row.category) ?? [];
-    entries.push(`${row.weekOf}:${row.status}`);
-    byCategory.set(row.category, entries);
-  }
-  const lines: string[] = [];
-  for (const [category, entries] of byCategory) {
-    lines.push(`${category}: ${entries.join(' | ')}`);
-  }
-  return lines.join('\n');
-}
-
 function formatTermStatistics(stats: TermSummaryInput['statistics']): string {
   const lines = ['Weeks per status by category:'];
   for (const e of stats.weeksPerStatus) {
@@ -348,7 +333,7 @@ function collectTermDataSections(input: TermSummaryInput, version: 'expert' | 'p
 
   const weekly = version === 'expert' ? input.weeklySummary.expert : input.weeklySummary.public;
   sections.push("--- THIS WEEK'S SUMMARY ---", weekly, '');
-  sections.push('--- TRAJECTORY TABLE ---', formatTrajectoryTable(input.trajectoryTable), '');
+  sections.push(formatTrajectorySummary(input.trajectoryTable), '');
   sections.push('--- KEY STATISTICS ---', formatTermStatistics(input.statistics), '');
   return sections.join('\n');
 }
@@ -362,8 +347,9 @@ function termCriticalGuidelines(): string[] {
     '- Characterize TERM-LEVEL layer patterns (e.g., "L1 has driven X% of elevations over',
     '  N weeks"), not this week\'s specific layer configuration — that belongs in the weekly.',
     "  Do not spend more than 2-3 sentences on this week's specific layer activity.",
-    '- Summarize long data sequences rather than reproducing them. Instead of listing every',
-    "  week's elevated count, summarize: peak, average, recent range, trend.",
+    '- The trajectory summary above is pre-computed. Reference its statistics directly;',
+    '  do not reconstruct per-week data sequences.',
+    '- When referencing a specific document by name, preserve its markdown link from the source material.',
     '- Do not inherit framings uncritically from the previous summary. Each claim in the',
     '  updated summary should be justified by the current data.',
   ];

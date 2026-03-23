@@ -79,7 +79,7 @@
         "lib/services/narrative-format-helpers.ts"
       ],
       "rules": {
-        "max-lines": ["warn", { "max": 420, "skipBlankLines": true, "skipComments": true }]
+        "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]
       }
     },
     {
