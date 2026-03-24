@@ -43,6 +43,9 @@ jobs:
       - name: Pattern lint
         run: pnpm lint:patterns
 
+      - name: Unused exports
+        run: pnpm lint:unused
+
   build:
     runs-on: ubuntu-latest
     steps:

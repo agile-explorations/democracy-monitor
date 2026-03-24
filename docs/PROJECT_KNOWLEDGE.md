@@ -135,6 +135,28 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - render.yaml build command: `pnpm install && pnpm db:migrate && pnpm build` (auto-migrates on deploy)
 - Cron schedule: daily-snapshot 06:00 UTC, daily-digest 07:00 UTC (staggered), weekly-clustering Sun 03:00 UTC, hourly-uptime every hour
 
+## Lessons learned
+
+Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `DECISIONS-ARCHIVE.md` for full context.
+
+### Data pipeline
+
+- **Await pipeline-critical writes.** Fire-and-forget `.catch()` silently drops errors when downstream steps depend on the data. If the process crashes right after, writes are lost entirely. Always `try { await } catch` for writes that affect pipeline correctness. (R-CRON)
+- **Metadata-driven filtering scales better than keyword tightening.** When keywords match noise (e.g., routing terms inside 8K-char amendment dumps), structural metadata (subGranuleClass, LegiScan subjects) provides a cleaner filter than trying to make keywords less ambiguous. (R-NOISE, R-SIG)
+- **Validate API identifiers against the live API before committing.** Agency slugs, endpoint paths, and field names are often undocumented and can't be guessed from display names (e.g., `commission-on-civil-rights` vs `civil-rights-commission`). (R-SIG)
+
+### AI / LLM prompts
+
+- **Eliminate data rather than constraining LLM behavior.** If the LLM reproduces data verbatim, the fix is to give it less data, not more instructions. Pre-computing summaries and removing raw data from the prompt is a structural fix. (R-NAR)
+- **P1 calibration lever is category `description`.** Topic-area framing ("Are X being protected?") over-flags; threat-vector framing ("Government actions that reduce X") filters to erosion-relevant docs. (R-CAL1)
+- **Baseline dependencies compound.** Moving from z-score baseline comparison to absolute thresholds eliminates an entire class of contamination problems. (R1-DET)
+
+### Code quality
+
+- **Function extraction fixes max-lines without losing cohesion.** Extract single-purpose functions called from exactly one place — they exist for readability, not reuse. (R-CRON)
+- **Rename sprints surface pre-existing lint issues.** Pre-commit hooks lint all staged files, not just changed lines. Budget time for fixing these in rename-heavy sprints. (R1-CLN)
+- **`vi.clearAllMocks()` does NOT reset `mockResolvedValue`.** It clears call history but mock implementations persist. Use explicit `beforeEach` blocks that re-establish all mock return values. (R-S1d)
+
 ## Database gotchas
 
 - `ai_document_assessments` Pass 1 uses `relevant` (boolean) for flags, Pass 2 uses `assessment` (varchar) for classification. Pass 1 `assessment` column is always NULL. All 192K+ rows have `document_id = NULL` — must join to documents via `url + category`, not `document_id`.
