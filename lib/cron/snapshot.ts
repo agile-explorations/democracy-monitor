@@ -463,7 +463,7 @@ async function runPostCategorySteps(
   }
 
   try {
-    const retried = await retryFailedNarratives(currentWeek);
+    const { resolved: retried } = await retryFailedNarratives(currentWeek);
     if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
   } catch (err) {
     console.warn('[snapshot] Narrative retry failed:', err);

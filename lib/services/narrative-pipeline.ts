@@ -309,26 +309,36 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
 
 /**
  * Retry unresolved narrative failures for a specific week.
- * Returns the number of successfully retried narratives.
+ * Optionally filter to a single category. Returns { resolved, failed }.
  */
-export async function retryFailedNarratives(weekOf: string): Promise<number> {
-  if (!isDbAvailable()) return 0;
+export async function retryFailedNarratives(
+  weekOf: string,
+  category?: string,
+): Promise<{ resolved: number; failed: number }> {
+  if (!isDbAvailable()) return { resolved: 0, failed: 0 };
   const db = getDb();
+
+  const conditions = [eq(narrativeFailures.weekOf, weekOf), isNull(narrativeFailures.resolvedAt)];
+  if (category) conditions.push(eq(narrativeFailures.category, category));
 
   const failures = await db
     .select()
     .from(narrativeFailures)
-    .where(and(eq(narrativeFailures.weekOf, weekOf), isNull(narrativeFailures.resolvedAt)));
+    .where(and(...conditions));
 
-  if (failures.length === 0) return 0;
+  if (failures.length === 0) return { resolved: 0, failed: 0 };
 
   const allData = await loadAllLayerData(weekOf);
   const dataMap = new Map(allData.map((d) => [d.category, d]));
   let resolved = 0;
+  let failed = 0;
 
   for (const failure of failures) {
     const data = dataMap.get(failure.category);
-    if (!data) continue;
+    if (!data) {
+      failed++;
+      continue;
+    }
 
     if (!isElevatedStatus(data.convergenceDetail)) {
       await resolveFailure(failure.category, weekOf);
@@ -345,8 +355,9 @@ export async function retryFailedNarratives(weekOf: string): Promise<number> {
     } catch (err) {
       const passInfo = (err as { passInfo?: { pass: number } }).passInfo;
       await recordFailure(failure.category, weekOf, passInfo?.pass ?? 0, formatError(err));
+      failed++;
     }
   }
 
-  return resolved;
+  return { resolved, failed };
 }
