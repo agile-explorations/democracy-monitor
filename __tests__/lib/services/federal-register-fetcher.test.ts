@@ -44,9 +44,9 @@ describe('buildFrApiUrl', () => {
     expect(url).toContain('conditions%5Bterm%5D=%22schedule+f%22');
   });
 
-  it('omits agency/type/term when not provided', () => {
+  it('omits agency/type/term conditions when not provided', () => {
     const url = buildFrApiUrl({}, 1, '2025-01-01', '2025-01-31', 20);
-    expect(url).not.toContain('agencies');
+    expect(url).not.toContain('conditions%5Bagencies%5D');
     expect(url).not.toContain('conditions%5Btype%5D');
     expect(url).not.toContain('conditions%5Bterm%5D');
   });
@@ -54,6 +54,28 @@ describe('buildFrApiUrl', () => {
   it('uses provided page number', () => {
     const url = buildFrApiUrl({}, 5, '2025-01-01', '2025-01-31', 20);
     expect(url).toContain('page=5');
+  });
+
+  it('requests raw_text_url field for Presidential Document content', () => {
+    const url = buildFrApiUrl({}, 1, '2025-01-01', '2025-01-31', 20);
+    expect(url).toContain('fields%5B%5D=raw_text_url');
+  });
+
+  it('requests all fields needed by toContentItem', () => {
+    const url = buildFrApiUrl({}, 1, '2025-01-01', '2025-01-31', 20);
+    for (const field of [
+      'title',
+      'html_url',
+      'publication_date',
+      'agencies',
+      'type',
+      'subtype',
+      'action',
+      'abstract',
+      'raw_text_url',
+    ]) {
+      expect(url).toContain(`fields%5B%5D=${field}`);
+    }
   });
 });
 
@@ -161,6 +183,24 @@ describe('toContentItem', () => {
   it('returns undefined summary when no abstract', () => {
     const item = toContentItem({ title: 'No abstract doc' });
     expect(item.summary).toBeUndefined();
+  });
+
+  it('stores raw_text_url in metadata when present', () => {
+    const item = toContentItem({
+      title: 'Executive Order',
+      type: 'Presidential Document',
+      raw_text_url:
+        'https://www.federalregister.gov/documents/full_text/text/2025/01/23/2025-01623.txt',
+    });
+    expect(item.metadata).toBeDefined();
+    expect((item.metadata as Record<string, unknown>).raw_text_url).toBe(
+      'https://www.federalregister.gov/documents/full_text/text/2025/01/23/2025-01623.txt',
+    );
+  });
+
+  it('omits metadata when raw_text_url is absent', () => {
+    const item = toContentItem({ title: 'Regular Rule', abstract: 'Some abstract' });
+    expect(item.metadata).toBeUndefined();
   });
 });
 

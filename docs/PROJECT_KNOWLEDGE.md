@@ -227,16 +227,55 @@ All pipeline commands are idempotent — safe to re-run on existing data:
 - `pnpm scores:recompute`: re-scores from `documents` table and re-aggregates (no API calls)
 - `pnpm baselines:compute`: recomputes from existing aggregates/embeddings
 
-Full repair workflow (from `BACKFILL_PIPELINE_REDESIGN.md`):
+Full repair workflow (re-fetch + reprocess from scratch):
 
 ```bash
 pnpm backfill --from 2017-01-20 --to 2019-01-19
 pnpm backfill --from 2021-01-20 --to 2023-01-19
 pnpm backfill --from 2025-01-20
-pnpm review:backfill --from 2025-01-20
+pnpm review:backfill          # L2 Pass 1/Pass 2 AI assessment
+pnpm baselines:compute        # recompute baseline statistics
+pnpm scores:enrich            # populate L1/L2/L3 layer scores + concern synthesis
 pnpm validate:ingest
 pnpm validate:data
 ```
+
+### Recomputation pipeline (after purge, content backfill, or classification changes)
+
+When data has changed but doesn't need re-fetching (e.g., after a purge, content backfill, or routing/classification change), run this sequence:
+
+```bash
+# 1. Re-score documents + rebuild weekly aggregates
+pnpm scores:recompute
+
+# 2. These three can run in parallel (independent of each other):
+pnpm embeddings:backfill      # embed docs missing embeddings
+pnpm review:backfill          # L2 Pass 1/Pass 2 AI assessment
+pnpm backfill:content --source fr  # (only if content gaps exist)
+
+# 3. After steps 1-2 complete:
+pnpm baselines:compute        # recompute baseline statistics from aggregates/embeddings
+
+# 4. After step 3:
+pnpm scores:enrich            # populate L1/L2/L3 layer scores + concern synthesis + narratives
+
+# 5. Validate
+pnpm validate:ingest
+pnpm validate:data
+pnpm validate:detection
+```
+
+**Step dependencies:** Steps 2a/2b/2c are independent and can run in parallel. Step 3 depends on 1+2. Step 4 depends on 3. Skipping `scores:enrich` leaves all layer scores as zero and concern status unpopulated.
+
+**What each step does:**
+
+- `scores:recompute` — re-scores from `documents` table, rebuilds `weekly_aggregates` (no API calls)
+- `embeddings:backfill` — generates OpenAI embeddings for docs with null `embedded_at`
+- `review:backfill` — runs L2 Pass 1 (gpt-4o-mini) + Pass 2 (Claude Sonnet) on unreviewed docs
+- `baselines:compute` — computes mean/stddev/centroid statistics from aggregates and embeddings
+- `scores:enrich` — computes L1 structural z-scores, L2 AI review scores, L3 thematic drift scores, runs concern synthesis, generates narratives for elevated categories
+
+All commands default to analysis periods only (see Periods table above). Use `--all-dates` to include gap years.
 
 ### Troubleshooting
 

@@ -6,6 +6,21 @@ const MAX_SUMMARY_LENGTH = 800;
 const MAX_CONTENT_LENGTH = 8_000;
 const FETCH_TIMEOUT_MS = 30_000;
 
+/** Fields to request from the FR search API.
+ *  The default response omits raw_text_url, which is needed to fetch full text
+ *  for Presidential Documents (they have no abstract). */
+const FR_API_FIELDS = [
+  'title',
+  'html_url',
+  'publication_date',
+  'agencies',
+  'type',
+  'subtype',
+  'action',
+  'abstract',
+  'raw_text_url',
+];
+
 function truncate(text: string): string {
   return text.length > MAX_SUMMARY_LENGTH ? text.slice(0, MAX_SUMMARY_LENGTH) + '\u2026' : text;
 }
@@ -27,6 +42,7 @@ export function buildFrApiUrl(
   qs.set('order', 'oldest');
   qs.set('conditions[publication_date][gte]', dateFrom);
   qs.set('conditions[publication_date][lte]', dateTo);
+  for (const field of FR_API_FIELDS) qs.append('fields[]', field);
   if (params.agencies) {
     for (const slug of params.agencies) qs.append('conditions[agencies][]', slug);
   }
