@@ -6,7 +6,8 @@ import {
   buildOpinionContentItem,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
-import { fetchDojOigHistorical } from '@/lib/services/doj-oig-fetcher';
+import { fetchDojOigHistorical, fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
+import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
 import { fetchFecHistorical, parseFecParams } from '@/lib/services/fec-fetcher';
 import {
   fetchFederalRegisterHistorical,
@@ -18,12 +19,13 @@ import {
   fetchGovInfoText,
   parseGovInfoParams,
 } from '@/lib/services/govinfo-fetcher';
-import { fetchHhsOigHistorical } from '@/lib/services/hhs-oig-fetcher';
+import { fetchHhsOigHistorical, fetchHhsOigReportContent } from '@/lib/services/hhs-oig-fetcher';
 import { fetchSsaOigHistorical } from '@/lib/services/ssa-oig-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
 import { deduplicateByUrl } from '@/lib/utils/collections';
+import { extractPdfText } from '@/lib/utils/pdf-extractor';
 
 type Signal = { url: string; type: string };
 type SignalGroups = {
@@ -137,6 +139,56 @@ async function fillGovInfoContent(items: ContentItem[]): Promise<void> {
     const text = await fetchGovInfoText(packageId);
     if (text) item.summary = text;
   }
+}
+
+const FEC_RATE_LIMIT_MS = 4_000;
+const HHS_OIG_CRAWL_DELAY_MS = 10_000;
+const DOJ_OIG_CRAWL_DELAY_MS = 5_000;
+const SSA_OIG_RATE_LIMIT_MS = 2_000;
+
+/** Enrich FEC items with full structured data + PDF text extraction. */
+async function fillFecContent(items: ContentItem[]): Promise<void> {
+  for (const item of items) {
+    if (!item.link) continue;
+    const enriched = await fetchFecEnrichedContent(item.link);
+    if (enriched && enriched.length > (item.summary?.length ?? 0)) {
+      item.summary = enriched;
+    }
+    await sleep(FEC_RATE_LIMIT_MS);
+  }
+}
+
+/** Fill content for OIG items by scraping detail pages or extracting PDFs. */
+async function fillOigContent(items: ContentItem[]): Promise<void> {
+  for (const item of items) {
+    if (!item.link) continue;
+    const result = await fetchOigItemContent(item.link);
+    if (result.content && result.content.length > (item.summary?.length ?? 0)) {
+      item.summary = result.content;
+    }
+    await sleep(result.delayMs);
+  }
+}
+
+async function fetchOigItemContent(
+  url: string,
+): Promise<{ content: string | null; delayMs: number }> {
+  if (url.includes('oig.hhs.gov')) {
+    const content = await fetchHhsOigReportContent(url);
+    return { content, delayMs: HHS_OIG_CRAWL_DELAY_MS };
+  }
+  if (url.endsWith('.pdf')) {
+    const content = await extractPdfText(url);
+    return { content, delayMs: SSA_OIG_RATE_LIMIT_MS };
+  }
+  if (url.includes('oig.justice.gov')) {
+    const pdfUrl = await fetchDojOigPdfUrl(url);
+    if (!pdfUrl) return { content: null, delayMs: DOJ_OIG_CRAWL_DELAY_MS };
+    await sleep(DOJ_OIG_CRAWL_DELAY_MS);
+    const content = await extractPdfText(pdfUrl);
+    return { content, delayMs: DOJ_OIG_CRAWL_DELAY_MS };
+  }
+  return { content: null, delayMs: 0 };
 }
 
 export async function fetchWeekItemsFr(
@@ -264,6 +316,8 @@ export async function fetchWeekItemsFec(
     if (result.error) errors.push(result.error);
   }
 
+  await fillFecContent(items);
+
   return { items, errors };
 }
 
@@ -299,6 +353,8 @@ export async function fetchWeekItemsOig(
     items.push(...result.items);
     if (result.error) errors.push(result.error);
   }
+
+  await fillOigContent(items);
 
   return { items, errors };
 }

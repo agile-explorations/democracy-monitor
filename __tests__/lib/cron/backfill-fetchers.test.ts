@@ -28,14 +28,24 @@ vi.mock('@/lib/services/fec-fetcher', () => ({
 
 vi.mock('@/lib/services/doj-oig-fetcher', () => ({
   fetchDojOigHistorical: vi.fn().mockResolvedValue([]),
+  fetchDojOigPdfUrl: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/lib/services/hhs-oig-fetcher', () => ({
   fetchHhsOigHistorical: vi.fn().mockResolvedValue([]),
+  fetchHhsOigReportContent: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/lib/services/ssa-oig-fetcher', () => ({
   fetchSsaOigHistorical: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@/lib/services/fec-content', () => ({
+  fetchFecEnrichedContent: vi.fn().mockResolvedValue(null),
+}));
+
+vi.mock('@/lib/utils/pdf-extractor', () => ({
+  extractPdfText: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('@/lib/utils/async', () => ({
@@ -202,6 +212,176 @@ describe('fetchWeekDocuments', () => {
 
     expect(result.items).toHaveLength(0);
     expect(Object.keys(result.sourceResults)).toHaveLength(0);
+  });
+
+  it('enriches FEC items with full content inline', async () => {
+    const { fetchFecHistorical } = await import('@/lib/services/fec-fetcher');
+    const { fetchFecEnrichedContent } = await import('@/lib/services/fec-content');
+
+    vi.mocked(fetchFecHistorical).mockResolvedValue([
+      {
+        title: 'MUR 8353',
+        link: 'https://www.fec.gov/data/legal/matter-under-review/8353/',
+        summary: 'Short metadata',
+        sourceOrigin: 'fec',
+      },
+    ]);
+    vi.mocked(fetchFecEnrichedContent).mockResolvedValue(
+      'Enriched content with PDF text extraction and detailed disposition data',
+    );
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [{ url: 'fec://mur', type: 'fec_json' }],
+        oig: [],
+      },
+      'elections',
+    );
+
+    expect(result.items[0].summary).toBe(
+      'Enriched content with PDF text extraction and detailed disposition data',
+    );
+  });
+
+  it('keeps original FEC summary when enrichment fails', async () => {
+    const { fetchFecHistorical } = await import('@/lib/services/fec-fetcher');
+    const { fetchFecEnrichedContent } = await import('@/lib/services/fec-content');
+
+    vi.mocked(fetchFecHistorical).mockResolvedValue([
+      {
+        title: 'MUR 8353',
+        link: 'https://www.fec.gov/data/legal/matter-under-review/8353/',
+        summary: 'Original metadata summary',
+        sourceOrigin: 'fec',
+      },
+    ]);
+    vi.mocked(fetchFecEnrichedContent).mockResolvedValue(null);
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [{ url: 'fec://mur', type: 'fec_json' }],
+        oig: [],
+      },
+      'elections',
+    );
+
+    expect(result.items[0].summary).toBe('Original metadata summary');
+  });
+
+  it('fills OIG HHS content by scraping detail page', async () => {
+    const { fetchHhsOigHistorical, fetchHhsOigReportContent } =
+      await import('@/lib/services/hhs-oig-fetcher');
+
+    vi.mocked(fetchHhsOigHistorical).mockResolvedValue([
+      {
+        title: 'HHS Audit Report',
+        link: 'https://oig.hhs.gov/reports/audit/2025-A-01',
+        summary: 'Audit A-01-25-00123',
+        type: 'ig_report',
+        sourceOrigin: 'oig',
+      },
+    ]);
+    vi.mocked(fetchHhsOigReportContent).mockResolvedValue(
+      'Full report text from HHS OIG detail page with findings and recommendations',
+    );
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [],
+        oig: [{ url: 'oig://hhs', type: 'oig_json' }],
+      },
+      'executiveOversight',
+    );
+
+    expect(result.items[0].summary).toBe(
+      'Full report text from HHS OIG detail page with findings and recommendations',
+    );
+  });
+
+  it('fills OIG SSA content by extracting PDF text', async () => {
+    const { fetchSsaOigHistorical } = await import('@/lib/services/ssa-oig-fetcher');
+    const { extractPdfText } = await import('@/lib/utils/pdf-extractor');
+
+    vi.mocked(fetchSsaOigHistorical).mockResolvedValue([
+      {
+        title: 'SSA Audit Report',
+        link: 'https://oig.ssa.gov/assets/uploads/a-03-22-00123.pdf',
+        summary: 'Report A-03-22-00123',
+        type: 'ig_report',
+        sourceOrigin: 'oig',
+      },
+    ]);
+    vi.mocked(extractPdfText).mockResolvedValue('Extracted PDF text from SSA OIG report');
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [],
+        oig: [{ url: 'oig://ssa', type: 'oig_json' }],
+      },
+      'executiveOversight',
+    );
+
+    expect(result.items[0].summary).toBe('Extracted PDF text from SSA OIG report');
+  });
+
+  it('fills OIG DOJ content by scraping PDF URL then extracting', async () => {
+    const { fetchDojOigHistorical, fetchDojOigPdfUrl } =
+      await import('@/lib/services/doj-oig-fetcher');
+    const { extractPdfText } = await import('@/lib/utils/pdf-extractor');
+
+    vi.mocked(fetchDojOigHistorical).mockResolvedValue([
+      {
+        title: 'DOJ OIG Investigation',
+        link: 'https://oig.justice.gov/reports/2025/i-2025-001',
+        summary: 'Investigative Report — OIG',
+        type: 'ig_report',
+        sourceOrigin: 'oig',
+      },
+    ]);
+    vi.mocked(fetchDojOigPdfUrl).mockResolvedValue(
+      'https://oig.justice.gov/reports/2025/i-2025-001.pdf',
+    );
+    vi.mocked(extractPdfText).mockResolvedValue('Extracted DOJ OIG investigation report text');
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [],
+        oig: [{ url: 'oig://doj', type: 'oig_json' }],
+      },
+      'executiveOversight',
+    );
+
+    expect(result.items[0].summary).toBe('Extracted DOJ OIG investigation report text');
   });
 
   it('deduplicates items across sources by URL', async () => {
