@@ -39,6 +39,7 @@ The following is complete and working:
 - **Dead code removal** — Crossfeed pipeline (rhetoric-crossfeed, rhetoric-fetcher, backfill-rhetoric, recrossfeed-rhetoric), deep-analysis.ts orphaned code removed.
 - **FR signal contamination fix** — 16 term-only FR signals scoped with agency restrictions, multi-agency fetcher support, validation and cleanup CLIs, OpenGrep guardrail. (Sprint R-SIG, Issues #451–#455). Actual: all 5 issues done. Agency slug `commission-on-civil-rights` corrected to `civil-rights-commission` via live API validation.
 - **CREC & LegiScan noise reduction** — CREC amendment text filter (3 subGranuleClass values → ~10K noise docs eliminated), CREC purge script, LegiScan subject co-requirement for broad routing terms, validate:legiscan fix. (Sprint R-NOISE, Issues #465–#469). Actual: all 5 issues done.
+- **Cron job resilience** — `cron_runs` table for persistent execution history, snapshot exit code fix + error collection + content gap counting + aggregate retry + inline narrative retry, LegiScan per-session error handling + cron lock + env validation, weekly-dump size validation + cron_run recording + cross-job check, `/api/health/cron` endpoint. (Sprint R-CRON, Issues #470–#475). Actual: all 6 issues done. retry-narratives CLI refactored to delegate to shared function.
 - **Data quality safeguards** — fetch_log source_origin naming normalized (snapshot signal IDs → canonical source types), narrative pipeline completeness guard (aborts when weekly_aggregates covers <50% of document categories). (Sprint R-DQ1, Issues #362–#364)
 - **Release 1 Phase 0** — FR full-text enrichment (all document types), DOJ full-body fix + backfill CLI, tiered narrative generation (single-pass for Elevated, 3-pass for Divergent/ConfirmedConcern). (Sprint R1-P0, Issues #365–#367). Actual: complete. Production remediation pipeline run (scores:recompute → L2 re-assessment → baselines:compute → layers:enrich → backtest). Post-remediation: 50% T1 detection, 7 false alarms.
 - **Release 1 A2+A3** — Per-category L1 structural thresholds (judicialIndependence 3.8, executiveOversight 2.8) for NC-3 compliance. Event retrospective harness (`pnpm retrospective`) re-runs L1/L2/L3 + convergence from stored data. L1 distributions diagnostic (`pnpm l1:distributions`). `buildAISummaryFromDB` extracted to shared module. (Sprint R1-A2A3, Issues #368–#378). Actual: all 11 issues done. A2.5 completed during production remediation.
@@ -58,6 +59,8 @@ The weekly monitoring pipeline needs to work end-to-end:
    - `weekly-dump` (Mon 05:00 UTC) — database backup to GitHub Release
    - Commented out: `hourly-uptime`, `weekly-clustering`
 3. **Test the full cycle**: LegiScan fetch → snapshot (fetch + score + aggregate + narratives) → UI displays fresh data for completed week.
+
+**Cron resilience (Sprint R-CRON)**: All three jobs now record execution to `cron_runs` table, with exit codes (0=success, 1=failure, 2=skipped), error collection, and self-healing (inline narrative retry, aggregate retry). `/api/health/cron` endpoint exposes job status for monitoring.
 
 ### 2. Database Dump + GitHub Release
 
