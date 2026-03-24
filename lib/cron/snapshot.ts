@@ -30,6 +30,7 @@ import {
 } from '@/lib/services/source-health-service';
 import {
   computeWeeklyAggregate,
+  getLatestAggregatedWeek,
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
@@ -309,6 +310,62 @@ async function snapshotCrec(): Promise<void> {
   }
 }
 
+/**
+ * Find weeks between the last aggregated week and the current week that
+ * have documents but no weekly_aggregates. These are "missed" weeks from
+ * snapshot runs that didn't happen.
+ */
+async function findMissedWeeks(currentWeek: string): Promise<string[]> {
+  const latestWeek = await getLatestAggregatedWeek();
+  if (!latestWeek) return [];
+
+  // Calculate weeks between latest and current
+  const latest = new Date(latestWeek);
+  const current = new Date(currentWeek);
+  const missed: string[] = [];
+
+  const week = new Date(latest);
+  week.setUTCDate(week.getUTCDate() + 7);
+
+  while (week < current) {
+    missed.push(toDateString(week));
+    week.setUTCDate(week.getUTCDate() + 7);
+  }
+
+  return missed;
+}
+
+/**
+ * Process missed weeks: score + aggregate stored documents, then generate narratives.
+ * Called when the snapshot cron missed one or more weekly runs.
+ */
+async function processMissedWeeks(
+  missedWeeks: string[],
+  cats: (typeof CATEGORIES)[number][],
+): Promise<void> {
+  console.log(
+    `[snapshot] Processing ${missedWeeks.length} missed week(s): ${missedWeeks.join(', ')}`,
+  );
+
+  for (const weekStart of missedWeeks) {
+    const weekEnd = addDays(weekStart, 6);
+
+    for (const cat of cats) {
+      try {
+        await snapshotCategoryWeek(cat, { start: weekStart, end: weekEnd });
+      } catch (err) {
+        console.error(`  [${cat.key}] ${weekStart} error:`, err);
+      }
+    }
+
+    try {
+      await generateNarrativesForWeek(weekStart);
+    } catch (err) {
+      console.error(`[snapshot] Narrative generation failed for ${weekStart}:`, err);
+    }
+  }
+}
+
 export async function runSnapshots(options: SnapshotOptions = {}): Promise<void> {
   if (options.from) {
     await runHistoricalSnapshots(options);
@@ -357,10 +414,16 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<void>
     console.warn('[snapshot] Embedding failed:', err);
   }
 
-  // Generate narratives for Elevated+ categories (after all aggregates are computed)
+  // Process missed weeks (if snapshot didn't run for 1+ weeks)
+  const currentWeek = getWeekOfDate();
+  const missedWeeks = await findMissedWeeks(currentWeek);
+  if (missedWeeks.length > 0) {
+    await processMissedWeeks(missedWeeks, cats);
+  }
+
+  // Generate narratives for current week (after all aggregates are computed)
   try {
-    const weekOf = getWeekOfDate();
-    await generateNarrativesForWeek(weekOf);
+    await generateNarrativesForWeek(currentWeek);
   } catch (err) {
     console.error('[snapshot] Narrative generation failed:', err);
   }

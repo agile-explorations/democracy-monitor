@@ -274,6 +274,16 @@ function emptyAggregate(category: string, weekOf: string): WeeklyAggregate {
   };
 }
 
+/** Get the most recent weekOf date in weekly_aggregates. */
+export async function getLatestAggregatedWeek(): Promise<string | null> {
+  if (!isDbAvailable()) return null;
+  const db = getDb();
+  const [row] = await db
+    .select({ latest: sql<string>`max(${weeklyAggregates.weekOf})::text` })
+    .from(weeklyAggregates);
+  return row?.latest ?? null;
+}
+
 /**
  * Get the Monday of the week for a given date string.
  */
