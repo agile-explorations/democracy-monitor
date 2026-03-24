@@ -23,11 +23,30 @@ fi
 
 AUTH="Authorization: token ${GITHUB_TOKEN}"
 
+# Record cron_run start
+RUN_ID=$(psql "${DATABASE_URL}" -tAc "INSERT INTO cron_runs (job_name, status, started_at) VALUES ('dump', 'running', NOW()) RETURNING id")
+trap 'psql "${DATABASE_URL}" -c "UPDATE cron_runs SET status='\''failed'\'', finished_at=NOW(), duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000 WHERE id=${RUN_ID}" 2>/dev/null; rm -f "${DUMP_FILE}"' ERR
+
+# Cross-job check: warn if last snapshot failed
+SNAPSHOT_STATUS=$(psql "${DATABASE_URL}" -tAc "SELECT status FROM cron_runs WHERE job_name='snapshot' ORDER BY started_at DESC LIMIT 1" 2>/dev/null || echo "unknown")
+if [ "${SNAPSHOT_STATUS}" = "failed" ]; then
+  echo "WARNING: Last snapshot run failed. Data may be incomplete."
+fi
+
 # 1. Dump database
 echo "Dumping database..."
 pg_dump -Fc --no-owner --no-privileges "${DATABASE_URL}" > "${DUMP_FILE}"
 SIZE=$(du -h "${DUMP_FILE}" | cut -f1)
 echo "Dump complete: ${SIZE}"
+
+# Validate dump size
+MIN_SIZE_KB=10240  # 10MB minimum
+ACTUAL_SIZE_KB=$(du -k "${DUMP_FILE}" | cut -f1)
+if [ "${ACTUAL_SIZE_KB}" -lt "${MIN_SIZE_KB}" ]; then
+  echo "ERROR: Dump too small (${ACTUAL_SIZE_KB}KB < ${MIN_SIZE_KB}KB)"
+  rm -f "${DUMP_FILE}"
+  exit 1
+fi
 
 # 2. Delete existing release if present
 echo "Checking for existing release..."
@@ -71,6 +90,9 @@ curl -f -X POST \
   -T "${DUMP_FILE}" \
   "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=data-dump.pgdump"
 echo "Upload complete."
+
+# Record success
+psql "${DATABASE_URL}" -c "UPDATE cron_runs SET status='success', finished_at=NOW(), duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000, summary='{\"dumpSizeKb\":${ACTUAL_SIZE_KB}}' WHERE id=${RUN_ID}"
 
 # 5. Cleanup
 rm -f "${DUMP_FILE}"

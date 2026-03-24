@@ -4,6 +4,8 @@ import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { fetchCrecRecent } from '@/lib/services/crec-fetcher';
+import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
+import type { CronRunStatus } from '@/lib/services/cron-run-store';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import {
@@ -22,7 +24,10 @@ import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
 import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
-import { generateNarrativesForWeek } from '@/lib/services/narrative-pipeline';
+import {
+  generateNarrativesForWeek,
+  retryFailedNarratives,
+} from '@/lib/services/narrative-pipeline';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
   computeHealthSummary,
@@ -36,6 +41,7 @@ import {
 } from '@/lib/services/weekly-aggregator';
 import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ContentItem } from '@/lib/types/assessment';
+import { formatError } from '@/lib/utils/api-helpers';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
 import { addDays, getWeekRanges, toDateString, weeksBetween } from '@/lib/utils/date-utils';
@@ -47,12 +53,24 @@ interface SnapshotOptions {
   forceUnlock?: boolean;
 }
 
-/** Run Layer 2 AI assessment + weekly aggregate computation. */
+export interface SnapshotResult {
+  succeeded: number;
+  failed: number;
+  errors: string[];
+}
+
+interface AggregateFailure {
+  category: string;
+  weekOf: string;
+}
+
+/** Run Layer 2 AI assessment + weekly aggregate computation. Returns failure info if aggregate fails. */
 async function runLayersAndAggregate(
   items: ContentItem[],
   category: string,
   weekOf: string,
-): Promise<void> {
+): Promise<{ aggregateFailure: AggregateFailure | null; errors: string[] }> {
+  const errors: string[] = [];
   let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
   try {
     const { runLayer2Assessment } = await import('@/lib/services/document-review-orchestrator');
@@ -64,7 +82,9 @@ async function runLayersAndAggregate(
       );
     }
   } catch (err) {
-    console.warn(`[snapshot] Layer 2 failed for ${category}:`, err);
+    const msg = `Layer 2 failed for ${category}: ${formatError(err)}`;
+    console.warn(`[snapshot] ${msg}`);
+    errors.push(msg);
   }
 
   try {
@@ -72,13 +92,20 @@ async function runLayersAndAggregate(
     const enriched = await enrichWithLayerScores(agg, aiSummary);
     await storeWeeklyAggregate(enriched);
   } catch (err) {
-    console.error(`[snapshot] Weekly aggregate failed for ${category}:`, err);
+    const msg = `Weekly aggregate failed for ${category}: ${formatError(err)}`;
+    console.error(`[snapshot] ${msg}`);
+    errors.push(msg);
+    return { aggregateFailure: { category, weekOf }, errors };
   }
+
+  return { aggregateFailure: null, errors };
 }
 
 async function snapshotCategory(
   cat: (typeof CATEGORIES)[number],
   allHealthChecks: SourceHealthCheck[],
+  errors: string[],
+  failedAggregates: AggregateFailure[],
 ): Promise<void> {
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
@@ -95,13 +122,21 @@ async function snapshotCategory(
   allHealthChecks.push(...checks);
 
   const weekStart = getWeekOfDate();
-  recordSnapshotSignalResults(cat.key, weekStart, addDays(weekStart, 6), signalResults).catch(
-    (err) => console.error(`[snapshot] fetch_log recording failed for ${cat.key}:`, err),
-  );
+  try {
+    await recordSnapshotSignalResults(cat.key, weekStart, addDays(weekStart, 6), signalResults);
+  } catch (err) {
+    const msg = `fetch_log recording failed for ${cat.key}: ${formatError(err)}`;
+    console.error(`[snapshot] ${msg}`);
+    errors.push(msg);
+  }
 
-  storeDocuments(items, cat.key).catch((err) =>
-    console.error(`[snapshot] RAG store failed for ${cat.key}:`, err),
-  );
+  try {
+    await storeDocuments(items, cat.key);
+  } catch (err) {
+    const msg = `RAG store failed for ${cat.key}: ${formatError(err)}`;
+    console.error(`[snapshot] ${msg}`);
+    errors.push(msg);
+  }
 
   if (items.length === 0) {
     console.log(`[snapshot]   Skipping (no items)`);
@@ -109,13 +144,19 @@ async function snapshotCategory(
   }
 
   const docScores = scoreDocumentBatch(items, cat.key);
-  storeDocumentScores(docScores).catch((err) =>
-    console.error(`[snapshot] Score storage failed for ${cat.key}:`, err),
-  );
+  try {
+    await storeDocumentScores(docScores);
+  } catch (err) {
+    const msg = `Score storage failed for ${cat.key}: ${formatError(err)}`;
+    console.error(`[snapshot] ${msg}`);
+    errors.push(msg);
+  }
   console.log(`[snapshot]   Scored ${docScores.length} documents`);
 
   const weekOf = getWeekOfDate();
-  await runLayersAndAggregate(items, cat.key, weekOf);
+  const layerResult = await runLayersAndAggregate(items, cat.key, weekOf);
+  errors.push(...layerResult.errors);
+  if (layerResult.aggregateFailure) failedAggregates.push(layerResult.aggregateFailure);
 
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
 }
@@ -352,30 +393,29 @@ async function processMissedWeeks(
   }
 }
 
-export async function runSnapshots(options: SnapshotOptions = {}): Promise<void> {
-  if (options.from) {
-    await runHistoricalSnapshots(options);
-    return;
-  }
-
-  const start = Date.now();
-  const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
-  if (options.category && cats.length === 0) {
-    throw new Error(`Category "${options.category}" not found`);
-  }
-  console.log(`[snapshot] Starting snapshot run for ${cats.length} categories...`);
-
-  let succeeded = 0;
-  let failed = 0;
-  const allHealthChecks: SourceHealthCheck[] = [];
-
-  for (const cat of cats) {
+/** Retry aggregate failures, embed docs, process missed weeks, generate + retry narratives. */
+async function runPostCategorySteps(
+  cats: (typeof CATEGORIES)[number][],
+  failedAggregates: AggregateFailure[],
+  allHealthChecks: SourceHealthCheck[],
+  errors: string[],
+): Promise<{
+  aggregateRetries: number;
+  embeddingsProcessed: number;
+  missedWeeks: number;
+  missedWeeksProcessed: number;
+  narrativesGenerated: boolean;
+}> {
+  // Retry failed weekly aggregates once (transient DB errors)
+  let aggregateRetries = 0;
+  for (const { category, weekOf } of failedAggregates) {
     try {
-      await snapshotCategory(cat, allHealthChecks);
-      succeeded++;
+      const agg = await computeWeeklyAggregate(category, weekOf);
+      await storeWeeklyAggregate(agg);
+      aggregateRetries++;
+      console.log(`[snapshot] Retry succeeded for ${category}/${weekOf}`);
     } catch (err) {
-      failed++;
-      console.error(`[snapshot] Error processing ${cat.key}:`, err);
+      errors.push(`Aggregate retry failed for ${category}/${weekOf}: ${formatError(err)}`);
     }
   }
 
@@ -392,30 +432,96 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<void>
   await snapshotRhetoric();
   await snapshotLegislative();
 
-  // Embed unprocessed documents across all categories (feeds Layer 3 thematic drift)
+  let embeddingsProcessed = 0;
   try {
-    const embedded = await embedUnprocessedDocuments(100);
-    if (embedded > 0) console.log(`[snapshot] Embedded ${embedded} documents`);
+    embeddingsProcessed = await embedUnprocessedDocuments(100);
+    if (embeddingsProcessed > 0)
+      console.log(`[snapshot] Embedded ${embeddingsProcessed} documents`);
   } catch (err) {
-    console.warn('[snapshot] Embedding failed:', err);
+    errors.push(`Embedding failed: ${formatError(err)}`);
   }
 
-  // Process missed weeks (if snapshot didn't run for 1+ weeks)
   const currentWeek = getWeekOfDate();
-  const missedWeeks = await findMissedWeeks(currentWeek);
-  if (missedWeeks.length > 0) {
-    await processMissedWeeks(missedWeeks, cats);
+  let missedWeeksList: string[] = [];
+  try {
+    missedWeeksList = await findMissedWeeks(currentWeek);
+  } catch (err) {
+    errors.push(`Missed weeks detection failed: ${formatError(err)}`);
+  }
+  let missedWeeksProcessed = 0;
+  if (missedWeeksList.length > 0) {
+    await processMissedWeeks(missedWeeksList, cats);
+    missedWeeksProcessed = missedWeeksList.length;
   }
 
-  // Generate narratives for current week (after all aggregates are computed)
+  let narrativesGenerated = false;
   try {
     await generateNarrativesForWeek(currentWeek);
+    narrativesGenerated = true;
   } catch (err) {
-    console.error('[snapshot] Narrative generation failed:', err);
+    errors.push(`Narrative generation failed: ${formatError(err)}`);
   }
+
+  try {
+    const retried = await retryFailedNarratives(currentWeek);
+    if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
+  } catch (err) {
+    console.warn('[snapshot] Narrative retry failed:', err);
+  }
+
+  return {
+    aggregateRetries,
+    embeddingsProcessed,
+    missedWeeks: missedWeeksList.length,
+    missedWeeksProcessed,
+    narrativesGenerated,
+  };
+}
+
+export async function runSnapshots(options: SnapshotOptions = {}): Promise<SnapshotResult> {
+  if (options.from) {
+    await runHistoricalSnapshots(options);
+    return { succeeded: 0, failed: 0, errors: [] };
+  }
+
+  const cronRunId = await startCronRun('snapshot');
+  const start = Date.now();
+  const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
+  if (options.category && cats.length === 0) {
+    throw new Error(`Category "${options.category}" not found`);
+  }
+  console.log(`[snapshot] Starting snapshot run for ${cats.length} categories...`);
+
+  let succeeded = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  const allHealthChecks: SourceHealthCheck[] = [];
+  const failedAggregates: AggregateFailure[] = [];
+
+  for (const cat of cats) {
+    try {
+      await snapshotCategory(cat, allHealthChecks, errors, failedAggregates);
+      succeeded++;
+    } catch (err) {
+      failed++;
+      const msg = `Category ${cat.key} failed: ${formatError(err)}`;
+      console.error(`[snapshot] ${msg}`);
+      errors.push(msg);
+    }
+  }
+
+  const post = await runPostCategorySteps(cats, failedAggregates, allHealthChecks, errors);
 
   const elapsed = Date.now() - start;
   console.log(`[snapshot] Complete in ${elapsed}ms: ${succeeded} succeeded, ${failed} failed`);
+
+  let status: CronRunStatus = 'success';
+  if (failed > succeeded) status = 'failed';
+  else if (failed > 0 || errors.length > 0) status = 'partial';
+
+  await finishCronRun(cronRunId, status, { succeeded, failed, ...post }, errors);
+
+  return { succeeded, failed, errors };
 }
 
 function parseSnapshotArgs(args: string[]): SnapshotOptions {
@@ -465,8 +571,19 @@ Options:
   );
   validateEnvVars();
   const opts = parseSnapshotArgs(argv);
-  withCronLock('snapshot', () => runSnapshots(opts), undefined, opts.forceUnlock)
-    .then((ran) => process.exit(ran ? 0 : 0))
+  let snapshotResult: SnapshotResult | undefined;
+  withCronLock(
+    'snapshot',
+    async () => {
+      snapshotResult = await runSnapshots(opts);
+    },
+    undefined,
+    opts.forceUnlock,
+  )
+    .then((ran) => {
+      if (!ran) process.exit(2); // lock held → skipped
+      process.exit(snapshotResult && snapshotResult.failed > snapshotResult.succeeded ? 1 : 0);
+    })
     .catch((err) => {
       console.error('[snapshot] Fatal error:', err);
       process.exit(1);

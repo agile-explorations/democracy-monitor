@@ -1,9 +1,9 @@
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { ACTIVE_SOURCES, T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { documents, weeklyAggregates } from '@/lib/db/schema';
+import { documents, narrativeFailures, weeklyAggregates } from '@/lib/db/schema';
 import type {
   NarrativeLayerData,
   NarrativeResult,
@@ -305,4 +305,48 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   console.log(
     `[narratives] Done — ${categoryNarratives.size} category narratives (${failedCategories.length} failed), weekly + term summaries`,
   );
+}
+
+/**
+ * Retry unresolved narrative failures for a specific week.
+ * Returns the number of successfully retried narratives.
+ */
+export async function retryFailedNarratives(weekOf: string): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+
+  const failures = await db
+    .select()
+    .from(narrativeFailures)
+    .where(and(eq(narrativeFailures.weekOf, weekOf), isNull(narrativeFailures.resolvedAt)));
+
+  if (failures.length === 0) return 0;
+
+  const allData = await loadAllLayerData(weekOf);
+  const dataMap = new Map(allData.map((d) => [d.category, d]));
+  let resolved = 0;
+
+  for (const failure of failures) {
+    const data = dataMap.get(failure.category);
+    if (!data) continue;
+
+    if (!isElevatedStatus(data.convergenceDetail)) {
+      await resolveFailure(failure.category, weekOf);
+      resolved++;
+      continue;
+    }
+
+    try {
+      await enrichCategoryData(data);
+      const result = await generateMultiPassNarrative(data);
+      await storeMultiPassNarratives(failure.category, weekOf, result);
+      await resolveFailure(failure.category, weekOf);
+      resolved++;
+    } catch (err) {
+      const passInfo = (err as { passInfo?: { pass: number } }).passInfo;
+      await recordFailure(failure.category, weekOf, passInfo?.pass ?? 0, formatError(err));
+    }
+  }
+
+  return resolved;
 }

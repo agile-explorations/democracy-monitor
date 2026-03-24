@@ -42,14 +42,22 @@ interface WeekRange {
   end: string;
 }
 
+export interface ContentGaps {
+  source: string;
+  nullCount: number;
+  shortCount: number;
+}
+
 export interface SourceFetchResult {
   items: ContentItem[];
   errors: string[];
+  contentGaps?: ContentGaps;
 }
 
 export interface WeekFetchResult {
   items: ContentItem[];
   sourceResults: Record<string, { itemCount: number; errors: string[] }>;
+  contentGaps: ContentGaps[];
 }
 
 const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
@@ -220,7 +228,13 @@ export async function fetchWeekItemsFr(
 
   await fillFrContent(items);
 
-  return { items, errors };
+  const nullCount = items.filter(
+    (i) => !i.summary && (i.metadata as Record<string, unknown>)?.raw_text_url,
+  ).length;
+  const contentGaps: ContentGaps | undefined =
+    nullCount > 0 ? { source: 'FR', nullCount, shortCount: 0 } : undefined;
+
+  return { items, errors, contentGaps };
 }
 
 export async function fetchWeekItemsCourtListener(
@@ -293,7 +307,13 @@ export async function fetchWeekItemsGovInfo(
 
   await fillGovInfoContent(items);
 
-  return { items, errors };
+  const nullCount = items.filter(
+    (i) => !i.summary && (i.metadata as Record<string, unknown>)?.packageId,
+  ).length;
+  const contentGaps: ContentGaps | undefined =
+    nullCount > 0 ? { source: 'GovInfo', nullCount, shortCount: 0 } : undefined;
+
+  return { items, errors, contentGaps };
 }
 
 export async function fetchWeekItemsFec(
@@ -318,7 +338,11 @@ export async function fetchWeekItemsFec(
 
   await fillFecContent(items);
 
-  return { items, errors };
+  const shortCount = items.filter((i) => i.summary && i.summary.length < 400).length;
+  const contentGaps: ContentGaps | undefined =
+    shortCount > 0 ? { source: 'FEC', nullCount: 0, shortCount } : undefined;
+
+  return { items, errors, contentGaps };
 }
 
 const OIG_FETCHERS: Record<
@@ -356,7 +380,14 @@ export async function fetchWeekItemsOig(
 
   await fillOigContent(items);
 
-  return { items, errors };
+  const shortCount = items.filter(
+    (i) => i.summary && /^(Audit|Report|Investigative)/.test(i.summary) && i.summary.length < 100,
+  ).length;
+  const nullCount = items.filter((i) => !i.summary).length;
+  const contentGaps: ContentGaps | undefined =
+    nullCount > 0 || shortCount > 0 ? { source: 'OIG', nullCount, shortCount } : undefined;
+
+  return { items, errors, contentGaps };
 }
 
 type FetchFn = (
@@ -381,6 +412,7 @@ export async function fetchWeekDocuments(
 ): Promise<WeekFetchResult> {
   const allItems: ContentItem[] = [];
   const sourceResults: Record<string, { itemCount: number; errors: string[] }> = {};
+  const contentGaps: ContentGaps[] = [];
 
   for (const { key, fn } of GROUP_FETCHERS) {
     if (signalGroups[key].length === 0) continue;
@@ -390,7 +422,8 @@ export async function fetchWeekDocuments(
       itemCount: result.items.length,
       errors: result.errors,
     };
+    if (result.contentGaps) contentGaps.push(result.contentGaps);
   }
 
-  return { items: deduplicateByUrl(allItems), sourceResults };
+  return { items: deduplicateByUrl(allItems), sourceResults, contentGaps };
 }

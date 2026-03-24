@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { legiscanDatasets } from '@/lib/db/schema';
+import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
+import type { CronRunStatus } from '@/lib/services/cron-run-store';
 import { storeDocuments } from '@/lib/services/document-store';
 import {
   buildBillMetadata,
@@ -12,8 +14,10 @@ import {
 } from '@/lib/services/legiscan-fetcher';
 import type { LegiScanBill, LegiScanDatasetEntry } from '@/lib/services/legiscan-fetcher';
 import type { ContentItem } from '@/lib/types';
+import { formatError } from '@/lib/utils/api-helpers';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { withCronLock } from '@/lib/utils/cron-lock';
 import { toDateString } from '@/lib/utils/date-utils';
 
 /** Baseline periods aligned to presidential administrations. */
@@ -38,6 +42,12 @@ const BASELINE_PERIODS: Array<{
 interface BulkOptions {
   state: string;
   dryRun: boolean;
+}
+
+export interface LegiscanResult {
+  sessionsProcessed: number;
+  sessionsFailed: number;
+  errors: string[];
 }
 
 /** Check if a session's dataset_hash has changed since last download. */
@@ -238,7 +248,48 @@ export async function backfillLegiscan(
   return totalStored;
 }
 
-export async function runLegiscanBulk(options: BulkOptions): Promise<void> {
+/** Process all sessions, accumulating stats and errors. */
+async function processSessions(
+  sessionMap: Map<number, SessionMatch>,
+  dryRun: boolean,
+): Promise<{
+  totalBills: number;
+  totalStored: number;
+  allCategories: Record<string, number>;
+  sessionsFailed: number;
+  errors: string[];
+}> {
+  let totalBills = 0;
+  let totalStored = 0;
+  const allCategories: Record<string, number> = {};
+  let sessionsFailed = 0;
+  const errors: string[] = [];
+
+  for (const match of sessionMap.values()) {
+    try {
+      const result = await downloadAndProcessSession(match, dryRun);
+      totalBills += result.bills;
+      totalStored += result.stored;
+      for (const [cat, count] of Object.entries(result.categories)) {
+        allCategories[cat] = (allCategories[cat] || 0) + count;
+      }
+      if (!dryRun && result.stored > 0) await sleep(1000);
+    } catch (err) {
+      sessionsFailed++;
+      errors.push(`Session ${match.entry.session_name} failed: ${formatError(err)}`);
+      console.error(`[legiscan-bulk] Session ${match.entry.session_name} failed:`, err);
+    }
+  }
+
+  return { totalBills, totalStored, allCategories, sessionsFailed, errors };
+}
+
+export async function runLegiscanBulk(options: BulkOptions): Promise<LegiscanResult> {
+  if (!process.env.LEGISCAN_API_KEY) {
+    throw new Error('LEGISCAN_API_KEY is required');
+  }
+
+  const cronRunId = await startCronRun('legiscan');
   const { state, dryRun } = options;
   console.log(
     `[legiscan-bulk] ${dryRun ? '(DRY RUN) ' : ''}Fetching dataset list for state=${state}`,
@@ -258,33 +309,45 @@ export async function runLegiscanBulk(options: BulkOptions): Promise<void> {
 
   if (sessionMap.size === 0) {
     console.log('[legiscan-bulk] No matching sessions found. Check state parameter.');
-    return;
-  }
-
-  let totalBills = 0;
-  let totalStored = 0;
-  const allCategories: Record<string, number> = {};
-
-  for (const match of sessionMap.values()) {
-    const result = await downloadAndProcessSession(match, dryRun);
-    totalBills += result.bills;
-    totalStored += result.stored;
-    for (const [cat, count] of Object.entries(result.categories)) {
-      allCategories[cat] = (allCategories[cat] || 0) + count;
+    try {
+      await finishCronRun(cronRunId, 'success', { sessionsProcessed: 0 }, []);
+    } catch (err) {
+      console.error('[legiscan-bulk] Failed to record cron run:', err);
     }
-    if (!dryRun && result.stored > 0) await sleep(1000);
+    return { sessionsProcessed: 0, sessionsFailed: 0, errors: [] };
   }
+
+  const { totalBills, totalStored, allCategories, sessionsFailed, errors } = await processSessions(
+    sessionMap,
+    dryRun,
+  );
 
   console.log('\n[legiscan-bulk] === Summary ===');
-  console.log(`  Sessions downloaded: ${sessionMap.size}`);
-  console.log(`  Bills in date ranges: ${totalBills}`);
-  console.log(`  Document rows stored: ${totalStored}`);
-  if (Object.keys(allCategories).length > 0) {
-    console.log('  Category distribution:');
-    for (const [cat, count] of Object.entries(allCategories).sort((a, b) => b[1] - a[1])) {
-      console.log(`    ${cat}: ${count}`);
-    }
+  console.log(`  Sessions: ${sessionMap.size} (${sessionsFailed} failed)`);
+  console.log(`  Bills: ${totalBills}, stored: ${totalStored}`);
+
+  let cronStatus: CronRunStatus;
+  if (sessionsFailed === 0) cronStatus = 'success';
+  else if (sessionsFailed < sessionMap.size) cronStatus = 'partial';
+  else cronStatus = 'failed';
+
+  try {
+    await finishCronRun(
+      cronRunId,
+      cronStatus,
+      {
+        sessionsProcessed: sessionMap.size,
+        sessionsFailed,
+        billsStored: totalStored,
+        categoryDistribution: allCategories,
+      },
+      errors,
+    );
+  } catch (err) {
+    console.error('[legiscan-bulk] Failed to record cron run:', err);
   }
+
+  return { sessionsProcessed: sessionMap.size, sessionsFailed, errors };
 }
 
 if (require.main === module) {
@@ -313,8 +376,14 @@ Options:
     }
   }
 
-  runLegiscanBulk(options)
-    .then(() => process.exit(0))
+  let legiscanResult: LegiscanResult | undefined;
+  withCronLock('legiscan', async () => {
+    legiscanResult = await runLegiscanBulk(options);
+  })
+    .then((ran) => {
+      if (!ran) process.exit(2);
+      process.exit(legiscanResult && legiscanResult.sessionsFailed > 0 ? 1 : 0);
+    })
     .catch((err) => {
       console.error('[legiscan-bulk] Fatal error:', err);
       process.exit(1);

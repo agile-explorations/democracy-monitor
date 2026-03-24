@@ -526,6 +526,21 @@ export const cronLocks = pgTable('cron_locks', {
   pid: integer('pid'),
 });
 
+export const cronRuns = pgTable(
+  'cron_runs',
+  {
+    id: serial('id').primaryKey(),
+    jobName: varchar('job_name', { length: 50 }).notNull(),
+    status: varchar('status', { length: 20 }).notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    durationMs: integer('duration_ms'),
+    summary: jsonb('summary'),
+    errors: jsonb('errors').$type<string[]>(),
+  },
+  (table) => [index('idx_cron_runs_job_name').on(table.jobName)],
+);
+
 export const legiscanDatasets = pgTable('legiscan_datasets', {
   id: serial('id').primaryKey(),
   sessionId: integer('session_id').notNull().unique(),
