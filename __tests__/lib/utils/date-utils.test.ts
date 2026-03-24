@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toDateString, getWeekRanges, formatWeekLabel } from '@/lib/utils/date-utils';
+import { toDateString, getWeekRanges, formatWeekLabel, weeksBetween } from '@/lib/utils/date-utils';
 
 describe('toDateString', () => {
   it('extracts YYYY-MM-DD from a Date', () => {
@@ -26,6 +26,39 @@ describe('formatWeekLabel', () => {
 
   it('handles December dates', () => {
     expect(formatWeekLabel('2025-12-25')).toBe('Dec 25');
+  });
+});
+
+describe('weeksBetween', () => {
+  it('returns empty when weeks are consecutive (no gap)', () => {
+    expect(weeksBetween('2025-03-03', '2025-03-10')).toEqual([]);
+  });
+
+  it('returns one week when there is a single missed week', () => {
+    expect(weeksBetween('2025-03-03', '2025-03-17')).toEqual(['2025-03-10']);
+  });
+
+  it('returns multiple weeks for a multi-week gap', () => {
+    expect(weeksBetween('2025-03-03', '2025-03-31')).toEqual([
+      '2025-03-10',
+      '2025-03-17',
+      '2025-03-24',
+    ]);
+  });
+
+  it('returns empty when both dates are the same week', () => {
+    expect(weeksBetween('2025-03-03', '2025-03-03')).toEqual([]);
+  });
+
+  it('returns empty when current is before latest (reversed)', () => {
+    expect(weeksBetween('2025-03-17', '2025-03-03')).toEqual([]);
+  });
+
+  it('excludes both endpoints', () => {
+    const result = weeksBetween('2025-01-06', '2025-01-27');
+    expect(result).not.toContain('2025-01-06');
+    expect(result).not.toContain('2025-01-27');
+    expect(result).toEqual(['2025-01-13', '2025-01-20']);
   });
 });
 

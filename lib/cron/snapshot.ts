@@ -38,7 +38,7 @@ import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ContentItem } from '@/lib/types/assessment';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
-import { addDays, getWeekRanges, toDateString } from '@/lib/utils/date-utils';
+import { addDays, getWeekRanges, toDateString, weeksBetween } from '@/lib/utils/date-utils';
 
 interface SnapshotOptions {
   from?: string;
@@ -318,21 +318,7 @@ async function snapshotCrec(): Promise<void> {
 async function findMissedWeeks(currentWeek: string): Promise<string[]> {
   const latestWeek = await getLatestAggregatedWeek();
   if (!latestWeek) return [];
-
-  // Calculate weeks between latest and current
-  const latest = new Date(latestWeek);
-  const current = new Date(currentWeek);
-  const missed: string[] = [];
-
-  const week = new Date(latest);
-  week.setUTCDate(week.getUTCDate() + 7);
-
-  while (week < current) {
-    missed.push(toDateString(week));
-    week.setUTCDate(week.getUTCDate() + 7);
-  }
-
-  return missed;
+  return weeksBetween(latestWeek, currentWeek);
 }
 
 /**

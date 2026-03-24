@@ -52,6 +52,23 @@ export function formatWeekLabelWithYear(week: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** Return Monday-aligned week starts between two weeks (exclusive of both endpoints). */
+export function weeksBetween(latestWeek: string, currentWeek: string): string[] {
+  const latest = new Date(latestWeek + 'T00:00:00Z');
+  const current = new Date(currentWeek + 'T00:00:00Z');
+  const weeks: string[] = [];
+
+  const week = new Date(latest);
+  week.setUTCDate(week.getUTCDate() + 7);
+
+  while (week < current) {
+    weeks.push(toDateString(week));
+    week.setUTCDate(week.getUTCDate() + 7);
+  }
+
+  return weeks;
+}
+
 /** Split a date range into week-sized chunks (Monday-aligned). */
 export function getWeekRanges(from: string, to: string): Array<{ start: string; end: string }> {
   const ranges: Array<{ start: string; end: string }> = [];
