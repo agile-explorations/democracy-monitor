@@ -171,18 +171,24 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
 
     if (scopeLabels.length > 0) {
       console.log(`[backfill-l2] --fresh: deleting assessments (${scopeLabels.join(', ')})...`);
-      const docConditions = [
-        args.source ? eq(documents.sourceOrigin, args.source) : undefined,
-        args.category ? eq(documents.category, args.category) : undefined,
-      ].filter(Boolean);
-      const whereClause = docConditions.length === 1 ? docConditions[0] : and(...docConditions);
-      await db.delete(aiDocumentAssessments).where(
-        sql`${aiDocumentAssessments.documentId} IN (
-          SELECT ${documents.id} FROM ${documents}
-          WHERE ${whereClause}
-        )`,
-      );
-      console.log(`[backfill-l2] Scoped assessments deleted.`);
+      // Delete by category/url columns on ai_document_assessments directly.
+      // Cannot use document_id — it's NULL for all rows (known schema issue).
+      const conditions = [];
+      if (args.category) conditions.push(eq(aiDocumentAssessments.category, args.category));
+      if (args.source) {
+        conditions.push(
+          sql`${aiDocumentAssessments.url} IN (
+            SELECT ${documents.url} FROM ${documents}
+            WHERE ${eq(documents.sourceOrigin, args.source)}
+              ${args.category ? sql`AND ${eq(documents.category, args.category)}` : sql``}
+          )`,
+        );
+      }
+      const result = await db
+        .delete(aiDocumentAssessments)
+        .where(conditions.length === 1 ? conditions[0]! : and(...conditions));
+      const deleted = (result as unknown as { rowCount?: number })?.rowCount ?? 'unknown';
+      console.log(`[backfill-l2] Scoped assessments deleted (${deleted} rows).`);
     } else {
       console.log('[backfill-l2] --fresh: deleting all ai_document_assessments...');
       await db.delete(aiDocumentAssessments);
