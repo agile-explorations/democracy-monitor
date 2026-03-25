@@ -157,18 +157,19 @@ Detection pipeline with AI document review as sole active detection mechanism:
 
 Every sprint **MUST** follow this process. It may **ONLY** be skipped with explicit approval from the user.
 
-**IMPORTANT:** Always use Plan Mode (`/plan`) for sprint work. The analysis, proposal, and approval steps (1–3) should happen inside plan mode. Exit plan mode only when moving to implementation (step 6).
+**IMPORTANT:** Always use Plan Mode (`/plan`) for sprint work. The diagnostic, analysis, proposal, and approval steps (1–4) should happen inside plan mode. Exit plan mode only when moving to implementation (step 6).
 
-1. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Search `docs/DECISIONS.md` (and `docs/DECISIONS-ARCHIVE.md` if needed) for relevant prior decisions, spec deviations, and lessons learned from related sprints. Use Grep to find relevant entries by keyword rather than reading the full file.
-2. **Propose** — Present findings and a numbered list of issues/changes to the user for review
-3. **Approval** — Wait for user approval before writing any code. User may adjust scope.
-4. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
-5. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
-6. **Post-sprint code review** — First run `pnpm lint`, `pnpm lint:patterns`, and `pnpm lint:unused` to catch mechanical violations. Then review all files created or modified in the sprint against the checklist below (focusing on judgment items: naming, SOLID, DRY, testability). Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
-7. **Commit** — Stage, format, and commit only after the review is clean
-8. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Keep only the last ~5 sprints in `docs/DECISIONS.md`; move older entries to `docs/DECISIONS-ARCHIVE.md`. Annotate `docs/ROADMAP.md` for the completed sprint. Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` and promote any reusable lessons to the "Lessons learned" section. The results of the retrospective **MUST** be presented to the user for approval.
-9. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 6–7 first.
-10. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
+1. **Diagnostic** — Before proposing fixes, query production data to understand the actual problem. Sample documents, check content quality, verify assumptions with evidence. Classify root causes (data gap vs. scoring vs. routing vs. content truncation) before designing solutions. Check `docs/PROJECT_KNOWLEDGE.md` "Standing constraints" section for project-level invariants that affect the approach.
+2. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Search `docs/DECISIONS.md` (and `docs/DECISIONS-ARCHIVE.md` if needed) for relevant prior decisions, spec deviations, and lessons learned from related sprints. Use Grep to find relevant entries by keyword rather than reading the full file.
+3. **Propose** — Present findings and a numbered list of issues/changes to the user for review
+4. **Approval** — Wait for user approval before writing any code. User may adjust scope.
+5. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
+6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
+7. **Post-sprint code review** — First run `pnpm lint`, `pnpm lint:patterns`, and `pnpm lint:unused` to catch mechanical violations. Then review all files created or modified in the sprint against the checklist below (focusing on judgment items: naming, SOLID, DRY, testability). Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
+8. **Commit** — Stage, format, and commit only after the review is clean
+9. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Keep only the last ~5 sprints in `docs/DECISIONS.md`; move older entries to `docs/DECISIONS-ARCHIVE.md`. Annotate `docs/ROADMAP.md` for the completed sprint. Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` and promote any reusable lessons to the "Lessons learned" section. The results of the retrospective **MUST** be presented to the user for approval.
+10. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 7–8 first.
+11. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
 ### What to check
 

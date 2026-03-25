@@ -14,6 +14,60 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 - "Data Coverage" is the correct label (not "Confidence") — metric measures volume/diversity, not judgment quality
 - Demo mode API-interception layer removed — `pnpm demo:seed` writes fixtures to DB, app reads them through normal code paths
 
+## Standing constraints
+
+Cross-sprint constraints that apply to all future work. Not tied to any single sprint — these are project-level invariants.
+
+### Data sources
+
+- **No RSS feeds or website scraping.** Agency websites (DHS, OPM, DOD, State, Treasury, etc.) are behind WAFs that block automated access. All data sources must be structured government APIs (GovInfo, Federal Register, CourtListener, FEC, LegiScan, DOJ API). Do not propose RSS feeds, web scraping, or direct website access as solutions to data gaps.
+- **White House content comes from CPD (GovInfo), not the WH website.** The WH scraper was removed in Sprint R-CPD2. Historical WH data remains in the DB.
+- **GDELT is metadata-only.** News/media documents are not ingested. The project uses government documents exclusively for detection.
+
+### Production access
+
+- **Query production DB via `source .env.prod.local && export DATABASE_URL`** in shell commands. Production requires SSL (`ssl: { rejectUnauthorized: false }`). Never read `.env.prod.local` with Read/Grep/Glob tools — only source it in Bash commands.
+
+### Content storage
+
+- **Store full documents with no content caps.** (R-CONTENT, 2026-03-25) All fetchers store complete document text. Truncation for AI assessment happens at assessment time via boilerplate strippers and window slicing, not at storage time. This gives maximum flexibility for future reprocessing without refetching.
+
+### Sprint process
+
+- **Start with production diagnostics before proposing fixes.** (R-CONTENT lesson) Query production data, sample documents, classify root causes with evidence before designing solutions. The diagnostic step prevents wasted sprints optimizing the wrong layer. Add as step 0 before Analysis in the sprint process.
+
+## Sprint tracking
+
+Sprints are tracked via GitHub Milestones (one per sprint) and Issues (one per work item).
+The sprint arc is the single source of truth for "what's next." All work goes through the sprint process in CLAUDE.md.
+For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` (older).
+
+### Sprint arc
+
+| Sprint          | Release | Goal                                                                                             | Status      |
+| --------------- | ------- | ------------------------------------------------------------------------------------------------ | ----------- |
+| R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion | In progress |
+| R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                 | Planned     |
+| R-REVIEW-QUEUE  | R1      | Admin review queue for human review of AI assessments                                            | Planned     |
+| R-P2025         | R2      | Project 2025 plan-vs-delivered tracking                                                          | Planned     |
+| R-BOP           | R3      | Balance of Powers visualization                                                                  | Planned     |
+| R-RHETORIC      | R4      | Rhetoric vs. action analysis (CHRG hearings, speaker tracking, lag analysis)                     | Planned     |
+| R-INFRA         | R5      | Authoritarian infrastructure build-out (SAM.gov, USAJobs, SEC EDGAR)                             | Planned     |
+
+### Sprint log
+
+| Sprint      | Dates   | Milestone                                                                   | Summary                                                                              |
+| ----------- | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| R-SIG       | 2026-03 | [M67](https://github.com/agile-explorations/democracy-monitor/milestone/67) | FR signal contamination fix — 16 signals scoped with agency restrictions             |
+| R-NAR       | 2026-03 | [M69](https://github.com/agile-explorations/democracy-monitor/milestone/69) | Narrative quality — pre-computed summaries, event-driven content, doc links          |
+| R-NOISE     | 2026-03 | [M70](https://github.com/agile-explorations/democracy-monitor/milestone/70) | CREC amendment + LegiScan broad-term noise reduction                                 |
+| R-CRON      | 2026-03 | [M71](https://github.com/agile-explorations/democracy-monitor/milestone/71) | Cron job resilience — cron_runs table, exit codes, self-healing                      |
+| R-SILENCE   | 2026-03 | —                                                                           | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis |
+| R-L1-DEMOTE | 2026-03 | —                                                                           | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring) |
+| R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72) | Ingest content quality — in progress                                                 |
+
+Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
+
 ## Current state (as of 2026-03-16)
 
 ### Categories & baselines
