@@ -102,11 +102,11 @@ async function fetchSignalWithRetry(
 /** Fill content for FR items that have a raw_text_url but no summary. */
 async function fillFrContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
-    if (item.summary) continue;
+    if (item.content) continue;
     const rawTextUrl = item.metadata?.raw_text_url as string | undefined;
     if (!rawTextUrl) continue;
     const text = await fetchFrRawText(rawTextUrl);
-    if (text) item.summary = text;
+    if (text) item.content = text;
   }
 }
 
@@ -141,11 +141,11 @@ async function fillClOpinions(items: ContentItem[]): Promise<void> {
 /** Fill content for GovInfo items that have a packageId but no summary. */
 async function fillGovInfoContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
-    if (item.summary) continue;
+    if (item.content) continue;
     const packageId = item.metadata?.packageId as string | undefined;
     if (!packageId) continue;
     const text = await fetchGovInfoText(packageId);
-    if (text) item.summary = text;
+    if (text) item.content = text;
   }
 }
 
@@ -159,8 +159,8 @@ async function fillFecContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
     const enriched = await fetchFecEnrichedContent(item.link);
-    if (enriched && enriched.length > (item.summary?.length ?? 0)) {
-      item.summary = enriched;
+    if (enriched && enriched.length > (item.content?.length ?? 0)) {
+      item.content = enriched;
     }
     await sleep(FEC_RATE_LIMIT_MS);
   }
@@ -171,8 +171,8 @@ async function fillOigContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
     const result = await fetchOigItemContent(item.link);
-    if (result.content && result.content.length > (item.summary?.length ?? 0)) {
-      item.summary = result.content;
+    if (result.content && result.content.length > (item.content?.length ?? 0)) {
+      item.content = result.content;
     }
     await sleep(result.delayMs);
   }
@@ -229,7 +229,7 @@ export async function fetchWeekItemsFr(
   await fillFrContent(items);
 
   const nullCount = items.filter(
-    (i) => !i.summary && (i.metadata as Record<string, unknown>)?.raw_text_url,
+    (i) => !i.content && (i.metadata as Record<string, unknown>)?.raw_text_url,
   ).length;
   const contentGaps: ContentGaps | undefined =
     nullCount > 0 ? { source: 'FR', nullCount, shortCount: 0 } : undefined;
@@ -308,7 +308,7 @@ export async function fetchWeekItemsGovInfo(
   await fillGovInfoContent(items);
 
   const nullCount = items.filter(
-    (i) => !i.summary && (i.metadata as Record<string, unknown>)?.packageId,
+    (i) => !i.content && (i.metadata as Record<string, unknown>)?.packageId,
   ).length;
   const contentGaps: ContentGaps | undefined =
     nullCount > 0 ? { source: 'GovInfo', nullCount, shortCount: 0 } : undefined;
@@ -338,7 +338,7 @@ export async function fetchWeekItemsFec(
 
   await fillFecContent(items);
 
-  const shortCount = items.filter((i) => i.summary && i.summary.length < 400).length;
+  const shortCount = items.filter((i) => i.content && i.content.length < 400).length;
   const contentGaps: ContentGaps | undefined =
     shortCount > 0 ? { source: 'FEC', nullCount: 0, shortCount } : undefined;
 
@@ -381,9 +381,9 @@ export async function fetchWeekItemsOig(
   await fillOigContent(items);
 
   const shortCount = items.filter(
-    (i) => i.summary && /^(Audit|Report|Investigative)/.test(i.summary) && i.summary.length < 100,
+    (i) => i.content && /^(Audit|Report|Investigative)/.test(i.content) && i.content.length < 100,
   ).length;
-  const nullCount = items.filter((i) => !i.summary).length;
+  const nullCount = items.filter((i) => !i.content).length;
   const contentGaps: ContentGaps | undefined =
     nullCount > 0 || shortCount > 0 ? { source: 'OIG', nullCount, shortCount } : undefined;
 

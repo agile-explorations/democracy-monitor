@@ -143,7 +143,7 @@ describe('toContentItem', () => {
     expect(item.agency).toBe('EPA, DOI');
     expect(item.type).toBe('Rule');
     expect(item.action).toBe('Final rule.');
-    expect(item.summary).toBe('A test abstract.');
+    expect(item.content).toBe('A test abstract.');
   });
 
   it('passes through action field from FR API', () => {
@@ -176,13 +176,13 @@ describe('toContentItem', () => {
   it('truncates long abstracts', () => {
     const longAbstract = 'A'.repeat(1000);
     const item = toContentItem({ abstract: longAbstract });
-    expect(item.summary!.length).toBeLessThan(1000);
-    expect(item.summary!.endsWith('\u2026')).toBe(true);
+    expect(item.content!.length).toBeLessThan(1000);
+    expect(item.content!.endsWith('\u2026')).toBe(true);
   });
 
   it('returns undefined summary when no abstract', () => {
     const item = toContentItem({ title: 'No abstract doc' });
-    expect(item.summary).toBeUndefined();
+    expect(item.content).toBeUndefined();
   });
 
   it('stores raw_text_url in metadata when present', () => {

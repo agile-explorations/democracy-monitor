@@ -56,7 +56,7 @@ export function categorizeEvidence(
   for (const item of items) {
     if (item.isError || item.isWarning) continue;
 
-    const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
+    const text = `${item.title || ''} ${item.content || ''}`.toLowerCase();
     const title = item.title || '(untitled)';
 
     const concerningScore = CONCERNING_INDICATORS.filter((w) => text.includes(w)).length;

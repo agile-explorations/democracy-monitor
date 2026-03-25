@@ -67,8 +67,8 @@ describe('classifyMatchTier', () => {
 
 describe('findMatchSource', () => {
   const items: ContentItem[] = [
-    { title: 'Court defied court order on immigration', summary: 'Details of the case.' },
-    { title: 'Budget Update', summary: 'Fiscal overview for Q3.' },
+    { title: 'Court defied court order on immigration', content: 'Details of the case.' },
+    { title: 'Budget Update', content: 'Fiscal overview for Q3.' },
   ];
 
   it('finds the source item containing the keyword', () => {
@@ -92,7 +92,7 @@ describe('findMatchSource', () => {
   });
 
   it('returns "(untitled)" when matching item has no title', () => {
-    const noTitleItems: ContentItem[] = [{ summary: 'This mentions contempt of court finding.' }];
+    const noTitleItems: ContentItem[] = [{ content: 'This mentions contempt of court finding.' }];
     expect(findMatchSource('contempt of court', noTitleItems)).toBe('(untitled)');
   });
 });

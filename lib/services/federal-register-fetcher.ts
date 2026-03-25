@@ -3,7 +3,6 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
 const MAX_SUMMARY_LENGTH = 800;
-const MAX_CONTENT_LENGTH = 8_000;
 const FETCH_TIMEOUT_MS = 30_000;
 
 /** Fields to request from the FR search API.
@@ -72,7 +71,7 @@ export function toContentItem(doc: FrApiDocument): ContentItem {
     link: doc.html_url,
     pubDate: doc.publication_date,
     agency: doc.agencies?.map((a) => a.name).join(', '),
-    summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
+    content: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
     type: doc.type,
     subtype: doc.subtype,
     action: doc.action,
@@ -94,9 +93,7 @@ export async function fetchFrRawText(rawTextUrl: string): Promise<string | null>
     if (!response.ok) return null;
     const html = await response.text();
     const text = stripHtml(html).replace(/\0/g, '').trim();
-    return text.length > MAX_CONTENT_LENGTH
-      ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
-      : text || null;
+    return text || null;
   } catch (err) {
     console.warn(`[fr-fetcher] Failed to fetch raw text from ${rawTextUrl}:`, err);
     return null;

@@ -57,7 +57,7 @@ export function calculateTrends(
 }
 
 export function countKeywordsInItems(
-  items: Array<{ title?: string; summary?: string }>,
+  items: Array<{ title?: string; content?: string }>,
   category: string,
   documentDate?: string,
 ): Record<string, number> {
@@ -77,7 +77,7 @@ export function countKeywordsInItems(
     let count = 0;
 
     for (const item of items) {
-      const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
+      const text = `${item.title || ''} ${item.content || ''}`.toLowerCase();
       if (text.includes(lowerKeyword)) count++;
     }
 

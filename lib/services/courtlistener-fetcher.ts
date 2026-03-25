@@ -6,7 +6,6 @@ const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
 export const RATE_LIMIT_DELAY_MS = 750;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
-const MAX_OPINION_LENGTH = 8_000;
 /** Default max pages for historical backfill (45 × 20 results/page = 900). */
 export const CL_BACKFILL_MAX_PAGES = 45;
 
@@ -69,7 +68,7 @@ export function toContentItem(doc: ClDocketEntry): ContentItem {
     link: url,
     pubDate: doc.dateFiled,
     agency: doc.court || 'Federal Court',
-    summary: summary ? truncate(summary) : undefined,
+    content: summary ? truncate(summary) : undefined,
     type: 'court_opinion',
     sourceOrigin: 'courtlistener',
     metadata: {
@@ -225,7 +224,7 @@ export async function fetchOpinionText(docketId: number): Promise<OpinionData | 
         .join('\n\n');
     }
 
-    const text = combinedText.slice(0, MAX_OPINION_LENGTH);
+    const text = combinedText;
 
     return { text, dateFiled: cluster.date_filed, opinionUrl };
   } catch (err) {
@@ -246,7 +245,7 @@ export function buildOpinionContentItem(
 ): ContentItem {
   return {
     title: parentDocket.caseName,
-    summary: opinion.text,
+    content: opinion.text,
     link: opinion.opinionUrl,
     pubDate: opinion.dateFiled,
     agency: parentDocket.court,

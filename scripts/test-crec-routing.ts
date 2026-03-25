@@ -49,8 +49,8 @@ async function main() {
   let unmatched = 0;
 
   for (const item of items) {
-    const searchText = `${item.title} ${item.summary || ''}`.toLowerCase();
-    const categories = classifyCrecToCategories(item.title || '', item.summary);
+    const searchText = `${item.title} ${item.content || ''}`.toLowerCase();
+    const categories = classifyCrecToCategories(item.title || '', item.content);
     if (categories.length === 0) {
       unmatched++;
     } else {
@@ -89,7 +89,7 @@ async function main() {
 
     for (let i = 0; i < sample.length; i++) {
       const doc = sample[i];
-      const content = doc.item.summary || '(no content)';
+      const content = doc.item.content || '(no content)';
       const terms = doc.matchedTerms[cat]?.join(', ') || '?';
       console.log(`\n  [${i + 1}] "${doc.item.title}"`);
       console.log(`      Matched terms: ${terms}`);

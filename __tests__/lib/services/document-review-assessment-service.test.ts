@@ -251,7 +251,7 @@ describe('assessPass1', () => {
   function makeDoc(overrides: Partial<ContentItem> = {}): ContentItem {
     return {
       title: 'Test Document',
-      summary: 'This is a test summary',
+      content: 'This is a test summary',
       link: 'https://example.com/doc',
       pubDate: '2025-02-01',
       agency: 'DOJ',
@@ -346,7 +346,7 @@ describe('assessPass2', () => {
   function makeDoc(overrides: Partial<ContentItem> = {}): ContentItem {
     return {
       title: 'Test Document',
-      summary: 'This is a test summary',
+      content: 'This is a test summary',
       link: 'https://example.com/doc',
       pubDate: '2025-02-01',
       agency: 'DOJ',

@@ -47,7 +47,7 @@ describe('toContentItem', () => {
     expect(item.link).toBe('https://www.justice.gov/opa/pr/settlement-announced');
     expect(item.pubDate).toBe(new Date(1751328000 * 1000).toISOString());
     expect(item.agency).toBe('Civil Division');
-    expect(item.summary).toContain('Department of Justice today announced');
+    expect(item.content).toContain('Department of Justice today announced');
     expect(item.type).toBe('press_release');
     expect(item.sourceOrigin).toBe('doj');
   });
@@ -63,14 +63,14 @@ describe('toContentItem', () => {
       teaser: '<p>Short teaser text</p>',
       body: '<p>Much longer body text with more detail</p>',
     });
-    expect(item.summary).toBe('Much longer body text with more detail');
+    expect(item.content).toBe('Much longer body text with more detail');
   });
 
   it('falls back to teaser when body is absent', () => {
     const item = toContentItem({
       teaser: '<p>Teaser text as fallback</p>',
     });
-    expect(item.summary).toBe('Teaser text as fallback');
+    expect(item.content).toBe('Teaser text as fallback');
   });
 
   it('extracts agency from first component name', () => {
@@ -108,15 +108,15 @@ describe('toContentItem', () => {
     expect(item.sourceOrigin).toBe('doj');
   });
 
-  it('truncates long body text at 8000 chars', () => {
+  it('stores full body text without truncation', () => {
     const longBody = '<p>' + 'X'.repeat(10000) + '</p>';
     const item = toContentItem({ body: longBody });
-    expect(item.summary!.length).toBeLessThanOrEqual(8001);
+    expect(item.content!.length).toBe(10000);
   });
 
   it('strips HTML tags from body', () => {
     const item = toContentItem({ body: '<p>Hello <strong>world</strong></p>' });
-    expect(item.summary).toBe('Hello world');
+    expect(item.content).toBe('Hello world');
   });
 });
 

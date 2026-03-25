@@ -42,7 +42,7 @@ describe('parseBillToContentItem', () => {
     const item = parseBillToContentItem(bill);
 
     expect(item.title).toBe('Executive Order Accountability Act');
-    expect(item.summary).toBe('To require transparency in executive orders');
+    expect(item.content).toBe('To require transparency in executive orders');
     expect(item.link).toBe('https://legiscan.com/US/bill/HR100/2025');
     expect(item.pubDate).toBe('2025-02-01');
     expect(item.type).toBe('bill');

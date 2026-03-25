@@ -39,7 +39,7 @@ export async function assessPass1(
 ): Promise<Pass1Result | null> {
   const prompt = buildPass1Prompt(
     doc.title ?? '',
-    doc.summary,
+    doc.content,
     doc.type ?? 'unknown',
     doc.agency,
     doc.pubDate,
@@ -89,7 +89,7 @@ export async function assessPass2(
 ): Promise<Pass2Result | null> {
   const prompt = buildPass2Prompt(
     doc.title ?? '',
-    doc.summary,
+    doc.content,
     pass1Signals,
     pass1ErosionType,
     categoryDescription,

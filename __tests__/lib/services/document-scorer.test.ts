@@ -126,7 +126,7 @@ describe('scoreDocument', () => {
     const score = scoreDocument(
       {
         title: 'No Evidence of Impoundment Violation Found',
-        summary: 'Review found no evidence of impoundment or withholding of funds.',
+        content: 'Review found no evidence of impoundment or withholding of funds.',
         pubDate: '2025-06-01',
       },
       'fiscal',
@@ -139,7 +139,7 @@ describe('scoreDocument', () => {
     const score = scoreDocument(
       {
         title: 'FDR and the 1937 Court-Packing Plan: Historical Lessons',
-        summary: "Analysis of Roosevelt's attempt at court packing and its consequences.",
+        content: "Analysis of Roosevelt's attempt at court packing and its consequences.",
         pubDate: '2025-06-01',
       },
       'judicialIndependence',
@@ -153,7 +153,7 @@ describe('scoreDocument', () => {
     const score = scoreDocument(
       {
         title: 'Contempt of Court Finding in Civil Contempt Case',
-        summary: 'Judge issues civil contempt citation for procedural non-compliance.',
+        content: 'Judge issues civil contempt citation for procedural non-compliance.',
         pubDate: '2025-06-01',
       },
       'judicialIndependence',
@@ -171,7 +171,7 @@ describe('scoreDocument', () => {
     const score = scoreDocument(
       {
         title: 'Administration Orders Regulatory Freeze Across Agencies',
-        summary:
+        content:
           'All agencies must halt pending rulemakings under the regulatory freeze directive.',
         pubDate: '2025-06-01',
       },
@@ -346,7 +346,7 @@ describe('extractContext edge cases', () => {
     const score = scoreDocument(
       {
         title: 'This is a title about something completely unrelated to any keywords',
-        summary: 'Some summary text that does not contain any matching terms at all',
+        content: 'Some summary text that does not contain any matching terms at all',
         pubDate: '2025-06-01',
       },
       'civilService',
@@ -495,7 +495,7 @@ describe('downweightTier edge cases', () => {
     const score = scoreDocument(
       {
         title: 'Contempt of court finding in civil contempt proceeding',
-        summary: 'The judge issued a civil contempt citation.',
+        content: 'The judge issued a civil contempt citation.',
         pubDate: '2025-06-01',
       },
       'judicialIndependence',
@@ -604,7 +604,7 @@ describe('scoreDocument field defaults', () => {
     const score = scoreDocument(
       {
         title: 'Government announcement',
-        summary: 'Details mass termination of career positions effective immediately',
+        content: 'Details mass termination of career positions effective immediately',
         pubDate: '2025-06-01',
       },
       'civilService',

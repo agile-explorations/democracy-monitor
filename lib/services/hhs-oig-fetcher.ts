@@ -8,8 +8,6 @@ const REPORTS_PATH = '/reports/all/';
 const FETCH_TIMEOUT_MS = 30_000;
 const CRAWL_DELAY_MS = 10_000; // robots.txt: Crawl-delay: 10
 const MAX_PAGES = 50;
-const MAX_CONTENT_LENGTH = 8_000;
-
 export interface HhsOigReport {
   title: string;
   url: string;
@@ -34,7 +32,7 @@ export function toContentItem(report: HhsOigReport): ContentItem {
     link: report.url,
     pubDate: report.publishedAt,
     agency: `HHS OIG — ${report.hhsAgency}`,
-    summary: `${report.reportType} ${report.reportNumber}`,
+    content: `${report.reportType} ${report.reportNumber}`,
     type: 'ig_report',
     sourceOrigin: 'oig',
   };
@@ -191,7 +189,7 @@ export async function fetchHhsOigReportContent(reportUrl: string): Promise<strin
     const text = proseEl.text().replace(/\s+/g, ' ').trim();
     if (!text || text.length < 50) return null;
 
-    return text.length > MAX_CONTENT_LENGTH ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026' : text;
+    return text;
   } catch (err) {
     console.warn(`[hhs-oig] Failed to scrape report content: ${err}`);
     return null;

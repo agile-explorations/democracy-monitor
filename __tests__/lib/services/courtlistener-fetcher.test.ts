@@ -70,7 +70,7 @@ describe('toContentItem', () => {
     expect(item.link).toBe('https://www.courtlistener.com/docket/12345/smith-v-united-states/');
     expect(item.pubDate).toBe('2025-06-15');
     expect(item.agency).toBe('D.C. Circuit');
-    expect(item.summary).toBe('42:1983 Civil Rights');
+    expect(item.content).toBe('42:1983 Civil Rights');
     expect(item.type).toBe('court_opinion');
     expect(item.sourceOrigin).toBe('courtlistener');
     expect(item.metadata).toEqual({
@@ -82,7 +82,7 @@ describe('toContentItem', () => {
 
   it('falls back to suitNature when cause is missing', () => {
     const item = toContentItem({ suitNature: '530 Habeas Corpus' });
-    expect(item.summary).toBe('530 Habeas Corpus');
+    expect(item.content).toBe('530 Habeas Corpus');
   });
 
   it('handles missing optional fields', () => {
@@ -109,7 +109,7 @@ describe('toContentItem', () => {
   it('truncates long cause strings', () => {
     const longCause = 'A'.repeat(1000);
     const item = toContentItem({ cause: longCause });
-    expect(item.summary!.length).toBeLessThanOrEqual(801); // 800 + ellipsis
+    expect(item.content!.length).toBeLessThanOrEqual(801); // 800 + ellipsis
   });
 });
 
@@ -188,7 +188,7 @@ describe('buildOpinionContentItem', () => {
     const item = buildOpinionContentItem(opinion, parentDocket);
 
     expect(item.title).toBe('Smith v. Jones');
-    expect(item.summary).toBe('The court hereby rules in favor of the plaintiff...');
+    expect(item.content).toBe('The court hereby rules in favor of the plaintiff...');
     expect(item.link).toBe('https://www.courtlistener.com/opinion/54321/smith-v-jones/');
     expect(item.pubDate).toBe('2025-09-15');
     expect(item.agency).toBe('D.C. Circuit');

@@ -135,7 +135,7 @@ describe('parseResult', () => {
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
-    expect(result[0].summary).toBe('This report examines federal spending patterns.');
+    expect(result[0].content).toBe('This report examines federal spending patterns.');
   });
 
   it('extracts summary from RSS content:encoded field', () => {
@@ -155,7 +155,7 @@ describe('parseResult', () => {
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
     // content:encoded takes priority over description
-    expect(result[0].summary).toBe('The Supreme Court ruled today on executive authority limits.');
+    expect(result[0].content).toBe('The Supreme Court ruled today on executive authority limits.');
   });
 
   it('extracts summary from federal_register items', () => {
@@ -172,7 +172,7 @@ describe('parseResult', () => {
       ],
     };
     const result = parseResult(payload, 'federal_register', '/api/federal-register');
-    expect(result[0].summary).toBe('This order directs agencies to submit reorganization plans.');
+    expect(result[0].content).toBe('This order directs agencies to submit reorganization plans.');
   });
 
   it('truncates long summaries to 800 characters', () => {
@@ -184,8 +184,8 @@ describe('parseResult', () => {
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
-    expect(result[0].summary!.length).toBe(801); // 800 chars + ellipsis
-    expect(result[0].summary!.endsWith('…')).toBe(true);
+    expect(result[0].content!.length).toBe(801); // 800 chars + ellipsis
+    expect(result[0].content!.endsWith('…')).toBe(true);
   });
 
   it('handles nested description objects', () => {
@@ -202,7 +202,7 @@ describe('parseResult', () => {
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
-    expect(result[0].summary).toBe('Nested content');
+    expect(result[0].content).toBe('Nested content');
   });
 
   // --- Missing branch coverage tests ---
@@ -421,7 +421,7 @@ describe('parseResult', () => {
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
-    expect(result[0].summary).toBeUndefined();
+    expect(result[0].content).toBeUndefined();
   });
 
   it('returns undefined summary when federal_register item has no summary', () => {
@@ -430,7 +430,7 @@ describe('parseResult', () => {
       items: [{ title: 'Test', link: 'https://example.com' }],
     };
     const result = parseResult(payload, 'federal_register', '/api/federal-register');
-    expect(result[0].summary).toBeUndefined();
+    expect(result[0].content).toBeUndefined();
   });
 
   it('handles RSS with undefined items', () => {
@@ -496,7 +496,7 @@ describe('parseResult', () => {
       },
     };
     const result = parseResult(payload, 'rss', 'https://example.com/feed');
-    expect(result[0].summary).toBe('This is the summary field content.');
+    expect(result[0].content).toBe('This is the summary field content.');
   });
 });
 

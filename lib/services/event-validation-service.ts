@@ -161,10 +161,22 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
   return controls;
 }
 
+function nextWeekMonday(monday: string): string {
+  const d = new Date(monday + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
 function runEventDetection(events: readonly KnownEvent[], lookup: Map<string, WeekRow>) {
   return events.map((event) => {
-    const key = `${event.category}:${getMonday(new Date(event.date))}`;
+    const monday = getMonday(new Date(event.date));
+    const key = `${event.category}:${monday}`;
     const row = lookup.get(key);
+
+    // 1-week latency window: also check the following week
+    const followingKey = `${event.category}:${nextWeekMonday(monday)}`;
+    const followingRow = lookup.get(followingKey);
+
     return evaluateEventDetection(
       event,
       row
@@ -176,6 +188,7 @@ function runEventDetection(events: readonly KnownEvent[], lookup: Map<string, We
             convergenceAiElevated: row.convergence_ai_elevated,
           }
         : null,
+      followingRow ? { status: followingRow.status as ConcernLevel | null } : null,
     );
   });
 }

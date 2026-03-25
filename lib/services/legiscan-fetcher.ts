@@ -145,7 +145,7 @@ export async function fetchDataset(
 export function parseBillToContentItem(bill: LegiScanBill): ContentItem {
   return {
     title: bill.title,
-    summary: bill.description || undefined,
+    content: bill.description || undefined,
     link: bill.url || bill.state_link,
     pubDate: bill.status_date,
     type: 'bill',

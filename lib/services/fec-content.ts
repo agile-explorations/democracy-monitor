@@ -88,7 +88,7 @@ export async function fetchFecEnrichedContent(docUrl: string): Promise<string | 
 
     const item = murToContentItem(mur);
     const parts: string[] = [];
-    if (item.summary) parts.push(item.summary);
+    if (item.content) parts.push(item.content);
 
     const pdfDoc = findPriorityPdf(mur.documents || []);
     if (pdfDoc?.url) {
@@ -105,7 +105,7 @@ export async function fetchFecEnrichedContent(docUrl: string): Promise<string | 
 
   const item = aoToContentItem(ao);
   const parts: string[] = [];
-  if (item.summary) parts.push(item.summary);
+  if (item.content) parts.push(item.content);
 
   const finalOpinion = ao.documents?.find(
     (d) => d.category === 'Final Opinion' && d.url?.endsWith('.pdf'),

@@ -179,7 +179,7 @@ describe('countKeywordsInItems', () => {
   });
 
   it('returns empty counts for items with no matching keywords in summary', () => {
-    const items = [{ summary: 'Completely unrelated technology news' }];
+    const items = [{ content: 'Completely unrelated technology news' }];
     const counts = countKeywordsInItems(items, 'civilService');
     expect(Object.keys(counts)).toHaveLength(0);
   });

@@ -83,7 +83,7 @@ async function retryGap(
 ): Promise<number> {
   const doc: ContentItem = {
     title: gap.title ?? '',
-    summary: gap.content ?? '',
+    content: gap.content ?? '',
     link: gap.url,
     type: gap.sourceType ?? undefined,
   };

@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm backfill:content [--source fr|govinfo|oig|fec|doj] [--dry-run] [--limit N]
+ * CLI: pnpm backfill:content [--source fr|govinfo|oig|fec|doj|crec] [--dry-run] [--limit N]
  *
  * Backfills null-content documents with full text:
  * - FR (all types): fetches raw_text_url from FR API, then raw text
@@ -7,6 +7,7 @@
  * - OIG (HHS/DOJ/SSA Inspector General): HHS detail page HTML, DOJ/SSA PDF extraction
  * - FEC (MURs/Advisory Opinions): re-fetches structured data + PDF text extraction
  * - DOJ Press Releases: re-fetches full body from DOJ API (replaces truncated teasers)
+ * - CREC: re-fetches granule text for docs truncated to 800 chars
  *
  * Sets embedded_at = NULL on updated docs so `pnpm embeddings:backfill` re-embeds them.
  */
@@ -15,6 +16,7 @@ import { eq, isNull, and, or, sql, like, lt } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { stripHtml } from '@/lib/parsers/feed-parser';
+import { fetchGranuleText } from '@/lib/services/crec-fetcher';
 import { fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
 import { fetchGovInfoText } from '@/lib/services/govinfo-fetcher';
@@ -25,7 +27,6 @@ import { extractPdfText } from '@/lib/utils/pdf-extractor';
 
 const BATCH_SIZE = 50;
 const RATE_LIMIT_MS = 200;
-const MAX_CONTENT_LENGTH = 8_000;
 const FR_FETCH_TIMEOUT_MS = 30_000;
 const DOJ_API_BASE = 'https://www.justice.gov/api/v1/press_releases.json';
 const DOJ_FETCH_TIMEOUT_MS = 30_000;
@@ -37,16 +38,13 @@ const SSA_OIG_RATE_LIMIT_MS = 2_000; // no robots.txt crawl-delay, be polite
 const FEC_RATE_LIMIT_MS = 4_000; // FEC allows ~1,000 req/hr
 const DOJ_SHORT_CONTENT_THRESHOLD = 1_000; // DOJ teasers are ~800 chars
 
-type Source = 'fr' | 'govinfo' | 'oig' | 'fec' | 'doj';
+type Source = 'fr' | 'govinfo' | 'oig' | 'fec' | 'doj' | 'crec';
+const CREC_RATE_LIMIT_MS = 200; // GovInfo API rate limit
 
 interface BackfillOptions {
   sources: Source[];
   dryRun: boolean;
   limit: number | null;
-}
-
-function truncateContent(text: string): string {
-  return text.length > MAX_CONTENT_LENGTH ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026' : text;
 }
 
 /**
@@ -85,7 +83,7 @@ async function fetchRawText(rawTextUrl: string): Promise<string | null> {
     if (!response.ok) return null;
     const html = await response.text();
     const text = stripHtml(html).replace(/\0/g, '').trim();
-    return text ? truncateContent(text) : null;
+    return text || null;
   } catch {
     return null;
   }
@@ -94,15 +92,15 @@ async function fetchRawText(rawTextUrl: string): Promise<string | null> {
 async function backfillFr(options: BackfillOptions): Promise<number> {
   const db = getDb();
 
-  // Find all FR documents with null or abstract-only content (< 400 chars).
-  // Previously only targeted Presidential Documents; now includes Notice, Rule, Proposed Rule.
+  // Find all FR documents with null or short content (< 1000 chars).
+  // Catches abstract-only docs (800-char FR abstracts) like the Schedule F final rule at 782 chars.
   const rows = await db
     .select({ id: documents.id, url: documents.url })
     .from(documents)
     .where(
       and(
         eq(documents.sourceOrigin, 'federal_register'),
-        or(isNull(documents.content), lt(sql`length(${documents.content})`, 400)),
+        or(isNull(documents.content), lt(sql`length(${documents.content})`, 1000)),
       ),
     );
 
@@ -420,7 +418,7 @@ async function backfillDoj(options: BackfillOptions): Promise<number> {
       if (!doc) continue;
       const bodyText = release.body || release.teaser;
       if (!bodyText) continue;
-      const content = truncateContent(stripHtmlBasic(bodyText));
+      const content = stripHtmlBasic(bodyText);
       if (content.length <= doc.contentLength) continue;
 
       await db
@@ -448,6 +446,67 @@ async function backfillDoj(options: BackfillOptions): Promise<number> {
   return updated;
 }
 
+async function backfillCrec(options: BackfillOptions): Promise<number> {
+  const apiKey = process.env.GOVINFO_API_KEY;
+  if (!apiKey) {
+    console.log('[backfill-content] crec: GOVINFO_API_KEY not set, skipping');
+    return 0;
+  }
+
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: documents.id,
+      url: documents.url,
+      contentLength: sql<number>`length(${documents.content})`.as('content_length'),
+      metadata: documents.metadata,
+    })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.sourceOrigin, 'crec'),
+        or(isNull(documents.content), lt(sql`length(${documents.content})`, 801)),
+      ),
+    );
+
+  console.log(`[backfill-content] crec: ${rows.length} docs need content`);
+  if (options.dryRun) return rows.length;
+
+  const toProcess = options.limit ? rows.slice(0, options.limit) : rows;
+  let updated = 0;
+
+  for (const doc of toProcess) {
+    const meta = doc.metadata as Record<string, unknown> | null;
+    const granuleId = meta?.granuleId as string | undefined;
+    const dateIssued =
+      (meta?.dateIssued as string | undefined) ?? doc.url.match(/CREC-(\d{4}-\d{2}-\d{2})/)?.[1];
+
+    if (!granuleId || !dateIssued) {
+      console.warn(`[backfill-content] crec: missing granuleId/dateIssued for doc ${doc.id}`);
+      continue;
+    }
+
+    const packageId = `CREC-${dateIssued}`;
+    const text = await fetchGranuleText(packageId, granuleId, apiKey);
+    await sleep(CREC_RATE_LIMIT_MS);
+
+    if (!text || text.length <= (doc.contentLength ?? 0)) continue;
+
+    await db
+      .update(documents)
+      .set({ content: text, embeddedAt: null })
+      .where(eq(documents.id, doc.id));
+    updated++;
+
+    if (updated % 100 === 0) {
+      console.log(`[backfill-content] crec: ${updated}/${toProcess.length} updated`);
+    }
+  }
+
+  console.log(`[backfill-content] crec: done — ${updated} updated`);
+  return updated;
+}
+
 async function run(options: BackfillOptions): Promise<void> {
   if (!isDbAvailable()) {
     console.error('[backfill-content] DATABASE_URL not configured');
@@ -467,6 +526,8 @@ async function run(options: BackfillOptions): Promise<void> {
       totalUpdated += await backfillFec(options);
     } else if (source === 'doj') {
       totalUpdated += await backfillDoj(options);
+    } else if (source === 'crec') {
+      totalUpdated += await backfillCrec(options);
     }
   }
 
@@ -493,7 +554,7 @@ if (require.main === module) {
     `Usage: pnpm backfill:content [options]
 
 Options:
-  --source <name>     Source to backfill (fr, govinfo, oig, fec, doj; default: all)
+  --source <name>     Source to backfill (fr, govinfo, oig, fec, doj, crec; default: all)
   --limit <n>         Max documents to process
   --dry-run           Preview without writing to DB`,
   );
@@ -502,7 +563,7 @@ Options:
   const dryRun = args.includes('--dry-run');
 
   const sourceArg = sourceIdx !== -1 ? args[sourceIdx + 1] : undefined;
-  const validSources: Source[] = ['fr', 'govinfo', 'oig', 'fec', 'doj'];
+  const validSources: Source[] = ['fr', 'govinfo', 'oig', 'fec', 'doj', 'crec'];
   const sources: Source[] =
     sourceArg && validSources.includes(sourceArg as Source) ? [sourceArg as Source] : validSources;
 

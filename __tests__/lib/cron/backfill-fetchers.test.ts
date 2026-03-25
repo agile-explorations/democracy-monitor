@@ -222,7 +222,7 @@ describe('fetchWeekDocuments', () => {
       {
         title: 'MUR 8353',
         link: 'https://www.fec.gov/data/legal/matter-under-review/8353/',
-        summary: 'Short metadata',
+        content: 'Short metadata',
         sourceOrigin: 'fec',
       },
     ]);
@@ -244,7 +244,7 @@ describe('fetchWeekDocuments', () => {
       'elections',
     );
 
-    expect(result.items[0].summary).toBe(
+    expect(result.items[0].content).toBe(
       'Enriched content with PDF text extraction and detailed disposition data',
     );
   });
@@ -257,7 +257,7 @@ describe('fetchWeekDocuments', () => {
       {
         title: 'MUR 8353',
         link: 'https://www.fec.gov/data/legal/matter-under-review/8353/',
-        summary: 'Original metadata summary',
+        content: 'Original metadata summary',
         sourceOrigin: 'fec',
       },
     ]);
@@ -277,7 +277,7 @@ describe('fetchWeekDocuments', () => {
       'elections',
     );
 
-    expect(result.items[0].summary).toBe('Original metadata summary');
+    expect(result.items[0].content).toBe('Original metadata summary');
   });
 
   it('fills OIG HHS content by scraping detail page', async () => {
@@ -288,7 +288,7 @@ describe('fetchWeekDocuments', () => {
       {
         title: 'HHS Audit Report',
         link: 'https://oig.hhs.gov/reports/audit/2025-A-01',
-        summary: 'Audit A-01-25-00123',
+        content: 'Audit A-01-25-00123',
         type: 'ig_report',
         sourceOrigin: 'oig',
       },
@@ -311,7 +311,7 @@ describe('fetchWeekDocuments', () => {
       'executiveOversight',
     );
 
-    expect(result.items[0].summary).toBe(
+    expect(result.items[0].content).toBe(
       'Full report text from HHS OIG detail page with findings and recommendations',
     );
   });
@@ -324,7 +324,7 @@ describe('fetchWeekDocuments', () => {
       {
         title: 'SSA Audit Report',
         link: 'https://oig.ssa.gov/assets/uploads/a-03-22-00123.pdf',
-        summary: 'Report A-03-22-00123',
+        content: 'Report A-03-22-00123',
         type: 'ig_report',
         sourceOrigin: 'oig',
       },
@@ -345,7 +345,7 @@ describe('fetchWeekDocuments', () => {
       'executiveOversight',
     );
 
-    expect(result.items[0].summary).toBe('Extracted PDF text from SSA OIG report');
+    expect(result.items[0].content).toBe('Extracted PDF text from SSA OIG report');
   });
 
   it('fills OIG DOJ content by scraping PDF URL then extracting', async () => {
@@ -357,7 +357,7 @@ describe('fetchWeekDocuments', () => {
       {
         title: 'DOJ OIG Investigation',
         link: 'https://oig.justice.gov/reports/2025/i-2025-001',
-        summary: 'Investigative Report — OIG',
+        content: 'Investigative Report — OIG',
         type: 'ig_report',
         sourceOrigin: 'oig',
       },
@@ -381,7 +381,7 @@ describe('fetchWeekDocuments', () => {
       'executiveOversight',
     );
 
-    expect(result.items[0].summary).toBe('Extracted DOJ OIG investigation report text');
+    expect(result.items[0].content).toBe('Extracted DOJ OIG investigation report text');
   });
 
   it('deduplicates items across sources by URL', async () => {

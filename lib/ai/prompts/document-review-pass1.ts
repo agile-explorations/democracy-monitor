@@ -13,7 +13,7 @@ These roles have institutional independence protections; personnel changes are i
 
 export function buildPass1Prompt(
   title: string,
-  summary: string | undefined,
+  content: string | undefined,
   docType: string,
   agency: string | undefined,
   pubDate: string | undefined,
@@ -23,7 +23,7 @@ export function buildPass1Prompt(
   if (docType) parts.push(`  Type: ${docType}`);
   if (agency) parts.push(`  Agency: ${agency}`);
   if (pubDate) parts.push(`  Published: ${pubDate}`);
-  if (summary) parts.push(`  Summary: ${summary.slice(0, 1000)}`);
+  if (content) parts.push(`  Content: ${content.slice(0, 8000)}`);
 
   parts.push('');
   parts.push('Erosion type framework:');

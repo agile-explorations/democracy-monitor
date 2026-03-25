@@ -19,7 +19,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Mass IG removal',
     item: {
       title: 'President Removes Five Inspectors General in Late Friday Announcement',
-      summary:
+      content:
         'The administration fired five inspectors general across major departments, marking the largest mass ig removal in modern history.',
       pubDate: '2025-06-01',
     },
@@ -31,7 +31,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Defiance of court order',
     item: {
       title: 'Administration Defies Court Order on Deportations',
-      summary:
+      content:
         'Despite a federal injunction, the administration defied court order and continued deportation flights, prompting calls for contempt proceedings.',
       pubDate: '2025-06-01',
     },
@@ -43,7 +43,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Mass termination of career staff',
     item: {
       title: 'President Orders Mass Termination of Career Federal Workers',
-      summary:
+      content:
         'The administration ordered mass termination of thousands of career civil servants across multiple agencies.',
       pubDate: '2025-06-01',
     },
@@ -55,7 +55,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Illegal impoundment finding',
     item: {
       title: 'GAO: Administration Violated Impoundment Control Act',
-      summary:
+      content:
         'The Government Accountability Office issued a formal decision finding that the administration violated impoundment control act by withholding congressionally appropriated funds.',
       agency: 'Government Accountability Office',
       pubDate: '2025-06-01',
@@ -68,7 +68,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Insurrection Act preparation',
     item: {
       title: 'Reports: White House Drafting Insurrection Act Invocation',
-      summary:
+      content:
         'Multiple sources confirm the administration is preparing to invoke the insurrection act invoked in response to ongoing protests.',
       pubDate: '2025-06-01',
     },
@@ -80,7 +80,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Press credentials revoked',
     item: {
       title: 'White House Revokes Press Credentials for Multiple Outlets',
-      summary:
+      content:
         'Several news organizations had their press credentials revoked after publishing critical coverage of the administration.',
       pubDate: '2025-06-01',
     },
@@ -92,7 +92,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Voter roll purge (not routine)',
     item: {
       title: 'State Orders Massive Voter Roll Purge Weeks Before Election',
-      summary:
+      content:
         'The Secretary of State ordered a voter roll purge targeting hundreds of thousands of registrations just weeks before the general election.',
       pubDate: '2025-06-01',
     },
@@ -104,7 +104,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Regulatory freeze',
     item: {
       title: 'Administration Orders Regulatory Freeze Across All Agencies',
-      summary:
+      content:
         'A sweeping regulatory freeze directive was issued requiring all agencies to halt pending rulemakings.',
       pubDate: '2025-06-01',
     },
@@ -116,7 +116,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Website removed (data deletion)',
     item: {
       title: 'Climate Data Portal Taken Offline Without Notice',
-      summary:
+      content:
         'The EPA website removed its public climate data portal, with no notice provided. Data previously accessible has been purged.',
       pubDate: '2025-06-01',
     },
@@ -128,7 +128,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Democracy downgrade by international index',
     item: {
       title: 'Freedom House Issues Democracy Downgrade for United States',
-      summary:
+      content:
         'Freedom House downgraded the US in its annual report, citing erosion of judicial independence and press freedom as factors in the democracy downgrade.',
       pubDate: '2025-06-01',
     },
@@ -140,7 +140,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Selective prosecution by DOJ',
     item: {
       title: 'DOJ Accused of Selective Prosecution Against Political Opponents',
-      summary:
+      content:
         'Critics allege a pattern of selective prosecution targeting opposition figures while declining to pursue similar cases against allies.',
       pubDate: '2025-06-01',
     },
@@ -152,7 +152,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'DOJ leadership overrules career prosecutors',
     item: {
       title: 'Senior DOJ Officials Override Career Prosecutors on Sentencing',
-      summary:
+      content:
         'In a rare move, doj leadership overruled career staff on the recommended sentence, prompting resignations from the trial team.',
       pubDate: '2025-06-01',
     },
@@ -164,7 +164,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Mass detention without charge',
     item: {
       title: 'Reports of Mass Detention Without Charge at Border Facilities',
-      summary:
+      content:
         'Advocacy groups documented mass detention without charge of hundreds of individuals held beyond statutory time limits.',
       pubDate: '2025-06-01',
     },
@@ -176,7 +176,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Consent decree terminated',
     item: {
       title: 'DOJ Moves to Terminate Police Reform Consent Decrees',
-      summary:
+      content:
         'The Department of Justice filed motions to end oversight of several police departments, seeking to have each consent decree terminated early.',
       pubDate: '2025-06-01',
     },
@@ -188,7 +188,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Mass deportation operation',
     item: {
       title: 'Administration Launches Largest Mass Deportation Operation in Decades',
-      summary:
+      content:
         'Federal authorities initiated a mass deportation campaign targeting multiple cities with coordinated raids and removal flights.',
       pubDate: '2025-06-01',
     },
@@ -200,7 +200,7 @@ export const TRUE_POSITIVE_CASES: TruePositiveCase[] = [
     name: 'Asylum restrictions tightened',
     item: {
       title: 'New Rule Dramatically Limits Asylum Eligibility',
-      summary:
+      content:
         'The administration issued a final rule under which asylum restrictions tightened to bar most claims from individuals who transited through third countries.',
       pubDate: '2025-06-01',
     },

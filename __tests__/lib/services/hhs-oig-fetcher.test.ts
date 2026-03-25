@@ -149,7 +149,7 @@ describe('toContentItem', () => {
     expect(item.link).toBe('https://oig.hhs.gov/reports/all/2026/test/');
     expect(item.pubDate).toBe('2026-02-25T12:00:00.000Z');
     expect(item.agency).toBe('HHS OIG — CMS');
-    expect(item.summary).toBe('Audit A-04-23-08098');
+    expect(item.content).toBe('Audit A-04-23-08098');
     expect(item.type).toBe('ig_report');
     expect(item.sourceOrigin).toBe('oig');
   });

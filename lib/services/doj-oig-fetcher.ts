@@ -32,7 +32,7 @@ export function toContentItem(report: DojOigReport): ContentItem {
     link: report.url,
     pubDate: report.publishedAt,
     agency: 'DOJ Office of the Inspector General',
-    summary: `${report.reportType} — ${report.component}`,
+    content: `${report.reportType} — ${report.component}`,
     type: 'ig_report',
     sourceOrigin: 'oig',
   };

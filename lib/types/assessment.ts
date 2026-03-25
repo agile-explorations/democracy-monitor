@@ -3,7 +3,7 @@ import type { StatusLevel } from './categories';
 /** Shape of items passed to the assessment layer (superset of FeedItem) */
 export interface ContentItem {
   title?: string;
-  summary?: string;
+  content?: string;
   link?: string;
   pubDate?: string;
   agency?: string;

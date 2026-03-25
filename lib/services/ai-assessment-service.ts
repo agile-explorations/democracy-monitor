@@ -203,9 +203,9 @@ async function enrichWithRAG(
 
     // Enrich existing items by matching URL
     const enrichedItems = items.map((item) => {
-      if (item.summary) return item;
+      if (item.content) return item;
       const match = retrieved.find((r) => r.url && r.url === item.link);
-      if (match?.content) return { ...item, summary: match.content };
+      if (match?.content) return { ...item, content: match.content };
       return item;
     });
 
@@ -215,7 +215,7 @@ async function enrichWithRAG(
       if (doc.similarity > 0.5 && doc.url && !existingUrls.has(doc.url)) {
         enrichedItems.push({
           title: doc.title,
-          summary: doc.content || undefined,
+          content: doc.content || undefined,
           link: doc.url,
           pubDate: doc.publishedAt?.toISOString(),
         });

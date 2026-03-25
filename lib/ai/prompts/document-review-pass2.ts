@@ -26,7 +26,7 @@ export interface Pass2WeekContext {
   trajectory: string;
 }
 
-const TEXT_EXCERPT_LENGTH = 4000;
+const TEXT_EXCERPT_LENGTH = 8000;
 
 /**
  * Build the P2 user prompt.

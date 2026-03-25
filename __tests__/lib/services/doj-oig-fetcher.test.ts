@@ -126,7 +126,7 @@ describe('toContentItem', () => {
     expect(item.link).toBe('https://oig.justice.gov/reports/test-audit');
     expect(item.pubDate).toBe('2026-01-15T12:00:00.000Z');
     expect(item.agency).toBe('DOJ Office of the Inspector General');
-    expect(item.summary).toBe('Audit — FBI');
+    expect(item.content).toBe('Audit — FBI');
     expect(item.type).toBe('ig_report');
     expect(item.sourceOrigin).toBe('oig');
   });

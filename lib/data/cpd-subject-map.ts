@@ -64,7 +64,7 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
 
   // --- judicialIndependence ---
   ['Judiciary', ['judicialIndependence']],
-  ['Justice, Department of', ['judicialIndependence', 'lawEnforcement']],
+  ['Justice, Department of', ['judicialIndependence', 'lawEnforcement', 'executiveOversight']],
   ['Attorney General', ['judicialIndependence', 'lawEnforcement']],
   ['Supreme Court Associate Justice', ['judicialIndependence']],
   ['Senate confirmation process', ['judicialIndependence']],
@@ -107,12 +107,15 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['2024 Presidential election', ['elections']],
 
   // --- immigrationEnforcement ---
-  ['Immigration and naturalization', ['immigrationEnforcement']],
+  ['Immigration and naturalization', ['immigrationEnforcement', 'civilLiberties']],
   ['Illegal immigration', ['immigrationEnforcement']],
   ['Border security', ['immigrationEnforcement']],
   ['Immigration reform', ['immigrationEnforcement']],
   ['Undocumented immigrants, deportation of criminals', ['immigrationEnforcement']],
-  ['Foreign nationals and refugees, U.S. admission policy', ['immigrationEnforcement']],
+  [
+    'Foreign nationals and refugees, U.S. admission policy',
+    ['immigrationEnforcement', 'civilLiberties'],
+  ],
   ['Refugees and migrants, U.S. admission policy', ['immigrationEnforcement']],
   ['Mexico, immigration enforcement cooperation with U.S', ['immigrationEnforcement']],
   ['Mexico, border with U.S., infrastructure and security', ['immigrationEnforcement']],
@@ -161,7 +164,7 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   // --- military (emergency powers / national security apparatus) ---
   ['Homeland Security, Department of', ['military', 'immigrationEnforcement']],
   ['Secretary of Homeland Security', ['military', 'immigrationEnforcement']],
-  ['Terrorism', ['military']],
+  ['Terrorism', ['military', 'civilLiberties']], // monitor for noise — counter-terrorism intersects civil liberties
   ['Federal Emergency Management Agency (FEMA)', ['military']],
   ['Disaster assistance to States', ['military']],
   ['Natural disasters', ['military']],

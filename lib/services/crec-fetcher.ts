@@ -6,7 +6,6 @@ import { toDateString } from '@/lib/utils/date-utils';
 const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const RATE_LIMIT_DELAY_MS = 200;
 const FETCH_TIMEOUT_MS = 30_000;
-const MAX_CONTENT_LENGTH = 8_000;
 const GRANULES_PAGE_SIZE = 100;
 
 // --- Types ---
@@ -187,7 +186,7 @@ export function toContentItem(summary: CrecGranuleSummary, text: string | null):
     agency: primary
       ? `${primary.memberName} (${primary.party || '?'}-${primary.state || '?'})`
       : 'Congressional Record',
-    summary: text ? text.slice(0, 800) : undefined,
+    content: text || undefined,
     type: crecContentType,
     sourceOrigin: 'crec',
     metadata: {
@@ -297,7 +296,7 @@ export async function fetchGranuleText(
     if (afterHeader.length > 0) text = afterHeader;
   }
 
-  return text.length > MAX_CONTENT_LENGTH ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026' : text;
+  return text;
 }
 
 /**

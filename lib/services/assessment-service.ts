@@ -64,7 +64,7 @@ function scanKeywords(
   const highAuthorityKeywords: string[] = [];
 
   for (const item of items) {
-    const contentText = `${item.title || ''} ${item.summary || ''}`;
+    const contentText = `${item.title || ''} ${item.content || ''}`;
     const isHighAuthority = isHighAuthoritySource(item.agency);
     const hasPatternLanguage =
       matchKeyword(contentText, 'unprecedented') ||

@@ -169,7 +169,7 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
   if (!item.pubDate && !item.date) return null;
 
   const rules = ASSESSMENT_RULES[category];
-  const contentText = `${item.title || ''} ${item.summary || ''}`;
+  const contentText = `${item.title || ''} ${item.content || ''}`;
   const isHighAuthority = isHighAuthoritySource(item.agency);
   const docClass = classifyDocument(item);
   const classMultiplier = CLASS_MULTIPLIERS[docClass];

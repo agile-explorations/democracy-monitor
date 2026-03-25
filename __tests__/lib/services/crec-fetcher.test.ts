@@ -238,15 +238,15 @@ describe('toContentItem', () => {
     expect(speakers[0].memberName).toBe('Grassley, Chuck');
   });
 
-  it('truncates summary to 800 chars', () => {
+  it('stores full text without truncation', () => {
     const longText = 'x'.repeat(1000);
     const item = toContentItem(summary, longText);
-    expect(item.summary!.length).toBe(800);
+    expect(item.content!.length).toBe(1000);
   });
 
   it('handles null text', () => {
     const item = toContentItem(summary, null);
-    expect(item.summary).toBeUndefined();
+    expect(item.content).toBeUndefined();
   });
 
   it('handles missing speaker', () => {

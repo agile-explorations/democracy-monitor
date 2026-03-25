@@ -35,7 +35,7 @@ export function routeItemsToCategories(items: ContentItem[]): CrecRoutedItem[] {
   const routed: CrecRoutedItem[] = [];
 
   for (const item of items) {
-    const text = item.summary || '';
+    const text = item.content || '';
     const categories = classifyCrecToCategories(item.title || '', text);
     if (categories.length === 0) continue;
 

@@ -30,7 +30,7 @@ export function toContentItem(report: SsaOigReport): ContentItem {
     link: report.url,
     pubDate: report.publishedAt,
     agency: 'SSA Office of the Inspector General',
-    summary: `Report ${report.reportNumber}`,
+    content: `Report ${report.reportNumber}`,
     type: 'ig_report',
     sourceOrigin: 'oig',
   };

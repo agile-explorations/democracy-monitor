@@ -1,6 +1,6 @@
 export interface FeedItem {
   title: string;
-  summary?: string;
+  content?: string;
   link?: string;
   pubDate?: string;
   agency?: string;
@@ -69,7 +69,7 @@ function extractSummary(item: FeedPayloadItem): string | undefined {
 function normalizeFederalRegisterItem(item: FeedPayloadItem): FeedItem {
   return {
     title: (typeof item.title === 'string' ? item.title : item.title?._) || '(document)',
-    summary: extractSummary(item),
+    content: extractSummary(item),
     link: typeof item.link === 'string' ? item.link : undefined,
     pubDate: item.pubDate,
     agency: item.agency,
@@ -93,7 +93,7 @@ function normalizeRssItem(item: FeedPayloadItem): FeedItem {
 
   return {
     title: title || '(item)',
-    summary: extractSummary(item),
+    content: extractSummary(item),
     link: link,
     pubDate: item.pubDate || item.published || item.updated,
   };

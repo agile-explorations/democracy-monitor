@@ -42,7 +42,7 @@ describe('aoToContentItem', () => {
     expect(item.link).toBe('https://www.fec.gov/data/legal/advisory-opinions/2025-01/');
     expect(item.pubDate).toBe('2025-06-15');
     expect(item.agency).toBe('Federal Election Commission');
-    expect(item.summary).toContain('AI-generated content');
+    expect(item.content).toContain('AI-generated content');
     expect(item.type).toBe('advisory_opinion');
     expect(item.sourceOrigin).toBe('fec');
   });
@@ -69,7 +69,7 @@ describe('aoToContentItem', () => {
   it('truncates long summaries', () => {
     const longSummary = 'B'.repeat(1000);
     const item = aoToContentItem({ summary: longSummary });
-    expect(item.summary!.length).toBeLessThanOrEqual(801);
+    expect(item.content!.length).toBeLessThanOrEqual(801);
   });
 
   it('includes statutory citations in summary', () => {
@@ -81,9 +81,9 @@ describe('aoToContentItem', () => {
         { section: '30121', title: 52 },
       ],
     });
-    expect(item.summary).toContain('Joint fundraising activities');
-    expect(item.summary).toContain('52 USC §30116');
-    expect(item.summary).toContain('52 USC §30121');
+    expect(item.content).toContain('Joint fundraising activities');
+    expect(item.content).toContain('52 USC §30116');
+    expect(item.content).toContain('52 USC §30121');
   });
 
   it('includes regulatory citations in summary', () => {
@@ -91,7 +91,7 @@ describe('aoToContentItem', () => {
       summary: 'Test opinion',
       regulatory_citations: [{ part: 110, section: 1, title: 11 }],
     });
-    expect(item.summary).toContain('11 CFR §110.1');
+    expect(item.content).toContain('11 CFR §110.1');
   });
 });
 
@@ -113,9 +113,9 @@ describe('murToContentItem', () => {
     expect(item.link).toBe('https://www.fec.gov/data/legal/matter-under-review/8000/');
     expect(item.pubDate).toBe('2025-03-01');
     expect(item.agency).toBe('Federal Election Commission');
-    expect(item.summary).toContain('Excessive Contributions');
-    expect(item.summary).toContain('Smith PAC');
-    expect(item.summary).toContain('Complainant');
+    expect(item.content).toContain('Excessive Contributions');
+    expect(item.content).toContain('Smith PAC');
+    expect(item.content).toContain('Complainant');
     expect(item.type).toBe('enforcement_action');
     expect(item.sourceOrigin).toBe('fec');
   });
@@ -125,8 +125,8 @@ describe('murToContentItem', () => {
       subject: { primary: ['Soft Money'], secondary: [] },
       respondents: ['Test PAC'],
     });
-    expect(item.summary).toContain('Soft Money');
-    expect(item.summary).toContain('Test PAC');
+    expect(item.content).toContain('Soft Money');
+    expect(item.content).toContain('Test PAC');
   });
 
   it('includes dispositions with statutes and penalties', () => {
@@ -142,10 +142,10 @@ describe('murToContentItem', () => {
       ],
     });
 
-    expect(item.summary).toContain('Conciliation: Pre Probable Cause');
-    expect(item.summary).toContain('Franklin, Kamau');
-    expect(item.summary).toContain('$16,000');
-    expect(item.summary).toContain('52 USC §30104(g)(1)');
+    expect(item.content).toContain('Conciliation: Pre Probable Cause');
+    expect(item.content).toContain('Franklin, Kamau');
+    expect(item.content).toContain('$16,000');
+    expect(item.content).toContain('52 USC §30104(g)(1)');
   });
 
   it('includes commission vote summary', () => {
@@ -157,8 +157,8 @@ describe('murToContentItem', () => {
         },
       ],
     });
-    expect(item.summary).toContain('Commission action');
-    expect(item.summary).toContain('5-1');
+    expect(item.content).toContain('Commission action');
+    expect(item.content).toContain('5-1');
   });
 
   it('handles missing optional fields', () => {
@@ -187,12 +187,12 @@ describe('murToContentItem', () => {
     const item = murToContentItem({
       respondents: ['A', 'B', 'C', 'D', 'E'],
     });
-    expect(item.summary).toContain('Respondents: A; B; C; D; E');
+    expect(item.content).toContain('Respondents: A; B; C; D; E');
   });
 
   it('handles empty subjects and respondents', () => {
     const item = murToContentItem({ case_no: '100' });
-    expect(item.summary).toBeUndefined();
+    expect(item.content).toBeUndefined();
   });
 });
 

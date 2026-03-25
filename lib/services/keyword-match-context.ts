@@ -44,7 +44,7 @@ export function findMatchSource(match: string, items: ContentItem[]): string {
   const cleanMatch = stripAnnotation(match);
 
   for (const item of items) {
-    const text = `${item.title || ''} ${item.summary || ''}`.toLowerCase();
+    const text = `${item.title || ''} ${item.content || ''}`.toLowerCase();
     if (text.includes(cleanMatch)) {
       return item.title || '(untitled)';
     }

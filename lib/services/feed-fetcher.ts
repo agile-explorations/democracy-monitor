@@ -185,7 +185,7 @@ async function fetchFederalRegister(signal: Signal): Promise<FeedItem[]> {
       link: doc.html_url,
       pubDate: doc.publication_date,
       agency: doc.agencies?.map((a) => a.name).join(', '),
-      summary: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
+      content: doc.abstract ? truncate(stripHtml(doc.abstract)) : undefined,
     }),
   );
 

@@ -25,6 +25,7 @@ import { findPass2GapWeeks } from '@/lib/services/document-review-queries';
 import { getPass1Count } from '@/lib/services/document-review-store';
 import type { ContentItem } from '@/lib/types';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
 
 interface BackfillArgs {
@@ -132,7 +133,7 @@ async function getDocumentsForCategoryWeek(
   return rows.map((row) => ({
     title: row.title,
     link: row.url ?? undefined,
-    summary: row.content?.slice(0, 2000) ?? '',
+    content: stripBoilerplate(row.content ?? '', row.sourceOrigin, row.title).slice(0, 16000),
     pubDate: row.publishedAt?.toISOString(),
     type: row.sourceType,
     agency: (row.metadata as Record<string, string>)?.agency,

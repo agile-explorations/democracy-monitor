@@ -46,7 +46,7 @@ function processDocumentBatch(
   for (const doc of rows) {
     const item: ContentItem = {
       title: doc.title,
-      summary: doc.content || undefined,
+      content: doc.content || undefined,
       link: doc.url || undefined,
       pubDate: doc.publishedAt?.toISOString(),
       agency:

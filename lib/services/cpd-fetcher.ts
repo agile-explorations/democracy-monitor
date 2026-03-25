@@ -24,7 +24,6 @@ import { sleep } from '@/lib/utils/async';
 const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const RATE_LIMIT_DELAY_MS = 200;
 const FETCH_TIMEOUT_MS = 30_000;
-const MAX_CONTENT_LENGTH = 8_000;
 const USER_AGENT = 'DemocracyMonitor/1.0 (cpd-fetcher)';
 
 /** Admin package IDs to skip (nominations lists, checklists, digests). */
@@ -151,9 +150,7 @@ export async function fetchCpdText(packageId: string): Promise<string | null> {
 
     const html = await response.text();
     const text = stripHtml(html).replace(/\0/g, '').trim();
-    return text.length > MAX_CONTENT_LENGTH
-      ? text.slice(0, MAX_CONTENT_LENGTH) + '\u2026'
-      : text || null;
+    return text || null;
   } catch (err) {
     console.warn(`[cpd-fetcher] Content fetch failed for ${packageId}:`, err);
     return null;
@@ -248,7 +245,7 @@ async function enrichPackages(
 
     if (fetchContent) {
       const text = await fetchCpdText(packageId);
-      if (text) item.summary = text;
+      if (text) item.content = text;
     }
 
     allDocs.push({ item, categories, unmappedSubjects: [...unmapped] });

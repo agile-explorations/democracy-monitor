@@ -68,9 +68,9 @@ describe('fetchSignalWithMetadata', () => {
       expect(result.items[0].link).toBe('https://federalregister.gov/doc/1');
       expect(result.items[0].pubDate).toBe('2026-02-01');
       expect(result.items[0].agency).toBe('DOJ');
-      expect(result.items[0].summary).toBe('An order about testing.');
+      expect(result.items[0].content).toBe('An order about testing.');
       expect(result.items[1].title).toBe('Proclamation on Unity');
-      expect(result.items[1].summary).toBeUndefined();
+      expect(result.items[1].content).toBeUndefined();
     });
 
     it('returns error item on non-ok response after retries', async () => {

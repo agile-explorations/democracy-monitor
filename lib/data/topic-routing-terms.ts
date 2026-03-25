@@ -154,6 +154,13 @@ export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
     'oversight committee',
     'Inspectors General',
     'CIGIE',
+    // Personnel actions affecting oversight-relevant positions (compound terms to avoid noise)
+    'firing of',
+    'fired the',
+    'termination of',
+    'dismissed from',
+    'FBI director',
+    'removed from office',
   ],
 
   hatch: [
@@ -247,6 +254,10 @@ export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
     'executive privilege',
     'presidential directive',
     'pen and phone',
+    // Executive actions on immigration/fiscal policy
+    'deferred action',
+    'DACA',
+    'rescission',
   ],
 
   infoAvailability: [
@@ -349,6 +360,14 @@ export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
     'Section 702',
     'FISA',
     'warrantless',
+    // Immigration enforcement impacts on civil liberties
+    'travel ban',
+    'immigration ban',
+    'muslim ban',
+    'DACA',
+    'deferred action',
+    'family separation',
+    'catch and release',
   ],
 
   immigrationEnforcement: [

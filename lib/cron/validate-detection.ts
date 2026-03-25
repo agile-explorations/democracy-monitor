@@ -25,6 +25,7 @@ const PASS = '\u2713';
 const FAIL = '\u2717';
 const WARN = '\u26A0';
 const SKIP = '-';
+const LATE = '\u2248'; // ≈ detected with 1-week latency
 
 function statusIcon(detected: boolean, hasData: boolean): string {
   if (!hasData) return SKIP;
@@ -101,8 +102,12 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
   for (const e of events) {
     const hasData = e.convergenceStatus !== null;
     const status = e.convergenceStatus ?? 'no data';
-    const statusText = e.detected ? status : `${status} (expected ≥${e.expectedMinStatus})`;
-    const det = statusIcon(e.detected, hasData);
+    const statusText = e.detected
+      ? e.latencyDetected
+        ? `${status} (detected +1 week)`
+        : String(status)
+      : `${status} (expected ≥${e.expectedMinStatus})`;
+    const det = e.latencyDetected ? LATE : statusIcon(e.detected, hasData);
     const l1 = layerIcon(e.l1Fired, e.structuralScore);
     const l2r = layerIcon(e.l2Fired, e.aiScore);
     const l2c = layerIcon(e.l2Converged, e.aiScore);
@@ -135,7 +140,7 @@ function printEventDetection(events: LayerAttribution[], verbose: boolean): void
 
   console.log('');
   console.log(
-    `  Legend: ${PASS} layer fired / event detected   \u00B7 layer below threshold   ${FAIL} event missed   ${SKIP} no data`,
+    `  Legend: ${PASS} layer fired / event detected   ${LATE} detected following week   \u00B7 layer below threshold   ${FAIL} event missed   ${SKIP} no data`,
   );
   console.log(
     `  L2r = L2 raw (z-score > 1.5)   L2c = L2 converged (min docs + z-score + P2 corroboration)`,
@@ -196,10 +201,14 @@ function printDetectionBreakdown(events: LayerAttribution[]): void {
 
 function printSummary(report: ValidationReport): void {
   const s = report.summary;
+  const latencyCount = report.eventDetection.filter((e) => e.latencyDetected).length;
+  const exactCount = s.eventsDetected - latencyCount;
   console.log('\n=== Summary ===');
   console.log(`  Negative controls:  ${s.controlsPassed} passed, ${s.controlsFailed} failed`);
   console.log(
-    `  Event detection:    ${s.eventsDetected}/${s.totalEvents} detected, ${s.eventsMissed} missed, ${s.eventsSkipped} skipped (no data)`,
+    `  Event detection:    ${s.eventsDetected}/${s.totalEvents} detected` +
+      (latencyCount > 0 ? ` (${exactCount} exact, ${latencyCount} latency)` : '') +
+      `, ${s.eventsMissed} missed, ${s.eventsSkipped} skipped (no data)`,
   );
 
   if (report.warnings.length > 0) {

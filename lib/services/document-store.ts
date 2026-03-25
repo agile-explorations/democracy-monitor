@@ -2,6 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
+import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { toDateString } from '@/lib/utils/date-utils';
 
 export function buildMetadata(item: ContentItem): Record<string, unknown> | null {
@@ -64,7 +65,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           sourceType: item.type || 'rss',
           category,
           title: item.title || '(untitled)',
-          content: item.summary || null,
+          content: item.content || null,
           url: item.link!,
           publishedAt: item.pubDate ? new Date(item.pubDate) : null,
           fetchedAt: new Date(),
@@ -113,6 +114,7 @@ export async function getDocumentsForWeek(
       url: documents.url,
       publishedAt: documents.publishedAt,
       sourceType: documents.sourceType,
+      sourceOrigin: documents.sourceOrigin,
       metadata: documents.metadata,
     })
     .from(documents)
@@ -127,13 +129,15 @@ export async function getDocumentsForWeek(
 
   return rows.map((r) => {
     const meta = r.metadata as Record<string, unknown> | null;
+    const cleaned = r.content ? stripBoilerplate(r.content, r.sourceOrigin, r.title) : undefined;
     return {
       title: r.title,
-      summary: r.content || undefined,
+      content: cleaned,
       link: r.url || undefined,
       pubDate: r.publishedAt?.toISOString(),
       agency: meta?.agency as string | undefined,
       type: r.sourceType,
+      sourceOrigin: r.sourceOrigin || undefined,
     };
   });
 }

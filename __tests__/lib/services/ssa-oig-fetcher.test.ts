@@ -152,7 +152,7 @@ describe('toContentItem', () => {
     expect(item.link).toBe('https://oig.ssa.gov/assets/uploads/123456.pdf');
     expect(item.pubDate).toBe('2026-01-15T12:00:00Z');
     expect(item.agency).toBe('SSA Office of the Inspector General');
-    expect(item.summary).toBe('Report 123456');
+    expect(item.content).toBe('Report 123456');
     expect(item.type).toBe('ig_report');
     expect(item.sourceOrigin).toBe('oig');
   });

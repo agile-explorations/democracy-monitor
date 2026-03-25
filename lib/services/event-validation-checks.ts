@@ -50,6 +50,7 @@ export interface LayerAttribution {
   l2Converged: boolean;
   l3Fired: boolean;
   detected: boolean;
+  latencyDetected: boolean;
   expectedMinStatus: ConcernLevel;
   missReason: MissReason | null;
   signalDensity?: string;
@@ -235,10 +236,21 @@ export function evaluateEventDetection(
     thematicScore: number | null;
     convergenceAiElevated?: boolean | null;
   } | null,
+  followingWeekData?: {
+    status: ConcernLevel | null;
+  } | null,
 ): LayerAttribution {
   const weekOf = getMonday(new Date(event.date));
   const status = weekData?.status ?? null;
   const detected = status != null && convergenceStatusAtLeast(status, event.expectedMinStatus);
+
+  // 1-week latency window: check the following week if event week missed
+  const latencyDetected =
+    !detected &&
+    followingWeekData?.status != null &&
+    convergenceStatusAtLeast(followingWeekData.status, event.expectedMinStatus);
+
+  const effectivelyDetected = detected || latencyDetected;
 
   return {
     eventId: event.id,
@@ -254,9 +266,10 @@ export function evaluateEventDetection(
     l2Fired: l2Fired(weekData?.aiScore ?? null),
     l2Converged: weekData?.convergenceAiElevated ?? false,
     l3Fired: l3Fired(weekData?.thematicScore ?? null),
-    detected,
+    detected: effectivelyDetected,
+    latencyDetected,
     expectedMinStatus: event.expectedMinStatus,
-    missReason: computeMissReason(event, weekData, detected),
+    missReason: computeMissReason(event, weekData, effectivelyDetected),
     signalDensity: event.signalDensity,
     notes: event.notes,
   };

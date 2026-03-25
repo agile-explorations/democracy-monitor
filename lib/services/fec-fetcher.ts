@@ -116,7 +116,7 @@ export function aoToContentItem(ao: FecAdvisoryOpinion): ContentItem {
     link: ao.ao_no ? `https://www.fec.gov/data/legal/advisory-opinions/${ao.ao_no}/` : undefined,
     pubDate: ao.issue_date,
     agency: 'Federal Election Commission',
-    summary: parts.length ? truncate(parts.join('. ')) : undefined,
+    content: parts.length ? truncate(parts.join('. ')) : undefined,
     type: 'advisory_opinion',
     sourceOrigin: 'fec',
   };
@@ -211,7 +211,7 @@ export function murToContentItem(mur: FecMur): ContentItem {
         : undefined),
     pubDate: mur.open_date,
     agency: 'Federal Election Commission',
-    summary: summary ? truncate(summary) : undefined,
+    content: summary ? truncate(summary) : undefined,
     type: 'enforcement_action',
     sourceOrigin: 'fec',
   };
