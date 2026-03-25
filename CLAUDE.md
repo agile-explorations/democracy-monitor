@@ -66,6 +66,10 @@ Local PostgreSQL is available at `localhost:5432/democracy_monitor` (configured 
 
 To run commands against production, use `source .env.prod.local && export VAR && command` in a Bash tool call. Environment variable values flow through the shell and do not appear in the conversation context unless a command prints them to stdout/stderr.
 
+### File reads
+
+With 1M context, file contents from earlier in the conversation are still available. Do not re-read a file unless it has been modified since the last read. Reference the earlier read instead.
+
 ## Database migrations
 
 **Schema-first workflow** — NEVER manually create SQL files in `drizzle/`. Always follow this process:
