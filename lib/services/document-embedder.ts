@@ -4,17 +4,33 @@ import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
 
-/** text-embedding-3-small max is 8192 tokens; use ~3 chars/token for safety margin */
-const MAX_EMBED_CHARS = 24_000;
+/**
+ * text-embedding-3-small max is 8192 tokens. Tokenization density varies
+ * widely (2.5–4 chars/token). Use 20K chars (~2.4 chars/token worst case)
+ * as the primary limit, with a binary-search retry if it still exceeds.
+ */
+const MAX_EMBED_CHARS = 20_000;
 
 function docToText(doc: { title: string; content: string | null }): string {
   return `${doc.title}${doc.content ? '\n' + doc.content : ''}`;
 }
 
-/** Embed a single oversized document by truncating its text. */
+/** Embed a single oversized document by truncating its text. Retries with halved length on failure. */
 async function embedWithTruncation(text: string): Promise<number[] | null> {
-  const truncated = text.slice(0, MAX_EMBED_CHARS);
-  return embedText(truncated);
+  let limit = MAX_EMBED_CHARS;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await embedText(text.slice(0, limit));
+    } catch (err) {
+      if (isTokenLimitError(err)) {
+        limit = Math.floor(limit * 0.6);
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Final attempt at very conservative limit
+  return embedText(text.slice(0, 8000));
 }
 
 /** Fallback: embed each document individually, truncating oversized ones. */
