@@ -82,6 +82,9 @@ async function embedOneBatch(
     embeddings = await embedBatch(texts);
   } catch (err) {
     if (isTokenLimitError(err)) {
+      console.log(
+        `[embedding] Batch exceeded token limit, falling back to individual (${texts.length} docs)`,
+      );
       embeddings = await embedIndividually(texts);
     } else {
       throw err;
@@ -114,7 +117,7 @@ async function embedOneBatch(
  * Optionally filter by category. No-op when DB or embedding provider is unavailable.
  */
 export async function embedUnprocessedDocuments(
-  batchSize = 50,
+  batchSize = 10,
   category?: string,
   dateFilter?: SQL,
 ): Promise<number> {
