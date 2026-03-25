@@ -4,8 +4,8 @@ import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
 
-/** text-embedding-3-small max is 8192 tokens; ~4 chars/token gives safe char limit */
-const MAX_EMBED_CHARS = 30_000;
+/** text-embedding-3-small max is 8192 tokens; use ~3 chars/token for safety margin */
+const MAX_EMBED_CHARS = 24_000;
 
 function docToText(doc: { title: string; content: string | null }): string {
   return `${doc.title}${doc.content ? '\n' + doc.content : ''}`;
