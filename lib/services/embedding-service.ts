@@ -33,7 +33,11 @@ export function isTokenLimitError(err: unknown): boolean {
   if (!(err instanceof Error) || !('status' in err)) return false;
   if ((err as { status: number }).status !== 400) return false;
   const msg = err.message;
-  return msg.includes('maximum context length') || msg.includes('maximum input length');
+  return (
+    msg.includes('maximum context length') ||
+    msg.includes('maximum input length') ||
+    msg.includes('max_tokens_per_request')
+  );
 }
 
 /** Compute the element-wise mean of a set of embedding vectors. */
