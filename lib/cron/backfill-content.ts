@@ -479,7 +479,7 @@ async function backfillCrec(options: BackfillOptions): Promise<number> {
     const meta = doc.metadata as Record<string, unknown> | null;
     const granuleId = meta?.granuleId as string | undefined;
     const dateIssued =
-      (meta?.dateIssued as string | undefined) ?? doc.url.match(/CREC-(\d{4}-\d{2}-\d{2})/)?.[1];
+      (meta?.dateIssued as string | undefined) ?? doc.url?.match(/CREC-(\d{4}-\d{2}-\d{2})/)?.[1];
 
     if (!granuleId || !dateIssued) {
       console.warn(`[backfill-content] crec: missing granuleId/dateIssued for doc ${doc.id}`);
