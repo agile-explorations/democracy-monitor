@@ -211,7 +211,7 @@ export const CATEGORIES: Category[] = [
     key: 'judicialIndependence',
     title: 'Following Court Orders',
     description:
-      'Government actions that undermine judicial independence — defying court orders, retaliating against judges, politicizing judicial appointments, or restructuring court jurisdiction to avoid oversight.',
+      "Government actions that undermine the judiciary's ability to function as an independent check — defying or circumventing court orders, retaliating against specific judges, firing judicial branch personnel, or restructuring court jurisdiction to avoid oversight. Routine judicial appointments, confirmations, and case rulings are NOT erosion signals.",
     expertDescription:
       "Judicial independence is the cornerstone of constitutional governance. Executive non-compliance with court orders, attempts to restructure court jurisdiction, or politicized judicial appointments erode the judiciary's ability to serve as a check on executive and legislative power.",
     signals: [
@@ -495,7 +495,7 @@ export const CATEGORIES: Category[] = [
     key: 'civilLiberties',
     title: 'Civil Rights & Liberties',
     description:
-      'Government actions that reduce civil liberties protections. Tracks policies restricting constitutional rights, rulings narrowing due process or equal protection, expansion of surveillance or detention authority, and termination of civil rights consent decrees.',
+      'Government actions that remove or weaken existing civil liberties protections — rescinding consent decrees, expanding warrantless surveillance, restricting due process for specific populations, or using executive authority to override court-ordered civil rights protections. Routine civil rights enforcement, advisory committees, and routine immigration administration and processing volume changes are NOT erosion signals.',
     expertDescription:
       'Constitutional rights — due process, equal protection, habeas corpus, and First Amendment freedoms — define the boundary between state power and individual liberty. Erosion of these protections through executive action, consent decree termination, or expanded surveillance authority signals democratic backsliding at its most fundamental level.',
     signals: [

@@ -70,7 +70,11 @@ export async function fetchP1FlagRates(
   return (result.rows as Record<string, unknown>[]).map((r) => {
     const total = Number(r.total_docs);
     const flagged = Number(r.flagged);
-    return { category: r.category as string, flagRate: total > 0 ? flagged / total : 0 };
+    return {
+      category: r.category as string,
+      flagRate: total > 0 ? flagged / total : 0,
+      totalDocs: total,
+    };
   });
 }
 

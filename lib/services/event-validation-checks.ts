@@ -83,18 +83,26 @@ export function l3Fired(thematicScore: number | null): boolean {
 
 /**
  * NC-1: Biden 2022 P1 flag rate should be 1–15% per category.
- * Fail if >20% in any category.
+ * Fail if >20% in any category with sufficient sample (≥100 docs).
+ * Categories under 100 docs are excluded — percentages on tiny samples are noise.
  */
+const NC1_MIN_SAMPLE = 100;
+
 export function evaluateNc1BidenP1FlagRate(
-  categoryRates: Array<{ category: string; flagRate: number }>,
+  categoryRates: Array<{ category: string; flagRate: number; totalDocs?: number }>,
 ): NegativeControlResult {
   const details = categoryRates.map((r) => ({
     category: r.category,
     value: r.flagRate,
-    pass: r.flagRate <= 0.2,
+    pass: (r.totalDocs ?? Infinity) < NC1_MIN_SAMPLE || r.flagRate <= 0.2,
   }));
-  const allPass = details.every((d) => d.pass);
-  const worst = details.reduce((a, b) => (b.value > a.value ? b : a), details[0]);
+  const scorable = details.filter(
+    (d) =>
+      (categoryRates.find((r) => r.category === d.category)?.totalDocs ?? Infinity) >=
+      NC1_MIN_SAMPLE,
+  );
+  const allPass = scorable.every((d) => d.pass);
+  const worst = scorable.reduce((a, b) => (b.value > a.value ? b : a), scorable[0]);
 
   return {
     id: 'NC-1',
