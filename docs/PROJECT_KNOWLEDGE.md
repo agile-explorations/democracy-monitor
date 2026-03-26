@@ -44,19 +44,21 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 ### Sprint arc
 
-| Sprint          | Release | Goal                                                                                                                         | Status  |
-| --------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- |
-| R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                               | Planned |
-| R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion                             | Done    |
-| R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                                             | Planned |
-| R-DATA-PAGE     | R1      | Data page (`/data`) — CSV export, GitHub dump link, top-level nav                                                            | Planned |
-| R-API           | R1      | Public REST API — documents, aggregates, search. Rate-limited, filterable. Foundation for R3/R6 integrations                 | Planned |
-| R-REVIEW-QUEUE  | R1      | Admin review queue for human review of AI assessments                                                                        | Planned |
-| R-P2025         | R2      | Project 2025 — import proposals from trackers, document-level evidence linking, EXCEEDS detection, cross-feature convergence | Planned |
-| R-BOP           | R3      | Balance of Powers visualization + Democracy Index Evidence Mapping (V-Dem, Freedom House)                                    | Planned |
-| R-RHETORIC      | R4      | Rhetoric vs. action analysis (CHRG hearings, speaker tracking, lag analysis)                                                 | Planned |
-| R-INFRA         | R5      | Authoritarian infrastructure build-out (SAM.gov, USAJobs, SEC EDGAR)                                                         | Planned |
-| R-STATES        | R6      | State-level research corpus — LegiScan state bills, CourtListener state courts, governor EO scrapers (AI self-healing)       | Planned |
+| Sprint          | Release | Goal                                                                                                                          | Status  |
+| --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- |
+| R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                                | Planned |
+| R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion                              | Done    |
+| R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                                              | Planned |
+| R-GAP-BACKFILL  | R1      | Gap year backfill — Trump 2019-2020 (impeachment, COVID, Schedule F v1, Jan 6), then Biden 2023-2024                          | Planned |
+| R-DATA-PAGE     | R1      | Data page (`/data`) — CSV export, GitHub dump link, top-level nav                                                             | Planned |
+| R-API           | R1      | Public REST API — documents, aggregates, search. Rate-limited, filterable. Foundation for R4/R6                               | Planned |
+| R-REVIEW-QUEUE  | R1      | Admin review queue for human review of AI assessments                                                                         | Planned |
+| R-BOP-A         | R1      | Balance of Powers Phase A — inter-branch check classification, "Checks Activated" panel                                       | Planned |
+| R-INFRA         | R2      | Authoritarian infrastructure — USAJobs hiring, SAM.gov surveillance, FOIA degradation, 287(g) networks, detention integration | Planned |
+| R-RHETORIC      | R3      | Rhetoric vs. action — Truth Social, APP transcripts, rhetoric routing, gamified expert matching, ring analysis                | Planned |
+| R-BOP-B         | R4      | Balance of Powers viz + Democracy Index Evidence Mapping (V-Dem, Freedom House) — deferred pending Phase A data               | Planned |
+| R-P2025         | R5      | Project 2025 — import from trackers, documentary evidence linking, EXCEEDS detection (build small, build last)                | Planned |
+| R-STATES        | R6      | State-level research corpus — LegiScan state bills, CourtListener state courts, governor EO scrapers (AI self-healing)        | Planned |
 
 ### Sprint log
 
