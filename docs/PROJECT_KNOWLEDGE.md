@@ -44,27 +44,31 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 ### Sprint arc
 
-| Sprint          | Release | Goal                                                                                             | Status      |
-| --------------- | ------- | ------------------------------------------------------------------------------------------------ | ----------- |
-| R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion | In progress |
-| R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                 | Planned     |
-| R-REVIEW-QUEUE  | R1      | Admin review queue for human review of AI assessments                                            | Planned     |
-| R-P2025         | R2      | Project 2025 plan-vs-delivered tracking                                                          | Planned     |
-| R-BOP           | R3      | Balance of Powers visualization                                                                  | Planned     |
-| R-RHETORIC      | R4      | Rhetoric vs. action analysis (CHRG hearings, speaker tracking, lag analysis)                     | Planned     |
-| R-INFRA         | R5      | Authoritarian infrastructure build-out (SAM.gov, USAJobs, SEC EDGAR)                             | Planned     |
+| Sprint          | Release | Goal                                                                                                                         | Status  |
+| --------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- |
+| R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                               | Planned |
+| R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion                             | Done    |
+| R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                                             | Planned |
+| R-DATA-PAGE     | R1      | Data page (`/data`) — CSV export, GitHub dump link, top-level nav                                                            | Planned |
+| R-API           | R1      | Public REST API — documents, aggregates, search. Rate-limited, filterable. Foundation for R3/R6 integrations                 | Planned |
+| R-REVIEW-QUEUE  | R1      | Admin review queue for human review of AI assessments                                                                        | Planned |
+| R-P2025         | R2      | Project 2025 — import proposals from trackers, document-level evidence linking, EXCEEDS detection, cross-feature convergence | Planned |
+| R-BOP           | R3      | Balance of Powers visualization + Democracy Index Evidence Mapping (V-Dem, Freedom House)                                    | Planned |
+| R-RHETORIC      | R4      | Rhetoric vs. action analysis (CHRG hearings, speaker tracking, lag analysis)                                                 | Planned |
+| R-INFRA         | R5      | Authoritarian infrastructure build-out (SAM.gov, USAJobs, SEC EDGAR)                                                         | Planned |
+| R-STATES        | R6      | State-level research corpus — LegiScan state bills, CourtListener state courts, governor EO scrapers (AI self-healing)       | Planned |
 
 ### Sprint log
 
-| Sprint      | Dates   | Milestone                                                                   | Summary                                                                              |
-| ----------- | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| R-SIG       | 2026-03 | [M67](https://github.com/agile-explorations/democracy-monitor/milestone/67) | FR signal contamination fix — 16 signals scoped with agency restrictions             |
-| R-NAR       | 2026-03 | [M69](https://github.com/agile-explorations/democracy-monitor/milestone/69) | Narrative quality — pre-computed summaries, event-driven content, doc links          |
-| R-NOISE     | 2026-03 | [M70](https://github.com/agile-explorations/democracy-monitor/milestone/70) | CREC amendment + LegiScan broad-term noise reduction                                 |
-| R-CRON      | 2026-03 | [M71](https://github.com/agile-explorations/democracy-monitor/milestone/71) | Cron job resilience — cron_runs table, exit codes, self-healing                      |
-| R-SILENCE   | 2026-03 | —                                                                           | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis |
-| R-L1-DEMOTE | 2026-03 | —                                                                           | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring) |
-| R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72) | Ingest content quality — in progress                                                 |
+| Sprint      | Dates   | Milestone                                                                   | Summary                                                                                |
+| ----------- | ------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| R-SIG       | 2026-03 | [M67](https://github.com/agile-explorations/democracy-monitor/milestone/67) | FR signal contamination fix — 16 signals scoped with agency restrictions               |
+| R-NAR       | 2026-03 | [M69](https://github.com/agile-explorations/democracy-monitor/milestone/69) | Narrative quality — pre-computed summaries, event-driven content, doc links            |
+| R-NOISE     | 2026-03 | [M70](https://github.com/agile-explorations/democracy-monitor/milestone/70) | CREC amendment + LegiScan broad-term noise reduction                                   |
+| R-CRON      | 2026-03 | [M71](https://github.com/agile-explorations/democracy-monitor/milestone/71) | Cron job resilience — cron_runs table, exit codes, self-healing                        |
+| R-SILENCE   | 2026-03 | —                                                                           | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis   |
+| R-L1-DEMOTE | 2026-03 | —                                                                           | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring)   |
+| R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72) | Ingest content quality — 39/39 detection (was 22/39), 4/6 NC failures need calibration |
 
 Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 
@@ -198,6 +202,9 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 - **Await pipeline-critical writes.** Fire-and-forget `.catch()` silently drops errors when downstream steps depend on the data. If the process crashes right after, writes are lost entirely. Always `try { await } catch` for writes that affect pipeline correctness. (R-CRON)
 - **Metadata-driven filtering scales better than keyword tightening.** When keywords match noise (e.g., routing terms inside 8K-char amendment dumps), structural metadata (subGranuleClass, LegiScan subjects) provides a cleaner filter than trying to make keywords less ambiguous. (R-NOISE, R-SIG)
 - **Validate API identifiers against the live API before committing.** Agency slugs, endpoint paths, and field names are often undocumented and can't be guessed from display names (e.g., `commission-on-civil-rights` vs `civil-rights-commission`). (R-SIG)
+- **Data coverage is the binding constraint, not scoring precision.** 15 of 17 detection misses were caused by truncated content or wrong-category routing, not thresholds. Maximize recall first (fix content + routing), then tune precision (calibrate P1). The reverse order can't work — you can't tune what you can't see. (R-CONTENT)
+- **Staged validation prevents expensive mistakes.** Test P1 on a few known-event weeks ($3) before committing to a full L2 re-run ($80). The R-CONTENT event-week test caught a --fresh delete bug that would have produced a full re-run with 100% stale cached results. (R-CONTENT)
+- **Removing content caps exposes downstream assumptions.** Embedding batch size, char limits, delete queries — all worked with 8K-capped content but broke with full documents. Budget for cascading fixes when changing data size assumptions. (R-CONTENT)
 
 ### AI / LLM prompts
 
