@@ -46,7 +46,7 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 | Sprint          | Release | Goal                                                                                                                          | Status  |
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- |
-| R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                                | Planned |
+| R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                                | Done    |
 | R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion                              | Done    |
 | R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                                              | Planned |
 | R-GAP-BACKFILL  | R1      | Gap year backfill — Trump 2019-2020 (impeachment, COVID, Schedule F v1, Jan 6), then Biden 2023-2024                          | Planned |
@@ -71,6 +71,7 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 | R-SILENCE   | 2026-03 | —                                                                           | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis   |
 | R-L1-DEMOTE | 2026-03 | —                                                                           | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring)   |
 | R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72) | Ingest content quality — 39/39 detection (was 22/39), 4/6 NC failures need calibration |
+| R-CALIBRATE | 2026-03 | [M73](https://github.com/agile-explorations/democracy-monitor/milestone/73) | P1 calibration — 6/6 NCs passing, 39/39 detection, NC-5 reframed as baseline check     |
 
 Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 
@@ -207,6 +208,7 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 - **Data coverage is the binding constraint, not scoring precision.** 15 of 17 detection misses were caused by truncated content or wrong-category routing, not thresholds. Maximize recall first (fix content + routing), then tune precision (calibrate P1). The reverse order can't work — you can't tune what you can't see. (R-CONTENT)
 - **Staged validation prevents expensive mistakes.** Test P1 on a few known-event weeks ($3) before committing to a full L2 re-run ($80). The R-CONTENT event-week test caught a --fresh delete bug that would have produced a full re-run with 100% stale cached results. (R-CONTENT)
 - **Removing content caps exposes downstream assumptions.** Embedding batch size, char limits, delete queries — all worked with 8K-capped content but broke with full documents. Budget for cascading fixes when changing data size assumptions. (R-CONTENT)
+- **Verify threshold data before adjusting thresholds.** Every NC threshold change must be preceded by querying the actual documents in the failing weeks. If the content is genuine (Title 42 bills, NDAA), the threshold is wrong. If the content is noise, the prompt/routing needs fixing. (R-CALIBRATE)
 
 ### AI / LLM prompts
 
