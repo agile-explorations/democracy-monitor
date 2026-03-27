@@ -12,6 +12,7 @@ import type {
   TermStatistics,
 } from '@/lib/types';
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
+import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { getStoredNarrative } from './narrative-store';
 
 // ---------------------------------------------------------------------------
@@ -67,18 +68,23 @@ export async function getTopConcerningDocuments(
       a2.confidence DESC NULLS LAST
     LIMIT ${limit}
   `);
-  return (rows.rows as Row[]).map((r) => ({
-    title: (r.title as string) ?? 'Untitled',
-    sourceType: (r.source_type as string) ?? 'unknown',
-    sourceOrigin: r.source_origin as string | null,
-    agency: r.agency as string | null,
-    publishedAt: toDateStr(r.published_at),
-    url: (r.url as string) ?? '',
-    assessment: (r.assessment as string) ?? 'unknown',
-    erosionType: r.erosion_type as string | null,
-    reasoning: r.reasoning as string | null,
-    content: r.content as string | null,
-  }));
+  return (rows.rows as Row[]).map((r) => {
+    const title = (r.title as string) ?? 'Untitled';
+    const rawContent = r.content as string | null;
+    const sourceOrigin = r.source_origin as string | null;
+    return {
+      title,
+      sourceType: (r.source_type as string) ?? 'unknown',
+      sourceOrigin,
+      agency: r.agency as string | null,
+      publishedAt: toDateStr(r.published_at),
+      url: (r.url as string) ?? '',
+      assessment: (r.assessment as string) ?? 'unknown',
+      erosionType: r.erosion_type as string | null,
+      reasoning: r.reasoning as string | null,
+      content: rawContent ? stripBoilerplate(rawContent, sourceOrigin, title) : null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
