@@ -214,15 +214,25 @@ export default function Home() {
 
             {/* Cumulative concern chart */}
             <section>
-              <div className="mb-1">
-                <h2 className="text-sm font-semibold text-dm-text-primary">
-                  Cumulative Concern Score
-                </h2>
-                <p className="text-[11px] text-dm-muted mt-0.5">
-                  {readingLevel === 'summary'
-                    ? 'Weighted concern score across all categories per week'
-                    : 'Concern score stacked by severity: categories at Elevated (1 point each), Divergent (2 points), or Confirmed Concern (3 points)'}
-                </p>
+              <div className="flex items-start justify-between mb-1">
+                <div>
+                  <h2 className="text-sm font-semibold text-dm-text-primary">
+                    Cumulative Concern Score
+                  </h2>
+                  <p className="text-[11px] text-dm-muted mt-0.5">
+                    {readingLevel === 'summary'
+                      ? 'Weighted concern score across all categories per week'
+                      : 'Concern score stacked by severity: categories at Elevated (1 point each), Divergent (2 points), or Confirmed Concern (3 points)'}
+                  </p>
+                </div>
+                <EmbedButton
+                  theme={resolvedMode}
+                  range={rangePreset}
+                  comparison={overview.synchrony.some(
+                    (d) => d.trumpT1Trend != null || d.bidenT1Trend != null,
+                  )}
+                  readingLevel={readingLevel}
+                />
               </div>
               <SynchronyChart
                 data={overview.synchrony}
@@ -238,17 +248,9 @@ export default function Home() {
 
             {/* Status distribution */}
             <section>
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-sm font-semibold text-dm-text-primary">Status Distribution</h2>
-                <EmbedButton
-                  theme={resolvedMode}
-                  range={rangePreset}
-                  comparison={overview.synchrony.some(
-                    (d) => d.trumpT1Trend != null || d.bidenT1Trend != null,
-                  )}
-                  readingLevel={readingLevel}
-                />
-              </div>
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
+                Status Distribution
+              </h2>
               {statusRangeLabel && (
                 <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
               )}

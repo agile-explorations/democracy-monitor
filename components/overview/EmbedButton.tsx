@@ -50,7 +50,7 @@ export function EmbedButton({ theme, range, comparison, readingLevel }: EmbedBut
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[10px] text-dm-muted hover:text-dm-accent transition-colors flex items-center gap-1"
+        className="text-[11px] text-dm-text-secondary hover:text-dm-accent border border-dm-border hover:border-dm-accent rounded px-2 py-0.5 transition-colors flex items-center gap-1"
         title="Get embed code for this chart"
       >
         <svg
