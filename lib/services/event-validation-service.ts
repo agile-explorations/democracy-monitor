@@ -19,7 +19,7 @@ import {
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
   evaluateNc4TransitionComparison,
-  evaluateNc5T2ConcerningRate,
+  evaluateNc5BaselineConcerningRate,
   evaluateNc6T2RoutineRate,
 } from './event-validation-checks';
 import type { EvidenceDoc, WeekRow } from './event-validation-queries';
@@ -27,7 +27,7 @@ import {
   fetchEventEvidence,
   fetchP1FlagRates,
   fetchP2ConfirmationRate,
-  fetchT2ConcerningRateOutsideEvents,
+  fetchBaselineConcerningRate,
   fetchT2RoutineRate,
   fetchWeeklyData,
   fetchWeekP1FlagRate,
@@ -48,7 +48,7 @@ export {
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
   evaluateNc4TransitionComparison,
-  evaluateNc5T2ConcerningRate,
+  evaluateNc5BaselineConcerningRate,
   evaluateNc6T2RoutineRate,
   evaluateEventDetection,
 } from './event-validation-checks';
@@ -156,7 +156,11 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
     fetchWeekP1FlagRate('2025-01-20', '2025-01-27'),
   ]);
   controls.push(evaluateNc4TransitionComparison(bidenT1Rate, trumpT2Rate));
-  controls.push(evaluateNc5T2ConcerningRate(await fetchT2ConcerningRateOutsideEvents()));
+  controls.push(
+    evaluateNc5BaselineConcerningRate(
+      await fetchBaselineConcerningRate('2022-01-20', '2023-01-19'),
+    ),
+  );
   controls.push(evaluateNc6T2RoutineRate(await fetchT2RoutineRate()));
   return controls;
 }

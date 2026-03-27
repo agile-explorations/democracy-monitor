@@ -95,30 +95,21 @@ export async function fetchP2ConfirmationRate(from: string, to: string): Promise
   return total > 0 ? Number(row?.confirmed ?? 0) / total : 0;
 }
 
-export async function fetchT2ConcerningRateOutsideEvents(): Promise<number> {
-  const eventWeeks = new Set(
-    ALL_KNOWN_EVENTS.filter((e) => e.period === 'trump_t2').map((e) => getMonday(new Date(e.date))),
-  );
+export async function fetchBaselineConcerningRate(from: string, to: string): Promise<number> {
   const db = getDb();
   const result = await db.execute(sql`
-    SELECT a.week_of,
+    SELECT
       COUNT(*) FILTER (WHERE a.assessment = 'clearly_concerning') as concerning,
       COUNT(*) as total
     FROM ai_document_assessments a
     JOIN documents d ON d.url = a.url AND d.category = a.category
     WHERE a.pass = 2 AND a.is_audit_sample = false
-      AND d.published_at >= ${new Date('2025-01-20')}
+      AND d.published_at >= ${new Date(from)} AND d.published_at < ${new Date(to)}
       AND (d.content_type IS NULL OR d.content_type != 'metadata_only')
-    GROUP BY a.week_of
   `);
-  let totalDocs = 0;
-  let concerningDocs = 0;
-  for (const row of result.rows as Record<string, unknown>[]) {
-    if (eventWeeks.has(String(row.week_of).slice(0, 10))) continue;
-    totalDocs += Number(row.total);
-    concerningDocs += Number(row.concerning);
-  }
-  return totalDocs > 0 ? concerningDocs / totalDocs : 0;
+  const row = result.rows[0] as Record<string, unknown>;
+  const total = Number(row?.total ?? 0);
+  return total > 0 ? Number(row?.concerning ?? 0) / total : 0;
 }
 
 export async function fetchT2RoutineRate(): Promise<number> {

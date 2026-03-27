@@ -8,7 +8,7 @@ import {
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
   evaluateNc4TransitionComparison,
-  evaluateNc5T2ConcerningRate,
+  evaluateNc5BaselineConcerningRate,
   evaluateNc6T2RoutineRate,
   evaluateEventDetection,
 } from '@/lib/services/event-validation-checks';
@@ -163,13 +163,13 @@ describe('negative control evaluations', () => {
     });
   });
 
-  describe('NC-5: T2 concerning rate outside events', () => {
-    it('passes when ≤15%', () => {
-      expect(evaluateNc5T2ConcerningRate(0.08).pass).toBe(true);
+  describe('NC-5: baseline concerning rate', () => {
+    it('passes when ≤5%', () => {
+      expect(evaluateNc5BaselineConcerningRate(0.03).pass).toBe(true);
     });
 
-    it('fails when >15%', () => {
-      expect(evaluateNc5T2ConcerningRate(0.2).pass).toBe(false);
+    it('fails when >5%', () => {
+      expect(evaluateNc5BaselineConcerningRate(0.08).pass).toBe(false);
     });
   });
 
