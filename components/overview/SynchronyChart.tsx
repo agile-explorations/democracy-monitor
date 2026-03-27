@@ -42,7 +42,6 @@ export function SynchronyChart({
   selectedWeek,
   onWeekClick,
 }: SynchronyChartProps) {
-  const [showComparison, setShowComparison] = useState(false);
   const colors = useMemo(() => CHART_COLORS[mode], [mode]);
   const statusColors: StatusColorMap = useMemo(() => CONCERN_LEVEL_COLORS[mode], [mode]);
   const comparisonColors = useMemo(() => COMPARISON_COLORS[mode], [mode]);
@@ -51,6 +50,8 @@ export function SynchronyChart({
     () => data.some((d) => d.trumpT1Trend != null || d.bidenT1Trend != null),
     [data],
   );
+  // Show comparison by default when comparison data exists
+  const [showComparison, setShowComparison] = useState(hasComparison);
 
   const trendData: TrendPoint[] = useMemo(() => {
     const scores = data.map((d) => d.weightedScore);

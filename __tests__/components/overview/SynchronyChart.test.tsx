@@ -109,7 +109,7 @@ describe('SynchronyChart', () => {
     expect(screen.getByTestId('composed-chart')).toBeDefined();
   });
 
-  it('does not render comparison lines by default', () => {
+  it('does not render comparison lines by default when no comparison data', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
     expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
     expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
@@ -132,17 +132,15 @@ describe('SynchronyChart', () => {
     const compareBtn = screen.getByText('Compare Previous Administrations');
     expect(compareBtn).toBeDefined();
 
-    // Comparison lines not rendered yet
-    expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
-    expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
-
-    // Toggle comparison on
-    fireEvent.click(compareBtn);
+    // Comparison lines and legend shown by default when comparison data exists
     expect(screen.getByTestId('line-trumpT1Trend')).toBeDefined();
     expect(screen.getByTestId('line-bidenT1Trend')).toBeDefined();
-
-    // Legend shows comparison labels
     expect(screen.getByText('Trump T1')).toBeDefined();
     expect(screen.getByText('Biden T1')).toBeDefined();
+
+    // Toggle comparison off
+    fireEvent.click(compareBtn);
+    expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
+    expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
   });
 });
