@@ -100,11 +100,11 @@ describe('negative control evaluations', () => {
   });
 
   describe('NC-2: Biden 2022 P2 confirmation rate', () => {
-    it('passes within 8–70% range', () => {
+    it('passes within 7–70% range', () => {
       expect(evaluateNc2BidenP2ConfirmRate(0.35).pass).toBe(true);
     });
 
-    it('fails below 8%', () => {
+    it('fails below 7%', () => {
       expect(evaluateNc2BidenP2ConfirmRate(0.05).pass).toBe(false);
     });
 
@@ -113,33 +113,33 @@ describe('negative control evaluations', () => {
     });
 
     it('passes at boundaries', () => {
-      expect(evaluateNc2BidenP2ConfirmRate(0.08).pass).toBe(true);
+      expect(evaluateNc2BidenP2ConfirmRate(0.07).pass).toBe(true);
       expect(evaluateNc2BidenP2ConfirmRate(0.7).pass).toBe(true);
     });
   });
 
   describe('NC-3: Biden 2022 elevated weeks (tiered thresholds)', () => {
-    it('passes at ≤5% for categories with ≥20 avg docs/week', () => {
+    it('passes at ≤8% for categories with ≥20 avg docs/week', () => {
       const data = [
-        { category: 'civilService', elevatedCount: 2, totalWeeks: 52, avgDocsPerWeek: 30 },
+        { category: 'civilService', elevatedCount: 4, totalWeeks: 52, avgDocsPerWeek: 30 },
       ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(true);
     });
 
-    it('fails at >5% for categories with ≥20 avg docs/week', () => {
+    it('fails at >8% for categories with ≥20 avg docs/week', () => {
       const data = [
-        { category: 'civilService', elevatedCount: 5, totalWeeks: 52, avgDocsPerWeek: 30 },
+        { category: 'civilService', elevatedCount: 6, totalWeeks: 52, avgDocsPerWeek: 30 },
       ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
     });
 
-    it('passes at ≤10% for thin categories (<20 avg docs/week)', () => {
-      const data = [{ category: 'elections', elevatedCount: 5, totalWeeks: 52, avgDocsPerWeek: 6 }];
+    it('passes at ≤15% for thin categories (<20 avg docs/week)', () => {
+      const data = [{ category: 'elections', elevatedCount: 7, totalWeeks: 52, avgDocsPerWeek: 6 }];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(true);
     });
 
-    it('fails at >10% for thin categories', () => {
-      const data = [{ category: 'elections', elevatedCount: 6, totalWeeks: 52, avgDocsPerWeek: 6 }];
+    it('fails at >15% for thin categories', () => {
+      const data = [{ category: 'elections', elevatedCount: 9, totalWeeks: 52, avgDocsPerWeek: 6 }];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
     });
 
