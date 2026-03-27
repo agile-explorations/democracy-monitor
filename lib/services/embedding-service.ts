@@ -39,7 +39,9 @@ export function isTokenLimitError(err: unknown): boolean {
   return (
     msg.includes('maximum context length') ||
     msg.includes('maximum input length') ||
-    msg.includes('max_tokens_per_request')
+    msg.includes('max_tokens_per_request') ||
+    msg.includes('max 300000 tokens') ||
+    /\bmax\b.*\btokens\b/i.test(msg)
   );
 }
 
