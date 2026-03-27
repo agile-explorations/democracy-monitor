@@ -7,6 +7,7 @@ import {
   renderIngest,
   renderDataReport,
   renderDetection,
+  renderBacktest,
 } from '@/components/system/ValidationReports';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
@@ -152,6 +153,12 @@ export default function HealthPage() {
               description="Validates the system correctly detects known events and does not over-flag during calm baseline periods."
               endpoint="/api/health/validate-detection"
               renderReport={renderDetection}
+            />
+            <ValidationPanel
+              title="Historical Backtest"
+              description="Tests detection accuracy against Trump T1 (2017-2018) known events with per-category precision and noise metrics."
+              endpoint="/api/health/backtest"
+              renderReport={renderBacktest}
             />
           </>
         )}

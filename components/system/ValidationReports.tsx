@@ -494,3 +494,73 @@ export function renderDetection(data: any) {
     </div>
   );
 }
+
+export function renderBacktest(data: any) {
+  return (
+    <div className="space-y-5 max-h-[600px] overflow-y-auto">
+      <div className="flex flex-wrap gap-4 text-xs">
+        <div>
+          <span className="text-dm-muted">Period: </span>
+          <span className="text-dm-text-primary font-mono">{data.period}</span>
+        </div>
+        <div>
+          <span className="text-dm-muted">Detection: </span>
+          <span className="text-dm-text-primary font-mono">
+            {data.detectionRate}% ({data.detected} hit + {data.latency} late / {data.totalEvents}{' '}
+            events)
+          </span>
+        </div>
+        <div>
+          <span className="text-dm-muted">Missed: </span>
+          <span className="text-dm-text-primary font-mono">{data.missed}</span>
+        </div>
+      </div>
+
+      {data.categories && data.categories.length > 0 && (
+        <>
+          <SubsectionHeading
+            title="Per-Category Backtest"
+            description="Detection rate, noise (non-event elevated weeks), and precision per category."
+          />
+          <DataTable
+            headers={['Category', 'Detect', 'Hit', 'Late', 'Miss', 'Noise', 'Precision', 'Peak']}
+            rows={data.categories.map((c: any) => [
+              c.category,
+              `${c.detectionRate}%`,
+              String(c.detected),
+              String(c.latency),
+              String(c.missed),
+              `${c.noise}%`,
+              `${c.precision}%`,
+              c.peakWeek || '\u2014',
+            ])}
+          />
+        </>
+      )}
+
+      {data.categories?.some((c: any) => c.missedDescriptions?.length > 0) && (
+        <>
+          <SubsectionHeading
+            title="Missed Events"
+            description="Known events not detected in the event week or following week."
+          />
+          <div className="space-y-1 text-xs">
+            {data.categories
+              .filter((c: any) => c.missedDescriptions?.length > 0)
+              .flatMap((c: any) =>
+                c.missedDescriptions.map((m: any, i: number) => (
+                  <div key={`${c.category}-${i}`} className="flex gap-2">
+                    <span className="text-dm-muted font-mono shrink-0">{m.date}</span>
+                    <span className="text-dm-text-secondary">{c.category}:</span>
+                    <span className="text-dm-text-primary">
+                      {m.description} <span className="text-dm-muted">[{m.reason}]</span>
+                    </span>
+                  </div>
+                )),
+              )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
