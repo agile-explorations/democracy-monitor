@@ -5,6 +5,7 @@ import { SEQUENTIAL_SCALE_COLORS, Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-
 import type { ThematicHeatmapRow, ThematicMetric } from '@/lib/types/overview';
 import { divergingZScoreColor, sequentialScaleColor } from '@/lib/utils/color';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { HeatmapTooltip } from './HeatmapTooltip';
 
 export interface ThematicHeatmapProps {
   rows: ThematicHeatmapRow[];
@@ -248,18 +249,23 @@ function ThematicHeatmapRow({
           : {};
 
         return (
-          <div
+          <HeatmapTooltip
             key={week.week}
-            className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
-            style={
-              color === null
-                ? { background: noDataBg(mode), ...bootstrapBorder }
-                : { backgroundColor: color, ...bootstrapBorder }
-            }
-            title={tooltip}
-            role="cell"
-            onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}
-          />
+            category={row.category}
+            week={week.week}
+            tooltipText={tooltip}
+          >
+            <div
+              className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
+              style={
+                color === null
+                  ? { background: noDataBg(mode), ...bootstrapBorder }
+                  : { backgroundColor: color, ...bootstrapBorder }
+              }
+              role="cell"
+              onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}
+            />
+          </HeatmapTooltip>
         );
       })}
     </>
