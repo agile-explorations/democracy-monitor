@@ -4,6 +4,7 @@ import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
+import { EmbedButton } from '@/components/overview/EmbedButton';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
@@ -237,9 +238,17 @@ export default function Home() {
 
             {/* Status distribution */}
             <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
-                Status Distribution
-              </h2>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-sm font-semibold text-dm-text-primary">Status Distribution</h2>
+                <EmbedButton
+                  theme={resolvedMode}
+                  range={rangePreset}
+                  comparison={overview.synchrony.some(
+                    (d) => d.trumpT1Trend != null || d.bidenT1Trend != null,
+                  )}
+                  readingLevel={readingLevel}
+                />
+              </div>
               {statusRangeLabel && (
                 <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
               )}
