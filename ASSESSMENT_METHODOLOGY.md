@@ -46,18 +46,16 @@ The system monitors 14 institutional categories, aligned to frameworks used by V
 
 ## Detection Architecture
 
-Democracy Monitor uses multiple analysis methods. Two **active detection methods** drive concern status. Two additional methods provide **descriptive context** for narratives and research without influencing the status determination.
+Democracy Monitor uses multiple analysis methods. **One active detection method** — AI document review — drives concern status. Three additional methods provide **descriptive context** for narratives and research without influencing the status determination.
 
-### Active Detection Methods
+### Active Detection Method
 
-These methods determine the concern status:
-
-#### AI Document Review (Primary Detection)
+#### AI Document Review (Sole Detection Layer)
 
 The AI document review uses artificial intelligence to read and evaluate individual documents. To reduce single-provider bias, it uses a two-pass design with different AI providers:
 
-- **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
-- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots. Pass 2 receives week-level context (flag rate, peer titles, trajectory) to inform its assessment.
+- **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Each document receives up to 8,000 characters of boilerplate-stripped content. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
+- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Pass 2 also receives up to 8,000 characters of boilerplate-stripped content, plus week-level context (flag rate, peer titles, trajectory). Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots.
 
 Concern status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
 
@@ -67,18 +65,18 @@ Concern status is determined by absolute Pass 2 classification counts — no cro
 
 An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
-#### Silence Detection
+### Descriptive Context Methods
 
-Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo) have gone unusually quiet while independent-branch sources (CourtListener, congressional records, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression.
+These methods are computed and stored for narrative grounding and research, but **do not influence concern status**:
+
+#### Silence Detection (Descriptive Only)
+
+Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo) have gone unusually quiet while independent-branch sources (CourtListener, congressional records, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression. Silence scores are preserved as narrative context but do not trigger status escalation.
 
 - Uses an 8-week intra-administration rolling window to establish "normal" government volume
 - Computes a z-score for government-source volume deviation
 - Requires both government silence (z > 1.5σ below mean) AND independent activity to be conspicuous
 - Cold-start periods (fewer than 4 weeks of data) are flagged as low confidence
-
-### Descriptive Context Methods
-
-These methods are computed and stored for narrative grounding and research, but **do not influence concern status**:
 
 #### Structural Anomaly Detection (Descriptive Only)
 
@@ -158,7 +156,7 @@ Source silence detection compares each source's output against its expected publ
 
 For categories at Elevated status or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
 
-- **Expert** — Technical analysis (400-800 words) for researchers and policy analysts, citing specific metrics, z-scores, and document references.
+- **Expert** — Technical analysis (400-800 words) for researchers and policy analysts, citing specific documents with links, counter-arguments, and limitations.
 - **Public** — Accessible summary (200-500 words) for general audiences, avoiding jargon and focusing on what the findings mean in practical terms.
 
 Categories at Stable status use a template-based summary rather than AI generation, since there is nothing unusual to explain.
@@ -178,6 +176,8 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 - **Automation bias** — Presenting automated assessments alongside official government documents risks creating an impression of certainty that the methodology does not support. All findings are indicators warranting human review, not conclusions.
 
 ## Reproducibility
+
+**Content preparation:** Raw document content is stored in full (no character caps). Before AI assessment, content is loaded up to 16,000 characters from the database, boilerplate is stripped (Federal Register GPO headers, CPD CSS contamination, GovInfo report headers, CREC title repetition), and then sliced to 8,000 characters for both Pass 1 and Pass 2. Boilerplate stripping is applied at assessment time only — raw content remains intact in the database for future reprocessing.
 
 All scoring thresholds, dimension weights, and configuration constants are defined in a single file: [`lib/methodology/scoring-config.ts`](lib/methodology/scoring-config.ts). Key values include:
 

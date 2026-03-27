@@ -36,9 +36,8 @@ function SummaryContent() {
           Democracy Monitor is an open-source system that tracks signs of executive-power
           centralization across U.S. government institutions. It reads publicly available government
           documents — federal regulations, court filings, press releases, legislative reports — and
-          uses three independent detection methods to identify when institutional norms may be
-          shifting. When multiple methods flag the same category, confidence in the finding
-          increases.
+          uses AI content assessment as its primary detection method, supported by three descriptive
+          context methods, to identify when institutional norms may be shifting.
         </p>
         <p>
           The system is designed to surface patterns worth human examination, not render definitive
@@ -50,20 +49,22 @@ function SummaryContent() {
       {/* Detection Architecture */}
       <Section title="Detection Architecture">
         <p>
-          Democracy Monitor uses two <strong>active detection methods</strong> that drive concern
-          status, plus two <strong>descriptive context methods</strong> that provide narrative
-          grounding without influencing the status determination.
+          Democracy Monitor uses <strong>one active detection method</strong> (AI document review)
+          that drives concern status, plus three <strong>descriptive context methods</strong> that
+          provide narrative grounding without influencing the status determination.
         </p>
         <p>
-          <strong>AI Content Assessment (active)</strong> — Two-pass AI review using different
-          providers (OpenAI for screening, Anthropic for detailed review) to ensure epistemic
-          independence. Pass 2 receives week-level context including peer document titles and flag
+          <strong>AI Content Assessment (sole active detection)</strong> — Two-pass AI review using
+          different providers (OpenAI for screening, Anthropic for detailed review) to ensure
+          epistemic independence. Both passes receive up to 8,000 characters of boilerplate-stripped
+          content. Pass 2 also receives week-level context including peer document titles and flag
           rate trajectory. Documents are classified from routine to clearly concerning.
         </p>
         <p>
-          <strong>Silence Detection (active)</strong> — Measures whether government-controlled
-          sources have gone unusually quiet while independent-branch sources (courts, Congress)
-          remain active. Uses an 8-week intra-administration rolling window.
+          <strong>Silence Detection (descriptive only)</strong> — Measures whether
+          government-controlled sources have gone unusually quiet while independent-branch sources
+          (courts, Congress) remain active. Uses an 8-week intra-administration rolling window.
+          Provides narrative context but does not drive concern status.
         </p>
         <p>
           <strong>Structural Anomaly (descriptive only)</strong> — Deterministic, metadata-only
@@ -145,9 +146,8 @@ function DetailedContent() {
           Democracy Monitor is an open-source system that tracks signs of executive-power
           centralization across U.S. government institutions. It reads publicly available government
           documents — federal regulations, court filings, press releases, legislative reports — and
-          uses three independent detection methods to identify when institutional norms may be
-          shifting. When multiple methods flag the same category, confidence in the finding
-          increases.
+          uses AI content assessment as its primary detection method, supported by three descriptive
+          context methods, to identify when institutional norms may be shifting.
         </p>
         <p>
           The system is designed to surface patterns worth human examination, not render definitive
@@ -406,7 +406,7 @@ function DetailedContent() {
           ]}
         />
         <p>
-          AI document review is the <strong>primary active detection method</strong> driving concern
+          AI document review is the <strong>sole active detection method</strong> driving concern
           status. Structural anomaly, silence detection, and thematic drift provide descriptive
           context but do not influence the concern status.
         </p>

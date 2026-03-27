@@ -9,13 +9,13 @@ function SummaryContent() {
       <Section title="Overview">
         <p>
           Democracy Monitor is a Next.js application backed by PostgreSQL (with pgvector for
-          embeddings) and Redis for caching. It ingests documents from 7 government data sources,
-          processes them through a multi-layer detection pipeline, and presents findings via an
-          interactive dashboard.
+          embeddings) and Redis for caching. It ingests documents from 9 government data source
+          types, processes them through an AI-driven detection pipeline, and presents findings via
+          an interactive dashboard.
         </p>
         <p>
-          A daily cron job fetches new documents, scores them, computes weekly aggregates, generates
-          embeddings, runs AI two-pass content assessment, and produces narrative summaries. The
+          Weekly cron jobs fetch new documents, score them, compute weekly aggregates, generate
+          embeddings, run AI two-pass content assessment, and produce narrative summaries. The
           entire pipeline is automated and requires no manual intervention.
         </p>
       </Section>
@@ -32,18 +32,19 @@ function SummaryContent() {
 
       <Section title="Data Sources">
         <p>
-          Seven source types provide coverage of different government activities: the Federal
-          Register (executive orders, rules), White House briefings, GDELT global news,
-          CourtListener (federal courts), DOJ press releases, GovInfo/GAO reports, and FEC filings.
-          RSS feeds supplement specific categories.
+          Nine source types provide coverage of different government activities: the Federal
+          Register (executive orders, rules), GovInfo (presidential documents via CPD,
+          GAO/congressional reports), Congressional Record (CREC floor speeches), CourtListener
+          (federal courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA), LegiScan
+          (federal legislation), FEC filings, and GDELT global news.
         </p>
       </Section>
 
       <Section title="Deployment">
         <p>
           The application is deployed on Render.com with a web service (Next.js), managed
-          PostgreSQL, Redis key-value store, and three cron jobs (daily snapshot, daily digest,
-          hourly uptime check).
+          PostgreSQL, Redis key-value store, and three weekly cron jobs: LegiScan fetch (Monday
+          01:00 UTC), snapshot pipeline (Monday 03:00 UTC), and database dump (Monday 05:00 UTC).
         </p>
       </Section>
     </>
@@ -165,14 +166,16 @@ function DetailedContent() {
               'govinfo-fetcher.ts',
             ],
             ['FEC', 'Advisory opinions and Matters Under Review (MURs)', 'fec-fetcher.ts'],
+            ['CREC', 'Congressional Record floor speeches (Senate + House)', 'crec-fetcher.ts'],
             [
-              'RSS / HTML / JSON',
-              'Inspector General reports, FCC items, White House briefings',
-              'rss-fetcher.ts',
+              'LegiScan',
+              'Federal legislative bill tracking via bulk datasets',
+              'legiscan-fetcher.ts',
             ],
+            ['OIG', 'Inspector General reports (HHS, DOJ, SSA)', 'hhs-oig-fetcher.ts'],
             [
-              'CPD (GDELT)',
-              'Global news coverage filtered to U.S. government activity',
+              'GDELT',
+              'Global news coverage filtered to U.S. government activity (metadata only)',
               'gdelt-fetcher.ts',
             ],
           ]}
@@ -183,7 +186,7 @@ function DetailedContent() {
           signal URLs,{' '}
           <code className="text-xs bg-dm-card px-1 py-0.5 rounded">toContentItem()</code> normalizes
           responses, <code className="text-xs bg-dm-card px-1 py-0.5 rounded">fetchRecent()</code>{' '}
-          handles daily snapshots, and{' '}
+          handles weekly snapshots, and{' '}
           <code className="text-xs bg-dm-card px-1 py-0.5 rounded">fetchHistorical()</code> handles
           backfill.
         </p>
@@ -235,12 +238,20 @@ function DetailedContent() {
           headers={['Job', 'Schedule', 'What It Does']}
           rows={[
             [
-              'Daily Snapshot',
-              '06:00 UTC',
-              'Fetches new documents from all sources, runs three-layer assessment, generates narratives',
+              'LegiScan Fetch',
+              'Monday 01:00 UTC',
+              'Downloads bulk legislative datasets from LegiScan, classifies bills into categories',
             ],
-            ['Daily Digest', '07:00 UTC', 'Compiles assessment results into a digest notification'],
-            ['Uptime Check', 'Hourly', 'Verifies source availability and flags silent sources'],
+            [
+              'Weekly Snapshot',
+              'Monday 03:00 UTC',
+              'Fetches new documents from all sources, runs AI assessment, computes aggregates, generates narratives',
+            ],
+            [
+              'Database Dump',
+              'Monday 05:00 UTC',
+              'Creates pg_dump backup and uploads to GitHub Releases for disaster recovery',
+            ],
           ]}
         />
         <p>

@@ -2,29 +2,28 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and public APIs, then uses AI content assessment and silence detection to assess whether democratic checks and balances are functioning normally.
+A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and congressional records, then uses AI content assessment to identify when democratic checks and balances may be under pressure.
 
 ## What It Does
 
-The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a convergence status:
+The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a concern status:
 
-| Status                | Meaning                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Stable**            | No active detection layers elevated — institutions functioning normally                                    |
-| **Elevated**          | One active detection layer flagging anomalies — worth monitoring                                           |
-| **Divergent**         | Both active layers flag anomalies — AI content concerns coincide with government silence                   |
-| **Confirmed Concern** | Both active layers elevated AND high AI concern rate — independent methods converge on concerning findings |
+| Status                | Meaning                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| **Stable**            | AI content assessment found no concerning documents                                      |
+| **Elevated**          | AI two-pass review identifies concerning documents with Pass 2 corroboration             |
+| **Confirmed Concern** | AI assessment elevated with high Pass 2 concern rate (≥20%). Warrants close examination. |
 
-No single detection layer can escalate a category beyond Elevated on its own. Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
+Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
 
 ## How It Works
 
-1. **Data collection** — Cron jobs fetch from multiple source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, GDELT) plus RSS feeds, storing documents in PostgreSQL
-2. **AI content assessment** (active) — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document, then Claude evaluates flagged documents with week-level context. Different providers ensure independent evaluation. Tracks flag rates and concern rates against baselines.
-3. **Silence detection** (active) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active, using an 8-week intra-administration rolling window.
-4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive convergence status.
-5. **Thematic drift** (descriptive context) — Embedding-based 8-week rolling window detecting semantic shifts in government output. Provides research context but does not drive convergence status.
-6. **Convergence synthesis** — Combines the two active layers into a single status, requiring both to agree for escalation beyond Elevated
+1. **Data collection** — Weekly cron jobs fetch from 9 source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, Congressional Record, GDELT), storing full documents in PostgreSQL
+2. **AI content assessment** (sole active detection) — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document (8K chars, boilerplate-stripped), then Claude evaluates flagged documents with week-level context. Different providers ensure independent evaluation.
+3. **Silence detection** (descriptive context) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active. Provides narrative context but does not drive concern status.
+4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive concern status.
+5. **Thematic drift** (descriptive context) — Embedding-based 8-week rolling window detecting semantic shifts in government output. Provides research context but does not drive concern status.
+6. **Concern synthesis** — AI document review determines concern status via absolute Pass 2 thresholds. Structural, silence, and thematic data enrich narratives without influencing the status.
 
 For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md).
 
@@ -104,7 +103,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 
 ### Areas where help is needed
 
-- **Detection methodology** — Improving three-layer detection accuracy, reducing false positives in structural and AI assessment
+- **Detection methodology** — Improving AI assessment accuracy, reducing false positives, expanding known-events validation
 - **Signal coverage** — Adding data sources for under-monitored categories (state-level data, international indices)
 - **Source integrations** — New fetchers for government data sources (Oversight.gov, state-level courts)
 - **Test coverage** — 2000+ tests across 138 files; UI components and newer services need coverage

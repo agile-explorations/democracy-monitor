@@ -88,8 +88,8 @@ Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, 
 
 The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, Federal Register queries, CourtListener, DOJ press releases, GovInfo/GAO, FEC filings, GDELT news). The flow is:
 
-1. **Cron/backfill** fetches data from external sources (FR, WH, GDELT, CourtListener, DOJ, GovInfo, FEC, RSS) and stores documents in PostgreSQL
-2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs three-layer assessment (structural anomaly → AI two-pass → thematic drift) → convergence synthesis → stores assessment snapshots
+1. **Cron/backfill** fetches data from external sources (FR, CourtListener, DOJ, GovInfo/CPD, FEC, CREC, LegiScan, OIG, GDELT) and stores full documents in PostgreSQL
+2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs assessment (structural anomaly + AI two-pass + thematic drift) → convergence synthesis → stores assessment snapshots
 3. **API routes** (`/api/proxy`, `/api/federal-register`, `/api/scrape-tracker`) act as server-side proxies with Redis caching (in-memory fallback)
 4. **UI** reads stored snapshots and documents via API routes; progressive disclosure surfaces assessment details on demand
 5. Assessment returns a convergence status (Stable → Elevated → ConfirmedConcern) driven by L2 AI content assessment, with descriptive context from structural, silence, and thematic layers
@@ -128,7 +128,7 @@ __tests__/        # Vitest test files mirroring lib/ structure
 - **`lib/data/assessment-rules.ts`** — Keyword dictionaries per category and severity tier (annotation layer).
 - **`lib/services/assessment-service.ts`** — Keyword-based assessment engine with authority weighting and volume thresholds.
 - **`lib/services/ai-assessment-service.ts`** — AI Skeptic review (runs after keyword assessment).
-- **`lib/services/structural-scoring-service.ts`** — Structural anomaly detection (JSD, z-scores, 5 dimensions).
+- **`lib/services/structural-scoring-service.ts`** — Structural anomaly detection (JSD, z-scores, 6 dimensions).
 - **`lib/services/thematic-drift-service.ts`** — Rolling thematic drift (8-week intra-admin window).
 - **`lib/services/concern-synthesis.ts`** — Concern synthesis (AI review drives status; structural/silence/thematic provide context).
 - **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
