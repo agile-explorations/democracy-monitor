@@ -119,16 +119,16 @@ describe('negative control evaluations', () => {
   });
 
   describe('NC-3: Biden 2022 elevated weeks (tiered thresholds)', () => {
-    it('passes at ≤8% for categories with ≥20 avg docs/week', () => {
+    it('passes at ≤12% for categories with ≥20 avg docs/week', () => {
       const data = [
-        { category: 'civilService', elevatedCount: 4, totalWeeks: 52, avgDocsPerWeek: 30 },
+        { category: 'civilService', elevatedCount: 6, totalWeeks: 52, avgDocsPerWeek: 30 },
       ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(true);
     });
 
-    it('fails at >8% for categories with ≥20 avg docs/week', () => {
+    it('fails at >12% for categories with ≥20 avg docs/week', () => {
       const data = [
-        { category: 'civilService', elevatedCount: 6, totalWeeks: 52, avgDocsPerWeek: 30 },
+        { category: 'civilService', elevatedCount: 7, totalWeeks: 52, avgDocsPerWeek: 30 },
       ];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
     });

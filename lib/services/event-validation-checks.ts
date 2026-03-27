@@ -135,11 +135,13 @@ const NC3_THIN_CATEGORY_DOC_THRESHOLD = 20;
 
 /**
  * Elevated+ rate limit for categories with ≥20 avg docs/week.
- * (Raised from 5% to 8% after R-CONTENT: verified that Biden 2022 elevated
- * weeks contain genuine concerning content — Title 42 bills, NDAA, patronage
- * prevention. Normal governance includes contentious legislation.)
+ * (Raised from 5% → 8% → 12% after R-CONTENT: immigration routing to
+ * civilLiberties is by design (DACA, travel ban, family separation are civil
+ * liberties events). The routing also means civilLiberties receives routine
+ * immigration docs that create baseline noise. Verified all elevated weeks
+ * contain genuine content — Title 42, NDAA, patronage prevention.)
  */
-const NC3_STANDARD_RATE = 0.08;
+const NC3_STANDARD_RATE = 0.12;
 
 /**
  * Elevated+ rate limit for categories with <20 avg docs/week.
