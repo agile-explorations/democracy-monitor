@@ -447,10 +447,8 @@ describe('buildDraftPrompt — missing branch coverage', () => {
       },
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('Functional shifts:');
+    expect(prompt).toContain('Notable document type shifts');
     expect(prompt).toContain('rulemaking');
-    expect(prompt).toContain('30.0%');
-    expect(prompt).toContain('50.0%');
     expect(prompt).toContain('increased');
   });
 
@@ -659,30 +657,13 @@ describe('buildDraftPrompt — missing branch coverage', () => {
       },
     });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('Bootstrap mode: yes');
+    expect(prompt).toContain('Bootstrap mode');
   });
 
-  it('shows thematic direction as reinforcing when thematicElevated is true', () => {
-    const data = makeLayerData({
-      convergenceDetail: {
-        status: 'Elevated',
-        structuralElevated: false,
-        aiElevated: false,
-        thematicElevated: true,
-        layersElevated: 1,
-        pattern: 'thematic only',
-        bootstrap: false,
-      } as ConcernAssessment,
-    });
-    const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('Direction: reinforcing');
-  });
-
-  it('shows thematic direction as not reinforcing when thematicElevated is false', () => {
+  it('shows novel document rate when thematic data is not in bootstrap', () => {
     const data = makeLayerData();
-    // default has thematicElevated: false
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('Direction: not reinforcing');
+    expect(prompt).toContain('Novel document rate');
   });
 
   it('handles structuralScore non-null but structuralDetail null', () => {
@@ -741,10 +722,10 @@ describe('buildDraftPrompt — missing branch coverage', () => {
       },
     });
     const prompt = buildDraftPrompt(data);
-    // Only typeComposition should appear with z-score
-    expect(prompt).toContain('typeComposition: z-score');
-    // volume should not appear as a dimension line (it's unavailable)
-    expect(prompt).not.toMatch(/volume: z-score/);
+    // L1 block should show document count (descriptive context)
+    expect(prompt).toContain('Documents this week');
+    // No z-scores should appear
+    expect(prompt).not.toMatch(/z-score/);
   });
 
   it('uses default 0 for totalDocumentCount in statusExplanation when missing', () => {
@@ -1070,13 +1051,13 @@ describe('buildDraftPrompt — small sample caveat', () => {
   it('includes small-sample caveat when totalDocumentCount is below threshold', () => {
     const data = makeLayerData({ totalDocumentCount: 10 });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).toContain('limited diagnostic value');
+    expect(prompt).toContain('SMALL SAMPLE SIZE');
   });
 
   it('omits small-sample caveat when totalDocumentCount is above threshold', () => {
     const data = makeLayerData({ totalDocumentCount: 50 });
     const prompt = buildDraftPrompt(data);
-    expect(prompt).not.toContain('limited diagnostic value');
+    expect(prompt).not.toContain('SMALL SAMPLE SIZE');
   });
 });
 

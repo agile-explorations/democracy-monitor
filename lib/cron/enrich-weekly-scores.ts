@@ -10,7 +10,7 @@
  * (requires ANTHROPIC_API_KEY).
  */
 
-import { and, eq, gte, lte } from 'drizzle-orm';
+import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import {
   getAnalysisPeriods,
   ALL_DATES_WARNING,
@@ -32,6 +32,7 @@ interface EnrichOptions {
   category?: string;
   allDates?: boolean;
   narratives?: boolean;
+  cleanNarratives?: boolean;
 }
 
 /** Load existing weekly aggregates from DB as WeeklyAggregate objects. */
@@ -179,6 +180,15 @@ async function run(options: EnrichOptions): Promise<void> {
 
   if (options.narratives) {
     const { generateNarrativesForWeek } = await import('@/lib/services/narrative-pipeline');
+
+    if (options.cleanNarratives) {
+      // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block
+      const db = getDb();
+      const result = await db.execute(sql`DELETE FROM narratives`);
+      const deleted = (result as unknown as { rowCount?: number })?.rowCount ?? 'unknown';
+      console.log(`\n[scores:enrich] --clean: deleted ${deleted} existing narratives`);
+    }
+
     // Only generate narratives for Trump T2 — baseline periods are historical reference data
     const sortedWeeks = Array.from(allElevatedWeeks)
       .filter((w) => w >= T2_INAUGURATION)
@@ -209,7 +219,8 @@ Options:
   --to <date>         End date (YYYY-MM-DD)
   --category <key>    Process a single category
   --all-dates         Process all dates (default: analysis periods only)
-  --narratives        Generate AI narratives for Elevated+ weeks after enrichment`,
+  --narratives        Generate AI narratives for Elevated+ weeks after enrichment
+  --clean             Delete all existing narratives before generating (use with --narratives)`,
   );
   const options: EnrichOptions = {};
 
@@ -229,6 +240,9 @@ Options:
         break;
       case '--narratives':
         options.narratives = true;
+        break;
+      case '--clean':
+        options.cleanNarratives = true;
         break;
     }
   }

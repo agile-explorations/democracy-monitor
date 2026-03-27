@@ -42,8 +42,8 @@ function buildEvidenceCaveats(data: NarrativeLayerData, substantive: boolean): s
   }
   if (docCount < 10) {
     caveats.push(
-      'VERY LOW VOLUME: Summarize the structural anomaly in 1-2 sentences rather than',
-      'listing individual z-scores. Spend your word budget on the documents and their significance.',
+      'VERY LOW VOLUME: Summarize the structural context in 1-2 sentences.',
+      'Spend your word budget on the documents and their significance.',
     );
   }
   return caveats.length > 0 ? '\n' + caveats.join('\n') : '';
@@ -62,9 +62,10 @@ export function buildDualOutputFormat(data: NarrativeLayerData): string {
     'Aim for the LOWER end of each word range unless the evidence demands the upper end.',
     '',
     '=== EXPERT NARRATIVE ===',
-    `(${expertRange} words. Technical analysis for researchers. Reference specific z-scores, dimensions,`,
-    'and documents by title. Include a Limitations sentence. Present counter-arguments.',
-    'Interpret what the combination of signals means rather than restating individual statistics.',
+    `(${expertRange} words. Technical analysis for researchers. Reference specific documents by title.`,
+    'Include a Limitations sentence. Present counter-arguments.',
+    'Focus on what P2 found in the documents and what it means — do not restate L1 or L3 statistics.',
+    'L1 structural and L3 thematic data are descriptive context only; they do NOT drive concern status.',
     'Your second paragraph MUST include a "why this might matter" sentence connecting the pattern',
     'to the democratic institution at stake, using conditional language ("could affect", "may indicate").',
     'Name the observable fact and the institution at risk — not generic "democratic norms".)',
@@ -421,25 +422,15 @@ function formatConvergenceBlock(data: NarrativeLayerData): string[] {
 const SMALL_SAMPLE_THRESHOLD = 20;
 
 function formatL1Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L1 Structural:'];
+  const lines = ['', 'L1 Structural Context (descriptive only — does NOT drive concern status):'];
   if (data.structuralScore === null || !data.structuralDetail) {
     return [...lines, '  No structural data available.'];
   }
   const s = data.structuralDetail;
-  lines.push(`  Composite score: ${fmtNum(data.structuralScore)}`, `  Anomalous: ${s.anomalous}`);
-  if ((data.totalDocumentCount ?? 0) < SMALL_SAMPLE_THRESHOLD) {
-    lines.push(
-      `  Note: only ${data.totalDocumentCount ?? 0} documents this week — ` +
-        'functional distribution shifts have limited diagnostic value.',
-    );
-  }
-  for (const [name, dim] of Object.entries(s.dimensions)) {
-    if (dim && dim.available) {
-      lines.push(`  ${name}: z-score ${fmtNum(dim.zScore, 2)} (value ${fmtNum(dim.value)})`);
-    }
-  }
+  const docCount = data.totalDocumentCount ?? 0;
+  lines.push(`  Documents this week: ${docCount}`);
   if (s.functionalShifts.length > 0) {
-    lines.push('  Functional shifts:');
+    lines.push('  Notable document type shifts:');
     for (const shift of s.functionalShifts) {
       lines.push(
         `    ${shift.bucket}: ${fmtPct(shift.baselineRate)} -> ${fmtPct(shift.currentRate)} (${shift.direction})`,
@@ -450,7 +441,7 @@ function formatL1Block(data: NarrativeLayerData): string[] {
 }
 
 function formatL2Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L2 AI Assessment:'];
+  const lines = ['', 'L2 AI Assessment (sole detection layer driving concern status):'];
   if (data.aiScore === null || !data.aiDetail) {
     return [
       ...lines,
@@ -462,33 +453,24 @@ function formatL2Block(data: NarrativeLayerData): string[] {
   const a = data.aiDetail;
   const d = a.concernDistribution;
   lines.push(
-    `  AI score: ${fmtNum(data.aiScore)}`,
-    `  P1 flag rate: ${fmtPct(a.flagRate)} (${a.flagCount}/${a.totalDocuments} docs)`,
-    `  Baseline flag rate: ${fmtPct(a.baselineFlagRate)}`,
-    `  Flag rate z-score: ${fmtNum(a.flagRateZScore, 2)}`,
+    `  P1 screening: ${a.flagCount}/${a.totalDocuments} docs flagged for detailed review`,
+    `  P2 detailed assessment: ${d.clearlyConcerning} clearly concerning, ${d.potentiallyConcerning} potentially concerning, ${d.routine} routine`,
     `  P2 concern rate: ${fmtPct(a.concernRate)}`,
-    `  Concern distribution: routine=${d.routine}, novel_not_concerning=${d.novelNotConcerning}, ` +
-      `potentially_concerning=${d.potentiallyConcerning}, clearly_concerning=${d.clearlyConcerning}`,
   );
   return lines;
 }
 
 function formatL3Block(data: NarrativeLayerData): string[] {
-  const lines = ['', 'L3 Thematic Drift:'];
+  const lines = ['', 'L3 Thematic Drift (descriptive only — does NOT drive concern status):'];
   if (data.thematicScore === null || !data.thematicDetail) {
     return [...lines, '  No thematic drift data available.'];
   }
   const t = data.thematicDetail;
-  const reinforcing = data.convergenceDetail?.thematicElevated ? 'reinforcing' : 'not reinforcing';
-  lines.push(
-    `  Thematic score: ${fmtNum(data.thematicScore)}`,
-    `  Centroid distance: ${fmtNum(t.rollingCentroidDistance, 4)}`,
-    `  Z-score: ${fmtNum(t.zScore, 2)}`,
-    `  Novel document rate: ${fmtPct(t.novelDocumentRate)}`,
-    `  Variance ratio: ${fmtNum(t.varianceRatio)}`,
-  );
-  if (t.bootstrap) lines.push('  Bootstrap mode: yes (rolling window still establishing)');
-  lines.push(`  Direction: ${reinforcing}`);
+  if (t.bootstrap) {
+    lines.push('  Bootstrap mode — rolling window still establishing. Limited diagnostic value.');
+  } else {
+    lines.push(`  Novel document rate: ${fmtPct(t.novelDocumentRate)}`);
+  }
   return lines;
 }
 
