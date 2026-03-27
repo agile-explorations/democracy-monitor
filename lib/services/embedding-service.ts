@@ -24,7 +24,10 @@ export async function embedBatch(texts: string[]): Promise<(number[] | null)[]> 
     return results.map((r) => r.embedding);
   } catch (err) {
     if (isTokenLimitError(err)) throw err;
-    console.warn('[embedding] Batch failed (non-token error), returning nulls');
+    console.warn(
+      '[embedding] Batch failed (non-token error):',
+      err instanceof Error ? err.message : err,
+    );
     return texts.map(() => null);
   }
 }
