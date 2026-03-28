@@ -5,10 +5,15 @@ import { Pool } from 'pg';
 
 loadEnvConfig(process.cwd());
 
+const ARCHIVE_FILENAME = 'data-dump.tar.gz';
 const DUMP_FILENAME = 'data-dump.pgdump';
+const DOCS_CSV_FILENAME = 'documents-no-embedding.csv.gz';
 const REPO = 'agile-explorations/democracy-monitor';
 const RELEASE_TAG = 'data-latest';
-const DOWNLOAD_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${DUMP_FILENAME}`;
+const DOWNLOAD_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ARCHIVE_FILENAME}`;
+
+// Legacy fallback — older releases used a single pgdump file
+const LEGACY_DUMP_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${DUMP_FILENAME}`;
 
 async function isDatabaseEmpty(connectionString: string): Promise<boolean> {
   const pool = new Pool({ connectionString });
@@ -30,6 +35,67 @@ async function isDatabaseEmpty(connectionString: string): Promise<boolean> {
   }
 }
 
+function tryExec(cmd: string): boolean {
+  try {
+    execSync(cmd, { stdio: 'inherit' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function restoreFromArchive(connectionString: string): Promise<void> {
+  console.log(`Downloading ${DOWNLOAD_URL}`);
+  const archiveDownloaded = tryExec(`curl -fL -o /tmp/${ARCHIVE_FILENAME} "${DOWNLOAD_URL}"`);
+
+  if (archiveDownloaded) {
+    console.log('Extracting archive...');
+    execSync(`tar -xzf /tmp/${ARCHIVE_FILENAME} -C /tmp`, { stdio: 'inherit' });
+
+    // Restore main dump (everything except documents table data)
+    console.log('Restoring main database...');
+    execSync(
+      `pg_restore --no-owner --no-privileges --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`,
+      { stdio: 'inherit' },
+    );
+
+    // Restore documents from CSV (without embedding column)
+    console.log('Restoring documents table...');
+    execSync(
+      `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"`,
+      { stdio: 'inherit' },
+    );
+
+    // Reset ID sequence to max
+    execSync(
+      `psql "${connectionString}" -c "SELECT setval('documents_id_seq', (SELECT COALESCE(MAX(id), 0) FROM documents))"`,
+      { stdio: 'inherit' },
+    );
+
+    execSync(`rm -f /tmp/${ARCHIVE_FILENAME} /tmp/${DUMP_FILENAME} /tmp/${DOCS_CSV_FILENAME}`);
+    console.log(
+      'Database restored from archive (embeddings excluded — run pnpm embeddings:backfill).',
+    );
+    return;
+  }
+
+  // Legacy fallback: try single pgdump file
+  console.log('Archive not found, trying legacy dump format...');
+  console.log(`Downloading ${LEGACY_DUMP_URL}`);
+  execSync(`curl -fL -o /tmp/${DUMP_FILENAME} "${LEGACY_DUMP_URL}"`, {
+    stdio: 'inherit',
+  });
+
+  console.log('Restoring database (legacy format)...');
+  execSync(
+    `pg_restore --no-owner --no-privileges --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`,
+    { stdio: 'inherit' },
+  );
+
+  execSync(`rm -f /tmp/${DUMP_FILENAME}`);
+  console.log('Database restored from legacy dump.');
+}
+
 async function main() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -41,19 +107,7 @@ async function main() {
 
   if (empty) {
     console.log('Database is empty — restoring from GitHub Release...');
-    console.log(`Downloading ${DOWNLOAD_URL}`);
-    execSync(`curl -fL -o /tmp/${DUMP_FILENAME} "${DOWNLOAD_URL}"`, {
-      stdio: 'inherit',
-    });
-
-    console.log('Restoring database...');
-    execSync(
-      `pg_restore --no-owner --no-privileges --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`,
-      { stdio: 'inherit' },
-    );
-
-    execSync(`rm -f /tmp/${DUMP_FILENAME}`);
-    console.log('Database restored successfully.');
+    await restoreFromArchive(connectionString);
   } else {
     console.log('Database already has data — skipping restore.');
   }

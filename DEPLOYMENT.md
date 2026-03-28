@@ -12,14 +12,14 @@ From a machine with the full local database:
 ./scripts/dump-db.sh
 ```
 
-This creates `data-dump.pgdump` (~600 MB–1.2 GB compressed). Then upload it to a GitHub Release:
+This creates `data-dump.tar.gz` — a compressed archive containing the database dump (without embedding vectors) and a CSV export of the documents table. Embeddings are excluded to keep the archive under GitHub's 2GB release asset limit. Then upload it to a GitHub Release:
 
 ```bash
 gh release delete data-latest --yes --cleanup-tag 2>/dev/null
 gh release create data-latest \
   --title "Database snapshot" \
-  --notes "Full database dump for deployment and contributor setup." \
-  data-dump.pgdump
+  --notes "Database dump (embeddings excluded — run pnpm embeddings:backfill after restore)." \
+  data-dump.tar.gz
 ```
 
 ### 2. Deploy to Render
@@ -30,11 +30,13 @@ Set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` in the Render dashboard. Both are n
 
 ### 3. First build auto-restores
 
-The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads the dump from the latest GitHub Release, restores it with `pg_restore`, then runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
+The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads the archive from the latest GitHub Release, restores it (main dump via `pg_restore`, documents via `COPY`), then runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
+
+After initial deploy, run `pnpm embeddings:backfill` to regenerate embedding vectors (excluded from dump to reduce size).
 
 ### 4. Enable cron jobs
 
-Once the app is running, uncomment the cron job definitions in `render.yaml` and redeploy.
+Once the app is running, enable the cron job definitions in `render.yaml` and redeploy.
 
 ### 5. Verify
 
@@ -44,11 +46,16 @@ Check that the app loads with historical data and that cron jobs (once enabled) 
 
 Data lives in two places:
 
-### In GitHub Releases (~600 MB–1.2 GB compressed) — Full database dump
+### In GitHub Releases — Database archive (embeddings excluded)
 
-Complete `pg_dump` including all tables. The build command auto-restores from the latest release on first deploy. Contributors can also download it to run the full app locally.
+Compressed archive (`data-dump.tar.gz`) containing:
 
-This is the authoritative backup of expensive-to-reproduce AI assessment data (~$47–97 to regenerate).
+- `data-dump.pgdump` — Full `pg_dump` of all tables except documents table data
+- `documents-no-embedding.csv.gz` — Documents table without the embedding column
+
+The build command auto-restores from the latest release on first deploy. Contributors can also download it to run the full app locally. Embeddings (~4GB) are excluded — they're regenerable via `pnpm embeddings:backfill`.
+
+This is the authoritative backup of expensive-to-reproduce AI assessment data (~$80+ to regenerate).
 
 ### In Render PostgreSQL — Production data
 
@@ -60,19 +67,17 @@ In order of preference:
 
 1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans.
 
-2. **GitHub Release pg_dump** — Delete and recreate the Render database; the next deploy auto-restores from the latest release. Loses data since the dump was created, but preserves all AI assessment work.
+2. **GitHub Release archive** — Delete and recreate the Render database; the next deploy auto-restores from the latest release. Loses data since the dump was created, but preserves all AI assessment work. Run `pnpm embeddings:backfill` after restore.
 
-3. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$47–97.
+3. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
 
 ## Cron Jobs
 
-Cron jobs are defined in `render.yaml` but commented out until the initial deployment is verified. Once enabled:
-
-| Job                 | Schedule          | Purpose                                                        |
-| ------------------- | ----------------- | -------------------------------------------------------------- |
-| `daily-snapshot`    | 06:00 UTC daily   | Fetch sources, run Layer 1 + 2 + 3 assessment, store snapshots |
-| `hourly-uptime`     | Every hour        | Source availability monitoring                                 |
-| `weekly-clustering` | 03:00 UTC Sundays | Semantic clustering analysis                                   |
+| Job               | Schedule         | Purpose                                               |
+| ----------------- | ---------------- | ----------------------------------------------------- |
+| `weekly-legiscan` | Monday 01:00 UTC | Download bulk legislative datasets from LegiScan      |
+| `weekly-snapshot` | Monday 03:00 UTC | Fetch sources, AI assessment, aggregation, narratives |
+| `weekly-dump`     | Monday 05:00 UTC | Database dump to GitHub Release                       |
 
 ## Ongoing Operations
 
@@ -83,7 +88,13 @@ Cron jobs are defined in `render.yaml` but commented out until the initial deplo
 
 To work with the full production dataset locally:
 
-1. Download the latest dump from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases)
+1. Download the latest archive from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases)
 2. Create a local database: `createdb democracy_monitor`
-3. Restore: `pg_restore --no-owner --no-privileges -d democracy_monitor data-dump.pgdump`
+3. Extract and restore:
+   ```bash
+   tar -xzf data-dump.tar.gz
+   pg_restore --clean --if-exists --no-owner --no-privileges -d democracy_monitor data-dump.pgdump
+   gunzip -c documents-no-embedding.csv.gz | psql democracy_monitor -c "\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"
+   ```
 4. Run migrations: `pnpm db:migrate`
+5. Regenerate embeddings (optional, for search/similarity features): `pnpm embeddings:backfill`
