@@ -133,15 +133,19 @@ export function CategoryStatusChart({
   }, [data, startIdx, endIdx]);
 
   const chartData: ChartPoint[] = useMemo(() => {
-    const scores = data.map((r) => r.convergenceScore ?? 0);
-    const smoothed = movingAverage(scores, TREND_WINDOW);
+    // Map status to the 0-1-2 scale matching the Y axis (not layersElevated which maxes at 1)
+    const statusScores = data.map((r) => {
+      const s = r.convergenceDetail?.status;
+      return s ? (STATUS_BAR_HEIGHT[s as ConcernLevel] ?? 0) : 0;
+    });
+    const smoothed = movingAverage(statusScores, TREND_WINDOW);
 
     return data.map((row, i) => {
       const status = row.convergenceDetail?.status ?? null;
       return {
         week: row.weekOf,
         convergenceScore: row.convergenceScore,
-        trend: row.convergenceScore != null ? smoothed[i] : null,
+        trend: status != null ? smoothed[i] : null,
         documentCount: Number(row.documentCount),
         status,
         statusValue: status ? STATUS_BAR_HEIGHT[status] : 0,
