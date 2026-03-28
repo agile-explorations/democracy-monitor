@@ -46,15 +46,13 @@ const sampleData: SynchronyPoint[] = [
     elevatedCount: 2,
     weightedScore: 3,
     elevatedWeighted: 1,
-    divergentWeighted: 2,
-    confirmedWeighted: 0,
+    confirmedWeighted: 2,
   },
   {
     week: '2026-01-13',
     elevatedCount: 4,
     weightedScore: 7,
     elevatedWeighted: 1,
-    divergentWeighted: 0,
     confirmedWeighted: 6,
   },
   {
@@ -62,7 +60,6 @@ const sampleData: SynchronyPoint[] = [
     elevatedCount: 1,
     weightedScore: 1,
     elevatedWeighted: 1,
-    divergentWeighted: 0,
     confirmedWeighted: 0,
   },
 ];
@@ -85,7 +82,6 @@ describe('SynchronyChart', () => {
   it('renders stacked areas in detailed mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
     expect(screen.getByTestId('area-elevatedWeighted')).toBeDefined();
-    expect(screen.getByTestId('area-divergentWeighted')).toBeDefined();
     expect(screen.getByTestId('area-confirmedWeighted')).toBeDefined();
     expect(screen.getByTestId('line-trend')).toBeDefined();
   });
@@ -99,7 +95,6 @@ describe('SynchronyChart', () => {
   it('renders legend with status levels in detailed mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
     expect(screen.getByText('Elevated')).toBeDefined();
-    expect(screen.getByText('Divergent')).toBeDefined();
     expect(screen.getByText('Confirmed')).toBeDefined();
     expect(screen.getByText('Trend')).toBeDefined();
   });

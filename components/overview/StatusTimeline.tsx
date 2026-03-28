@@ -15,10 +15,9 @@ export interface StatusTimelineProps {
   linkParams?: string;
 }
 
-const STATUS_LABELS: Record<ConcernLevel, string> = {
+const STATUS_LABELS: Record<string, string> = {
   Stable: 'Stable',
   Elevated: 'Elevated',
-  Divergent: 'Elevated', // Legacy status — display as Elevated
   ConfirmedConcern: 'Confirmed Concern',
 };
 

@@ -15,7 +15,6 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const STATUS_LABELS: Record<string, string> = {
   Elevated: 'Elevated',
-  Divergent: 'Divergent',
   ConfirmedConcern: 'Confirmed Concern',
 };
 

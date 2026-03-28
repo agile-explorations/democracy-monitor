@@ -98,17 +98,16 @@ describe('buildOverviewFromRows', () => {
   it('computes weighted score from per-status counts', () => {
     const rows = [
       makeRow('civilService', '2026-01-06', 0.5, { status: 'Elevated' }),
-      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Divergent' }),
+      makeRow('fiscal', '2026-01-06', 0.1, { status: 'Elevated' }),
       makeRow('military', '2026-01-06', 0.9, { status: 'ConfirmedConcern' }),
     ];
     const result = buildOverviewFromRows(rows);
     const pt = result.synchrony[0];
 
-    // Elevated=1×1, Divergent=1×2, ConfirmedConcern=1×3 = 6
-    expect(pt.elevatedWeighted).toBe(1);
-    expect(pt.divergentWeighted).toBe(2);
-    expect(pt.confirmedWeighted).toBe(3);
-    expect(pt.weightedScore).toBe(6);
+    // Elevated=2×1=2, ConfirmedConcern=1×2=2 → total 4
+    expect(pt.elevatedWeighted).toBe(2);
+    expect(pt.confirmedWeighted).toBe(2);
+    expect(pt.weightedScore).toBe(4);
   });
 
   it('returns zero weighted fields when all statuses are Stable', () => {
@@ -121,7 +120,6 @@ describe('buildOverviewFromRows', () => {
 
     expect(pt.weightedScore).toBe(0);
     expect(pt.elevatedWeighted).toBe(0);
-    expect(pt.divergentWeighted).toBe(0);
     expect(pt.confirmedWeighted).toBe(0);
   });
 
@@ -196,12 +194,12 @@ describe('computeWeeklyWeightedScores', () => {
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
 
     // Week 2017-01-23: offset ≈ 0 (3 days / 7 rounds to 0)
-    // Elevated(1) + Divergent(2) = 3
-    expect(result.get(0)).toBe(3);
+    // Elevated(1) + Divergent(1) = 2
+    expect(result.get(0)).toBe(2);
 
     // Week 2017-01-30: offset ≈ 1 (10 days / 7 rounds to 1)
-    // Stable(0) + ConfirmedConcern(3) = 3
-    expect(result.get(1)).toBe(3);
+    // Stable(0) + ConfirmedConcern(2) = 2
+    expect(result.get(1)).toBe(2);
   });
 
   it('indexes by week offset from period start', () => {
@@ -234,8 +232,8 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('military', '2017-01-23', 0.3, { status: 'Elevated' }),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // 3 + 3 + 1 = 7
-    expect(result.get(0)).toBe(7);
+    // 2 + 2 + 1 = 5
+    expect(result.get(0)).toBe(5);
   });
 
   it('handles convergence_detail with unrecognised status string', () => {
@@ -244,8 +242,8 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('fiscal', '2017-01-23', 0.1, { status: 'Divergent' }),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // UnknownStatus → null → weight 0, Divergent → weight 2
-    expect(result.get(0)).toBe(2);
+    // UnknownStatus → null → weight 0, Divergent → weight 1
+    expect(result.get(0)).toBe(1);
   });
 
   it('handles convergence_detail that is a non-object primitive', () => {
@@ -315,13 +313,13 @@ describe('buildOverviewFromRows — additional branch coverage', () => {
     ];
     const result = buildOverviewFromRows(rows);
 
-    // Week 2026-01-06: Elevated(1) + ConfirmedConcern(3) = 4
+    // Week 2026-01-06: Elevated(1) + ConfirmedConcern(2) = 3
     expect(result.synchrony[0].elevatedCount).toBe(2);
-    expect(result.synchrony[0].weightedScore).toBe(4);
+    expect(result.synchrony[0].weightedScore).toBe(3);
 
-    // Week 2026-01-13: Divergent(2) = 2
+    // Week 2026-01-13: Divergent counts in elevatedCount but not in weighted score (only Elevated key)
     expect(result.synchrony[1].elevatedCount).toBe(1);
-    expect(result.synchrony[1].weightedScore).toBe(2);
+    expect(result.synchrony[1].weightedScore).toBe(0);
   });
 
   it('excludes weeks with no convergence_detail from allWeeks', () => {

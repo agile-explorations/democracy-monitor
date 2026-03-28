@@ -25,13 +25,11 @@ const ARCHIVE_COLLAPSED_COUNT = 12;
 const STATUS_LABELS: Record<string, string> = {
   Stable: 'Stable',
   Elevated: 'Elevated',
-  Divergent: 'Divergent',
   ConfirmedConcern: 'Confirmed Concern',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   Elevated: 'text-yellow-600 dark:text-yellow-400',
-  Divergent: 'text-orange-600 dark:text-orange-400',
   ConfirmedConcern: 'text-red-600 dark:text-red-400',
 };
 

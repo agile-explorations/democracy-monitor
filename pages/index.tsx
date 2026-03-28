@@ -222,7 +222,7 @@ export default function Home() {
                   <p className="text-[11px] text-dm-muted mt-0.5">
                     {readingLevel === 'summary'
                       ? 'Weighted concern score across all categories per week'
-                      : 'Concern score stacked by severity: categories at Elevated (1 point each), Divergent (2 points), or Confirmed Concern (3 points)'}
+                      : 'Concern score stacked by severity: categories at Elevated (1 point each) or Confirmed Concern (2 points)'}
                   </p>
                 </div>
                 <EmbedButton

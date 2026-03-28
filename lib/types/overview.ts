@@ -57,7 +57,6 @@ export interface SynchronyPoint {
   elevatedCount: number;
   weightedScore: number;
   elevatedWeighted: number;
-  divergentWeighted: number;
   confirmedWeighted: number;
   trumpT1Trend?: number | null;
   bidenT1Trend?: number | null;

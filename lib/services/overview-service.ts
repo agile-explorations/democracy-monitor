@@ -31,8 +31,8 @@ const ELEVATED_STATUSES = new Set<ConcernLevel>(['Elevated', 'Divergent', 'Confi
 const STATUS_WEIGHT: Record<ConcernLevel, number> = {
   Stable: 0,
   Elevated: 1,
-  Divergent: 2,
-  ConfirmedConcern: 3,
+  Divergent: 1, // Legacy — no longer produced, mapped to Elevated weight
+  ConfirmedConcern: 2,
 };
 
 interface AggregateRow {
@@ -236,14 +236,12 @@ export function buildOverviewFromRows(rows: AggregateRow[]): Omit<OverviewSummar
   const synchrony: SynchronyPoint[] = allWeeks.map((w) => {
     const counts = weekStatusCounts.get(w) ?? { Elevated: 0, Divergent: 0, ConfirmedConcern: 0 };
     const elevatedWeighted = counts.Elevated * STATUS_WEIGHT.Elevated;
-    const divergentWeighted = counts.Divergent * STATUS_WEIGHT.Divergent;
     const confirmedWeighted = counts.ConfirmedConcern * STATUS_WEIGHT.ConfirmedConcern;
     return {
       week: w,
       elevatedCount: weekElevatedCounts.get(w) ?? 0,
-      weightedScore: elevatedWeighted + divergentWeighted + confirmedWeighted,
+      weightedScore: elevatedWeighted + confirmedWeighted,
       elevatedWeighted,
-      divergentWeighted,
       confirmedWeighted,
     };
   });

@@ -7,12 +7,11 @@ export interface OverviewStatusSummaryProps {
   statusCounts: Record<ConcernLevel, number>;
 }
 
-const STATUS_ORDER: ConcernLevel[] = ['Stable', 'Elevated', 'Divergent', 'ConfirmedConcern'];
+const STATUS_ORDER: ConcernLevel[] = ['Stable', 'Elevated', 'ConfirmedConcern'];
 
-const STATUS_LABELS: Record<ConcernLevel, string> = {
+const STATUS_LABELS: Record<string, string> = {
   Stable: 'Stable',
   Elevated: 'Elevated',
-  Divergent: 'Divergent',
   ConfirmedConcern: 'Confirmed Concern',
 };
 

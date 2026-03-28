@@ -96,11 +96,6 @@ function SummaryContent() {
             description="AI two-pass review flags anomalous content with Pass 2 corroboration."
           />
           <ConcernLevel
-            color="#8b5cf6"
-            label="Divergent"
-            description="Legacy status from prior detection model. No longer produced by the current pipeline."
-          />
-          <ConcernLevel
             className="bg-status-capture"
             label="Confirmed Concern"
             description="AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination."

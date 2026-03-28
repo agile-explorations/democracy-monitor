@@ -135,9 +135,6 @@ export function ChartLegend({
             <Swatch color={statusColors.Elevated} /> Elevated
           </span>
           <span className="flex items-center gap-1">
-            <Swatch color={statusColors.Divergent} /> Divergent
-          </span>
-          <span className="flex items-center gap-1">
             <Swatch color={statusColors.ConfirmedConcern} /> Confirmed
           </span>
         </>

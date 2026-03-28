@@ -107,10 +107,6 @@ export function SynchronyChart({
               <stop offset="5%" stopColor={statusColors.Elevated} stopOpacity={0.4} />
               <stop offset="95%" stopColor={statusColors.Elevated} stopOpacity={0.1} />
             </linearGradient>
-            <linearGradient id="divergentGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={statusColors.Divergent} stopOpacity={0.4} />
-              <stop offset="95%" stopColor={statusColors.Divergent} stopOpacity={0.1} />
-            </linearGradient>
             <linearGradient id="confirmedGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={statusColors.ConfirmedConcern} stopOpacity={0.4} />
               <stop offset="95%" stopColor={statusColors.ConfirmedConcern} stopOpacity={0.1} />
@@ -168,14 +164,6 @@ export function SynchronyChart({
                 stroke={statusColors.ConfirmedConcern}
                 strokeWidth={1}
                 fill="url(#confirmedGradient)"
-              />
-              <Area
-                type="monotone"
-                dataKey="divergentWeighted"
-                stackId="concern"
-                stroke={statusColors.Divergent}
-                strokeWidth={1}
-                fill="url(#divergentGradient)"
               />
               <Area
                 type="monotone"

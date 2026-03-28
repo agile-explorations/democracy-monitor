@@ -8,15 +8,14 @@ describe('OverviewStatusSummary', () => {
     const statusCounts: Record<ConcernLevel, number> = {
       Stable: 500,
       Elevated: 65,
-      Divergent: 20,
+      Divergent: 0,
       ConfirmedConcern: 5,
     };
     render(<OverviewStatusSummary statusCounts={statusCounts} />);
     expect(screen.getByText('Stable: 500')).toBeDefined();
     expect(screen.getByText('Elevated: 65')).toBeDefined();
-    expect(screen.getByText('Divergent: 20')).toBeDefined();
     expect(screen.getByText('Confirmed Concern: 5')).toBeDefined();
-    expect(screen.getByText('590 total category-weeks')).toBeDefined();
+    expect(screen.getByText('570 total category-weeks')).toBeDefined();
   });
 
   it('shows zero-count statuses in legend', () => {
@@ -29,7 +28,6 @@ describe('OverviewStatusSummary', () => {
     render(<OverviewStatusSummary statusCounts={statusCounts} />);
     expect(screen.getByText('Stable: 100')).toBeDefined();
     expect(screen.getByText('Elevated: 0')).toBeDefined();
-    expect(screen.getByText('Divergent: 0')).toBeDefined();
     expect(screen.getByText('Confirmed Concern: 0')).toBeDefined();
   });
 
