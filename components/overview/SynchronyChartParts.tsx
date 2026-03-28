@@ -76,9 +76,6 @@ export function DetailedTooltip({
             Confirmed Concern: {d.confirmedWeighted}
           </p>
         )}
-        {d.divergentWeighted > 0 && (
-          <p style={{ color: statusColors.Divergent }}>Divergent: {d.divergentWeighted}</p>
-        )}
         {d.elevatedWeighted > 0 && (
           <p style={{ color: statusColors.Elevated }}>Elevated: {d.elevatedWeighted}</p>
         )}
