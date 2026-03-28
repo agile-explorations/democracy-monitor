@@ -129,7 +129,14 @@ echo "Embeddings uploaded."
 
 # Record success
 EMB_SIZE_KB=$(du -k "${EMBEDDINGS_FILE}" | cut -f1)
-psql "${DATABASE_URL}" -c "UPDATE cron_runs SET status='success', finished_at=NOW(), duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000, summary='{\"archiveSizeKb\":${ACTUAL_SIZE_KB},\"embeddingsSizeKb\":${EMB_SIZE_KB}}' WHERE id=${RUN_ID}"
+psql "${DATABASE_URL}" <<EOSQL
+UPDATE cron_runs
+SET status='success',
+    finished_at=NOW(),
+    duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000,
+    summary='{"archiveSizeKb":${ACTUAL_SIZE_KB},"embeddingsSizeKb":${EMB_SIZE_KB}}'
+WHERE id=${RUN_ID};
+EOSQL
 
 # 8. Cleanup
 rm -f "${ARCHIVE}" "${EMBEDDINGS_FILE}"
