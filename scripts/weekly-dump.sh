@@ -9,6 +9,9 @@
 set -euo pipefail
 
 DUMP_FILE="/tmp/data-dump.pgdump"
+DOCS_CSV="/tmp/documents-no-embedding.csv.gz"
+EMBEDDINGS_FILE="/tmp/embeddings.csv.gz"
+ARCHIVE="/tmp/data-dump.tar.gz"
 REPO="agile-explorations/democracy-monitor"
 TAG="data-latest"
 API="https://api.github.com/repos/${REPO}"
@@ -42,21 +45,19 @@ pg_dump -Fc --no-owner --no-privileges --exclude-table-data=documents "${DATABAS
 
 # 2. Dump documents table without embedding column via COPY → compressed CSV
 echo "Exporting documents table (excluding embedding column)..."
-DOCS_CSV="/tmp/documents-no-embedding.csv.gz"
 psql "${DATABASE_URL}" -c "\copy (SELECT id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at FROM documents) TO STDOUT WITH CSV HEADER" | gzip > "${DOCS_CSV}"
 DOCS_SIZE=$(du -h "${DOCS_CSV}" | cut -f1)
 echo "Documents CSV: ${DOCS_SIZE}"
 
-# 3. Combine into a tar archive
-echo "Creating combined archive..."
-ARCHIVE="/tmp/data-dump.tar.gz"
+# 3. Combine into main archive (without embeddings)
+echo "Creating main archive..."
 tar -czf "${ARCHIVE}" -C /tmp "$(basename "${DUMP_FILE}")" "$(basename "${DOCS_CSV}")"
 rm -f "${DUMP_FILE}" "${DOCS_CSV}"
 
-SIZE=$(du -h "${ARCHIVE}" | cut -f1)
-echo "Archive complete: ${SIZE}"
+ARCHIVE_SIZE=$(du -h "${ARCHIVE}" | cut -f1)
+echo "Main archive: ${ARCHIVE_SIZE}"
 
-# Validate size
+# Validate main archive size
 MIN_SIZE_KB=10240  # 10MB minimum
 ACTUAL_SIZE_KB=$(du -k "${ARCHIVE}" | cut -f1)
 if [ "${ACTUAL_SIZE_KB}" -lt "${MIN_SIZE_KB}" ]; then
@@ -64,6 +65,12 @@ if [ "${ACTUAL_SIZE_KB}" -lt "${MIN_SIZE_KB}" ]; then
   rm -f "${ARCHIVE}"
   exit 1
 fi
+
+# 4. Export embeddings as a separate compressed file
+echo "Exporting embeddings..."
+psql "${DATABASE_URL}" -c "\copy (SELECT id, embedding FROM documents WHERE embedding IS NOT NULL) TO STDOUT WITH BINARY" | gzip > "${EMBEDDINGS_FILE}"
+EMB_SIZE=$(du -h "${EMBEDDINGS_FILE}" | cut -f1)
+echo "Embeddings file: ${EMB_SIZE}"
 
 # 4. Delete existing release if present
 echo "Checking for existing release..."
@@ -85,7 +92,7 @@ echo "Creating release..."
 CREATE_RESPONSE=$(curl -s -X POST \
   -H "${AUTH}" \
   -H "Content-Type: application/json" \
-  -d "{\"tag_name\":\"${TAG}\",\"name\":\"Database snapshot\",\"body\":\"Weekly database dump ($(date -u +%Y-%m-%d)). Excludes embedding vectors — run pnpm embeddings:backfill after restore.\"}" \
+  -d "{\"tag_name\":\"${TAG}\",\"name\":\"Database snapshot\",\"body\":\"Weekly database dump ($(date -u +%Y-%m-%d)). Two assets: data-dump.tar.gz (main data) + embeddings.bin.gz (vector embeddings, optional).\"}" \
   "${API}/releases" 2>&1)
 
 NEW_RELEASE_ID=$(echo "${CREATE_RESPONSE}" | node -p 'try { JSON.parse(require("fs").readFileSync(0,"utf8")).id } catch { "" }' 2>/dev/null) || true
@@ -98,8 +105,8 @@ if [ -z "${NEW_RELEASE_ID}" ] || [ "${NEW_RELEASE_ID}" = "undefined" ] || [ "${N
 fi
 echo "Created release ${NEW_RELEASE_ID}"
 
-# 6. Upload archive
-echo "Uploading archive (this may take several minutes)..."
+# 6. Upload main archive
+echo "Uploading main archive (this may take several minutes)..."
 curl -f -X POST \
   -H "${AUTH}" \
   -H "Content-Type: application/gzip" \
@@ -107,11 +114,23 @@ curl -f -X POST \
   -T "${ARCHIVE}" \
   "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=data-dump.tar.gz"
 echo ""
-echo "Upload complete."
+echo "Main archive uploaded."
+
+# 7. Upload embeddings
+echo "Uploading embeddings..."
+curl -f -X POST \
+  -H "${AUTH}" \
+  -H "Content-Type: application/gzip" \
+  --retry 3 --retry-delay 10 \
+  -T "${EMBEDDINGS_FILE}" \
+  "${UPLOAD_API}/releases/${NEW_RELEASE_ID}/assets?name=embeddings.bin.gz"
+echo ""
+echo "Embeddings uploaded."
 
 # Record success
-psql "${DATABASE_URL}" -c "UPDATE cron_runs SET status='success', finished_at=NOW(), duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000, summary='{\"archiveSizeKb\":${ACTUAL_SIZE_KB}}' WHERE id=${RUN_ID}"
+EMB_SIZE_KB=$(du -k "${EMBEDDINGS_FILE}" | cut -f1)
+psql "${DATABASE_URL}" -c "UPDATE cron_runs SET status='success', finished_at=NOW(), duration_ms=EXTRACT(EPOCH FROM (NOW() - started_at)) * 1000, summary='{\"archiveSizeKb\":${ACTUAL_SIZE_KB},\"embeddingsSizeKb\":${EMB_SIZE_KB}}' WHERE id=${RUN_ID}"
 
-# 7. Cleanup
-rm -f "${ARCHIVE}"
+# 8. Cleanup
+rm -f "${ARCHIVE}" "${EMBEDDINGS_FILE}"
 echo "Done. https://github.com/${REPO}/releases/tag/${TAG}"

@@ -12,14 +12,19 @@ From a machine with the full local database:
 ./scripts/dump-db.sh
 ```
 
-This creates `data-dump.tar.gz` — a compressed archive containing the database dump (without embedding vectors) and a CSV export of the documents table. Embeddings are excluded to keep the archive under GitHub's 2GB release asset limit. Then upload it to a GitHub Release:
+This creates two files:
+
+- `data-dump.tar.gz` — main data (all tables, documents without embeddings)
+- `embeddings.bin.gz` — vector embeddings (separate to stay under GitHub's 2GB per-asset limit)
+
+Upload both to a GitHub Release:
 
 ```bash
 gh release delete data-latest --yes --cleanup-tag 2>/dev/null
 gh release create data-latest \
   --title "Database snapshot" \
-  --notes "Database dump (embeddings excluded — run pnpm embeddings:backfill after restore)." \
-  data-dump.tar.gz
+  --notes "Two assets: main data + embeddings." \
+  data-dump.tar.gz embeddings.bin.gz
 ```
 
 ### 2. Deploy to Render
@@ -30,9 +35,7 @@ Set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` in the Render dashboard. Both are n
 
 ### 3. First build auto-restores
 
-The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads the archive from the latest GitHub Release, restores it (main dump via `pg_restore`, documents via `COPY`), then runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
-
-After initial deploy, run `pnpm embeddings:backfill` to regenerate embedding vectors (excluded from dump to reduce size).
+The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads both assets from the latest GitHub Release, restores the main data (via `pg_restore` + `COPY`), then restores embeddings and runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
 
 ### 4. Enable cron jobs
 
@@ -46,14 +49,12 @@ Check that the app loads with historical data and that cron jobs (once enabled) 
 
 Data lives in two places:
 
-### In GitHub Releases — Database archive (embeddings excluded)
+### In GitHub Releases — Two assets
 
-Compressed archive (`data-dump.tar.gz`) containing:
+- `data-dump.tar.gz` — Main data: `pg_dump` of all tables except documents data + documents CSV (without embeddings)
+- `embeddings.bin.gz` — Vector embeddings as compressed binary COPY (~1GB, optional)
 
-- `data-dump.pgdump` — Full `pg_dump` of all tables except documents table data
-- `documents-no-embedding.csv.gz` — Documents table without the embedding column
-
-The build command auto-restores from the latest release on first deploy. Contributors can also download it to run the full app locally. Embeddings (~4GB) are excluded — they're regenerable via `pnpm embeddings:backfill`.
+Split into two assets because full documents (up to 626K chars) plus embeddings exceed GitHub's 2GB per-asset limit. The build command auto-restores both on first deploy. Contributors can also download them to run the full app locally.
 
 This is the authoritative backup of expensive-to-reproduce AI assessment data (~$80+ to regenerate).
 
@@ -67,7 +68,7 @@ In order of preference:
 
 1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans.
 
-2. **GitHub Release archive** — Delete and recreate the Render database; the next deploy auto-restores from the latest release. Loses data since the dump was created, but preserves all AI assessment work. Run `pnpm embeddings:backfill` after restore.
+2. **GitHub Release archive** — Delete and recreate the Render database; the next deploy auto-restores from the latest release (main data + embeddings). Loses data since the dump was created, but preserves all AI assessment work.
 
 3. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
 
