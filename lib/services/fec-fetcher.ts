@@ -8,11 +8,13 @@ export const FEC_RETRY_BASE_DELAY_MS = 60_000; // FEC rate limits are aggressive
 const FEC_WEB_BASE = 'https://www.fec.gov';
 const MAX_SUMMARY_LENGTH = 800;
 
-/** Ensure FEC URLs are absolute — the API sometimes returns relative paths. */
+/** Ensure FEC URLs are absolute — the API returns relative paths like /legal/... */
 function normalizeFecUrl(url: string | undefined | null): string | undefined {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;
-  return `${FEC_WEB_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+  // API returns /legal/... but the working web URL is /data/legal/...
+  const path = url.startsWith('/legal/') ? `/data${url}` : url;
+  return `${FEC_WEB_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 type FecEndpointType = 'advisory_opinions' | 'murs' | 'admin_fines';
