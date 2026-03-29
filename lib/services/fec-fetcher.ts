@@ -5,7 +5,15 @@ import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 const FEC_API_BASE = 'https://api.open.fec.gov/v1';
 const RATE_LIMIT_DELAY_MS = 4000; // FEC allows 1,000 req/hr with API key (~3.6s/req)
 export const FEC_RETRY_BASE_DELAY_MS = 60_000; // FEC rate limits are aggressive — 60s base backoff
+const FEC_WEB_BASE = 'https://www.fec.gov';
 const MAX_SUMMARY_LENGTH = 800;
+
+/** Ensure FEC URLs are absolute — the API sometimes returns relative paths. */
+function normalizeFecUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  return `${FEC_WEB_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 type FecEndpointType = 'advisory_opinions' | 'murs' | 'admin_fines';
 
@@ -205,7 +213,7 @@ export function murToContentItem(mur: FecMur): ContentItem {
   return {
     title: mur.name || `MUR ${mur.case_no || '(unknown)'}`,
     link:
-      mur.url ||
+      normalizeFecUrl(mur.url) ||
       (mur.case_no
         ? `https://www.fec.gov/data/legal/matter-under-review/${mur.case_no}/`
         : undefined),
