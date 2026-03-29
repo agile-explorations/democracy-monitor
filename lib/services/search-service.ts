@@ -87,6 +87,36 @@ export interface SimilarDocumentResult {
 }
 
 // ---------------------------------------------------------------------------
+// AI assessment enrichment (post-query, avoids expensive JOIN)
+// ---------------------------------------------------------------------------
+
+async function enrichWithAiAssessments(
+  db: ReturnType<typeof getDb>,
+  rows: Record<string, unknown>[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  const aiResults = await db.execute(sql`
+    SELECT url, category, assessment, confidence, erosion_type, LEFT(reasoning, 300) as reasoning
+    FROM ai_document_assessments
+    WHERE pass = 2 AND (url, category) IN (${sql.join(
+      rows.map((r) => sql`(${r.url as string}, ${r.category as string})`),
+      sql`, `,
+    )})
+  `);
+  const aiMap = new Map<string, Record<string, unknown>>();
+  for (const ai of aiResults.rows as Record<string, unknown>[]) {
+    aiMap.set(`${ai.url}:${ai.category}`, ai);
+  }
+  for (const row of rows) {
+    const ai = aiMap.get(`${row.url}:${row.category}`);
+    row.ai_assessment = ai?.assessment ?? null;
+    row.ai_confidence = ai?.confidence ?? null;
+    row.ai_erosion_type = ai?.erosion_type ?? null;
+    row.ai_reasoning = ai?.reasoning ?? null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Explore mode: combined keyword + semantic search
 // ---------------------------------------------------------------------------
 
@@ -119,20 +149,21 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
     );
     const totalResults = Number((countResult.rows[0] as { total: string }).total);
 
+    // Search without AI JOIN — fetch AI data post-query for returned results only
     const results = await db.execute(sql`
       SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
         LEFT(d.content, 250) as snippet, ${similarityCol} as cosine_similarity, ${textRankCol} as text_rank,
         ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
-        ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed,
-        ai.assessment as ai_assessment, ai.confidence as ai_confidence,
-        ai.erosion_type as ai_erosion_type, ai.reasoning as ai_reasoning
+        ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed
       FROM documents d
       LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      LEFT JOIN ai_document_assessments ai ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
       WHERE ${whereClause}
       ORDER BY ${sortClause}
       LIMIT ${pageSize} OFFSET ${offset}
     `);
+
+    const rows = results.rows as Record<string, unknown>[];
+    await enrichWithAiAssessments(db, rows);
 
     return {
       totalResults,
