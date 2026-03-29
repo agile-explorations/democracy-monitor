@@ -208,6 +208,7 @@ async function handleExplore(
     pageSize: req.query.pageSize ? Number(req.query.pageSize) : 20,
   });
 
+  res.setHeader('Cache-Control', 'no-store');
   res.status(200).json(result);
 }
 

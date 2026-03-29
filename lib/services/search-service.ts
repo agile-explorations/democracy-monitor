@@ -95,24 +95,28 @@ async function enrichWithAiAssessments(
   rows: Record<string, unknown>[],
 ): Promise<void> {
   if (rows.length === 0) return;
-  const aiResults = await db.execute(sql`
-    SELECT url, category, assessment, confidence, erosion_type, LEFT(reasoning, 300) as reasoning
-    FROM ai_document_assessments
-    WHERE pass = 2 AND (url, category) IN (${sql.join(
-      rows.map((r) => sql`(${r.url as string}, ${r.category as string})`),
-      sql`, `,
-    )})
-  `);
-  const aiMap = new Map<string, Record<string, unknown>>();
-  for (const ai of aiResults.rows as Record<string, unknown>[]) {
-    aiMap.set(`${ai.url}:${ai.category}`, ai);
-  }
-  for (const row of rows) {
-    const ai = aiMap.get(`${row.url}:${row.category}`);
-    row.ai_assessment = ai?.assessment ?? null;
-    row.ai_confidence = ai?.confidence ?? null;
-    row.ai_erosion_type = ai?.erosion_type ?? null;
-    row.ai_reasoning = ai?.reasoning ?? null;
+  try {
+    const aiResults = await db.execute(sql`
+      SELECT url, category, assessment, confidence, erosion_type, LEFT(reasoning, 300) as reasoning
+      FROM ai_document_assessments
+      WHERE pass = 2 AND (url, category) IN (${sql.join(
+        rows.map((r) => sql`(${r.url as string}, ${r.category as string})`),
+        sql`, `,
+      )})
+    `);
+    const aiMap = new Map<string, Record<string, unknown>>();
+    for (const ai of aiResults.rows as Record<string, unknown>[]) {
+      aiMap.set(`${ai.url}:${ai.category}`, ai);
+    }
+    for (const row of rows) {
+      const ai = aiMap.get(`${row.url}:${row.category}`);
+      row.ai_assessment = ai?.assessment ?? null;
+      row.ai_confidence = ai?.confidence ?? null;
+      row.ai_erosion_type = ai?.erosion_type ?? null;
+      row.ai_reasoning = ai?.reasoning ?? null;
+    }
+  } catch (err) {
+    console.error('[search] AI enrichment failed (non-fatal):', err);
   }
 }
 
@@ -169,7 +173,7 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
       totalResults,
       page,
       pageSize,
-      documents: (results.rows as Record<string, unknown>[]).map(mapToSearchResult),
+      documents: rows.map(mapToSearchResult),
     };
   } catch (err) {
     console.error('[search] Explore search failed:', err);
