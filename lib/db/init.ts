@@ -46,24 +46,32 @@ function tryExec(cmd: string): boolean {
   }
 }
 
-function tryRestoreEmbeddings(connectionString: string): void {
-  console.log('Downloading embeddings (optional)...');
+function restoreEmbeddings(connectionString: string): void {
+  console.log('Downloading embeddings...');
   const downloaded = tryExec(`curl -fL -o /tmp/${EMBEDDINGS_FILENAME} "${EMBEDDINGS_URL}"`);
   if (!downloaded) {
-    console.log('Embeddings not available — run pnpm embeddings:backfill to generate.');
+    console.warn('WARNING: Embeddings download failed — search will fall back to keyword mode.');
+    console.warn('Run pnpm embeddings:backfill to generate embeddings.');
     return;
   }
   console.log('Restoring embeddings...');
   const restored = tryExec(
     `gunzip -c /tmp/${EMBEDDINGS_FILENAME} | psql "${connectionString}" -c "CREATE TEMP TABLE _emb (id integer, embedding vector(1536)); COPY _emb FROM STDIN WITH BINARY; UPDATE documents SET embedding = _emb.embedding FROM _emb WHERE documents.id = _emb.id; DROP TABLE _emb;"`,
   );
-  console.log(
-    restored ? 'Embeddings restored.' : 'Embedding restore failed — run pnpm embeddings:backfill.',
-  );
+  if (!restored) {
+    console.warn('WARNING: Embedding restore failed — search will fall back to keyword mode.');
+    console.warn('Run pnpm embeddings:backfill to generate embeddings.');
+  } else {
+    console.log('Embeddings restored.');
+  }
   execSync(`rm -f /tmp/${EMBEDDINGS_FILENAME}`);
 }
 
-async function restoreFromArchive(connectionString: string): Promise<void> {
+async function restoreFromArchive(connectionString: string, force: boolean): Promise<void> {
+  const pgRestoreFlags = force
+    ? '--clean --if-exists --no-owner --no-privileges'
+    : '--no-owner --no-privileges';
+
   console.log(`Downloading ${DOWNLOAD_URL}`);
   const archiveDownloaded = tryExec(`curl -fL -o /tmp/${ARCHIVE_FILENAME} "${DOWNLOAD_URL}"`);
 
@@ -72,10 +80,15 @@ async function restoreFromArchive(connectionString: string): Promise<void> {
     execSync(`tar -xzf /tmp/${ARCHIVE_FILENAME} -C /tmp`, { stdio: 'inherit' });
 
     console.log('Restoring main database...');
-    execSync(
-      `pg_restore --no-owner --no-privileges --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`,
-      { stdio: 'inherit' },
-    );
+    execSync(`pg_restore ${pgRestoreFlags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
+      stdio: 'inherit',
+    });
+
+    if (force) {
+      // Truncate documents before COPY — pg_restore --clean only handles tables in the dump,
+      // and documents data was excluded from the dump (exported separately as CSV).
+      execSync(`psql "${connectionString}" -c "TRUNCATE documents CASCADE"`, { stdio: 'inherit' });
+    }
 
     console.log('Restoring documents table...');
     execSync(
@@ -88,7 +101,7 @@ async function restoreFromArchive(connectionString: string): Promise<void> {
       { stdio: 'inherit' },
     );
 
-    tryRestoreEmbeddings(connectionString);
+    restoreEmbeddings(connectionString);
 
     execSync(`rm -f /tmp/${ARCHIVE_FILENAME} /tmp/${DUMP_FILENAME} /tmp/${DOCS_CSV_FILENAME}`);
     console.log('Database restored from archive.');
@@ -103,10 +116,9 @@ async function restoreFromArchive(connectionString: string): Promise<void> {
   });
 
   console.log('Restoring database (legacy format)...');
-  execSync(
-    `pg_restore --no-owner --no-privileges --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`,
-    { stdio: 'inherit' },
-  );
+  execSync(`pg_restore ${pgRestoreFlags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
+    stdio: 'inherit',
+  });
 
   execSync(`rm -f /tmp/${DUMP_FILENAME}`);
   console.log('Database restored from legacy dump.');
@@ -119,13 +131,18 @@ async function main() {
     process.exit(1);
   }
 
+  const force = process.argv.includes('--force');
   const empty = await isDatabaseEmpty(connectionString);
 
-  if (empty) {
-    console.log('Database is empty — restoring from GitHub Release...');
-    await restoreFromArchive(connectionString);
+  if (empty || force) {
+    if (force && !empty) {
+      console.log('--force: overwriting existing database from GitHub Release...');
+    } else {
+      console.log('Database is empty — restoring from GitHub Release...');
+    }
+    await restoreFromArchive(connectionString, force);
   } else {
-    console.log('Database already has data — skipping restore.');
+    console.log('Database already has data — skipping restore. Use --force to overwrite.');
   }
 
   console.log('Running migrations...');

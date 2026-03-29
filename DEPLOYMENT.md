@@ -52,7 +52,7 @@ Data lives in two places:
 ### In GitHub Releases — Two assets
 
 - `data-dump.tar.gz` — Main data: `pg_dump` of all tables except documents data + documents CSV (without embeddings)
-- `embeddings.bin.gz` — Vector embeddings as compressed binary COPY (~1GB, optional)
+- `embeddings.bin.gz` — Vector embeddings as compressed binary COPY (~1GB, required for search)
 
 Split into two assets because full documents (up to 626K chars) plus embeddings exceed GitHub's 2GB per-asset limit. The build command auto-restores both on first deploy. Contributors can also download them to run the full app locally.
 
@@ -89,6 +89,18 @@ In order of preference:
 
 To work with the full production dataset locally:
 
+**Automatic (recommended):**
+
+```bash
+createdb democracy_monitor   # first time only
+pnpm db:init                 # empty DB: downloads dump + embeddings, restores, migrates
+pnpm db:init --force         # existing DB: overwrites with latest production data
+```
+
+`db:init` downloads both assets from GitHub Releases (main data + embeddings), restores everything, and runs migrations. Embeddings are required for search functionality.
+
+**Manual:**
+
 1. Download the latest archive from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases)
 2. Create a local database: `createdb democracy_monitor`
 3. Extract and restore:
@@ -96,6 +108,6 @@ To work with the full production dataset locally:
    tar -xzf data-dump.tar.gz
    pg_restore --clean --if-exists --no-owner --no-privileges -d democracy_monitor data-dump.pgdump
    gunzip -c documents-no-embedding.csv.gz | psql democracy_monitor -c "\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"
+   gunzip -c embeddings.bin.gz | psql democracy_monitor -c "CREATE TEMP TABLE _emb (id integer, embedding vector(1536)); COPY _emb FROM STDIN WITH BINARY; UPDATE documents SET embedding = _emb.embedding FROM _emb WHERE documents.id = _emb.id; DROP TABLE _emb;"
    ```
 4. Run migrations: `pnpm db:migrate`
-5. Regenerate embeddings (optional, for search/similarity features): `pnpm embeddings:backfill`
