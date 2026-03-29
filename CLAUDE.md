@@ -214,7 +214,7 @@ Configured for **Render.com** deployment via `render.yaml`:
 - Redis Key-Value store (caching)
 - 3 Weekly cron jobs: LegiScan fetch (Mon 01:00 UTC) → snapshot (Mon 03:00 UTC) → DB dump (Mon 05:00 UTC)
 
-Database is bootstrapped from a `pg_dump` stored in GitHub Release assets. On first deploy, `pnpm db:init` detects an empty database, downloads the latest dump, restores it, then runs Drizzle migrations. See `DEPLOYMENT.md`.
+The weekly dump cron triggers `POST /api/cron/dump` which runs `pg_dump -Fc` to a persistent disk on the web service. The dump is served at `GET /api/data/dump`. On first deploy, `pnpm db:init` detects an empty database, downloads the dump (falls back to GitHub Releases if the endpoint isn't available yet), restores it, and runs Drizzle migrations. Use `pnpm db:init --force` to overwrite a local database with the latest production data. See `DEPLOYMENT.md`.
 
 ## Project management
 

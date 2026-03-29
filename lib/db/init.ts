@@ -5,17 +5,18 @@ import { Pool } from 'pg';
 
 loadEnvConfig(process.cwd());
 
+// Primary source: single pg_dump -Fc file from the app's persistent disk
+const APP_DUMP_URL = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://democracymonitor.us'}/api/data/dump`;
+
+// Fallback: GitHub Releases (two-file archive format, used for initial deploy bootstrap)
 const ARCHIVE_FILENAME = 'data-dump.tar.gz';
 const EMBEDDINGS_FILENAME = 'embeddings.bin.gz';
 const DUMP_FILENAME = 'data-dump.pgdump';
 const DOCS_CSV_FILENAME = 'documents-no-embedding.csv.gz';
 const REPO = 'agile-explorations/democracy-monitor';
 const RELEASE_TAG = 'data-latest';
-const DOWNLOAD_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ARCHIVE_FILENAME}`;
+const ARCHIVE_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${ARCHIVE_FILENAME}`;
 const EMBEDDINGS_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${EMBEDDINGS_FILENAME}`;
-
-// Legacy fallback — older releases used a single pgdump file
-const LEGACY_DUMP_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${DUMP_FILENAME}`;
 
 async function isDatabaseEmpty(connectionString: string): Promise<boolean> {
   const pool = new Pool({ connectionString });
@@ -46,83 +47,93 @@ function tryExec(cmd: string): boolean {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Primary restore: single pg_dump file from app endpoint
+// ---------------------------------------------------------------------------
+
+function restoreFromApp(connectionString: string, force: boolean): boolean {
+  console.log(`Downloading from ${APP_DUMP_URL}...`);
+  const downloaded = tryExec(`curl -fL -o /tmp/${DUMP_FILENAME} "${APP_DUMP_URL}"`);
+  if (!downloaded) return false;
+
+  const flags = force
+    ? '--clean --if-exists --no-owner --no-privileges'
+    : '--no-owner --no-privileges';
+
+  console.log('Restoring database...');
+  execSync(`pg_restore ${flags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
+    stdio: 'inherit',
+  });
+
+  execSync(
+    `psql "${connectionString}" -c "SELECT setval('documents_id_seq', (SELECT COALESCE(MAX(id), 0) FROM documents))"`,
+    { stdio: 'inherit' },
+  );
+
+  execSync(`rm -f /tmp/${DUMP_FILENAME}`);
+  console.log('Database restored from app endpoint.');
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Fallback restore: GitHub Releases archive (two-file split format)
+// ---------------------------------------------------------------------------
+
 function restoreEmbeddings(connectionString: string): void {
   console.log('Downloading embeddings...');
   const downloaded = tryExec(`curl -fL -o /tmp/${EMBEDDINGS_FILENAME} "${EMBEDDINGS_URL}"`);
   if (!downloaded) {
     console.warn('WARNING: Embeddings download failed — search will fall back to keyword mode.');
-    console.warn('Run pnpm embeddings:backfill to generate embeddings.');
     return;
   }
   console.log('Restoring embeddings...');
   const restored = tryExec(
     `gunzip -c /tmp/${EMBEDDINGS_FILENAME} | psql "${connectionString}" -c "CREATE TEMP TABLE _emb (id integer, embedding vector(1536)); COPY _emb FROM STDIN WITH BINARY; UPDATE documents SET embedding = _emb.embedding FROM _emb WHERE documents.id = _emb.id; DROP TABLE _emb;"`,
   );
-  if (!restored) {
-    console.warn('WARNING: Embedding restore failed — search will fall back to keyword mode.');
-    console.warn('Run pnpm embeddings:backfill to generate embeddings.');
-  } else {
-    console.log('Embeddings restored.');
-  }
+  console.log(restored ? 'Embeddings restored.' : 'WARNING: Embedding restore failed.');
   execSync(`rm -f /tmp/${EMBEDDINGS_FILENAME}`);
 }
 
-async function restoreFromArchive(connectionString: string, force: boolean): Promise<void> {
-  const pgRestoreFlags = force
+function restoreFromArchive(connectionString: string, force: boolean): void {
+  const flags = force
     ? '--clean --if-exists --no-owner --no-privileges'
     : '--no-owner --no-privileges';
 
-  console.log(`Downloading ${DOWNLOAD_URL}`);
-  const archiveDownloaded = tryExec(`curl -fL -o /tmp/${ARCHIVE_FILENAME} "${DOWNLOAD_URL}"`);
+  console.log(`Downloading ${ARCHIVE_URL}...`);
+  execSync(`curl -fL -o /tmp/${ARCHIVE_FILENAME} "${ARCHIVE_URL}"`, { stdio: 'inherit' });
 
-  if (archiveDownloaded) {
-    console.log('Extracting archive...');
-    execSync(`tar -xzf /tmp/${ARCHIVE_FILENAME} -C /tmp`, { stdio: 'inherit' });
+  console.log('Extracting archive...');
+  execSync(`tar -xzf /tmp/${ARCHIVE_FILENAME} -C /tmp`, { stdio: 'inherit' });
 
-    console.log('Restoring main database...');
-    execSync(`pg_restore ${pgRestoreFlags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
-      stdio: 'inherit',
-    });
+  console.log('Restoring main database...');
+  execSync(`pg_restore ${flags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
+    stdio: 'inherit',
+  });
 
-    if (force) {
-      // Truncate documents before COPY — pg_restore --clean only handles tables in the dump,
-      // and documents data was excluded from the dump (exported separately as CSV).
-      execSync(`psql "${connectionString}" -c "TRUNCATE documents CASCADE"`, { stdio: 'inherit' });
-    }
-
-    console.log('Restoring documents table...');
-    execSync(
-      `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"`,
-      { stdio: 'inherit' },
-    );
-
-    execSync(
-      `psql "${connectionString}" -c "SELECT setval('documents_id_seq', (SELECT COALESCE(MAX(id), 0) FROM documents))"`,
-      { stdio: 'inherit' },
-    );
-
-    restoreEmbeddings(connectionString);
-
-    execSync(`rm -f /tmp/${ARCHIVE_FILENAME} /tmp/${DUMP_FILENAME} /tmp/${DOCS_CSV_FILENAME}`);
-    console.log('Database restored from archive.');
-    return;
+  if (force) {
+    execSync(`psql "${connectionString}" -c "TRUNCATE documents CASCADE"`, { stdio: 'inherit' });
   }
 
-  // Legacy fallback: try single pgdump file
-  console.log('Archive not found, trying legacy dump format...');
-  console.log(`Downloading ${LEGACY_DUMP_URL}`);
-  execSync(`curl -fL -o /tmp/${DUMP_FILENAME} "${LEGACY_DUMP_URL}"`, {
-    stdio: 'inherit',
-  });
+  console.log('Restoring documents table...');
+  execSync(
+    `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"`,
+    { stdio: 'inherit' },
+  );
 
-  console.log('Restoring database (legacy format)...');
-  execSync(`pg_restore ${pgRestoreFlags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
-    stdio: 'inherit',
-  });
+  execSync(
+    `psql "${connectionString}" -c "SELECT setval('documents_id_seq', (SELECT COALESCE(MAX(id), 0) FROM documents))"`,
+    { stdio: 'inherit' },
+  );
 
-  execSync(`rm -f /tmp/${DUMP_FILENAME}`);
-  console.log('Database restored from legacy dump.');
+  restoreEmbeddings(connectionString);
+
+  execSync(`rm -f /tmp/${ARCHIVE_FILENAME} /tmp/${DUMP_FILENAME} /tmp/${DOCS_CSV_FILENAME}`);
+  console.log('Database restored from GitHub Releases archive.');
 }
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -135,12 +146,16 @@ async function main() {
   const empty = await isDatabaseEmpty(connectionString);
 
   if (empty || force) {
-    if (force && !empty) {
-      console.log('--force: overwriting existing database from GitHub Release...');
-    } else {
-      console.log('Database is empty — restoring from GitHub Release...');
+    const label = force && !empty ? '--force: overwriting existing database' : 'Database is empty';
+    console.log(`${label} — restoring from latest dump...`);
+
+    // Try single-file dump from app endpoint first
+    const restored = restoreFromApp(connectionString, force);
+    if (!restored) {
+      // Fall back to GitHub Releases archive (two-file split)
+      console.log('App endpoint not available, falling back to GitHub Releases...');
+      restoreFromArchive(connectionString, force);
     }
-    await restoreFromArchive(connectionString, force);
   } else {
     console.log('Database already has data — skipping restore. Use --force to overwrite.');
   }

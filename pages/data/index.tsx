@@ -70,10 +70,20 @@ export default function DataPage() {
         <Section title="Full Database">
           <p>
             For developers and researchers who need the complete dataset, a PostgreSQL dump is
-            available from GitHub Releases. The dump includes all tables (~600 MB&ndash;1.2 GB
-            compressed): source documents, AI assessments, weekly aggregates, baselines, narratives,
-            and embeddings.
+            available for download. The dump is a single{' '}
+            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">pg_dump -Fc</code> file
+            including all tables (~2 GB): source documents, AI assessments, weekly aggregates,
+            baselines, narratives, and vector embeddings. Updated weekly.
           </p>
+
+          <div className="mt-3">
+            <a
+              href="/api/data/dump"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-dm-accent text-dm-accent hover:bg-dm-accent/10 transition-colors"
+            >
+              Download PostgreSQL dump
+            </a>
+          </div>
 
           <h3 className="text-sm font-semibold text-dm-text-primary mt-4 mb-2">
             Key tables for researchers
@@ -98,19 +108,24 @@ export default function DataPage() {
 
           <h3 className="text-sm font-semibold text-dm-text-primary mt-4 mb-2">Setup</h3>
           <div className="bg-dm-bg border border-dm-border rounded-lg p-3 text-xs font-mono space-y-1">
+            <p># Automatic (recommended)</p>
             <p>createdb democracy_monitor</p>
-            <p>pg_restore -d democracy_monitor data-latest.dump</p>
+            <p>pnpm db:init --force</p>
+            <p></p>
+            <p># Manual</p>
+            <p>curl -LO https://democracymonitor.us/api/data/dump</p>
+            <p>pg_restore --clean --if-exists --no-owner -d democracy_monitor dump</p>
             <p>pnpm db:migrate</p>
           </div>
           <p className="mt-2">
             See{' '}
             <a
-              href={`${GITHUB_REPO}/blob/main/CONTRIBUTING.md`}
+              href={`${GITHUB_REPO}/blob/main/DEPLOYMENT.md`}
               className="text-dm-accent hover:underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              CONTRIBUTING.md
+              DEPLOYMENT.md
             </a>{' '}
             for full setup instructions. Schema is defined in{' '}
             <a

@@ -4,61 +4,60 @@ Democracy Monitor deploys on **Render.com** via `render.yaml`. This guide covers
 
 ## Initial Deployment
 
-### 1. Create the database dump
+### 1. Bootstrap data for first deploy
 
-From a machine with the full local database:
-
-```bash
-./scripts/dump-db.sh
-```
-
-This creates two files:
-
-- `data-dump.tar.gz` — main data (all tables, documents without embeddings)
-- `embeddings.bin.gz` — vector embeddings (separate to stay under GitHub's 2GB per-asset limit)
-
-Upload both to a GitHub Release:
+On first deploy, `db:init` needs a data source to populate the empty database. Upload a bootstrap dump to GitHub Releases:
 
 ```bash
+pg_dump -Fc --no-owner --no-privileges "$DATABASE_URL" > data-dump.pgdump
 gh release delete data-latest --yes --cleanup-tag 2>/dev/null
 gh release create data-latest \
-  --title "Database snapshot" \
-  --notes "Two assets: main data + embeddings." \
-  data-dump.tar.gz embeddings.bin.gz
+  --title "Database bootstrap" \
+  --notes "Bootstrap dump for first deploy." \
+  data-dump.pgdump
 ```
+
+After the first deploy, the weekly dump cron writes to the persistent disk and `db:init` is no longer needed. GitHub Releases serves only as a bootstrap fallback.
 
 ### 2. Deploy to Render
 
-Connect the repo in the Render dashboard. `render.yaml` provisions: web service, PostgreSQL, and Redis.
+Connect the repo in the Render dashboard. `render.yaml` provisions: web service (with 5GB persistent disk), PostgreSQL, Redis, and cron jobs.
 
-Set `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` in the Render dashboard. Both are needed for Layer 2 AI assessment.
+Set these secrets in the Render dashboard:
+
+- `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` — Layer 2 AI assessment
+- `CRON_SECRET` — shared between the web service and dump cron job (generate with `openssl rand -hex 32`)
 
 ### 3. First build auto-restores
 
-The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, downloads both assets from the latest GitHub Release, restores the main data (via `pg_restore` + `COPY`), then restores embeddings and runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
+The build command runs `pnpm install && pnpm db:init && pnpm build`. On first deploy, `db:init` detects an empty database, tries to download from the app endpoint (which won't exist yet), falls back to GitHub Releases, restores the dump, and runs Drizzle migrations. Subsequent deploys skip the restore and only run migrations.
 
-### 4. Enable cron jobs
+### 4. Trigger the first dump
 
-Once the app is running, enable the cron job definitions in `render.yaml` and redeploy.
+After the app is running, trigger the first dump to populate the persistent disk:
+
+```bash
+curl -X POST https://democracymonitor.us/api/cron/dump \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+This runs `pg_dump -Fc` on the web service and saves the result to `/var/data/database.pgdump`. The file is then available at `GET /api/data/dump` for contributor downloads and `db:init --force`.
 
 ### 5. Verify
 
-Check that the app loads with historical data and that cron jobs (once enabled) produce fresh assessment data.
+Check that the app loads with historical data, the dump is downloadable at `/api/data/dump`, and cron jobs produce fresh assessment data.
 
 ## Data Strategy
 
-Data lives in two places:
+### Persistent disk — Weekly dumps
 
-### In GitHub Releases — Two assets
+The web service has a 5GB persistent disk mounted at `/var/data`. Every Monday at 05:00 UTC, the dump cron triggers `POST /api/cron/dump`, which runs `pg_dump -Fc` (single file, includes all tables and embeddings) and saves it to the disk. The file is served at `GET /api/data/dump` for public download.
 
-- `data-dump.tar.gz` — Main data: `pg_dump` of all tables except documents data + documents CSV (without embeddings)
-- `embeddings.bin.gz` — Vector embeddings as compressed binary COPY (~1GB, required for search)
+### GitHub Releases — Bootstrap fallback
 
-Split into two assets because full documents (up to 626K chars) plus embeddings exceed GitHub's 2GB per-asset limit. The build command auto-restores both on first deploy. Contributors can also download them to run the full app locally.
+A GitHub Release (`data-latest`) holds a bootstrap dump for first-deploy scenarios. This is updated manually or infrequently — the persistent disk is the primary source for ongoing dumps.
 
-This is the authoritative backup of expensive-to-reproduce AI assessment data (~$80+ to regenerate).
-
-### In Render PostgreSQL — Production data
+### Render PostgreSQL — Production data
 
 Live production database. Render provides automatic daily backups (point-in-time recovery on paid plans). This is the primary disaster recovery mechanism.
 
@@ -68,9 +67,11 @@ In order of preference:
 
 1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans.
 
-2. **GitHub Release archive** — Delete and recreate the Render database; the next deploy auto-restores from the latest release (main data + embeddings). Loses data since the dump was created, but preserves all AI assessment work.
+2. **Persistent disk dump** — The latest `pg_dump` on the web service's persistent disk. Re-create the Render database and restore from `GET /api/data/dump`. Loses data since the last weekly dump.
 
-3. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
+3. **GitHub Release bootstrap** — Delete and recreate the Render database; the next deploy auto-restores from the GitHub Release. May be older than the persistent disk dump.
+
+4. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
 
 ## Cron Jobs
 
@@ -78,12 +79,12 @@ In order of preference:
 | ----------------- | ---------------- | ----------------------------------------------------- |
 | `weekly-legiscan` | Monday 01:00 UTC | Download bulk legislative datasets from LegiScan      |
 | `weekly-snapshot` | Monday 03:00 UTC | Fetch sources, AI assessment, aggregation, narratives |
-| `weekly-dump`     | Monday 05:00 UTC | Database dump to GitHub Release                       |
+| `weekly-dump`     | Monday 05:00 UTC | Trigger `pg_dump` on web service → persistent disk    |
 
 ## Ongoing Operations
 
 - **Adding schema changes** — Modify `lib/db/schema.ts`, run `pnpm db:generate`, commit the migration. It applies automatically on next deploy.
-- **Updating the database dump** — Run `./scripts/dump-db.sh` locally and upload to a new GitHub Release.
+- **Updating the bootstrap dump** — Only needed if the persistent disk is lost and you need to redeploy from scratch. Run `pg_dump -Fc` and upload to a new GitHub Release.
 
 ## For Contributors
 
@@ -93,21 +94,17 @@ To work with the full production dataset locally:
 
 ```bash
 createdb democracy_monitor   # first time only
-pnpm db:init                 # empty DB: downloads dump + embeddings, restores, migrates
+pnpm db:init                 # empty DB: downloads dump, restores, migrates
 pnpm db:init --force         # existing DB: overwrites with latest production data
 ```
 
-`db:init` downloads both assets from GitHub Releases (main data + embeddings), restores everything, and runs migrations. Embeddings are required for search functionality.
+`db:init` downloads the latest dump from `https://democracymonitor.us/api/data/dump` (a single `pg_dump -Fc` file including all tables and embeddings), restores it, and runs migrations. Falls back to GitHub Releases if the app endpoint is unavailable.
 
 **Manual:**
 
-1. Download the latest archive from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases)
-2. Create a local database: `createdb democracy_monitor`
-3. Extract and restore:
-   ```bash
-   tar -xzf data-dump.tar.gz
-   pg_restore --clean --if-exists --no-owner --no-privileges -d democracy_monitor data-dump.pgdump
-   gunzip -c documents-no-embedding.csv.gz | psql democracy_monitor -c "\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"
-   gunzip -c embeddings.bin.gz | psql democracy_monitor -c "CREATE TEMP TABLE _emb (id integer, embedding vector(1536)); COPY _emb FROM STDIN WITH BINARY; UPDATE documents SET embedding = _emb.embedding FROM _emb WHERE documents.id = _emb.id; DROP TABLE _emb;"
-   ```
-4. Run migrations: `pnpm db:migrate`
+```bash
+curl -LO https://democracymonitor.us/api/data/dump -o democracy-monitor.pgdump
+createdb democracy_monitor
+pg_restore --clean --if-exists --no-owner --no-privileges -d democracy_monitor democracy-monitor.pgdump
+pnpm db:migrate
+```
