@@ -152,8 +152,6 @@ export function ExploreFilters({
         className="px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
       >
         <option value="">All sources</option>
-        <option value="government">Government only</option>
-        <option value="news">News only</option>
         <option value="federal_register">Federal Register</option>
         <option value="courtlistener">CourtListener</option>
         <option value="doj">DOJ</option>

@@ -21,13 +21,7 @@ export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof
     conditions.push(sql`d.published_at <= ${filters.dateTo}::timestamptz`);
   }
   if (filters.sourceOrigin) {
-    if (filters.sourceOrigin === 'government') {
-      conditions.push(sql`d.source_origin NOT IN ('gdelt', 'whitehouse')`);
-    } else if (filters.sourceOrigin === 'news') {
-      conditions.push(sql`d.source_origin IN ('gdelt', 'whitehouse')`);
-    } else {
-      conditions.push(sql`d.source_origin = ${filters.sourceOrigin}`);
-    }
+    conditions.push(sql`d.source_origin = ${filters.sourceOrigin}`);
   }
   if (filters.scoreMin != null) {
     conditions.push(sql`ds.final_score >= ${filters.scoreMin}`);
