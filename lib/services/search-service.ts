@@ -303,10 +303,11 @@ function buildWhereClause(filters: SearchFilters, hasQuery: boolean, vectorStr: 
   const parts: ReturnType<typeof sql>[] = [];
 
   if (hasQuery && vectorStr) {
-    parts.push(sql`(
-      d.search_vector @@ websearch_to_tsquery('english', ${filters.query})
-      OR (d.embedding IS NOT NULL AND 1 - (d.embedding <=> ${vectorStr}::vector) > 0.3)
-    )`);
+    // Use tsvector for filtering (indexed, fast). Vector similarity is used
+    // only for ranking in ORDER BY — not in WHERE, which would cause a full
+    // 164K embedding scan (~45s). Documents matching by keyword are ranked
+    // by a blend of text relevance and semantic similarity.
+    parts.push(sql`d.search_vector @@ websearch_to_tsquery('english', ${filters.query})`);
   } else if (hasQuery) {
     parts.push(sql`d.search_vector @@ websearch_to_tsquery('english', ${filters.query})`);
   } else if (vectorStr) {
