@@ -92,19 +92,22 @@ async function handleResearch(
     return;
   }
 
-  const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
   const dateRange = computeDateRange(allDocs);
   const avgSimilarity = avgCosineSimilarity(allDocs);
 
+  // docsOnly: return documents immediately without expensive corpus stats
+  // (corpus stats scan 164K embeddings — ~15-20s). Stats are computed
+  // in the streaming synthesis phase instead.
   if (docsOnly) {
     res.status(200).json({
       documents: formatDocList(allDocs),
       dateRange,
       queryConfidence: avgSimilarity,
-      ...(corpusStats ? { corpusStats } : {}),
     });
     return;
   }
+
+  const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
 
   const cached = await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
   if (cached) {
