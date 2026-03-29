@@ -13,7 +13,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { AnthropicProvider } from '@/lib/ai/anthropic';
 import { embedText } from '@/lib/services/embedding-service';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
-import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { ResearchDocument } from '@/lib/services/search-service';
 import { searchResearch } from '@/lib/services/search-service';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
@@ -42,12 +41,11 @@ async function retrieveDocuments(query: string): Promise<{
   const allDocs = await searchResearch(query, CONTEXT_DOCS, embedding);
   if (allDocs.length === 0) return null;
 
-  const leastSimilarity = Math.min(...allDocs.map((d) => d.cosineSimilarity));
-  const corpusStats =
-    leastSimilarity > 0 ? await searchCorpusStats(embedding, 1 - leastSimilarity) : null;
-
+  // Skip corpus stats — scanning 164K embeddings takes 15-20s and delays
+  // the first streamed byte past EventSource timeout. The synthesis prompt
+  // works without corpus stats (they add context but aren't required).
   const contextDocs = allDocs.slice(0, CONTEXT_DOCS);
-  return { docs: contextDocs, prompt: buildSinglePassPrompt(query, contextDocs, corpusStats) };
+  return { docs: contextDocs, prompt: buildSinglePassPrompt(query, contextDocs, null) };
 }
 
 async function streamCompletion(provider: AnthropicProvider, prompt: string, res: NextApiResponse) {
