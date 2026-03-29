@@ -1,15 +1,15 @@
 /**
- * Search service — semantic + keyword search with filters, pagination, and scoring details.
+ * Search service — semantic vector search with filters, pagination, and scoring details.
  *
  * Supports two modes:
- * - Explore: combined keyword (tsvector) + semantic (pgvector) search with scoring details
- * - Research: vector-only search against government documents for RAG synthesis
+ * - Explore: vector semantic search (pgvector) with filters, tsvector fallback
+ * - Research: vector search against government documents for RAG synthesis
  */
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
-import { buildFilterConditions, buildSortClause, mapToSearchResult } from './search-queries';
+import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -87,41 +87,7 @@ export interface SimilarDocumentResult {
 }
 
 // ---------------------------------------------------------------------------
-// AI assessment enrichment (post-query, avoids expensive JOIN)
-// ---------------------------------------------------------------------------
-
-async function enrichWithAiAssessments(
-  db: ReturnType<typeof getDb>,
-  rows: Record<string, unknown>[],
-): Promise<void> {
-  if (rows.length === 0) return;
-  try {
-    const aiResults = await db.execute(sql`
-      SELECT url, category, assessment, confidence, erosion_type, LEFT(reasoning, 300) as reasoning
-      FROM ai_document_assessments
-      WHERE pass = 2 AND (url, category) IN (${sql.join(
-        rows.map((r) => sql`(${r.url as string}, ${r.category as string})`),
-        sql`, `,
-      )})
-    `);
-    const aiMap = new Map<string, Record<string, unknown>>();
-    for (const ai of aiResults.rows as Record<string, unknown>[]) {
-      aiMap.set(`${ai.url}:${ai.category}`, ai);
-    }
-    for (const row of rows) {
-      const ai = aiMap.get(`${row.url}:${row.category}`);
-      row.ai_assessment = ai?.assessment ?? null;
-      row.ai_confidence = ai?.confidence ?? null;
-      row.ai_erosion_type = ai?.erosion_type ?? null;
-      row.ai_reasoning = ai?.reasoning ?? null;
-    }
-  } catch (err) {
-    console.error('[search] AI enrichment failed (non-fatal):', err);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Explore mode: combined keyword + semantic search
+// Explore mode: vector semantic search with filters (tsvector fallback)
 // ---------------------------------------------------------------------------
 
 export async function searchExplore(filters: SearchFilters): Promise<ExploreSearchResult> {
@@ -132,49 +98,19 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
   const pageSize = Math.min(filters.pageSize ?? 20, 100);
   const offset = (page - 1) * pageSize;
   const hasQuery = filters.query.trim().length > 0;
-  const useSemanticSearch = hasQuery && filters.query.trim().split(/\s+/).length > 3;
 
+  // Embed every query for semantic search (no minimum word count)
   let vectorStr: string | null = null;
-  if (useSemanticSearch) {
+  if (hasQuery) {
     const embedding = await embedText(filters.query);
     if (embedding) vectorStr = `[${embedding.join(',')}]`;
   }
 
-  const { whereClause, similarityCol, textRankCol } = buildWhereClause(
-    filters,
-    hasQuery,
-    vectorStr,
-  );
-  const sortClause = buildSortClause(filters.sort, vectorStr !== null, hasQuery);
-
   try {
-    const countResult = await db.execute(
-      sql`SELECT count(*) as total FROM documents d LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category WHERE ${whereClause}`,
-    );
-    const totalResults = Number((countResult.rows[0] as { total: string }).total);
-
-    // Search without AI JOIN — fetch AI data post-query for returned results only
-    const results = await db.execute(sql`
-      SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
-        LEFT(d.content, 250) as snippet, ${similarityCol} as cosine_similarity, ${textRankCol} as text_rank,
-        ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
-        ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed
-      FROM documents d
-      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      WHERE ${whereClause}
-      ORDER BY ${sortClause}
-      LIMIT ${pageSize} OFFSET ${offset}
-    `);
-
-    const rows = results.rows as Record<string, unknown>[];
-    await enrichWithAiAssessments(db, rows);
-
-    return {
-      totalResults,
-      page,
-      pageSize,
-      documents: rows.map(mapToSearchResult),
-    };
+    if (vectorStr) {
+      return await vectorExplore(db, vectorStr, filters, page, pageSize, offset);
+    }
+    return await textExplore(db, filters, hasQuery, page, pageSize, offset);
   } catch (err) {
     console.error('[search] Explore search failed:', err);
     return { totalResults: 0, page, pageSize, documents: [] };
@@ -323,34 +259,4 @@ export async function findSimilarDocuments(
     console.error('[search] Similar documents search failed:', err);
     return { sameCategory: [], otherCategories: [] };
   }
-}
-
-// ---------------------------------------------------------------------------
-// Internal
-// ---------------------------------------------------------------------------
-
-function buildWhereClause(filters: SearchFilters, hasQuery: boolean, vectorStr: string | null) {
-  const similarityCol = vectorStr ? sql`1 - (d.embedding <=> ${vectorStr}::vector)` : sql`NULL`;
-  const textRankCol = hasQuery
-    ? sql`ts_rank_cd(d.search_vector, websearch_to_tsquery('english', ${filters.query}))`
-    : sql`NULL`;
-
-  const parts: ReturnType<typeof sql>[] = [];
-
-  if (hasQuery && vectorStr) {
-    // Use tsvector for filtering (indexed, fast). Vector similarity is used
-    // only for ranking in ORDER BY — not in WHERE, which would cause a full
-    // 164K embedding scan (~45s). Documents matching by keyword are ranked
-    // by a blend of text relevance and semantic similarity.
-    parts.push(sql`d.search_vector @@ websearch_to_tsquery('english', ${filters.query})`);
-  } else if (hasQuery) {
-    parts.push(sql`d.search_vector @@ websearch_to_tsquery('english', ${filters.query})`);
-  } else if (vectorStr) {
-    parts.push(sql`d.embedding IS NOT NULL`);
-  }
-
-  parts.push(...buildFilterConditions(filters));
-
-  const whereClause = parts.length > 0 ? sql.join(parts, sql` AND `) : sql`TRUE`;
-  return { whereClause, similarityCol, textRankCol };
 }
