@@ -1,5 +1,6 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
+import { EmailSignup } from '@/components/shared/EmailSignup';
 import { BreadcrumbJsonLd, CollectionJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -205,8 +206,10 @@ export default function WeeklyHubPage({
         </div>
       </nav>
 
+      <EmailSignup variant="card" />
+
       {/* Link back to interactive dashboard */}
-      <p className="text-xs text-dm-muted">
+      <p className="text-xs text-dm-muted mt-6">
         <Link href="/" className="text-dm-accent hover:underline">
           &larr; Back to interactive dashboard
         </Link>

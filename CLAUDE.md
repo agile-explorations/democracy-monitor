@@ -55,6 +55,9 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `GOVINFO_API_KEY` — GovInfo API key (optional; enables GAO/Congressional/Public Law fetching)
 - `FEC_API_KEY` — FEC API key (optional; enables advisory opinion and MUR fetching)
 - `LEGISCAN_API_KEY` — LegiScan API key (optional; enables legislative bill tracking via bulk datasets)
+- `RESEND_API_KEY` — Resend API key (optional; enables email newsletter)
+- `RESEND_FROM_EMAIL` — Sender address for emails (default: `Democracy Monitor <updates@democracymonitor.us>`)
+- `CRON_SECRET` — Bearer token shared between web service and dump cron job
 
 ### Local development
 

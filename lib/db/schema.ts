@@ -551,3 +551,34 @@ export const legiscanDatasets = pgTable('legiscan_datasets', {
   downloadedAt: timestamp('downloaded_at', { withTimezone: true }).defaultNow().notNull(),
   billCount: integer('bill_count'),
 });
+
+export const subscribers = pgTable(
+  'subscribers',
+  {
+    id: serial('id').primaryKey(),
+    email: varchar('email', { length: 255 }).notNull(),
+    confirmToken: varchar('confirm_token', { length: 64 }).notNull(),
+    confirmed: boolean('confirmed').notNull().default(false),
+    subscribedAt: timestamp('subscribed_at', { withTimezone: true }).defaultNow().notNull(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    unsubscribedAt: timestamp('unsubscribed_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('uq_subscribers_email').on(table.email),
+    unique('uq_subscribers_token').on(table.confirmToken),
+  ],
+);
+
+export const feedback = pgTable(
+  'feedback',
+  {
+    id: serial('id').primaryKey(),
+    email: varchar('email', { length: 255 }),
+    category: varchar('category', { length: 50 }),
+    type: varchar('type', { length: 20 }).notNull(),
+    message: text('message').notNull(),
+    pageUrl: text('page_url'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_feedback_created_at').on(table.createdAt)],
+);

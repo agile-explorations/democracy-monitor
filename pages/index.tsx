@@ -10,6 +10,7 @@ import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
 import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
+import { EmailSignup } from '@/components/shared/EmailSignup';
 import { WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -201,6 +202,8 @@ export default function Home() {
             open source.
           </p>
         </section>
+
+        <EmailSignup variant="card" />
 
         {/* Overview section — only shown when overview data is available */}
         {overview && (

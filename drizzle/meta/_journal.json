@@ -239,6 +239,13 @@
       "when": 1774352828775,
       "tag": "0033_known_natasha_romanoff",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1774833951358,
+      "tag": "0034_spicy_baron_zemo",
+      "breakpoints": true
     }
   ]
 }

@@ -1,3 +1,6 @@
+import Link from 'next/link';
+import { EmailSignup } from '@/components/shared/EmailSignup';
+
 function GitHubIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4" aria-hidden="true">
@@ -8,7 +11,8 @@ function GitHubIcon() {
 
 export function SiteFooter() {
   return (
-    <footer className="mt-8 pt-6 pb-8 border-t border-dm-border">
+    <footer className="mt-8 pt-6 pb-8 border-t border-dm-border space-y-4">
+      <EmailSignup variant="inline" />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-dm-muted">
         <a
           href="https://github.com/agile-explorations/democracy-monitor"
@@ -30,6 +34,10 @@ export function SiteFooter() {
         >
           Sponsor this project
         </a>
+        <span className="text-dm-border">·</span>
+        <Link href="/feedback" className="hover:text-dm-text-secondary transition-colors">
+          Send feedback
+        </Link>
       </div>
     </footer>
   );

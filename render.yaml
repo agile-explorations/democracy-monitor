@@ -83,6 +83,10 @@ services:
         sync: false
       - key: FEC_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: Democracy Monitor <updates@democracymonitor.us>
 
   - type: cron
     name: weekly-legiscan

@@ -393,6 +393,17 @@ async function processMissedWeeks(
   }
 }
 
+/** Send weekly digest email to subscribers (non-fatal — errors appended but don't fail snapshot). */
+async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<void> {
+  try {
+    const { sendWeeklyDigest } = await import('@/lib/services/subscriber-service');
+    const sent = await sendWeeklyDigest(weekOf);
+    if (sent > 0) console.log(`[snapshot] Weekly digest sent to ${sent} subscribers`);
+  } catch (err) {
+    errors.push(`Weekly digest failed: ${formatError(err)}`);
+  }
+}
+
 /** Retry aggregate failures, embed docs, process missed weeks, generate + retry narratives. */
 async function runPostCategorySteps(
   cats: (typeof CATEGORIES)[number][],
@@ -467,6 +478,10 @@ async function runPostCategorySteps(
     if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
   } catch (err) {
     console.warn('[snapshot] Narrative retry failed:', err);
+  }
+
+  if (narrativesGenerated) {
+    await trySendWeeklyDigest(currentWeek, errors);
   }
 
   return {

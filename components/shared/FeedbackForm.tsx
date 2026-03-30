@@ -1,0 +1,143 @@
+import { useState } from 'react';
+
+interface FeedbackFormProps {
+  initialCategory?: string;
+  initialPageUrl?: string;
+}
+
+const FEEDBACK_TYPES = [
+  { value: 'data-issue', label: 'Missing or incorrect data' },
+  { value: 'suggestion', label: 'Feature suggestion' },
+  { value: 'question', label: 'Question' },
+  { value: 'other', label: 'Other' },
+] as const;
+
+export function FeedbackForm({ initialCategory, initialPageUrl }: FeedbackFormProps) {
+  const [type, setType] = useState<string>(initialCategory ? 'data-issue' : 'suggestion');
+  const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!message.trim()) return;
+
+    setStatus('loading');
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type,
+          message: message.trim(),
+          email: email.trim() || undefined,
+          category: initialCategory || undefined,
+          pageUrl: initialPageUrl || undefined,
+        }),
+      });
+      if (res.ok) {
+        setStatus('success');
+      } else {
+        const data = await res.json();
+        setStatus('error');
+        setErrorMessage(data.error || 'Something went wrong');
+      }
+    } catch {
+      setStatus('error');
+      setErrorMessage('Network error — please try again');
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <div className="rounded-lg border border-dm-border bg-dm-card p-5">
+        <p className="text-sm text-green-400 font-medium">Thank you for your feedback!</p>
+        <p className="text-xs text-dm-text-secondary mt-1">
+          We review all submissions and use them to improve the project.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-lg border border-dm-border bg-dm-card p-5 space-y-4"
+    >
+      <div>
+        <label
+          htmlFor="feedback-type"
+          className="block text-xs font-medium text-dm-text-primary mb-1"
+        >
+          Type
+        </label>
+        <select
+          id="feedback-type"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+          className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary"
+        >
+          {FEEDBACK_TYPES.map((t) => (
+            <option key={t.value} value={t.value}>
+              {t.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label
+          htmlFor="feedback-message"
+          className="block text-xs font-medium text-dm-text-primary mb-1"
+        >
+          Message
+        </label>
+        <textarea
+          id="feedback-message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          required
+          rows={5}
+          maxLength={5000}
+          placeholder={
+            initialCategory
+              ? `Know of a government action in this category that we missed? Describe it here...`
+              : 'Describe your feedback, suggestion, or question...'
+          }
+          className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary resize-y"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="feedback-email"
+          className="block text-xs font-medium text-dm-text-primary mb-1"
+        >
+          Email{' '}
+          <span className="text-dm-text-secondary font-normal">
+            (optional — if you&apos;d like a response)
+          </span>
+        </label>
+        <input
+          id="feedback-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary"
+        />
+      </div>
+
+      {status === 'error' && <p className="text-xs text-red-400">{errorMessage}</p>}
+
+      <button
+        type="submit"
+        disabled={status === 'loading' || !message.trim()}
+        className="px-4 py-1.5 text-xs font-medium rounded-md bg-dm-accent text-white hover:bg-dm-accent/90 transition-colors disabled:opacity-50"
+      >
+        {status === 'loading' ? 'Submitting...' : 'Submit feedback'}
+      </button>
+    </form>
+  );
+}

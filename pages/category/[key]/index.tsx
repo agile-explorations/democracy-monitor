@@ -176,6 +176,14 @@ export default function CategoryDetailPage({
               : (category ?? ssrCategory)!.description}
           </p>
         )}
+        <p className="text-xs mt-3">
+          <Link
+            href={`/feedback?category=${categoryKey}`}
+            className="text-dm-accent hover:underline"
+          >
+            Know of a government action in this category that we missed? Tell us.
+          </Link>
+        </p>
       </header>
 
       {loading && (

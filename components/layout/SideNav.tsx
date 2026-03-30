@@ -112,6 +112,10 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
             <NavLink href="/data/thematic" label="Thematic Drift" />
           </NavSection>
 
+          <NavSection title="Connect">
+            <NavLink href="/feedback" label="Feedback" />
+          </NavSection>
+
           <NavSection title="System">
             {SYSTEM_LINKS.map((link) => (
               <NavLink key={link.href} href={link.href} label={link.label} />
