@@ -3,6 +3,7 @@ import { useState } from 'react';
 interface FeedbackFormProps {
   initialCategory?: string;
   initialPageUrl?: string;
+  onSubmitted?: () => void;
 }
 
 const FEEDBACK_TYPES = [
@@ -12,7 +13,7 @@ const FEEDBACK_TYPES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-export function FeedbackForm({ initialCategory, initialPageUrl }: FeedbackFormProps) {
+export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: FeedbackFormProps) {
   const [type, setType] = useState<string>(initialCategory ? 'data-issue' : 'suggestion');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
@@ -38,6 +39,7 @@ export function FeedbackForm({ initialCategory, initialPageUrl }: FeedbackFormPr
       });
       if (res.ok) {
         setStatus('success');
+        onSubmitted?.();
       } else {
         const data = await res.json();
         setStatus('error');
