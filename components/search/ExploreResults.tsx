@@ -1,88 +1,118 @@
+import { useMemo } from 'react';
 import { CATEGORIES } from '@/lib/data/categories';
 import { categoryLabel, formatDate } from './helpers';
 import type { ExploreDocResult, ExploreResult } from './types';
 
-function ExploreDocCard({ doc }: { doc: ExploreDocResult }) {
+interface GroupedDoc {
+  url: string | null;
+  title: string;
+  publishedAt: string | null;
+  sourceType: string;
+  sourceOrigin: string | null;
+  snippet: string | null;
+  cosineSimilarity: number | null;
+  categories: ExploreDocResult[];
+}
+
+function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
+  const map = new Map<string, GroupedDoc>();
+  for (const doc of docs) {
+    const key = doc.url ?? `_id_${doc.id}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.categories.push(doc);
+      // Keep highest relevance
+      if (doc.cosineSimilarity != null && (existing.cosineSimilarity ?? 0) < doc.cosineSimilarity) {
+        existing.cosineSimilarity = doc.cosineSimilarity;
+      }
+    } else {
+      map.set(key, {
+        url: doc.url,
+        title: doc.title,
+        publishedAt: doc.publishedAt,
+        sourceType: doc.sourceType,
+        sourceOrigin: doc.sourceOrigin,
+        snippet: doc.snippet,
+        cosineSimilarity: doc.cosineSimilarity,
+        categories: [doc],
+      });
+    }
+  }
+  return [...map.values()];
+}
+
+function CategoryRow({ doc }: { doc: ExploreDocResult }) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
+      <span className="px-1.5 py-0 rounded bg-dm-border/50 text-dm-muted">
+        {categoryLabel(doc.category)}
+      </span>
+      {doc.finalScore != null && (
+        <span className="text-dm-text-secondary">Score: {doc.finalScore.toFixed(1)}</span>
+      )}
+      {doc.documentClass && doc.classMultiplier != null && doc.classMultiplier !== 1.0 && (
+        <span className="text-dm-muted">
+          {doc.documentClass} &times;{doc.classMultiplier.toFixed(1)}
+        </span>
+      )}
+      {(doc.captureCount ?? 0) > 0 && <span className="text-red-500">{doc.captureCount}C</span>}
+      {(doc.driftCount ?? 0) > 0 && <span className="text-amber-500">{doc.driftCount}D</span>}
+      {doc.aiAssessment && (
+        <span
+          className={`font-medium ${
+            doc.aiAssessment === 'clearly_concerning'
+              ? 'text-red-500'
+              : doc.aiAssessment === 'potentially_concerning'
+                ? 'text-amber-500'
+                : 'text-dm-muted'
+          }`}
+        >
+          AI: {doc.aiAssessment.replace(/_/g, ' ')}
+          {doc.aiConfidence != null && ` (${(doc.aiConfidence * 100).toFixed(0)}%)`}
+        </span>
+      )}
+      {doc.aiErosionType && (
+        <span className="text-dm-muted">{doc.aiErosionType.replace(/_/g, ' ')}</span>
+      )}
+    </div>
+  );
+}
+
+function GroupedDocCard({ group }: { group: GroupedDoc }) {
   return (
     <div className="rounded-lg border border-dm-border bg-dm-card p-3">
-      <div className="flex-1 min-w-0">
-        {doc.url ? (
-          <a
-            href={doc.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-dm-text-primary hover:text-dm-accent transition-colors"
-          >
-            {doc.title}
-          </a>
-        ) : (
-          <span className="text-sm font-medium text-dm-text-primary">{doc.title}</span>
-        )}
+      {group.url ? (
+        <a
+          href={group.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm font-medium text-dm-text-primary hover:text-dm-accent transition-colors"
+        >
+          {group.title}
+        </a>
+      ) : (
+        <span className="text-sm font-medium text-dm-text-primary">{group.title}</span>
+      )}
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-dm-muted">
-          {doc.publishedAt && <span>{formatDate(doc.publishedAt)}</span>}
-          <span className="px-1.5 py-0 rounded bg-dm-border/50">{categoryLabel(doc.category)}</span>
-          {doc.documentClass && <span>{doc.documentClass}</span>}
-          <span>{doc.sourceOrigin ?? doc.sourceType}</span>
-        </div>
-
-        {doc.finalScore != null && (
-          <div className="flex flex-wrap items-center gap-x-3 mt-2 text-[11px]">
-            <span className="text-dm-text-secondary font-medium">
-              Score: {doc.finalScore.toFixed(1)}
-            </span>
-            {(doc.captureCount ?? 0) > 0 && (
-              <span className="text-red-500">{doc.captureCount}C</span>
-            )}
-            {(doc.driftCount ?? 0) > 0 && <span className="text-amber-500">{doc.driftCount}D</span>}
-            {(doc.warningCount ?? 0) > 0 && (
-              <span className="text-dm-muted">{doc.warningCount}W</span>
-            )}
-            {(doc.suppressedCount ?? 0) > 0 && (
-              <span className="text-dm-muted line-through">{doc.suppressedCount} suppressed</span>
-            )}
-            {doc.classMultiplier != null && doc.classMultiplier !== 1.0 && (
-              <span className="text-dm-muted">
-                {doc.documentClass} &times;{doc.classMultiplier.toFixed(1)}
-              </span>
-            )}
-          </div>
-        )}
-
-        {doc.aiAssessment && (
-          <div className="flex items-center gap-2 mt-1 text-[11px]">
-            <span
-              className={`font-medium ${
-                doc.aiAssessment === 'clearly_concerning'
-                  ? 'text-red-500'
-                  : doc.aiAssessment === 'potentially_concerning'
-                    ? 'text-amber-500'
-                    : 'text-dm-muted'
-              }`}
-            >
-              AI: {doc.aiAssessment.replace(/_/g, ' ')}
-            </span>
-            {doc.aiConfidence != null && (
-              <span className="text-dm-muted">({(doc.aiConfidence * 100).toFixed(0)}%)</span>
-            )}
-            {doc.aiErosionType && (
-              <span className="text-dm-muted">{doc.aiErosionType.replace(/_/g, ' ')}</span>
-            )}
-          </div>
-        )}
-
-        {doc.cosineSimilarity != null && (
-          <div className="mt-1 text-[11px] text-dm-muted">
-            Relevance: {(doc.cosineSimilarity * 100).toFixed(0)}%
-          </div>
-        )}
-
-        {doc.snippet && (
-          <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
-            &ldquo;{doc.snippet.trim()}&rdquo;
-          </p>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-dm-muted">
+        {group.publishedAt && <span>{formatDate(group.publishedAt)}</span>}
+        <span>{group.sourceOrigin ?? group.sourceType}</span>
+        {group.cosineSimilarity != null && (
+          <span>Relevance: {(group.cosineSimilarity * 100).toFixed(0)}%</span>
         )}
       </div>
+
+      <div className="mt-2 space-y-1">
+        {group.categories.map((doc) => (
+          <CategoryRow key={doc.id} doc={doc} />
+        ))}
+      </div>
+
+      {group.snippet && (
+        <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
+          &ldquo;{group.snippet.trim()}&rdquo;
+        </p>
+      )}
     </div>
   );
 }
@@ -184,16 +214,20 @@ export function ExploreResults({
   page: number;
   onPageChange: (page: number) => void;
 }) {
+  const grouped = useMemo(() => groupByUrl(result.documents), [result.documents]);
   const totalPages = Math.ceil(result.totalResults / result.pageSize);
 
   return (
     <div>
       <p className="text-xs text-dm-muted mb-4">
         {result.totalResults.toLocaleString()} result{result.totalResults !== 1 ? 's' : ''}
+        {grouped.length < result.documents.length && (
+          <span> ({grouped.length} unique documents)</span>
+        )}
       </p>
       <div className="space-y-2">
-        {result.documents.map((doc) => (
-          <ExploreDocCard key={doc.id} doc={doc} />
+        {grouped.map((group) => (
+          <GroupedDocCard key={group.url ?? group.categories[0].id} group={group} />
         ))}
       </div>
       {totalPages > 1 && (
