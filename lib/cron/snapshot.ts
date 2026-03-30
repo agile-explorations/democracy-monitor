@@ -288,11 +288,14 @@ async function snapshotCpd(): Promise<void> {
       doc.categories.forEach((c) => affectedCategories.add(c));
     }
 
-    // Re-aggregate affected categories since CPD docs were added
+    // Re-aggregate affected categories since CPD docs were added (with enrichment)
     for (const category of affectedCategories) {
       try {
+        const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
+        const aiSummary = await buildAISummaryFromDB(category, weekOf);
         const agg = await computeWeeklyAggregate(category, weekOf);
-        await storeWeeklyAggregate(agg);
+        const enriched = await enrichWithLayerScores(agg, aiSummary);
+        await storeWeeklyAggregate(enriched);
       } catch (err) {
         console.error(`[snapshot] CPD re-aggregate failed for ${category}:`, err);
       }
@@ -333,11 +336,14 @@ async function snapshotCrec(): Promise<void> {
       }
     }
 
-    // Re-aggregate affected categories since CREC docs were added
+    // Re-aggregate affected categories since CREC docs were added (with enrichment)
     for (const category of affectedCategories) {
       try {
+        const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
+        const aiSummary = await buildAISummaryFromDB(category, weekOf);
         const agg = await computeWeeklyAggregate(category, weekOf);
-        await storeWeeklyAggregate(agg);
+        const enriched = await enrichWithLayerScores(agg, aiSummary);
+        await storeWeeklyAggregate(enriched);
       } catch (err) {
         console.error(`[snapshot] CREC re-aggregate failed for ${category}:`, err);
       }
