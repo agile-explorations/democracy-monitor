@@ -71,14 +71,15 @@ async function runLayersAndAggregate(
   weekOf: string,
 ): Promise<{ aggregateFailure: AggregateFailure | null; errors: string[] }> {
   const errors: string[] = [];
-  let aiSummary: import('@/lib/types/structural').AIAssessmentSummary | null = null;
+
+  // Run L2 on freshly fetched items (stores individual assessments in DB)
   try {
     const { runLayer2Assessment } = await import('@/lib/services/document-review-orchestrator');
-    aiSummary = await runLayer2Assessment(items, category, weekOf);
-    if (aiSummary) {
+    const l2Result = await runLayer2Assessment(items, category, weekOf);
+    if (l2Result) {
       console.log(
-        `[snapshot]   Layer 2: ${aiSummary.flagCount}/${aiSummary.totalDocuments} flagged, ` +
-          `concern rate ${(aiSummary.concernRate * 100).toFixed(1)}%`,
+        `[snapshot]   Layer 2: ${l2Result.flagCount}/${l2Result.totalDocuments} flagged, ` +
+          `concern rate ${(l2Result.concernRate * 100).toFixed(1)}%`,
       );
     }
   } catch (err) {
@@ -88,6 +89,9 @@ async function runLayersAndAggregate(
   }
 
   try {
+    // Build AI summary from ALL stored assessments (not just the fresh batch)
+    const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
+    const aiSummary = await buildAISummaryFromDB(category, weekOf);
     const agg = await computeWeeklyAggregate(category, weekOf);
     const enriched = await enrichWithLayerScores(agg, aiSummary);
     await storeWeeklyAggregate(enriched);
