@@ -284,6 +284,23 @@ export async function getLatestAggregatedWeek(): Promise<string | null> {
   return row?.latest ?? null;
 }
 
+/** Find weeks that have aggregates but are missing overview narratives. */
+export async function getWeeksMissingNarratives(beforeWeek: string): Promise<string[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+  const result = await db.execute(sql`
+    SELECT DISTINCT wa.week_of::text as week_of
+    FROM weekly_aggregates wa
+    WHERE wa.week_of < ${beforeWeek}
+      AND NOT EXISTS (
+        SELECT 1 FROM narratives n
+        WHERE n.week_of = wa.week_of AND n.category = '_overview'
+      )
+    ORDER BY wa.week_of
+  `);
+  return (result.rows as { week_of: string }[]).map((r) => r.week_of);
+}
+
 /**
  * Get the Monday of the week for a given date string.
  */

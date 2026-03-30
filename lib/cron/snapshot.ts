@@ -35,6 +35,7 @@ import {
   computeWeeklyAggregate,
   getLatestAggregatedWeek,
   getWeekOfDate,
+  getWeeksMissingNarratives,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
 import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
@@ -338,31 +339,37 @@ async function snapshotCrec(): Promise<void> {
 }
 
 /**
- * Find weeks between the last aggregated week and the current week that
- * have documents but no weekly_aggregates. These are "missed" weeks from
- * snapshot runs that didn't happen.
+ * Find weeks (up to currentWeek exclusive) that are incomplete — missing
+ * aggregates or narratives. Covers both missed snapshot runs AND partial
+ * failures (e.g., aggregates created but narrative generation failed).
  */
-async function findMissedWeeks(currentWeek: string): Promise<string[]> {
+async function findIncompleteWeeks(currentWeek: string): Promise<string[]> {
+  // Weeks with aggregates but no overview narrative (partial failures)
+  const missingNarratives = await getWeeksMissingNarratives(currentWeek);
+
+  // Weeks between the latest aggregated week and current (fully missed runs)
   const latestWeek = await getLatestAggregatedWeek();
-  if (!latestWeek) return [];
-  return weeksBetween(latestWeek, currentWeek);
+  const missingAggregates = latestWeek ? weeksBetween(latestWeek, currentWeek) : [];
+
+  // Combine, deduplicate, sort chronologically
+  const allWeeks = new Set([...missingNarratives, ...missingAggregates]);
+  return [...allWeeks].sort();
 }
 
 /**
- * Process missed weeks: score + aggregate stored documents, then generate narratives.
- * Called when the snapshot cron missed one or more weekly runs.
+ * Process incomplete weeks: score + aggregate if needed, then generate narratives.
+ * Handles both fully missed weeks and partial failures (aggregates OK, narratives missing).
  */
-async function processMissedWeeks(
-  missedWeeks: string[],
+async function processIncompleteWeeks(
+  weeks: string[],
   cats: (typeof CATEGORIES)[number][],
 ): Promise<void> {
-  console.log(
-    `[snapshot] Processing ${missedWeeks.length} missed week(s): ${missedWeeks.join(', ')}`,
-  );
+  console.log(`[snapshot] Processing ${weeks.length} incomplete week(s): ${weeks.join(', ')}`);
 
-  for (const weekStart of missedWeeks) {
+  for (const weekStart of weeks) {
     const weekEnd = addDays(weekStart, 6);
 
+    // Score + aggregate (idempotent — upserts on conflict)
     for (const cat of cats) {
       try {
         await snapshotCategoryWeek(cat, { start: weekStart, end: weekEnd });
@@ -371,6 +378,7 @@ async function processMissedWeeks(
       }
     }
 
+    // Generate narratives (skips categories that already have them)
     try {
       await generateNarrativesForWeek(weekStart);
     } catch (err) {
@@ -438,16 +446,16 @@ async function runPostCategorySteps(
   }
 
   const currentWeek = getWeekOfDate();
-  let missedWeeksList: string[] = [];
+  let incompleteWeeksList: string[] = [];
   try {
-    missedWeeksList = await findMissedWeeks(currentWeek);
+    incompleteWeeksList = await findIncompleteWeeks(currentWeek);
   } catch (err) {
-    errors.push(`Missed weeks detection failed: ${formatError(err)}`);
+    errors.push(`Incomplete weeks detection failed: ${formatError(err)}`);
   }
   let missedWeeksProcessed = 0;
-  if (missedWeeksList.length > 0) {
-    await processMissedWeeks(missedWeeksList, cats);
-    missedWeeksProcessed = missedWeeksList.length;
+  if (incompleteWeeksList.length > 0) {
+    await processIncompleteWeeks(incompleteWeeksList, cats);
+    missedWeeksProcessed = incompleteWeeksList.length;
   }
 
   let narrativesGenerated = false;
@@ -472,7 +480,7 @@ async function runPostCategorySteps(
   return {
     aggregateRetries,
     embeddingsProcessed,
-    missedWeeks: missedWeeksList.length,
+    missedWeeks: incompleteWeeksList.length,
     missedWeeksProcessed,
     narrativesGenerated,
   };
