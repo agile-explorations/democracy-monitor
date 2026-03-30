@@ -248,9 +248,14 @@ async function snapshotRhetoric(): Promise<void> {
 
 async function snapshotLegislative(): Promise<void> {
   console.log('[snapshot] Fetching congressional record data...');
-  const today = toDateString(new Date());
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
   try {
-    const legislativeItems = await fetchCongressionalRecord({ dateFrom: today, dateTo: today });
+    const legislativeItems = await fetchCongressionalRecord({
+      dateFrom: toDateString(weekAgo),
+      dateTo: toDateString(today),
+    });
     console.log(`[snapshot] Fetched ${legislativeItems.length} legislative items`);
     await storeLegislativeItems(legislativeItems);
   } catch (err) {

@@ -147,7 +147,8 @@ export async function fetchCongressionalRecord(options: {
   const items: LegislativeItem[] = [];
 
   try {
-    const collectionUrl = `https://api.govinfo.gov/collections/CREC/${dateFrom}?offset=0&pageSize=${maxRecords}&api_key=${apiKey}`;
+    // GovInfo collections API requires ISO 8601 with time (YYYY-MM-DDT00:00:00Z)
+    const collectionUrl = `https://api.govinfo.gov/collections/CREC/${dateFrom}T00:00:00Z?offset=0&pageSize=${maxRecords}&api_key=${apiKey}`;
     const collectionRes = await fetch(collectionUrl, {
       headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0' },
     });
