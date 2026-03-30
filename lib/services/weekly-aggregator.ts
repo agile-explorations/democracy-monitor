@@ -296,7 +296,7 @@ export async function getWeeksMissingNarratives(beforeWeek: string): Promise<str
         SELECT 1 FROM narratives n
         WHERE n.week_of = wa.week_of AND n.category = '_overview'
       )
-    ORDER BY wa.week_of
+    ORDER BY 1
   `);
   return (result.rows as { week_of: string }[]).map((r) => r.week_of);
 }
@@ -309,5 +309,20 @@ export function getWeekOfDate(dateStr?: string): string {
   const day = d.getUTCDay();
   const diff = day === 0 ? 6 : day - 1;
   d.setUTCDate(d.getUTCDate() - diff);
+  return toDateString(d);
+}
+
+/**
+ * Get the Monday of the last completed week (where Sunday has passed).
+ * On Sunday, returns the current week's Monday (week is done).
+ * On Monday–Saturday, returns the previous week's Monday.
+ */
+export function getLastCompletedWeek(): string {
+  const d = new Date();
+  const day = d.getUTCDay(); // 0=Sun, 1=Mon, ...
+  // On Sunday (0), week ending today is complete — go back 6 days to its Monday.
+  // On Mon–Sat (1–6), previous week is complete — go back to its Monday.
+  const daysBack = day === 0 ? 6 : day - 1 + 7;
+  d.setUTCDate(d.getUTCDate() - daysBack);
   return toDateString(d);
 }

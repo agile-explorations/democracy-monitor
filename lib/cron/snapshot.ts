@@ -33,6 +33,7 @@ import {
 } from '@/lib/services/source-health-service';
 import {
   computeWeeklyAggregate,
+  getLastCompletedWeek,
   getLatestAggregatedWeek,
   getWeekOfDate,
   getWeeksMissingNarratives,
@@ -137,22 +138,21 @@ async function snapshotCategory(
     errors.push(msg);
   }
 
-  if (items.length === 0) {
-    console.log(`[snapshot]   Skipping (no items)`);
-    return;
+  if (items.length > 0) {
+    const docScores = scoreDocumentBatch(items, cat.key);
+    try {
+      await storeDocumentScores(docScores);
+    } catch (err) {
+      const msg = `Score storage failed for ${cat.key}: ${formatError(err)}`;
+      console.error(`[snapshot] ${msg}`);
+      errors.push(msg);
+    }
+    console.log(`[snapshot]   Scored ${docScores.length} documents`);
   }
 
-  const docScores = scoreDocumentBatch(items, cat.key);
-  try {
-    await storeDocumentScores(docScores);
-  } catch (err) {
-    const msg = `Score storage failed for ${cat.key}: ${formatError(err)}`;
-    console.error(`[snapshot] ${msg}`);
-    errors.push(msg);
-  }
-  console.log(`[snapshot]   Scored ${docScores.length} documents`);
-
-  const weekOf = getWeekOfDate();
+  // Always aggregate — 0-document weeks create a valid aggregate row.
+  // Only aggregate completed weeks (where Sunday has passed).
+  const weekOf = getLastCompletedWeek();
   const layerResult = await runLayersAndAggregate(items, cat.key, weekOf);
   errors.push(...layerResult.errors);
   if (layerResult.aggregateFailure) failedAggregates.push(layerResult.aggregateFailure);
@@ -166,15 +166,19 @@ async function snapshotCategoryWeek(
   week: { start: string; end: string },
 ): Promise<boolean> {
   const items = await getDocumentsForWeek(cat.key, week.start, week.end);
-  if (items.length === 0) return false;
 
-  const docScores = scoreDocumentBatch(items, cat.key);
-  await storeDocumentScores(docScores);
+  if (items.length > 0) {
+    const docScores = scoreDocumentBatch(items, cat.key);
+    await storeDocumentScores(docScores);
+  }
 
+  // Always create an aggregate — 0-document weeks are valid data (absence is meaningful)
   await runLayersAndAggregate(items, cat.key, week.start);
 
-  console.log(`  [${cat.key}] ${week.start}: ${items.length} docs`);
-  return true;
+  if (items.length > 0) {
+    console.log(`  [${cat.key}] ${week.start}: ${items.length} docs`);
+  }
+  return items.length > 0;
 }
 
 /** Run historical snapshot across a date range for specified categories. */
@@ -255,13 +259,17 @@ async function storeCpdDoc(doc: CpdDocument): Promise<number> {
   return stored;
 }
 
-/** Fetch presidential documents from GovInfo CPD for the current week. */
+/** Fetch presidential documents from GovInfo CPD for the completed week. */
 async function snapshotCpd(): Promise<void> {
   console.log('[snapshot] Fetching CPD presidential documents...');
-  const weekOf = getWeekOfDate();
-  const today = toDateString(new Date());
+  const weekOf = getLastCompletedWeek();
+  const weekEnd = addDays(weekOf, 6);
   try {
-    const docs = await fetchCpdHistorical({ dateFrom: weekOf, dateTo: today, fetchContent: true });
+    const docs = await fetchCpdHistorical({
+      dateFrom: weekOf,
+      dateTo: weekEnd,
+      fetchContent: true,
+    });
     if (docs.length === 0) {
       console.log('[snapshot] CPD: no new documents');
       return;
@@ -295,7 +303,7 @@ async function snapshotCpd(): Promise<void> {
 /** Fetch recent CREC floor speeches, classify into categories, store + score. */
 async function snapshotCrec(): Promise<void> {
   console.log('[snapshot] Fetching CREC (Congressional Record)...');
-  const weekOf = getWeekOfDate();
+  const weekOf = getLastCompletedWeek();
   try {
     const items = await fetchCrecRecent({ chambers: ['SENATE', 'HOUSE'] });
     if (items.length === 0) {
@@ -445,7 +453,8 @@ async function runPostCategorySteps(
     errors.push(`Embedding failed: ${formatError(err)}`);
   }
 
-  const currentWeek = getWeekOfDate();
+  const currentWeek = getLastCompletedWeek();
+  console.log(`[snapshot] Processing completed week: ${currentWeek}`);
   let incompleteWeeksList: string[] = [];
   try {
     incompleteWeeksList = await findIncompleteWeeks(currentWeek);
