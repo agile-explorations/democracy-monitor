@@ -284,14 +284,16 @@ export async function getLatestAggregatedWeek(): Promise<string | null> {
   return row?.latest ?? null;
 }
 
-/** Find weeks that have aggregates but are missing overview narratives. */
+/** Find analysis-period weeks that have aggregates but are missing overview narratives. */
 export async function getWeeksMissingNarratives(beforeWeek: string): Promise<string[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
+  // Only check analysis period (2025-01-20+) — baseline periods don't need narratives
   const result = await db.execute(sql`
     SELECT DISTINCT wa.week_of::text as week_of
     FROM weekly_aggregates wa
-    WHERE wa.week_of < ${beforeWeek}
+    WHERE wa.week_of >= '2025-01-20'
+      AND wa.week_of < ${beforeWeek}
       AND NOT EXISTS (
         SELECT 1 FROM narratives n
         WHERE n.week_of = wa.week_of AND n.category = '_overview'
