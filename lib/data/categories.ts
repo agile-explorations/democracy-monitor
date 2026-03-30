@@ -322,9 +322,9 @@ export const CATEGORIES: Category[] = [
   },
   {
     key: 'executiveActions',
-    title: 'Executive Action Volume',
+    title: 'Executive Actions',
     description:
-      'Tracking the volume and pace of presidential actions and new regulations. High activity may indicate rapid expansion of executive authority.',
+      'Tracking presidential actions and new regulations. Government actions that bypass normal legislative or regulatory processes, concentrate decision-making authority, or expand executive power beyond established norms.',
     expertDescription:
       'The rate and scope of executive orders, memoranda, and rulemaking serve as a structural indicator of executive assertiveness. Abnormal volume spikes — especially paired with procedural shortcuts like interim final rules — can signal an effort to entrench policy before institutional pushback materializes.',
     signals: [
