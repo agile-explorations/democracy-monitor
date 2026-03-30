@@ -73,17 +73,19 @@ function sourceResultToSignalResult(
 
 /**
  * Fetch category documents incrementally.
- * Each source fetches from its own last-document date to today.
+ * Each source fetches from its own last-document date to the given end date.
  *
  * @param sourceDates - Map of source_origin → last document date (from getLastDocumentDateBySource)
  * @param fallbackSince - Used when a source has no stored documents yet
+ * @param endDate - End of the fetch range (typically the last day of the completed week)
  */
 export async function fetchCategoryIncremental(
   cat: Category,
   sourceDates: Record<string, string>,
   fallbackSince: string,
+  endDate?: string,
 ): Promise<IncrementalFetchResult> {
-  const today = toDateString(new Date());
+  const fetchEnd = endDate ?? toDateString(new Date());
   const groups = groupSignals(cat.signals);
   const allItems: ContentItem[] = [];
   const allResults: SignalFetchResult[] = [];
@@ -105,7 +107,7 @@ export async function fetchCategoryIncremental(
     if (signals.length === 0) continue;
     const sourceOrigin = GROUP_TO_SOURCE_ORIGIN[key];
     const since = sourceDates[sourceOrigin] ?? fallbackSince;
-    const week = { start: since, end: today };
+    const week = { start: since, end: fetchEnd };
     const start = Date.now();
     const result = await fn(signals, week, cat.key);
     allItems.push(...result.items);

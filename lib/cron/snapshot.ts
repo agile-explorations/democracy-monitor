@@ -110,9 +110,11 @@ async function snapshotCategory(
   const catStart = Date.now();
   console.log(`[snapshot] Fetching feeds for ${cat.key}...`);
 
-  // Per-source incremental fetch — each source uses its own last-document date
+  // Per-source incremental fetch — each source uses its own last-document date.
+  // Only fetch through end of last completed week (Sunday).
+  const completedWeekEnd = addDays(getLastCompletedWeek(), 6);
   const sourceDates = await getLastDocumentDateBySource(cat.key);
-  const result = await fetchCategoryIncremental(cat, sourceDates, '2025-01-20');
+  const result = await fetchCategoryIncremental(cat, sourceDates, '2025-01-20', completedWeekEnd);
   const items: ContentItem[] = result.items;
   const signalResults: import('@/lib/services/feed-fetcher').SignalFetchResult[] =
     result.signalResults;
