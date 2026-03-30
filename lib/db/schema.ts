@@ -420,27 +420,6 @@ export const p2025Matches = pgTable(
   ],
 );
 
-export const legislativeItems = pgTable(
-  'legislative_items',
-  {
-    id: serial('id').primaryKey(),
-    govInfoId: varchar('govinfo_id', { length: 100 }).notNull().unique(),
-    title: text('title').notNull(),
-    type: varchar('type', { length: 20 }).notNull(),
-    date: date('date').notNull(),
-    url: text('url').notNull(),
-    chamber: varchar('chamber', { length: 10 }).notNull(),
-    committee: varchar('committee', { length: 200 }),
-    relevantCategories: jsonb('relevant_categories').$type<string[]>().notNull(),
-    summary: text('summary'),
-    fetchedAt: timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    index('idx_legislative_items_date').on(table.date),
-    index('idx_legislative_items_type').on(table.type),
-  ],
-);
-
 export const validationDataPoints = pgTable(
   'validation_data_points',
   {

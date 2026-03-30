@@ -21,8 +21,6 @@ import {
 } from '@/lib/services/intent-data-service';
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
-import { storeLegislativeItems } from '@/lib/services/legislative-dashboard-service';
-import { fetchCongressionalRecord } from '@/lib/services/legislative-fetcher';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
 import {
   generateNarrativesForWeek,
@@ -246,23 +244,6 @@ async function snapshotRhetoric(): Promise<void> {
   }
 }
 
-async function snapshotLegislative(): Promise<void> {
-  console.log('[snapshot] Fetching congressional record data...');
-  const today = new Date();
-  const weekAgo = new Date(today);
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  try {
-    const legislativeItems = await fetchCongressionalRecord({
-      dateFrom: toDateString(weekAgo),
-      dateTo: toDateString(today),
-    });
-    console.log(`[snapshot] Fetched ${legislativeItems.length} legislative items`);
-    await storeLegislativeItems(legislativeItems);
-  } catch (err) {
-    console.error('[snapshot] Legislative fetch failed:', err);
-  }
-}
-
 /** Store and score a single CPD document across its mapped categories. */
 async function storeCpdDoc(doc: CpdDocument): Promise<number> {
   let stored = 0;
@@ -446,7 +427,6 @@ async function runPostCategorySteps(
   await snapshotCpd();
   await snapshotCrec();
   await snapshotRhetoric();
-  await snapshotLegislative();
 
   let embeddingsProcessed = 0;
   try {

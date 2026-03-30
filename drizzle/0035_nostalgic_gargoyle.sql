@@ -1,0 +1,1 @@
+DROP TABLE "legislative_items" CASCADE;

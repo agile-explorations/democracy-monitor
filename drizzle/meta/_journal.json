@@ -246,6 +246,13 @@
       "when": 1774833951358,
       "tag": "0034_spicy_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1774848450478,
+      "tag": "0035_nostalgic_gargoyle",
+      "breakpoints": true
     }
   ]
 }
