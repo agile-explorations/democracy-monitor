@@ -78,7 +78,6 @@ export type {
   ConfigSnapshot,
   WeekExplanation,
 } from './explanation';
-export type { LegislativeItem } from './legislative';
 export type {
   ValidationSource,
   ValidationDataPoint,
