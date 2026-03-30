@@ -1,21 +1,24 @@
 /**
- * POST /api/cron/dump — trigger a database dump to persistent disk.
+ * POST /api/cron/dump — run a database dump to persistent disk.
  *
  * Protected by CRON_SECRET bearer token. Called weekly by the dump cron job.
- * Spawns pg_dump as a child process (non-blocking) and returns 202 immediately.
- * The dump writes to a temp file, then atomically renames to the final path.
+ * Runs pg_dump synchronously (child process, non-blocking to event loop) and
+ * returns 200 when complete. The cron's curl waits for the response.
  */
 
 import { exec } from 'child_process';
 import { existsSync, statSync, unlinkSync } from 'fs';
+import { promisify } from 'util';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireMethod } from '@/lib/utils/api-helpers';
+
+const execAsync = promisify(exec);
 
 const DUMP_DIR = '/var/data';
 const DUMP_FILE = `${DUMP_DIR}/database.pgdump`;
 const DUMP_TEMP = `${DUMP_FILE}.tmp`;
 
-export default function handler(req: NextApiRequest, res: NextApiResponse): void {
+export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'POST')) return;
 
   const secret = process.env.CRON_SECRET;
@@ -49,25 +52,25 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
   console.log('[cron/dump] Starting database dump...');
   const startTime = Date.now();
 
-  exec(
-    `pg_dump -Fc --no-owner --no-privileges -f "${DUMP_TEMP}" "${dbUrl}" && mv "${DUMP_TEMP}" "${DUMP_FILE}"`,
-    { timeout: 600_000 },
-    (error, _stdout, stderr) => {
-      const durationMs = Date.now() - startTime;
-      if (error) {
-        console.error(`[cron/dump] Failed after ${durationMs}ms:`, stderr || error.message);
-        try {
-          unlinkSync(DUMP_TEMP);
-        } catch {
-          /* temp file may not exist */
-        }
-      } else {
-        const size = statSync(DUMP_FILE).size;
-        const sizeMB = (size / (1024 * 1024)).toFixed(0);
-        console.log(`[cron/dump] Complete: ${sizeMB} MB in ${(durationMs / 1000).toFixed(0)}s`);
-      }
-    },
-  );
+  try {
+    await execAsync(
+      `pg_dump -Fc --no-owner --no-privileges -f "${DUMP_TEMP}" "${dbUrl}" && mv "${DUMP_TEMP}" "${DUMP_FILE}"`,
+      { timeout: 600_000, maxBuffer: 10 * 1024 * 1024 },
+    );
 
-  res.status(202).json({ message: 'Dump started' });
+    const size = statSync(DUMP_FILE).size;
+    const sizeMB = (size / (1024 * 1024)).toFixed(0);
+    const durationS = ((Date.now() - startTime) / 1000).toFixed(0);
+    console.log(`[cron/dump] Complete: ${sizeMB} MB in ${durationS}s`);
+    res.status(200).json({ success: true, sizeMB: Number(sizeMB), durationS: Number(durationS) });
+  } catch (err) {
+    const detail = (err as { stderr?: string }).stderr || (err as Error).message;
+    console.error(`[cron/dump] Failed after ${Date.now() - startTime}ms:`, detail);
+    try {
+      unlinkSync(DUMP_TEMP);
+    } catch {
+      /* temp file may not exist */
+    }
+    res.status(500).json({ error: 'Dump failed', detail });
+  }
 }
