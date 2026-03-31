@@ -156,8 +156,12 @@ export default function SearchPage() {
     }
   };
 
-  // Sync URL → state on mount
+  // Sync URL → state once router.query is populated
+  const didInitFromUrl = useRef(false);
   useEffect(() => {
+    if (!router.isReady || didInitFromUrl.current) return;
+    didInitFromUrl.current = true;
+
     const q = router.query.q as string | undefined;
     const m = router.query.mode as SearchMode | undefined;
     if (q) setQuery(q);
@@ -170,7 +174,7 @@ export default function SearchPage() {
     if (router.query.page) setFilterPage(Number(router.query.page));
     if (q && q.trim().length > 0) performSearch(q, m ?? mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [router.isReady]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
