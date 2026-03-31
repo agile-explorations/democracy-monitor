@@ -61,6 +61,11 @@ body,
   height: 100%;
 }
 
+/* Remove focus outline on Recharts containers (clicked for week selection) */
+.recharts-wrapper *:focus {
+  outline: none;
+}
+
 body {
   background-color: rgb(var(--color-bg));
   color: rgb(var(--color-text-primary));

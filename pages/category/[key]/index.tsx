@@ -17,7 +17,7 @@ import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 import type { ArchiveWeekEntry } from '@/lib/services/ssr-narrative-data';
 import { getNarrativeWeeksForCategory } from '@/lib/services/ssr-narrative-data';
-import { formatWeekLabelWithYear } from '@/lib/utils/date-utils';
+import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
 const ARCHIVE_COLLAPSED_COUNT = 12;
@@ -210,6 +210,23 @@ export default function CategoryDetailPage({
             selectedWeek={selectedWeek}
             onWeekClick={selectWeek}
           />
+          {selectedWeek && selectedWeek !== latestRow?.weekOf ? (
+            <div className="flex items-center justify-between mt-2 mb-4 px-3 py-1.5 rounded-md bg-dm-accent/10 border border-dm-accent/20">
+              <span className="text-xs text-dm-accent font-medium">
+                Viewing week of {formatWeekLabel(selectedWeek)}
+              </span>
+              <button
+                onClick={() => latestRow && selectWeek(latestRow.weekOf)}
+                className="text-[10px] text-dm-muted hover:text-dm-text-secondary"
+              >
+                Back to latest
+              </button>
+            </div>
+          ) : (
+            <p className="text-[10px] text-dm-muted mt-1.5 mb-4 text-center">
+              Click any week on the chart to explore
+            </p>
+          )}
 
           {/* Range summary */}
           {weeklyData.length > 0 && (
