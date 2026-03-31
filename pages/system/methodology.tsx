@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
+import { PromptTransparency } from '@/components/system/PromptTransparency';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 
 function ConcernLevel({
@@ -499,6 +500,22 @@ function DetailedContent() {
           Categories at Stable status use a template-based summary rather than AI generation, since
           there is nothing unusual to explain.
         </p>
+      </Section>
+
+      {/* AI Prompt Transparency */}
+      <Section title="AI Prompt Transparency" id="ai-prompt-transparency">
+        <p>
+          The following are the production prompts used in the detection and narrative pipelines.
+          Where template variables are used, they have been replaced with example values from the
+          Government Worker Protections (Civil Service) category to show what the AI actually
+          receives. You can evaluate the prompts for bias, test them yourself against the same
+          documents, and{' '}
+          <Link href="/feedback" className="text-dm-accent hover:underline">
+            provide specific feedback
+          </Link>{' '}
+          if you think an instruction is unfair.
+        </p>
+        <PromptTransparency />
       </Section>
 
       {/* Reproducibility */}

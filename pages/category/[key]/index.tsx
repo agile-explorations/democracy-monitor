@@ -176,13 +176,21 @@ export default function CategoryDetailPage({
               : (category ?? ssrCategory)!.description}
           </p>
         )}
-        <p className="text-xs mt-3">
+        <p className="text-xs mt-3 space-x-3">
           <Link
             href={`/feedback?category=${categoryKey}`}
             className="text-dm-accent hover:underline"
           >
             Know of a government action in this category that we missed? Tell us.
           </Link>
+          {readingLevel === 'detailed' && (
+            <Link
+              href="/system/methodology#ai-prompt-transparency"
+              className="text-dm-accent hover:underline"
+            >
+              View the AI prompts used to assess this category
+            </Link>
+          )}
         </p>
       </header>
 

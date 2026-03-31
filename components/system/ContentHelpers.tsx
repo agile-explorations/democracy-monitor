@@ -1,6 +1,14 @@
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+export function Section({
+  title,
+  id,
+  children,
+}: {
+  title: string;
+  id?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="mb-8">
+    <section id={id} className="mb-8">
       <h2 className="text-base font-semibold text-dm-text-primary mb-3">{title}</h2>
       <div className="text-sm text-dm-text-secondary leading-relaxed space-y-3">{children}</div>
     </section>

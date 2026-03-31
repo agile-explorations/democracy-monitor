@@ -177,7 +177,7 @@ function isCRECDocument(docType?: string, docLink?: string): boolean {
   return false;
 }
 
-function buildErosionFramework(): string {
+export function buildErosionFramework(): string {
   return [
     'Erosion type framework:',
     '  - formal_override: explicit legal/policy changes that remove protections',
@@ -188,7 +188,7 @@ function buildErosionFramework(): string {
   ].join('\n');
 }
 
-function buildReasoningGuidance(): string {
+export function buildReasoningGuidance(): string {
   return [
     'Reasoning guidance:',
     '  - Name the specific institutional protection affected and the specific mechanism',
@@ -199,7 +199,7 @@ function buildReasoningGuidance(): string {
   ].join('\n');
 }
 
-function buildResponseSchema(): string {
+export function buildResponseSchema(): string {
   return [
     'Respond with JSON:',
     '{',
