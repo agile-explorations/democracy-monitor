@@ -37,7 +37,8 @@ function NavSection({
 
 function NavLink({ href, label }: { href: string; label: string }) {
   const router = useRouter();
-  const isActive = router.asPath === href || (href !== '/' && router.asPath.startsWith(href));
+  const path = router.asPath.split('?')[0];
+  const isActive = path === href || (href.includes('/category/') && path.startsWith(href + '/'));
   return (
     <li>
       <Link
