@@ -73,6 +73,7 @@ rules:
         - pages/api/reviews.ts
         - pages/api/data/dump.ts
         - pages/api/feedback.ts
+        - pages/api/admin/login.ts
 
   # WHY: API routes had 12 inline DB-availability guards with inconsistent
   # error messages. Sprint 9a extracted requireDb() which sends a

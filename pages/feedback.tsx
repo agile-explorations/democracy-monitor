@@ -4,12 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { FeedbackForm } from '@/components/shared/FeedbackForm';
 import { SEOHead } from '@/components/shared/SEOHead';
 
+interface FeedbackResponse {
+  id: number;
+  message: string;
+  createdAt: string;
+}
+
 interface FeedbackItem {
   id: number;
   type: string;
   category: string | null;
   message: string;
   createdAt: string;
+  responses?: FeedbackResponse[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -103,6 +110,21 @@ function FeedbackEntry({ item }: { item: FeedbackItem }) {
         <span className="text-[10px] text-dm-muted ml-auto">{date}</span>
       </div>
       <p className="text-xs text-dm-text-secondary whitespace-pre-wrap">{item.message}</p>
+
+      {item.responses &&
+        item.responses.map((r) => (
+          <div key={r.id} className="mt-3 ml-4 pl-3 border-l-2 border-dm-accent/30">
+            <p className="text-[10px] text-dm-muted mb-1">
+              Response from Democracy Monitor &mdash;{' '}
+              {new Date(r.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </p>
+            <p className="text-xs text-dm-text-secondary whitespace-pre-wrap">{r.message}</p>
+          </div>
+        ))}
     </div>
   );
 }

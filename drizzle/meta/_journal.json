@@ -253,6 +253,13 @@
       "when": 1774848450478,
       "tag": "0035_nostalgic_gargoyle",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1774932678943,
+      "tag": "0036_eminent_vulture",
+      "breakpoints": true
     }
   ]
 }

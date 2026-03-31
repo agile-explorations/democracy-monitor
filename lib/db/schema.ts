@@ -561,3 +561,16 @@ export const feedback = pgTable(
   },
   (table) => [index('idx_feedback_created_at').on(table.createdAt)],
 );
+
+export const feedbackResponses = pgTable(
+  'feedback_responses',
+  {
+    id: serial('id').primaryKey(),
+    feedbackId: integer('feedback_id')
+      .notNull()
+      .references(() => feedback.id),
+    message: text('message').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_feedback_responses_feedback_id').on(table.feedbackId)],
+);

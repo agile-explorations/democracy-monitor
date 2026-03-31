@@ -9,6 +9,7 @@ import { z } from 'zod/v4';
 import { getDb } from '@/lib/db';
 import { feedback } from '@/lib/db/schema';
 import { requireDb } from '@/lib/utils/api-helpers';
+import { attachResponses } from '@/lib/utils/feedback-responses';
 
 const VALID_TYPES = ['suggestion', 'data-issue', 'question', 'other'] as const;
 
@@ -47,7 +48,7 @@ async function handleGet(res: NextApiResponse): Promise<void> {
       .orderBy(desc(feedback.createdAt))
       .limit(100);
 
-    res.status(200).json(rows);
+    res.status(200).json(await attachResponses(db, rows));
   } catch (err) {
     console.error('[api/feedback] GET error:', err);
     res.status(500).json({ error: 'Failed to fetch feedback' });

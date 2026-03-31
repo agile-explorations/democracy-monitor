@@ -59,6 +59,34 @@ export function tryStoredResponse(
   return null;
 }
 
+const ADMIN_COOKIE = 'dm_admin_session';
+
+/**
+ * Returns true if the request has a valid admin session cookie; sends 401 otherwise.
+ * The cookie value must match a HMAC of "authenticated" using ADMIN_PASSWORD as the key.
+ */
+export function requireAdmin(req: NextApiRequest, res: NextApiResponse): boolean {
+  const password = process.env.ADMIN_PASSWORD;
+  if (!password) {
+    res.status(503).json({ error: 'ADMIN_PASSWORD not configured' });
+    return false;
+  }
+  const cookie = req.cookies[ADMIN_COOKIE];
+  if (!cookie || cookie !== makeAdminToken(password)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+/** Derive a session token from the admin password using HMAC-SHA256. */
+export function makeAdminToken(password: string): string {
+  const { createHmac } = require('crypto') as typeof import('crypto');
+  return createHmac('sha256', password).update('dm-admin-session').digest('hex');
+}
+
+export { ADMIN_COOKIE };
+
 /** Send a JSON response with 1-hour CDN cache headers. */
 export function sendCached(res: NextApiResponse, body: object): void {
   res.setHeader('Cache-Control', 'public, s-maxage=3600');
