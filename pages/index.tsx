@@ -203,7 +203,9 @@ export default function Home() {
           </p>
         </section>
 
-        <EmailSignup variant="card" />
+        <div className="mb-8">
+          <EmailSignup variant="card" />
+        </div>
 
         {/* Overview section — only shown when overview data is available */}
         {overview && (
@@ -247,6 +249,23 @@ export default function Home() {
                 selectedWeek={selectedWeek}
                 onWeekClick={handleWeekChange}
               />
+              {selectedWeek && selectedWeek !== latestWeek ? (
+                <div className="flex items-center justify-between mt-2 px-3 py-1.5 rounded-md bg-dm-accent/10 border border-dm-accent/20">
+                  <span className="text-xs text-dm-accent font-medium">
+                    Viewing week of {formatWeekLabel(selectedWeek)}
+                  </span>
+                  <button
+                    onClick={() => latestWeek && handleWeekChange(latestWeek)}
+                    className="text-[10px] text-dm-muted hover:text-dm-text-secondary"
+                  >
+                    Back to latest
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[10px] text-dm-muted mt-1.5 text-center">
+                  Click any week on the chart to explore
+                </p>
+              )}
             </section>
 
             {/* Status distribution */}
