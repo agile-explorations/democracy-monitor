@@ -6,7 +6,7 @@ import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 function SummaryContent() {
   return (
     <>
-      <Section title="Overview">
+      <Section title="Overview" id="overview">
         <p>
           Democracy Monitor is a Next.js application backed by PostgreSQL (with pgvector for
           embeddings) and Redis for caching. It ingests documents from 9 government data source
@@ -20,7 +20,7 @@ function SummaryContent() {
         </p>
       </Section>
 
-      <Section title="Detection Pipeline">
+      <Section title="Detection Pipeline" id="detection-pipeline">
         <p>
           Documents flow through a multi-stage pipeline: fetch from external sources, store in
           PostgreSQL, score with keyword annotations, aggregate weekly, embed with OpenAI, assess
@@ -30,7 +30,7 @@ function SummaryContent() {
         </p>
       </Section>
 
-      <Section title="Data Sources">
+      <Section title="Data Sources" id="data-sources">
         <p>
           Nine source types provide coverage of different government activities: the Federal
           Register (executive orders, rules), GovInfo (presidential documents via CPD,
@@ -40,7 +40,7 @@ function SummaryContent() {
         </p>
       </Section>
 
-      <Section title="Deployment">
+      <Section title="Deployment" id="deployment">
         <p>
           The application is deployed on Render.com with a web service (Next.js), managed
           PostgreSQL, Redis key-value store, and three weekly cron jobs: LegiScan fetch (Monday
@@ -54,7 +54,7 @@ function SummaryContent() {
 function DetailedContent() {
   return (
     <>
-      <Section title="Tech Stack">
+      <Section title="Tech Stack" id="tech-stack">
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
             <strong>Framework</strong> — Next.js 14 with Pages Router, TypeScript strict mode
@@ -87,7 +87,7 @@ function DetailedContent() {
         </ul>
       </Section>
 
-      <Section title="Data Flow">
+      <Section title="Data Flow" id="data-flow">
         <p>Documents move through the system in a defined pipeline:</p>
         <div className="bg-dm-card border border-dm-border rounded-lg p-4 my-3">
           <div className="flex flex-wrap items-center gap-2 text-xs text-dm-text-secondary">
@@ -141,7 +141,7 @@ function DetailedContent() {
         </ul>
       </Section>
 
-      <Section title="Source Types">
+      <Section title="Source Types" id="source-types">
         <DataTable
           headers={['Source', 'What It Provides', 'Fetcher Module']}
           rows={[
@@ -192,7 +192,7 @@ function DetailedContent() {
         </p>
       </Section>
 
-      <Section title="Database Schema">
+      <Section title="Database Schema" id="database-schema">
         <p>Key tables in the PostgreSQL database:</p>
         <DataTable
           headers={['Table', 'Purpose']}
@@ -233,7 +233,7 @@ function DetailedContent() {
         </p>
       </Section>
 
-      <Section title="Cron Jobs">
+      <Section title="Cron Jobs" id="cron-jobs">
         <DataTable
           headers={['Job', 'Schedule', 'What It Does']}
           rows={[
@@ -261,7 +261,7 @@ function DetailedContent() {
         </p>
       </Section>
 
-      <Section title="API Routes">
+      <Section title="API Routes" id="api-routes">
         <p>
           Server-side API routes act as proxies with caching and provide data endpoints for the
           dashboard:
@@ -286,7 +286,7 @@ function DetailedContent() {
         </ul>
       </Section>
 
-      <Section title="Deployment">
+      <Section title="Deployment" id="deployment">
         <p>
           The application is configured for Render.com deployment via{' '}
           <code className="text-xs bg-dm-card px-1 py-0.5 rounded">render.yaml</code>:

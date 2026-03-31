@@ -49,7 +49,7 @@ export default function ThematicDriftPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">Thematic Drift</h1>
 
       <div className="max-w-3xl space-y-2 mb-8">
-        <Section title="What this shows">
+        <Section title="What this shows" id="what-this-shows">
           <p>
             This heatmap displays <strong>thematic drift scores</strong> across all 14 monitored
             categories over time. Thematic drift measures semantic shift in document language
@@ -67,7 +67,7 @@ export default function ThematicDriftPage() {
           </p>
         </Section>
 
-        <Section title="How to read the heatmap">
+        <Section title="How to read the heatmap" id="how-to-read">
           <p>
             Each cell represents one category in one week. The default view shows{' '}
             <strong>z-scores</strong>, which measure how far the current week&apos;s thematic
@@ -98,7 +98,7 @@ export default function ThematicDriftPage() {
           </p>
         </Section>
 
-        <Section title="Metrics">
+        <Section title="Metrics" id="metrics">
           <DataTable
             headers={['Metric', 'Range', 'What it measures']}
             rows={[
@@ -131,7 +131,7 @@ export default function ThematicDriftPage() {
           />
         </Section>
 
-        <Section title="Methodology">
+        <Section title="Methodology" id="methodology">
           <p>
             Thematic drift uses <strong>embedding-based cosine distance</strong> to measure semantic
             change. Each document is embedded using OpenAI&apos;s text-embedding-3-small model. The

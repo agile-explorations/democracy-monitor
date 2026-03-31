@@ -50,7 +50,7 @@ export default function DataPage() {
       </p>
 
       <div className="max-w-3xl space-y-2">
-        <Section title="CSV Downloads">
+        <Section title="CSV Downloads" id="csv-downloads">
           <div className="grid gap-4 sm:grid-cols-2">
             <DownloadCard
               title="Weekly Aggregates"
@@ -67,7 +67,7 @@ export default function DataPage() {
           </div>
         </Section>
 
-        <Section title="Full Database">
+        <Section title="Full Database" id="full-database">
           <p>
             For developers and researchers who need the complete dataset, a PostgreSQL dump is
             available for download. The dump is a single{' '}
@@ -140,7 +140,7 @@ export default function DataPage() {
           </p>
         </Section>
 
-        <Section title="API Endpoints">
+        <Section title="API Endpoints" id="api-endpoints">
           <DataTable
             headers={['Endpoint', 'Params', 'Description']}
             rows={[
@@ -163,7 +163,7 @@ export default function DataPage() {
           </p>
         </Section>
 
-        <Section title="CSV Column Reference">
+        <Section title="CSV Column Reference" id="csv-columns">
           <p>
             CSV exports flatten nested JSON fields into individual columns. Weekly aggregates
             include prefixed columns for each detection layer:
@@ -198,7 +198,7 @@ export default function DataPage() {
           </p>
         </Section>
 
-        <Section title="Rate Limits">
+        <Section title="Rate Limits" id="rate-limits">
           <p>
             Export endpoints are rate-limited to 1 request per second per IP address. Responses
             include a <code className="text-xs bg-dm-card px-1 py-0.5 rounded">Retry-After</code>{' '}

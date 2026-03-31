@@ -23,12 +23,13 @@ import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
 import type { ConcernLevel } from '@/lib/types';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { formatApproxCount } from '@/lib/utils/math';
 
 export default function Home() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
-  const { categories, overview, meta, healthSummary, loading } = useDashboardData();
+  const { categories, overview, meta, healthSummary, documentCount, loading } = useDashboardData();
 
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
@@ -176,7 +177,7 @@ export default function Home() {
     <>
       <SEOHead
         title="Democracy Monitor"
-        description="A searchable repository of over 230,000 U.S. government documents with AI-assisted analyses of democratic institutional health across 14 categories."
+        description="A searchable repository of U.S. government documents with AI-assisted analyses of democratic institutional health across 14 categories."
         canonicalPath="/"
       />
       <WebSiteJsonLd />
@@ -194,13 +195,14 @@ export default function Home() {
         {/* Positioning statement */}
         <section className="mb-6">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
-            Democracy Monitor is a searchable repository of over 230,000 U.S. government documents —
-            federal regulations, court filings, congressional floor speeches, presidential
-            statements, enforcement actions, and more. Using this repository, the system produces
-            AI-assisted analyses of democratic institutional health across 14 categories, with
-            weekly assessments, AI-generated narrative summaries, and the ability to drill down to
-            the specific documents supporting each finding. The methodology, data, and code are
-            fully open source.
+            Democracy Monitor is a searchable repository of{' '}
+            {documentCount ? formatApproxCount(documentCount) : 'over 200,000'} U.S. government
+            documents — federal regulations, court filings, congressional floor speeches,
+            presidential statements, enforcement actions, and more. Using this repository, the
+            system produces AI-assisted analyses of democratic institutional health across 14
+            categories, with weekly assessments, AI-generated narrative summaries, and the ability
+            to drill down to the specific documents supporting each finding. The methodology, data,
+            and code are fully open source.
           </p>
         </section>
 
@@ -219,11 +221,18 @@ export default function Home() {
             />
 
             {/* Cumulative concern chart */}
-            <section>
+            <section id="concern-score" className="group">
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <h2 className="text-sm font-semibold text-dm-text-primary">
                     Cumulative Concern Score
+                    <a
+                      href="#concern-score"
+                      className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Link to Cumulative Concern Score"
+                    >
+                      #
+                    </a>
                   </h2>
                   <p className="text-[11px] text-dm-muted mt-0.5">
                     {readingLevel === 'summary'
@@ -270,9 +279,16 @@ export default function Home() {
             </section>
 
             {/* Status distribution */}
-            <section>
+            <section id="status-distribution" className="group">
               <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
                 Status Distribution
+                <a
+                  href="#status-distribution"
+                  className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Link to Status Distribution"
+                >
+                  #
+                </a>
               </h2>
               {statusRangeLabel && (
                 <p className="text-[11px] text-dm-muted mb-3">{statusRangeLabel}</p>
@@ -281,8 +297,17 @@ export default function Home() {
             </section>
 
             {/* Term summary narrative — both reading levels */}
-            <section>
-              <h2 className="text-sm font-semibold text-dm-text-primary mb-2">Term Summary</h2>
+            <section id="term-summary" className="group">
+              <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
+                Term Summary
+                <a
+                  href="#term-summary"
+                  className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Link to Term Summary"
+                >
+                  #
+                </a>
+              </h2>
               <NarrativeSection
                 narrative={termNarrative}
                 readingLevel={readingLevel}
@@ -295,9 +320,16 @@ export default function Home() {
             {readingLevel === 'detailed' && (
               <>
                 {/* Status heatmap */}
-                <section>
+                <section id="status-heatmap" className="group">
                   <h2 className="text-sm font-semibold text-dm-text-primary mb-1">
                     Status Heatmap
+                    <a
+                      href="#status-heatmap"
+                      className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Link to Status Heatmap"
+                    >
+                      #
+                    </a>
                   </h2>
                   <p className="text-[11px] text-dm-muted mb-3">
                     Convergence status per category over time
@@ -316,9 +348,16 @@ export default function Home() {
 
             {/* Weekly overview narrative — both reading levels */}
             {(weeklyNarrative || weeklyNarrativeLoading) && (
-              <section>
+              <section id="weekly-overview" className="group">
                 <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
                   Weekly Overview
+                  <a
+                    href="#weekly-overview"
+                    className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Link to Weekly Overview"
+                  >
+                    #
+                  </a>
                   {selectedWeek && (
                     <span className="ml-2 text-[11px] font-normal text-dm-muted">
                       Week of {formatWeekLabel(selectedWeek)}
@@ -337,10 +376,19 @@ export default function Home() {
         )}
 
         {/* Category table */}
-        <section className="mb-8">
+        <section id="categories" className="mb-8 group">
           <div className="flex items-center justify-between mb-1">
             <div>
-              <h2 className="text-sm font-semibold text-dm-text-primary">Categories</h2>
+              <h2 className="text-sm font-semibold text-dm-text-primary">
+                Categories
+                <a
+                  href="#categories"
+                  className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Link to Categories"
+                >
+                  #
+                </a>
+              </h2>
               <p className="text-[11px] text-dm-muted mt-0.5">
                 {selectedWeek
                   ? `Week of ${formatWeekLabel(selectedWeek)}`

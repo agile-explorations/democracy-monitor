@@ -1,0 +1,284 @@
+import Link from 'next/link';
+import { SEOHead } from '@/components/shared/SEOHead';
+import { Section } from '@/components/system/ContentHelpers';
+
+export default function RoadmapPage() {
+  return (
+    <>
+      <SEOHead
+        title="Roadmap"
+        description="What Democracy Monitor is building next: authoritarian infrastructure monitoring, rhetoric-action analysis, democracy index evidence mapping, and more."
+        canonicalPath="/system/roadmap"
+      />
+
+      <Link href="/" className="text-xs text-dm-accent hover:underline">
+        &larr; Back to overview
+      </Link>
+
+      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">Roadmap</h1>
+
+      <div className="max-w-3xl">
+        <Section title="Current State" id="current-state">
+          <p>
+            The system ingests documents from 9 federal sources — the Federal Register,
+            Congressional Record, CourtListener, Compilation of Presidential Documents, DOJ press
+            releases, LegiScan federal bills, FEC advisory opinions, White House briefing room, and
+            GDELT media references — and assesses each across 14 categories of democratic
+            institutional health.
+          </p>
+          <p>
+            Detection has been validated against 39 known democratic erosion events across both
+            Trump administrations (2017–2018 and 2025–present), including the travel ban executive
+            orders, James Comey firing, DACA rescission, mass Inspector General firings, Schedule F
+            reinstatement, and DOGE agency interventions. Six negative controls confirm the system
+            does not produce false alarms during normal governance periods.
+          </p>
+          <p>
+            The system currently covers five analysis periods: Trump 2017, Trump 2018, Biden 2021,
+            Biden 2022, and Trump second term (2025–present). New documents are processed weekly.
+          </p>
+        </Section>
+
+        <h2 className="text-base font-semibold text-dm-text-primary mb-4">What&apos;s Next</h2>
+
+        <Section title="Detection Quality & Platform Hardening" id="detection-quality">
+          <p className="italic text-dm-muted text-xs mb-2">In progress</p>
+          <p>
+            Completing the foundation. This includes filling the gaps in our historical coverage
+            (2019–2020 and 2023–2024) to produce a continuous record from 2017 to the present,
+            improving the data download and API access on our Data page, and ongoing refinement of
+            the detection methodology based on what we learn each week. The goal: the most complete,
+            accurate, and accessible repository of assessed government documents available anywhere.
+          </p>
+        </Section>
+
+        <Section title="Authoritarian Infrastructure Monitoring" id="authoritarian-infrastructure">
+          <p>
+            Nobody systematically tracks whether the government is building the operational capacity
+            for authoritarian action — not what officials say, and not what policies are announced,
+            but whether the personnel, surveillance technology, enforcement networks, and funding
+            are being put in place to act at scale.
+          </p>
+          <p>
+            Existing organizations do excellent work tracking detention capacity (the{' '}
+            <a
+              href="https://deportationdata.org"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Deportation Data Project
+            </a>{' '}
+            at UC Berkeley Law,{' '}
+            <a
+              href="https://detentionreports.com"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Detention Reports
+            </a>
+            , the{' '}
+            <a
+              href="https://immigrantjustice.org"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              National Immigrant Justice Center
+            </a>
+            ). Rather than duplicate their work, we plan to integrate their data and focus on the
+            dimensions nobody else watches:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-2">
+            <li>
+              <strong>Personnel buildup</strong> — federal law enforcement hiring patterns across
+              agencies, tracked through USAJobs data
+            </li>
+            <li>
+              <strong>Surveillance procurement</strong> — technology contracts for facial
+              recognition, border surveillance, biometric databases, and social media monitoring,
+              tracked through SAM.gov
+            </li>
+            <li>
+              <strong>Information control</strong> — degradation of public access to government
+              data, including FOIA response times, removal of datasets from government websites, and
+              reduced statistical publications
+            </li>
+            <li>
+              <strong>Enforcement network expansion</strong> — the rate at which new agreements
+              between federal immigration authorities and local law enforcement come online,
+              expanding the reach of enforcement operations
+            </li>
+            <li>
+              <strong>Immigration court capacity</strong> — judicial throughput for processing
+              enforcement actions at scale
+            </li>
+          </ul>
+          <p>
+            The unique contribution is the convergence: when detention expansion, personnel buildup,
+            surveillance procurement, and document-level concern all point in the same direction
+            simultaneously, that tells a story no single data source reveals.
+          </p>
+        </Section>
+
+        <Section title="Rhetoric vs. Action Analysis" id="rhetoric-action">
+          <p>
+            Democratic erosion often follows a pattern: officials first say something, then the
+            government does something. A president calls an agency &ldquo;corrupt and
+            wasteful&rdquo; — weeks later, thousands of employees are placed on leave. A secretary
+            announces a &ldquo;reorganization&rdquo; — days later, career staff are terminated.
+          </p>
+          <p>
+            We plan to add new rhetoric sources — presidential social media (Truth Social), press
+            conference transcripts (American Presidency Project at UCSB), and cabinet agency
+            newsroom statements — alongside the congressional floor speeches and presidential
+            documents we already track. Each document will be classified along two independent
+            dimensions: <strong>rhetoric vs. action</strong> (is someone saying something, or is the
+            government doing something?) and <strong>channel formality</strong> (official record,
+            direct-to-public, or surrogate amplification).
+          </p>
+          <p>The analysis will be built in stages:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>
+              <strong>Standalone dashboards</strong> showing rhetoric intensity and action intensity
+              side by side per category, with no matching required — the visual juxtaposition is
+              itself informative
+            </li>
+            <li>
+              <strong>An expert matching tool</strong> where domain experts draw connections between
+              specific statements and specific government actions, building a dataset of confirmed
+              rhetoric-to-action links with immediate feedback on how each connection improves the
+              analysis
+            </li>
+            <li>
+              <strong>Automation</strong> only where expert-confirmed data proves it&apos;s reliable
+              — if automated matching can&apos;t achieve sufficient precision, the expert tool is
+              the product
+            </li>
+          </ol>
+        </Section>
+
+        <Section title="Democracy Index Evidence Mapping" id="democracy-index-mapping">
+          <p>
+            V-Dem and Freedom House produce the most widely cited assessments of democratic health
+            worldwide. What they cannot provide is the evidentiary trail: which specific government
+            actions support their assessments? We plan to map their indicators to Democracy
+            Monitor&apos;s 14 categories and present the documentary evidence — the specific
+            regulations, court filings, executive orders, and enforcement actions — that a
+            researcher would need to evaluate those assessments for themselves.
+          </p>
+          <p>
+            This positions Democracy Monitor as the evidentiary layer underneath established
+            indices: the place researchers go to check the receipts.
+          </p>
+        </Section>
+
+        <Section title="Project 2025 Implementation Tracking" id="project-2025">
+          <p>
+            Existing trackers (
+            <a
+              href="https://project2025.observer"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Project 2025 Observer
+            </a>
+            ,{' '}
+            <a
+              href="https://progressivereform.org"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Center for Progressive Reform
+            </a>
+            ) do comprehensive work tracking implementation status. Democracy Monitor&apos;s
+            contribution would be narrower: linking each implementation to the specific government
+            documents in our repository, identifying instances where government actions go beyond
+            what was proposed, and connecting implementation data to the other analytical
+            dimensions.
+          </p>
+        </Section>
+
+        <Section title="State-Level Research Corpus" id="state-level">
+          <p>
+            Significant threats to democratic governance originate at state legislatures, state
+            courts, and governors&apos; offices. We plan to extend the document repository to cover
+            state-level bills, court opinions, and executive orders, beginning with states that
+            democracy indices flag for declining democratic quality. Governor executive orders,
+            which no one currently aggregates across all 50 states in machine-readable form, are a
+            particular focus. State-level analysis will build incrementally — starting with making
+            the documents searchable and downloadable, then adding assessment capabilities as we
+            develop the state-specific context needed to distinguish genuine erosion signals from
+            normal state governance variation.
+          </p>
+        </Section>
+
+        <Section title="How You Can Help" id="how-to-help">
+          <p>
+            <strong>Use the site and tell us what&apos;s missing.</strong> The most valuable
+            feedback comes from domain experts who know the events and can tell us what we got right
+            and wrong.
+          </p>
+          <p>
+            <strong>Contribute data expertise.</strong> The rhetoric-action analysis will need
+            experts who can confirm connections between statements and government actions. If you
+            study executive power, administrative law, or specific policy domains, your knowledge
+            makes the analysis better.
+          </p>
+          <p>
+            <strong>Sponsor the project.</strong> Democracy Monitor runs on AI infrastructure that
+            costs real money. Every document is assessed through two AI passes, narratives are
+            generated weekly, and the system processes new documents on a continuous basis.{' '}
+            <a
+              href="https://github.com/sponsors/agile-explorations"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub Sponsors
+            </a>{' '}
+            is the primary funding mechanism. Contributions go directly to infrastructure costs.
+          </p>
+          <p>
+            <strong>Contribute code.</strong> The project is open source on{' '}
+            <a
+              href="https://github.com/agile-explorations/democracy-monitor"
+              className="text-dm-accent hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a>
+            . Issues tagged &ldquo;good first issue&rdquo; are available for contributors.
+          </p>
+        </Section>
+
+        <Section title="Principles" id="principles">
+          <p>
+            <strong>Open methodology.</strong> Every assessment traces to specific documents. The AI
+            prompts, scoring thresholds, and detection methodology are published and versioned. When
+            we change the methodology, we document why.
+          </p>
+          <p>
+            <strong>Nonpartisan analysis.</strong> The system reads government documents from all
+            administrations using the same methodology. Biden-era documents are assessed with the
+            same prompts and thresholds as Trump-era documents. The data shows what it shows.
+          </p>
+          <p>
+            <strong>Credit others.</strong> Where existing organizations do excellent work, we
+            integrate and link rather than duplicate. Democracy Monitor is one tool in an ecosystem
+            of civic technology, academic research, and investigative journalism.
+          </p>
+          <p>
+            <strong>Honest about limitations.</strong> The system is experimental. AI assessments
+            can be wrong. Congressional floor speeches are partisan. Some categories have more data
+            than others. We document these limitations alongside every assessment.
+          </p>
+        </Section>
+      </div>
+    </>
+  );
+}

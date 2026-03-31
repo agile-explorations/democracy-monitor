@@ -32,7 +32,7 @@ function SummaryContent() {
   return (
     <>
       {/* Overview */}
-      <Section title="Overview">
+      <Section title="Overview" id="overview">
         <p>
           Democracy Monitor is an open-source system that tracks signs of executive-power
           centralization across U.S. government institutions. It reads publicly available government
@@ -48,7 +48,7 @@ function SummaryContent() {
       </Section>
 
       {/* Detection Architecture */}
-      <Section title="Detection Architecture">
+      <Section title="Detection Architecture" id="detection-architecture">
         <p>
           Democracy Monitor uses <strong>one active detection method</strong> (AI document review)
           that drives concern status, plus three <strong>descriptive context methods</strong> that
@@ -80,7 +80,7 @@ function SummaryContent() {
       </Section>
 
       {/* Concern Synthesis */}
-      <Section title="Concern Synthesis">
+      <Section title="Concern Synthesis" id="concern-synthesis">
         <p>
           AI document review is the primary active detection method driving concern status.
           Structural anomaly, silence detection, and thematic drift provide descriptive context.
@@ -105,7 +105,7 @@ function SummaryContent() {
       </Section>
 
       {/* Limitations */}
-      <Section title="Limitations">
+      <Section title="Limitations" id="limitations">
         <ul className="list-disc list-inside space-y-1">
           <li>
             Structural anomaly detection identifies statistical departures from baselines — it
@@ -137,7 +137,7 @@ function DetailedContent() {
   return (
     <>
       {/* Overview */}
-      <Section title="Overview">
+      <Section title="Overview" id="overview">
         <p>
           Democracy Monitor is an open-source system that tracks signs of executive-power
           centralization across U.S. government institutions. It reads publicly available government
@@ -153,7 +153,7 @@ function DetailedContent() {
       </Section>
 
       {/* Data Sources */}
-      <Section title="Data Sources">
+      <Section title="Data Sources" id="data-sources">
         <p>
           Democracy Monitor ingests documents from multiple source types, covering different facets
           of government activity:
@@ -212,7 +212,7 @@ function DetailedContent() {
       </Section>
 
       {/* Categories */}
-      <Section title="Categories">
+      <Section title="Categories" id="categories">
         <p>
           The system monitors 14 institutional categories, aligned to frameworks used by V-Dem and
           Freedom House for measuring democratic governance:
@@ -254,7 +254,7 @@ function DetailedContent() {
       </Section>
 
       {/* Structural Anomaly */}
-      <Section title="Structural Anomaly Detection (Descriptive Context)">
+      <Section title="Structural Anomaly Detection (Descriptive Context)" id="structural-anomaly">
         <p>
           Structural anomaly detection is fully deterministic and uses only document metadata — no
           text analysis. It compares the current week&apos;s document patterns against historical
@@ -304,7 +304,7 @@ function DetailedContent() {
       </Section>
 
       {/* AI Document Review */}
-      <Section title="AI Document Review (Active Detection)">
+      <Section title="AI Document Review (Active Detection)" id="ai-document-review">
         <p>
           The AI document review uses artificial intelligence to read and evaluate individual
           documents. To reduce single-provider bias, it uses a two-pass design with different AI
@@ -352,7 +352,7 @@ function DetailedContent() {
       </Section>
 
       {/* Thematic Drift */}
-      <Section title="Thematic Drift (Descriptive Context)">
+      <Section title="Thematic Drift (Descriptive Context)" id="thematic-drift">
         <p>
           Thematic drift uses embedding-based analysis to detect when the topics discussed in a
           category shift away from recent norms. It operates on an intra-administration rolling
@@ -384,7 +384,7 @@ function DetailedContent() {
       </Section>
 
       {/* Concern Synthesis */}
-      <Section title="Concern Synthesis">
+      <Section title="Concern Synthesis" id="concern-synthesis">
         <p>
           AI document review drives the concern status for each category. Structural anomaly,
           silence detection, and thematic drift scores are preserved as descriptive metadata but do
@@ -409,7 +409,7 @@ function DetailedContent() {
       </Section>
 
       {/* Baselines */}
-      <Section title="Baselines">
+      <Section title="Baselines" id="baselines">
         <p>
           All anomaly detection requires a reference period for comparison. The system maintains
           four historical baselines:
@@ -441,7 +441,7 @@ function DetailedContent() {
       </Section>
 
       {/* Keywords */}
-      <Section title="Keywords as Annotations">
+      <Section title="Keywords as Annotations" id="keywords">
         <p>
           Keywords were Democracy Monitor&apos;s original detection mechanism, but as the detection
           architecture evolved, their role changed. Keywords now serve as{' '}
@@ -457,7 +457,7 @@ function DetailedContent() {
       </Section>
 
       {/* Source Health */}
-      <Section title="Source Health Monitoring">
+      <Section title="Source Health Monitoring" id="source-health">
         <p>
           The system continuously monitors the availability of its data sources. Six
           &quot;canary&quot; sources — critical feeds whose absence would significantly degrade
@@ -480,7 +480,7 @@ function DetailedContent() {
       </Section>
 
       {/* AI Narrative Generation */}
-      <Section title="AI Narrative Generation">
+      <Section title="AI Narrative Generation" id="ai-narrative-generation">
         <p>
           For categories at Elevated status or above, the system generates plain-language narrative
           summaries explaining what the detection system found and why. Narratives are produced in
@@ -519,7 +519,7 @@ function DetailedContent() {
       </Section>
 
       {/* Reproducibility */}
-      <Section title="Reproducibility">
+      <Section title="Reproducibility" id="reproducibility">
         <p>
           All scoring thresholds, dimension weights, and configuration constants are defined in a
           single file (
@@ -545,7 +545,7 @@ function DetailedContent() {
       </Section>
 
       {/* Limitations */}
-      <Section title="Limitations">
+      <Section title="Limitations" id="limitations">
         <ul className="list-disc list-inside space-y-1">
           <li>
             <strong>Federal focus</strong> — The system monitors federal government activity. State

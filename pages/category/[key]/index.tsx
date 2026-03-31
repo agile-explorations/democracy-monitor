@@ -275,9 +275,16 @@ export default function CategoryDetailPage({
 
       {/* Week archive — server-rendered for crawlers */}
       {archiveWeeks.length > 0 && (
-        <section className="mt-8 pt-6 border-t border-dm-border">
+        <section id="week-archive" className="mt-8 pt-6 border-t border-dm-border group">
           <h2 className="text-sm font-semibold text-dm-text-primary mb-3">
             Week Archive
+            <a
+              href="#week-archive"
+              className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Link to Week Archive"
+            >
+              #
+            </a>
             <span className="ml-2 text-[11px] font-normal text-dm-muted">
               {archiveWeeks.length} weeks with narratives
             </span>

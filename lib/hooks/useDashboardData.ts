@@ -11,6 +11,7 @@ export interface DashboardData {
   healthSummary: SourceHealthSummary | null;
   fetchTimeline: FetchWeekHealth[];
   lastCheckedAt: string | null;
+  documentCount: number | null;
   loading: boolean;
 }
 
@@ -22,22 +23,28 @@ export function useDashboardData(): DashboardData {
   const [healthSummary, setHealthSummary] = useState<SourceHealthSummary | null>(null);
   const [fetchTimeline, setFetchTimeline] = useState<FetchWeekHealth[]>([]);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
+  const [documentCount, setDocumentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [catRes, overviewRes, metaRes, srcRes, timelineRes] = await Promise.all([
+        const [catRes, overviewRes, metaRes, srcRes, timelineRes, docCountRes] = await Promise.all([
           fetch('/api/categories/summary'),
           fetch('/api/overview/summary'),
           fetch('/api/health/meta'),
           fetch('/api/health/sources'),
           fetch('/api/health/fetch-timeline'),
+          fetch('/api/stats/document-count'),
         ]);
         if (catRes.ok) setCategories(await catRes.json());
         if (overviewRes.ok) setOverview(await overviewRes.json());
         if (metaRes.ok) setMeta(await metaRes.json());
         if (timelineRes.ok) setFetchTimeline(await timelineRes.json());
+        if (docCountRes.ok) {
+          const { total } = await docCountRes.json();
+          setDocumentCount(total);
+        }
         if (srcRes.ok) {
           const srcData = await srcRes.json();
           if (srcData.summary) setHealthSummary(srcData.summary);
@@ -58,5 +65,14 @@ export function useDashboardData(): DashboardData {
     loadData();
   }, []);
 
-  return { categories, overview, meta, healthSummary, fetchTimeline, lastCheckedAt, loading };
+  return {
+    categories,
+    overview,
+    meta,
+    healthSummary,
+    fetchTimeline,
+    lastCheckedAt,
+    documentCount,
+    loading,
+  };
 }

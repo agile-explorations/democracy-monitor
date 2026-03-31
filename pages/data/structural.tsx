@@ -49,7 +49,7 @@ export default function StructuralDimensionsPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">Structural Dimensions</h1>
 
       <div className="max-w-3xl space-y-2 mb-8">
-        <Section title="What this shows">
+        <Section title="What this shows" id="what-this-shows">
           <p>
             This heatmap displays <strong>structural anomaly scores</strong> across all 14 monitored
             categories over time. Structural anomaly detection is fully deterministic and uses only
@@ -69,7 +69,7 @@ export default function StructuralDimensionsPage() {
           </p>
         </Section>
 
-        <Section title="How to read the heatmap">
+        <Section title="How to read the heatmap" id="how-to-read">
           <p>
             Each cell represents one category in one week. Colors are based on{' '}
             <strong>z-scores</strong>, which measure how far a value deviates from the baseline mean
@@ -99,7 +99,7 @@ export default function StructuralDimensionsPage() {
           </p>
         </Section>
 
-        <Section title="Dimensions">
+        <Section title="Dimensions" id="dimensions">
           <p>
             Use the pill selector above the heatmap to view individual dimensions or the weighted
             composite. Each dimension measures a different facet of document publishing patterns:
@@ -152,7 +152,7 @@ export default function StructuralDimensionsPage() {
           </p>
         </Section>
 
-        <Section title="Baseline">
+        <Section title="Baseline" id="baseline">
           <p>
             Z-scores are computed using <strong>cycle-year matching</strong>: Year 1 of the current
             administration is compared against Year 1 of the Biden administration, Year 2 against

@@ -19,6 +19,15 @@ export function movingAverage(values: number[], window: number): number[] {
   });
 }
 
+/**
+ * Format a count as "over N" rounded down to the nearest 10,000.
+ * e.g. 234,567 → "over 230,000"
+ */
+export function formatApproxCount(n: number): string {
+  const rounded = Math.floor(n / 10000) * 10000;
+  return `over ${rounded.toLocaleString('en-US')}`;
+}
+
 /** Sample standard deviation (N-1 denominator). Returns 0 for fewer than 2 values. */
 export function stddev(values: number[]): number {
   if (values.length < 2) return 0;

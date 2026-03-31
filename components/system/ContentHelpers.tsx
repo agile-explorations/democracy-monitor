@@ -8,8 +8,19 @@ export function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section id={id} className="mb-8">
-      <h2 className="text-base font-semibold text-dm-text-primary mb-3">{title}</h2>
+    <section id={id} className={`mb-8${id ? ' group' : ''}`}>
+      <h2 className="text-base font-semibold text-dm-text-primary mb-3">
+        {title}
+        {id && (
+          <a
+            href={`#${id}`}
+            className="ml-2 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label={`Link to ${title}`}
+          >
+            #
+          </a>
+        )}
+      </h2>
       <div className="text-sm text-dm-text-secondary leading-relaxed space-y-3">{children}</div>
     </section>
   );

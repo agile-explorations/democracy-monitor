@@ -8,6 +8,7 @@ const SYSTEM_LINKS = [
   { href: '/system/health', label: 'Health' },
   { href: '/system/architecture', label: 'Architecture' },
   { href: '/system/methodology', label: 'Methodology' },
+  { href: '/system/roadmap', label: 'Roadmap' },
 ];
 
 function NavSection({
