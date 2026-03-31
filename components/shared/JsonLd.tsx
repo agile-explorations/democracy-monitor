@@ -162,7 +162,7 @@ export function WebSiteJsonLd() {
     name: 'Democracy Monitor',
     url: SITE_URL,
     description:
-      'Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories.',
+      'A searchable repository of over 230,000 U.S. government documents with AI-assisted analyses of democratic institutional health across 14 categories.',
     publisher: PUBLISHER,
   };
 

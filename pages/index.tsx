@@ -176,7 +176,7 @@ export default function Home() {
     <>
       <SEOHead
         title="Democracy Monitor"
-        description="Automated, transparent analysis of U.S. government documents tracking institutional health across 14 categories."
+        description="A searchable repository of over 230,000 U.S. government documents with AI-assisted analyses of democratic institutional health across 14 categories."
         canonicalPath="/"
       />
       <WebSiteJsonLd />
@@ -194,12 +194,13 @@ export default function Home() {
         {/* Positioning statement */}
         <section className="mb-6">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
-            Democracy Monitor gathers government documents from a variety of sources to assess all
-            three branches of government — the executive, the legislative, and the judiciary. It
-            uses three-layer triangulated detection: structural anomaly analysis, AI document
-            assessment, and thematic drift monitoring. Unlike expert opinion indices, every
-            assessment traces to specific documents and reproducible metrics. The methodology is
-            open source.
+            Democracy Monitor is a searchable repository of over 230,000 U.S. government documents —
+            federal regulations, court filings, congressional floor speeches, presidential
+            statements, enforcement actions, and more. Using this repository, the system produces
+            AI-assisted analyses of democratic institutional health across 14 categories, with
+            weekly assessments, AI-generated narrative summaries, and the ability to drill down to
+            the specific documents supporting each finding. The methodology, data, and code are
+            fully open source.
           </p>
         </section>
 

@@ -84,7 +84,7 @@ export function SiteHeader({
         <div className="mt-2 sm:ml-32 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <div className="flex flex-wrap items-baseline gap-x-3">
             <p className="text-xs sm:text-sm text-dm-text-secondary">
-              Automated analysis of the U.S. government documentary record
+              Monitoring democratic institutions through public records
             </p>
             {lastUpdated && (
               <p className="text-[11px] text-dm-muted">
