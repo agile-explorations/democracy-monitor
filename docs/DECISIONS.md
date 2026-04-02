@@ -12,6 +12,43 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DEV-WORKFLOW: Dev Branch + Render Dev Environment ✅
+
+**Status: Done (issues #502-#510).** Milestone 76.
+
+**Context:** All development happened on `main` with direct deploys to production. Database-intensive work (gap-year backfill at ~$323 AI cost, new source ingestion like 287(g), re-scoring after methodology changes) needed a safe environment. This sprint established the `develop` branch workflow, Render dev environment configuration, and database pull/promote scripts.
+
+**Scope vs. Actual:** 9 planned issues, all implemented. No scope changes. Code review found 4 issues (PK assumption, memory for large tables, slow row-by-row updates, missing .gitignore entry) — all fixed before commit.
+
+1. CI: add `develop` to GitHub Actions branch triggers (#502)
+2. SEOHead noindex guard + dynamic robots.txt for non-production sites (#503)
+3. Maintenance mode page via `NEXT_PUBLIC_MAINTENANCE_MODE` env var (#504)
+4. `render-dev.yaml` documentation file for manual Render setup (#505)
+5. `db:pull-prod` script — download and restore production dump to dev (#506)
+6. `db:promote` script — selective data promotion via `promotion-manifest.json` with `--dry-run` (#507)
+7. `db:push-prod` script — full database push for destructive changes (#508)
+8. DEPLOYMENT.md dev environment documentation (#509)
+9. Create `develop` branch and push (#510)
+
+**Key decisions:**
+
+- **`render-dev.yaml` is documentation only** — services created manually in Render dashboard, not via Blueprint. Avoids accidentally deploying duplicate services.
+- **`RESEND_API_KEY` omitted on dev** — simplest email safety guard. No key = no sends, no environment detection logic needed.
+- **Dynamic robots.txt via API route** — replaced static `public/robots.txt` with `pages/api/robots.ts` + Next.js rewrite. Returns `Disallow: /` for non-production sites. Verified working on production deploy.
+- **Two promotion paths** — selective (`db:promote` with manifest for additive changes) and full push (`db:push-prod` for destructive changes). The promote script never runs migrations; those are handled by the Render deploy process.
+- **Promote script uses direct DB connections** — `DATABASE_URL` (dev) + `PROD_DATABASE_URL` (prod). Simpler than an API-based approach, requires network access to both databases.
+- **Maintenance mode in `_app.tsx`** — `NEXT_PUBLIC_MAINTENANCE_MODE=true` shows a static page with no DB access. Set/unset via Render dashboard env vars.
+- **Primary key resolved via `information_schema`** — code review caught the assumption that first column = PK. Now queries `table_constraints` + `key_column_usage`.
+- **Batched promotion with LIMIT/OFFSET** — code review caught memory risk for large tables. Now streams in batches of 500 with progress logging.
+
+**Lessons:**
+
+- **Static files in `public/` bypass Next.js rewrites** — deleting the static file was necessary for the dynamic route to work. If both exist, the static file wins.
+- **`NEXT_PUBLIC_` prefix required for client-side env vars** — maintenance mode needs to be checked in `_app.tsx` (client component), so the env var must be `NEXT_PUBLIC_MAINTENANCE_MODE`, not `MAINTENANCE_MODE`.
+- **Promotion manifest validation is critical** — the `--dry-run` mode comparing dev/prod row counts and migration journals prevents accidental partial promotions. Should be run before every live promotion.
+
+---
+
 ## Sprint R-CALIBRATE: P1 Calibration for NC Compliance ✅
 
 **Status: Done (issues #485-#487).** Milestone 73.
@@ -191,32 +228,3 @@ Detection: 39/39 preserved throughout (verified at each stage).
 **Lessons:**
 
 - **Eliminating data is better than constraining LLM behavior.** Prior sprints tried to tell the LLM "summarize long data sequences, do not reproduce them" — it didn't reliably obey. Pre-computing the summary and removing the raw data from the prompt is a structural fix that the LLM cannot circumvent. Apply this pattern to other prompt-stuffing problems: if the LLM reproduces data verbatim, the fix is to give it less data, not more instructions.
-
----
-
-## Sprint R-SIG: FR Signal Contamination Fix ✅
-
-**Status: Done (issues #451-#455).** Milestone 67.
-
-**Context:** Term-based FR signals in `categories.ts` searched ALL federal agencies via the FR API when no `agency` parameter was specified. This polluted every affected category with noise documents from unrelated agencies — civilService had 91% noise (5,105 FR docs, only 451 from OPM). Systemic: 26 of 32 FR signals lacked agency restrictions. This reframes prior debugging (thin-category problems, L1 false positives, low P2 confirmation rates) as partly corpus contamination.
-
-**Scope vs. Actual:** All 5 issues implemented as planned. No scope changes.
-
-1. Multi-agency support in FR fetcher stack — `parseSignalParams` returns `agencies[]`, `buildFrApiUrl` loop-appends, feed-fetcher and API route updated (#451)
-2. 16 signals scoped with `agency=` restrictions, 1 signal terms tightened (`fr_oversight`), 7 cross-agency signals kept intentionally unscoped with nosemgrep comments (#452)
-3. `validate:fr-signals` CLI — spot-checks signal queries against FR API for one week (#453)
-4. `fr:purge-noise` CLI — deletes FR-sourced documents + derived data per category, respects FK constraints (#454)
-5. OpenGrep `unscoped-fr-signal` rule prevents future unscoped signals (#455)
-
-**Key decisions:**
-
-- **Comma-separated agency param** (`agency=opm,eop,omb`) over array param — minimal parser change, backward-compatible with existing single-agency signals.
-- **PRESDOCU and executiveActions kept unscoped** — presidential documents are already narrow by type; `fr_all_rules` intentionally captures ALL rules for volume measurement.
-- **7 cross-agency signals kept unscoped** — IG oversight, FOIA, media freedom apply to every agency. Restricting would miss relevant docs. L2 AI assessment is the right filter layer.
-- **Agency slugs validated against live FR API** — caught `commission-on-civil-rights` → `civil-rights-commission` before commit. Would have silently returned 0 results for civilLiberties.
-- **`buildFrRecentUrl` extracted** from `fetchFederalRegister` in feed-fetcher.ts — multi-agency loop pushed function over ESLint max-lines-per-function limit.
-
-**Lessons:**
-
-- **Validate API identifiers against the live API before committing.** Agency slugs are not documented and can't be guessed from agency names (`commission-on-civil-rights` vs `civil-rights-commission`). The validation script would have caught this post-commit, but pre-commit validation is cheaper.
-- **LegiScan has the same class of problem** — pure keyword matching on bill title/description, no structural scoping via subjects/committee/bill-type metadata. Lower volume (1,845 docs) but same contamination risk. Must audit next.

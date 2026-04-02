@@ -47,7 +47,7 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 | Sprint          | Release | Goal                                                                                                                          | Status  |
 | --------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- | ------- |
 | R-DOCS          | R1      | Methodology docs audit (10 inaccuracies) + backtest on system health page                                                     | Planned |
-| R-DEV-WORKFLOW  | R1      | Dev branch + Render dev site + data promotion workflow                                                                        | Planned |
+| R-DEV-WORKFLOW  | R1      | Dev branch + Render dev site + data promotion workflow                                                                        | Done    |
 | R-CALIBRATE     | R1      | P1 calibration — reduce NC failures (4/6 → 0/6) without losing 39/39 detection                                                | Done    |
 | R-CONTENT       | R1      | Ingest content quality — remove caps, boilerplate strippers, P1/P2 8K windows, routing expansion                              | Done    |
 | R-LEGISCAN-TEXT | R1      | Congress.gov API for LegiScan bill text (parallel, non-blocking)                                                              | Planned |
