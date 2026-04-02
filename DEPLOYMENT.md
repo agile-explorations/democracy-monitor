@@ -86,6 +86,51 @@ In order of preference:
 - **Adding schema changes** — Modify `lib/db/schema.ts`, run `pnpm db:generate`, commit the migration. It applies automatically on next deploy.
 - **Updating the bootstrap dump** — Only needed if the persistent disk is lost and you need to redeploy from scratch. Run `pg_dump -Fc` and upload to a new GitHub Release.
 
+## Dev Environment
+
+The `develop` branch deploys to a separate Render environment for database-intensive work (backfills, new source ingestion, re-scoring). See `render-dev.yaml` for the service configuration (created manually in the Render dashboard, not via Blueprint).
+
+### Safety controls
+
+- **No emails**: `RESEND_API_KEY` is omitted on dev — the email service gracefully degrades
+- **No indexing**: `SEOHead` adds `noindex` when `NEXT_PUBLIC_SITE_URL` isn't the production domain. `robots.txt` blocks all crawlers on non-production sites.
+- **No cron jobs**: Pipelines run manually. Use `--dry-run` and `--limit N` for AI pipeline testing to avoid unnecessary API costs.
+- **Maintenance mode**: Set `NEXT_PUBLIC_MAINTENANCE_MODE=true` on the production web service before full database pushes.
+
+### Pull production data to dev
+
+Before starting database work, pull the latest production data:
+
+```bash
+DATABASE_URL=<dev-db-url> pnpm db:pull-prod
+```
+
+Downloads the latest production dump, restores it into the dev database, and runs pending migrations. Set `PROD_URL` to override the production site URL (defaults to `https://democracymonitor.us`).
+
+### Promote dev data to production
+
+Two paths depending on the nature of changes:
+
+**Path 1: Selective promotion (additive changes)**
+
+For new tables, new columns, backfill data. Most common path.
+
+1. Edit `promotion-manifest.json` (copy from `promotion-manifest.json.example`) specifying which tables and date ranges to promote
+2. Dry-run to verify: `DATABASE_URL=<dev> PROD_DATABASE_URL=<prod> pnpm db:promote:dry-run`
+3. Merge `develop` → `main` — Render deploys, migrations create new tables/columns
+4. Promote data: `DATABASE_URL=<dev> PROD_DATABASE_URL=<prod> pnpm db:promote`
+
+The promote script backs up production before making changes, then upserts rows per the manifest. It does NOT run migrations — those are handled by the deploy.
+
+**Path 2: Full database push (destructive changes)**
+
+For dropping tables, removing columns, or changes too broad for a manifest.
+
+1. Set `NEXT_PUBLIC_MAINTENANCE_MODE=true` on Render production web service
+2. Push: `DATABASE_URL=<dev> PROD_DATABASE_URL=<prod> pnpm db:push-prod`
+3. Merge `develop` → `main` — Render deploys (migrations are a no-op)
+4. Remove `NEXT_PUBLIC_MAINTENANCE_MODE` from Render
+
 ## For Contributors
 
 To work with the full production dataset locally:

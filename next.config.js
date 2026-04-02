@@ -3,6 +3,10 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
+  async rewrites() {
+    return [{ source: '/robots.txt', destination: '/api/robots' }];
+  },
+
   async redirects() {
     // 301 redirects from camelCase category paths to kebab-case slugs.
     // Frozen mapping — update when adding new categories.

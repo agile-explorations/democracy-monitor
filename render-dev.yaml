@@ -1,0 +1,65 @@
+# DOCUMENTATION ONLY — This file is NOT used by Render Blueprint.
+# Create these services manually in the Render dashboard.
+# See DEPLOYMENT.md "Dev Environment" section for setup instructions.
+#
+# IMPORTANT: Do NOT create cron services for the dev environment.
+# Run pipelines manually: pnpm snapshot, pnpm backfill, etc.
+# AI pipeline runs hit real OpenAI/Anthropic APIs — use --dry-run and --limit N for testing.
+#
+# IMPORTANT: Do NOT set RESEND_API_KEY on the dev environment.
+# Omitting the key prevents accidental emails to real subscribers.
+
+services:
+  - type: web
+    name: democracy-monitor-dev
+    runtime: node
+    plan: starter
+    branch: develop
+    buildCommand: pnpm install && pnpm db:init && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db-dev
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis-dev
+          type: keyvalue
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://democracy-monitor-dev.onrender.com # UPDATE to actual dev URL
+      - key: GOVINFO_API_KEY
+        sync: false
+      - key: COURTLISTENER_API_TOKEN
+        sync: false
+      - key: FEC_API_KEY
+        sync: false
+      - key: LEGISCAN_API_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # RESEND_API_KEY intentionally omitted — no emails from dev
+
+  - type: keyvalue
+    name: epd-redis-dev
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: epd-db-dev
+    plan: basic-4gb # Production DB is ~5.9GB; needs room for backfills
+    databaseName: epd_dev
+    postgresMajorVersion: '17'
+    # NOTE: Enable pgvector extension manually after database creation
+
+# No cron jobs — run pipelines manually from local or Render shell.

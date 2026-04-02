@@ -3,6 +3,7 @@ import Head from 'next/head';
 const SITE_NAME = 'Democracy Monitor';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
+const IS_PRODUCTION = SITE_URL === 'https://democracymonitor.us';
 
 interface SEOHeadProps {
   title: string;
@@ -34,7 +35,7 @@ export function SEOHead({
     <Head>
       <title>{fullTitle}</title>
       <meta name="description" content={description} />
-      {noindex && <meta name="robots" content="noindex,follow" />}
+      {(noindex || !IS_PRODUCTION) && <meta name="robots" content="noindex,follow" />}
       {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
 
       {/* OpenGraph */}

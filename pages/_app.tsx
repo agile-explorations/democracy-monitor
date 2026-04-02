@@ -7,11 +7,27 @@ import { ReadingLevelProvider } from '@/lib/contexts/ReadingLevelContext';
 import { ThemeProvider } from '@/lib/contexts/ThemeContext';
 import '@/styles/globals.css';
 
+const MAINTENANCE_MODE = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+
+function MaintenancePage() {
+  return (
+    <div className="min-h-screen bg-dm-bg flex items-center justify-center">
+      <div className="text-center px-6">
+        <h1 className="text-xl font-bold text-dm-text-primary mb-3">Democracy Monitor</h1>
+        <p className="text-sm text-dm-text-secondary">
+          The site is being updated. Please check back shortly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function App({ Component, pageProps }: AppProps) {
   const [navOpen, setNavOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
+    if (MAINTENANCE_MODE) return;
     (async () => {
       try {
         const res = await fetch('/api/health/last-updated');
@@ -24,6 +40,8 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     })();
   }, []);
+
+  if (MAINTENANCE_MODE) return <MaintenancePage />;
 
   return (
     <ThemeProvider>

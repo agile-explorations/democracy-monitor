@@ -41,6 +41,9 @@ lib/seed/reports/
 # Database dumps (uploaded to GitHub Releases, not committed)
 *.pgdump
 
+# Promotion manifest (environment-specific, not committed; use .example)
+promotion-manifest.json
+
 # Internal specification/research documents (kept on disk for local reference)
 # docs/internal/
 
