@@ -169,8 +169,10 @@ export default function RoadmapPage() {
             researcher would need to evaluate those assessments for themselves.
           </p>
           <p>
-            This positions Democracy Monitor as the evidentiary layer underneath established
-            indices: the place researchers go to check the receipts.
+            The documents may confirm an index&apos;s assessment, complicate it, or reveal dynamics
+            the annual score missed entirely. Democracy Monitor does not validate or invalidate any
+            specific index. It provides the primary-source documents and lets researchers form their
+            own conclusions.
           </p>
         </Section>
 

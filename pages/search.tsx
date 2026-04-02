@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DateRangeSelect } from '@/components/search/DateRangeSelect';
 import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
 import { parseStreamingSections } from '@/components/search/helpers';
 import { ResearchResults } from '@/components/search/ResearchResults';
@@ -25,8 +26,9 @@ export default function SearchPage() {
   const [exploreResult, setExploreResult] = useState<ExploreResult | null>(null);
   const [synthesizing, setSynthesizing] = useState(false);
 
-  // Explore filters
+  // Filters (date range shared by both modes)
   const [filterCategory, setFilterCategory] = useState('');
+  const [datePreset, setDatePreset] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [filterSource, setFilterSource] = useState('');
@@ -51,10 +53,11 @@ export default function SearchPage() {
       setError(null);
 
       const params = new URLSearchParams({ q, mode: searchMode });
+      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
+      if (filterDateTo) params.set('dateTo', filterDateTo);
+      if (datePreset) params.set('datePreset', datePreset);
       if (searchMode === 'explore') {
         if (filterCategory) params.set('category', filterCategory);
-        if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-        if (filterDateTo) params.set('dateTo', filterDateTo);
         if (filterSource) params.set('source', filterSource);
         if (filterSort !== 'relevance') params.set('sort', filterSort);
         if (page > 1) params.set('page', String(page));
@@ -80,7 +83,7 @@ export default function SearchPage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filterCategory, filterDateFrom, filterDateTo, filterSource, filterSort, router],
+    [filterCategory, datePreset, filterDateFrom, filterDateTo, filterSource, filterSort, router],
   );
 
   const performResearch = async (q: string, urlParams: URLSearchParams) => {
@@ -112,6 +115,8 @@ export default function SearchPage() {
     // Phase 2: Stream single-pass Sonnet synthesis via SSE
     try {
       const streamParams = new URLSearchParams({ q });
+      if (filterDateFrom) streamParams.set('dateFrom', filterDateFrom);
+      if (filterDateTo) streamParams.set('dateTo', filterDateTo);
       const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
       let accumulated = '';
 
@@ -167,6 +172,7 @@ export default function SearchPage() {
     if (q) setQuery(q);
     if (m && (m === 'research' || m === 'explore')) setMode(m);
     if (router.query.category) setFilterCategory(router.query.category as string);
+    if (router.query.datePreset) setDatePreset(router.query.datePreset as string);
     if (router.query.dateFrom) setFilterDateFrom(router.query.dateFrom as string);
     if (router.query.dateTo) setFilterDateTo(router.query.dateTo as string);
     if (router.query.source) setFilterSource(router.query.source as string);
@@ -186,14 +192,12 @@ export default function SearchPage() {
     <>
       <SEOHead
         title="Search the Record"
-        description="Search government documents by topic. Research mode synthesizes answers from the documentary record; explore mode provides filtered keyword and semantic search."
+        description="Search government documents by topic. Research mode synthesizes answers; explore mode provides filtered keyword and semantic search."
         canonicalPath="/search"
       />
-
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview
       </Link>
-
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
         Search the Documentary Record
       </h1>
@@ -239,8 +243,8 @@ export default function SearchPage() {
         </div>
       </form>
 
-      {/* Mode toggle */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Mode toggle + date range (shared) */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <span className="text-xs text-dm-muted">Mode:</span>
         <div className="flex rounded-lg border border-dm-border overflow-hidden">
           {(['research', 'explore'] as const).map((m) => (
@@ -262,6 +266,19 @@ export default function SearchPage() {
             </button>
           ))}
         </div>
+
+        <DateRangeSelect
+          datePreset={datePreset}
+          dateFrom={filterDateFrom}
+          dateTo={filterDateTo}
+          onPresetChange={(preset, from, to) => {
+            setDatePreset(preset);
+            setFilterDateFrom(from);
+            setFilterDateTo(to);
+          }}
+          onDateFromChange={setFilterDateFrom}
+          onDateToChange={setFilterDateTo}
+        />
       </div>
 
       {mode === 'explore' && (
@@ -269,10 +286,6 @@ export default function SearchPage() {
           {...{
             filterCategory,
             setFilterCategory,
-            filterDateFrom,
-            setFilterDateFrom,
-            filterDateTo,
-            setFilterDateTo,
             filterSource,
             setFilterSource,
             filterSort,

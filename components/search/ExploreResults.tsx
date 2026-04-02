@@ -120,10 +120,6 @@ function GroupedDocCard({ group }: { group: GroupedDoc }) {
 export function ExploreFilters({
   filterCategory,
   setFilterCategory,
-  filterDateFrom,
-  setFilterDateFrom,
-  filterDateTo,
-  setFilterDateTo,
   filterSource,
   setFilterSource,
   filterSort,
@@ -131,17 +127,13 @@ export function ExploreFilters({
 }: {
   filterCategory: string;
   setFilterCategory: (v: string) => void;
-  filterDateFrom: string;
-  setFilterDateFrom: (v: string) => void;
-  filterDateTo: string;
-  setFilterDateTo: (v: string) => void;
   filterSource: string;
   setFilterSource: (v: string) => void;
   filterSort: string;
   setFilterSort: (v: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
       <select
         value={filterCategory}
         onChange={(e) => setFilterCategory(e.target.value)}
@@ -154,28 +146,6 @@ export function ExploreFilters({
           </option>
         ))}
       </select>
-      <div className="relative">
-        <label className="absolute -top-2 left-2 px-0.5 text-[10px] text-dm-muted bg-dm-card">
-          From
-        </label>
-        <input
-          type="date"
-          value={filterDateFrom}
-          onChange={(e) => setFilterDateFrom(e.target.value)}
-          className="w-full px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
-        />
-      </div>
-      <div className="relative">
-        <label className="absolute -top-2 left-2 px-0.5 text-[10px] text-dm-muted bg-dm-card">
-          To
-        </label>
-        <input
-          type="date"
-          value={filterDateTo}
-          onChange={(e) => setFilterDateTo(e.target.value)}
-          className="w-full px-2 py-1.5 rounded border border-dm-border bg-dm-card text-dm-text-secondary text-xs"
-        />
-      </div>
       <select
         value={filterSource}
         onChange={(e) => setFilterSource(e.target.value)}

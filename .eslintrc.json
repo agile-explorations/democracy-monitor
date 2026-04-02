@@ -101,6 +101,7 @@
     {
       "files": [
         "pages/index.tsx",
+        "pages/search.tsx",
         "pages/system/methodology.tsx",
         "pages/system/architecture.tsx",
         "pages/system/health.tsx",

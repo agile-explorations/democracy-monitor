@@ -86,7 +86,9 @@ async function handleResearch(
     return;
   }
 
-  const allDocs = await searchResearch(query, 20, embedding);
+  const dateFrom = req.query.dateFrom as string | undefined;
+  const dateTo = req.query.dateTo as string | undefined;
+  const allDocs = await searchResearch(query, 20, embedding, dateFrom, dateTo);
   if (allDocs.length === 0) {
     res.status(200).json(emptyResearchResponse(docsOnly));
     return;

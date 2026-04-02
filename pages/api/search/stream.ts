@@ -31,14 +31,18 @@ function sendEvent(res: NextApiResponse, data: Record<string, unknown>) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-async function retrieveDocuments(query: string): Promise<{
+async function retrieveDocuments(
+  query: string,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<{
   docs: ResearchDocument[];
   prompt: string;
 } | null> {
   const embedding = await embedText(query);
   if (!embedding) return null;
 
-  const allDocs = await searchResearch(query, CONTEXT_DOCS, embedding);
+  const allDocs = await searchResearch(query, CONTEXT_DOCS, embedding, dateFrom, dateTo);
   if (allDocs.length === 0) return null;
 
   // Skip corpus stats — scanning 164K embeddings takes 15-20s and delays
@@ -94,7 +98,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   try {
-    const retrieved = await retrieveDocuments(query);
+    const dateFrom = req.query.dateFrom as string | undefined;
+    const dateTo = req.query.dateTo as string | undefined;
+    const retrieved = await retrieveDocuments(query, dateFrom, dateTo);
     if (!retrieved) {
       sendEvent(res, { type: 'error', message: 'No matching documents found' });
       res.end();

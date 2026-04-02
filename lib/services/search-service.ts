@@ -121,13 +121,22 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 // Research mode: vector search for government documents
 // ---------------------------------------------------------------------------
 
+function buildDateFilter(dateFrom?: string, dateTo?: string) {
+  if (!dateFrom && !dateTo) return sql``;
+  return sql`${dateFrom ? sql`AND d.published_at >= ${dateFrom}::timestamptz` : sql``}${dateTo ? sql` AND d.published_at <= ${dateTo}::timestamptz + interval '1 day'` : sql``}`;
+}
+
 /** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
 function buildResearchQuery(
   vectorStr: string,
   query: string,
   topK: number,
   candidateLimit: number,
+  dateFrom?: string,
+  dateTo?: string,
 ) {
+  const dateFilter = buildDateFilter(dateFrom, dateTo);
+
   return sql`
     SELECT r.*, ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
@@ -154,6 +163,7 @@ function buildResearchQuery(
           LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
           WHERE d.embedding IS NOT NULL
             AND d.source_origin NOT IN ('gdelt', 'whitehouse')
+            ${dateFilter}
           ORDER BY d.embedding <=> ${vectorStr}::vector
           LIMIT ${candidateLimit}
         ) candidates
@@ -171,6 +181,8 @@ export async function searchResearch(
   query: string,
   topK = 20,
   precomputedEmbedding?: number[],
+  dateFrom?: string,
+  dateTo?: string,
 ): Promise<ResearchDocument[]> {
   if (!isDbAvailable()) return [];
   const embedding = precomputedEmbedding ?? (await embedText(query));
@@ -180,7 +192,9 @@ export async function searchResearch(
   const vectorStr = `[${embedding.join(',')}]`;
 
   try {
-    const results = await db.execute(buildResearchQuery(vectorStr, query, topK, topK * 5));
+    const results = await db.execute(
+      buildResearchQuery(vectorStr, query, topK, topK * 5, dateFrom, dateTo),
+    );
     return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
   } catch (err) {
     console.error('[search] Research search failed:', err);

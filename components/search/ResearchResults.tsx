@@ -143,7 +143,26 @@ export function ResearchResults({
       {synthesizing && (
         <div className="rounded-lg border border-dm-accent/30 bg-dm-accent/5 p-4">
           <p className="text-sm text-dm-text-secondary">
-            <span className="inline-block animate-pulse mr-2">&#9679;</span>
+            <svg
+              className="inline-block animate-spin mr-2 -mt-0.5 h-4 w-4 text-dm-accent"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
             {corpusTotal && corpusTotal > docCount
               ? `Analyzing ${corpusTotal} matching documents\u2026 ${docCount} most relevant shown below while you wait.`
               : `Generating answer from ${docCount} document${docCount !== 1 ? 's' : ''}\u2026 Documents are shown below while you wait.`}
