@@ -6,7 +6,7 @@
  * Pass --all-sources to include excluded source origins (whitehouse, gdelt).
  */
 
-import { and } from 'drizzle-orm';
+import { and, gte, lte } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 import {
   buildAnalysisPeriodCondition,
@@ -22,6 +22,8 @@ import { checkHelp } from '@/lib/utils/cli-help';
 
 interface EmbedOptions {
   category?: string;
+  from?: string;
+  to?: string;
   allDates?: boolean;
   allSources?: boolean;
 }
@@ -45,9 +47,15 @@ async function run(options: EmbedOptions): Promise<void> {
   }
 
   const conditions: SQL[] = [];
-  if (!options.allDates) {
+  if (options.from || options.to) {
+    if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
+    if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
+    console.log(`[embed-missing] Date range: ${options.from ?? '*'} → ${options.to ?? '*'}`);
+  } else if (!options.allDates) {
     conditions.push(buildAnalysisPeriodCondition(documents.publishedAt));
-    console.log('[embed-missing] Restricting to analysis periods (use --all-dates to override)');
+    console.log(
+      '[embed-missing] Restricting to analysis periods (use --all-dates or --from/--to to override)',
+    );
   }
   if (!options.allSources) {
     conditions.push(buildActiveSourceCondition(documents.sourceOrigin));
@@ -78,12 +86,18 @@ if (require.main === module) {
 
 Options:
   --category <key>    Process a single category
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
   --all-dates         Process all dates (default: analysis periods only)
   --all-sources       Include all source origins (default: active sources only)`,
   );
   const catIdx = args.indexOf('--category');
+  const fromIdx = args.indexOf('--from');
+  const toIdx = args.indexOf('--to');
   const embedOpts: EmbedOptions = {
     category: catIdx !== -1 ? args[catIdx + 1] : undefined,
+    from: fromIdx !== -1 ? args[fromIdx + 1] : undefined,
+    to: toIdx !== -1 ? args[toIdx + 1] : undefined,
     allDates: args.includes('--all-dates'),
     allSources: args.includes('--all-sources'),
   };
