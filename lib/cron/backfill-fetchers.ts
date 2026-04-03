@@ -69,8 +69,8 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
   oig: 'oig',
 };
 
-const SIGNAL_MAX_RETRIES = 3;
-const SIGNAL_RETRY_BACKOFF_MS = 10_000;
+const SIGNAL_MAX_RETRIES = 4;
+const SIGNAL_RETRY_BACKOFF_MS = 30_000;
 
 /** Retry a single signal fetch up to SIGNAL_MAX_RETRIES times with progressive backoff. */
 async function fetchSignalWithRetry(

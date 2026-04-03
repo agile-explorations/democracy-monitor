@@ -3,7 +3,7 @@ import { sleep } from '@/lib/utils/async';
 
 const CL_BASE_URL = 'https://www.courtlistener.com';
 const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
-export const RATE_LIMIT_DELAY_MS = 750;
+export const RATE_LIMIT_DELAY_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 /** Default max pages for historical backfill (45 × 20 results/page = 900). */
