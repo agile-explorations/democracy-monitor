@@ -1,4 +1,4 @@
-import { and } from 'drizzle-orm';
+import { and, sql } from 'drizzle-orm';
 import { backfillCpd } from '@/lib/cron/backfill-cpd';
 import { backfillCrec } from '@/lib/cron/backfill-crec';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
@@ -9,6 +9,7 @@ import {
   buildActiveSourceCondition,
 } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
+import { getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
@@ -33,6 +34,8 @@ interface BackfillOptions {
   source?: string;
   force?: boolean;
   forceUnlock?: boolean;
+  clean?: boolean;
+  confirm?: boolean;
 }
 
 const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
@@ -220,6 +223,71 @@ function resolveSourceFilter(source?: string): string | undefined {
   return signalType;
 }
 
+/** Delete all documents and derived data within a date range. */
+async function cleanDateRange(from: string, to: string): Promise<void> {
+  // nosemgrep: opengrep.cron-needs-env-config — called from runBackfill after loadEnvConfig
+  const db = getDb();
+
+  console.log(`[backfill] Cleaning all data for ${from} → ${to}...`);
+
+  // 1. ai_document_assessments (references documents via url/category)
+  const assess = await db.execute(sql`
+    DELETE FROM ai_document_assessments
+    WHERE week_of >= ${from}::date AND week_of < ${to}::date + interval '1 day'
+  `);
+  console.log(`  ai_document_assessments: ${assess.rowCount} deleted`);
+
+  // 2. document_scores (references documents.url)
+  const scores = await db.execute(sql`
+    DELETE FROM document_scores
+    WHERE url IN (
+      SELECT url FROM documents
+      WHERE published_at >= ${from}::timestamptz AND published_at < ${to}::timestamptz + interval '1 day'
+    )
+  `);
+  console.log(`  document_scores: ${scores.rowCount} deleted`);
+
+  // 3. p2025_matches (references documents.id)
+  const p2025 = await db.execute(sql`
+    DELETE FROM p2025_matches
+    WHERE document_id IN (
+      SELECT id FROM documents
+      WHERE published_at >= ${from}::timestamptz AND published_at < ${to}::timestamptz + interval '1 day'
+    )
+  `);
+  console.log(`  p2025_matches: ${p2025.rowCount} deleted`);
+
+  // 4. weekly_aggregates
+  const agg = await db.execute(sql`
+    DELETE FROM weekly_aggregates
+    WHERE week_of >= ${from}::date AND week_of < ${to}::date + interval '1 day'
+  `);
+  console.log(`  weekly_aggregates: ${agg.rowCount} deleted`);
+
+  // 5. narratives
+  const nar = await db.execute(sql`
+    DELETE FROM narratives
+    WHERE week_of >= ${from}::date AND week_of < ${to}::date + interval '1 day'
+  `);
+  console.log(`  narratives: ${nar.rowCount} deleted`);
+
+  // 6. fetch_log
+  const fl = await db.execute(sql`
+    DELETE FROM fetch_log
+    WHERE week_start >= ${from}::date AND week_start < ${to}::date + interval '1 day'
+  `);
+  console.log(`  fetch_log: ${fl.rowCount} deleted`);
+
+  // 7. documents (last — other tables reference it)
+  const docs = await db.execute(sql`
+    DELETE FROM documents
+    WHERE published_at >= ${from}::timestamptz AND published_at < ${to}::timestamptz + interval '1 day'
+  `);
+  console.log(`  documents: ${docs.rowCount} deleted`);
+
+  console.log('[backfill] Clean complete.');
+}
+
 export async function runBackfill(options: BackfillOptions = {}): Promise<void> {
   const from = options.from || INAUGURATION_DATE;
   const to = options.to || toDateString(new Date());
@@ -232,6 +300,24 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
       `[backfill] Source filter: ${options.source}${sourceSignalType ? ` (${sourceSignalType})` : ''}`,
     );
   if (options.force) console.log('[backfill] Force mode: re-fetching all weeks');
+
+  // --clean: delete all data in the date range before backfilling
+  if (options.clean) {
+    if (!options.confirm) {
+      console.error(
+        '[backfill] --clean requires --confirm to execute. This will delete ALL documents',
+      );
+      console.error(
+        `  and derived data (scores, assessments, aggregates, narratives) for ${from} → ${to}.`,
+      );
+      process.exit(1);
+    }
+    if (!options.from) {
+      console.error('[backfill] --clean requires --from to be set (safety: no unbounded deletes)');
+      process.exit(1);
+    }
+    await cleanDateRange(from, to);
+  }
 
   const weeks = getWeekRanges(from, to);
   console.log(`[backfill] ${weeks.length} weeks to process`);
@@ -292,6 +378,8 @@ function parseCliArgs(args: string[]): BackfillOptions {
     else if (arg === '--source') opts.source = args[++i];
     else if (arg === '--force') opts.force = true;
     else if (arg === '--force-unlock') opts.forceUnlock = true;
+    else if (arg === '--clean') opts.clean = true;
+    else if (arg === '--confirm') opts.confirm = true;
   }
   return opts;
 }
@@ -311,7 +399,8 @@ Options:
   --source <name>     Limit to a specific source
   --dry-run           Preview without writing to DB
   --force             Force re-fetch even if already completed
-  --force-unlock      Clear stale cron lock before running`,
+  --force-unlock      Clear stale cron lock before running
+  --clean --confirm   Delete all docs + derived data in date range before backfilling`,
   );
   const opts = parseCliArgs(argv);
   withCronLock('backfill', () => runBackfill(opts), undefined, opts.forceUnlock)
