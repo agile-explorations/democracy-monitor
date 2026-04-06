@@ -17,7 +17,7 @@ Post-launch features and improvements are tracked in `FUTURE_ROADMAP.md`.
 
 For the full sprint-by-sprint history, see `PROJECT_KNOWLEDGE.md` (sprint log) and `DECISIONS.md` / `DECISIONS-ARCHIVE.md` (retrospectives).
 
-**Summary:** Three-layer detection pipeline (structural + AI two-pass + thematic drift), 8 source types across 14 categories, 4 baselines with AI assessment, dashboard UI (overview + category + week detail + search + system pages), 3-pass AI narratives, validation harness, SEO, researcher data access, cron job resilience. 2000+ tests, 68%+ branch coverage.
+**Summary:** Three-layer detection pipeline (structural + AI two-pass + thematic drift), 8 source types across 14 categories, 4 baselines with AI assessment, dashboard UI (overview + category + week detail + search + system pages), 3-pass AI narratives (category + weekly + term summaries), validation harness, SEO, researcher data access, cron job resilience, narrative regeneration CLI. 2000+ tests, 68%+ branch coverage.
 
 ---
 
