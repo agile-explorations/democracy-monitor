@@ -95,7 +95,7 @@
     {
       "files": ["lib/services/narrative-prompts.ts"],
       "rules": {
-        "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]
+        "max-lines": ["warn", { "max": 700, "skipBlankLines": true, "skipComments": true }]
       }
     },
     {

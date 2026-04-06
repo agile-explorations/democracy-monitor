@@ -192,3 +192,61 @@ export async function generateSinglePassNarrative(
 
   return { expert: drafts.expert, public: drafts.public, model: draftResult.model };
 }
+
+/**
+ * Generic 3-pass pipeline for summaries (weekly or term).
+ * Accepts prompt builder functions so the same orchestration logic can be reused.
+ */
+export async function generateMultiPassSummary(
+  label: string,
+  buildDraft: () => string,
+  buildFb: (expertDraft: string, publicDraft: string) => string,
+  buildRev: (expertDraft: string, publicDraft: string, feedback: string) => string,
+): Promise<MultiPassNarrativeResult> {
+  const claude = getProvider('anthropic');
+  const openai = getProvider('openai');
+
+  if (!claude.isAvailable()) {
+    throw new Error('Anthropic API key not configured — cannot generate summaries');
+  }
+  if (!openai.isAvailable()) {
+    throw new Error('OpenAI API key not configured — cannot generate feedback');
+  }
+
+  const draftResult = await runPass(
+    claude,
+    buildDraft(),
+    { model: DRAFT_MODEL, maxTokens: 4096, systemPrompt: SYSTEM_PROMPT_DRAFT },
+    1,
+    `Pass 1 draft [${label}]`,
+  );
+  const drafts = parseDraftResponse(draftResult.content);
+
+  const feedbackResult = await runPass(
+    openai,
+    buildFb(drafts.expert, drafts.public),
+    { model: FEEDBACK_MODEL, maxTokens: 2048, systemPrompt: SYSTEM_PROMPT_FEEDBACK },
+    2,
+    `Pass 2 feedback [${label}]`,
+  );
+
+  const finalResult = await runPass(
+    claude,
+    buildRev(drafts.expert, drafts.public, feedbackResult.content),
+    { model: FINAL_MODEL, maxTokens: 4096, systemPrompt: SYSTEM_PROMPT_REVISION },
+    3,
+    `Pass 3 revision [${label}]`,
+  );
+  const finals = parseDraftResponse(finalResult.content);
+
+  return {
+    expertDraft: drafts.expert,
+    publicDraft: drafts.public,
+    feedback: feedbackResult.content,
+    expert: finals.expert,
+    public: finals.public,
+    draftModel: draftResult.model,
+    feedbackModel: feedbackResult.model,
+    finalModel: finalResult.model,
+  };
+}

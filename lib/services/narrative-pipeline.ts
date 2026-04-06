@@ -1,10 +1,10 @@
 import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
-import { getProvider } from '@/lib/ai/provider';
 import { ACTIVE_SOURCES, T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents, narrativeFailures, weeklyAggregates } from '@/lib/db/schema';
 import type {
+  MultiPassNarrativeResult,
   NarrativeLayerData,
   NarrativeResult,
   TermSummaryInput,
@@ -19,8 +19,19 @@ import {
   isElevatedStatus,
   needsMultiPass,
 } from './narrative-generation-service';
-import { generateMultiPassNarrative, generateSinglePassNarrative } from './narrative-multipass';
-import { buildTermSummaryPrompt, buildWeeklySummaryPrompt } from './narrative-prompts';
+import {
+  generateMultiPassNarrative,
+  generateMultiPassSummary,
+  generateSinglePassNarrative,
+} from './narrative-multipass';
+import {
+  buildTermSummaryDraftPrompt,
+  buildTermSummaryFeedbackPrompt,
+  buildTermSummaryRevisionPrompt,
+  buildWeeklySummaryDraftPrompt,
+  buildWeeklySummaryFeedbackPrompt,
+  buildWeeklySummaryRevisionPrompt,
+} from './narrative-prompts';
 import {
   enrichCategoryData,
   getPreviousWeekNarrative,
@@ -29,8 +40,6 @@ import {
   getTrajectoryTable,
 } from './narrative-queries';
 import { storeMultiPassNarratives, storeNarratives } from './narrative-store';
-
-const SUMMARY_MODEL = 'claude-opus-4-6';
 
 /**
  * Minimum ratio of aggregated categories to actual document categories.
@@ -113,6 +122,7 @@ export function toNarrativeLayerData(
     thematicDetail: row.thematicDetail as NarrativeLayerData['thematicDetail'],
     convergenceScore: row.convergenceScore,
     convergenceDetail: row.convergenceDetail as ConcernAssessment | null,
+    totalDocumentCount: row.documentCount,
   };
 }
 
@@ -136,42 +146,24 @@ export async function loadAllLayerData(weekOf: string): Promise<NarrativeLayerDa
   return results;
 }
 
-/** Generate a single-pass summary narrative (expert or public). */
-async function generateSinglePass(
-  prompt: string,
-  systemPrompt: string,
-  maxTokens: number,
-): Promise<string> {
-  const claude = getProvider('anthropic');
-  if (!claude.isAvailable()) throw new Error('Anthropic API key not configured');
-  const result = await claude.complete(prompt, { model: SUMMARY_MODEL, maxTokens, systemPrompt });
-  return result.content;
+/** Generate weekly cross-category summary (replaces _overview) via 3-pass pipeline. */
+async function generateWeeklySummary(input: WeeklySummaryInput): Promise<MultiPassNarrativeResult> {
+  return generateMultiPassSummary(
+    'weekly summary',
+    () => buildWeeklySummaryDraftPrompt(input),
+    (expert, pub) => buildWeeklySummaryFeedbackPrompt(expert, pub, input),
+    (expert, pub, feedback) => buildWeeklySummaryRevisionPrompt(expert, pub, feedback, input),
+  );
 }
 
-/** Generate weekly cross-category summary (replaces _overview). */
-async function generateWeeklySummary(input: WeeklySummaryInput): Promise<NarrativeResult> {
-  const systemPrompt =
-    'You are an expert analyst for a democratic institution monitoring system. ' +
-    'You produce rigorous, evidence-based cross-category synthesis.';
-
-  const [expert, pub] = await Promise.all([
-    generateSinglePass(buildWeeklySummaryPrompt(input, 'expert'), systemPrompt, 2048),
-    generateSinglePass(buildWeeklySummaryPrompt(input, 'public'), systemPrompt, 1024),
-  ]);
-  return { expert, public: pub, model: SUMMARY_MODEL };
-}
-
-/** Generate incremental term summary (_term_summary). */
-async function generateTermSummary(input: TermSummaryInput): Promise<NarrativeResult> {
-  const systemPrompt =
-    'You are an expert analyst for a democratic institution monitoring system. ' +
-    'You produce rigorous, evidence-based term-level synthesis.';
-
-  const [expert, pub] = await Promise.all([
-    generateSinglePass(buildTermSummaryPrompt(input, 'expert'), systemPrompt, 4096),
-    generateSinglePass(buildTermSummaryPrompt(input, 'public'), systemPrompt, 2048),
-  ]);
-  return { expert, public: pub, model: SUMMARY_MODEL };
+/** Generate incremental term summary (_term_summary) via 3-pass pipeline. */
+async function generateTermSummary(input: TermSummaryInput): Promise<MultiPassNarrativeResult> {
+  return generateMultiPassSummary(
+    'term summary',
+    () => buildTermSummaryDraftPrompt(input),
+    (expert, pub) => buildTermSummaryFeedbackPrompt(expert, pub, input),
+    (expert, pub, feedback) => buildTermSummaryRevisionPrompt(expert, pub, feedback, input),
+  );
 }
 
 /** Phase 1: Generate per-category narratives (stable templates + multi-pass for elevated). */
@@ -234,8 +226,8 @@ async function generateSummaries(
     previousWeekSummary,
   };
   const weeklyResult = await generateWeeklySummary(weeklyInput);
-  await storeNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);
-  console.log('[narratives]   weekly summary: stored');
+  await storeMultiPassNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);
+  console.log('[narratives]   weekly summary: stored (3-pass)');
 
   try {
     const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
@@ -251,8 +243,8 @@ async function generateSummaries(
       statistics,
     };
     const termResult = await generateTermSummary(termInput);
-    await storeNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
-    console.log('[narratives]   term summary: stored');
+    await storeMultiPassNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
+    console.log('[narratives]   term summary: stored (3-pass)');
   } catch (err) {
     console.error('[narratives]   term summary: failed:', err);
   }
