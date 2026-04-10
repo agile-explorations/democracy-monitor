@@ -1,9 +1,11 @@
+import { fetchOpinionTextFromDb, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
 import {
   fetchCourtListenerHistorical,
   parseCourtListenerParams,
   extractDocketId,
   fetchOpinionText,
   buildOpinionContentItem,
+  RATE_LIMIT_DELAY_MS,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchDojOigHistorical, fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
@@ -69,8 +71,8 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
   oig: 'oig',
 };
 
-const SIGNAL_MAX_RETRIES = 3;
-const SIGNAL_RETRY_BACKOFF_MS = 10_000;
+const SIGNAL_MAX_RETRIES = 4;
+const SIGNAL_RETRY_BACKOFF_MS = 30_000;
 
 /** Retry a single signal fetch up to SIGNAL_MAX_RETRIES times with progressive backoff. */
 async function fetchSignalWithRetry(
@@ -110,9 +112,16 @@ async function fillFrContent(items: ContentItem[]): Promise<void> {
   }
 }
 
-/** Fetch opinions for CL docket items and append as new ContentItems. */
-async function fillClOpinions(items: ContentItem[]): Promise<void> {
-  // Snapshot the current length to avoid iterating over newly-added opinion items
+/**
+ * Fetch opinions for CL docket items and append as new ContentItems.
+ * Prefers the local bulk staging DB (no rate limit, full text) over the CL API.
+ */
+export async function fillClOpinions(items: ContentItem[]): Promise<void> {
+  const useBulkDb = await isBulkOpinionDbAvailable();
+  if (useBulkDb) {
+    console.log('[backfill] Using local bulk DB for CL opinion text');
+  }
+
   const docketCount = items.length;
   for (let i = 0; i < docketCount; i++) {
     const item = items[i];
@@ -120,10 +129,11 @@ async function fillClOpinions(items: ContentItem[]): Promise<void> {
     const docketId = extractDocketId(item.link);
     if (!docketId) continue;
 
-    const opinion = await fetchOpinionText(docketId);
+    const opinion = useBulkDb
+      ? await fetchOpinionTextFromDb(docketId)
+      : await fetchOpinionText(docketId);
     if (!opinion) continue;
 
-    // Sanity check: skip opinions that predate the docket filing (CL data mislinkage)
     if (item.pubDate && opinion.dateFiled < item.pubDate) continue;
 
     const meta = item.metadata as Record<string, unknown> | undefined;
@@ -135,6 +145,8 @@ async function fillClOpinions(items: ContentItem[]): Promise<void> {
         suitNature: (meta?.suitNature as string) ?? undefined,
       }),
     );
+
+    if (!useBulkDb) await sleep(RATE_LIMIT_DELAY_MS);
   }
 }
 

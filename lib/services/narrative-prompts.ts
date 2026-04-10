@@ -178,6 +178,32 @@ function formatStableLine(category: string, docCount: number): string {
     : `${category}: Stable, ${docCount} documents, no structural or AI anomalies`;
 }
 
+/** Build a factual summary block that the LLM must cite exactly. */
+function buildFactualSummary(input: WeeklySummaryInput): string {
+  const elevated = input.categories.filter(
+    (c) => c.convergenceDetail && c.convergenceDetail.status !== 'Stable',
+  );
+  const stable = input.categories.filter(
+    (c) => !c.convergenceDetail || c.convergenceDetail.status === 'Stable',
+  );
+  const zeroDocs = stable.filter((c) => !c.totalDocumentCount);
+  const stableWithDocs = stable.filter((c) => (c.totalDocumentCount ?? 0) > 0);
+  const totalDocs = input.categories.reduce((sum, c) => sum + (c.totalDocumentCount ?? 0), 0);
+
+  const lines = [
+    '--- FACTUAL DATA (cite these numbers exactly — do not conflate status with document count) ---',
+    `Total categories monitored: ${input.categories.length}`,
+    `Total documents this week: ${totalDocs.toLocaleString()}`,
+    `Categories Elevated or above: ${elevated.length} (${elevated.map((c) => c.categoryTitle).join(', ')})`,
+    `Categories Stable WITH documents: ${stableWithDocs.length} (${stableWithDocs.map((c) => `${c.categoryTitle}: ${c.totalDocumentCount}`).join(', ')})`,
+    `Categories with ZERO documents: ${zeroDocs.length}${zeroDocs.length > 0 ? ` (${zeroDocs.map((c) => c.categoryTitle).join(', ')})` : ''}`,
+    `NOTE: "Stable" means no erosion concern was detected. It does NOT mean zero documents.`,
+    `${stableWithDocs.length} categories are Stable with documents — they produced data but no erosion signals.`,
+    '',
+  ];
+  return lines.join('\n');
+}
+
 /** Format elevated and stable category lists for the weekly summary. */
 function formatWeeklyCategoryBlocks(
   input: WeeklySummaryInput,
@@ -284,10 +310,9 @@ export function buildWeeklySummaryPrompt(
     `You are an analyst for a democratic institution monitoring system.\n${header}`,
     '',
     `Week of: ${input.weekOf}`,
-    `Total categories monitored: ${input.categories.length}`,
-    `Categories at Elevated or above: ${elevated.length}`,
     `Delta from last week: ${delta}`,
     '',
+    buildFactualSummary(input),
     formatWeeklyCategoryBlocks(input, version),
   ];
 
@@ -414,5 +439,241 @@ export function buildTermSummaryPrompt(
     '',
     collectTermDataSections(input, version),
     termInstructions(version),
+  ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// 3-pass feedback + revision prompts for weekly and term summaries
+// ---------------------------------------------------------------------------
+
+/** Build the dual-output format for weekly summary (expert + public in one call). */
+function weeklySummaryDualFormat(input: WeeklySummaryInput): string {
+  return [
+    '--- OUTPUT FORMAT ---',
+    'Produce BOTH sections in your response.',
+    '',
+    '=== EXPERT NARRATIVE ===',
+    '(300-500 words. Technical cross-category synthesis for researchers.)',
+    '',
+    '=== PUBLIC NARRATIVE ===',
+    '(200-350 words. Plain-language synthesis for journalists and citizens.)',
+  ].join('\n');
+}
+
+/** Weekly summary draft prompt for 3-pass (combined expert + public). */
+export function buildWeeklySummaryDraftPrompt(input: WeeklySummaryInput): string {
+  const elevated = input.categories.filter(
+    (c) => c.convergenceDetail && c.convergenceDetail.status !== 'Stable',
+  );
+  const delta = input.previousWeekSummary
+    ? `${elevated.length} elevated (see previous week summary for comparison)`
+    : 'no prior week available';
+
+  const sections = [
+    'You are an analyst for a democratic institution monitoring system.',
+    'Generate both an expert and a public cross-category synthesis for this week.',
+    'Focus on cross-category patterns and connections that individual narratives cannot see.',
+    'This is AI-generated analysis, not a finding of fact.',
+    '',
+    `Week of: ${input.weekOf}`,
+    `Delta from last week: ${delta}`,
+    '',
+    buildFactualSummary(input),
+    formatWeeklyCategoryBlocks(input, 'expert'),
+  ];
+
+  if (input.previousWeekSummary) {
+    sections.push(
+      '--- PREVIOUS WEEK SUMMARY (for continuity) ---',
+      input.previousWeekSummary.expert,
+      '',
+    );
+  }
+  sections.push(weeklyRequirements('expert'), '', weeklySummaryDualFormat(input));
+  return sections.join('\n');
+}
+
+/** Weekly summary feedback prompt (Pass 2 — editorial review). */
+export function buildWeeklySummaryFeedbackPrompt(
+  expertDraft: string,
+  publicDraft: string,
+  input: WeeklySummaryInput,
+): string {
+  return [
+    'You are an editorial reviewer for a democratic institution monitoring system.',
+    'Review the following AI-generated weekly summary drafts against the source data.',
+    '',
+    '--- EXPERT DRAFT ---',
+    expertDraft,
+    '',
+    '--- PUBLIC DRAFT ---',
+    publicDraft,
+    '',
+    buildFactualSummary(input),
+    formatWeeklyCategoryBlocks(input, 'expert'),
+    '',
+    '--- REVIEW INSTRUCTIONS ---',
+    'Review both drafts against the source data. Provide structured feedback:',
+    '',
+    '(a) FACTUAL ACCURACY — Does the draft correctly state how many categories have zero',
+    'documents, how many are Stable with documents, and how many are Elevated or above?',
+    'Compare every numerical claim against the FACTUAL DATA section. List any misstatements.',
+    'CRITICAL: "Stable" does NOT mean "zero documents". A category can be Stable with hundreds',
+    'of documents — it means no erosion signal was detected.',
+    '',
+    '(b) STATUS CONSISTENCY — Does the draft correctly report which categories are Elevated,',
+    'ConfirmedConcern, or Stable? Are status labels applied to the correct categories?',
+    '',
+    '(c) CONFIDENCE CALIBRATION — Does the draft overstate certainty or imply causation from',
+    'correlation? Quote specific phrases that need softening.',
+    '',
+    '(d) CROSS-CATEGORY PATTERNS — Are claimed connections between categories supported by',
+    'the category narratives provided? Flag any patterns that are asserted but not grounded.',
+    '',
+    '(e) "WHY THIS MIGHT MATTER" — Does the second paragraph of both narratives include a',
+    'sentence connecting the cross-category pattern to democratic institutions using conditional',
+    'language? Flag if missing.',
+    '',
+    '(f) COUNTER-ARGUMENT COUNT — Expert should have 2-3, public 1-2. Flag excess.',
+  ].join('\n');
+}
+
+/** Weekly summary revision prompt (Pass 3). */
+export function buildWeeklySummaryRevisionPrompt(
+  expertDraft: string,
+  publicDraft: string,
+  feedback: string,
+  input: WeeklySummaryInput,
+): string {
+  return [
+    'You are an analyst for a democratic institution monitoring system.',
+    'Revise the following weekly summary drafts based on editorial feedback.',
+    '',
+    '--- ORIGINAL EXPERT DRAFT ---',
+    expertDraft,
+    '',
+    '--- ORIGINAL PUBLIC DRAFT ---',
+    publicDraft,
+    '',
+    '--- EDITORIAL FEEDBACK ---',
+    feedback,
+    '',
+    buildFactualSummary(input),
+    '',
+    '--- REVISION INSTRUCTIONS ---',
+    'Address each feedback item (a through f):',
+    '- If feedback identifies factual errors (wrong category counts, conflating Stable with',
+    '  zero documents), CORRECT THEM. This is the highest priority.',
+    '- If feedback identifies status label errors, correct them.',
+    '- If feedback identifies overstatement, soften the language.',
+    '- If feedback flags unsupported cross-category patterns, remove or qualify them.',
+    '- If feedback flags missing "why this might matter", ADD ONE.',
+    '- Do not fundamentally rewrite — adjust specific claims.',
+    '',
+    weeklySummaryDualFormat(input),
+  ].join('\n');
+}
+
+/** Term summary dual-output format. */
+function termSummaryDualFormat(version: 'expert' | 'public'): string {
+  const wordRange = version === 'expert' ? '600-1000' : '400-700';
+  return `--- OUTPUT FORMAT ---\nProduce a single ${version === 'expert' ? 'technical' : 'plain-language'} term summary (${wordRange} words).`;
+}
+
+/** Term summary draft prompt for 3-pass (combined expert + public). */
+export function buildTermSummaryDraftPrompt(input: TermSummaryInput): string {
+  return [
+    'You are an analyst for a democratic institution monitoring system.',
+    'Generate both an expert and a public term-level summary.',
+    '',
+    `Current week: ${input.weekOf}`,
+    '',
+    collectTermDataSections(input, 'expert'),
+    termInstructions('expert'),
+    '',
+    '--- OUTPUT FORMAT ---',
+    'Produce BOTH sections in your response.',
+    '',
+    '=== EXPERT NARRATIVE ===',
+    '(600-1000 words. Technical term-level analysis for researchers.)',
+    '',
+    '=== PUBLIC NARRATIVE ===',
+    '(400-700 words. Plain-language term summary for journalists and citizens.)',
+  ].join('\n');
+}
+
+/** Term summary feedback prompt (Pass 2). */
+export function buildTermSummaryFeedbackPrompt(
+  expertDraft: string,
+  publicDraft: string,
+  input: TermSummaryInput,
+): string {
+  return [
+    'You are an editorial reviewer for a democratic institution monitoring system.',
+    'Review the following term summary drafts against the source data.',
+    '',
+    '--- EXPERT DRAFT ---',
+    expertDraft,
+    '',
+    '--- PUBLIC DRAFT ---',
+    publicDraft,
+    '',
+    collectTermDataSections(input, 'expert'),
+    '',
+    '--- REVIEW INSTRUCTIONS ---',
+    'Review both drafts against the source data. Provide structured feedback:',
+    '',
+    '(a) FACTUAL ACCURACY — Does the draft correctly represent the trajectory statistics,',
+    'peak convergence week, and status distributions? List any misstatements.',
+    '',
+    '(b) TRAJECTORY CONSISTENCY — Does the draft accurately characterize the term-level arc?',
+    'Does it correctly evaluate the previous summary framing against new data?',
+    '',
+    '(c) CONFIDENCE CALIBRATION — Quote specific phrases that overstate certainty.',
+    '',
+    '(d) "WHY THIS MIGHT MATTER" — Does the second paragraph connect the trajectory to',
+    'democratic institutions using conditional language? Flag if missing.',
+    '',
+    '(e) CRITICAL GUIDELINES CHECK — Does the draft characterize TERM-level patterns',
+    '(not just this week)? Does it reference pre-computed trajectory statistics directly?',
+  ].join('\n');
+}
+
+/** Term summary revision prompt (Pass 3). */
+export function buildTermSummaryRevisionPrompt(
+  expertDraft: string,
+  publicDraft: string,
+  feedback: string,
+  input: TermSummaryInput,
+): string {
+  return [
+    'You are an analyst for a democratic institution monitoring system.',
+    'Revise the following term summary drafts based on editorial feedback.',
+    '',
+    '--- ORIGINAL EXPERT DRAFT ---',
+    expertDraft,
+    '',
+    '--- ORIGINAL PUBLIC DRAFT ---',
+    publicDraft,
+    '',
+    '--- EDITORIAL FEEDBACK ---',
+    feedback,
+    '',
+    '--- REVISION INSTRUCTIONS ---',
+    'Address each feedback item (a through e):',
+    '- If feedback identifies factual errors, CORRECT THEM.',
+    '- If feedback identifies trajectory mischaracterization, revise.',
+    '- If feedback identifies overstatement, soften the language.',
+    '- If feedback flags missing "why this might matter", ADD ONE.',
+    '- Do not fundamentally rewrite — adjust specific claims.',
+    '',
+    '--- OUTPUT FORMAT ---',
+    'Produce BOTH sections in your response.',
+    '',
+    '=== EXPERT NARRATIVE ===',
+    '(600-1000 words.)',
+    '',
+    '=== PUBLIC NARRATIVE ===',
+    '(400-700 words.)',
   ].join('\n');
 }

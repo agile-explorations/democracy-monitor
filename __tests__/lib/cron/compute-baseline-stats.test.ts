@@ -90,7 +90,7 @@ describe('runComputeBaselineStats', () => {
 
     await runComputeBaselineStats({});
 
-    // BASELINE_CONFIGS has 4 entries
-    expect(computeBaseline).toHaveBeenCalledTimes(4);
+    // BASELINE_CONFIGS has 8 entries (4 cycle years × 2 administrations)
+    expect(computeBaseline).toHaveBeenCalledTimes(8);
   });
 });

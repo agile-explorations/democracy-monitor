@@ -144,3 +144,39 @@ export async function sendWeeklyDigest(weekOf: string): Promise<number> {
   console.log(`[subscriber] Weekly digest sent to ${sent}/${subs.length} subscribers`);
   return sent;
 }
+
+/**
+ * Resend the weekly digest with a CORRECTION: prefix in the subject line.
+ * Used when a weekly narrative has been regenerated after the original was emailed.
+ */
+export async function sendCorrectionDigest(weekOf: string): Promise<number> {
+  if (!isEmailConfigured()) {
+    console.warn('[subscriber] Email not configured — skipping correction digest');
+    return 0;
+  }
+
+  const narrative = await getStoredNarrative('_overview', weekOf, 'public');
+  if (!narrative) {
+    console.warn(`[subscriber] No public overview narrative for ${weekOf} — skipping correction`);
+    return 0;
+  }
+
+  const subs = await getConfirmedSubscribers();
+  if (subs.length === 0) {
+    console.log('[subscriber] No confirmed subscribers — skipping correction');
+    return 0;
+  }
+
+  const subject = `CORRECTION: Democracy Monitor — Week of ${weekOf}`;
+  let sent = 0;
+
+  for (const sub of subs) {
+    const html = renderWeeklyEmail(narrative.content, weekOf, sub.confirmToken);
+    const ok = await sendEmail(sub.email, subject, html);
+    if (ok) sent++;
+    if (sent < subs.length) await sleep(100);
+  }
+
+  console.log(`[subscriber] Correction digest sent to ${sent}/${subs.length} subscribers`);
+  return sent;
+}

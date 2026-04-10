@@ -52,12 +52,12 @@ describe('analysis-periods', () => {
       expect(isInAnalysisPeriod('2025-06-01')).toBe(true);
     });
 
-    it('returns false for a gap-year date (2020)', () => {
-      expect(isInAnalysisPeriod('2020-07-15')).toBe(false);
+    it('returns false for a pre-Trump-T1 gap date', () => {
+      expect(isInAnalysisPeriod('2016-07-15')).toBe(false);
     });
 
-    it('returns false for a gap-year date (2023-2024)', () => {
-      expect(isInAnalysisPeriod('2024-01-01')).toBe(false);
+    it('returns false for the day before Trump T1 began', () => {
+      expect(isInAnalysisPeriod('2017-01-19')).toBe(false);
     });
 
     it('returns true for boundary dates', () => {
@@ -65,14 +65,14 @@ describe('analysis-periods', () => {
       expect(isInAnalysisPeriod('2018-01-19')).toBe(true); // last day of trump_2017
     });
 
-    it('returns false just outside boundary', () => {
-      expect(isInAnalysisPeriod('2017-01-19')).toBe(false); // day before trump_2017
-      expect(isInAnalysisPeriod('2019-01-20')).toBe(false); // day after trump_2018
+    it('returns true at the boundary between consecutive baselines', () => {
+      expect(isInAnalysisPeriod('2019-01-20')).toBe(true); // first day of trump_2019
+      expect(isInAnalysisPeriod('2024-01-01')).toBe(true); // mid biden_2023
     });
 
     it('accepts Date objects', () => {
       expect(isInAnalysisPeriod(new Date('2022-06-15'))).toBe(true);
-      expect(isInAnalysisPeriod(new Date('2020-07-15'))).toBe(false);
+      expect(isInAnalysisPeriod(new Date('2016-07-15'))).toBe(false);
     });
   });
 

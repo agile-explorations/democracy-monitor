@@ -1480,3 +1480,40 @@ Sprint 21 code work (keywords, admin overlay) survives as annotation infrastruct
 1. **Generate-and-review cycle catches prompt issues that tests miss**: Unit tests verify prompt structure (keywords present, word ranges correct) but can't evaluate output quality. Generating examples with real data and reviewing the AI output revealed 9 prompt improvements (A-I) that no test could have surfaced.
 2. **Temp scripts in project root break CI**: `generate-narrative-examples.ts` and `generate-summary-examples.ts` in the project root were caught by prettier and tsc pre-push hooks. Temp generation scripts should be in a gitignored location or deleted before pushing.
 3. **Prompt array element boundaries affect test assertions**: `expect(prompt).toContain('note the correction explicitly')` fails when the prompt array splits this phrase across two elements joined by `\n`. Test for shorter substrings that stay within a single array element.
+
+---
+
+## Sprint R-DEV-WORKFLOW: Dev Branch + Render Dev Environment ✅
+
+**Status: Done (issues #502-#510).** Milestone 76.
+
+**Context:** All development happened on `main` with direct deploys to production. Database-intensive work (gap-year backfill at ~$323 AI cost, new source ingestion like 287(g), re-scoring after methodology changes) needed a safe environment. This sprint established the `develop` branch workflow, Render dev environment configuration, and database pull/promote scripts.
+
+**Scope vs. Actual:** 9 planned issues, all implemented. No scope changes. Code review found 4 issues (PK assumption, memory for large tables, slow row-by-row updates, missing .gitignore entry) — all fixed before commit.
+
+1. CI: add `develop` to GitHub Actions branch triggers (#502)
+2. SEOHead noindex guard + dynamic robots.txt for non-production sites (#503)
+3. Maintenance mode page via `NEXT_PUBLIC_MAINTENANCE_MODE` env var (#504)
+4. `render-dev.yaml` documentation file for manual Render setup (#505)
+5. `db:pull-prod` script — download and restore production dump to dev (#506)
+6. `db:promote` script — selective data promotion via `promotion-manifest.json` with `--dry-run` (#507)
+7. `db:push-prod` script — full database push for destructive changes (#508)
+8. DEPLOYMENT.md dev environment documentation (#509)
+9. Create `develop` branch and push (#510)
+
+**Key decisions:**
+
+- **`render-dev.yaml` is documentation only** — services created manually in Render dashboard, not via Blueprint. Avoids accidentally deploying duplicate services.
+- **`RESEND_API_KEY` omitted on dev** — simplest email safety guard. No key = no sends, no environment detection logic needed.
+- **Dynamic robots.txt via API route** — replaced static `public/robots.txt` with `pages/api/robots.ts` + Next.js rewrite. Returns `Disallow: /` for non-production sites. Verified working on production deploy.
+- **Two promotion paths** — selective (`db:promote` with manifest for additive changes) and full push (`db:push-prod` for destructive changes). The promote script never runs migrations; those are handled by the Render deploy process.
+- **Promote script uses direct DB connections** — `DATABASE_URL` (dev) + `PROD_DATABASE_URL` (prod). Simpler than an API-based approach, requires network access to both databases.
+- **Maintenance mode in `_app.tsx`** — `NEXT_PUBLIC_MAINTENANCE_MODE=true` shows a static page with no DB access. Set/unset via Render dashboard env vars.
+- **Primary key resolved via `information_schema`** — code review caught the assumption that first column = PK. Now queries `table_constraints` + `key_column_usage`.
+- **Batched promotion with LIMIT/OFFSET** — code review caught memory risk for large tables. Now streams in batches of 500 with progress logging.
+
+**Lessons:**
+
+- **Static files in `public/` bypass Next.js rewrites** — deleting the static file was necessary for the dynamic route to work. If both exist, the static file wins.
+- **`NEXT_PUBLIC_` prefix required for client-side env vars** — maintenance mode needs to be checked in `_app.tsx` (client component), so the env var must be `NEXT_PUBLIC_MAINTENANCE_MODE`, not `MAINTENANCE_MODE`.
+- **Promotion manifest validation is critical** — the `--dry-run` mode comparing dev/prod row counts and migration journals prevents accidental partial promotions. Should be run before every live promotion.

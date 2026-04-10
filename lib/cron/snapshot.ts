@@ -124,6 +124,17 @@ async function snapshotCategory(
     result.signalResults;
   console.log(`[snapshot]   ${items.length} items fetched (${signalResults.length} signals)`);
 
+  // Enrich CL docket items with opinion text (uses bulk DB if available, else API)
+  const clItems = items.filter((i) => i.type === 'court_opinion' && i.link);
+  if (clItems.length > 0) {
+    const { fillClOpinions } = await import('@/lib/cron/backfill-fetchers');
+    await fillClOpinions(items);
+    const opinions = items.filter((i) => i.type === 'judicial_opinion');
+    console.log(
+      `[snapshot]   ${opinions.length} CL opinions enriched from ${clItems.length} dockets`,
+    );
+  }
+
   const checks = await recordSourceHealthChecks(cat.key, signalResults);
   allHealthChecks.push(...checks);
 

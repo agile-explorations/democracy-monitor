@@ -12,43 +12,6 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-DEV-WORKFLOW: Dev Branch + Render Dev Environment ✅
-
-**Status: Done (issues #502-#510).** Milestone 76.
-
-**Context:** All development happened on `main` with direct deploys to production. Database-intensive work (gap-year backfill at ~$323 AI cost, new source ingestion like 287(g), re-scoring after methodology changes) needed a safe environment. This sprint established the `develop` branch workflow, Render dev environment configuration, and database pull/promote scripts.
-
-**Scope vs. Actual:** 9 planned issues, all implemented. No scope changes. Code review found 4 issues (PK assumption, memory for large tables, slow row-by-row updates, missing .gitignore entry) — all fixed before commit.
-
-1. CI: add `develop` to GitHub Actions branch triggers (#502)
-2. SEOHead noindex guard + dynamic robots.txt for non-production sites (#503)
-3. Maintenance mode page via `NEXT_PUBLIC_MAINTENANCE_MODE` env var (#504)
-4. `render-dev.yaml` documentation file for manual Render setup (#505)
-5. `db:pull-prod` script — download and restore production dump to dev (#506)
-6. `db:promote` script — selective data promotion via `promotion-manifest.json` with `--dry-run` (#507)
-7. `db:push-prod` script — full database push for destructive changes (#508)
-8. DEPLOYMENT.md dev environment documentation (#509)
-9. Create `develop` branch and push (#510)
-
-**Key decisions:**
-
-- **`render-dev.yaml` is documentation only** — services created manually in Render dashboard, not via Blueprint. Avoids accidentally deploying duplicate services.
-- **`RESEND_API_KEY` omitted on dev** — simplest email safety guard. No key = no sends, no environment detection logic needed.
-- **Dynamic robots.txt via API route** — replaced static `public/robots.txt` with `pages/api/robots.ts` + Next.js rewrite. Returns `Disallow: /` for non-production sites. Verified working on production deploy.
-- **Two promotion paths** — selective (`db:promote` with manifest for additive changes) and full push (`db:push-prod` for destructive changes). The promote script never runs migrations; those are handled by the Render deploy process.
-- **Promote script uses direct DB connections** — `DATABASE_URL` (dev) + `PROD_DATABASE_URL` (prod). Simpler than an API-based approach, requires network access to both databases.
-- **Maintenance mode in `_app.tsx`** — `NEXT_PUBLIC_MAINTENANCE_MODE=true` shows a static page with no DB access. Set/unset via Render dashboard env vars.
-- **Primary key resolved via `information_schema`** — code review caught the assumption that first column = PK. Now queries `table_constraints` + `key_column_usage`.
-- **Batched promotion with LIMIT/OFFSET** — code review caught memory risk for large tables. Now streams in batches of 500 with progress logging.
-
-**Lessons:**
-
-- **Static files in `public/` bypass Next.js rewrites** — deleting the static file was necessary for the dynamic route to work. If both exist, the static file wins.
-- **`NEXT_PUBLIC_` prefix required for client-side env vars** — maintenance mode needs to be checked in `_app.tsx` (client component), so the env var must be `NEXT_PUBLIC_MAINTENANCE_MODE`, not `MAINTENANCE_MODE`.
-- **Promotion manifest validation is critical** — the `--dry-run` mode comparing dev/prod row counts and migration journals prevents accidental partial promotions. Should be run before every live promotion.
-
----
-
 ## Sprint R-CALIBRATE: P1 Calibration for NC Compliance ✅
 
 **Status: Done (issues #485-#487).** Milestone 73.
@@ -228,3 +191,33 @@ Detection: 39/39 preserved throughout (verified at each stage).
 **Lessons:**
 
 - **Eliminating data is better than constraining LLM behavior.** Prior sprints tried to tell the LLM "summarize long data sequences, do not reproduce them" — it didn't reliably obey. Pre-computing the summary and removing the raw data from the prompt is a structural fix that the LLM cannot circumvent. Apply this pattern to other prompt-stuffing problems: if the LLM reproduces data verbatim, the fix is to give it less data, not more instructions.
+
+---
+
+## Sprint R-NAR-QUALITY: 3-Pass Summary Generation + Regenerate CLI ✅
+
+**Status: Done (issues #513-#518).** Milestone 77.
+
+**Context:** Weekly and term summaries used single-pass generation (one Claude call per version), while category narratives already used 3-pass (Claude draft → GPT-4o feedback → Claude revision). This caused two quality issues: (1) summaries lacked the editorial review that catches factual errors and overstatement, and (2) the weekly summary prompt didn't provide structured factual data, leading the LLM to conflate "Stable" status with "zero documents" (a category can be Stable with hundreds of documents). Additionally, there was no way to regenerate narratives after the weekly pipeline had run.
+
+**Scope vs. Actual:** 6 planned issues, all implemented. No scope changes.
+
+1. Add factual summary data block to weekly summary prompt — `buildFactualSummary()` providing exact category counts, doc counts, and explicit "Stable ≠ zero documents" note (#513)
+2. Add 3-pass feedback + revision prompts for weekly and term summaries — 6 new prompt builders in `narrative-prompts.ts` (#514)
+3. Switch weekly/term summaries to 3-pass generation — `generateMultiPassSummary()` generic orchestrator, pipeline refactored (#515)
+4. Build `narratives:regenerate` CLI script — `--week`, `--from/--to` batch, `--type`, `--category`, `--resend`, `--resend-only` (#516)
+5. Add `sendCorrectionDigest()` to subscriber service — "CORRECTION:" subject prefix for re-sent digests (#517)
+6. Regenerate Mar 30 weekly + term narratives and send correction email (#518)
+
+**Key decisions:**
+
+- **Generic `generateMultiPassSummary()` over copy-paste:** Instead of duplicating the 3-pass orchestration from `generateMultiPassNarrative()`, extracted a generic function that accepts prompt builder callbacks. Same retry logic, same error enrichment, zero duplication.
+- **Factual data block as structural fix:** Rather than adding more instructions telling the LLM to distinguish Stable from zero-document categories, we now inject a pre-formatted data block with explicit counts and a "cite these numbers exactly" instruction. This follows the R-NAR lesson: give the LLM the right data, not more rules.
+- **`max-lines` bump 500→700 for `narrative-prompts.ts`:** The 6 new summary prompt builders added ~240 lines to an already-large file. The file remains cohesive (all prompt construction for one domain). Splitting would fragment related logic.
+- **Lazy imports in regenerate script:** CLI script uses `await import()` to defer loading AI providers and DB services until after argument parsing. Faster startup for `--help` and validation-only paths.
+- **Correction email as separate function:** `sendCorrectionDigest()` could have been merged with `sendWeeklyDigest()` via a flag, but a separate function is clearer about intent and avoids accidental correction emails.
+
+**Lessons:**
+
+- **Factual grounding blocks prevent LLM number hallucination.** When the prompt provides ambiguous aggregate data ("14 categories, 3 elevated"), the LLM fills in details that sound plausible but are wrong. Providing explicit per-category breakdowns with labeled status categories eliminated this class of error.
+- **The 3-pass pattern generalizes cleanly.** The same draft→feedback→revision pipeline works for category narratives, weekly summaries, and term summaries with only prompt changes. The `generateMultiPassSummary()` abstraction was straightforward because the orchestration logic is identical — only the prompts differ.

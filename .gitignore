@@ -47,5 +47,8 @@ promotion-manifest.json
 # Internal specification/research documents (kept on disk for local reference)
 # docs/internal/
 
+# CourtListener bulk data (multi-GB CSV dumps)
+data/cl-bulk/
+
 # Playwright
 test-results/

@@ -76,7 +76,7 @@ describe('fetchWeekItemsFr', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('retries a failing signal 3 times before recording error', async () => {
+  it('retries a failing signal 4 times before recording error', async () => {
     const { fetchFederalRegisterHistorical } =
       await import('@/lib/services/federal-register-fetcher');
     vi.mocked(fetchFederalRegisterHistorical).mockRejectedValue(new Error('HTTP 502'));
@@ -88,11 +88,11 @@ describe('fetchWeekItemsFr', () => {
       'executiveAuthority',
     );
 
-    expect(fetchFederalRegisterHistorical).toHaveBeenCalledTimes(3);
+    expect(fetchFederalRegisterHistorical).toHaveBeenCalledTimes(4);
     expect(result.items).toHaveLength(0);
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain('HTTP 502');
-    expect(result.errors[0]).toContain('after 3 attempts');
+    expect(result.errors[0]).toContain('after 4 attempts');
   });
 
   it('succeeds on retry after transient failure', async () => {

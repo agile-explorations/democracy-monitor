@@ -3,7 +3,7 @@ import { sleep } from '@/lib/utils/async';
 
 const CL_BASE_URL = 'https://www.courtlistener.com';
 const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
-export const RATE_LIMIT_DELAY_MS = 750;
+export const RATE_LIMIT_DELAY_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 /** Default max pages for historical backfill (45 × 20 results/page = 900). */
@@ -111,10 +111,14 @@ interface ClOpinionResult {
  * Excluded: addendum (supplementary), remittitur (damages reduction),
  * on-motion-to-strike (cost bill motions).
  */
-const PROCEDURAL_OPINION_TYPES = new Set(['050addendum', '060remittitur', '090onmotiontostrike']);
+export const PROCEDURAL_OPINION_TYPES = new Set([
+  '050addendum',
+  '060remittitur',
+  '090onmotiontostrike',
+]);
 
 /** Human-readable label for opinion type codes, used as section separators. */
-const OPINION_TYPE_LABELS: Record<string, string> = {
+export const OPINION_TYPE_LABELS: Record<string, string> = {
   '010combined': 'OPINION',
   '015unamimous': 'UNANIMOUS OPINION',
   '020lead': 'LEAD OPINION',
