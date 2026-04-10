@@ -32,6 +32,7 @@ interface BackfillOptions {
   category?: string;
   dryRun?: boolean;
   source?: string;
+  excludeSource?: string;
   force?: boolean;
   forceUnlock?: boolean;
   clean?: boolean;
@@ -116,7 +117,11 @@ async function runWeek(
   }
 }
 
-function buildSignalGroups(signals: Signal[], sourceSignalType?: string): SignalGroups {
+function buildSignalGroups(
+  signals: Signal[],
+  sourceSignalType?: string,
+  excludeSignalType?: string,
+): SignalGroups {
   const groups: SignalGroups = {
     fr: signals.filter((s) => s.type === 'federal_register'),
     cl: signals.filter((s) => s.type === 'courtlistener'),
@@ -130,6 +135,10 @@ function buildSignalGroups(signals: Signal[], sourceSignalType?: string): Signal
     for (const key of Object.keys(groups) as Array<keyof SignalGroups>) {
       if (key !== keepKey) groups[key] = [];
     }
+  }
+  if (excludeSignalType) {
+    const excludeKey = SIGNAL_TYPE_TO_GROUP_KEY[excludeSignalType];
+    if (excludeKey) groups[excludeKey] = [];
   }
   return groups;
 }
@@ -162,8 +171,9 @@ async function backfillCategory(
   dryRun: boolean,
   sourceSignalType?: string,
   force?: boolean,
+  excludeSignalType?: string,
 ): Promise<{ docs: number; apiCalls: number }> {
-  const signalGroups = buildSignalGroups(signals, sourceSignalType);
+  const signalGroups = buildSignalGroups(signals, sourceSignalType, excludeSignalType);
   const totalSignals = Object.values(signalGroups).reduce((sum, g) => sum + g.length, 0);
   if (totalSignals === 0) {
     console.log(`  [${categoryKey}] No fetchable signals — skipping`);
@@ -293,12 +303,14 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   const to = options.to || toDateString(new Date());
   const dryRun = options.dryRun || false;
   const sourceSignalType = resolveSourceFilter(options.source);
+  const excludeSignalType = resolveSourceFilter(options.excludeSource);
 
   console.log(`[backfill] ${dryRun ? '(DRY RUN) ' : ''}Range: ${from} → ${to}`);
   if (options.source)
     console.log(
       `[backfill] Source filter: ${options.source}${sourceSignalType ? ` (${sourceSignalType})` : ''}`,
     );
+  if (options.excludeSource) console.log(`[backfill] Excluding source: ${options.excludeSource}`);
   if (options.force) console.log('[backfill] Force mode: re-fetching all weeks');
 
   // --clean: delete all data in the date range before backfilling
@@ -341,6 +353,7 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
         dryRun,
         sourceSignalType,
         options.force,
+        excludeSignalType,
       );
       totalDocs += r.docs;
       totalApiCalls += r.apiCalls;
@@ -376,6 +389,7 @@ function parseCliArgs(args: string[]): BackfillOptions {
     else if (arg === '--category') opts.category = args[++i];
     else if (arg === '--dry-run') opts.dryRun = true;
     else if (arg === '--source') opts.source = args[++i];
+    else if (arg === '--exclude-source') opts.excludeSource = args[++i];
     else if (arg === '--force') opts.force = true;
     else if (arg === '--force-unlock') opts.forceUnlock = true;
     else if (arg === '--clean') opts.clean = true;
@@ -400,6 +414,7 @@ Options:
   --dry-run           Preview without writing to DB
   --force             Force re-fetch even if already completed
   --force-unlock      Clear stale cron lock before running
+  --exclude-source <name>  Skip a specific source (e.g. courtlistener)
   --clean --confirm   Delete all docs + derived data in date range before backfilling`,
   );
   const opts = parseCliArgs(argv);

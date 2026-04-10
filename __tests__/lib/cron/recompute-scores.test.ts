@@ -106,8 +106,8 @@ describe('recomputeScores', () => {
 
     await recomputeScores({});
 
-    // Should run aggregation once per analysis period (4 baselines + T2 = 5)
-    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(5);
+    // Should run aggregation once per analysis period (8 baselines + T2 = 9)
+    expect(mockComputeAllWeeklyAggregates).toHaveBeenCalledTimes(9);
   });
 
   it('--allDates bypasses analysis period restriction', async () => {

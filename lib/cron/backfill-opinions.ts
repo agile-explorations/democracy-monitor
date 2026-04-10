@@ -11,6 +11,7 @@
 import { eq, sql, and } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
+import { fetchOpinionTextFromDb, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
 import {
   extractDocketId,
   fetchOpinionText,
@@ -111,6 +112,11 @@ async function run(options: BackfillOptions): Promise<void> {
     return;
   }
 
+  const useBulkDb = await isBulkOpinionDbAvailable();
+  if (useBulkDb) {
+    console.log('[backfill-opinions] Using local bulk DB for opinion text (no rate limit)');
+  }
+
   const toProcess = options.limit ? dockets.slice(0, options.limit) : dockets;
   let processed = 0;
   let opinionsFound = 0;
@@ -145,8 +151,10 @@ async function run(options: BackfillOptions): Promise<void> {
       continue;
     }
 
-    const opinion = await fetchOpinionText(docketId);
-    await sleep(RATE_LIMIT_DELAY_MS);
+    const opinion = useBulkDb
+      ? await fetchOpinionTextFromDb(docketId)
+      : await fetchOpinionText(docketId);
+    if (!useBulkDb) await sleep(RATE_LIMIT_DELAY_MS);
 
     if (opinion) {
       // Sanity check: skip opinions that predate the docket filing (CL data mislinkage)

@@ -71,6 +71,7 @@
     "validate:narratives": "tsx scripts/validate-narratives.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
     "narratives:regenerate": "tsx scripts/narratives-regenerate.ts",
+    "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky"
   },
   "dependencies": {

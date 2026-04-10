@@ -219,9 +219,9 @@ describe('data-validation-service', () => {
       vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
 
       const result = await getLayer2Completeness();
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(9);
       expect(result[0]).toMatchObject({ period: 'biden_2022' });
-      expect(result[4]).toMatchObject({ period: 'trump_t2' });
+      expect(result[8]).toMatchObject({ period: 'trump_t2' });
       // All periods should have numeric fields
       for (const p of result) {
         expect(typeof p.totalDocuments).toBe('number');
@@ -257,7 +257,7 @@ describe('data-validation-service', () => {
       vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
 
       const result = await getLayerScorePopulation();
-      expect(result).toHaveLength(5);
+      expect(result).toHaveLength(9);
       expect(result[0]).toMatchObject({
         period: 'biden_2022',
         totalWeeks: 52,

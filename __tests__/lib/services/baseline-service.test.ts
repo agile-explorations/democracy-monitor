@@ -90,8 +90,8 @@ describe('stddev (pure function)', () => {
 });
 
 describe('BASELINE_CONFIGS', () => {
-  it('has four baseline configurations', () => {
-    expect(BASELINE_CONFIGS).toHaveLength(4);
+  it('has eight baseline configurations covering 4 cycle years per administration', () => {
+    expect(BASELINE_CONFIGS).toHaveLength(8);
   });
 
   it('biden_2022 is the first (default) config', () => {

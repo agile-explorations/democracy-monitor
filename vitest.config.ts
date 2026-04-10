@@ -32,6 +32,8 @@ export default defineConfig({
         'lib/services/narrative-pipeline.ts',
         'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
+        // CL bulk staging — DB COPY ops, execSync pipes, not unit-testable
+        'lib/services/cl-bulk-staging.ts',
       ],
       thresholds: {
         statements: 70,
