@@ -62,8 +62,9 @@ function restoreFromApp(connectionString: string, force: boolean): boolean {
   // entirely (works in Render one-off jobs with limited ephemeral storage).
   // pg_restore reads custom-format dumps from stdin in single-pass mode.
   // bash -c with pipefail ensures a curl failure isn't masked by pg_restore success.
+  // -# forces curl's progress bar to stderr even when piped (default disables it).
   const restored = tryExec(
-    `bash -c "set -o pipefail; curl -fL '${APP_DUMP_URL}' | pg_restore ${flags} --dbname '${connectionString}'"`,
+    `bash -c "set -o pipefail; curl -fL -# '${APP_DUMP_URL}' | pg_restore ${flags} --dbname '${connectionString}'"`,
   );
   if (!restored) return false;
 
