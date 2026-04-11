@@ -52,25 +52,26 @@ function tryExec(cmd: string): boolean {
 // ---------------------------------------------------------------------------
 
 function restoreFromApp(connectionString: string, force: boolean): boolean {
-  console.log(`Downloading from ${APP_DUMP_URL}...`);
-  const downloaded = tryExec(`curl -fL -o /tmp/${DUMP_FILENAME} "${APP_DUMP_URL}"`);
-  if (!downloaded) return false;
+  console.log(`Streaming dump from ${APP_DUMP_URL}...`);
 
   const flags = force
     ? '--clean --if-exists --no-owner --no-privileges'
     : '--no-owner --no-privileges';
 
-  console.log('Restoring database...');
-  execSync(`pg_restore ${flags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
-    stdio: 'inherit',
-  });
+  // Stream curl directly into pg_restore via shell pipe — avoids writing to /tmp
+  // entirely (works in Render one-off jobs with limited ephemeral storage).
+  // pg_restore reads custom-format dumps from stdin in single-pass mode.
+  // bash -c with pipefail ensures a curl failure isn't masked by pg_restore success.
+  const restored = tryExec(
+    `bash -c "set -o pipefail; curl -fL '${APP_DUMP_URL}' | pg_restore ${flags} --dbname '${connectionString}'"`,
+  );
+  if (!restored) return false;
 
   execSync(
     `psql "${connectionString}" -c "SELECT setval('documents_id_seq', (SELECT COALESCE(MAX(id), 0) FROM documents))"`,
     { stdio: 'inherit' },
   );
 
-  execSync(`rm -f /tmp/${DUMP_FILENAME}`);
   console.log('Database restored from app endpoint.');
   return true;
 }
