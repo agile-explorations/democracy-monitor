@@ -32,8 +32,6 @@ interface PromotionManifest {
 const MANIFEST_PATH = 'promotion-manifest.json';
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_BACKUP = process.argv.includes('--skip-backup');
-const BATCH_SIZE = 500;
-
 async function main(): Promise<void> {
   const devUrl = process.env.DATABASE_URL;
   const prodUrl = process.env.PROD_DATABASE_URL;
@@ -190,6 +188,14 @@ async function getColumns(client: Client, table: string): Promise<string[]> {
   return result.rows.map((r: { column_name: string }) => r.column_name);
 }
 
+/**
+ * Promote a table using COPY piped between two psql processes.
+ * Data flows: dev psql COPY TO STDOUT → pipe → prod psql COPY FROM STDIN
+ * into a temp table, then upserted into the real table via INSERT ON CONFLICT.
+ *
+ * This avoids the Node.js JS serialization layer entirely — no jsonb corruption,
+ * no parameter count limits, and 10-20x faster than parameterized INSERT.
+ */
 async function promoteTable(
   dev: Client,
   prod: Client,
@@ -202,52 +208,35 @@ async function promoteTable(
   const pkCol = await getPrimaryKeyColumn(dev, table);
   const colList = columns.map((c: string) => `"${c}"`).join(', ');
 
-  // Count total rows to promote
   const totalCount = await countRows(dev, table, where);
   if (totalCount === 0) {
     console.log('    No rows to promote.');
     return;
   }
+  console.log(`    ${totalCount} rows to promote...`);
 
-  // Create temp table on prod
+  const devUrl = process.env.DATABASE_URL!;
+  const prodUrl = process.env.PROD_DATABASE_URL!;
+
+  // Create temp table on prod for staging the COPY data
   const tempTable = `_promote_${table}_${Date.now()}`;
-  await prod.query(`CREATE TEMP TABLE "${tempTable}" (LIKE "${table}" INCLUDING ALL)`);
+  await prod.query(`CREATE TEMP TABLE "${tempTable}" (LIKE "${table}" INCLUDING DEFAULTS)`);
 
-  // Stream rows from dev in batches using LIMIT/OFFSET
-  let promoted = 0;
-  let offset = 0;
+  // Stream data: dev COPY TO → pipe → prod COPY FROM (via temp table)
+  const copyOut = `\\COPY (SELECT ${colList} FROM "${table}" WHERE ${where}) TO STDOUT`;
+  const copyIn = `\\COPY "${tempTable}" (${colList}) FROM STDIN`;
+  execSync(`psql "${devUrl}" -c "${copyOut}" | psql "${prodUrl}" -c "${copyIn}"`, {
+    stdio: 'inherit',
+    timeout: 1_800_000,
+  });
 
-  while (offset < totalCount) {
-    const batch = await dev.query(
-      `SELECT ${colList} FROM "${table}" WHERE ${where} ORDER BY "${pkCol}" LIMIT ${BATCH_SIZE} OFFSET ${offset}`,
-    );
-    if (batch.rows.length === 0) break;
-
-    const placeholders = batch.rows
-      .map(
-        (_: unknown, rowIdx: number) =>
-          `(${columns.map((_c: string, colIdx: number) => `$${rowIdx * columns.length + colIdx + 1}`).join(', ')})`,
-      )
-      .join(', ');
-    const values = batch.rows.flatMap((row: Record<string, unknown>) =>
-      columns.map((c: string) => row[c]),
-    );
-    await prod.query(`INSERT INTO "${tempTable}" (${colList}) VALUES ${placeholders}`, values);
-
-    promoted += batch.rows.length;
-    offset += BATCH_SIZE;
-
-    if (promoted % 5000 === 0 || promoted === totalCount) {
-      console.log(`    ${promoted}/${totalCount} rows loaded...`);
-    }
-  }
-
-  // Upsert from temp to real table
+  // Upsert from temp into real table
   const updateCols = columns
     .filter((c: string) => c !== pkCol)
     .map((c: string) => `"${c}" = EXCLUDED."${c}"`)
     .join(', ');
 
+  console.log('    Upserting into target table...');
   await prod.query(
     `INSERT INTO "${table}" (${colList})
      SELECT ${colList} FROM "${tempTable}"
@@ -255,9 +244,10 @@ async function promoteTable(
   );
 
   await prod.query(`DROP TABLE "${tempTable}"`);
-  console.log(`    Promoted ${promoted} rows.`);
+  console.log(`    Promoted ${totalCount} rows.`);
 }
 
+/** Update specific columns using COPY-based transfer + UPDATE FROM. */
 async function updateColumns(
   dev: Client,
   prod: Client,
@@ -270,55 +260,37 @@ async function updateColumns(
   const pkCol = await getPrimaryKeyColumn(dev, table);
   const selectCols = [pkCol, ...columns].map((c) => `"${c}"`).join(', ');
 
-  // Count rows to update
   const totalCount = await countRows(dev, table, where);
   if (totalCount === 0) {
     console.log('    No rows to update.');
     return;
   }
+  console.log(`    ${totalCount} rows to update...`);
 
-  // Batch updates using temp table + UPDATE FROM
+  const devUrl = process.env.DATABASE_URL!;
+  const prodUrl = process.env.PROD_DATABASE_URL!;
+
+  // Create temp table on prod with just the columns we need
   const tempTable = `_update_${table}_${Date.now()}`;
-  const tempCols = [pkCol, ...columns];
-  const tempColList = tempCols.map((c) => `"${c}"`).join(', ');
-
-  // Create temp table with just the columns we need
   const colDefs = await dev.query(
     `SELECT column_name, data_type, udt_name
      FROM information_schema.columns
      WHERE table_name = $1 AND column_name = ANY($2)
      ORDER BY ordinal_position`,
-    [table, tempCols],
+    [table, [pkCol, ...columns]],
   );
   const createCols = colDefs.rows
     .map((r: { column_name: string; udt_name: string }) => `"${r.column_name}" ${r.udt_name}`)
     .join(', ');
   await prod.query(`CREATE TEMP TABLE "${tempTable}" (${createCols})`);
 
-  // Load data in batches
-  let loaded = 0;
-  let offset = 0;
-
-  while (offset < totalCount) {
-    const batch = await dev.query(
-      `SELECT ${selectCols} FROM "${table}" WHERE ${where} ORDER BY "${pkCol}" LIMIT ${BATCH_SIZE} OFFSET ${offset}`,
-    );
-    if (batch.rows.length === 0) break;
-
-    const placeholders = batch.rows
-      .map(
-        (_: unknown, rowIdx: number) =>
-          `(${tempCols.map((_c: string, colIdx: number) => `$${rowIdx * tempCols.length + colIdx + 1}`).join(', ')})`,
-      )
-      .join(', ');
-    const values = batch.rows.flatMap((row: Record<string, unknown>) =>
-      tempCols.map((c: string) => row[c]),
-    );
-    await prod.query(`INSERT INTO "${tempTable}" (${tempColList}) VALUES ${placeholders}`, values);
-
-    loaded += batch.rows.length;
-    offset += BATCH_SIZE;
-  }
+  // Stream data via COPY
+  const copyOut = `\\COPY (SELECT ${selectCols} FROM "${table}" WHERE ${where}) TO STDOUT`;
+  const copyIn = `\\COPY "${tempTable}" (${selectCols}) FROM STDIN`;
+  execSync(`psql "${devUrl}" -c "${copyOut}" | psql "${prodUrl}" -c "${copyIn}"`, {
+    stdio: 'inherit',
+    timeout: 1_800_000,
+  });
 
   // Bulk update from temp table
   const setClauses = columns.map((c) => `"${c}" = t."${c}"`).join(', ');
