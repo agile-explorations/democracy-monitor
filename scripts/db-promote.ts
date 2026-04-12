@@ -31,6 +31,7 @@ interface PromotionManifest {
 
 const MANIFEST_PATH = 'promotion-manifest.json';
 const DRY_RUN = process.argv.includes('--dry-run');
+const SKIP_BACKUP = process.argv.includes('--skip-backup');
 const BATCH_SIZE = 500;
 
 async function main(): Promise<void> {
@@ -91,14 +92,18 @@ async function main(): Promise<void> {
       return;
     }
 
-    // Step 3: Backup production
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const backupFile = `/tmp/dm-prod-backup-${timestamp}.pgdump`;
-    console.log(`\n==> Backing up production to ${backupFile}...`);
-    execSync(`pg_dump -Fc --no-owner --no-privileges "${prodUrl}" -f "${backupFile}"`, {
-      timeout: 600_000,
-    });
-    console.log('    Backup complete.');
+    // Step 3: Backup production (skip with --skip-backup if you have an external backup)
+    if (SKIP_BACKUP) {
+      console.log('\n==> Skipping backup (--skip-backup).');
+    } else {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const backupFile = `/tmp/dm-prod-backup-${timestamp}.pgdump`;
+      console.log(`\n==> Backing up production to ${backupFile}...`);
+      execSync(`pg_dump -Fc --no-owner --no-privileges "${prodUrl}" -f "${backupFile}"`, {
+        timeout: 600_000,
+      });
+      console.log('    Backup complete.');
+    }
 
     // Step 4: Promote data
     for (const [table, { where }] of Object.entries(manifest.data)) {
@@ -119,7 +124,7 @@ async function main(): Promise<void> {
       console.log(`  ${table}: ${prodCount} rows in prod [WHERE ${where}]`);
     }
 
-    console.log(`\n==> Promotion complete. Backup: ${backupFile}`);
+    console.log('\n==> Promotion complete.');
   } finally {
     await dev.end();
     await prod.end();
@@ -174,11 +179,12 @@ async function getPrimaryKeyColumn(client: Client, table: string): Promise<strin
   return result.rows[0].column_name;
 }
 
-/** Get column names for a table. */
+/** Get column names for a table, excluding generated columns (e.g. search_vector). */
 async function getColumns(client: Client, table: string): Promise<string[]> {
   const result = await client.query(
     `SELECT column_name FROM information_schema.columns
-     WHERE table_name = $1 ORDER BY ordinal_position`,
+     WHERE table_name = $1 AND is_generated = 'NEVER'
+     ORDER BY ordinal_position`,
     [table],
   );
   return result.rows.map((r: { column_name: string }) => r.column_name);
