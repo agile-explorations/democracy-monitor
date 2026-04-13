@@ -241,9 +241,9 @@ async function promoteTable(
   const devUrl = process.env.DATABASE_URL!;
   const prodUrl = process.env.PROD_DATABASE_URL!;
 
-  // Create temp table on prod for staging the COPY data
+  // Create staging table on prod (regular table, not TEMP, so psql can see it)
   const tempTable = `_promote_${table}_${Date.now()}`;
-  await prod.query(`CREATE TEMP TABLE "${tempTable}" (LIKE "${table}" INCLUDING DEFAULTS)`);
+  await prod.query(`CREATE TABLE "${tempTable}" (LIKE "${table}" INCLUDING DEFAULTS)`);
 
   // Stream data: dev COPY TO → pipe → prod COPY FROM (via temp table)
   const copyOut = `\\COPY (SELECT ${colList} FROM "${table}" WHERE ${where}) TO STDOUT`;
@@ -305,7 +305,7 @@ async function updateColumns(
   const createCols = colDefs.rows
     .map((r: { column_name: string; udt_name: string }) => `"${r.column_name}" ${r.udt_name}`)
     .join(', ');
-  await prod.query(`CREATE TEMP TABLE "${tempTable}" (${createCols})`);
+  await prod.query(`CREATE TABLE "${tempTable}" (${createCols})`);
 
   // Stream data via COPY
   const copyOut = `\\COPY (SELECT ${selectCols} FROM "${table}" WHERE ${where}) TO STDOUT`;
