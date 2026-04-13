@@ -451,9 +451,9 @@ export async function isBulkOpinionDbAvailable(): Promise<boolean> {
   try {
     const r = await getPool().query(`SELECT 1 FROM search_opinion LIMIT 1`);
     return r.rows.length > 0;
-  } catch (err) {
-    // Missing table is expected when staging isn't loaded — debug-level log
-    console.debug('[cl-bulk] search_opinion staging table not available:', err);
+  } catch {
+    // Missing table is expected when staging isn't loaded on this environment
+    console.debug('[cl-bulk] Opinion staging not available — using CL API fallback');
     return false;
   }
 }
