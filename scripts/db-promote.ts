@@ -115,7 +115,22 @@ async function main(): Promise<void> {
       }
     }
 
-    // Step 6: Validate
+    // Step 6: Reset sequences to avoid ID collisions from promoted data
+    console.log('\n==> Resetting sequences...');
+    for (const table of Object.keys(manifest.data)) {
+      try {
+        const seqName = `${table}_id_seq`;
+        await prod.query(
+          `SELECT setval('${seqName}', (SELECT COALESCE(MAX(id), 0) FROM "${table}"))`,
+        );
+        const { rows } = await prod.query(`SELECT last_value FROM ${seqName}`);
+        console.log(`  ${seqName}: ${rows[0].last_value}`);
+      } catch {
+        // Table may not have a serial id column — skip silently
+      }
+    }
+
+    // Step 7: Validate
     console.log('\n==> Validating...');
     for (const [table, { where }] of Object.entries(manifest.data)) {
       const prodCount = await countRows(prod, table, where);
