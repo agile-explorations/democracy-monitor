@@ -115,18 +115,26 @@ async function main(): Promise<void> {
       }
     }
 
-    // Step 6: Reset sequences to avoid ID collisions from promoted data
+    // Step 6: Reset ALL sequences to avoid ID collisions from promoted data.
+    // Promoted rows may have higher IDs than the target DB's sequences expect,
+    // causing collisions on subsequent inserts by snapshot/cron jobs.
     console.log('\n==> Resetting sequences...');
-    for (const table of Object.keys(manifest.data)) {
+    const seqResult = await prod.query(
+      `SELECT c.relname AS table_name, s.relname AS seq_name
+       FROM pg_class s
+       JOIN pg_depend d ON d.objid = s.oid
+       JOIN pg_class c ON c.oid = d.refobjid
+       WHERE s.relkind = 'S' AND c.relkind = 'r'`,
+    );
+    for (const { table_name, seq_name } of seqResult.rows) {
       try {
-        const seqName = `${table}_id_seq`;
         await prod.query(
-          `SELECT setval('${seqName}', (SELECT COALESCE(MAX(id), 0) FROM "${table}"))`,
+          `SELECT setval('"${seq_name}"', (SELECT COALESCE(MAX(id), 0) FROM "${table_name}"))`,
         );
-        const { rows } = await prod.query(`SELECT last_value FROM ${seqName}`);
-        console.log(`  ${seqName}: ${rows[0].last_value}`);
+        const { rows } = await prod.query(`SELECT last_value FROM "${seq_name}"`);
+        console.log(`  ${seq_name}: ${rows[0].last_value}`);
       } catch {
-        // Table may not have a serial id column — skip silently
+        // Skip tables without an id column
       }
     }
 
