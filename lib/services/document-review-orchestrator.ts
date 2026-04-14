@@ -186,7 +186,14 @@ async function runPass1Phase(
     existingUrls.size > 0 ? await loadStoredPass1Results(existingUrls, categoryKey) : [];
   results.push(...existingResults);
 
-  const newItems = items.filter((i) => !existingUrls.has(i.link ?? i.title ?? ''));
+  // Skip short-content CL docket items — they carry no assessable text (e.g., "440 Civil Rights: Other")
+  // and have never produced a P2-relevant result across all years (verified).
+  const MIN_CONTENT_FOR_REVIEW = 100;
+  const newItems = items.filter(
+    (i) =>
+      !existingUrls.has(i.link ?? i.title ?? '') &&
+      (i.content?.length ?? 0) >= MIN_CONTENT_FOR_REVIEW,
+  );
   const newResults = await mapConcurrent(newItems, PASS1_CONCURRENCY, async (item) => {
     const result = await assessPass1(item, categoryDescription, provider, model);
     if (result && !dryRun) await storePass1Assessment(result, categoryKey, weekOf);
