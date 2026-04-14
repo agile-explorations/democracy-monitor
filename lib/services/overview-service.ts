@@ -81,6 +81,8 @@ export function computeWeeklyWeightedScores(
 async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
   const db = getDb();
   const cutoff = latestCompleteWeek();
+  // Use the later of (N weeks back) or inauguration date as the floor
+  const adminStart = '2025-01-20';
   const rows = await db
     .select({
       category: weeklyAggregates.category,
@@ -91,11 +93,11 @@ async function fetchRecentAggregates(weeks: number): Promise<AggregateRow[]> {
     })
     .from(weeklyAggregates)
     .where(
-      sql`${weeklyAggregates.weekOf} >= (
+      sql`${weeklyAggregates.weekOf} >= GREATEST(${adminStart}::date, (
         SELECT MAX(week_of) - make_interval(days => ${weeks * 7})
         FROM weekly_aggregates
         WHERE week_of <= ${cutoff}
-      ) AND ${weeklyAggregates.weekOf} <= ${cutoff}`,
+      )) AND ${weeklyAggregates.weekOf} <= ${cutoff}`,
     )
     .orderBy(weeklyAggregates.category, desc(weeklyAggregates.weekOf));
 
