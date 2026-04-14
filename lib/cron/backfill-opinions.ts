@@ -8,7 +8,7 @@
  * Fully resumable: skips dockets that already have opinion documents stored.
  */
 
-import { eq, sql, and } from 'drizzle-orm';
+import { eq, sql, and, gte, lte } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { fetchOpinionTextFromDb, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
@@ -24,6 +24,8 @@ import { checkHelp } from '@/lib/utils/cli-help';
 
 interface BackfillOptions {
   category?: string;
+  from?: string;
+  to?: string;
   dryRun: boolean;
   limit: number | null;
 }
@@ -39,12 +41,14 @@ interface DocketInfo {
 }
 
 /** Query distinct CL docket entries grouped by case_id, with their categories. */
-async function getDocketEntries(category?: string): Promise<DocketInfo[]> {
+async function getDocketEntries(options: BackfillOptions): Promise<DocketInfo[]> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
 
   const conditions = [eq(documents.sourceOrigin, 'courtlistener' as string)];
-  if (category) conditions.push(eq(documents.category, category));
+  if (options.category) conditions.push(eq(documents.category, options.category));
+  if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
+  if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
 
   const rows = await db
     .select({
@@ -97,14 +101,22 @@ async function opinionExists(caseId: string): Promise<boolean> {
   return !!row;
 }
 
+/** Try opinion-first approach; returns true if it handled the request. */
+async function tryOpinionFirst(options: BackfillOptions): Promise<boolean> {
+  if (!options.from || !options.to) return false;
+  const { tryOpinionFirstPass } = await import('@/lib/services/cl-bulk-staging');
+  return (await tryOpinionFirstPass(options.from, options.to, options.dryRun)).docketsFound > 0;
+}
+
 async function run(options: BackfillOptions): Promise<void> {
   if (!isDbAvailable()) {
     console.error('[backfill-opinions] DATABASE_URL not configured');
     process.exit(1);
   }
 
+  if (await tryOpinionFirst(options)) return;
   console.log('[backfill-opinions] Querying docket entries...');
-  const dockets = await getDocketEntries(options.category);
+  const dockets = await getDocketEntries(options);
   console.log(`[backfill-opinions] Found ${dockets.length} unique dockets`);
 
   if (options.dryRun) {
@@ -219,6 +231,8 @@ function parseCliArgs(args: string[]): BackfillOptions {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--category') opts.category = args[++i];
+    else if (arg === '--from') opts.from = args[++i];
+    else if (arg === '--to') opts.to = args[++i];
     else if (arg === '--limit') {
       const n = parseInt(args[++i], 10);
       if (!isNaN(n)) opts.limit = n;
@@ -236,6 +250,8 @@ if (require.main === module) {
     `Usage: pnpm backfill:opinions [options]
 
 Options:
+  --from <date>       Start date (YYYY-MM-DD)
+  --to <date>         End date (YYYY-MM-DD)
   --category <key>    Process a single category
   --limit <n>         Max documents to process
   --dry-run           Preview without writing to DB`,

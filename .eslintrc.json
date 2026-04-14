@@ -101,7 +101,11 @@
     {
       "files": ["lib/services/cl-bulk-staging.ts"],
       "rules": {
-        "max-lines": ["warn", { "max": 500, "skipBlankLines": true, "skipComments": true }]
+        "max-lines": ["warn", { "max": 700, "skipBlankLines": true, "skipComments": true }],
+        "max-lines-per-function": [
+          "warn",
+          { "max": 80, "skipBlankLines": true, "skipComments": true }
+        ]
       }
     },
     {

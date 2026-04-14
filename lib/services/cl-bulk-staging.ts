@@ -584,6 +584,150 @@ export async function queryStagingStats(years: number[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Opinion-first backfill: find opinions by issue date, store with parent docket
+// ---------------------------------------------------------------------------
+
+/**
+ * Find opinions issued in a date range (regardless of when the docket was filed),
+ * build both docket + opinion ContentItems, and store them.
+ *
+ * This fills the gap where our docket-first pipeline misses opinions for older
+ * cases. A case filed in 2015 with an opinion issued in 2017 would be missed
+ * by the docket-first approach but captured here.
+ */
+/** Query opinion clusters issued in a date range, with parent docket and opinion text. */
+async function queryOpinionsByDate(
+  from: string,
+  to: string,
+): Promise<Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>> {
+  const result = await getPool().query(
+    `SELECT d.id AS docket_id, COALESCE(d.case_name, '(untitled case)') AS case_name,
+       COALESCE(ct.full_name, d.court_id) AS court_name,
+       COALESCE(d.nature_of_suit, '') AS nature_of_suit,
+       COALESCE(d.cause, '') AS cause, COALESCE(d.docket_number, '') AS docket_number,
+       d.date_filed::text AS docket_date_filed, COALESCE(d.slug, '') AS slug,
+       oc.id AS cluster_id, oc.date_filed::text AS cluster_date_filed,
+       oc.slug AS cluster_slug, o.type AS opinion_type, o.plain_text, o.download_url
+     FROM search_opinioncluster oc
+     JOIN search_docket d ON oc.docket_id = d.id
+     JOIN search_court ct ON d.court_id = ct.id
+     JOIN search_opinion o ON o.cluster_id = oc.id
+     WHERE ct.jurisdiction IN ('F', 'FD', 'FB')
+       AND (substring(d.nature_of_suit FROM '^\\d{3}') IN ('440', '530', '890')
+         OR ((COALESCE(d.case_name,'') || ' ' || COALESCE(d.cause,''))
+               ~* '\\mfirst amendment\\M'
+             AND (COALESCE(d.case_name,'') || ' ' || COALESCE(d.cause,''))
+               ~* '\\m(violation|injunction|challenge|retaliation|free speech|free press)\\M')
+         OR o.plain_text ~* '\\mfirst amendment\\M')
+       AND oc.date_filed >= $1 AND oc.date_filed <= $2
+     ORDER BY oc.docket_id, oc.date_filed DESC, o.id`,
+    [from, to],
+  );
+
+  const clusterMap = new Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>();
+  for (const row of result.rows) {
+    const opType = row.opinion_type || '010combined';
+    if (PROCEDURAL_OPINION_TYPES.has(opType)) continue;
+    const cleaned = (row.plain_text || '').replace(/\0/g, '');
+    if (!cleaned) continue;
+    const op: OpinionRow = {
+      type: opType,
+      plain_text: cleaned,
+      download_url: row.download_url || '',
+    };
+    const existing = clusterMap.get(row.cluster_id);
+    if (existing) {
+      existing.opinions.push(op);
+    } else {
+      clusterMap.set(row.cluster_id, { docket: row, opinions: [op] });
+    }
+  }
+  return clusterMap;
+}
+
+/** Store opinion clusters as docket + opinion ContentItem pairs. */
+function storeOpinionClusters(
+  clusterMap: Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>,
+  dryRun: boolean,
+): Promise<number> {
+  let stored = 0;
+  let processed = 0;
+  const entries = [...clusterMap.entries()];
+
+  return (async () => {
+    for (const [clusterId, { docket: row, opinions }] of entries) {
+      processed++;
+      if (processed % 500 === 0) {
+        console.log(`[cl-bulk] Storing: ${processed}/${entries.length} clusters, ${stored} docs`);
+      }
+
+      const r = row as Record<string, string>;
+      const docketItem = toContentItem({
+        docket_id: parseInt(r.docket_id, 10),
+        docket_absolute_url: `${CL_BASE_URL}/docket/${r.docket_id}/${r.slug}/`,
+        caseName: r.case_name,
+        dateFiled: r.docket_date_filed,
+        court: r.court_name,
+        suitNature: r.nature_of_suit,
+        cause: r.cause,
+        docketNumber: r.docket_number,
+      });
+
+      const opData = buildOpinionData(opinions, r.cluster_date_filed);
+      const opinionUrl = `${CL_BASE_URL}/opinion/${clusterId}/${r.cluster_slug || ''}/`;
+      const opinionItem = buildOpinionContentItem(
+        { ...opData, opinionUrl },
+        {
+          caseName: r.case_name,
+          court: r.court_name,
+          docketId: parseInt(r.docket_id, 10),
+          suitNature: r.nature_of_suit || undefined,
+        },
+      );
+
+      const categories = routeDocket(r.nature_of_suit, r.case_name, r.cause);
+      if (categories.length === 0 && opData.text.match(/\bfirst amendment\b/i)) {
+        categories.push('civilLiberties');
+      }
+      if (categories.length === 0) continue;
+
+      for (const category of categories) {
+        stored += dryRun ? 2 : await storeDocuments([docketItem, opinionItem], category);
+      }
+    }
+    return stored;
+  })();
+}
+
+export async function backfillOpinionsByDate(
+  from: string,
+  to: string,
+  dryRun: boolean,
+): Promise<{ docketsFound: number; opinionsStored: number }> {
+  console.log(`[cl-bulk] Opinion-first backfill: ${from} → ${to}`);
+  const clusterMap = await queryOpinionsByDate(from, to);
+  console.log(`[cl-bulk] ${clusterMap.size} unique opinion clusters to store`);
+  const stored = await storeOpinionClusters(clusterMap, dryRun);
+  console.log(
+    `[cl-bulk] Opinion-first complete: ${clusterMap.size} clusters, ${stored} docs ${dryRun ? '(dry run)' : 'stored'}`,
+  );
+  return { docketsFound: clusterMap.size, opinionsStored: stored };
+}
+
+/**
+ * Try the opinion-first pass if staging tables are available. No-op otherwise.
+ * Single entry point for backfill, snapshot, and backfill:opinions.
+ */
+export async function tryOpinionFirstPass(
+  from: string,
+  to: string,
+  dryRun: boolean,
+): Promise<{ docketsFound: number; opinionsStored: number }> {
+  if (!(await isBulkOpinionDbAvailable())) return { docketsFound: 0, opinionsStored: 0 };
+  return backfillOpinionsByDate(from, to, dryRun);
+}
+
+// ---------------------------------------------------------------------------
 // Cleanup
 // ---------------------------------------------------------------------------
 

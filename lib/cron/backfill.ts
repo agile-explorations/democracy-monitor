@@ -375,6 +375,13 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
     totalDocs += await backfillLegiscan(from, to, dryRun);
   }
 
+  // Opinion-first CL backfill: find opinions by issue date for dockets from ANY era.
+  if (!options.source || options.source === 'courtlistener') {
+    const { tryOpinionFirstPass } = await import('@/lib/services/cl-bulk-staging');
+    const r = await tryOpinionFirstPass(from, to, dryRun);
+    if (r.opinionsStored > 0) totalDocs += r.opinionsStored;
+  }
+
   console.log(`\n[backfill] === Summary ===`);
   console.log(`  API calls: ${dryRun ? `~${totalApiCalls} (estimated)` : totalApiCalls}`);
   console.log(`  Documents stored: ${totalDocs}`);
