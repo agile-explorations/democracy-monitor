@@ -193,13 +193,13 @@ describe('computeWeeklyWeightedScores', () => {
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
 
-    // Week 2017-01-23: offset ≈ 0 (3 days / 7 rounds to 0)
+    // Week 2017-01-23 (Monday), inaug 2017-01-20 (Fri) → Monday-aligned offset 1
     // Elevated(1) + Divergent(1) = 2
-    expect(result.get(0)).toBe(2);
-
-    // Week 2017-01-30: offset ≈ 1 (10 days / 7 rounds to 1)
-    // Stable(0) + ConfirmedConcern(2) = 2
     expect(result.get(1)).toBe(2);
+
+    // Week 2017-01-30 → Monday-aligned offset 2
+    // Stable(0) + ConfirmedConcern(2) = 2
+    expect(result.get(2)).toBe(2);
   });
 
   it('indexes by week offset from period start', () => {
@@ -221,8 +221,8 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('fiscal', '2017-01-23', 0.1, null),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // null status → Stable → weight 0
-    expect(result.get(0)).toBe(0);
+    // null status → Stable → weight 0 (Monday-aligned offset 1)
+    expect(result.get(1)).toBe(0);
   });
 
   it('sums weights across all categories in a week', () => {
@@ -232,8 +232,8 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('military', '2017-01-23', 0.3, { status: 'Elevated' }),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // 2 + 2 + 1 = 5
-    expect(result.get(0)).toBe(5);
+    // 2 + 2 + 1 = 5 (Monday-aligned offset 1)
+    expect(result.get(1)).toBe(5);
   });
 
   it('handles convergence_detail with unrecognised status string', () => {
@@ -242,8 +242,8 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('fiscal', '2017-01-23', 0.1, { status: 'Divergent' }),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // UnknownStatus → null → weight 0, Divergent → weight 1
-    expect(result.get(0)).toBe(1);
+    // UnknownStatus → null → weight 0, Divergent → weight 1 (Monday-aligned offset 1)
+    expect(result.get(1)).toBe(1);
   });
 
   it('handles convergence_detail that is a non-object primitive', () => {
@@ -252,15 +252,15 @@ describe('computeWeeklyWeightedScores', () => {
       makeRow('fiscal', '2017-01-23', 0.1, 42),
     ];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // Both parse as null → weight 0
-    expect(result.get(0)).toBe(0);
+    // Both parse as null → weight 0 (Monday-aligned offset 1)
+    expect(result.get(1)).toBe(0);
   });
 
   it('handles convergence_detail with missing status property', () => {
     const rows = [makeRow('civilService', '2017-01-23', 0.5, { other: 'field' })];
     const result = computeWeeklyWeightedScores(rows, '2017-01-20');
-    // No status property → null → weight 0
-    expect(result.get(0)).toBe(0);
+    // No status property → null → weight 0 (Monday-aligned offset 1)
+    expect(result.get(1)).toBe(0);
   });
 });
 

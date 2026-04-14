@@ -11,7 +11,9 @@ export function getInaugurationDate(administration: string): string | null {
   return config?.from ?? null;
 }
 
-/** Get combined date range across all baseline configs for an administration. */
+/** Get combined date range across all baseline configs for an administration.
+ *  The `from` date is aligned to the Monday of inauguration week so the query
+ *  captures the first weekly aggregate (which uses Monday-based week_of dates). */
 export function getPeriodRange(administration: string): { from: string; to: string } | null {
   const configs = BASELINE_CONFIGS.filter((c) => c.administration === administration);
   if (configs.length === 0) return null;
@@ -21,13 +23,25 @@ export function getPeriodRange(administration: string): { from: string; to: stri
     if (c.from < from) from = c.from;
     if (c.to > to) to = c.to;
   }
-  return { from, to };
+  // Align start to Monday so the inauguration week's aggregate is included
+  const monday = toMonday(from);
+  const aligned = monday.toISOString().slice(0, 10);
+  return { from: aligned, to };
 }
 
-/** Compute week offset (0-based) from a period start date. */
+/** Get the Monday of the week containing a date. */
+function toMonday(dateStr: string): Date {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const day = d.getUTCDay();
+  const diff = day === 0 ? 6 : day - 1; // Sunday=6 back, else day-1 back
+  d.setUTCDate(d.getUTCDate() - diff);
+  return d;
+}
+
+/** Compute week offset (0-based) from a period start date, aligned to Monday weeks. */
 export function weekOffset(weekDate: string, periodStart: string): number {
-  const d = new Date(weekDate + 'T00:00:00Z');
-  const s = new Date(periodStart + 'T00:00:00Z');
+  const d = toMonday(weekDate);
+  const s = toMonday(periodStart);
   return Math.round((d.getTime() - s.getTime()) / MS_PER_WEEK);
 }
 
