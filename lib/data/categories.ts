@@ -405,6 +405,13 @@ export const CATEGORIES: Category[] = [
         note: 'Changes to election administration and oversight',
       },
       {
+        id: 'fr_election_presdocu',
+        name: 'Presidential Documents: Elections',
+        url: '/api/federal-register?type=PRESDOCU&term=election+|+voting+|+voter+|+ballot+|+%22citizenship+verification%22+|+%22election+integrity%22',
+        type: 'federal_register',
+        note: 'Executive orders and proclamations affecting elections and voting',
+      },
+      {
         id: 'fec_advisory_opinions',
         name: 'FEC Advisory Opinions',
         url: 'fec://advisory-opinions?type=advisory_opinions',
@@ -530,9 +537,9 @@ export const CATEGORIES: Category[] = [
       {
         id: 'fr_civil_rights',
         name: 'Civil Rights FR Documents',
-        url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22&agency=justice-department,homeland-security-department,education-department,health-and-human-services-department,equal-employment-opportunity-commission,civil-rights-commission',
+        url: '/api/federal-register?term=%22civil+rights%22+|+%22due+process%22+|+%22equal+protection%22+|+%22Title+VI%22+|+%22disparate+impact%22+|+%22fair+housing%22&agency=justice-department,homeland-security-department,education-department,health-and-human-services-department,equal-employment-opportunity-commission,civil-rights-commission,commerce-department,housing-and-urban-development-department,treasury-department,labor-department,transportation-department',
         type: 'federal_register',
-        note: 'Federal Register documents on civil rights and due process',
+        note: 'Federal Register documents on civil rights, due process, and Title VI enforcement across all implementing agencies',
       },
     ],
   },
