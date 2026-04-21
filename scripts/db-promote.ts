@@ -200,6 +200,21 @@ async function getPrimaryKeyColumn(client: Client, table: string): Promise<strin
   return result.rows[0].column_name;
 }
 
+/** Get columns of the first non-PK unique constraint (e.g., url+category on documents). */
+async function getUniqueConstraintColumns(client: Client, table: string): Promise<string[]> {
+  const result = await client.query(
+    `SELECT kcu.column_name
+     FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu
+       ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+     WHERE tc.table_name = $1 AND tc.constraint_type = 'UNIQUE'
+     ORDER BY tc.constraint_name, kcu.ordinal_position
+     LIMIT 10`,
+    [table],
+  );
+  return result.rows.map((r: { column_name: string }) => r.column_name);
+}
+
 /** Get column names for a table, excluding generated columns (e.g. search_vector). */
 async function getColumns(client: Client, table: string): Promise<string[]> {
   const result = await client.query(
@@ -253,17 +268,22 @@ async function promoteTable(
     timeout: 1_800_000,
   });
 
-  // Upsert from temp into real table
+  // Determine upsert conflict target: prefer composite unique constraint over PK
+  // (handles tables like documents where local+prod IDs diverge but url+category is stable)
+  const uniqueCols = await getUniqueConstraintColumns(prod, table);
+  const conflictTarget =
+    uniqueCols.length > 0 ? uniqueCols.map((c) => `"${c}"`).join(', ') : `"${pkCol}"`;
+  const excludeCols = uniqueCols.length > 0 ? uniqueCols : [pkCol];
   const updateCols = columns
-    .filter((c: string) => c !== pkCol)
+    .filter((c: string) => !excludeCols.includes(c))
     .map((c: string) => `"${c}" = EXCLUDED."${c}"`)
     .join(', ');
 
-  console.log('    Upserting into target table...');
+  console.log(`    Upserting into target table (conflict on: ${conflictTarget})...`);
   await prod.query(
     `INSERT INTO "${table}" (${colList})
      SELECT ${colList} FROM "${tempTable}"
-     ON CONFLICT ("${pkCol}") DO UPDATE SET ${updateCols}`,
+     ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateCols}`,
   );
 
   await prod.query(`DROP TABLE "${tempTable}"`);
