@@ -104,20 +104,25 @@ const PROCEDURAL_TITLE_PATTERNS = [
 
 /** Check if a granule is procedural noise that should be filtered out. */
 export function isProceduralGranule(
-  title: string,
+  title: string | null | undefined,
   subGranuleClass?: string,
   granuleId?: string,
 ): boolean {
   if (granuleId && granuleId.includes('FrontMatter')) return true;
   if (subGranuleClass && PROCEDURAL_SUBCLASSES.has(subGranuleClass)) return true;
-  return PROCEDURAL_TITLE_PATTERNS.some((p) => p.test(title.trim()));
+  const t = (title ?? '').trim();
+  return PROCEDURAL_TITLE_PATTERNS.some((p) => p.test(t));
 }
 
 // --- Content type classification ---
 
 /** Classify a CREC granule into a content type for downstream processing. */
-export function classifyCrecContentType(title: string, subGranuleClass?: string): CrecContentType {
-  if (subGranuleClass === 'SNOMINATIONS' || /\bNOMINATION/i.test(title)) {
+export function classifyCrecContentType(
+  title: string | null | undefined,
+  subGranuleClass?: string,
+): CrecContentType {
+  const t = (title ?? '').trim();
+  if (subGranuleClass === 'SNOMINATIONS' || /\bNOMINATION/i.test(t)) {
     return 'nomination';
   }
 
@@ -130,7 +135,7 @@ export function classifyCrecContentType(title: string, subGranuleClass?: string)
     /^(ENROLLED BILL SIGNED|BILLS? PRESENTED|MEASURES? PASSED)/i,
     /^Cloture Motion/i,
   ];
-  if (legislativePatterns.some((p) => p.test(title.trim()))) {
+  if (legislativePatterns.some((p) => p.test(t))) {
     return 'legislative_action';
   }
 
