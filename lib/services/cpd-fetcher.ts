@@ -26,8 +26,8 @@ const RATE_LIMIT_DELAY_MS = 200;
 const FETCH_TIMEOUT_MS = 30_000;
 const USER_AGENT = 'DemocracyMonitor/1.0 (cpd-fetcher)';
 
-/** Admin package IDs to skip (nominations lists, checklists, digests). */
-const ADMIN_PACKAGE_PATTERNS = ['NOMINATIONS', 'CHECKLIST', 'DIGEST'];
+/** Admin package IDs to skip (compilations and indices, not individual presidential documents). */
+const ADMIN_PACKAGE_PATTERNS = ['NOMINATIONS', 'CHECKLIST', 'DIGEST', 'ACTSAPPROVED'];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -239,7 +239,13 @@ async function enrichPackages(
     const categories = mapSubjectsToCategories(subjects, unmapped);
     for (const s of unmapped) globalUnmapped.add(s);
 
-    if (categories.length === 0) continue;
+    if (categories.length === 0) {
+      const reason = subjects.length === 0 ? 'no subjects in summary' : 'no mapped subjects';
+      console.log(
+        `[cpd-fetcher] Skipped ${packageId} (${reason}): "${summary.title?.slice(0, 80) ?? ''}"`,
+      );
+      continue;
+    }
 
     const item = summaryToContentItem(packageId, summary);
 

@@ -200,6 +200,25 @@ async function getPrimaryKeyColumn(client: Client, table: string): Promise<strin
   return result.rows[0].column_name;
 }
 
+/** Get columns of the first non-PK unique constraint (e.g., url+category on documents). */
+async function getUniqueConstraintColumns(client: Client, table: string): Promise<string[]> {
+  const result = await client.query(
+    `SELECT kcu.column_name
+     FROM information_schema.table_constraints tc
+     JOIN information_schema.key_column_usage kcu
+       ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+     WHERE tc.table_name = $1 AND tc.constraint_type = 'UNIQUE'
+       AND tc.constraint_name = (
+         SELECT MIN(tc2.constraint_name)
+         FROM information_schema.table_constraints tc2
+         WHERE tc2.table_name = $1 AND tc2.constraint_type = 'UNIQUE'
+       )
+     ORDER BY kcu.ordinal_position`,
+    [table],
+  );
+  return result.rows.map((r: { column_name: string }) => r.column_name);
+}
+
 /** Get column names for a table, excluding generated columns (e.g. search_vector). */
 async function getColumns(client: Client, table: string): Promise<string[]> {
   const result = await client.query(
@@ -253,17 +272,30 @@ async function promoteTable(
     timeout: 1_800_000,
   });
 
-  // Upsert from temp into real table
+  // Determine upsert conflict target: prefer composite unique constraint over PK
+  // (handles tables like documents where local+prod IDs diverge but url+category is stable)
+  const uniqueCols = await getUniqueConstraintColumns(prod, table);
+  const useUniqueConstraint = uniqueCols.length > 0;
+  const conflictTarget = useUniqueConstraint
+    ? uniqueCols.map((c) => `"${c}"`).join(', ')
+    : `"${pkCol}"`;
+
+  // When using non-PK conflict target, exclude PK from INSERT (let sequence generate IDs)
+  // and from UPDATE SET (keep prod's existing IDs). This prevents PK collisions when
+  // dev and prod have different auto-increment IDs for the same logical rows.
+  const insertCols = useUniqueConstraint ? columns.filter((c) => c !== pkCol) : columns;
+  const insertColList = insertCols.map((c: string) => `"${c}"`).join(', ');
+  const excludeFromUpdate = useUniqueConstraint ? [...uniqueCols, pkCol] : [pkCol];
   const updateCols = columns
-    .filter((c: string) => c !== pkCol)
+    .filter((c: string) => !excludeFromUpdate.includes(c))
     .map((c: string) => `"${c}" = EXCLUDED."${c}"`)
     .join(', ');
 
-  console.log('    Upserting into target table...');
+  console.log(`    Upserting into target table (conflict on: ${conflictTarget})...`);
   await prod.query(
-    `INSERT INTO "${table}" (${colList})
-     SELECT ${colList} FROM "${tempTable}"
-     ON CONFLICT ("${pkCol}") DO UPDATE SET ${updateCols}`,
+    `INSERT INTO "${table}" (${insertColList})
+     SELECT ${insertColList} FROM "${tempTable}"
+     ON CONFLICT (${conflictTarget}) DO UPDATE SET ${updateCols}`,
   );
 
   await prod.query(`DROP TABLE "${tempTable}"`);

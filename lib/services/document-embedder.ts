@@ -14,10 +14,14 @@ const MAX_EMBED_CHARS = 20_000;
 
 /**
  * OpenAI embedding API batch limit is 300K tokens.
- * Budget to ~250K to leave margin for tokenization variance.
- * At ~3 chars/token (conservative), that's ~750K chars per batch.
+ * Budget to ~200K to leave generous margin for tokenization variance —
+ * legal/regulatory text can tokenize denser than 3 chars/token.
+ * At ~3 chars/token, that's ~600K chars per batch.
  */
-const BATCH_TOKEN_BUDGET_CHARS = 750_000;
+const BATCH_TOKEN_BUDGET_CHARS = 600_000;
+
+/** Final-resort character limit when truncation retries fail. */
+const FINAL_TRUNCATION_CHARS = 4_000;
 
 /** Max docs to fetch from DB per round (upper bound for greedy batching). */
 const DB_FETCH_LIMIT = 100;
@@ -34,19 +38,40 @@ function estimateTokens(text: string): number {
 /** Embed a single oversized document by truncating its text. Retries with halved length on failure. */
 async function embedWithTruncation(text: string): Promise<number[] | null> {
   let limit = MAX_EMBED_CHARS;
+  let lastErr: unknown;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await embedText(text.slice(0, limit));
+      const result = await embedText(text.slice(0, limit));
+      if (result) return result;
+      // embedText returned null (non-token error already logged) — give up retry loop
+      return null;
     } catch (err) {
+      lastErr = err;
       if (isTokenLimitError(err)) {
         limit = Math.floor(limit * 0.6);
         continue;
       }
-      throw err;
+      // Non-token error — stop retrying, surface
+      console.error(
+        `[embedding] embedWithTruncation failed at limit=${limit}:`,
+        err instanceof Error ? err.message : err,
+      );
+      return null;
     }
   }
-  // Final attempt at very conservative limit
-  return embedText(text.slice(0, 8000));
+  // Final attempt at the most conservative limit
+  try {
+    return await embedText(text.slice(0, FINAL_TRUNCATION_CHARS));
+  } catch (err) {
+    console.error(
+      `[embedding] Final ${FINAL_TRUNCATION_CHARS}-char truncation also failed:`,
+      err instanceof Error ? err.message : err,
+      '(prior:',
+      lastErr instanceof Error ? lastErr.message : lastErr,
+      ')',
+    );
+    return null;
+  }
 }
 
 interface TokenBatch {
@@ -106,8 +131,11 @@ async function processBatches(
         for (let j = 0; j < batch.indices.length; j++) {
           try {
             embeddings[batch.indices[j]] = await embedWithTruncation(batch.texts[j]);
-          } catch {
-            console.error(`[embedding] Fallback failed for doc index ${batch.indices[j]}`);
+          } catch (fallbackErr) {
+            console.error(
+              `[embedding] Fallback failed for doc index ${batch.indices[j]}:`,
+              fallbackErr instanceof Error ? fallbackErr.message : fallbackErr,
+            );
           }
         }
       } else {
@@ -155,19 +183,35 @@ async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<numbe
   const embeddings = await processBatches(batches, oversized, allTexts.length);
 
   let embedded = 0;
+  let markedFailed = 0;
   const now = new Date();
   for (let i = 0; i < unembedded.length; i++) {
     const emb = embeddings[i];
-    if (!emb) continue;
     try {
-      await db
-        .update(documents)
-        .set({ embedding: emb, embeddedAt: now })
-        .where(eq(documents.id, unembedded[i].id));
-      embedded++;
+      if (emb) {
+        await db
+          .update(documents)
+          .set({ embedding: emb, embeddedAt: now })
+          .where(eq(documents.id, unembedded[i].id));
+        embedded++;
+      } else {
+        // Mark as attempted so the loop doesn't retry this doc forever.
+        // embedding stays NULL; embeddedAt is set as a "tried" marker.
+        await db
+          .update(documents)
+          .set({ embeddedAt: now })
+          .where(eq(documents.id, unembedded[i].id));
+        markedFailed++;
+        console.warn(
+          `[embedding] Attempted-but-failed doc id=${unembedded[i].id} title="${unembedded[i].title.slice(0, 60)}" contentLen=${unembedded[i].content?.length ?? 0}`,
+        );
+      }
     } catch (err) {
-      console.error(`Failed to embed document ${unembedded[i].id}:`, err);
+      console.error(`Failed to update document ${unembedded[i].id}:`, err);
     }
+  }
+  if (markedFailed > 0) {
+    console.warn(`[embedding] Marked ${markedFailed} doc(s) as attempted-but-failed`);
   }
   return embedded;
 }
