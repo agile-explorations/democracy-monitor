@@ -235,7 +235,12 @@ export async function getWeeklyFetchHealthDetailed() {
   return groupByWeek(rows);
 }
 
-/** Record snapshot signal results in fetch_log, aggregated by canonical source origin. */
+/**
+ * Record snapshot signal results in fetch_log, aggregated by canonical source origin.
+ *
+ * This is called BEFORE storeDocuments runs, so `itemsStored` is initialized to 0.
+ * Call `markCategoryItemsStored` after storage to update the actual count.
+ */
 export async function recordSnapshotSignalResults(
   category: string,
   weekStart: string,
@@ -262,8 +267,50 @@ export async function recordSnapshotSignalResults(
       weekStart,
       weekEnd,
       itemsFetched: agg.itemsFetched,
-      itemsStored: agg.itemsFetched,
+      itemsStored: 0,
       errors: agg.errors,
     });
+  }
+}
+
+/**
+ * Update fetch_log rows for (category, weekStart) with the actual items_stored
+ * count distributed proportionally across sources by their items_fetched share.
+ * Called after storeDocuments completes so fetch_log reflects real persistence.
+ */
+export async function markCategoryItemsStored(
+  category: string,
+  weekStart: string,
+  totalItemsStored: number,
+): Promise<void> {
+  if (!isDbAvailable()) return;
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      id: fetchLog.id,
+      sourceOrigin: fetchLog.sourceOrigin,
+      itemsFetched: fetchLog.itemsFetched,
+    })
+    .from(fetchLog)
+    .where(and(eq(fetchLog.category, category), eq(fetchLog.weekStart, weekStart)));
+
+  if (rows.length === 0) return;
+
+  const totalFetched = rows.reduce((s, r) => s + r.itemsFetched, 0);
+  if (totalFetched === 0) {
+    // Nothing to distribute; leave items_stored at 0.
+    return;
+  }
+
+  let assigned = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const share =
+      i === rows.length - 1
+        ? totalItemsStored - assigned // give remainder to last row to ensure exact total
+        : Math.round((row.itemsFetched / totalFetched) * totalItemsStored);
+    assigned += share;
+    await db.update(fetchLog).set({ itemsStored: share }).where(eq(fetchLog.id, row.id));
   }
 }

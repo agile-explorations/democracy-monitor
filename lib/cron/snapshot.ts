@@ -13,7 +13,10 @@ import {
   getLastDocumentDateBySource,
   storeDocuments,
 } from '@/lib/services/document-store';
-import { recordSnapshotSignalResults } from '@/lib/services/fetch-log-store';
+import {
+  markCategoryItemsStored,
+  recordSnapshotSignalResults,
+} from '@/lib/services/fetch-log-store';
 import { fetchCategoryIncremental } from '@/lib/services/incremental-fetcher';
 import {
   fetchAllRhetoricSources,
@@ -148,7 +151,16 @@ async function snapshotCategory(
   }
 
   try {
-    await storeDocuments(items, cat.key);
+    const stored = await storeDocuments(items, cat.key);
+    const expected = items.filter((i) => !i.isError && !i.isWarning && i.link).length;
+    if (stored < expected) {
+      const msg = `Document storage incomplete for ${cat.key}: stored ${stored}/${expected}`;
+      console.error(`[snapshot] ${msg}`);
+      errors.push(msg);
+    }
+    await markCategoryItemsStored(cat.key, weekStart, stored).catch((err) =>
+      console.warn(`[snapshot] fetch_log items_stored update failed for ${cat.key}:`, err),
+    );
   } catch (err) {
     const msg = `RAG store failed for ${cat.key}: ${formatError(err)}`;
     console.error(`[snapshot] ${msg}`);

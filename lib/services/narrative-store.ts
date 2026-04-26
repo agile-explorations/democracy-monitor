@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { narratives } from '@/lib/db/schema';
 import type {
@@ -8,6 +8,8 @@ import type {
   NarrativeVersion,
   StoredNarrative,
 } from '@/lib/types';
+
+const DRAFT_VERSIONS = ['expert_draft', 'public_draft', 'feedback'] as const;
 
 /** Retrieve a stored narrative for a category/week/version. */
 export async function getStoredNarrative(
@@ -109,9 +111,27 @@ export async function storeNarratives(
       .values(row)
       .onConflictDoUpdate({
         target: [narratives.category, narratives.weekOf, narratives.version],
-        set: { content: row.content, model: row.model },
+        set: { content: row.content, model: row.model, generatedAt: sql`now()` },
       });
   }
+}
+
+/**
+ * Delete orphan multi-pass artifacts (expert_draft / public_draft / feedback) for a
+ * (category, weekOf). Use when a category drops from elevated to stable so prior
+ * 3-pass rows don't linger as stale data.
+ */
+export async function deleteNarrativeDrafts(category: string, weekOf: string): Promise<void> {
+  const db = getDb();
+  await db
+    .delete(narratives)
+    .where(
+      and(
+        eq(narratives.category, category),
+        eq(narratives.weekOf, weekOf),
+        inArray(narratives.version, DRAFT_VERSIONS as unknown as string[]),
+      ),
+    );
 }
 
 /** Store all 5 artifacts from a multi-pass narrative generation in a single transaction. */
@@ -160,7 +180,7 @@ export async function storeMultiPassNarratives(
         .values(row)
         .onConflictDoUpdate({
           target: [narratives.category, narratives.weekOf, narratives.version],
-          set: { content: row.content, model: row.model },
+          set: { content: row.content, model: row.model, generatedAt: sql`now()` },
         });
     }
   });
