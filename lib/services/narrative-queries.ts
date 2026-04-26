@@ -240,6 +240,20 @@ export async function getTotalDocumentCount(category: string, weekOf: string): P
   return ((rows.rows as Row[])[0]?.count as number) ?? 0;
 }
 
+/** Count L2 assessments stored for a (category, weekOf). Used for narrative-data sanity checks. */
+export async function countL2AssessmentsForCategoryWeek(
+  category: string,
+  weekOf: string,
+): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT COUNT(*)::int AS count FROM ai_document_assessments
+    WHERE category = ${category} AND week_of = ${weekOf}::date
+  `);
+  return ((rows.rows as Row[])[0]?.count as number) ?? 0;
+}
+
 // ---------------------------------------------------------------------------
 // 7. Trajectory table (for term summary)
 // ---------------------------------------------------------------------------

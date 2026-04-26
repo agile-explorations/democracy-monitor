@@ -48,12 +48,18 @@ function extractSpeaker(item: ContentItem): string | null {
 /**
  * Upsert documents from feed items into the database for RAG retrieval.
  * No-op when DATABASE_URL is not configured.
+ *
+ * Returns the count of successfully stored rows. When some inserts fail (per-doc
+ * try/catch swallows individual errors), an aggregate `[document-store]` warning
+ * is logged so callers can detect a category-wide storage failure even when no
+ * exception is thrown.
  */
 export async function storeDocuments(items: ContentItem[], category: string): Promise<number> {
   if (!isDbAvailable()) return 0;
 
   const db = getDb();
   let stored = 0;
+  let failed = 0;
 
   const validItems = items.filter((item) => !item.isError && !item.isWarning && item.link);
 
@@ -88,8 +94,15 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
         });
       stored++;
     } catch (err) {
+      failed++;
       console.error(`Failed to store document ${item.link}:`, err);
     }
+  }
+
+  if (failed > 0) {
+    console.error(
+      `[document-store] ${category}: stored ${stored}/${validItems.length} (${failed} failures)`,
+    );
   }
 
   return stored;

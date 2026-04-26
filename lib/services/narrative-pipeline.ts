@@ -33,13 +33,19 @@ import {
   buildWeeklySummaryRevisionPrompt,
 } from './narrative-prompts';
 import {
+  countL2AssessmentsForCategoryWeek,
   enrichCategoryData,
   getPreviousWeekNarrative,
   getTermNarrative,
   getTermStatistics,
+  getTotalDocumentCount,
   getTrajectoryTable,
 } from './narrative-queries';
-import { storeMultiPassNarratives, storeNarratives } from './narrative-store';
+import {
+  deleteNarrativeDrafts,
+  storeMultiPassNarratives,
+  storeNarratives,
+} from './narrative-store';
 
 /**
  * Minimum ratio of aggregated categories to actual document categories.
@@ -166,6 +172,26 @@ async function generateTermSummary(input: TermSummaryInput): Promise<MultiPassNa
   );
 }
 
+/**
+ * True when convergence is elevated AND the category actually has docs/L2 in the DB.
+ * An elevated score with no underlying data means the aggregate is stale and AI
+ * generation would hallucinate against empty input — force the stable path instead.
+ */
+async function effectivelyElevated(data: NarrativeLayerData, weekOf: string): Promise<boolean> {
+  if (!isElevatedStatus(data.convergenceDetail)) return false;
+  const [docCount, l2Count] = await Promise.all([
+    getTotalDocumentCount(data.category, weekOf),
+    countL2AssessmentsForCategoryWeek(data.category, weekOf),
+  ]);
+  if (docCount === 0 && l2Count === 0) {
+    console.warn(
+      `[narratives]   ${data.category}: forcing stable template — elevated convergence but 0 docs / 0 L2 (stale aggregates)`,
+    );
+    return false;
+  }
+  return true;
+}
+
 /** Phase 1: Generate per-category narratives (stable templates + multi-pass for elevated). */
 async function generateCategoryNarratives(
   categories: NarrativeLayerData[],
@@ -175,9 +201,13 @@ async function generateCategoryNarratives(
   const failed: string[] = [];
 
   for (const data of categories) {
-    if (!isElevatedStatus(data.convergenceDetail)) {
+    const elevated = await effectivelyElevated(data, weekOf);
+
+    if (!elevated) {
       const template = buildStableTemplate(data.categoryTitle, data.weekOf);
       await storeNarratives(data.category, weekOf, template);
+      // Clean up orphan multi-pass artifacts from a prior elevated run for this week.
+      await deleteNarrativeDrafts(data.category, weekOf);
       narratives.set(data.category, { expert: template.expert, public: template.public });
       continue;
     }
@@ -191,6 +221,8 @@ async function generateCategoryNarratives(
       } else {
         const result = await generateSinglePassNarrative(data);
         await storeNarratives(data.category, weekOf, result);
+        // Single-pass elevated path doesn't produce drafts — clear any stale ones.
+        await deleteNarrativeDrafts(data.category, weekOf);
         narratives.set(data.category, { expert: result.expert, public: result.public });
       }
       await resolveFailure(data.category, weekOf);

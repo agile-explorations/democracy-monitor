@@ -75,6 +75,7 @@
         "lib/services/ingest-validation-queries.ts",
         "lib/services/data-validation-queries.ts",
         "lib/services/narrative-queries.ts",
+        "lib/services/narrative-pipeline.ts",
         "lib/services/ssr-narrative-data.ts",
         "lib/services/narrative-format-helpers.ts"
       ],
@@ -85,7 +86,7 @@
     {
       "files": ["lib/cron/**"],
       "rules": {
-        "max-lines": ["warn", { "max": 530, "skipBlankLines": true, "skipComments": true }],
+        "max-lines": ["warn", { "max": 550, "skipBlankLines": true, "skipComments": true }],
         "max-lines-per-function": [
           "warn",
           { "max": 80, "skipBlankLines": true, "skipComments": true }
