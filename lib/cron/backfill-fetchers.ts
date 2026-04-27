@@ -74,6 +74,18 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
 const SIGNAL_MAX_RETRIES = 4;
 const SIGNAL_RETRY_BACKOFF_MS = 30_000;
 
+/** Format an error with its underlying cause when present (Node fetch wraps the
+ * real reason — DNS/TLS/socket — under err.cause). */
+function describeError(err: unknown): string {
+  const top = formatError(err);
+  if (err instanceof Error && err.cause) {
+    const cause = err.cause as { code?: string; message?: string; errno?: number };
+    const causeBits = [cause.code, cause.errno, cause.message].filter(Boolean);
+    if (causeBits.length > 0) return `${top} | cause: ${causeBits.join(' ')}`;
+  }
+  return top;
+}
+
 /** Retry a single signal fetch up to SIGNAL_MAX_RETRIES times with progressive backoff. */
 async function fetchSignalWithRetry(
   fetchFn: () => Promise<ContentItem[]>,
@@ -88,11 +100,11 @@ async function fetchSignalWithRetry(
       if (attempt < SIGNAL_MAX_RETRIES) {
         const delay = SIGNAL_RETRY_BACKOFF_MS * 2 ** (attempt - 1);
         console.log(
-          `  [${categoryKey}] ${label} attempt ${attempt}/${SIGNAL_MAX_RETRIES} failed for ${weekStart}, retrying in ${delay / 1000}s...`,
+          `  [${categoryKey}] ${label} attempt ${attempt}/${SIGNAL_MAX_RETRIES} failed for ${weekStart} (${describeError(err)}), retrying in ${delay / 1000}s...`,
         );
         await sleep(delay);
       } else {
-        const msg = `${label} fetch error for ${weekStart}: ${formatError(err)} (after ${SIGNAL_MAX_RETRIES} attempts)`;
+        const msg = `${label} fetch error for ${weekStart}: ${describeError(err)} (after ${SIGNAL_MAX_RETRIES} attempts)`;
         console.error(`  [${categoryKey}] ${msg}`);
         return { items: [], error: msg };
       }
@@ -380,9 +392,11 @@ export async function fetchWeekItemsOig(
       errors.push(`Unknown OIG signal URL: ${signal.url}`);
       continue;
     }
+    // Use the per-signal source name as the retry label (e.g. "oig://hhs")
+    // so failure logs identify which OIG host is actually unreachable.
     const result = await fetchSignalWithRetry(
       () => fetcher({ dateFrom: week.start, dateTo: week.end }),
-      'OIG',
+      signal.url,
       categoryKey,
       week.start,
     );
