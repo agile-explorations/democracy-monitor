@@ -1,24 +1,54 @@
 /**
- * POST /api/cron/dump — run a database dump to persistent disk.
+ * POST /api/cron/dump — start a database dump in the background.
  *
- * Protected by CRON_SECRET bearer token. Called weekly by the dump cron job.
- * Runs pg_dump synchronously (child process, non-blocking to event loop) and
- * returns 200 when complete. The cron's curl waits for the response.
+ * Protected by CRON_SECRET bearer token. Spawns pg_dump as a detached child
+ * process so the dump survives the HTTP response, then returns 202 immediately.
+ * Poll GET /api/cron/dump/status to learn when it finishes.
+ *
+ * Filesystem contract (on /var/data):
+ *   - `database.pgdump.tmp` — exists while a dump is in progress.
+ *   - `database.pgdump`     — last completed dump, served by /api/data/dump.
+ *   - `dump-result.json`    — last result written by the spawner script.
+ *   - `dump.log`            — pg_dump stderr from the most recent run.
  */
 
-import { exec } from 'child_process';
-import { existsSync, statSync, unlinkSync } from 'fs';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
+import { closeSync, existsSync, openSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { requireMethod } from '@/lib/utils/api-helpers';
-
-const execAsync = promisify(exec);
 
 const DUMP_DIR = '/var/data';
 const DUMP_FILE = `${DUMP_DIR}/database.pgdump`;
 const DUMP_TEMP = `${DUMP_FILE}.tmp`;
+const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
+const LOG_FILE = `${DUMP_DIR}/dump.log`;
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
+// Shell script that performs the dump and writes a result file atomically.
+// Reads its inputs from env vars set by the spawning Node process — no user
+// input is interpolated into this string, so it's safe from shell injection.
+const RUNNER_SCRIPT = `
+set -u
+START=$(date +%s)
+START_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+write_result() {
+  printf '%s\\n' "$1" > "$RESULT_FILE.tmp" && mv "$RESULT_FILE.tmp" "$RESULT_FILE"
+}
+if pg_dump -Fc --no-owner --no-privileges -f "$DUMP_TEMP" "$DATABASE_URL" 2>"$LOG_FILE"; then
+  mv "$DUMP_TEMP" "$DUMP_FILE"
+  END=$(date +%s)
+  END_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  SIZE_BYTES=$(wc -c < "$DUMP_FILE" | tr -d ' ')
+  DURATION=$((END - START))
+  write_result "$(printf '{"status":"complete","sizeBytes":%s,"durationS":%s,"startedAt":"%s","completedAt":"%s"}' "$SIZE_BYTES" "$DURATION" "$START_ISO" "$END_ISO")"
+else
+  EXIT=$?
+  rm -f "$DUMP_TEMP"
+  END_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  write_result "$(printf '{"status":"failed","exitCode":%s,"startedAt":"%s","failedAt":"%s"}' "$EXIT" "$START_ISO" "$END_ISO")"
+fi
+`;
+
+export default function handler(req: NextApiRequest, res: NextApiResponse): void {
   if (!requireMethod(req, res, 'POST')) return;
 
   const secret = process.env.CRON_SECRET;
@@ -45,32 +75,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (existsSync(DUMP_TEMP)) {
-    res.status(409).json({ error: 'Dump already in progress' });
+    res.status(409).json({ error: 'Dump already in progress', status: 'in_progress' });
     return;
   }
 
-  console.log('[cron/dump] Starting database dump...');
-  const startTime = Date.now();
+  // Reserve the .tmp marker synchronously so the status endpoint reports
+  // "running" immediately, before the spawned pg_dump opens its output file.
+  closeSync(openSync(DUMP_TEMP, 'w'));
 
-  try {
-    await execAsync(
-      `pg_dump -Fc --no-owner --no-privileges -f "${DUMP_TEMP}" "${dbUrl}" && mv "${DUMP_TEMP}" "${DUMP_FILE}"`,
-      { timeout: 600_000, maxBuffer: 10 * 1024 * 1024 },
-    );
+  const startedAt = new Date().toISOString();
+  const child = spawn('sh', ['-c', RUNNER_SCRIPT], {
+    detached: true,
+    stdio: 'ignore',
+    env: {
+      ...process.env,
+      DATABASE_URL: dbUrl,
+      DUMP_FILE,
+      DUMP_TEMP,
+      RESULT_FILE,
+      LOG_FILE,
+    },
+  });
+  child.unref();
 
-    const size = statSync(DUMP_FILE).size;
-    const sizeMB = (size / (1024 * 1024)).toFixed(0);
-    const durationS = ((Date.now() - startTime) / 1000).toFixed(0);
-    console.log(`[cron/dump] Complete: ${sizeMB} MB in ${durationS}s`);
-    res.status(200).json({ success: true, sizeMB: Number(sizeMB), durationS: Number(durationS) });
-  } catch (err) {
-    const detail = (err as { stderr?: string }).stderr || (err as Error).message;
-    console.error(`[cron/dump] Failed after ${Date.now() - startTime}ms:`, detail);
-    try {
-      unlinkSync(DUMP_TEMP);
-    } catch {
-      /* temp file may not exist */
-    }
-    res.status(500).json({ error: 'Dump failed', detail });
-  }
+  console.log(`[cron/dump] Spawned pg_dump (pid=${child.pid}) at ${startedAt}`);
+  res.status(202).json({ status: 'started', startedAt, pid: child.pid });
 }
