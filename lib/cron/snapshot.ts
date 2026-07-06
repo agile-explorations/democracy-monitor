@@ -311,19 +311,8 @@ async function snapshotCpd(): Promise<void> {
       doc.categories.forEach((c) => affectedCategories.add(c));
     }
 
-    // Re-aggregate affected categories since CPD docs were added (with enrichment)
-    for (const category of affectedCategories) {
-      try {
-        const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
-        const aiSummary = await buildAISummaryFromDB(category, weekOf);
-        const agg = await computeWeeklyAggregate(category, weekOf);
-        const enriched = await enrichWithLayerScores(agg, aiSummary);
-        await storeWeeklyAggregate(enriched);
-      } catch (err) {
-        console.error(`[snapshot] CPD re-aggregate failed for ${category}:`, err);
-      }
-    }
-
+    // Aggregation (with L2) happens in the assessStoredWeek post-step, which
+    // sweeps all stored docs for the week — no per-source re-aggregation here.
     console.log(
       `[snapshot] CPD: ${docs.length} documents → ${stored} rows across ${affectedCategories.size} categories`,
     );
@@ -335,7 +324,6 @@ async function snapshotCpd(): Promise<void> {
 /** Fetch recent CREC floor speeches, classify into categories, store + score. */
 async function snapshotCrec(): Promise<void> {
   console.log('[snapshot] Fetching CREC (Congressional Record)...');
-  const weekOf = getLastCompletedWeek();
   try {
     const items = await fetchCrecRecent({ chambers: ['SENATE', 'HOUSE'] });
     if (items.length === 0) {
@@ -359,19 +347,8 @@ async function snapshotCrec(): Promise<void> {
       }
     }
 
-    // Re-aggregate affected categories since CREC docs were added (with enrichment)
-    for (const category of affectedCategories) {
-      try {
-        const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
-        const aiSummary = await buildAISummaryFromDB(category, weekOf);
-        const agg = await computeWeeklyAggregate(category, weekOf);
-        const enriched = await enrichWithLayerScores(agg, aiSummary);
-        await storeWeeklyAggregate(enriched);
-      } catch (err) {
-        console.error(`[snapshot] CREC re-aggregate failed for ${category}:`, err);
-      }
-    }
-
+    // Aggregation (with L2) happens in the assessStoredWeek post-step, which
+    // sweeps all stored docs for the week — no per-source re-aggregation here.
     console.log(
       `[snapshot] CREC: ${items.length} entries → ${routed.length} classified → ` +
         `${stored} rows across ${affectedCategories.size} categories`,
@@ -441,6 +418,58 @@ async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<vo
   }
 }
 
+/**
+ * Assess the completed week's STORED documents and re-aggregate. The per-category
+ * fetch path only assesses freshly-fetched FR/DOJ items; CREC floor speeches,
+ * LegiScan bills, and CL opinions are stored by other paths and never assessed.
+ * This sweeps all stored docs for the week through Layer 2 (runLayer2Assessment
+ * dedups already-assessed docs, so only the new sources incur cost) and
+ * re-aggregates each category with the fuller assessment set. Runs globally
+ * across all categories — consistent with the other post-steps (CPD/CREC/
+ * narratives), which are not scoped by the --category filter. Returns the number
+ * of categories that had documents to assess.
+ */
+async function assessStoredWeek(weekOf: string, errors: string[]): Promise<number> {
+  const { getDocumentsForCategoryWeek } = await import('@/lib/cron/backfill-document-review');
+  let assessed = 0;
+  for (const cat of CATEGORIES) {
+    try {
+      const stored = await getDocumentsForCategoryWeek(cat.key, weekOf);
+      if (stored.length === 0) continue;
+      const { errors: layerErrors } = await runLayersAndAggregate(stored, cat.key, weekOf);
+      errors.push(...layerErrors);
+      assessed++;
+    } catch (err) {
+      errors.push(`Stored-week assessment failed for ${cat.key}: ${formatError(err)}`);
+    }
+  }
+  return assessed;
+}
+
+/**
+ * Fetch + store the secondary sources not covered by the per-category loop
+ * (CPD presidential docs, CREC floor speeches, rhetoric, CL opinions), then
+ * assess the completed week's stored docs. Returns categories assessed.
+ */
+async function ingestAndAssessSecondarySources(errors: string[]): Promise<number> {
+  await snapshotCpd();
+  await snapshotCrec();
+  await snapshotRhetoric();
+
+  // Opinion-first CL pass: find opinions issued this week for ANY matching docket.
+  // Uses the CL API in production (bulk staging tables are absent there); falls
+  // back to staging when loaded (bulk backfill context).
+  const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
+  await opinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
+
+  // Assess the completed week's stored CREC/bill/opinion docs (the per-category
+  // fetch path only covers FR/DOJ) and re-aggregate with the fuller L2 set.
+  const storedWeekAssessed = await assessStoredWeek(getLastCompletedWeek(), errors);
+  if (storedWeekAssessed > 0)
+    console.log(`[snapshot] Assessed stored docs for ${storedWeekAssessed} categories`);
+  return storedWeekAssessed;
+}
+
 /** Retry aggregate failures, embed docs, process missed weeks, generate + retry narratives. */
 async function runPostCategorySteps(
   cats: (typeof CATEGORIES)[number][],
@@ -450,6 +479,7 @@ async function runPostCategorySteps(
 ): Promise<{
   aggregateRetries: number;
   embeddingsProcessed: number;
+  storedWeekAssessed: number;
   missedWeeks: number;
   missedWeeksProcessed: number;
   narrativesGenerated: boolean;
@@ -475,15 +505,7 @@ async function runPostCategorySteps(
     );
   }
 
-  await snapshotCpd();
-  await snapshotCrec();
-  await snapshotRhetoric();
-
-  // Opinion-first CL pass: find opinions issued this week for ANY matching docket.
-  // Uses the CL API in production (bulk staging tables are absent there); falls
-  // back to staging when loaded (bulk backfill context).
-  const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
-  await opinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
+  const storedWeekAssessed = await ingestAndAssessSecondarySources(errors);
 
   let embeddingsProcessed = 0;
   try {
@@ -530,6 +552,7 @@ async function runPostCategorySteps(
   return {
     aggregateRetries,
     embeddingsProcessed,
+    storedWeekAssessed,
     missedWeeks: incompleteWeeksList.length,
     missedWeeksProcessed,
     narrativesGenerated,
