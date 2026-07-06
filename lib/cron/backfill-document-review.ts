@@ -107,7 +107,7 @@ function resolveDateRanges(args: BackfillArgs): Array<{ from: string; to: string
   return getAnalysisPeriods();
 }
 
-async function getDocumentsForCategoryWeek(
+export async function getDocumentsForCategoryWeek(
   category: string,
   weekOf: string,
   source?: string,

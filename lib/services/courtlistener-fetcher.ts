@@ -1,10 +1,10 @@
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
-const CL_BASE_URL = 'https://www.courtlistener.com';
-const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
+export const CL_BASE_URL = 'https://www.courtlistener.com';
+export const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
 export const RATE_LIMIT_DELAY_MS = 2000;
-const FETCH_TIMEOUT_MS = 30_000;
+export const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 /** Default max pages for historical backfill (45 × 20 results/page = 900). */
 export const CL_BACKFILL_MAX_PAGES = 45;
@@ -167,13 +167,51 @@ async function fetchSingleOpinion(
 }
 
 /**
- * Fetch the most recent opinion text for a given docket ID.
- * Uses a two-step approach: clusters endpoint (for date_filed) → opinions endpoint (for text).
+ * Fetch each sub-opinion by ID, filter to substantive types, and concatenate
+ * into a single OpinionData. Shared by docket-first (fetchOpinionText) and
+ * opinion-first (cl-opinion-first-fetcher) paths so both emit an identical
+ * opinionUrl — making re-storage an upsert on (url, category) rather than a
+ * duplicate row.
  *
  * When a cluster has multiple sub_opinions, all substantive opinions (majority,
- * concurrence, dissent) are concatenated with type labels as separators. This
- * captures the full judicial reasoning — a dissent may signal stronger erosion
+ * concurrence, dissent) are concatenated with type labels as separators, so the
+ * full judicial reasoning is captured — a dissent may signal stronger erosion
  * concern than the majority opinion alone.
+ *
+ * Returns null if no substantive opinion text is found.
+ */
+export async function buildOpinionDataFromSubOpinions(
+  opinionIds: string[],
+  clusterDateFiled: string,
+): Promise<OpinionData | null> {
+  const opinions: { type: string; text: string; url: string }[] = [];
+  for (const opId of opinionIds) {
+    const op = await fetchSingleOpinion(opId);
+    if (op && !PROCEDURAL_OPINION_TYPES.has(op.type)) {
+      opinions.push(op);
+    }
+    if (opinionIds.length > 1) await sleep(RATE_LIMIT_DELAY_MS);
+  }
+
+  if (opinions.length === 0) return null;
+
+  // Use the first opinion's URL as the canonical link.
+  const opinionUrl = opinions[0].url;
+
+  // Single opinion: use its text directly. Multiple: concatenate with labels.
+  const text =
+    opinions.length === 1
+      ? opinions[0].text
+      : opinions
+          .map((op) => `[${OPINION_TYPE_LABELS[op.type] ?? op.type}]\n${op.text}`)
+          .join('\n\n');
+
+  return { text, dateFiled: clusterDateFiled, opinionUrl };
+}
+
+/**
+ * Fetch the most recent opinion text for a given docket ID.
+ * Uses a two-step approach: clusters endpoint (for date_filed) → opinions endpoint (for text).
  *
  * CL's opinion.date_created is a database timestamp; cluster.date_filed is the
  * actual opinion date. Returns null if no opinions found or on API error.
@@ -199,38 +237,10 @@ export async function fetchOpinionText(docketId: number): Promise<OpinionData | 
     if (!cluster?.date_filed || !cluster.sub_opinions?.length) return null;
 
     // Step 2: Fetch all sub_opinions, filter to substantive types, concatenate
-    const opinions: { type: string; text: string; url: string }[] = [];
-    for (const subUrl of cluster.sub_opinions) {
-      const opId = extractOpinionId(subUrl);
-      if (!opId) continue;
-      const op = await fetchSingleOpinion(opId);
-      if (op && !PROCEDURAL_OPINION_TYPES.has(op.type)) {
-        opinions.push(op);
-      }
-      if (cluster.sub_opinions.length > 1) await sleep(RATE_LIMIT_DELAY_MS);
-    }
-
-    if (opinions.length === 0) return null;
-
-    // Use the first opinion's URL as the canonical link
-    const opinionUrl = opinions[0].url;
-
-    // Single opinion: use its text directly. Multiple: concatenate with labels.
-    let combinedText: string;
-    if (opinions.length === 1) {
-      combinedText = opinions[0].text;
-    } else {
-      combinedText = opinions
-        .map((op) => {
-          const label = OPINION_TYPE_LABELS[op.type] ?? op.type;
-          return `[${label}]\n${op.text}`;
-        })
-        .join('\n\n');
-    }
-
-    const text = combinedText;
-
-    return { text, dateFiled: cluster.date_filed, opinionUrl };
+    const opinionIds = cluster.sub_opinions
+      .map(extractOpinionId)
+      .filter((id): id is string => id !== null);
+    return await buildOpinionDataFromSubOpinions(opinionIds, cluster.date_filed);
   } catch (err) {
     console.warn(`[courtlistener] fetchOpinionText(${docketId}) failed:`, err);
     return null;
@@ -264,7 +274,7 @@ export function buildOpinionContentItem(
   };
 }
 
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const token = process.env.COURTLISTENER_API_TOKEN;
   const headers: Record<string, string> = {
     Accept: 'application/json',
