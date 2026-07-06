@@ -479,9 +479,11 @@ async function runPostCategorySteps(
   await snapshotCrec();
   await snapshotRhetoric();
 
-  // Opinion-first CL pass: find opinions issued this week for ANY matching docket
-  const { tryOpinionFirstPass } = await import('@/lib/services/cl-bulk-staging');
-  await tryOpinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
+  // Opinion-first CL pass: find opinions issued this week for ANY matching docket.
+  // Uses the CL API in production (bulk staging tables are absent there); falls
+  // back to staging when loaded (bulk backfill context).
+  const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
+  await opinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
 
   let embeddingsProcessed = 0;
   try {

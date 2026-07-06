@@ -21,6 +21,7 @@ import {
 import { storeDocuments } from '@/lib/services/document-store';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { getWeekRanges } from '@/lib/utils/date-utils';
 
 interface BackfillOptions {
   category?: string;
@@ -101,11 +102,34 @@ async function opinionExists(caseId: string): Promise<boolean> {
   return !!row;
 }
 
-/** Try opinion-first approach; returns true if it handled the request. */
+/**
+ * Opinion-first approach for a date range: find opinions by issue date (via the
+ * bulk-staging dispatcher, which uses the CL API when staging is absent). Chunked
+ * by week for resumability and to stay under the per-query page cap. Returns true
+ * when a date range was given (opinion-first is the intended path for ranges),
+ * so the caller skips the docket-first fallback.
+ */
 async function tryOpinionFirst(options: BackfillOptions): Promise<boolean> {
   if (!options.from || !options.to) return false;
-  const { tryOpinionFirstPass } = await import('@/lib/services/cl-bulk-staging');
-  return (await tryOpinionFirstPass(options.from, options.to, options.dryRun)).docketsFound > 0;
+  const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
+
+  const weeks = getWeekRanges(options.from, options.to);
+  let totalOpinions = 0;
+  let totalDocs = 0;
+  for (const week of weeks) {
+    const r = await opinionFirstPass(week.start, week.end, options.dryRun);
+    totalOpinions += r.docketsFound;
+    totalDocs += r.opinionsStored;
+    console.log(
+      `[backfill-opinions] week ${week.start}→${week.end}: ` +
+        `${r.docketsFound} opinions, ${r.opinionsStored} docs`,
+    );
+  }
+  console.log(
+    `[backfill-opinions] Opinion-first total (${weeks.length} weeks): ` +
+      `${totalOpinions} opinions, ${totalDocs} docs`,
+  );
+  return true;
 }
 
 async function run(options: BackfillOptions): Promise<void> {
