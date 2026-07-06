@@ -1,5 +1,6 @@
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
 export const CL_BASE_URL = 'https://www.courtlistener.com';
 export const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
@@ -147,10 +148,11 @@ async function fetchSingleOpinion(
   opinionId: string,
 ): Promise<{ type: string; text: string; url: string } | null> {
   const apiUrl = `${CL_API_V4}/opinions/${opinionId}/?fields=plain_text,id,type,absolute_url`;
-  const res = await fetch(apiUrl, {
-    headers: getAuthHeaders(),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
+  const res = await fetchWithRetry(
+    apiUrl,
+    { headers: getAuthHeaders() },
+    { label: 'cl-opinion', timeoutMs: FETCH_TIMEOUT_MS },
+  );
   if (!res.ok) return null;
 
   const op: ClOpinionResult = await res.json();
@@ -226,10 +228,11 @@ export async function fetchOpinionText(docketId: number): Promise<OpinionData | 
       order_by: '-date_filed',
     });
     const clusterUrl = `${CL_API_V4}/clusters/?${clusterQs.toString()}`;
-    const clusterRes = await fetch(clusterUrl, {
-      headers: getAuthHeaders(),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    const clusterRes = await fetchWithRetry(
+      clusterUrl,
+      { headers: getAuthHeaders() },
+      { label: 'cl-cluster', timeoutMs: FETCH_TIMEOUT_MS },
+    );
     if (!clusterRes.ok) return null;
 
     const clusterData: ClClusterResponse = await clusterRes.json();
@@ -312,10 +315,11 @@ export async function fetchCourtListenerRecent(params: ClParams): Promise<Conten
 
   for (const p of expanded) {
     const url = buildSearchUrl(p);
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    const response = await fetchWithRetry(
+      url,
+      { headers: getAuthHeaders() },
+      { label: 'cl-search', timeoutMs: FETCH_TIMEOUT_MS },
+    );
     if (!response.ok) {
       console.error(`[courtlistener] HTTP ${response.status}`);
       continue;
@@ -335,10 +339,11 @@ async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<
   let page = 0;
 
   while (url && page < maxPages) {
-    const response = await fetch(url, {
-      headers: getAuthHeaders(),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    const response = await fetchWithRetry(
+      url,
+      { headers: getAuthHeaders() },
+      { label: 'cl-search-page', timeoutMs: FETCH_TIMEOUT_MS },
+    );
     if (!response.ok) {
       if (page === 0) throw new Error(`[courtlistener] HTTP ${response.status} on page ${page}`);
       console.error(`[courtlistener] HTTP ${response.status} on page ${page}, returning partial`);

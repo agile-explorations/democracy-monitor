@@ -134,4 +134,28 @@ describe('fetchWithRetry', () => {
     // nosemgrep: opengrep.no-mock-call-assertions — init passthrough is the behavior under test; return value can't prove forwarding
     expect(mockFetch).toHaveBeenCalledWith('https://example.com/api', init);
   });
+
+  it('gives each attempt a fresh timeout signal so a timed-out request can retry', async () => {
+    // First attempt "times out" (network error), second succeeds.
+    mockFetch
+      .mockRejectedValueOnce(new DOMException('The operation was aborted', 'TimeoutError'))
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const response = await fetchWithRetry(
+      'https://example.com',
+      { headers: { A: '1' } },
+      {
+        maxAttempts: 3,
+        baseDelayMs: 100,
+        timeoutMs: 5000,
+      },
+    );
+
+    expect(response.ok).toBe(true);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    // nosemgrep: opengrep.no-mock-call-assertions — a mocked fetch ignores the signal, so a fresh-per-attempt signal can only be verified by inspecting the calls
+    const signals = mockFetch.mock.calls.map((c) => (c[1] as RequestInit).signal);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[0]).not.toBe(signals[1]); // fresh per attempt, not a reused (pre-aborted) signal
+  });
 });

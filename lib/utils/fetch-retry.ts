@@ -4,6 +4,12 @@ interface FetchRetryOptions {
   maxAttempts?: number;
   baseDelayMs?: number;
   label?: string;
+  /**
+   * Per-attempt timeout. A fresh AbortSignal.timeout is created for each attempt
+   * (a single reused signal would be pre-aborted on retry), so a hung request
+   * aborts and is retried like any other network error.
+   */
+  timeoutMs?: number;
 }
 
 /** Status codes that should trigger a retry. */
@@ -28,12 +34,15 @@ export async function fetchWithRetry(
   const maxAttempts = options?.maxAttempts ?? 3;
   const baseDelayMs = options?.baseDelayMs ?? 2000;
   const label = options?.label ?? url.slice(0, 60);
+  const timeoutMs = options?.timeoutMs;
 
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(url, init);
+      // Fresh timeout signal per attempt — a reused one would be pre-aborted on retry.
+      const attemptInit = timeoutMs ? { ...init, signal: AbortSignal.timeout(timeoutMs) } : init;
+      const response = await fetch(url, attemptInit);
 
       if (response.ok || !isRetryableStatus(response.status)) {
         return response;
