@@ -17,30 +17,17 @@ export class AnthropicProvider implements AIProvider {
   }
 
   async complete(prompt: string, options?: AICompletionOptions): Promise<AICompletionResult> {
-    const start = Date.now();
-    const client = this.getClient();
-
-    const response = await client.messages.create({
-      model: options?.model || 'claude-sonnet-4-5-20250929',
-      max_tokens: options?.maxTokens || 1024,
-      system: options?.systemPrompt || '',
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const content = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
-
-    return {
-      content,
-      model: response.model,
-      tokensUsed: {
-        input: response.usage.input_tokens,
-        output: response.usage.output_tokens,
-      },
-      latencyMs: Date.now() - start,
-    };
+    // Drive the request over the streaming API even though callers want the whole
+    // result. A non-streaming messages.create() holds an idle HTTP connection until
+    // the entire response is ready; long generations (e.g. term summaries near the
+    // token cap) exceed the socket idle timeout and fail with APIConnectionError.
+    // Streaming keeps data flowing via SSE, so the connection never idles out.
+    const stream = this.completeStream(prompt, options);
+    let next = await stream.next();
+    while (!next.done) {
+      next = await stream.next();
+    }
+    return next.value;
   }
 
   async *completeStream(

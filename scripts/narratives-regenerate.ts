@@ -25,6 +25,7 @@ interface Args {
   category?: string;
   resend: boolean;
   resendOnly: boolean;
+  rebuildTermChain: boolean;
 }
 
 function parseArgs(): Args {
@@ -40,10 +41,11 @@ Options:
   --type <weekly|term|all>  Regenerate weekly summary, term summary, or both
   --category <key>         Regenerate a specific category narrative
   --resend                 Resend correction email after regenerating weekly summary
-  --resend-only            Send correction email for existing weekly summary (no regeneration)`,
+  --resend-only            Send correction email for existing weekly summary (no regeneration)
+  --rebuild-term-chain     Rebuild the cumulative term-summary chain over --from..--to (ascending)`,
   );
 
-  const args: Args = { week: '', resend: false, resendOnly: false };
+  const args: Args = { week: '', resend: false, resendOnly: false, rebuildTermChain: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--week') args.week = argv[++i];
     else if (argv[i] === '--from') args.from = argv[++i];
@@ -52,10 +54,18 @@ Options:
     else if (argv[i] === '--category') args.category = argv[++i];
     else if (argv[i] === '--resend') args.resend = true;
     else if (argv[i] === '--resend-only') args.resendOnly = true;
+    else if (argv[i] === '--rebuild-term-chain') args.rebuildTermChain = true;
   }
   if (args.resendOnly) {
     if (!args.week) {
       console.error('ERROR: --resend-only requires --week');
+      process.exit(1);
+    }
+    return args;
+  }
+  if (args.rebuildTermChain) {
+    if (!args.from) {
+      console.error('ERROR: --rebuild-term-chain requires --from');
       process.exit(1);
     }
     return args;
@@ -95,6 +105,29 @@ async function getWeeksInRange(from: string, to: string): Promise<string[]> {
   return [...new Set(rows.map((r) => String(r.weekOf)))].sort();
 }
 
+/**
+ * Rebuild the cumulative term-summary chain over a date range in ascending order.
+ * Each week reads its already-stored weekly overview and chains off the preceding
+ * week's freshly-rebuilt term summary, so the range must be processed in order and
+ * anchored on the last correct term summary before `from`. Halts on the first
+ * failure (regenerateTermSummary throws) to avoid chaining off a stale predecessor;
+ * re-running resumes safely from stored state.
+ */
+async function rebuildTermChain(from: string, to?: string): Promise<void> {
+  const { regenerateTermSummary } = await import('@/lib/services/narrative-pipeline');
+  const end = to ?? new Date().toISOString().slice(0, 10);
+  const weeks = await getWeeksInRange(from, end);
+  console.log(`[regenerate] Term-chain rebuild: ${weeks.length} weeks from ${from} to ${end}`);
+
+  let completed = 0;
+  for (const week of weeks) {
+    console.log(`\n[regenerate] === Term summary ${week} (${completed + 1}/${weeks.length}) ===`);
+    await regenerateTermSummary(week);
+    completed++;
+  }
+  console.log(`\n[regenerate] Term-chain rebuild complete: ${completed}/${weeks.length} weeks`);
+}
+
 async function main(): Promise<void> {
   if (!isDbAvailable()) {
     console.error('ERROR: DATABASE_URL not configured');
@@ -108,6 +141,14 @@ async function main(): Promise<void> {
     const { sendCorrectionDigest } = await import('@/lib/services/subscriber-service');
     const sent = await sendCorrectionDigest(args.week);
     console.log(`[regenerate] Correction email sent to ${sent} subscribers for week ${args.week}`);
+    return;
+  }
+
+  // Term-chain rebuild: after correcting historical weeks, the cumulative term
+  // summaries are stale (built on the old weekly summaries). Rebuild them in
+  // ascending order so each week chains off its freshly-rebuilt predecessor.
+  if (args.rebuildTermChain) {
+    await rebuildTermChain(args.from!, args.to);
     return;
   }
 

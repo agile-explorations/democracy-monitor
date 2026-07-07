@@ -36,10 +36,11 @@ import {
   countL2AssessmentsForCategoryWeek,
   enrichCategoryData,
   getPreviousWeekNarrative,
-  getTermNarrative,
+  getTermNarrativeBefore,
   getTermStatistics,
   getTotalDocumentCount,
   getTrajectoryTable,
+  getWeeklyNarrative,
 } from './narrative-queries';
 import {
   deleteNarrativeDrafts,
@@ -262,24 +263,54 @@ async function generateSummaries(
   console.log('[narratives]   weekly summary: stored (3-pass)');
 
   try {
-    const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
-      getTermNarrative(),
-      getTrajectoryTable(T2_INAUGURATION, weekOf),
-      getTermStatistics(T2_INAUGURATION, weekOf),
-    ]);
-    const termInput: TermSummaryInput = {
-      weekOf,
-      weeklySummary: { expert: weeklyResult.expert, public: weeklyResult.public },
-      previousTermSummary,
-      trajectoryTable,
-      statistics,
-    };
-    const termResult = await generateTermSummary(termInput);
-    await storeMultiPassNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
-    console.log('[narratives]   term summary: stored (3-pass)');
+    await buildAndStoreTermSummary(weekOf, {
+      expert: weeklyResult.expert,
+      public: weeklyResult.public,
+    });
   } catch (err) {
     console.error('[narratives]   term summary: failed:', err);
   }
+}
+
+/**
+ * Build and store the cumulative term summary for a week, chaining off the
+ * term summary of the immediately preceding week (getTermNarrativeBefore).
+ */
+async function buildAndStoreTermSummary(
+  weekOf: string,
+  weeklySummary: { expert: string; public: string },
+): Promise<void> {
+  const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
+    getTermNarrativeBefore(weekOf),
+    getTrajectoryTable(T2_INAUGURATION, weekOf),
+    getTermStatistics(T2_INAUGURATION, weekOf),
+  ]);
+  const termInput: TermSummaryInput = {
+    weekOf,
+    weeklySummary,
+    previousTermSummary,
+    trajectoryTable,
+    statistics,
+  };
+  const termResult = await generateTermSummary(termInput);
+  await storeMultiPassNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
+  console.log('[narratives]   term summary: stored (3-pass)');
+}
+
+/**
+ * Regenerate ONLY the cumulative term summary for a week, reading that week's
+ * already-stored weekly overview and chaining off the preceding week's term
+ * summary. Intended for ordered historical rebuilds after a data correction:
+ * process weeks ascending so each reads its freshly-rebuilt predecessor. Throws
+ * on generation failure so a caller can halt rather than poison the chain.
+ */
+export async function regenerateTermSummary(weekOf: string): Promise<void> {
+  const weekly = await getWeeklyNarrative(weekOf);
+  if (!weekly) {
+    console.error(`[narratives] term summary ${weekOf}: no stored weekly summary — skipping`);
+    return;
+  }
+  await buildAndStoreTermSummary(weekOf, weekly);
 }
 
 /**
