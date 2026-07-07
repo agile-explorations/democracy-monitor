@@ -375,42 +375,9 @@ export async function getPreviousWeekNarrative(
 }
 
 // ---------------------------------------------------------------------------
-// 10. Term narrative
+// 10. Term narrative — moved to term-summary-queries.ts (living-summary data
+// access: current summary, latest weekly, freshness, excerpts).
 // ---------------------------------------------------------------------------
-
-/** Load both versions of the stored term summary for a specific week. */
-async function loadStoredTermSummary(
-  week: string,
-): Promise<{ expert: string; public: string } | null> {
-  const [expert, pub] = await Promise.all([
-    getStoredNarrative(TERM_SUMMARY_CATEGORY, week, 'expert'),
-    getStoredNarrative(TERM_SUMMARY_CATEGORY, week, 'public'),
-  ]);
-  if (!expert && !pub) return null;
-  return { expert: expert?.content ?? '', public: pub?.content ?? '' };
-}
-
-/** Week of the most recent stored term summary. Returns null when none exist. */
-async function latestTermSummaryWeek(): Promise<string | null> {
-  const db = getDb();
-  const rows = await db.execute(sql`
-    SELECT week_of FROM narratives
-    WHERE category = ${TERM_SUMMARY_CATEGORY} AND version = 'expert'
-    ORDER BY week_of DESC LIMIT 1
-  `);
-  const row = (rows.rows as Row[])[0];
-  return row ? String(row.week_of).slice(0, 10) : null;
-}
-
-/** Get the current (living) term summary narrative (both versions). */
-export async function getTermNarrative(): Promise<{ expert: string; public: string } | null> {
-  if (!isDbAvailable()) return null;
-  const week = await latestTermSummaryWeek();
-  return week ? loadStoredTermSummary(week) : null;
-}
-
-// Living-term-summary data access (latest weekly, freshness, excerpts) lives in
-// term-summary-queries.ts to keep this module under the file-size limit.
 
 // ---------------------------------------------------------------------------
 // 11. Source health for the week

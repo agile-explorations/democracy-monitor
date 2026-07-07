@@ -11,28 +11,49 @@ import { getStoredNarrative } from './narrative-store';
 
 type Row = Record<string, unknown>;
 
+/** Latest stored week (by week_of) for a narrative category, or null. */
+async function latestNarrativeWeek(category: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT week_of FROM narratives
+    WHERE category = ${category} AND version = 'expert'
+    ORDER BY week_of DESC LIMIT 1
+  `);
+  const row = (rows.rows as Row[])[0];
+  return row ? String(row.week_of).slice(0, 10) : null;
+}
+
+/** Load both versions of a category's narrative for a week, with the week. */
+async function loadLatestNarrative(
+  category: string,
+): Promise<{ weekOf: string; expert: string; public: string } | null> {
+  if (!isDbAvailable()) return null;
+  const weekOf = await latestNarrativeWeek(category);
+  if (!weekOf) return null;
+  const [expert, pub] = await Promise.all([
+    getStoredNarrative(category, weekOf, 'expert'),
+    getStoredNarrative(category, weekOf, 'public'),
+  ]);
+  if (!expert && !pub) return null;
+  return { weekOf, expert: expert?.content ?? '', public: pub?.content ?? '' };
+}
+
 /** Get the most recent stored weekly overview narrative and its week. */
 export async function getLatestWeeklyNarrative(): Promise<{
   weekOf: string;
   expert: string;
   public: string;
 } | null> {
-  if (!isDbAvailable()) return null;
-  const db = getDb();
-  const rows = await db.execute(sql`
-    SELECT week_of FROM narratives
-    WHERE category = ${OVERVIEW_CATEGORY} AND version = 'expert'
-    ORDER BY week_of DESC LIMIT 1
-  `);
-  const row = (rows.rows as Row[])[0];
-  if (!row) return null;
-  const weekOf = String(row.week_of).slice(0, 10);
-  const [expert, pub] = await Promise.all([
-    getStoredNarrative(OVERVIEW_CATEGORY, weekOf, 'expert'),
-    getStoredNarrative(OVERVIEW_CATEGORY, weekOf, 'public'),
-  ]);
-  if (!expert && !pub) return null;
-  return { weekOf, expert: expert?.content ?? '', public: pub?.content ?? '' };
+  return loadLatestNarrative(OVERVIEW_CATEGORY);
+}
+
+/** Get the current living term summary (both versions) and the week it reflects. */
+export async function getCurrentTermSummary(): Promise<{
+  weekOf: string;
+  expert: string;
+  public: string;
+} | null> {
+  return loadLatestNarrative(TERM_SUMMARY_CATEGORY);
 }
 
 /**

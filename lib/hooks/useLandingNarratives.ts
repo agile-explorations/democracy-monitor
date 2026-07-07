@@ -6,10 +6,18 @@ interface NarrativeData {
   public: string;
 }
 
+export interface SignificantWeekLink {
+  weekOf: string;
+  reasons: { type: string; detail: string }[];
+  rank: number;
+}
+
 interface LandingNarrativesState {
   termNarrative: NarrativeData | null;
+  termWeekOf: string | null;
   termNarrativeLoading: boolean;
   termEditorial: EditorialRecord | null;
+  significantWeeks: SignificantWeekLink[];
   weeklyNarrative: NarrativeData | null;
   weeklyNarrativeLoading: boolean;
   weeklyEditorial: EditorialRecord | null;
@@ -18,7 +26,8 @@ interface LandingNarrativesState {
 async function fetchNarrative(
   url: string,
 ): Promise<{ narrative: NarrativeData | null; editorial: EditorialRecord | null }> {
-  const [narRes, edRes] = await Promise.all([fetch(url), fetch(`${url}&editorial=true`)]);
+  const sep = url.includes('?') ? '&' : '?';
+  const [narRes, edRes] = await Promise.all([fetch(url), fetch(`${url}${sep}editorial=true`)]);
   const narData = narRes.ok ? await narRes.json() : null;
   const edData = edRes.ok ? await edRes.json() : null;
   const hasContent = narData?.expert || narData?.public;
@@ -30,9 +39,10 @@ async function fetchNarrative(
 }
 
 /**
- * Fetches term summary and weekly overview narratives for the landing page.
+ * Fetches narratives for the landing page.
  *
- * - Term summary: fetched once using the latest available week.
+ * - Term summary: the single living document — fetched once, week-independent.
+ * - Significant weeks: deterministic notable-week index — fetched once.
  * - Weekly overview: re-fetched when the selected week changes.
  */
 export function useLandingNarratives(
@@ -40,29 +50,37 @@ export function useLandingNarratives(
   selectedWeek: string | null,
 ): LandingNarrativesState {
   const [termNarrative, setTermNarrative] = useState<NarrativeData | null>(null);
+  const [termWeekOf, setTermWeekOf] = useState<string | null>(null);
   const [termEditorial, setTermEditorial] = useState<EditorialRecord | null>(null);
   const [termNarrativeLoading, setTermNarrativeLoading] = useState(false);
+  const [significantWeeks, setSignificantWeeks] = useState<SignificantWeekLink[]>([]);
   const [weeklyNarrative, setWeeklyNarrative] = useState<NarrativeData | null>(null);
   const [weeklyEditorial, setWeeklyEditorial] = useState<EditorialRecord | null>(null);
   const [weeklyNarrativeLoading, setWeeklyNarrativeLoading] = useState(false);
 
-  // Fetch term summary narrative for the selected (or latest) week
+  // Fetch the living term summary and significant-weeks index once
   useEffect(() => {
-    const week = selectedWeek ?? latestWeek;
-    if (!week) return;
     let cancelled = false;
     setTermNarrativeLoading(true);
     (async () => {
       try {
-        const result = await fetchNarrative(`/api/narratives/term-summary?weekOf=${week}`);
+        const [result, swRes] = await Promise.all([
+          fetchNarrative('/api/narratives/term-summary'),
+          fetch('/api/significant-weeks'),
+        ]);
+        const swData = swRes.ok ? await swRes.json() : null;
         if (!cancelled) {
           setTermNarrative(result.narrative);
+          setTermWeekOf((result.narrative as { weekOf?: string } | null)?.weekOf ?? null);
           setTermEditorial(result.editorial);
+          setSignificantWeeks(Array.isArray(swData?.weeks) ? swData.weeks : []);
         }
       } catch {
         if (!cancelled) {
           setTermNarrative(null);
+          setTermWeekOf(null);
           setTermEditorial(null);
+          setSignificantWeeks([]);
         }
       } finally {
         if (!cancelled) setTermNarrativeLoading(false);
@@ -71,7 +89,7 @@ export function useLandingNarratives(
     return () => {
       cancelled = true;
     };
-  }, [selectedWeek, latestWeek]);
+  }, []);
 
   // Fetch weekly overview narrative when a week is selected
   useEffect(() => {
@@ -102,8 +120,10 @@ export function useLandingNarratives(
 
   return {
     termNarrative,
+    termWeekOf,
     termNarrativeLoading,
     termEditorial,
+    significantWeeks,
     weeklyNarrative,
     weeklyNarrativeLoading,
     weeklyEditorial,

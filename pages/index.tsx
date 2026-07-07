@@ -6,6 +6,7 @@ import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { EmbedButton } from '@/components/overview/EmbedButton';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
+import { SignificantWeeksList } from '@/components/overview/SignificantWeeksList';
 import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
@@ -22,7 +23,7 @@ import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
 import type { ConcernLevel } from '@/lib/types';
-import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { formatApproxCount } from '@/lib/utils/math';
 
 export default function Home() {
@@ -112,8 +113,10 @@ export default function Home() {
 
   const {
     termNarrative,
+    termWeekOf,
     termNarrativeLoading,
     termEditorial,
+    significantWeeks,
     weeklyNarrative,
     weeklyNarrativeLoading,
     weeklyEditorial,
@@ -296,10 +299,15 @@ export default function Home() {
               <OverviewStatusSummary statusCounts={filteredStatusCounts} />
             </section>
 
-            {/* Term summary narrative — both reading levels */}
+            {/* Living term summary — both reading levels */}
             <section id="term-summary" className="group">
               <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
                 Term Summary
+                {termWeekOf && (
+                  <span className="ml-2 text-[11px] font-normal text-dm-muted">
+                    as of {formatWeekLabelWithYear(termWeekOf)}
+                  </span>
+                )}
                 <a
                   href="#term-summary"
                   className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
@@ -315,6 +323,7 @@ export default function Home() {
                 editorial={termEditorial}
                 placeholder="Term summary narrative coming soon."
               />
+              <SignificantWeeksList weeks={significantWeeks} />
             </section>
 
             {readingLevel === 'detailed' && (
