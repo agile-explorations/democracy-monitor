@@ -155,8 +155,10 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
   if (nc.missingSummaryWeeks > 0) {
     console.log(`    ${nc.missingSummaryWeeks} missing (run: pnpm scores:enrich --narratives)`);
   }
-  const termMark = nc.weeksWithTermSummary > 0 ? PASS : WARN;
-  console.log(`  ${termMark} Term:     ${nc.weeksWithTermSummary} term summary snapshots stored`);
+  const termMark = nc.termSummaryFresh ? PASS : WARN;
+  console.log(
+    `  ${termMark} Term:     living term summary is ${nc.termSummaryFresh ? 'fresh' : 'stale or missing (regenerates at next snapshot; or run: pnpm narratives:regenerate --type term)'}`,
+  );
   const staleMark = nc.staleWeeks === 0 ? PASS : WARN;
   console.log(
     `  ${staleMark} Stale:    ${nc.staleWeeks} narratives generated before layer recomputation`,

@@ -1,6 +1,7 @@
 /** Layer 2, layer score, and metadata_only queries for data validation. */
 
 import { eq, sql, and, gte, lt, inArray } from 'drizzle-orm';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
@@ -12,6 +13,7 @@ import type {
   MetadataOnlyStats,
   NarrativeCoverage,
 } from './data-validation-service';
+import { getTermSummaryFreshness } from './term-summary-queries';
 
 // ---------------------------------------------------------------------------
 // Shared period definitions
@@ -331,11 +333,14 @@ const EMPTY_NARRATIVE_COVERAGE: NarrativeCoverage = {
   staleWeeks: 0,
   weeksWithNarratives: 0,
   weeksWithSummary: 0,
-  weeksWithTermSummary: 0,
+  termSummaryFresh: false,
   missingSummaryWeeks: 0,
 };
 
-function toNarrativeCoverage(row: Record<string, unknown>): NarrativeCoverage {
+function toNarrativeCoverage(
+  row: Record<string, unknown>,
+  termSummaryFresh: boolean,
+): NarrativeCoverage {
   return {
     elevatedWeeks: Number(row.elevated_weeks ?? 0),
     narrativeWeeks: Number(row.narrative_weeks ?? 0),
@@ -343,7 +348,7 @@ function toNarrativeCoverage(row: Record<string, unknown>): NarrativeCoverage {
     staleWeeks: Number(row.stale_weeks ?? 0),
     weeksWithNarratives: Number(row.weeks_with_narratives ?? 0),
     weeksWithSummary: Number(row.weeks_with_summary ?? 0),
-    weeksWithTermSummary: Number(row.weeks_with_term_summary ?? 0),
+    termSummaryFresh,
     missingSummaryWeeks: Number(row.missing_summary_weeks ?? 0),
   };
 }
@@ -371,9 +376,6 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
     summary_weeks AS (
       SELECT DISTINCT week_of FROM narratives WHERE category = '_overview'
     ),
-    term_weeks AS (
-      SELECT DISTINCT week_of FROM narratives WHERE category = '_term_summary'
-    ),
     narrated_weeks AS (
       SELECT DISTINCT e.week_of
       FROM elevated e
@@ -389,7 +391,6 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
             THEN (e.category, e.week_of) END)::int AS stale_weeks,
       (SELECT count(*)::int FROM narrated_weeks) AS weeks_with_narratives,
       (SELECT count(*)::int FROM summary_weeks) AS weeks_with_summary,
-      (SELECT count(*)::int FROM term_weeks) AS weeks_with_term_summary,
       (SELECT count(*)::int FROM narrated_weeks nw
        WHERE NOT EXISTS (SELECT 1 FROM summary_weeks sw WHERE sw.week_of = nw.week_of)
       ) AS missing_summary_weeks
@@ -397,5 +398,7 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
     LEFT JOIN narr n ON n.category = e.category AND n.week_of = e.week_of
   `);
 
-  return toNarrativeCoverage(rows.rows[0] as Record<string, unknown>);
+  const freshness = await getTermSummaryFreshness(T2_INAUGURATION);
+  const termSummaryFresh = freshness.generatedAt !== null && !freshness.stale;
+  return toNarrativeCoverage(rows.rows[0] as Record<string, unknown>, termSummaryFresh);
 }
