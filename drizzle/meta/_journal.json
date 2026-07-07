@@ -260,6 +260,13 @@
       "when": 1774932678943,
       "tag": "0036_eminent_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1783455981300,
+      "tag": "0037_narrow_mentallo",
+      "breakpoints": true
     }
   ]
 }
