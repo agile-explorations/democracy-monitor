@@ -31,6 +31,7 @@ import {
 } from '@/lib/services/courtlistener-fetcher';
 import { storeDocuments } from '@/lib/services/document-store';
 import { sleep } from '@/lib/utils/async';
+import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 
 export interface OpinionFirstResult {
   docketsFound: number;
@@ -104,10 +105,11 @@ async function fetchOpinionSearchResults(
   let page = 0;
 
   while (next && page < maxPages) {
-    const res = await fetch(next, {
-      headers: getAuthHeaders(),
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    });
+    const res = await fetchWithRetry(
+      next,
+      { headers: getAuthHeaders() },
+      { label: 'cl-opinion-search', timeoutMs: FETCH_TIMEOUT_MS },
+    );
     if (!res.ok) {
       if (page === 0) throw new Error(`[cl-opinion-first] HTTP ${res.status} on page ${page}`);
       console.error(`[cl-opinion-first] HTTP ${res.status} on page ${page}, returning partial`);
@@ -181,10 +183,41 @@ function opinionIdsOf(row: OpinionSearchResult): string[] {
     .map(String);
 }
 
+/** Fetch one cluster's opinion text, route, and store it. Returns clusters found
+ *  (1 if substantive opinion text was retrieved) and documents stored. */
+async function storeClusterOpinion(
+  match: MatchedCluster,
+  fallbackDate: string,
+): Promise<{ found: number; stored: number }> {
+  const opinionIds = opinionIdsOf(match.row);
+  const opData = await buildOpinionDataFromSubOpinions(
+    opinionIds,
+    match.row.dateFiled ?? fallbackDate,
+  );
+  if (!opData) return { found: 0, stored: 0 };
+
+  const categories = routeMatchedCluster(match, opData.text);
+  if (categories.length === 0) return { found: 1, stored: 0 };
+
+  const item = buildOpinionContentItem(opData, {
+    caseName: match.row.caseName ?? '(untitled case)',
+    court: match.row.court ?? 'Federal Court',
+    docketId: match.row.docket_id!,
+    suitNature: match.row.suitNature || undefined,
+  });
+  let stored = 0;
+  for (const category of categories) stored += await storeDocuments([item], category);
+  return { found: 1, stored };
+}
+
 /**
  * API-based opinion-first pass. Finds opinions filed in [from, to], fetches full
  * text, routes, and stores the opinion document. Date-range capable so it powers
  * both the weekly snapshot and the historical backfill (#527).
+ *
+ * A per-cluster failure (e.g. a CL API fetch timeout) is logged and skipped so a
+ * single slow request never aborts the whole pass — important over the thousands
+ * of fetches a multi-week backfill makes, and to keep the weekly snapshot robust.
  *
  * In dryRun mode it runs the search queries (to report how many clusters match)
  * but skips per-opinion text fetches and DB writes.
@@ -213,21 +246,14 @@ export async function apiOpinionFirstPass(
       continue;
     }
 
-    const opData = await buildOpinionDataFromSubOpinions(opinionIds, match.row.dateFiled ?? to);
-    if (!opData) continue;
-    docketsFound++;
-
-    const categories = routeMatchedCluster(match, opData.text);
-    if (categories.length === 0) continue;
-
-    const item = buildOpinionContentItem(opData, {
-      caseName: match.row.caseName ?? '(untitled case)',
-      court: match.row.court ?? 'Federal Court',
-      docketId: match.row.docket_id!,
-      suitNature: match.row.suitNature || undefined,
-    });
-    for (const category of categories) {
-      opinionsStored += await storeDocuments([item], category);
+    try {
+      const { found, stored } = await storeClusterOpinion(match, to);
+      docketsFound += found;
+      opinionsStored += stored;
+    } catch (err) {
+      console.warn(
+        `[cl-opinion-first] cluster ${match.row.cluster_id} skipped: ${(err as Error).message}`,
+      );
     }
 
     if ((i + 1) % 100 === 0) {
