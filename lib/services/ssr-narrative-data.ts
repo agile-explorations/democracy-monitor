@@ -10,7 +10,7 @@ import { sql } from 'drizzle-orm';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { ConcernAssessment, EditorialRecord } from '@/lib/types';
-import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
+import { OVERVIEW_CATEGORY } from '@/lib/types';
 import { getEditorialRecord, getStoredNarratives } from './narrative-store';
 
 const MIN_NARRATIVE_LENGTH = 500;
@@ -57,8 +57,6 @@ export interface WeeklyHubPageData {
   weekOf: string;
   overview: { expert: string; public: string };
   overviewEditorial: EditorialRecord;
-  termSummary: { expert: string; public: string };
-  termSummaryEditorial: EditorialRecord;
   elevatedCategories: WeeklyElevatedCategory[];
   prevWeek: AdjacentWeek | null;
   nextWeek: AdjacentWeek | null;
@@ -116,7 +114,7 @@ async function getNextCategoryWeek(category: string, weekOf: string): Promise<Ad
 
 /**
  * Get the previous eligible weekly hub page.
- * "Eligible" = both _overview and _term_summary expert narratives > MIN_NARRATIVE_LENGTH.
+ * "Eligible" = _overview expert narrative > MIN_NARRATIVE_LENGTH.
  */
 async function getPrevWeeklyHub(weekOf: string): Promise<AdjacentWeek | null> {
   const db = getDb();
@@ -127,13 +125,6 @@ async function getPrevWeeklyHub(weekOf: string): Promise<AdjacentWeek | null> {
       AND n.version = 'expert'
       AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
       AND n.week_of < ${weekOf}
-      AND EXISTS (
-        SELECT 1 FROM narratives t
-        WHERE t.category = ${TERM_SUMMARY_CATEGORY}
-          AND t.version = 'expert'
-          AND t.week_of = n.week_of
-          AND length(t.content) > ${MIN_NARRATIVE_LENGTH}
-      )
     ORDER BY n.week_of DESC
     LIMIT 1
   `);
@@ -153,13 +144,6 @@ async function getNextWeeklyHub(weekOf: string): Promise<AdjacentWeek | null> {
       AND n.version = 'expert'
       AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
       AND n.week_of > ${weekOf}
-      AND EXISTS (
-        SELECT 1 FROM narratives t
-        WHERE t.category = ${TERM_SUMMARY_CATEGORY}
-          AND t.version = 'expert'
-          AND t.week_of = n.week_of
-          AND length(t.content) > ${MIN_NARRATIVE_LENGTH}
-      )
     ORDER BY n.week_of ASC
     LIMIT 1
   `);
@@ -314,30 +298,22 @@ async function getElevatedCategories(weekOf: string): Promise<WeeklyElevatedCate
 
 /**
  * Fetch all data for a weekly hub SSR page.
- * Returns null if either _overview or _term_summary narrative is missing or thin.
+ * Returns null if the _overview narrative is missing or thin.
  */
 export async function getWeeklyHubPageData(weekOf: string): Promise<WeeklyHubPageData | null> {
   if (!isDbAvailable()) return null;
 
-  const [overviewNarr, termNarr, overviewEd, termEd, elevated, prevWeek, nextWeek, publishedAt] =
-    await Promise.all([
-      getStoredNarratives(OVERVIEW_CATEGORY, weekOf),
-      getStoredNarratives(TERM_SUMMARY_CATEGORY, weekOf),
-      getEditorialRecord(OVERVIEW_CATEGORY, weekOf),
-      getEditorialRecord(TERM_SUMMARY_CATEGORY, weekOf),
-      getElevatedCategories(weekOf),
-      getPrevWeeklyHub(weekOf),
-      getNextWeeklyHub(weekOf),
-      getNarrativePublishedAt(OVERVIEW_CATEGORY, weekOf),
-    ]);
+  const [overviewNarr, overviewEd, elevated, prevWeek, nextWeek, publishedAt] = await Promise.all([
+    getStoredNarratives(OVERVIEW_CATEGORY, weekOf),
+    getEditorialRecord(OVERVIEW_CATEGORY, weekOf),
+    getElevatedCategories(weekOf),
+    getPrevWeeklyHub(weekOf),
+    getNextWeeklyHub(weekOf),
+    getNarrativePublishedAt(OVERVIEW_CATEGORY, weekOf),
+  ]);
 
-  // Quality gate: both overview and term summary must have substantive expert narrative
-  if (
-    !overviewNarr.expert ||
-    overviewNarr.expert.content.length < MIN_NARRATIVE_LENGTH ||
-    !termNarr.expert ||
-    termNarr.expert.content.length < MIN_NARRATIVE_LENGTH
-  ) {
+  // Quality gate: overview must have a substantive expert narrative
+  if (!overviewNarr.expert || overviewNarr.expert.content.length < MIN_NARRATIVE_LENGTH) {
     return null;
   }
 
@@ -348,11 +324,6 @@ export async function getWeeklyHubPageData(weekOf: string): Promise<WeeklyHubPag
       public: overviewNarr.public?.content ?? '',
     },
     overviewEditorial: overviewEd,
-    termSummary: {
-      expert: termNarr.expert.content,
-      public: termNarr.public?.content ?? '',
-    },
-    termSummaryEditorial: termEd,
     elevatedCategories: elevated,
     prevWeek,
     nextWeek,
