@@ -12,6 +12,44 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-COVERAGE: Detection Coverage Recovery ✅
+
+**Status: Done (issues #525–#527).** Milestone closed.
+
+**Context:** From ~2026-04-20 the Status Heatmap went mostly-Stable. A three-prong audit (2026-07-06) established this was primarily a **detection-coverage regression**, not P1 calibration: when the historical CL/backfill pipeline wound down, high-signal sources stopped being L2-assessed. `snapshotCategory` (FR/DOJ) ran `runLayer2Assessment`, but `snapshotCrec` (floor_speech), the LegiScan bill cron, and CL-opinion enrichment never did — the backfill had been masking it. Post-4/20 Pass-1 coverage: floor_speech 100%→0%, bill 71%→0%; and live judicial-opinion ingestion had collapsed 108/wk → ~1-2/wk.
+
+**Scope vs. Actual:** 3 planned issues, all implemented.
+
+1. **#525** — restore live judicial-opinion ingestion. Root cause: the opinion-first pass depended on transient bulk staging tables (absent in prod, no API fallback). Replaced with API-based `cl-opinion-first-fetcher.ts` (type=o search by cluster `date_filed`).
+2. **#526** — wire `runLayer2Assessment` into the CREC / LegiScan / CL-opinion snapshot paths.
+3. **#527** — backfill L2 over 4/20→present for the affected source types, re-aggregate, and regenerate narratives.
+
+**#527 results (verified against production):**
+
+| Stage             | Result                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| Opinion ingestion | Recovered — 164–296 opinions/wk every week, 100% assessed                                            |
+| L2 assessment     | floor_speech / bill / opinion 100% assessed every week; **0** unassessed assessable docs in-window   |
+| Aggregation       | Every category-week fresh                                                                            |
+| Narratives        | Weekly overviews regenerated after re-assessment; term-summary chain rebuilt ascending (04-20→06-29) |
+
+The correction was material: post-reassessment, e.g. week 06-08 reads 11 ConfirmedConcern + 3 Elevated across all 14 categories — signal the coverage hole had suppressed.
+
+**Key decisions:**
+
+- **Term summaries are cumulative and must be rebuilt in order.** Each `term[N] = f(term[N-1], weekly[N], trajectory/stats as-of N)`. Refreshing weekly summaries alone left every term summary — including the latest displayed one — built on stale content. `getTermNarrative()` returns the _globally-latest_ summary as "previous," which is correct only for forward operation; regenerating a historical week with it splices future content backward. Added `getTermNarrativeBefore(weekOf)` (the immediately-preceding week) and a `narratives:regenerate --rebuild-term-chain --from --to` mode that rebuilds ascending, each week chaining off its freshly-rebuilt predecessor, anchored on the last pre-hole term summary. Halt-on-failure so a flaky week never poisons downstream.
+- **Non-streaming Anthropic `complete()` idle-times-out on long generations.** Term-summary generation failed reliably with `APIConnectionError` after ~243s: a non-streaming `messages.create()` holds an idle HTTP connection until the whole response is ready, and long outputs (near the token cap) exceed the socket idle timeout. Category/weekly calls finish faster and slipped through. Fixed by routing `complete()` through the existing streaming path — SSE keeps the connection alive (first token ~1.9s, full response ~69s). Hardens _every_ long Claude call across the pipeline, not just narratives.
+
+**Spec deviations:** none.
+
+**Lessons learned:**
+
+- **Audit coverage per-source, per-week — aggregate volume hides source dropout.** Overall doc volume stayed stable (~440–730/wk) across the regression because FR/DOJ held steady while floor_speech/bill/opinion silently fell to 0% assessed. FR spot-checks and the ~1% audit-FN rate only sample docs that entered Pass 1, so they were structurally blind to sources that dropped out entirely.
+- **A "narr_fresh" check that maxes category + overview together can mask a stale overview.** The 05-18 weekly overview was stale (prior run died after its categories, before its overview) but looked fresh because its category narratives were recent. Verify each narrative class separately.
+- **Long LLM generations should stream.** Non-streaming completions are exposed to socket idle timeouts proportional to output length. See the streaming gotcha in PROJECT_KNOWLEDGE.
+
+---
+
 ## Sprint R-CALIBRATE: P1 Calibration for NC Compliance ✅
 
 **Status: Done (issues #485-#487).** Milestone 73.

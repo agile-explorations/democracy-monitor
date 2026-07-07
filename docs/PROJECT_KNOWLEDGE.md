@@ -217,6 +217,8 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 - **Eliminate data rather than constraining LLM behavior.** If the LLM reproduces data verbatim, the fix is to give it less data, not more instructions. Pre-computing summaries and removing raw data from the prompt is a structural fix. (R-NAR)
 - **P1 calibration lever is category `description`.** Topic-area framing ("Are X being protected?") over-flags; threat-vector framing ("Government actions that reduce X") filters to erosion-relevant docs. (R-CAL1)
 - **Baseline dependencies compound.** Moving from z-score baseline comparison to absolute thresholds eliminates an entire class of contamination problems. (R1-DET)
+- **Stream long Claude generations.** A non-streaming `messages.create()` holds an idle HTTP connection until the whole response is ready; long outputs (near the token cap, e.g. term summaries) exceed the socket idle timeout and fail with `APIConnectionError` (~243s) while shorter calls slip through. `AnthropicProvider.complete()` now drives the streaming API internally — do not "optimize" it back to non-streaming. (R-COVERAGE)
+- **Term summaries are cumulative — rebuild the chain in order after a data correction.** Each week chains off the previous week's term summary; `getTermNarrative()` returns the globally-latest, which corrupts a historical regen. Use `getTermNarrativeBefore()` + `narratives:regenerate --rebuild-term-chain --from --to` (ascending, halt-on-failure). (R-COVERAGE)
 
 ### Code quality
 
