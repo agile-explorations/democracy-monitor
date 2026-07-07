@@ -103,5 +103,6 @@ export type {
   NarrativeFailure,
   WeeklySummaryInput,
   TermSummaryInput,
+  TermSignificantWeek,
   TermStatistics,
 } from './narrative';

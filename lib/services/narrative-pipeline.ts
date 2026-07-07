@@ -1,8 +1,8 @@
-import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, ne, sql } from 'drizzle-orm';
 import { ACTIVE_SOURCES, T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { documents, narrativeFailures, weeklyAggregates } from '@/lib/db/schema';
+import { documents, narrativeFailures, narratives, weeklyAggregates } from '@/lib/db/schema';
 import type {
   MultiPassNarrativeResult,
   NarrativeLayerData,
@@ -36,17 +36,21 @@ import {
   countL2AssessmentsForCategoryWeek,
   enrichCategoryData,
   getPreviousWeekNarrative,
-  getTermNarrativeBefore,
   getTermStatistics,
   getTotalDocumentCount,
   getTrajectoryTable,
-  getWeeklyNarrative,
 } from './narrative-queries';
 import {
   deleteNarrativeDrafts,
   storeMultiPassNarratives,
   storeNarratives,
 } from './narrative-store';
+import { recomputeSignificantWeeks } from './significant-weeks-service';
+import {
+  getLatestWeeklyNarrative,
+  getOverviewExcerpts,
+  getTermSummaryFreshness,
+} from './term-summary-queries';
 
 /**
  * Minimum ratio of aggregated categories to actual document categories.
@@ -243,7 +247,7 @@ async function generateCategoryNarratives(
   return { narratives, failed };
 }
 
-/** Phase 2+3: Generate weekly summary and incremental term summary. */
+/** Phase 2: Generate the weekly summary. (The living term summary regenerates separately.) */
 async function generateSummaries(
   weekOf: string,
   categories: NarrativeLayerData[],
@@ -261,63 +265,81 @@ async function generateSummaries(
   const weeklyResult = await generateWeeklySummary(weeklyInput);
   await storeMultiPassNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);
   console.log('[narratives]   weekly summary: stored (3-pass)');
-
-  try {
-    await buildAndStoreTermSummary(weekOf, {
-      expert: weeklyResult.expert,
-      public: weeklyResult.public,
-    });
-  } catch (err) {
-    console.error('[narratives]   term summary: failed:', err);
-  }
 }
 
 /**
- * Build and store the cumulative term summary for a week, chaining off the
- * term summary of the immediately preceding week (getTermNarrativeBefore).
+ * Regenerate the living term summary — a single, non-cumulative whole-term
+ * synthesis stored at the latest weekly-summary week. Inputs: the latest weekly
+ * summary, the recomputed significant-weeks digest, and trajectory/statistics
+ * as of now. Older per-week term rows are pruned after a successful store, so
+ * exactly one term summary exists going forward.
  */
-async function buildAndStoreTermSummary(
-  weekOf: string,
-  weeklySummary: { expert: string; public: string },
-): Promise<void> {
-  const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
-    getTermNarrativeBefore(weekOf),
+export async function regenerateTermSummary(): Promise<void> {
+  const weekly = await getLatestWeeklyNarrative();
+  if (!weekly) {
+    console.error('[narratives] term summary: no stored weekly summary — skipping');
+    return;
+  }
+  const weekOf = weekly.weekOf;
+
+  const significant = await recomputeSignificantWeeks();
+  const excerpts = await getOverviewExcerpts(significant.map((w) => w.weekOf));
+  const significantWeeks = significant.map((w) => ({
+    weekOf: w.weekOf,
+    reasons: w.reasons.map((r) => r.detail),
+    excerpt: excerpts.get(w.weekOf) ?? null,
+  }));
+
+  const [trajectoryTable, statistics] = await Promise.all([
     getTrajectoryTable(T2_INAUGURATION, weekOf),
     getTermStatistics(T2_INAUGURATION, weekOf),
   ]);
   const termInput: TermSummaryInput = {
     weekOf,
-    weeklySummary,
-    previousTermSummary,
+    weeklySummary: { expert: weekly.expert, public: weekly.public },
+    significantWeeks,
     trajectoryTable,
     statistics,
   };
   const termResult = await generateTermSummary(termInput);
   await storeMultiPassNarratives(TERM_SUMMARY_CATEGORY, weekOf, termResult);
-  console.log('[narratives]   term summary: stored (3-pass)');
+
+  // Living document: exactly one term summary. Prune rows from other weeks.
+  const db = getDb();
+  await db
+    .delete(narratives)
+    .where(and(eq(narratives.category, TERM_SUMMARY_CATEGORY), ne(narratives.weekOf, weekOf)));
+  console.log(`[narratives]   term summary: stored (3-pass, as of ${weekOf})`);
 }
 
 /**
- * Regenerate ONLY the cumulative term summary for a week, reading that week's
- * already-stored weekly overview and chaining off the preceding week's term
- * summary. Intended for ordered historical rebuilds after a data correction:
- * process weeks ascending so each reads its freshly-rebuilt predecessor. Throws
- * on generation failure so a caller can halt rather than poison the chain.
+ * Regenerate the living term summary only when aggregate data changed since it
+ * was last generated. Call once per snapshot run (after weekly narratives), or
+ * on demand after a data correction. Errors are logged, not thrown — a term
+ * failure must not fail the snapshot.
  */
-export async function regenerateTermSummary(weekOf: string): Promise<void> {
-  const weekly = await getWeeklyNarrative(weekOf);
-  if (!weekly) {
-    console.error(`[narratives] term summary ${weekOf}: no stored weekly summary — skipping`);
-    return;
+export async function regenerateTermSummaryIfStale(): Promise<'regenerated' | 'fresh' | 'failed'> {
+  try {
+    const freshness = await getTermSummaryFreshness(T2_INAUGURATION);
+    if (!freshness.stale) {
+      console.log('[narratives] term summary: fresh — skipping regeneration');
+      return 'fresh';
+    }
+    await regenerateTermSummary();
+    return 'regenerated';
+  } catch (err) {
+    console.error('[narratives] term summary: regeneration failed:', err);
+    return 'failed';
   }
-  await buildAndStoreTermSummary(weekOf, weekly);
 }
 
 /**
- * Generate and store narratives for all categories in a given week,
- * plus a weekly summary and incremental term summary.
+ * Generate and store narratives for all categories in a given week, plus the
+ * weekly summary. The living term summary is NOT generated here — call
+ * regenerateTermSummaryIfStale() once per run instead (this function runs in
+ * per-week loops during catch-up and backfills).
  *
- * Cascade: category narratives (multi-pass) → weekly summary → term summary.
+ * Cascade: category narratives (multi-pass) → weekly summary.
  */
 export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   if (!isDbAvailable()) {
@@ -358,7 +380,7 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   }
 
   console.log(
-    `[narratives] Done — ${categoryNarratives.size} category narratives (${failedCategories.length} failed), weekly + term summaries`,
+    `[narratives] Done — ${categoryNarratives.size} category narratives (${failedCategories.length} failed), weekly summary`,
   );
 }
 

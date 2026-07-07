@@ -27,6 +27,7 @@ import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
 import {
   generateNarrativesForWeek,
+  regenerateTermSummaryIfStale,
   retryFailedNarratives,
 } from '@/lib/services/narrative-pipeline';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
@@ -247,6 +248,9 @@ async function runHistoricalSnapshots(options: SnapshotOptions): Promise<void> {
     }
   }
 
+  // One living-term-summary regeneration for the whole run, not one per week.
+  await regenerateTermSummaryIfStale();
+
   console.log(
     `\n[snapshot] Historical complete: ${totalWeeks} weeks assessed, ${totalEmpty} empty`,
   );
@@ -407,6 +411,12 @@ async function processIncompleteWeeks(
   }
 }
 
+/** Regenerate the living term summary if stale (non-fatal — errors appended but don't fail snapshot). */
+async function tryRegenerateTermSummary(errors: string[]): Promise<void> {
+  const status = await regenerateTermSummaryIfStale();
+  if (status === 'failed') errors.push('Term summary regeneration failed (see logs)');
+}
+
 /** Send weekly digest email to subscribers (non-fatal — errors appended but don't fail snapshot). */
 async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<void> {
   try {
@@ -544,6 +554,9 @@ async function runPostCategorySteps(
   } catch (err) {
     console.warn('[snapshot] Narrative retry failed:', err);
   }
+
+  // Living term summary: at most one regeneration per run, only if data changed.
+  await tryRegenerateTermSummary(errors);
 
   if (narrativesGenerated) {
     await trySendWeeklyDigest(currentWeek, errors);

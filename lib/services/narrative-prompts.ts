@@ -340,24 +340,25 @@ function formatTermStatistics(stats: TermSummaryInput['statistics']): string {
   return lines.join('\n');
 }
 
+/** Format the significant-weeks digest that grounds the term summary. */
+function formatSignificantWeeks(weeks: TermSummaryInput['significantWeeks']): string {
+  if (weeks.length === 0) {
+    return '--- SIGNIFICANT WEEKS ---\nNone identified for this term.';
+  }
+  const lines = ['--- SIGNIFICANT WEEKS (deterministically ranked, most significant first) ---'];
+  for (const w of weeks) {
+    lines.push(`${w.weekOf}: ${w.reasons.join('; ')}`);
+    if (w.excerpt) lines.push(`  Weekly summary excerpt: ${w.excerpt}`);
+  }
+  return lines.join('\n');
+}
+
 /** Collect data sections for the term summary prompt. */
 function collectTermDataSections(input: TermSummaryInput, version: 'expert' | 'public'): string {
   const sections: string[] = [];
-
-  if (input.previousTermSummary) {
-    const prev =
-      version === 'expert' ? input.previousTermSummary.expert : input.previousTermSummary.public;
-    sections.push('--- PREVIOUS TERM SUMMARY (update this) ---', prev, '');
-  } else {
-    sections.push(
-      '--- PREVIOUS TERM SUMMARY ---',
-      'No prior term summary. This is the first term summary.',
-      '',
-    );
-  }
-
   const weekly = version === 'expert' ? input.weeklySummary.expert : input.weeklySummary.public;
   sections.push("--- THIS WEEK'S SUMMARY ---", weekly, '');
+  sections.push(formatSignificantWeeks(input.significantWeeks), '');
   sections.push(formatTrajectorySummary(input.trajectoryTable), '');
   sections.push('--- KEY STATISTICS ---', formatTermStatistics(input.statistics), '');
   return sections.join('\n');
@@ -366,17 +367,16 @@ function collectTermDataSections(input: TermSummaryInput, version: 'expert' | 'p
 function termCriticalGuidelines(): string[] {
   return [
     'CRITICAL GUIDELINES:',
-    "- Critically evaluate the previous summary's framing against this week's data. If new",
-    '  data contradicts a pattern described in the previous summary, note the correction',
-    '  explicitly rather than silently revising.',
+    '- This is a standalone synthesis of the full term built from the data above — there is',
+    '  no prior term summary to update. Every claim must be justified by the current data.',
+    '- Anchor the arc in the SIGNIFICANT WEEKS listed above. Reference them by date',
+    '  (YYYY-MM-DD). Do NOT invent URLs or links to weeks — dates only.',
     '- Characterize TERM-LEVEL layer patterns (e.g., "L1 has driven X% of elevations over',
     '  N weeks"), not this week\'s specific layer configuration — that belongs in the weekly.',
     "  Do not spend more than 2-3 sentences on this week's specific layer activity.",
     '- The trajectory summary above is pre-computed. Reference its statistics directly;',
     '  do not reconstruct per-week data sequences.',
     '- When referencing a specific document by name, preserve its markdown link from the source material.',
-    '- Do not inherit framings uncritically from the previous summary. Each claim in the',
-    '  updated summary should be justified by the current data.',
   ];
 }
 
@@ -422,7 +422,7 @@ function termInstructions(version: 'expert' | 'public'): string {
   ].join('\n');
 }
 
-/** Term summary prompt — incremental update. Single pass for expert or public. */
+/** Term summary prompt — living whole-term synthesis. Single pass for expert or public. */
 export function buildTermSummaryPrompt(
   input: TermSummaryInput,
   version: 'expert' | 'public',
@@ -574,12 +574,6 @@ export function buildWeeklySummaryRevisionPrompt(
   ].join('\n');
 }
 
-/** Term summary dual-output format. */
-function termSummaryDualFormat(version: 'expert' | 'public'): string {
-  const wordRange = version === 'expert' ? '600-1000' : '400-700';
-  return `--- OUTPUT FORMAT ---\nProduce a single ${version === 'expert' ? 'technical' : 'plain-language'} term summary (${wordRange} words).`;
-}
-
 /** Term summary draft prompt for 3-pass (combined expert + public). */
 export function buildTermSummaryDraftPrompt(input: TermSummaryInput): string {
   return [
@@ -627,7 +621,8 @@ export function buildTermSummaryFeedbackPrompt(
     'peak convergence week, and status distributions? List any misstatements.',
     '',
     '(b) TRAJECTORY CONSISTENCY — Does the draft accurately characterize the term-level arc?',
-    'Does it correctly evaluate the previous summary framing against new data?',
+    'Does it anchor the arc in the listed SIGNIFICANT WEEKS, referencing them by date',
+    'without inventing URLs or unlisted milestone weeks?',
     '',
     '(c) CONFIDENCE CALIBRATION — Quote specific phrases that overstate certainty.',
     '',
