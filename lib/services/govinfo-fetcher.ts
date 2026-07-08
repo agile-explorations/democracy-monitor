@@ -8,8 +8,13 @@ const RATE_LIMIT_DELAY_MS = 200;
 const FETCH_TIMEOUT_MS = 30_000;
 const MAX_SUMMARY_LENGTH = 800;
 
-/** Collection codes supported by the GovInfo fetcher. */
-type GovInfoCollection = 'GAOREPORTS' | 'CRPT' | 'PLAW';
+/**
+ * Collection codes supported by the GovInfo fetcher. GAOREPORTS was removed in
+ * #529: it is a dead archive (no content after 2008) and GAO decisions are not
+ * available from GovInfo or any other permitted structured source (gao.gov is
+ * WAF-blocked; see PROJECT_KNOWLEDGE "Standing constraints").
+ */
+type GovInfoCollection = 'CRPT' | 'PLAW';
 
 /** Result from the GovInfo search POST endpoint. */
 interface GovInfoSearchResult {
@@ -50,14 +55,14 @@ interface GovInfoSummary {
 
 /**
  * Parse a govinfo:// pseudo-URL into API query parameters.
- * Format: govinfo://collection?collection=GAOREPORTS&offset=0
+ * Format: govinfo://collection?collection=CRPT&offset=0
  */
 export function parseGovInfoParams(signalUrl: string): {
   collection: GovInfoCollection;
   offset?: number;
 } {
   const parsed = new URL(signalUrl.replace('govinfo://', 'http://gi/'));
-  const collection = (parsed.searchParams.get('collection') || 'GAOREPORTS') as GovInfoCollection;
+  const collection = (parsed.searchParams.get('collection') || 'CRPT') as GovInfoCollection;
   const offsetStr = parsed.searchParams.get('offset');
   return {
     collection,
@@ -71,8 +76,6 @@ function truncate(text: string): string {
 
 function mapCollectionToDocType(collection: string): string {
   switch (collection) {
-    case 'GAOREPORTS':
-      return 'gao_report';
     case 'CRPT':
       return 'congressional_report';
     case 'PLAW':

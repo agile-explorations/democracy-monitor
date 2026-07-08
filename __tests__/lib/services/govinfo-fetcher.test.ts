@@ -17,9 +17,9 @@ describe('parseGovInfoParams', () => {
     expect(result.offset).toBe(100);
   });
 
-  it('defaults to GAOREPORTS when collection not specified', () => {
+  it('defaults to CRPT when collection not specified (GAOREPORTS removed in #529)', () => {
     const result = parseGovInfoParams('govinfo://collection');
-    expect(result.collection).toBe('GAOREPORTS');
+    expect(result.collection).toBe('CRPT');
   });
 
   it('returns undefined offset when not specified', () => {
@@ -94,7 +94,7 @@ describe('searchResultToContentItem', () => {
 });
 
 describe('toContentItem (legacy)', () => {
-  it('maps GAO report fields correctly', () => {
+  it('maps report fields correctly (GAOREPORTS removed in #529 → generic report type)', () => {
     const item = toContentItem(
       {
         packageId: 'GAO-25-107234',
@@ -109,7 +109,7 @@ describe('toContentItem (legacy)', () => {
     expect(item.link).toBe('https://www.govinfo.gov/app/details/GAO-25-107234');
     expect(item.pubDate).toBe('2025-11-15');
     expect(item.agency).toBe('GAO Reports');
-    expect(item.type).toBe('gao_report');
+    expect(item.type).toBe('report');
     expect(item.sourceOrigin).toBe('govinfo');
   });
 

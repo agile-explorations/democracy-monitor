@@ -23,6 +23,7 @@ Cross-sprint constraints that apply to all future work. Not tied to any single s
 - **No RSS feeds or website scraping.** Agency websites (DHS, OPM, DOD, State, Treasury, etc.) are behind WAFs that block automated access. All data sources must be structured government APIs (GovInfo, Federal Register, CourtListener, FEC, LegiScan, DOJ API). Do not propose RSS feeds, web scraping, or direct website access as solutions to data gaps.
 - **White House content comes from CPD (GovInfo), not the WH website.** The WH scraper was removed in Sprint R-CPD2. Historical WH data remains in the DB.
 - **GDELT is metadata-only.** News/media documents are not ingested. The project uses government documents exclusively for detection.
+- **GAO decision texts are unobtainable** (verified 2026-07-08, #529): GovInfo's GAOREPORTS collection is a dead archive (no content after 2008-09), gao.gov is WAF-blocked (403 on all paths, incl. sitemap), api.gao.gov does not exist, and nothing is on data.gov. B-###### rulings (incl. Impoundment Control Act decisions) appear in permitted sources only as citations. Fiscal impoundment coverage is proxied by impoundment _litigation_ via the CL court-scoped queries (#528). Re-check GAO API availability periodically.
 
 ### Production access
 
@@ -89,6 +90,7 @@ Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 - Biden 2022 exported as light fixtures (~29MB): assessments, baselines, document_scores, weekly_aggregates, intent_weekly + document manifest (raw docs gitignored)
 - Cross-baseline validation: `pnpm seed:validate` — compares severity/volume ratios across Year 1 vs Year 2
 - Obama 2013 dropped: FR-only source coverage would confound comparisons. All 4 baselines have uniform FR + GDELT + WH coverage.
+- Appellate/SCOTUS/D.D.C. executive-power opinions (#528) are **T2-only** (2025-01-20→): detection is absolute-threshold L2 so baselines are unaffected, but descriptive volume comparisons vs baselines for the affected categories carry a coverage-uniformity caveat. Revisit only if descriptive layers visibly mislead.
 - All 4 baselines now have AI assessment (gpt-4o-mini); previously keyword-only
 
 ### UI pages & APIs
@@ -157,9 +159,10 @@ Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 - CourtListener fetcher: `lib/services/courtlistener-fetcher.ts`, REST API v4, `COURTLISTENER_API_TOKEN` env var, 750ms rate limit, pseudo-URL `courtlistener://recap?nos=440`. `CL_BACKFILL_MAX_PAGES = 45` (900 results) — peak weekly volume is 842 (lawEnforcement, Trump T1)
 - DOJ fetcher: `lib/services/doj-fetcher.ts`, `https://www.justice.gov/api/v1/press_releases.json`, open API, pseudo-URL `doj://press?component=criminal-division`
 - DOJ frozen taxonomy: `lib/data/doj-taxonomy.ts`, 15 `DojInternalBucket` values, `classifyDojRelease()` first-match-wins, `DOJ_BUCKET_TO_CATEGORIES` maps to DM categories
-- GovInfo fetcher: `lib/services/govinfo-fetcher.ts`, REST API, `GOVINFO_API_KEY` env var, pseudo-URL `govinfo://collection?collection=GAOREPORTS`. 3 collection types: GAO_REPORTS, CRPT, PLAW.
+- GovInfo fetcher: `lib/services/govinfo-fetcher.ts`, search POST API, `GOVINFO_API_KEY` env var, pseudo-URL `govinfo://collection?collection=CRPT`. 2 collection types: CRPT, PLAW. (GAOREPORTS removed in #529 — dead pre-2008 archive.)
 - FEC fetcher: `lib/services/fec-fetcher.ts`, OpenFEC API, `FEC_API_KEY` env var (optional), pseudo-URL `fec://advisory-opinions?type=advisory_opinions`. Advisory opinions + MURs.
 - Multi-source backfill: `lib/cron/backfill-fetchers.ts` has `fetchWeekItemsFr()`, `fetchWeekItemsCourtListener()`, `fetchWeekItemsDoj()`. backfill.ts groups signals by type.
+- CL court-scoped opinion queries (#528): defined as constants in `cl-opinion-first-fetcher.ts` (COURT_QUERIES: scotus-all, circuits-exec, dcd-exec), NOT as categories.ts signals — the opinion-first pass is global, and these route by content via `classifyOpinionToCategories` (TOPIC_ROUTING_TERMS − OPINION_TERM_EXCLUDES + OPINION_TERM_ADDITIONS, caseName + 4k-char head). Unrouted opinions are not stored. Provenance in `metadata.clQueries`. Tuning/audit: `scripts/audit-cl-court-routing.ts`.
 
 ### Narrative generation
 
