@@ -7,8 +7,9 @@ export interface SignificantWeeksListProps {
 }
 
 /**
- * Deterministic index of notable term weeks (computed from weekly_aggregates,
- * no AI), each linking to its /weekly page. Companion to the term summary.
+ * Index of notable term weeks, each linking to its /weekly page. Ranking is
+ * deterministic (weekly_aggregates); the event headline is AI-generated at
+ * index recompute and falls back to the deterministic reason text when absent.
  */
 export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
   if (weeks.length === 0) return null;
@@ -16,15 +17,25 @@ export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
   return (
     <div className="mt-3 rounded-lg border border-dm-border bg-dm-card p-4">
       <h3 className="text-xs font-semibold text-dm-text-primary mb-2">Significant weeks</h3>
-      <ul className="space-y-1.5">
-        {weeks.map((w) => (
-          <li key={w.weekOf} className="text-xs leading-snug">
-            <Link href={`/weekly/${w.weekOf}`} className="text-dm-accent hover:underline">
-              Week of {formatWeekLabelWithYear(w.weekOf)}
-            </Link>
-            <span className="text-dm-muted"> — {w.reasons.map((r) => r.detail).join('; ')}</span>
-          </li>
-        ))}
+      <ul className="space-y-2">
+        {weeks.map((w) => {
+          const reasonText = w.reasons.map((r) => r.detail).join(' · ');
+          return (
+            <li key={w.weekOf} className="text-xs leading-snug">
+              <Link href={`/weekly/${w.weekOf}`} className="text-dm-accent hover:underline">
+                Week of {formatWeekLabelWithYear(w.weekOf)}
+              </Link>
+              {w.headline ? (
+                <>
+                  <span className="text-dm-text-secondary"> — {w.headline}</span>
+                  <div className="text-[11px] text-dm-muted mt-0.5">{reasonText}</div>
+                </>
+              ) : (
+                <span className="text-dm-muted"> — {reasonText}</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

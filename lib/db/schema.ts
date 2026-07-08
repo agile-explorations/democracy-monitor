@@ -586,6 +586,8 @@ export const significantWeeks = pgTable(
     id: serial('id').primaryKey(),
     weekOf: date('week_of').notNull().unique(),
     reasons: jsonb('reasons').$type<{ type: string; detail: string }[]>().notNull(),
+    /** One-line AI event summary of what happened that week (null if unavailable). */
+    headline: text('headline'),
     rank: integer('rank').notNull(),
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
   },

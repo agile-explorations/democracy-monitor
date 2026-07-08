@@ -9,6 +9,7 @@ interface NarrativeData {
 export interface SignificantWeekLink {
   weekOf: string;
   reasons: { type: string; detail: string }[];
+  headline: string | null;
   rank: number;
 }
 
