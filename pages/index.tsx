@@ -322,6 +322,7 @@ export default function Home() {
                 loading={termNarrativeLoading}
                 editorial={termEditorial}
                 placeholder="Term summary narrative coming soon."
+                defaultCollapsed
               />
               <SignificantWeeksList weeks={significantWeeks} />
             </section>

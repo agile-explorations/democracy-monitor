@@ -11,6 +11,19 @@ export interface NarrativeSectionProps {
   failed?: boolean;
   editorial?: EditorialRecord | null;
   placeholder?: string;
+  /** Start collapsed, showing a short teaser instead of the full narrative. */
+  defaultCollapsed?: boolean;
+}
+
+/** First ~220 chars of narrative body text, markdown markers stripped. */
+function teaserText(text: string): string {
+  const body = text
+    .split('\n')
+    .filter((line) => line.trim() && !line.trim().startsWith('#'))
+    .join(' ')
+    .replace(/[*_`>]/g, '')
+    .trim();
+  return body.length > 220 ? `${body.slice(0, 220)}…` : body;
 }
 
 function NarrativeSkeleton() {
@@ -30,8 +43,9 @@ export function NarrativeSection({
   failed,
   editorial,
   placeholder,
+  defaultCollapsed = false,
 }: NarrativeSectionProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
   if (loading) {
     return (
@@ -96,7 +110,14 @@ export function NarrativeSection({
         </h3>
         <span className="text-dm-muted text-xs">{collapsed ? '\u25BC' : '\u25B2'}</span>
       </button>
-      {!collapsed && (
+      {collapsed ? (
+        <button onClick={() => setCollapsed(false)} className="block w-full text-left">
+          <p className="mt-3 text-sm text-dm-text-secondary leading-relaxed">{teaserText(text)}</p>
+          <span className="mt-1.5 inline-block text-xs text-dm-accent hover:underline">
+            Read the full narrative
+          </span>
+        </button>
+      ) : (
         <>
           <div className="mt-3 max-h-80 overflow-y-auto">
             <Markdown className="text-sm text-dm-text-primary leading-relaxed">{text}</Markdown>
