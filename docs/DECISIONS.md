@@ -26,6 +26,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 2. `significant_weeks` table + ranking service (#532): peak concern, concern spikes, new/re-entered ConfirmedConcern; ranked, capped 12 — ranking/links fully deterministic. Each week also carries a one-line AI event headline (gpt-4o-mini at recompute, grounded in that week's top P2 docs + weekly excerpt, statistics forbidden; null-safe fallback to reason text — user-requested addition after UI review). Grounds the term prompt (dates only — no LLM-authored URLs) and renders as `/weekly/<date>` links with the landing term card.
 3. Living term summary: `regenerateTermSummary()` synthesizes the whole term from the latest weekly summary + significant-weeks digest + trajectory/stats. Runs at most once per snapshot via `regenerateTermSummaryIfStale()`; staleness derived (`max(weekly_aggregates.computed_at) > generated_at`) — no flag. Older per-week rows pruned on store.
 4. CLI: `--rebuild-term-chain` removed; `--type term` regenerates the living summary (no `--week`). Validation metric became `termSummaryFresh`.
+5. UX quick wins after review: term narrative card collapses to a teaser by default; significant weeks capped at 5 with "Show all N". Full current-week-first landing reorder deferred to #533.
 
 **Key decisions:**
 
