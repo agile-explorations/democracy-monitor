@@ -70,6 +70,8 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 The correction was material: post-reassessment, e.g. week 06-08 reads 11 ConfirmedConcern + 3 Elevated across all 14 categories — signal the coverage hole had suppressed.
 
+**CORRECTION (2026-07-08, found during R-CL-SCOPE/#528):** the "recovered" opinion ingestion above was ~90% noise. CL's type=o search silently ignores `nature_of_suit`, so the #525 API path fetched EVERY federal opinion (2,307 rows 4/20→present; only 8 with verifiable in-scope dockets + 120 with 1A text) and mis-routed them to civilLiberties/lawEnforcement. Detection was not corrupted (P1 marked them irrelevant) but volumes were inflated and L2 spend wasted. Fixed in 51d80e7 (NOS queries removed from opinion-first; 1,988 noise rows purged, archived to ~/Backups/democracy-monitor/).
+
 **Key decisions:**
 
 - **Term summaries are cumulative and must be rebuilt in order.** Each `term[N] = f(term[N-1], weekly[N], trajectory/stats as-of N)`. Refreshing weekly summaries alone left every term summary — including the latest displayed one — built on stale content. `getTermNarrative()` returns the _globally-latest_ summary as "previous," which is correct only for forward operation; regenerating a historical week with it splices future content backward. Added `getTermNarrativeBefore(weekOf)` (the immediately-preceding week) and a `narratives:regenerate --rebuild-term-chain --from --to` mode that rebuilds ascending, each week chaining off its freshly-rebuilt predecessor, anchored on the last pre-hole term summary. Halt-on-failure so a flaky week never poisons downstream.
