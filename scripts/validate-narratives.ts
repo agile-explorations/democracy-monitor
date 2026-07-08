@@ -29,10 +29,11 @@ import {
 import {
   enrichCategoryData,
   getPreviousWeekNarrative,
-  getTermNarrative,
   getTermStatistics,
   getTrajectoryTable,
 } from '../lib/services/narrative-queries';
+import { getSignificantWeeks } from '../lib/services/significant-weeks-service';
+import { getOverviewExcerpts } from '../lib/services/term-summary-queries';
 import type { NarrativeLayerData, TermSummaryInput, WeeklySummaryInput } from '../lib/types';
 import type { ConcernAssessment, StructuralScore } from '../lib/types/structural';
 
@@ -519,12 +520,13 @@ async function validateTermSummary(weekOf: string): Promise<CheckResult[]> {
     return [];
   }
 
-  console.log('  Loading trajectory + statistics...');
-  const [previousTermSummary, trajectoryTable, statistics] = await Promise.all([
-    getTermNarrative(),
+  console.log('  Loading trajectory + statistics + significant weeks...');
+  const [significant, trajectoryTable, statistics] = await Promise.all([
+    getSignificantWeeks(),
     getTrajectoryTable(T2_INAUGURATION, weekOf),
     getTermStatistics(T2_INAUGURATION, weekOf),
   ]);
+  const excerpts = await getOverviewExcerpts(significant.map((w) => w.weekOf));
 
   const termInput: TermSummaryInput = {
     weekOf,
@@ -532,13 +534,17 @@ async function validateTermSummary(weekOf: string): Promise<CheckResult[]> {
       expert: '(weekly summary placeholder for validation)',
       public: '(weekly summary placeholder for validation)',
     },
-    previousTermSummary,
+    significantWeeks: significant.map((w) => ({
+      weekOf: w.weekOf,
+      reasons: w.reasons.map((r) => r.detail),
+      excerpt: excerpts.get(w.weekOf) ?? null,
+    })),
     trajectoryTable,
     statistics,
   };
 
   console.log(
-    `  Trajectory rows: ${trajectoryTable.length}, previous term summary: ${previousTermSummary ? 'yes' : 'no'}`,
+    `  Trajectory rows: ${trajectoryTable.length}, significant weeks: ${significant.length}`,
   );
   console.log('  Generating expert + public term summaries...');
 
@@ -552,7 +558,7 @@ async function validateTermSummary(weekOf: string): Promise<CheckResult[]> {
   narrativeOutput.push(
     `${'='.repeat(80)}`,
     `TERM SUMMARY: ${weekOf}`,
-    `Trajectory rows: ${trajectoryTable.length} | Previous summary: ${previousTermSummary ? 'yes' : 'no'}`,
+    `Trajectory rows: ${trajectoryTable.length} | Significant weeks: ${significant.length}`,
     `${'='.repeat(80)}`,
     '',
     `--- EXPERT (${wordCount(expert)} words) ---`,

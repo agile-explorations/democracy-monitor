@@ -64,16 +64,18 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 ### Sprint log
 
-| Sprint      | Dates   | Milestone                                                                   | Summary                                                                                |
-| ----------- | ------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| R-SIG       | 2026-03 | [M67](https://github.com/agile-explorations/democracy-monitor/milestone/67) | FR signal contamination fix — 16 signals scoped with agency restrictions               |
-| R-NAR       | 2026-03 | [M69](https://github.com/agile-explorations/democracy-monitor/milestone/69) | Narrative quality — pre-computed summaries, event-driven content, doc links            |
-| R-NOISE     | 2026-03 | [M70](https://github.com/agile-explorations/democracy-monitor/milestone/70) | CREC amendment + LegiScan broad-term noise reduction                                   |
-| R-CRON      | 2026-03 | [M71](https://github.com/agile-explorations/democracy-monitor/milestone/71) | Cron job resilience — cron_runs table, exit codes, self-healing                        |
-| R-SILENCE   | 2026-03 | —                                                                           | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis   |
-| R-L1-DEMOTE | 2026-03 | —                                                                           | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring)   |
-| R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72) | Ingest content quality — 39/39 detection (was 22/39), 4/6 NC failures need calibration |
-| R-CALIBRATE | 2026-03 | [M73](https://github.com/agile-explorations/democracy-monitor/milestone/73) | P1 calibration — 6/6 NCs passing, 39/39 detection, NC-5 reframed as baseline check     |
+| Sprint      | Dates   | Milestone                                                                                | Summary                                                                                                                                                                    |
+| ----------- | ------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-SIG       | 2026-03 | [M67](https://github.com/agile-explorations/democracy-monitor/milestone/67)              | FR signal contamination fix — 16 signals scoped with agency restrictions                                                                                                   |
+| R-NAR       | 2026-03 | [M69](https://github.com/agile-explorations/democracy-monitor/milestone/69)              | Narrative quality — pre-computed summaries, event-driven content, doc links                                                                                                |
+| R-NOISE     | 2026-03 | [M70](https://github.com/agile-explorations/democracy-monitor/milestone/70)              | CREC amendment + LegiScan broad-term noise reduction                                                                                                                       |
+| R-CRON      | 2026-03 | [M71](https://github.com/agile-explorations/democracy-monitor/milestone/71)              | Cron job resilience — cron_runs table, exit codes, self-healing                                                                                                            |
+| R-SILENCE   | 2026-03 | —                                                                                        | L1v2 silence detection — conspicuous silence scoring integrated in concern synthesis                                                                                       |
+| R-L1-DEMOTE | 2026-03 | —                                                                                        | L1 structural + L3 thematic demoted to descriptive context (not convergence scoring)                                                                                       |
+| R-CONTENT   | 2026-03 | [M72](https://github.com/agile-explorations/democracy-monitor/milestone/72)              | Ingest content quality — 39/39 detection (was 22/39), 4/6 NC failures need calibration                                                                                     |
+| R-CALIBRATE | 2026-03 | [M73](https://github.com/agile-explorations/democracy-monitor/milestone/73)              | P1 calibration — 6/6 NCs passing, 39/39 detection, NC-5 reframed as baseline check                                                                                         |
+| R-COVERAGE  | 2026-07 | [M78](https://github.com/agile-explorations/democracy-monitor/milestone/78)              | Detection coverage recovery — judicial-opinion ingestion restored, L2 wired into CREC/LegiScan/CL, 4/20→present backfill, Anthropic streaming fix                          |
+| R-TERM      | 2026-07 | [M80](https://github.com/agile-explorations/democracy-monitor/milestone/80) (#530, #532) | Living term summary — single non-cumulative document, staleness-driven regen, significant-weeks index (deterministic, snapshot-maintained), /weekly gates on overview only |
 
 Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 
@@ -96,7 +98,7 @@ Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 - Category detail page: `/category/[key]` — ConcernHeader, StructuralSignaturePanel, AIAssessmentPanel, ThematicDriftPanel, TrendChart, EvidencePanel
 - Category API: `/api/category/[key]` returns latest assessment + baseline; `?weekOf=` param for historical; reuses `/api/history/weekly-scores` for chart data
 - Week detail page: `/category/[key]/week/[date]` — summary cards, sparkline with highlight, keyword matches, DocumentTable with CSV export
-- Narrative API: `/api/narratives/[category]` + `/api/narratives/overview`. Read-only from stored narratives (no on-demand generation). `?editorial=true` returns drafts + GPT-4o feedback. `_overview` = weekly summary, `_term_summary` = incremental term summary
+- Narrative API: `/api/narratives/[category]` + `/api/narratives/overview` + `/api/narratives/term-summary`. Read-only from stored narratives (no on-demand generation). `?editorial=true` returns drafts + GPT-4o feedback. `_overview` = weekly summary; `_term_summary` = the single living term summary (whole-term synthesis; `weekOf` = week it reflects; regenerated only when aggregate data changes). `/api/significant-weeks` = deterministic notable-week index (no AI) that grounds the term prompt and renders as `/weekly/<date>` links
 - Health API: `/api/health/meta` (MetaAssessment), `/api/health/sources` (sources + summary); both DB-optional
 - Search page: `/search` — two modes (research + explore). Research = 3-pass RAG synthesis with two-phase loading (docs first, then answer). Explore = keyword + semantic search with filters/pagination.
 - Search API: `/api/search` — unified endpoint, `mode=research|explore`. Research supports `docsOnly=true` (fast doc-only response) and `editorial=true` (returns draft/feedback chain). `/api/search/similar/[documentId]` for related docs.
@@ -218,7 +220,7 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 - **P1 calibration lever is category `description`.** Topic-area framing ("Are X being protected?") over-flags; threat-vector framing ("Government actions that reduce X") filters to erosion-relevant docs. (R-CAL1)
 - **Baseline dependencies compound.** Moving from z-score baseline comparison to absolute thresholds eliminates an entire class of contamination problems. (R1-DET)
 - **Stream long Claude generations.** A non-streaming `messages.create()` holds an idle HTTP connection until the whole response is ready; long outputs (near the token cap, e.g. term summaries) exceed the socket idle timeout and fail with `APIConnectionError` (~243s) while shorter calls slip through. `AnthropicProvider.complete()` now drives the streaming API internally — do not "optimize" it back to non-streaming. (R-COVERAGE)
-- **Term summaries are cumulative — rebuild the chain in order after a data correction.** Each week chains off the previous week's term summary; `getTermNarrative()` returns the globally-latest, which corrupts a historical regen. Use `getTermNarrativeBefore()` + `narratives:regenerate --rebuild-term-chain --from --to` (ascending, halt-on-failure). (R-COVERAGE)
+- **The term summary is a living document — never a per-week chain.** One current `_term_summary` row set, regenerated only when `max(weekly_aggregates.computed_at)` postdates its `generated_at` (staleness is derived; no flag). Historical corrections cost exactly one regeneration at the next snapshot — or `pnpm narratives:regenerate --type term` on demand. Inputs: latest weekly summary + significant-weeks digest + trajectory/stats; no previous-summary input. (Replaced R-COVERAGE's ordered chain rebuild, #530.) (R-INGEST-GAPS)
 
 ### Code quality
 

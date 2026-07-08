@@ -1,0 +1,1 @@
+ALTER TABLE "significant_weeks" ADD COLUMN "headline" text;

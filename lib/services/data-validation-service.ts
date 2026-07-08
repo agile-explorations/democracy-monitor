@@ -93,8 +93,8 @@ export interface NarrativeCoverage {
   weeksWithNarratives: number;
   /** Weeks that have a weekly summary (_overview). */
   weeksWithSummary: number;
-  /** Weeks that have a term summary (_term_summary). */
-  weeksWithTermSummary: number;
+  /** Living term summary exists and reflects the latest aggregate data. */
+  termSummaryFresh: boolean;
   /** Weeks missing a weekly summary despite having category narratives. */
   missingSummaryWeeks: number;
 }

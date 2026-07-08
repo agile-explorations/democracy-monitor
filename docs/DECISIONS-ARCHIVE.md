@@ -4,6 +4,90 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-NOISE: CREC & LegiScan Classification Noise Reduction ✅
+
+**Status: Done (issues #465-#469).** Milestone 70.
+
+**Context:** Two classification noise problems inflated document counts and diluted detection signal quality. CREC amendment text boilerplate (44.8% of CREC docs) — raw "Text of Senate Amendment NNNN" dumps passed the procedural filter because their subGranuleClass values weren't in PROCEDURAL_SUBCLASSES. LegiScan broad-term noise — bills matching generic terms like "regulation", "oversight" got routed to categories where they don't belong, despite having subject metadata that could filter this.
+
+**Scope vs. Actual:** All 5 issues implemented as planned. No scope changes.
+
+1. Add 3 amendment subGranuleClass values to PROCEDURAL_SUBCLASSES filter (#465)
+2. Create CREC noise purge script (purge-crec-noise.ts) with FK-safe delete order (#466)
+3. Define LEGISCAN_SUBJECT_MAP (14 categories) and LEGISCAN_BROAD_TERMS (7 categories) in topic-routing-terms.ts (#467)
+4. Implement filterBySubjectRelevance() in classifyBill() — subject co-requirement for broad-term matches, fallback for bills without subjects (#468)
+5. Fix validate:legiscan pub_date → published_at column name (#469)
+
+**Key decisions:**
+
+- **Subject co-requirement over keyword restriction:** Rather than removing broad terms (which would lose valid matches), we added a subject-confirmation gate. Bills matching only broad terms must have a confirming LegiScan subject. This preserves recall for bills with specific terms while cutting noise from generic matches.
+- **Exported matchesTerm from crec-classifier.ts:** Reused the existing term-matching function (with word-boundary logic for short terms) rather than duplicating it in legiscan-fetcher. Single `export` keyword change.
+- **No fetch_log clearing in CREC purge:** Unlike the CL purge script, CREC backfill is date-range based, not fetch-log tracked. Surgical delete of noise docs only; valid CREC docs remain untouched.
+- **Fallback for bills without subjects (2%):** Bills with empty subjects arrays pass through unfiltered to avoid false negatives on the small percentage of LegiScan bills lacking subject metadata.
+
+**Lessons:**
+
+- **Metadata-driven filtering scales better than keyword tightening.** CREC amendment noise couldn't be solved by tightening routing terms (the terms are correct — they just match inside 8K-char amendment dumps). The subGranuleClass metadata provides a clean structural filter. Same pattern for LegiScan: subject metadata (98% coverage) is more reliable than trying to make routing terms less ambiguous.
+
+---
+
+## Sprint R-NAR: Narrative Quality — Event-Driven Content & Pre-Computed Summaries ✅
+
+**Status: Done (issues #460-#464).** Milestone 69.
+
+**Context:** Narrative generation produced long raw data sequences (e.g., "Elevated-or-above count, Weeks 5–55: 10 → 3 → 6 → 2 → ...") because `formatTrajectoryTable()` dumped every week-status pair (14 categories × 60+ weeks = 840+ entries). Narratives focused on signal shifts rather than real-world events because P2 reasoning (the best event-level descriptions) was visually buried among metadata fields.
+
+**Scope vs. Actual:** All 5 issues implemented as planned. No scope changes.
+
+1. Replace raw trajectory table with pre-computed summary — `formatTrajectorySummary()` with 6 extracted helpers (`buildStatusLookup`, `computeStreaks`, `computeTransitions`, `computeActivations`, `computeWeekCounts`, `trendWord`) (#460)
+2. Increase content excerpt length 2000 → 4000 chars (#461)
+3. Make P2 reasoning more prominent — restructured `formatDocumentSection()` with `>>> WHY THIS WAS FLAGGED:` prefix, metadata condensed to single lines (#462)
+4. Document links in narratives — markdown link instructions in category/weekly/term prompts, link preservation at each level, `Markdown.tsx` link component (#463)
+5. Update tests and validation — 14 new tests, updated 3 existing, T-NAR-12 extended to category-week, T-NAR-16 document reference check, comma-sequence regex (#464)
+
+**Key decisions:**
+
+- **Pre-computed statistics over raw data:** Rather than asking the LLM to not reproduce sequences, we eliminated the raw data from the prompt entirely. The summary provides peak, mean, recent-4-weeks, trend word, activation rates, streaks, and transitions — everything the LLM needs without the temptation to reproduce verbatim sequences.
+- **T-NAR-16 accepts URL matches, not just title matches:** The LLM uses descriptive anchor text for markdown links (e.g., "proposed rule from April 2025") rather than verbatim document titles. Checking for URL presence in the narrative is a more reliable signal that the LLM referenced the source document.
+- **ESLint max-lines override bumped 420 → 500 for narrative-format-helpers.ts:** The 6 extracted helper functions for trajectory summary added net lines. Alternatives (separate file, fewer helpers) would either fragment cohesive logic or violate max-lines-per-function.
+- **Link preservation as soft instruction, not enforcement:** Weekly and term prompts instruct the LLM to "preserve markdown links from the category narrative" rather than mandating link counts. Higher-level narratives naturally reference fewer specific documents, so only the most important links survive.
+
+**Lessons:**
+
+- **Eliminating data is better than constraining LLM behavior.** Prior sprints tried to tell the LLM "summarize long data sequences, do not reproduce them" — it didn't reliably obey. Pre-computing the summary and removing the raw data from the prompt is a structural fix that the LLM cannot circumvent. Apply this pattern to other prompt-stuffing problems: if the LLM reproduces data verbatim, the fix is to give it less data, not more instructions.
+
+---
+
+## Sprint R-NAR-QUALITY: 3-Pass Summary Generation + Regenerate CLI ✅
+
+**Status: Done (issues #513-#518).** Milestone 77.
+
+**Context:** Weekly and term summaries used single-pass generation (one Claude call per version), while category narratives already used 3-pass (Claude draft → GPT-4o feedback → Claude revision). This caused two quality issues: (1) summaries lacked the editorial review that catches factual errors and overstatement, and (2) the weekly summary prompt didn't provide structured factual data, leading the LLM to conflate "Stable" status with "zero documents" (a category can be Stable with hundreds of documents). Additionally, there was no way to regenerate narratives after the weekly pipeline had run.
+
+**Scope vs. Actual:** 6 planned issues, all implemented. No scope changes.
+
+1. Add factual summary data block to weekly summary prompt — `buildFactualSummary()` providing exact category counts, doc counts, and explicit "Stable ≠ zero documents" note (#513)
+2. Add 3-pass feedback + revision prompts for weekly and term summaries — 6 new prompt builders in `narrative-prompts.ts` (#514)
+3. Switch weekly/term summaries to 3-pass generation — `generateMultiPassSummary()` generic orchestrator, pipeline refactored (#515)
+4. Build `narratives:regenerate` CLI script — `--week`, `--from/--to` batch, `--type`, `--category`, `--resend`, `--resend-only` (#516)
+5. Add `sendCorrectionDigest()` to subscriber service — "CORRECTION:" subject prefix for re-sent digests (#517)
+6. Regenerate Mar 30 weekly + term narratives and send correction email (#518)
+
+**Key decisions:**
+
+- **Generic `generateMultiPassSummary()` over copy-paste:** Instead of duplicating the 3-pass orchestration from `generateMultiPassNarrative()`, extracted a generic function that accepts prompt builder callbacks. Same retry logic, same error enrichment, zero duplication.
+- **Factual data block as structural fix:** Rather than adding more instructions telling the LLM to distinguish Stable from zero-document categories, we now inject a pre-formatted data block with explicit counts and a "cite these numbers exactly" instruction. This follows the R-NAR lesson: give the LLM the right data, not more rules.
+- **`max-lines` bump 500→700 for `narrative-prompts.ts`:** The 6 new summary prompt builders added ~240 lines to an already-large file. The file remains cohesive (all prompt construction for one domain). Splitting would fragment related logic.
+- **Lazy imports in regenerate script:** CLI script uses `await import()` to defer loading AI providers and DB services until after argument parsing. Faster startup for `--help` and validation-only paths.
+- **Correction email as separate function:** `sendCorrectionDigest()` could have been merged with `sendWeeklyDigest()` via a flag, but a separate function is clearer about intent and avoids accidental correction emails.
+
+**Lessons:**
+
+- **Factual grounding blocks prevent LLM number hallucination.** When the prompt provides ambiguous aggregate data ("14 categories, 3 elevated"), the LLM fills in details that sound plausible but are wrong. Providing explicit per-category breakdowns with labeled status categories eliminated this class of error.
+- **The 3-pass pattern generalizes cleanly.** The same draft→feedback→revision pipeline works for category narratives, weekly summaries, and term summaries with only prompt changes. The `generateMultiPassSummary()` abstraction was straightforward because the orchestration logic is identical — only the prompts differ.
+
+---
+
 ## Sprint R-SIG: FR Signal Contamination Fix ✅
 
 **Status: Done (issues #451-#455).** Milestone 67.

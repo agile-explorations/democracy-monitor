@@ -157,11 +157,18 @@ export interface WeeklySummaryInput {
   previousWeekSummary: { expert: string; public: string } | null;
 }
 
-/** Term summary input — incremental update. */
+/** A notable week grounding the term summary (deterministically ranked). */
+export interface TermSignificantWeek {
+  weekOf: string;
+  reasons: string[];
+  excerpt: string | null;
+}
+
+/** Term summary input — living whole-term synthesis (non-cumulative). */
 export interface TermSummaryInput {
   weekOf: string;
   weeklySummary: { expert: string; public: string };
-  previousTermSummary: { expert: string; public: string } | null;
+  significantWeeks: TermSignificantWeek[];
   trajectoryTable: Array<{ category: string; weekOf: string; status: string }>;
   statistics: TermStatistics;
 }

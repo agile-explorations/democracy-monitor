@@ -355,7 +355,7 @@ export function renderDataReport(data: any) {
               ['Missing narratives', String(data.narrativeCoverage.missingWeeks)],
               ['Stale narratives', String(data.narrativeCoverage.staleWeeks ?? 0)],
               ['With weekly summary', String(data.narrativeCoverage.weeksWithSummary)],
-              ['With term summary', String(data.narrativeCoverage.weeksWithTermSummary ?? 0)],
+              ['Term summary', data.narrativeCoverage.termSummaryFresh ? 'Fresh' : 'Stale'],
               ['Missing summaries', String(data.narrativeCoverage.missingSummaryWeeks ?? 0)],
             ]}
           />

@@ -8,7 +8,7 @@ import { expect, test } from '@playwright/test';
  *
  * Test dates are chosen from known-good data:
  *   - Category-week: civilService 2026-03-09 (ConfirmedConcern, 5584 char narrative)
- *   - Weekly hub: 2026-03-09 (has both _overview and _term_summary)
+ *   - Weekly hub: 2026-03-09 (has a substantive _overview narrative)
  */
 
 const TEST_WEEK = '2026-03-09';
@@ -181,14 +181,13 @@ test.describe('R-SEO2: Category-week SSR page', () => {
 test.describe('R-SEO2: Weekly hub SSR page', () => {
   const url = `/weekly/${TEST_WEEK}`;
 
-  test('renders both overview and term summary in HTML source', async ({ request }) => {
+  test('renders the weekly overview in HTML source', async ({ request }) => {
     const response = await request.get(url);
     expect(response.status()).toBe(200);
     const body = await response.text();
 
-    // Should contain section headings for both narratives
+    // Should contain the overview narrative section heading
     expect(body).toContain('Weekly Overview');
-    expect(body).toContain('Term Summary');
 
     // Substantial content
     expect(body.length).toBeGreaterThan(3000);

@@ -24,8 +24,6 @@ interface PageProps {
   weekOf: string;
   overview: { expert: string; public: string };
   overviewEditorial: EditorialRecord;
-  termSummary: { expert: string; public: string };
-  termSummaryEditorial: EditorialRecord;
   elevatedCategories: ElevatedCategory[];
   prevWeek: AdjacentWeek | null;
   nextWeek: AdjacentWeek | null;
@@ -69,8 +67,6 @@ export default function WeeklyHubPage({
   weekOf,
   overview,
   overviewEditorial,
-  termSummary,
-  termSummaryEditorial,
   elevatedCategories,
   prevWeek,
   nextWeek,
@@ -168,19 +164,6 @@ export default function WeeklyHubPage({
           </div>
         </section>
       )}
-
-      {/* Term summary */}
-      <section className="mb-8">
-        <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
-          Term Summary
-          <span className="ml-2 text-[11px] font-normal text-dm-muted">as of {weekLabel}</span>
-        </h2>
-        <NarrativeSection
-          narrative={termSummary}
-          readingLevel={readingLevel}
-          editorial={termSummaryEditorial}
-        />
-      </section>
 
       {/* Prev/next navigation */}
       <nav className="flex items-center justify-between mb-6 py-3 border-t border-dm-border">

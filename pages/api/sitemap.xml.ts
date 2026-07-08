@@ -1,7 +1,7 @@
 /**
  * Dynamic sitemap — quality-gated, only includes pages with substantive content.
  *
- * Includes: static pages, category landings, weekly pages (with overview + term summary),
+ * Includes: static pages, category landings, weekly pages (with substantive overview),
  * and category-week narrative pages (Elevated+ with >500 char expert narrative).
  */
 
@@ -47,13 +47,6 @@ async function weeklyEntries(): Promise<SitemapEntry[]> {
     WHERE n.category = '_overview'
       AND n.version = 'expert'
       AND length(n.content) > ${MIN_NARRATIVE_LENGTH}
-      AND EXISTS (
-        SELECT 1 FROM narratives t
-        WHERE t.category = '_term_summary'
-          AND t.version = 'expert'
-          AND t.week_of = n.week_of
-          AND length(t.content) > ${MIN_NARRATIVE_LENGTH}
-      )
     ORDER BY n.week_of DESC
   `);
 

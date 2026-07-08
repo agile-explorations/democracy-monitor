@@ -375,69 +375,9 @@ export async function getPreviousWeekNarrative(
 }
 
 // ---------------------------------------------------------------------------
-// 10. Term narrative
+// 10. Term narrative — moved to term-summary-queries.ts (living-summary data
+// access: current summary, latest weekly, freshness, excerpts).
 // ---------------------------------------------------------------------------
-
-/** Load both versions of the stored term summary for a specific week. */
-async function loadStoredTermSummary(
-  week: string,
-): Promise<{ expert: string; public: string } | null> {
-  const [expert, pub] = await Promise.all([
-    getStoredNarrative(TERM_SUMMARY_CATEGORY, week, 'expert'),
-    getStoredNarrative(TERM_SUMMARY_CATEGORY, week, 'public'),
-  ]);
-  if (!expert && !pub) return null;
-  return { expert: expert?.content ?? '', public: pub?.content ?? '' };
-}
-
-/**
- * Week of the most recent stored term summary, optionally restricted to weeks
- * strictly before `before`. Returns null when none exist.
- */
-async function latestTermSummaryWeek(before?: string): Promise<string | null> {
-  const db = getDb();
-  const rows = await db.execute(sql`
-    SELECT week_of FROM narratives
-    WHERE category = ${TERM_SUMMARY_CATEGORY} AND version = 'expert'
-      ${before ? sql`AND week_of < ${before}` : sql``}
-    ORDER BY week_of DESC LIMIT 1
-  `);
-  const row = (rows.rows as Row[])[0];
-  return row ? String(row.week_of).slice(0, 10) : null;
-}
-
-/** Get the latest term summary narrative (both versions). */
-export async function getTermNarrative(): Promise<{ expert: string; public: string } | null> {
-  if (!isDbAvailable()) return null;
-  const week = await latestTermSummaryWeek();
-  return week ? loadStoredTermSummary(week) : null;
-}
-
-/**
- * Get the term summary of the week immediately preceding `weekOf` — the correct
- * cumulative predecessor. Unlike getTermNarrative (globally latest), this is safe
- * for historical rebuilds: processing weeks ascending, each reads the prior week.
- */
-export async function getTermNarrativeBefore(
-  weekOf: string,
-): Promise<{ expert: string; public: string } | null> {
-  if (!isDbAvailable()) return null;
-  const week = await latestTermSummaryWeek(weekOf);
-  return week ? loadStoredTermSummary(week) : null;
-}
-
-/** Get the stored weekly overview narrative for a specific week (both versions). */
-export async function getWeeklyNarrative(
-  weekOf: string,
-): Promise<{ expert: string; public: string } | null> {
-  if (!isDbAvailable()) return null;
-  const [expert, pub] = await Promise.all([
-    getStoredNarrative(OVERVIEW_CATEGORY, weekOf, 'expert'),
-    getStoredNarrative(OVERVIEW_CATEGORY, weekOf, 'public'),
-  ]);
-  if (!expert && !pub) return null;
-  return { expert: expert?.content ?? '', public: pub?.content ?? '' };
-}
 
 // ---------------------------------------------------------------------------
 // 11. Source health for the week

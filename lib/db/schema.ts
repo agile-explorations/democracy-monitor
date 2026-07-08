@@ -574,3 +574,22 @@ export const feedbackResponses = pgTable(
   },
   (table) => [index('idx_feedback_responses_feedback_id').on(table.feedbackId)],
 );
+
+/**
+ * Deterministic index of notable weeks in the current term, ranked by
+ * significance rules over weekly_aggregates (no AI). Recomputed whenever the
+ * living term summary regenerates (i.e. whenever aggregate data changes).
+ */
+export const significantWeeks = pgTable(
+  'significant_weeks',
+  {
+    id: serial('id').primaryKey(),
+    weekOf: date('week_of').notNull().unique(),
+    reasons: jsonb('reasons').$type<{ type: string; detail: string }[]>().notNull(),
+    /** One-line AI event summary of what happened that week (null if unavailable). */
+    headline: text('headline'),
+    rank: integer('rank').notNull(),
+    computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_significant_weeks_rank').on(table.rank)],
+);

@@ -228,7 +228,18 @@ describe('buildTermSummaryPrompt', () => {
     return {
       weekOf: '2026-02-17',
       weeklySummary: { expert: 'This week expert.', public: 'This week public.' },
-      previousTermSummary: null,
+      significantWeeks: [
+        {
+          weekOf: '2026-01-20',
+          reasons: ['Peak concern: 4 of 5 categories at Confirmed Concern'],
+          excerpt: 'Inauguration week excerpt.',
+        },
+        {
+          weekOf: '2026-02-10',
+          reasons: ['Free and Fair Elections entered Confirmed Concern'],
+          excerpt: null,
+        },
+      ],
       trajectoryTable: [
         { category: 'civilService', weekOf: '2026-02-10', status: 'Stable' },
         { category: 'civilService', weekOf: '2026-02-17', status: 'Elevated' },
@@ -268,27 +279,23 @@ describe('buildTermSummaryPrompt', () => {
     expect(prompt).toContain('worsening');
   });
 
-  it('shows first-time notice when no prior summary', () => {
+  it('includes the significant-weeks digest with reasons and excerpts', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
-    expect(prompt).toContain('first term summary');
+    expect(prompt).toContain('SIGNIFICANT WEEKS');
+    expect(prompt).toContain('2026-01-20: Peak concern: 4 of 5 categories at Confirmed Concern');
+    expect(prompt).toContain('Weekly summary excerpt: Inauguration week excerpt.');
+    expect(prompt).toContain('2026-02-10: Free and Fair Elections entered Confirmed Concern');
   });
 
-  it('includes previous term summary when available', () => {
-    const input = makeTermInput({
-      previousTermSummary: { expert: 'Prior term expert.', public: 'Prior term public.' },
-    });
-    const prompt = buildTermSummaryPrompt(input, 'expert');
-    expect(prompt).toContain('PREVIOUS TERM SUMMARY');
-    expect(prompt).toContain('Prior term expert.');
+  it('shows a placeholder when no significant weeks are identified', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput({ significantWeeks: [] }), 'expert');
+    expect(prompt).toContain('SIGNIFICANT WEEKS');
+    expect(prompt).toContain('None identified for this term.');
   });
 
-  it('uses public version of previous summary for public prompt', () => {
-    const input = makeTermInput({
-      previousTermSummary: { expert: 'Prior term expert.', public: 'Prior term public.' },
-    });
-    const prompt = buildTermSummaryPrompt(input, 'public');
-    expect(prompt).toContain('Prior term public.');
-    expect(prompt).not.toContain('Prior term expert.');
+  it('does not reference a previous term summary', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).not.toContain('PREVIOUS TERM SUMMARY');
   });
 
   it('uses public weekly summary for public version', () => {
@@ -1246,7 +1253,7 @@ describe('buildTermSummaryPrompt — critical evaluation and compression', () =>
     return {
       weekOf: '2026-02-17',
       weeklySummary: { expert: 'This week expert.', public: 'This week public.' },
-      previousTermSummary: null,
+      significantWeeks: [],
       trajectoryTable: [],
       statistics: {
         weeksPerStatus: [],
@@ -1257,10 +1264,16 @@ describe('buildTermSummaryPrompt — critical evaluation and compression', () =>
     };
   }
 
-  it('includes critical evaluation instruction', () => {
+  it('includes standalone-synthesis instruction', () => {
     const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
-    expect(prompt).toContain('Critically evaluate');
-    expect(prompt).toContain('note the correction');
+    expect(prompt).toContain('standalone synthesis');
+    expect(prompt).toContain('no prior term summary to update');
+  });
+
+  it('instructs date-only references to significant weeks', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('Reference them by date');
+    expect(prompt).toContain('Do NOT invent URLs');
   });
 
   it('includes term-level layer pattern instruction', () => {

@@ -603,7 +603,7 @@ describe('collectWarnings', () => {
         staleWeeks: 0,
         weeksWithNarratives: 7,
         weeksWithSummary: 7,
-        weeksWithTermSummary: 0,
+        termSummaryFresh: false,
         missingSummaryWeeks: 0,
       },
     });
@@ -622,7 +622,7 @@ describe('collectWarnings', () => {
         staleWeeks: 0,
         weeksWithNarratives: 5,
         weeksWithSummary: 3,
-        weeksWithTermSummary: 0,
+        termSummaryFresh: false,
         missingSummaryWeeks: 2,
       },
     });
@@ -641,7 +641,7 @@ describe('collectWarnings', () => {
         staleWeeks: 4,
         weeksWithNarratives: 5,
         weeksWithSummary: 5,
-        weeksWithTermSummary: 0,
+        termSummaryFresh: false,
         missingSummaryWeeks: 0,
       },
     });
@@ -715,7 +715,7 @@ describe('collectWarnings', () => {
         staleWeeks: 1,
         weeksWithNarratives: 8,
         weeksWithSummary: 7,
-        weeksWithTermSummary: 0,
+        termSummaryFresh: false,
         missingSummaryWeeks: 1,
       },
     });
