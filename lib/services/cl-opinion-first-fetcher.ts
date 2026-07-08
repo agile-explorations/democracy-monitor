@@ -7,10 +7,15 @@
  * bulk-staging `tryOpinionFirstPass`, which no-ops in production because the
  * staging tables are transient and absent there.
  *
- * Stores the opinion document (type: judicial_opinion) routed to the same
- * categories as the historical staging pass (civilLiberties / lawEnforcement).
- * Dockets themselves continue to be captured by the per-category docket-first
- * fetch; the opinion is linked to its docket via `caseId='cl:<docketId>'`.
+ * Queries: the first-amendment text query (routes to civilLiberties) plus the
+ * court-scoped executive-power queries (routed by content — see COURT_QUERIES).
+ * NOS queries were REMOVED in #528: CL's type=o search silently ignores
+ * nature_of_suit (verified 2026-07-08 — identical counts with/without the
+ * param), so they fetched EVERY federal opinion and mis-routed it to
+ * civilLiberties/lawEnforcement. NOS-scoped civil-rights opinions are covered
+ * by the docket-first path (type=r respects nature_of_suit) plus its opinion
+ * enrichment. Dockets themselves continue to be captured by the per-category
+ * docket-first fetch; the opinion links to its docket via `caseId='cl:<docketId>'`.
  *
  * Opinion text is fetched through the shared `buildOpinionDataFromSubOpinions`
  * helper, so the emitted opinion `link` is byte-identical to the docket-first
@@ -18,7 +23,6 @@
  * duplicate row.
  */
 
-import { routeDocket } from '@/lib/services/cl-bulk-pipeline';
 import { backfillOpinionsByDate, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
 import {
   buildOpinionContentItem,
@@ -42,9 +46,6 @@ export interface OpinionFirstResult {
 /** CL search q for the first-amendment branch (mirrors the categories.ts signal). */
 export const FIRST_AMENDMENT_QUERY =
   '"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")';
-
-/** NOS codes queried individually (CL search accepts one nature_of_suit per request). */
-const NOS_CODES = ['440', '530', '890'];
 
 /**
  * Court-scoped executive-power queries (#528). The NOS/first-amendment scope
@@ -96,7 +97,6 @@ interface ClOpinionSearchResponse {
 /** A cluster matched by one or more queries, tracking why (for routing). */
 interface MatchedCluster {
   row: OpinionSearchResult;
-  nosCodes: Set<string>;
   firstAmendment: boolean;
   /** COURT_QUERIES keys that surfaced this cluster (content-routed branch). */
   courtQueries: Set<string>;
@@ -104,10 +104,10 @@ interface MatchedCluster {
 
 /**
  * Build the CL v4 opinion-search URL: type=o, date range, optional court
- * filter, and either a nature_of_suit filter or a free-text query.
+ * filter, and an optional free-text query. Deliberately NO nature_of_suit
+ * param: CL's type=o search silently ignores it (#528).
  */
 export function buildOpinionSearchUrl(p: {
-  nos?: string;
   query?: string;
   court?: string;
   dateFrom: string;
@@ -115,7 +115,6 @@ export function buildOpinionSearchUrl(p: {
 }): string {
   const qs = new URLSearchParams();
   qs.set('type', 'o');
-  if (p.nos) qs.set('nature_of_suit', p.nos);
   if (p.query) qs.set('q', p.query);
   if (p.court) qs.set('court', p.court);
   qs.set('filed_after', p.dateFrom);
@@ -159,8 +158,7 @@ async function collectMatchedClusters(
   to: string,
   maxPages: number,
 ): Promise<MatchedCluster[]> {
-  const queries: Array<{ nos?: string; query?: string; court?: string; courtKey?: string }> = [
-    ...NOS_CODES.map((nos) => ({ nos })),
+  const queries: Array<{ query?: string; court?: string; courtKey?: string }> = [
     { query: FIRST_AMENDMENT_QUERY },
     ...COURT_QUERIES.map((cq) => ({ query: cq.query, court: cq.court, courtKey: cq.key })),
   ];
@@ -168,7 +166,6 @@ async function collectMatchedClusters(
   const byCluster = new Map<number, MatchedCluster>();
   for (const q of queries) {
     const url = buildOpinionSearchUrl({
-      nos: q.nos,
       query: q.query,
       court: q.court,
       dateFrom: from,
@@ -178,7 +175,7 @@ async function collectMatchedClusters(
     try {
       rows = await fetchOpinionSearchResults(url, maxPages);
     } catch (err) {
-      const label = q.courtKey ?? q.nos ?? 'first-amendment';
+      const label = q.courtKey ?? 'first-amendment';
       console.error(`[cl-opinion-first] query failed (${label}):`, err);
       continue;
     }
@@ -190,12 +187,10 @@ async function collectMatchedClusters(
         existing ??
         ({
           row,
-          nosCodes: new Set<string>(),
           firstAmendment: false,
           courtQueries: new Set<string>(),
         } satisfies MatchedCluster);
       if (q.courtKey) match.courtQueries.add(q.courtKey);
-      else if (q.nos) match.nosCodes.add(q.nos);
       else match.firstAmendment = true;
       byCluster.set(row.cluster_id, match);
     }
@@ -206,7 +201,7 @@ async function collectMatchedClusters(
 }
 
 /**
- * Categories for a matched cluster: NOS routing ∪ first-amendment ∪ (for
+ * Categories for a matched cluster: first-amendment → civilLiberties ∪ (for
  * court-scoped matches) content classification over caseName + opinion head.
  * Court-scoped matches with no classified category are NOT stored — the court
  * query alone is no relevance guarantee ("separation of powers" appears
@@ -216,9 +211,6 @@ async function collectMatchedClusters(
 function routeMatchedCluster(match: MatchedCluster, opinionText?: string): string[] {
   const cats = new Set<string>();
   const caseName = match.row.caseName ?? '';
-  for (const nos of match.nosCodes) {
-    for (const cat of routeDocket(nos, caseName, '')) cats.add(cat);
-  }
   if (match.firstAmendment) cats.add('civilLiberties');
   if (match.courtQueries.size > 0) {
     for (const cat of classifyOpinionToCategories(caseName, opinionText)) cats.add(cat);
@@ -231,11 +223,7 @@ function routeMatchedCluster(match: MatchedCluster, opinionText?: string): strin
 
 /** Provenance markers for metadata.clQueries (audit + targeted purge handle). */
 function provenanceOf(match: MatchedCluster): string[] {
-  return [
-    ...[...match.nosCodes].map((nos) => `nos:${nos}`),
-    ...(match.firstAmendment ? ['first-amendment'] : []),
-    ...match.courtQueries,
-  ];
+  return [...(match.firstAmendment ? ['first-amendment'] : []), ...match.courtQueries];
 }
 
 /** Per-provenance match/unrouted counters for the completion log. */
