@@ -68,7 +68,7 @@ export function classifyCrecToCategories(title: string, text?: string | null): s
  * the case is about. Incidental citations and boilerplate live deeper in the
  * text and would over-route (see OPINION_TERM_EXCLUDES).
  */
-export const OPINION_CLASSIFY_TEXT_CAP = 4000;
+export const OPINION_CLASSIFY_TEXT_CAP = 6000;
 
 /** Options for classifyOpinionToCategories — overridable for audit tuning. */
 export interface OpinionClassifyOptions {

@@ -437,6 +437,7 @@ export const OPINION_TERM_EXCLUDES: Record<string, string[]> = {
     'federal investigation',
     'federal indictment',
     'federal prosecution',
+    'Special Counsel',
   ],
   executiveOversight: [
     'oversight',
@@ -448,12 +449,17 @@ export const OPINION_TERM_EXCLUDES: Record<string, string[]> = {
     'document request',
   ],
   executiveActions: ['rescission'],
-  fiscal: ['rescission', 'deficit'],
+  // 'sequestration' matches jury sequestration in criminal opinions (audit: Villarreal v. Texas)
+  fiscal: ['rescission', 'deficit', 'sequestration'],
   infoAvailability: ['redacted'],
   mediaFreedom: ['reporter'],
-  immigrationEnforcement: ['detention'],
+  // 'Customs and Border' matches CAFC tariff cases where CBP is a party (audit: Hmtx v. US)
+  immigrationEnforcement: ['detention', 'Customs and Border'],
   military: ['Department of Defense'],
   rulemaking: ['regulation', 'regulatory', 'federal regulation'],
+  // 'Special Counsel' collides with Office of Special Counsel in removal cases (audit: Margolin, Grundmann);
+  // 'Citizens United' matches case CITATIONS in unrelated suits (audit: TPS Alliance v. Noem)
+  elections: ['Citizens United'],
 };
 
 /**
