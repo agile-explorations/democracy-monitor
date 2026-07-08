@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   apiOpinionFirstPass,
   buildOpinionSearchUrl,
+  CIRCUIT_COURT_IDS,
+  COURT_QUERIES,
+  EXEC_POWER_QUERY,
   FIRST_AMENDMENT_QUERY,
 } from '@/lib/services/cl-opinion-first-fetcher';
 import type { ContentItem } from '@/lib/types';
@@ -142,5 +145,107 @@ describe('apiOpinionFirstPass', () => {
 
     expect(result.docketsFound).toBe(0);
     expect(storedDocs).toHaveLength(0);
+  });
+});
+
+describe('court-scoped queries (#528)', () => {
+  beforeEach(() => {
+    storedDocs.length = 0;
+  });
+
+  it('buildOpinionSearchUrl includes the court filter', () => {
+    const url = buildOpinionSearchUrl({
+      court: 'scotus',
+      query: EXEC_POWER_QUERY,
+      dateFrom: '2026-06-22',
+      dateTo: '2026-06-28',
+    });
+    expect(url).toContain('court=scotus');
+    expect(url).toContain('q=');
+    expect(url).not.toContain('nature_of_suit');
+  });
+
+  it('COURT_QUERIES covers SCOTUS-all, circuits+exec, and dcd+exec', () => {
+    expect(COURT_QUERIES.map((q) => q.key)).toEqual(['scotus-all', 'circuits-exec', 'dcd-exec']);
+    expect(COURT_QUERIES[0].query).toBeUndefined(); // SCOTUS ingests everything
+    expect(CIRCUIT_COURT_IDS.split(' ')).toHaveLength(13);
+  });
+
+  /**
+   * Mock where only court-scoped searches return the cluster (NOS/1A return
+   * nothing) — isolates the content-routed branch.
+   */
+  function mockCourtOnlyFetch(row: unknown, opinionText: string): void {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/')) {
+        return jsonResponse({ next: null, results: url.includes('court=') ? [row] : [] });
+      }
+      if (url.includes('/opinions/')) {
+        return jsonResponse({
+          id: 5001,
+          type: '020lead',
+          plain_text: opinionText,
+          absolute_url: '/opinion/1/case/',
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }) as unknown as typeof fetch;
+  }
+
+  it('routes a court-query cluster by content and tags clQueries provenance', async () => {
+    mockCourtOnlyFetch(
+      cluster({ caseName: 'Trump v. J. G. G.', court: 'Supreme Court', court_jurisdiction: 'F' }),
+      'The government invoked the Alien Enemies Act to summarily remove designated nationals.',
+    );
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false);
+
+    expect(result.opinionsStored).toBeGreaterThanOrEqual(1);
+    const categories = storedDocs.map((d) => d.category);
+    expect(categories).toContain('immigrationEnforcement');
+    const meta = storedDocs[0].items[0].metadata as { clQueries?: string[] };
+    expect(meta.clQueries).toEqual(
+      expect.arrayContaining(['scotus-all', 'circuits-exec', 'dcd-exec']),
+    );
+  });
+
+  it('does not store an unroutable court-query cluster (classifier gate)', async () => {
+    mockCourtOnlyFetch(
+      cluster({ caseName: 'Smith v. Acme Pension Plan', court_jurisdiction: 'F' }),
+      'The plan administrator denied benefits. Summary judgment is granted for defendant.',
+    );
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false);
+
+    expect(result.docketsFound).toBe(1); // text was fetched...
+    expect(result.opinionsStored).toBe(0); // ...but nothing stored
+    expect(storedDocs).toHaveLength(0);
+  });
+
+  it('unions NOS routing with content routing when both query families match', async () => {
+    // All searches (NOS + court) return the cluster; text mentions Alien Enemies Act.
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/')) return jsonResponse({ next: null, results: [cluster()] });
+      if (url.includes('/opinions/')) {
+        return jsonResponse({
+          id: 5001,
+          type: '020lead',
+          plain_text: 'Habeas petition under the Alien Enemies Act.',
+          absolute_url: '/opinion/1/doe-v-state/',
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }) as unknown as typeof fetch;
+
+    await apiOpinionFirstPass('2026-06-22', '2026-06-28', false);
+
+    const categories = storedDocs.map((d) => d.category).sort();
+    // NOS 440/530/890 → civilLiberties+lawEnforcement; content → immigrationEnforcement
+    expect(categories).toEqual(['civilLiberties', 'immigrationEnforcement', 'lawEnforcement']);
+    // One store call per category — the (url, category) upsert dedups any rerun.
+    const urls = new Set(storedDocs.map((d) => d.items[0].link));
+    expect(urls.size).toBe(1);
   });
 });
