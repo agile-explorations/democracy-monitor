@@ -285,12 +285,47 @@ describe('assessPass1', () => {
     expect(result).toBeNull();
   });
 
-  it('returns null when response cannot be parsed', async () => {
+  it('returns null when response cannot be parsed, after one warmer retry', async () => {
     const doc = makeDoc();
     const provider = makeProvider('not valid json');
 
     const result = await assessPass1(doc, 'Test category', provider);
     expect(result).toBeNull();
+    // exactly one retry: two completions total, then gives up
+    expect(provider.complete).toHaveBeenCalledTimes(2);
+  });
+
+  it('recovers when the retry response parses', async () => {
+    const doc = makeDoc();
+    const validJson = JSON.stringify({
+      relevant: true,
+      confidence: 0.8,
+      signals: ['test'],
+      erosionType: 'routine',
+    });
+    const provider: AIProvider = {
+      name: 'openai',
+      complete: vi
+        .fn()
+        .mockResolvedValueOnce({
+          content: 'not valid json',
+          model: 'gpt-4o-mini',
+          tokensUsed: { input: 100, output: 50 },
+          latencyMs: 200,
+        })
+        .mockResolvedValueOnce({
+          content: validJson,
+          model: 'gpt-4o-mini',
+          tokensUsed: { input: 100, output: 50 },
+          latencyMs: 200,
+        }),
+      isAvailable: vi.fn().mockReturnValue(true),
+    };
+
+    const result = await assessPass1(doc, 'Test category', provider);
+    expect(result).not.toBeNull();
+    expect(result?.response.relevant).toBe(true);
+    expect(provider.complete).toHaveBeenCalledTimes(2);
   });
 
   it('returns parsed result for valid response', async () => {
