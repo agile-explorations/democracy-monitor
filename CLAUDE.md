@@ -73,6 +73,12 @@ To run commands against production, use `source .env.prod.local && export VAR &&
 
 With 1M context, file contents from earlier in the conversation are still available. Do not re-read a file unless it has been modified since the last read. Reference the earlier read instead.
 
+### Production data operations
+
+Runbook proposals must list each production command with its **exact scope flags**. Never rely on a command's default scope in production — `scores:recompute`, `scores:enrich`, and `review:backfill` default to ALL analysis periods, **including baseline periods**.
+
+Any command that writes to baseline-period data (before 2025-01-20) — documents, assessments, aggregates, or recompute/enrich of derived values — requires **explicit user approval per invocation**. Baselines are the calibrated reference for negative controls; whether a baseline write is "safe" is the user's decision, not Claude's.
+
 ## Database migrations
 
 **Schema-first workflow** — NEVER manually create SQL files in `drizzle/`. Always follow this process:
