@@ -22,7 +22,7 @@ import {
   retryMissingPass2,
 } from '@/lib/services/document-review-orchestrator';
 import { findPass2GapWeeks } from '@/lib/services/document-review-queries';
-import { getPass1Count } from '@/lib/services/document-review-store';
+import { getExistingPass1Urls } from '@/lib/services/document-review-store';
 import type { ContentItem } from '@/lib/types';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
@@ -220,8 +220,15 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
         const items = await getDocumentsForCategoryWeek(cat.key, weekOf, args.source);
         if (items.length === 0) continue;
 
-        const existing = await getPass1Count(cat.key, weekOf, args.source);
-        if (existing >= items.length) {
+        // Skip only when every item URL already has a P1 row for this category.
+        // A count comparison (getPass1Count >= items.length) is NOT equivalent:
+        // stale assessment rows (docs that no longer pass the loader filter, or
+        // rows under other week_of anchors) inflate the count and silently skip
+        // weeks that still contain unassessed docs — 94 court-query docs were
+        // permanently stuck this way (#528).
+        const itemUrls = items.map((i) => i.link || i.title).filter(Boolean) as string[];
+        const existingUrls = await getExistingPass1Urls(itemUrls, '', cat.key);
+        if (itemUrls.every((u) => existingUrls.has(u))) {
           skipped += items.length;
           p2Retried += await retryMissingPass2(cat.key, weekOf, options);
           continue;
