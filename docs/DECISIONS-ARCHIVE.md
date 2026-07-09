@@ -4,6 +4,37 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-CRON: Cron Job Resilience — Validation, Self-Healing, Error Reporting ✅
+
+**Status: Done (issues #470-#475).** Milestone 71.
+
+**Context:** Three weekly cron jobs (legiscan 01:00 → snapshot 03:00 → dump 05:00 UTC Monday) run sequentially on Render.com. Incidents revealed gaps: snapshot exits 0 even when skipped (lock held), fire-and-forget DB writes silently drop errors, one LegiScan session failure kills the entire job, and there's no persistent record of cron execution history. Errors are only visible in ephemeral Render logs.
+
+**Scope vs. Actual:** All 6 issues implemented as planned, plus one review-driven refactor (retry-narratives CLI deduplication).
+
+1. `cron_runs` table + store service (#470)
+2. Snapshot exit code fixes, error collection, cron_run recording (#471)
+3. Inline narrative retry in snapshot (#472)
+4. LegiScan per-session error handling, locking, cron_run recording (#473)
+5. Weekly dump size validation, cron_run recording, cross-job check (#474)
+6. Health endpoint `GET /api/health/cron` (#475)
+
+**Key decisions:**
+
+1. **`process.exit()` outside `withCronLock` callback:** Exit must happen AFTER `withCronLock` resolves (lock already released in `finally` block). Calling `process.exit()` inside the callback would skip the `finally` block, leaving stale locks.
+2. **Exit code 2 for lock-held (skipped):** Render treats any non-zero as failure, which is correct — a skipped run should be visible in the dashboard. Stale lock TTL (6h) auto-clears before the next weekly run (168h apart).
+3. **Await over fire-and-forget:** `recordSnapshotSignalResults`, `storeDocuments`, `storeDocumentScores` changed from `.catch()` to `try { await } catch`. The writes are fast and the data matters — fetch_log completeness affects `validate:ingest`, document storage affects L2 assessment.
+4. **Aggregate retry inline:** Failed `storeWeeklyAggregate` calls are retried once after all categories are processed, catching transient DB errors without waiting until next week's missed-weeks detection.
+5. **Content gap counting in backfill fetchers:** Each `fetchWeekItems*` function returns `ContentGaps` counts after fill functions run — FR null content with `raw_text_url`, FEC short summaries (<400 chars), OIG metadata-only patterns, GovInfo null with `packageId`. These flow through `WeekFetchResult` for reporting.
+6. **Shared `retryFailedNarratives` with optional category filter:** During code review, noticed the retry-narratives CLI duplicated the retry logic now in `narrative-pipeline.ts`. Refactored the CLI (101→55 lines) to delegate to the shared function, which accepts an optional `category` parameter.
+7. **cron_run recording in bash via psql:** The dump script can't use TypeScript services, so it records cron_runs directly via psql with an ERR trap for failure recording.
+8. **Health classification thresholds:** `healthy` = all three latest runs `success`; `degraded` = any `partial`/`skipped` or missing; `unhealthy` = any `failed` or stale (>8 days). No external notifications — alerting path is DB → API → external monitor.
+
+**Lessons learned:**
+
+1. **Fire-and-forget DB writes are a reliability anti-pattern in pipelines:** The `.catch()` pattern silently drops errors in a pipeline where downstream steps depend on the data being written. If the process crashes right after, the writes are lost entirely. Always await writes that affect pipeline correctness.
+2. **Function extraction fixes max-lines without losing cohesion:** `runPostCategorySteps` and `processSessions` extracted to stay under the 80-line ESLint limit. Both are single-purpose and called from exactly one place — they exist for readability, not reuse.
+
 ## Sprint R-NOISE: CREC & LegiScan Classification Noise Reduction ✅
 
 **Status: Done (issues #465-#469).** Milestone 70.
