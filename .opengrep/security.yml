@@ -180,3 +180,41 @@ rules:
     paths:
       include:
         - '__tests__'
+
+  # WHY: Comparing a COUNT of existing records against a collection's length
+  # to decide "already processed, skip" is not a coverage check. Stale or
+  # extra rows (different filters, other week anchors, multi-model rows)
+  # inflate the count, so the gate skips work that still contains unprocessed
+  # items — silently and permanently. 94 court-query opinions were stuck
+  # unassessed this way (#528: getPass1Count >= items.length). Check
+  # per-item MEMBERSHIP instead (load existing keys into a Set and require
+  # every item to be covered).
+  - id: no-count-comparison-coverage-gate
+    patterns:
+      - pattern-either:
+          - pattern: |
+              const $N = await $F(...);
+              ...
+              if ($N >= $ITEMS.length) { ... }
+          - pattern: |
+              const $N = await $F(...);
+              ...
+              if ($N === $ITEMS.length) { ... }
+          - pattern: |
+              const $N = await $F(...);
+              ...
+              if ($N == $ITEMS.length) { ... }
+      - metavariable-regex:
+          metavariable: $F
+          regex: '.*([Cc]ount).*'
+    message: >-
+      A record count compared against a collection length is being used as a
+      skip/completeness gate. Counts are not coverage: stale or extra rows
+      inflate the count and silently skip unprocessed items (see #528, 94
+      permanently unassessed docs). Load the existing items' keys and check
+      per-item membership instead.
+    languages: [typescript]
+    severity: WARNING
+    paths:
+      include:
+        - lib
