@@ -16,6 +16,7 @@
 import fs from 'fs';
 import path from 'path';
 import { TOPIC_ROUTING_TERMS } from '@/lib/data/topic-routing-terms';
+import { COURT_QUERIES, EXEC_POWER_QUERY } from '@/lib/services/cl-opinion-first-fetcher';
 import {
   buildOpinionDataFromSubOpinions,
   CL_API_V4,
@@ -35,15 +36,11 @@ const FROM = '2025-01-20';
 const TO = new Date().toISOString().slice(0, 10);
 const SAMPLE_SIZE = 5;
 
-export const EXEC_POWER_QUERY =
-  '"executive order" OR "presidential authority" OR "separation of powers" OR impoundment OR "unitary executive" OR "removal power"';
-const CIRCUITS = 'ca1 ca2 ca3 ca4 ca5 ca6 ca7 ca8 ca9 ca10 ca11 cadc cafc';
-
-const QUERIES: Array<{ key: string; court: string; q?: string }> = [
-  { key: 'scotus-all', court: 'scotus' },
-  { key: 'circuits-exec', court: CIRCUITS, q: EXEC_POWER_QUERY },
-  { key: 'dcd-exec', court: 'dcd', q: EXEC_POWER_QUERY },
-];
+const QUERIES: Array<{ key: string; court: string; q?: string }> = COURT_QUERIES.map((cq) => ({
+  key: cq.key,
+  court: cq.court,
+  q: cq.query,
+}));
 
 /** Marquee cases that MUST be captured (recall checklist). */
 const MARQUEE: Array<{ label: string; caseNameRe: RegExp }> = [
