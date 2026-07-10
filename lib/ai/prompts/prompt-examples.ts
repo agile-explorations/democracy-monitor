@@ -8,11 +8,11 @@
  * Changes to the prompt source files are immediately visible to users.
  */
 
-import { CATEGORIES } from '@/lib/data/categories';
 import {
   ATTRIBUTION_SYSTEM_PROMPT,
   buildAttributionPrompt,
-} from '@/lib/services/actor-attribution';
+} from '@/lib/ai/prompts/actor-attribution-prompt';
+import { CATEGORIES } from '@/lib/data/categories';
 import { PASS1_SYSTEM_PROMPT, buildPass1Prompt } from './document-review-pass1';
 import { PASS2_SYSTEM_PROMPT, buildPass2Prompt } from './document-review-pass2';
 import {

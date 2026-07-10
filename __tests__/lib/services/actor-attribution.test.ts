@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAttributionPrompt,
   parseAttributionResponse,
-  stratifiedSample,
-  summarizeDistribution,
-} from '@/lib/services/actor-attribution';
-import type { AttributionCandidate } from '@/lib/services/actor-attribution';
+} from '@/lib/ai/prompts/actor-attribution-prompt';
+import type { AttributionCandidate } from '@/lib/ai/prompts/actor-attribution-prompt';
+import { stratifiedSample, summarizeDistribution } from '@/lib/services/actor-attribution';
 
 function makeCandidate(overrides: Partial<AttributionCandidate> = {}): AttributionCandidate {
   return {
