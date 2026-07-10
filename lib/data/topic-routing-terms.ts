@@ -396,3 +396,84 @@ export const TOPIC_ROUTING_TERMS: Record<string, string[]> = {
     'unaccompanied minor',
   ],
 };
+
+/**
+ * Terms suppressed when routing JUDICIAL OPINIONS (issue #528). The shared
+ * TOPIC_ROUTING_TERMS are calibrated for congressional speech, where "district
+ * court" or "due process" signals the speech is ABOUT courts/rights. In a court
+ * opinion those phrases are procedural boilerplate that appears in nearly every
+ * document and would over-route catastrophically (R-S1f precedent). Seeded from
+ * boilerplate analysis; tuned against real opinion texts via
+ * scripts/audit-cl-court-routing.ts before any ingestion.
+ */
+export const OPINION_TERM_EXCLUDES: Record<string, string[]> = {
+  judicialIndependence: [
+    'court order',
+    'injunction',
+    'federal judge',
+    'court ruling',
+    'judicial review',
+    'federal court',
+    'appellate court',
+    'district court',
+    'judiciary committee',
+    'judicial nomination',
+    'judicial vacancy',
+    'Article III',
+    'contempt of court',
+  ],
+  civilLiberties: ['due process', 'equal protection', 'discrimination', 'privacy'],
+  lawEnforcement: [
+    'Department of Justice',
+    'DOJ',
+    'FBI',
+    'Attorney General',
+    'U.S. Attorney',
+    'criminal justice',
+    'sentencing',
+    'federal prison',
+    'Bureau of Prisons',
+    'law enforcement',
+    'federal investigation',
+    'federal indictment',
+    'federal prosecution',
+    'Special Counsel',
+  ],
+  executiveOversight: [
+    'oversight',
+    'subpoena',
+    'termination of',
+    'dismissed from',
+    'firing of',
+    'fired the',
+    'document request',
+  ],
+  executiveActions: ['rescission'],
+  // 'sequestration' matches jury sequestration in criminal opinions (audit: Villarreal v. Texas)
+  fiscal: ['rescission', 'deficit', 'sequestration'],
+  infoAvailability: ['redacted'],
+  mediaFreedom: ['reporter'],
+  // 'Customs and Border' matches CAFC tariff cases where CBP is a party (audit: Hmtx v. US)
+  immigrationEnforcement: ['detention', 'Customs and Border'],
+  military: ['Department of Defense'],
+  rulemaking: ['regulation', 'regulatory', 'federal regulation'],
+  // 'Special Counsel' collides with Office of Special Counsel in removal cases (audit: Margolin, Grundmann);
+  // 'Citizens United' matches case CITATIONS in unrelated suits (audit: TPS Alliance v. Noem)
+  elections: ['Citizens United'],
+};
+
+/**
+ * Opinion-only routing terms ADDED on top of TOPIC_ROUTING_TERMS for judicial
+ * opinions — case-law vocabulary that congressional speech rarely uses. Kept
+ * separate so shared CREC/LegiScan routing is unaffected.
+ */
+export const OPINION_TERM_ADDITIONS: Record<string, string[]> = {
+  immigrationEnforcement: [
+    'Alien Enemies Act',
+    'expedited removal',
+    'Immigration and Nationality Act',
+  ],
+  rulemaking: ["Humphrey's Executor", 'removal power', 'for-cause removal', 'removal protection'],
+  executiveActions: ['birthright citizenship', 'presidential proclamation'],
+  fiscal: ['withholding of funds', 'withhold appropriated', 'Antideficiency Act'],
+};

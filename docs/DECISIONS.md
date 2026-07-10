@@ -12,6 +12,29 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-INGEST-GAPS: Court Opinion Coverage + GAO Constraint (#528, #529) ✅
+
+**Status: Done.** Milestone R-INGEST-GAPS (#80). Issues #528, #529 closed; #534–#537 filed.
+
+**Product outcome:** The dashboard's court coverage claim is now real. Marquee executive-power rulings (Trump v. Slaughter, birthright citizenship, Alien Enemies/J.G.G., CREW v. OMB impoundment) were entirely absent — structurally unreachable by the NOS-scoped pipeline; they now flow into the right categories weekly and across the whole term (2,229 docs backfilled, 467 assessed clearly_concerning, 108 category-week statuses changed across 51 weeks — nearly all escalations: the missing rulings had been suppressing real signal). GAO impoundment decisions were confirmed unobtainable (GovInfo archive dead post-2008, gao.gov WAF-blocked) and honestly documented as a standing constraint, proxied by impoundment litigation. Four latent pipeline defects were found and fixed en route. A product-direction decision emerged: DM monitors ALL democratic institutions, not just the administration (see #536/#537).
+
+**Planned vs built:** Plan (court-scoped queries + audit-tuned opinion classifier + T2 backfill + GAO docs) shipped as designed: audit-first tuning over all 876 candidates (5/5 marquee checklist, ~86% stratified precision sample, cap 6000 + 4 audit-derived excludes). Unplanned but in-scope: four pre-existing bug fixes discovered by staged verification —
+
+1. **CL type=o silently ignores nature_of_suit** — since #525 the opinion-first pass fetched EVERY federal opinion, mis-routing ~90% noise into civilLiberties/lawEnforcement (2,307 rows; 1,988 purged after archive; #527's "recovered coverage" claim corrected in that retro entry).
+2. **scores:recompute nulls convergence_detail** — scores:enrich must follow it; runbook ordering now documented.
+3. **Deterministic silent P1 parse failures** — temp-0 unparseable responses returned null with no log, permanently excluding docs; fixed with logged retry at temp 0.3.
+4. **Count-comparison used as coverage gate** — getPass1Count >= items.length skipped weeks containing unassessed docs (94 stuck); fixed with per-URL membership; new OpenGrep rule `no-count-comparison-coverage-gate` enforces the class.
+
+**Spec deviations / process failures:** An unscoped `scores:recompute` rewrote baseline aggregates without user approval — exactly the data class the plan had fenced off. Led to two CLAUDE.md process rules (production commands with explicit scopes + baseline writes need per-invocation approval; proposals lead with PM-level summaries). Validation gate closed at 39/39 known events with NC-2 failing pre-existing (#535) and NC-3 failing **by decision** (#536): the recomputed Biden-2022 statuses reflect real institutional events (Dobbs, local-government court defiance) under the institutions-wide product view; restoring the old values would have re-suppressed signal. R-ACTOR sprint scoped (#537) to add erosion-actor attribution and redefine NC-3 as federal-executive-only.
+
+**Lessons learned:**
+
+- **Verify filters actually filter.** CL accepted nature_of_suit on type=o and silently ignored it — identical result counts with/without a param is a 30-second check that would have caught 11 weeks of noise at #525 time.
+- **Counts are not coverage.** Any "existing >= expected → skip" gate silently strands items when stale rows inflate the count. Check membership per item. (OpenGrep rule added.)
+- **Temp-0 failures are deterministic.** An unparseable LLM response at temperature 0 fails identically forever; parse failures must log and retry warmer.
+- **Staged verification catches what code review can't.** All four latent bugs surfaced from staged ingest + validation gates, not from reading code.
+- **Speech-calibrated routing terms don't transfer to opinions** — audit-first tuning against the real corpus (fetch-and-cache + variant sweeps) made the classifier trustworthy before any DB write.
+
 ## Sprint R-TERM: Living Term Summary + Significant-Weeks Index ✅
 
 **Status: Done (issues #530, #532).** Milestone 80 (R-INGEST-GAPS; other issues #524/#528/#529 remain open).
@@ -69,6 +92,8 @@ This file captures what was planned vs what was built, spec deviations, key deci
 | Narratives        | Weekly overviews regenerated after re-assessment; term-summary chain rebuilt ascending (04-20→06-29) |
 
 The correction was material: post-reassessment, e.g. week 06-08 reads 11 ConfirmedConcern + 3 Elevated across all 14 categories — signal the coverage hole had suppressed.
+
+**CORRECTION (2026-07-08, found during R-CL-SCOPE/#528):** the "recovered" opinion ingestion above was ~90% noise. CL's type=o search silently ignores `nature_of_suit`, so the #525 API path fetched EVERY federal opinion (2,307 rows 4/20→present; only 8 with verifiable in-scope dockets + 120 with 1A text) and mis-routed them to civilLiberties/lawEnforcement. Detection was not corrupted (P1 marked them irrelevant) but volumes were inflated and L2 spend wasted. Fixed in 51d80e7 (NOS queries removed from opinion-first; 1,988 noise rows purged, archived to ~/Backups/democracy-monitor/).
 
 **Key decisions:**
 
@@ -179,34 +204,3 @@ Detection: 39/39 preserved throughout (verified at each stage).
 5. **100% detection with 4/6 NC failures is the correct first step.** Maximize recall first (content + routing), then tune precision (P1 prompt calibration). The reverse order — which every previous sprint attempted — can't work because you can't tune what you can't see.
 
 ---
-
-## Sprint R-CRON: Cron Job Resilience — Validation, Self-Healing, Error Reporting ✅
-
-**Status: Done (issues #470-#475).** Milestone 71.
-
-**Context:** Three weekly cron jobs (legiscan 01:00 → snapshot 03:00 → dump 05:00 UTC Monday) run sequentially on Render.com. Incidents revealed gaps: snapshot exits 0 even when skipped (lock held), fire-and-forget DB writes silently drop errors, one LegiScan session failure kills the entire job, and there's no persistent record of cron execution history. Errors are only visible in ephemeral Render logs.
-
-**Scope vs. Actual:** All 6 issues implemented as planned, plus one review-driven refactor (retry-narratives CLI deduplication).
-
-1. `cron_runs` table + store service (#470)
-2. Snapshot exit code fixes, error collection, cron_run recording (#471)
-3. Inline narrative retry in snapshot (#472)
-4. LegiScan per-session error handling, locking, cron_run recording (#473)
-5. Weekly dump size validation, cron_run recording, cross-job check (#474)
-6. Health endpoint `GET /api/health/cron` (#475)
-
-**Key decisions:**
-
-1. **`process.exit()` outside `withCronLock` callback:** Exit must happen AFTER `withCronLock` resolves (lock already released in `finally` block). Calling `process.exit()` inside the callback would skip the `finally` block, leaving stale locks.
-2. **Exit code 2 for lock-held (skipped):** Render treats any non-zero as failure, which is correct — a skipped run should be visible in the dashboard. Stale lock TTL (6h) auto-clears before the next weekly run (168h apart).
-3. **Await over fire-and-forget:** `recordSnapshotSignalResults`, `storeDocuments`, `storeDocumentScores` changed from `.catch()` to `try { await } catch`. The writes are fast and the data matters — fetch_log completeness affects `validate:ingest`, document storage affects L2 assessment.
-4. **Aggregate retry inline:** Failed `storeWeeklyAggregate` calls are retried once after all categories are processed, catching transient DB errors without waiting until next week's missed-weeks detection.
-5. **Content gap counting in backfill fetchers:** Each `fetchWeekItems*` function returns `ContentGaps` counts after fill functions run — FR null content with `raw_text_url`, FEC short summaries (<400 chars), OIG metadata-only patterns, GovInfo null with `packageId`. These flow through `WeekFetchResult` for reporting.
-6. **Shared `retryFailedNarratives` with optional category filter:** During code review, noticed the retry-narratives CLI duplicated the retry logic now in `narrative-pipeline.ts`. Refactored the CLI (101→55 lines) to delegate to the shared function, which accepts an optional `category` parameter.
-7. **cron_run recording in bash via psql:** The dump script can't use TypeScript services, so it records cron_runs directly via psql with an ERR trap for failure recording.
-8. **Health classification thresholds:** `healthy` = all three latest runs `success`; `degraded` = any `partial`/`skipped` or missing; `unhealthy` = any `failed` or stale (>8 days). No external notifications — alerting path is DB → API → external monitor.
-
-**Lessons learned:**
-
-1. **Fire-and-forget DB writes are a reliability anti-pattern in pipelines:** The `.catch()` pattern silently drops errors in a pipeline where downstream steps depend on the data being written. If the process crashes right after, the writes are lost entirely. Always await writes that affect pipeline correctness.
-2. **Function extraction fixes max-lines without losing cohesion:** `runPostCategorySteps` and `processSessions` extracted to stay under the 80-line ESLint limit. Both are single-purpose and called from exactly one place — they exist for readability, not reuse.

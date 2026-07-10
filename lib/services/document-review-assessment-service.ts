@@ -27,9 +27,41 @@ export interface Pass2Result {
   isAuditSample: boolean;
 }
 
+/** Retry temperature when a temp-0 response is unparseable (breaks deterministic failures). */
+const PARSE_RETRY_TEMPERATURE = 0.3;
+
+/**
+ * Complete a Pass 1 prompt, retrying once at a warmer temperature when the
+ * temp-0 response is unparseable — at temperature 0 an unparseable response
+ * is deterministic, permanently excluding the doc from assessment (#528).
+ */
+async function completePass1WithParseRetry(
+  provider: AIProvider,
+  prompt: string,
+  model: string | undefined,
+  docLabel: string,
+) {
+  let result = await provider.complete(prompt, {
+    systemPrompt: PASS1_SYSTEM_PROMPT,
+    temperature: 0,
+    model,
+  });
+  let parsed = parsePass1Response(result.content);
+  if (!parsed) {
+    console.warn(`[layer2] Pass 1 unparseable at temp 0 for ${docLabel}, retrying`);
+    result = await provider.complete(prompt, {
+      systemPrompt: PASS1_SYSTEM_PROMPT,
+      temperature: PARSE_RETRY_TEMPERATURE,
+      model,
+    });
+    parsed = parsePass1Response(result.content);
+  }
+  return { result, parsed };
+}
+
 /**
  * Run Pass 1 classification on a single document.
- * Returns null if AI call fails or response cannot be parsed.
+ * Returns null if AI call fails or response cannot be parsed (after one retry).
  */
 export async function assessPass1(
   doc: ContentItem,
@@ -47,14 +79,19 @@ export async function assessPass1(
   );
 
   try {
-    const result = await provider.complete(prompt, {
-      systemPrompt: PASS1_SYSTEM_PROMPT,
-      temperature: 0,
+    const { result, parsed } = await completePass1WithParseRetry(
+      provider,
+      prompt,
       model,
-    });
-
-    const parsed = parsePass1Response(result.content);
-    if (!parsed) return null;
+      doc.link ?? doc.title ?? 'unknown',
+    );
+    if (!parsed) {
+      console.warn(
+        `[layer2] Pass 1 unparseable after retry for ${doc.link ?? doc.title}: ` +
+          result.content.slice(0, 160).replace(/\n/g, ' '),
+      );
+      return null;
+    }
 
     return {
       url: doc.link ?? doc.title ?? 'unknown',

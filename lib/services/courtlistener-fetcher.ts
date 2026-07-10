@@ -258,6 +258,8 @@ export function buildOpinionContentItem(
     court: string;
     docketId: number;
     suitNature?: string;
+    /** Which CL queries surfaced this opinion (provenance for audits/purges). */
+    clQueries?: string[];
   },
 ): ContentItem {
   return {
@@ -273,6 +275,7 @@ export function buildOpinionContentItem(
       caseId: `cl:${parentDocket.docketId}`,
       suitNature: parentDocket.suitNature,
       parentDocketUrl: `${CL_BASE_URL}/docket/${parentDocket.docketId}/`,
+      ...(parentDocket.clQueries?.length ? { clQueries: parentDocket.clQueries } : {}),
     },
   };
 }

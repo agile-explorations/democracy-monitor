@@ -30,7 +30,7 @@ vi.mock('@/lib/services/document-review-orchestrator', () => ({
 }));
 
 vi.mock('@/lib/services/document-review-store', () => ({
-  getPass1Count: vi.fn().mockResolvedValue(0),
+  getExistingPass1Urls: vi.fn().mockResolvedValue(new Set()),
 }));
 
 describe('backfill-document-review', () => {

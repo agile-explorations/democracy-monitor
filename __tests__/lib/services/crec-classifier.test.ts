@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
+import {
+  classifyCrecToCategories,
+  classifyOpinionToCategories,
+} from '@/lib/services/crec-classifier';
 
 describe('classifyCrecToCategories', () => {
   it('routes speech about federal workforce to civilService', () => {
@@ -105,5 +108,87 @@ describe('classifyCrecToCategories', () => {
       'The continuing resolution expires next week and we face a government shutdown.',
     );
     expect(categories).toContain('fiscal');
+  });
+});
+
+describe('classifyOpinionToCategories', () => {
+  const ERISA_BOILERPLATE =
+    "Before the court is defendant's motion for summary judgment. The district court " +
+    'has jurisdiction under 28 U.S.C. § 1331. Plaintiff alleges the plan administrator ' +
+    'violated ERISA fiduciary duties. The court order below granted an injunction; the ' +
+    'appellate court reviews de novo. Due process requires notice and an opportunity to ' +
+    'be heard. The reporter of decisions is directed to publish this opinion.';
+
+  it('routes generic-boilerplate opinions nowhere', () => {
+    expect(classifyOpinionToCategories('Smith v. Acme Benefits Plan', ERISA_BOILERPLATE)).toEqual(
+      [],
+    );
+  });
+
+  it('routes agency-removal opinions to rulemaking via removal-power vocabulary', () => {
+    const cats = classifyOpinionToCategories(
+      'Trump v. Slaughter',
+      'The question presented is whether the removal protection for Commissioners of the ' +
+        'Federal Trade Commission violates the separation of powers. We overrule ' +
+        "Humphrey's Executor and hold the President may remove Commissioners at will. " +
+        'The independent agency structure cannot constrain the removal power.',
+    );
+    expect(cats).toContain('rulemaking');
+    expect(cats).toContain('judicialIndependence'); // separation of powers survives excludes
+  });
+
+  it('routes Alien Enemies Act opinions to immigrationEnforcement', () => {
+    const cats = classifyOpinionToCategories(
+      'Trump v. J. G. G.',
+      'The government invoked the Alien Enemies Act to remove Venezuelan nationals. ' +
+        'The proclamation designated the gang as a foreign terrorist organization and ' +
+        'directed summary removal without hearings.',
+    );
+    expect(cats).toContain('immigrationEnforcement');
+  });
+
+  it('routes birthright-citizenship EO challenges to executiveActions', () => {
+    const cats = classifyOpinionToCategories(
+      'State of New Jersey v. Trump',
+      'The States challenge Executive Order 14160, which purports to deny birthright ' +
+        'citizenship to children of certain noncitizens. The district court enjoined the order.',
+    );
+    expect(cats).toContain('executiveActions');
+  });
+
+  it('routes impoundment litigation to fiscal without the excluded generic terms', () => {
+    const cats = classifyOpinionToCategories(
+      'Citizens for Responsibility and Ethics in Washington v. OMB',
+      'Plaintiffs allege the administration violated the Impoundment Control Act by ' +
+        'withholding of funds Congress appropriated for the program.',
+    );
+    expect(cats).toContain('fiscal');
+  });
+
+  it('only classifies within the text cap', () => {
+    const padding = 'lorem ipsum '.repeat(400); // ~4800 chars, past the 4000 cap
+    const cats = classifyOpinionToCategories(
+      'Doe v. Roe',
+      `${padding} the Impoundment Control Act violation appears only past the cap`,
+      { textCap: 4000 },
+    );
+    expect(cats).toEqual([]);
+    const catsWide = classifyOpinionToCategories(
+      'Doe v. Roe',
+      `${padding} the Impoundment Control Act violation appears only past the cap`,
+      { textCap: 10000 },
+    );
+    expect(catsWide).toContain('fiscal');
+  });
+
+  it('applies additions but not to CREC classification', () => {
+    const opinionCats = classifyOpinionToCategories(
+      'A v. B',
+      'The Alien Enemies Act authorizes summary apprehension.',
+    );
+    expect(opinionCats).toContain('immigrationEnforcement');
+    // CREC classifier is untouched by opinion additions/excludes:
+    const crecCats = classifyCrecToCategories('A v. B', 'The court order and injunction issued.');
+    expect(crecCats).toContain('judicialIndependence');
   });
 });

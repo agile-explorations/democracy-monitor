@@ -12,9 +12,11 @@ import { documents } from '@/lib/db/schema';
  * whose output is not controlled by the executive. Continued activity in these sources
  * while government sources are silent creates the contrast signal that L1v2 detects.
  *
- * Note: `govinfo` publishes GAO reports, congressional reports, and public laws —
- * all legislative-branch outputs. `govinfo_cpd` (Presidential Documents) is separate
- * and correctly classified as government-controlled.
+ * Note: `govinfo` publishes congressional reports (CRPT) and public laws (PLAW) —
+ * legislative-branch outputs. It does NOT carry current GAO material (the
+ * GAOREPORTS collection is a dead pre-2008 archive; see #529). `govinfo_cpd`
+ * (Presidential Documents) is separate and correctly classified as
+ * government-controlled.
  */
 export const GOVERNMENT_SOURCES = new Set(['federal_register', 'doj', 'govinfo_cpd', 'oig', 'fec']);
 

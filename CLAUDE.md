@@ -73,6 +73,12 @@ To run commands against production, use `source .env.prod.local && export VAR &&
 
 With 1M context, file contents from earlier in the conversation are still available. Do not re-read a file unless it has been modified since the last read. Reference the earlier read instead.
 
+### Production data operations
+
+Runbook proposals must list each production command with its **exact scope flags**. Never rely on a command's default scope in production — `scores:recompute`, `scores:enrich`, and `review:backfill` default to ALL analysis periods, **including baseline periods**.
+
+Any command that writes to baseline-period data (before 2025-01-20) — documents, assessments, aggregates, or recompute/enrich of derived values — requires **explicit user approval per invocation**. Baselines are the calibrated reference for negative controls; whether a baseline write is "safe" is the user's decision, not Claude's.
+
 ## Database migrations
 
 **Schema-first workflow** — NEVER manually create SQL files in `drizzle/`. Always follow this process:
@@ -168,7 +174,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 
 1. **Diagnostic** — Before proposing fixes, query production data to understand the actual problem. Sample documents, check content quality, verify assumptions with evidence. Classify root causes (data gap vs. scoring vs. routing vs. content truncation) before designing solutions. Check `docs/PROJECT_KNOWLEDGE.md` "Standing constraints" section for project-level invariants that affect the approach.
 2. **Analysis** — Research the problem space, read relevant code, identify what needs to change. Search `docs/DECISIONS.md` (and `docs/DECISIONS-ARCHIVE.md` if needed) for relevant prior decisions, spec deviations, and lessons learned from related sprints. Use Grep to find relevant entries by keyword rather than reading the full file.
-3. **Propose** — Present findings and a numbered list of issues/changes to the user for review
+3. **Propose** — Present findings and a numbered list of issues/changes to the user for review. Every proposal must lead with a product-level summary: value delivered, cost, risks with mitigations, and an explicit list of the decisions that belong to the user (scope, data policy, spend, direction tradeoffs) versus technical calls Claude will make. Mid-sprint discoveries that change scope, data, or direction get the same product-level framing before proceeding.
 4. **Approval** — Wait for user approval before writing any code. User may adjust scope.
 5. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).

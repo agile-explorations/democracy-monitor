@@ -74,48 +74,6 @@ export async function storePass2Assessment(
 }
 
 /**
- * Count Pass 1 assessments whose URLs fall within a Monday-aligned week.
- * Uses a 7-day range instead of exact week_of match because historical data
- * has inconsistent week_of alignment (some Wednesday-based, some Monday-based).
- */
-export async function getPass1Count(
-  category: string,
-  weekOf: string,
-  source?: string,
-): Promise<number> {
-  if (!isDbAvailable()) return 0;
-  const db = getDb();
-
-  const weekEnd = new Date(weekOf);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  const weekEndStr = weekEnd.toISOString().slice(0, 10);
-
-  const conditions = [
-    eq(aiDocumentAssessments.category, category),
-    sql`${aiDocumentAssessments.weekOf} >= ${weekOf}`,
-    sql`${aiDocumentAssessments.weekOf} < ${weekEndStr}`,
-    eq(aiDocumentAssessments.pass, 1),
-  ];
-
-  // When scoped to a source, join to documents to filter by source_origin
-  if (source) {
-    const [row] = await db
-      .select({ n: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
-      .from(aiDocumentAssessments)
-      .innerJoin(documents, eq(aiDocumentAssessments.documentId, documents.id))
-      .where(and(...conditions, eq(documents.sourceOrigin, source)));
-    return row?.n ?? 0;
-  }
-
-  const [row] = await db
-    .select({ n: sql<number>`count(distinct ${aiDocumentAssessments.url})::int` })
-    .from(aiDocumentAssessments)
-    .where(and(...conditions));
-
-  return row?.n ?? 0;
-}
-
-/**
  * Get URLs that already have Pass 1 assessments for a specific category.
  * Used to skip redundant API calls during backfill.
  * Model filter removed: the DB stores the resolved model name (e.g.
