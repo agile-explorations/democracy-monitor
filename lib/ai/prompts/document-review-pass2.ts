@@ -95,6 +95,8 @@ function buildBaselinePrompt(
     '',
     buildErosionFramework(),
     '',
+    buildActorFramework(),
+    '',
     buildResponseSchema(),
   ].join('\n');
 }
@@ -167,7 +169,15 @@ function buildContextualPrompt(
   ];
 
   if (isCRECDocument(docType, docLink)) parts.push(CREC_FRAMING);
-  parts.push(buildErosionFramework(), '', buildReasoningGuidance(), '', buildResponseSchema());
+  parts.push(
+    buildErosionFramework(),
+    '',
+    buildActorFramework(),
+    '',
+    buildReasoningGuidance(),
+    '',
+    buildResponseSchema(),
+  );
   return parts.join('\n');
 }
 
@@ -185,6 +195,47 @@ export function buildErosionFramework(): string {
     '  - noncompliance_refusal: ignoring court orders, defying oversight, refusing information requests',
     '  - routine: normal administrative activity with no erosion signal',
     '  - unclear: insufficient information to classify',
+  ].join('\n');
+}
+
+/**
+ * Actor attribution framework (#537). Classifies WHO performs the
+ * erosion-relevant action — orthogonal to erosionType (the mechanism) and
+ * deliberately non-load-bearing: attribution never changes the assessment.
+ * Exported for reuse by the historical attribution backfill CLI so the
+ * taxonomy text is identical in both prompts.
+ */
+export function buildActorFramework(): string {
+  return [
+    'Erosion actor framework:',
+    'Classify WHO performs the erosion-relevant action. This is the actor whose conduct',
+    "weakens the institutional protection — NOT the document's author, court, or venue.",
+    'This classification does not change how you assess concern.',
+    '  - federal_executive: President, federal agencies, DOJ, federal officials',
+    '  - congress: federal legislation or congressional actions that themselves erode protections',
+    '  - judiciary: courts removing protections through their own rulings',
+    '  - state_local: state/county/municipal governments, police, jails, or state courts acting as eroders',
+    '  - other_unclear: non-governmental actors, mixed/inseparable, or insufficient information',
+    'Disambiguation rules:',
+    "  - A court opinion DOCUMENTING another actor's erosion takes that actor's label",
+    '    (an opinion finding a federal agency defied a court order = federal_executive).',
+    '  - A court ruling AGAINST an actor is a check functioning, not judicial erosion —',
+    "    the actor being checked is the eroder. Use judiciary only when the court's own",
+    '    ruling removes the protection.',
+    '  - A bill or congressional rule that itself erodes = congress; a floor speech',
+    '    describing an executive action takes federal_executive (the speech is evidence',
+    '    about that action).',
+    '  - State implementing a federal mandate = federal_executive (policy origin);',
+    '    state_local only where the state exceeds the mandate or the policy is its own.',
+    '  - Erosion by inaction (refusal to enforce or comply) attributes to the actor',
+    '    holding the duty.',
+    'Examples:',
+    '  - Opinion: federal agency held in contempt for ignoring discovery orders -> federal_executive',
+    '  - Appellate ruling that itself removes a constitutional protection -> judiciary',
+    '  - Bill restricting protest rights or stripping court jurisdiction -> congress',
+    '  - County jail contempt finding for unconstitutional conditions -> state_local',
+    '  - Floor speech condemning mass firing of inspectors general -> federal_executive',
+    '  - Private-actor intimidation with no government action -> other_unclear',
   ].join('\n');
 }
 
@@ -209,6 +260,7 @@ export function buildResponseSchema(): string {
     '  "comparativeContext": string (how does this compare to normal governance?),',
     '  "citedPassages": string[] (direct quotes from the document supporting your assessment),',
     '  "erosionType": "formal_override" | "operational_hollowing" | "noncompliance_refusal" | "routine" | "unclear",',
+    '  "erosionActor": "federal_executive" | "congress" | "judiciary" | "state_local" | "other_unclear",',
     '  "counterArguments": string[] (reasons this might NOT be concerning)',
     '}',
   ].join('\n');

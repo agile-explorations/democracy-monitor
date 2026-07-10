@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EROSION_ACTORS } from '@/lib/types/structural';
 import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 
 export const ErosionTypeSchema = z.enum([
@@ -8,6 +9,8 @@ export const ErosionTypeSchema = z.enum([
   'routine',
   'unclear',
 ]);
+
+export const ErosionActorSchema = z.enum(EROSION_ACTORS);
 
 export const Pass1ResponseSchema = z.object({
   relevant: z.boolean(),
@@ -32,6 +35,9 @@ export const Pass2ResponseSchema = z.object({
   comparativeContext: z.string(),
   citedPassages: z.array(z.string()),
   erosionType: ErosionTypeSchema,
+  // Optional by necessity, not preference: a required field would fail
+  // safeParse on responses produced by the pre-attribution prompt (#537).
+  erosionActor: ErosionActorSchema.optional(),
   counterArguments: z.array(z.string()),
 });
 
