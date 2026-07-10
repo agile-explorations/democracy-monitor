@@ -12,6 +12,24 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-ACTOR: Erosion Actor Attribution (#537, #536, #535) — build ✅, prod runbook pending
+
+**Status: Build complete on develop (2026-07-10).** Milestone 81. Prod runbook (R0–R8) gated on the 2026-07-13 post-deploy checkpoint + per-invocation user approvals for baseline writes; NC-3 threshold decision at R8 from measured data. #534 fixed en route; #536 closes when the redefined NC-3 evaluates in prod.
+
+**Product outcome:** Every confirmed erosion event gains a "who did this" dimension — the drill-down for the nation-wide-institutions product framing, whose headline presentation is deliberately deferred until the attributed distributions exist. Category pages gain a "Concerning by Actor" line and an Actor column; the attribution prompt joins the public transparency page; NC-3 becomes a coherent control ("baseline federal-executive erosion stays low") instead of one failing-by-decision. Assessment behavior is untouched — enforced by experiment, not assumption.
+
+**Planned vs built — one major, evidence-driven deviation:** the plan embedded attribution in the P2 prompt behind a pre-registered ≥95% A/B agreement gate. The gate failed (90.7%), a mitigation made it worse (81.1%), and a 3-arm re-design (control: same-prompt-twice) measured a **97.8% noise floor vs 86.7% treatment agreement — 11.1pp of real prompt-attributable drift**, mostly potentially→clearly escalations (directionally toward stored production behavior in 5/6 disagreements, but real). User decision: **fully decouple** — the live P2 prompt is byte-identical to pre-sprint (regression test asserts the actor framework's absence), and ALL attribution (historical + weekly) runs via the light pass (gpt-4o-mini over stored reasoning + content head, UPDATE-by-id — also the only mechanism that works, since onConflictDoNothing makes same-model P2 re-runs no-ops). The weekly snapshot attributes each category-week between L2 and aggregation so ai_detail.actorConfirmations stays current.
+
+**Also shipped:** #534 — the call-site audit found the DST bug was worse than logged: a private duplicate addDays in narrative-queries plus five inlined copies of the mixed UTC-parse/local-step arithmetic, including a weekFilter that gave spring-forward weeks a 6-day window (Sunday rows silently dropped from ai_detail). All converged on UTC addDays with DST regression tests.
+
+**Lessons learned:**
+
+- **LLM A/B tests need a control arm, pre-registered.** Two gate runs were spent chasing "drift" that couldn't be interpreted without a same-prompt-twice noise floor. Measure the floor first; gate on excess drift.
+- **When calibration is load-bearing, decouple rather than integrate.** A second cheap pass with byte-identical primary prompts beats one elegant call whose side effects need continuous re-validation.
+- **Never pipe build/lint through tail/grep in commit chains** — exit codes get masked; a broken build landed in a commit exactly this way (pg leaked into the client bundle via a prompt-examples import).
+- **Client-bundle discipline:** anything importable from components must not transitively import DB/provider modules; split pure prompt logic from I/O runners (actor-attribution-prompt.ts vs actor-attribution.ts).
+- **Audit the pattern, not the instance** (#534): the reported bug had six unreported siblings, one with real data loss.
+
 ## Sprint R-INGEST-GAPS: Court Opinion Coverage + GAO Constraint (#528, #529) ✅
 
 **Status: Done.** Milestone R-INGEST-GAPS (#80). Issues #528, #529 closed; #534–#537 filed.
@@ -146,61 +164,5 @@ Detection: 39/39 preserved throughout (verified at each stage).
 
 1. **Threshold adjustments are methodological decisions, not code shortcuts.** Every threshold change was preceded by querying the actual documents in the failing weeks. The evidence (Title 42 bills, NDAA, patronage acts) justified the threshold, not the desire to pass the check. The reverse — adjusting thresholds to pass without verifying the data — would undermine the NC framework.
 2. **The T2 period breaks event-week-based controls.** NC-5's "outside event weeks" framework assumes quiet weeks between events. T2 doesn't have quiet weeks. The 25 known events are a sample of continuous activity, not an exhaustive list. Controls for active monitoring periods need different design than controls for baseline periods.
-
----
-
-## Sprint R-CONTENT: Ingest Content Quality ✅
-
-**Status: Done (issues #476-#483).** Milestone 72.
-
-**Context:** Detection validation showed 22/39 known events detected (56%). Root cause analysis — querying production, sampling documents, classifying misses — revealed three failure modes: (A) 7 routing failures (documents existed but in the wrong category), (B) 6 content/P1 failures (documents existed in the right category but truncated or P1 couldn't see enough), (C) 4 true source gaps. After content fixes and routing expansion, 2 source gaps were reclassified as latency detections (documents appeared the following week).
-
-**Scope vs. Actual:** All 8 issues implemented plus 5 additional fixes discovered during production operations (--fresh delete bug, embedding token limit errors, embedding batch size, embedding retry logic, null-safe URL access). The sprint expanded from pure code changes to include production validation stages (content spot-checks, P1 event-week testing, baseline false positive testing, routing verification) that prevented a wasted $80 L2 re-run.
-
-1. Remove content caps — store full documents (#476)
-2. Boilerplate strippers for P1/P2 assessment (#477)
-3. Raise P1/P2/loading assessment windows to 8K/8K/16K (#478)
-4. Add CREC to backfill-content pipeline (#479)
-5. Fix FR backfill threshold 400→1000 (#480)
-6. Add latency window to validate:detection (#481)
-7. Expand CPD subject mapping + CREC topic routing terms (#482)
-8. Add LegiScan bill text via Congress.gov API — deferred as parallel work item (#483)
-9. Fix --fresh delete using NULL document_id (discovered during validation)
-10. Fix embedding isTokenLimitError for max_tokens_per_request
-11. Reduce embedding batch size 50→10, char limit 30K→20K with retry
-12. Rename ContentItem.summary → .content across 59 files
-13. Routing:reapply script for CPD/CREC re-routing without refetch
-14. Standing constraints + sprint tracking + diagnostic step in docs
-
-**Results:**
-
-| Metric                  | Before      | After         | Change                                            |
-| ----------------------- | ----------- | ------------- | ------------------------------------------------- |
-| Event detection         | 22/39 (56%) | 39/39 (100%)  | +17 events                                        |
-| Trump T1                | 5/14 (36%)  | 14/14 (100%)  | +9                                                |
-| Trump T2                | 17/25 (68%) | 25/25 (100%)  | +8                                                |
-| NC failures             | 3/6         | 4/6           | Regression (expected — calibration sprint needed) |
-| Backtest T1 detect      | 50%         | 79%           | +29pp                                             |
-| CREC median content     | 800 chars   | 2,632 chars   | 3.3x                                              |
-| FR docs under 800 chars | 27,000      | 21            | Fixed                                             |
-| Schedule F final rule   | 782 chars   | 625,955 chars | Full document stored                              |
-
-**Key decisions:**
-
-1. **Store full documents, no content caps.** Every fetcher's MAX_CONTENT_LENGTH removed. Truncation happens at assessment time only (boilerplate strippers + window slicing). Maximum future flexibility without refetching.
-2. **Boilerplate stripping at assessment time, not storage time.** FR GPO headers (276 chars median, 40K docs), CPD CSS contamination (769 chars median, 8K docs), GovInfo report headers (228 chars median, 3K docs), CREC title repetition. Raw content stays intact in DB.
-3. **P1 and P2 both get 8K of boilerplate-stripped content.** Originally planned P1=4K, P2=8K. User correctly pointed out no reason to limit P1 differently — gpt-4o-mini cost is trivial at 8K tokens.
-4. **Routing changes don't require refetching.** CPD and CREC docs already in DB with full content. routing:reapply script inserts new (url, category) rows by re-classifying existing docs against expanded mappings. 12,229 new rows inserted.
-5. **Staged validation before expensive L2 re-run.** Stage 3a (content spot-checks), 3b (P1 on known-event weeks, ~$3), 3c (baseline false positive rate, ~$5). Stage 3b caught the --fresh delete bug — would have wasted $80 on a full re-run with stale cached assessments.
-6. **CPD subject additions: Immigration→civilLiberties, Justice Dept→executiveOversight, Terrorism→civilLiberties, Foreign nationals→civilLiberties.** CREC compound terms: "firing of"/"FBI director"→executiveOversight, "travel ban"/"DACA"/"family separation"→civilLiberties.
-7. **ContentItem.summary→.content rename.** The field carried full document content everywhere but was named "summary" — caused confusion throughout the sprint. Renamed across 59 files.
-
-**Lessons learned:**
-
-1. **Data coverage was the binding constraint, not scoring precision.** 15 of 17 detection misses were caused by truncated content or wrong-category routing, not scoring thresholds or AI prompt issues. The system could always detect these events — it just couldn't see the documents. Previous sprints that tuned thresholds were optimizing the wrong layer.
-2. **Query production before proposing fixes.** The diagnostic step (sampling documents, checking content lengths, cross-category searching) took 1 hour but prevented weeks of wasted threshold tuning. Added as step 1 in the sprint process.
-3. **Staged validation prevents expensive mistakes.** The --fresh delete bug would have produced a $80 L2 re-run with 100% cached (old) results. The $3 event-week test caught it. Every future sprint with production operations should validate on a sample first.
-4. **Removing content caps exposes downstream assumptions.** Embedding batch size (50 docs × full content = >300K tokens), embedding char limit (30K too close to 8192 token limit), --fresh delete (joined on NULL document_id) — all worked fine with 8K-capped content but broke with full documents.
-5. **100% detection with 4/6 NC failures is the correct first step.** Maximize recall first (content + routing), then tune precision (P1 prompt calibration). The reverse order — which every previous sprint attempted — can't work because you can't tune what you can't see.
 
 ---
