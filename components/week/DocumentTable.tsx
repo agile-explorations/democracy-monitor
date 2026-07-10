@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   getAIFlag,
   getAssessment,
+  getErosionActor,
   getErosionType,
   sortDocuments,
 } from '@/components/week/documentTableSort';
@@ -18,7 +19,7 @@ import type { DocumentExplanation } from '@/lib/types/explanation';
 import { escapeCell } from '@/lib/utils/csv';
 
 function toCsvString(docs: DocumentExplanation[]): string {
-  const header = 'Title,URL,Class,AI Flagged,Assessment,Erosion Type,Reasoning';
+  const header = 'Title,URL,Class,AI Flagged,Assessment,Erosion Type,Erosion Actor,Reasoning';
   const rows = docs.map((d) =>
     [
       escapeCell(d.title),
@@ -27,6 +28,7 @@ function toCsvString(docs: DocumentExplanation[]): string {
       getAIFlag(d),
       getAssessment(d),
       getErosionType(d),
+      getErosionActor(d),
       escapeCell(d.ai?.reasoning ?? ''),
     ].join(','),
   );
