@@ -99,6 +99,8 @@ export interface ThisWeekStripProps {
   isLatestWeek: boolean;
   /** True while a past week's category data is being fetched. */
   weekLoading?: boolean;
+  /** One-line event headline for the viewed week (#539); null while absent. */
+  headline?: string | null;
   categories: Array<{ convergenceStatus: ConcernLevel | null }>;
   synchrony: SynchronyPoint[];
   fetchTimeline: FetchWeekHealth[];
@@ -115,6 +117,7 @@ export function ThisWeekStrip({
   weekNavigation,
   isLatestWeek,
   weekLoading = false,
+  headline = null,
   categories,
   synchrony,
   fetchTimeline,
@@ -125,13 +128,14 @@ export function ThisWeekStrip({
   const colors = CONCERN_LEVEL_COLORS[resolvedMode];
 
   const counts = tallyCurrentWeekStatuses(categories);
-  // Data-gap streaks describe the present; for past weeks only the
-  // significant-week headline applies.
-  const notable = deriveNotableCondition(
-    isLatestWeek ? fetchTimeline : [],
-    significantWeeks,
-    weekOf,
-  );
+  // Headline precedence (#539): the week's own headline, else the
+  // significant-week headline. Data-gap streaks describe the present and
+  // render as a separate caveat on the latest week only.
+  const sigHeadline = weekOf
+    ? (significantWeeks.find((w) => w.weekOf === weekOf)?.headline ?? null)
+    : null;
+  const shownHeadline = headline ?? sigHeadline;
+  const gapCaveat = isLatestWeek ? deriveNotableCondition(fetchTimeline, [], null) : null;
   const sparkData = synchrony.map((p) => ({ week: p.week, score: p.weightedScore }));
 
   const countParts = STATUS_ORDER.filter((s) => (counts[s] ?? 0) > 0);
@@ -164,8 +168,12 @@ export function ThisWeekStrip({
         )}
       </div>
 
-      {notable && (
-        <p className="text-xs text-dm-text-secondary border-l-2 border-dm-border pl-3">{notable}</p>
+      {(shownHeadline || gapCaveat) && (
+        <p className="text-xs text-dm-text-secondary border-l-2 border-dm-border pl-3">
+          {shownHeadline}
+          {shownHeadline && gapCaveat && ' · '}
+          {gapCaveat && <span className="text-status-drift">{gapCaveat}</span>}
+        </p>
       )}
 
       {sparkData.length > 1 && (

@@ -20,6 +20,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { useDashboardData } from '@/lib/hooks/useDashboardData';
 import { useLandingNarratives } from '@/lib/hooks/useLandingNarratives';
+import { useWeekHeadline } from '@/lib/hooks/useWeekHeadline';
 import { useWeekSelection } from '@/lib/hooks/useWeekSelection';
 import type { ConcernLevel } from '@/lib/types';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
@@ -110,6 +111,8 @@ export default function Home() {
     if (!filteredWeeks.length) return null;
     return filteredWeeks[filteredWeeks.length - 1];
   }, [filteredWeeks]);
+
+  const weekHeadline = useWeekHeadline(selectedWeek ?? latestWeek);
 
   const {
     termNarrative,
@@ -224,6 +227,7 @@ export default function Home() {
           <ThisWeekStrip
             weekOf={selectedWeek ?? latestWeek}
             weekNavigation={{ availableWeeks, selectedWeek, onWeekChange: handleWeekChange }}
+            headline={weekHeadline}
             isLatestWeek={!selectedWeek || selectedWeek === latestWeek}
             weekLoading={weekLoading}
             categories={displayedCategories}

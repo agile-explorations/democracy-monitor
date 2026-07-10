@@ -368,6 +368,17 @@ async function processIncompleteWeeks(
 }
 
 /** Regenerate the living term summary if stale (non-fatal — errors appended but don't fail snapshot). */
+/** Current week's one-line event headline (#539) — non-fatal. */
+async function tryEnsureWeekHeadline(weekOf: string, errors: string[]): Promise<void> {
+  try {
+    const { ensureWeekHeadline } = await import('@/lib/services/week-headlines');
+    const { status } = await ensureWeekHeadline(weekOf, { force: true });
+    console.log(`[snapshot] Week headline: ${status}`);
+  } catch (err) {
+    errors.push(`Week headline failed: ${formatError(err)}`);
+  }
+}
+
 async function tryRegenerateTermSummary(errors: string[]): Promise<void> {
   const status = await regenerateTermSummaryIfStale();
   if (status === 'failed') errors.push('Term summary regeneration failed (see logs)');
@@ -510,6 +521,8 @@ async function runPostCategorySteps(
   } catch (err) {
     console.warn('[snapshot] Narrative retry failed:', err);
   }
+
+  await tryEnsureWeekHeadline(currentWeek, errors);
 
   // Living term summary: at most one regeneration per run, only if data changed.
   await tryRegenerateTermSummary(errors);

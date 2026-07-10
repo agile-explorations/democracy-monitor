@@ -133,6 +133,25 @@ describe('ThisWeekStrip', () => {
     expect(screen.queryByText(/data gaps/i)).toBeNull();
   });
 
+  it('shows the week headline, with the gap streak as a caveat on the latest week (#539)', () => {
+    const gappyTimeline = [week('w1', 1), week('w2', 2)];
+    render(
+      <ThisWeekStrip
+        {...baseProps}
+        headline="OPM established at-will federal employment rules."
+        fetchTimeline={gappyTimeline}
+      />,
+    );
+    expect(screen.getByText(/at-will federal employment/)).toBeDefined();
+    expect(screen.getByText(/2nd consecutive week with data gaps/)).toBeDefined();
+  });
+
+  it('falls back to the significant-week headline when no week headline exists (#539)', () => {
+    const sig = [{ weekOf: '2026-06-29', reasons: [], headline: 'Court defies order', rank: 1 }];
+    render(<ThisWeekStrip {...baseProps} significantWeeks={sig} />);
+    expect(screen.getByText(/Court defies order/)).toBeDefined();
+  });
+
   it('shows a loading placeholder while a past week fetches', () => {
     render(<ThisWeekStrip {...baseProps} isLatestWeek={false} weekLoading />);
     expect(screen.getByText('Loading…')).toBeDefined();
