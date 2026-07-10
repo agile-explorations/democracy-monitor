@@ -224,6 +224,15 @@ export default function Home() {
         <div className="mb-8">
           <ThisWeekStrip
             weekOf={selectedWeek ?? latestWeek}
+            weekNavigator={
+              availableWeeks.length > 0 ? (
+                <WeekNavigator
+                  availableWeeks={availableWeeks}
+                  selectedWeek={selectedWeek}
+                  onWeekChange={handleWeekChange}
+                />
+              ) : undefined
+            }
             isLatestWeek={!selectedWeek || selectedWeek === latestWeek}
             weekLoading={weekLoading}
             categories={displayedCategories}
@@ -253,13 +262,6 @@ export default function Home() {
                   : 'Latest week scores and 8-week sparkline trends'}
               </p>
             </div>
-            {availableWeeks.length > 0 && (
-              <WeekNavigator
-                availableWeeks={availableWeeks}
-                selectedWeek={selectedWeek}
-                onWeekChange={handleWeekChange}
-              />
-            )}
           </div>
           {loading || weekLoading ? (
             <div className="space-y-2">
