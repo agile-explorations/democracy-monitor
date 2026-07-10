@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
+import { ThisWeekStrip } from '@/components/landing/ThisWeekStrip';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { EmbedButton } from '@/components/overview/EmbedButton';
@@ -11,7 +12,6 @@ import { StatusTimeline } from '@/components/overview/StatusTimeline';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { TimeRangePreset } from '@/components/overview/TimeRangeSelector';
 import { presetToWeekCount } from '@/components/overview/TimeRangeSelector';
-import { EmailSignup } from '@/components/shared/EmailSignup';
 import { WebSiteJsonLd } from '@/components/shared/JsonLd';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -30,7 +30,8 @@ export default function Home() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
-  const { categories, overview, meta, healthSummary, documentCount, loading } = useDashboardData();
+  const { categories, overview, meta, healthSummary, fetchTimeline, documentCount, loading } =
+    useDashboardData();
 
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
@@ -195,22 +196,120 @@ export default function Home() {
           />
         )}
 
-        {/* Positioning statement */}
-        <section className="mb-6">
+        {/* Positioning statement — one line; full copy in the About expander */}
+        <section className="mb-4">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
-            Democracy Monitor is a searchable repository of{' '}
+            AI-assisted analyses of democratic institutional health across 14 categories, grounded
+            in a searchable repository of{' '}
             {documentCount ? formatApproxCount(documentCount) : 'over 200,000'} U.S. government
-            documents — federal regulations, court filings, congressional floor speeches,
-            presidential statements, enforcement actions, and more. Using this repository, the
-            system produces AI-assisted analyses of democratic institutional health across 14
-            categories, with weekly assessments, AI-generated narrative summaries, and the ability
-            to drill down to the specific documents supporting each finding. The methodology, data,
-            and code are fully open source.
+            documents.
           </p>
+          <details className="mt-1 max-w-3xl">
+            <summary className="text-xs text-dm-accent cursor-pointer hover:underline">
+              About this dashboard
+            </summary>
+            <p className="mt-2 text-sm text-dm-text-secondary leading-relaxed">
+              Democracy Monitor is a searchable repository of U.S. government documents — federal
+              regulations, court filings, congressional floor speeches, presidential statements,
+              enforcement actions, and more. Using this repository, the system produces AI-assisted
+              analyses of democratic institutional health across 14 categories, with weekly
+              assessments, AI-generated narrative summaries, and the ability to drill down to the
+              specific documents supporting each finding. The methodology, data, and code are fully
+              open source.
+            </p>
+          </details>
         </section>
 
+        {/* Current-week status strip (#533) — pinned to the latest week */}
         <div className="mb-8">
-          <EmailSignup variant="card" />
+          <ThisWeekStrip
+            weekOf={latestWeek}
+            categories={categories}
+            synchrony={overview?.synchrony ?? []}
+            fetchTimeline={fetchTimeline ?? []}
+            significantWeeks={significantWeeks}
+          />
+        </div>
+
+        {/* Category table */}
+        <section id="categories" className="mb-8 group">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h2 className="text-sm font-semibold text-dm-text-primary">
+                Categories
+                <a
+                  href="#categories"
+                  className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Link to Categories"
+                >
+                  #
+                </a>
+              </h2>
+              <p className="text-[11px] text-dm-muted mt-0.5">
+                {selectedWeek
+                  ? `Week of ${formatWeekLabel(selectedWeek)}`
+                  : 'Latest week scores and 8-week sparkline trends'}
+              </p>
+            </div>
+            {availableWeeks.length > 0 && (
+              <WeekNavigator
+                availableWeeks={availableWeeks}
+                selectedWeek={selectedWeek}
+                onWeekChange={handleWeekChange}
+              />
+            )}
+          </div>
+          {loading || weekLoading ? (
+            <div className="space-y-2">
+              {Array.from({ length: CATEGORIES.length }, (_, i) => (
+                <div
+                  key={i}
+                  className="rounded border border-dm-border bg-dm-card h-10 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <CategoryTable
+              categories={displayedCategories}
+              readingLevel={readingLevel}
+              highlightWeek={selectedWeek}
+              linkParams={linkParams}
+            />
+          )}
+        </section>
+
+        {/* Weekly overview narrative — both reading levels */}
+        {(weeklyNarrative || weeklyNarrativeLoading) && (
+          <section id="weekly-overview" className="group">
+            <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
+              Weekly Overview
+              <a
+                href="#weekly-overview"
+                className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Link to Weekly Overview"
+              >
+                #
+              </a>
+              {selectedWeek && (
+                <span className="ml-2 text-[11px] font-normal text-dm-muted">
+                  Week of {formatWeekLabel(selectedWeek)}
+                </span>
+              )}
+            </h2>
+            <NarrativeSection
+              narrative={weeklyNarrative}
+              readingLevel={readingLevel}
+              loading={weeklyNarrativeLoading}
+              editorial={weeklyEditorial}
+            />
+          </section>
+        )}
+
+        {/* Term-context divider (#533): everything below is term-scale context */}
+        <div className="mt-10 mb-6 flex items-center gap-3" aria-hidden>
+          <hr className="flex-1 border-dm-border" />
+          <span className="text-[11px] uppercase tracking-wider text-dm-muted">Term so far</span>
+          <hr className="flex-1 border-dm-border" />
         </div>
 
         {/* Overview section — only shown when overview data is available */}
@@ -355,82 +454,8 @@ export default function Home() {
                 </section>
               </>
             )}
-
-            {/* Weekly overview narrative — both reading levels */}
-            {(weeklyNarrative || weeklyNarrativeLoading) && (
-              <section id="weekly-overview" className="group">
-                <h2 className="text-sm font-semibold text-dm-text-primary mb-2">
-                  Weekly Overview
-                  <a
-                    href="#weekly-overview"
-                    className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Link to Weekly Overview"
-                  >
-                    #
-                  </a>
-                  {selectedWeek && (
-                    <span className="ml-2 text-[11px] font-normal text-dm-muted">
-                      Week of {formatWeekLabel(selectedWeek)}
-                    </span>
-                  )}
-                </h2>
-                <NarrativeSection
-                  narrative={weeklyNarrative}
-                  readingLevel={readingLevel}
-                  loading={weeklyNarrativeLoading}
-                  editorial={weeklyEditorial}
-                />
-              </section>
-            )}
           </div>
         )}
-
-        {/* Category table */}
-        <section id="categories" className="mb-8 group">
-          <div className="flex items-center justify-between mb-1">
-            <div>
-              <h2 className="text-sm font-semibold text-dm-text-primary">
-                Categories
-                <a
-                  href="#categories"
-                  className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Link to Categories"
-                >
-                  #
-                </a>
-              </h2>
-              <p className="text-[11px] text-dm-muted mt-0.5">
-                {selectedWeek
-                  ? `Week of ${formatWeekLabel(selectedWeek)}`
-                  : 'Latest week scores and 8-week sparkline trends'}
-              </p>
-            </div>
-            {availableWeeks.length > 0 && (
-              <WeekNavigator
-                availableWeeks={availableWeeks}
-                selectedWeek={selectedWeek}
-                onWeekChange={handleWeekChange}
-              />
-            )}
-          </div>
-          {loading || weekLoading ? (
-            <div className="space-y-2">
-              {Array.from({ length: CATEGORIES.length }, (_, i) => (
-                <div
-                  key={i}
-                  className="rounded border border-dm-border bg-dm-card h-10 animate-pulse"
-                />
-              ))}
-            </div>
-          ) : (
-            <CategoryTable
-              categories={displayedCategories}
-              readingLevel={readingLevel}
-              highlightWeek={selectedWeek}
-              linkParams={linkParams}
-            />
-          )}
-        </section>
       </main>
     </>
   );
