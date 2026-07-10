@@ -227,6 +227,9 @@ export const aiDocumentAssessments = pgTable(
     relevant: boolean('relevant'),
     confidence: real('confidence'),
     erosionType: varchar('erosion_type', { length: 30 }),
+    /** WHO performs the erosion-relevant action (#537). Nullable: rows
+     *  predating attribution carry NULL until the light-pass backfill. */
+    erosionActor: varchar('erosion_actor', { length: 30 }),
     signals: jsonb('signals').$type<string[]>(),
     assessment: varchar('assessment', { length: 30 }),
     reasoning: text('reasoning'),

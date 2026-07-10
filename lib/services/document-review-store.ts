@@ -57,6 +57,7 @@ export async function storePass2Assessment(
       relevant: undefined,
       confidence: result.response.confidence,
       erosionType: result.response.erosionType,
+      erosionActor: result.response.erosionActor,
       assessment: result.response.assessment,
       reasoning: result.response.reasoning,
       comparativeContext: result.response.comparativeContext,
