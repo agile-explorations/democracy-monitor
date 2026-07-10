@@ -21,6 +21,7 @@ import {
   evaluateNc4TransitionComparison,
   evaluateNc5BaselineConcerningRate,
   evaluateNc6T2RoutineRate,
+  isFedExecElevated,
 } from './event-validation-checks';
 import type { EvidenceDoc, WeekRow } from './event-validation-queries';
 import {
@@ -31,6 +32,7 @@ import {
   fetchT2RoutineRate,
   fetchWeeklyData,
   fetchWeekP1FlagRate,
+  fetchFedExecConcernCounts,
 } from './event-validation-queries';
 
 export type {
@@ -129,6 +131,10 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
   controls.push(evaluateNc1BidenP1FlagRate(await fetchP1FlagRates(b22.from, b22.to, catFilter)));
   controls.push(evaluateNc2BidenP2ConfirmRate(await fetchP2ConfirmationRate(b22.from, b22.to)));
 
+  // NC-3 (actor-scoped, #536): denominators (weeks, avg docs) still come from
+  // weekly aggregates; the numerator is a federal-executive-only elevation
+  // counterfactual computed directly from assessments, so the control does
+  // not depend on aggregate enrichment freshness.
   const b22Weeks = await fetchWeeklyData(b22.from, b22.to, catFilter);
   const byCat = new Map<string, { elevated: number; total: number; totalDocs: number }>();
   for (const row of b22Weeks) {
@@ -136,9 +142,11 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
     const entry = byCat.get(row.category)!;
     entry.total++;
     entry.totalDocs += row.document_count ?? 0;
-    if (row.status && convergenceStatusAtLeast(row.status as ConcernLevel, 'Elevated')) {
-      entry.elevated++;
-    }
+  }
+  const fedExec = await fetchFedExecConcernCounts(b22.from, b22.to, catFilter);
+  for (const wk of fedExec.weeks) {
+    const entry = byCat.get(wk.category);
+    if (entry && isFedExecElevated(wk.clearly, wk.potentially)) entry.elevated++;
   }
   controls.push(
     evaluateNc3BidenElevatedWeeks(
@@ -148,6 +156,7 @@ async function runNegativeControls(catFilter?: string): Promise<NegativeControlR
         totalWeeks: d.total,
         avgDocsPerWeek: d.total > 0 ? d.totalDocs / d.total : 0,
       })),
+      fedExec.unattributedConfirmed,
     ),
   );
 

@@ -7,6 +7,7 @@ import {
   evaluateNc1BidenP1FlagRate,
   evaluateNc2BidenP2ConfirmRate,
   evaluateNc3BidenElevatedWeeks,
+  isFedExecElevated,
   evaluateNc4TransitionComparison,
   evaluateNc5BaselineConcerningRate,
   evaluateNc6T2RoutineRate,
@@ -141,6 +142,24 @@ describe('negative control evaluations', () => {
     it('fails at >15% for thin categories', () => {
       const data = [{ category: 'elections', elevatedCount: 9, totalWeeks: 52, avgDocsPerWeek: 6 }];
       expect(evaluateNc3BidenElevatedWeeks(data).pass).toBe(false);
+    });
+
+    it('fails when actor coverage is incomplete (unattributed confirmed rows) (#536)', () => {
+      const data = [
+        { category: 'civilService', elevatedCount: 0, totalWeeks: 52, avgDocsPerWeek: 30 },
+      ];
+      const result = evaluateNc3BidenElevatedWeeks(data, 12);
+      expect(result.pass).toBe(false);
+      expect(result.actual).toContain('12 unattributed');
+    });
+
+    it('mirrors synthesis elevation thresholds by construction (#536)', () => {
+      // isFedExecElevated must agree with isAIElevated's absolute thresholds:
+      // 1 clearly_concerning OR 2 potentially_concerning elevates.
+      expect(isFedExecElevated(1, 0)).toBe(true);
+      expect(isFedExecElevated(0, 2)).toBe(true);
+      expect(isFedExecElevated(0, 1)).toBe(false);
+      expect(isFedExecElevated(0, 0)).toBe(false);
     });
 
     it('fails when any single category exceeds its threshold', () => {

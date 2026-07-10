@@ -6,6 +6,8 @@
 import {
   AI_FLAG_RATE_THRESHOLD,
   getStructuralThreshold,
+  P2_ELEVATED_MIN_CLEARLY,
+  P2_ELEVATED_MIN_POTENTIALLY,
   THEMATIC_DRIFT_ELEVATED,
 } from '@/lib/methodology/scoring-config';
 import type { ConcernLevel } from '@/lib/types/structural';
@@ -150,10 +152,15 @@ const NC3_STANDARD_RATE = 0.12;
 const NC3_THIN_RATE = 0.15;
 
 /**
- * NC-3: Biden 2022 weeks at Elevated+ per category.
- * Tiered threshold: ≤5% for categories with ≥20 avg docs/week,
- * ≤10% for thin categories (<20 avg docs/week) where structural
- * z-scores are inherently noisy with small samples.
+ * NC-3 (redefined, #536): Biden 2022 weeks at FEDERAL-EXECUTIVE Elevated+ per
+ * category. Counts weeks where federal_executive confirmations alone would
+ * elevate (same absolute thresholds as isAIElevated, imported from
+ * scoring-config so the counterfactual mirrors synthesis by construction).
+ * The all-actors form tested an executive-monitor premise the product has
+ * outgrown — 2022's real judicial/state-local turbulence (Dobbs, local
+ * court-defiance) is signal under the institutions-wide view, not noise.
+ * A nonzero unattributedConfirmed means actor coverage is incomplete and the
+ * control under-counts — surfaced in `actual` and treated as a failure.
  */
 export function evaluateNc3BidenElevatedWeeks(
   categoryWeeks: Array<{
@@ -162,6 +169,7 @@ export function evaluateNc3BidenElevatedWeeks(
     totalWeeks: number;
     avgDocsPerWeek: number;
   }>,
+  unattributedConfirmed = 0,
 ): NegativeControlResult {
   const details = categoryWeeks.map((r) => {
     const pct = r.totalWeeks > 0 ? r.elevatedCount / r.totalWeeks : 0;
@@ -169,17 +177,30 @@ export function evaluateNc3BidenElevatedWeeks(
       r.avgDocsPerWeek >= NC3_THIN_CATEGORY_DOC_THRESHOLD ? NC3_STANDARD_RATE : NC3_THIN_RATE;
     return { category: r.category, value: pct, pass: pct <= limit };
   });
-  const allPass = details.every((d) => d.pass);
+  const allPass = details.every((d) => d.pass) && unattributedConfirmed === 0;
   const worst = details.reduce((a, b) => (b.value > a.value ? b : a), details[0]);
 
+  const coverage =
+    unattributedConfirmed > 0 ? ` | WARNING: ${unattributedConfirmed} unattributed confirmed` : '';
   return {
     id: 'NC-3',
-    description: 'Biden 2022 weeks at Elevated+ per category (fail >5%/10%)',
+    description:
+      'Biden 2022 weeks at federal-executive Elevated+ per category (actor-scoped, #536)',
     pass: allPass,
-    actual: worst ? `worst: ${worst.category} at ${(worst.value * 100).toFixed(1)}%` : 'no data',
-    threshold: '≤5% (≥20 docs/week) or ≤10% (<20 docs/week)',
+    actual: worst
+      ? `worst: ${worst.category} at ${(worst.value * 100).toFixed(1)}%${coverage}`
+      : `no data${coverage}`,
+    threshold: '≤12% (≥20 docs/week) or ≤15% (<20 docs/week); 0 unattributed',
     details,
   };
+}
+
+/**
+ * Fed-exec elevation counterfactual for a week's confirmed counts — mirrors
+ * isAIElevated (concern-synthesis.ts) via the shared scoring-config constants.
+ */
+export function isFedExecElevated(clearly: number, potentially: number): boolean {
+  return clearly >= P2_ELEVATED_MIN_CLEARLY || potentially >= P2_ELEVATED_MIN_POTENTIALLY;
 }
 
 /**
