@@ -12,6 +12,14 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## #533: Current-Week-First Landing (standalone item) ✅
+
+**Status: Done on develop (2026-07-10)**, merges to main with R-ACTOR after the 7/13 checkpoint. Design was agreed in the issue (2026-07-07); user clarifications during planning: mini sparkline is a single click-target jumping to the full chart (no per-week clicks at sparkline scale), and `#concern-score` remains a shareable deep link with a new "Trend" jump link surfacing it.
+
+**Product outcome:** landing now answers "what changed this week?" in the first screenful — ThisWeekStrip (week, status counts, notable condition, mini sparkline, jump links) directly above the Categories table; trend/term/history follow below a "Term so far" divider. Top signup card removed (footer remains); intro compressed with an About expander.
+
+**Bonus fix found during verification:** `useLocalStorage` clobbered stored values before reading them (ref-based hydration gate + StrictMode double effects) — saved display preferences could never survive a reload in dev, with a transient prod overwrite window. Gate is now state. Lesson: **verify with the browser, not just tests** — no unit test would have exercised the read-then-persist race across a real reload.
+
 ## Sprint R-ACTOR: Erosion Actor Attribution (#537, #536, #535) — build ✅, prod runbook pending
 
 **Status: Build complete on develop (2026-07-10).** Milestone 81. Prod runbook (R0–R8) gated on the 2026-07-13 post-deploy checkpoint + per-invocation user approvals for baseline writes; NC-3 threshold decision at R8 from measured data. #534 fixed en route; #536 closes when the redefined NC-3 evaluates in prod.
