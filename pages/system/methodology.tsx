@@ -343,6 +343,19 @@ function DetailedContent() {
           </li>
         </ul>
         <p>
+          Pass 2 also records two descriptive classifications for each concerning document: the{' '}
+          <strong>erosion mechanism</strong> (formal override, operational hollowing, or
+          noncompliance/refusal) and the <strong>erosion actor</strong> — which institutional actor
+          performs the erosion-relevant action: the federal executive, Congress, the judiciary, or a
+          state/local government. The actor is whoever performs the action, not the document&apos;s
+          author or venue: a court opinion documenting a federal agency&apos;s defiance of court
+          orders attributes to the federal executive, while a ruling that itself removes a
+          protection attributes to the judiciary. Actor attribution is context only — it does not
+          change how any document is assessed or how weekly concern status is computed. How
+          attribution should shape the dashboard&apos;s headline framing is an open product question
+          that will be decided from the attributed data itself.
+        </p>
+        <p>
           An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to
           estimate false negative rates — how many concerning documents Pass 1 might be missing.
           Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to
