@@ -4,6 +4,7 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { baselines, documents, weeklyAggregates } from '@/lib/db/schema';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
+import { addDays } from '@/lib/utils/date-utils';
 import { mean, stddev } from '@/lib/utils/math';
 
 export interface CategoryBaseline {
@@ -110,8 +111,7 @@ async function computeEmbeddingBaseline(
     const weekCentroids: Array<{ weekOf: string; centroid: number[] }> = [];
     for (const weekOf of weekDates) {
       const weekStart = new Date(weekOf);
-      const weekEnd = new Date(weekOf);
-      weekEnd.setDate(weekEnd.getDate() + 7);
+      const weekEnd = new Date(addDays(weekOf, 7));
 
       const weekDocs = docs.filter((d) => {
         if (!d.publishedAt) return false;

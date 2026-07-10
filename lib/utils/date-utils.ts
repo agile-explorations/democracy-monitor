@@ -35,8 +35,12 @@ export function latestCompleteWeek(): string {
 
 /** Add days to a date string. Returns YYYY-MM-DD. */
 export function addDays(dateStr: string, days: number): string {
+  // UTC arithmetic throughout: 'YYYY-MM-DD' parses as UTC midnight, and local
+  // setDate() would shift the instant by ±1h across DST transitions — enough
+  // to drift the date after ISO truncation (#534: week anchors drifted a day
+  // per transition; week windows shrank to 6 days across spring-forward).
   const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
+  d.setUTCDate(d.getUTCDate() + days);
   return toDateString(d);
 }
 

@@ -3,6 +3,7 @@ import type { Pass1Response } from '@/lib/ai/schemas/document-review-response';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { aiDocumentAssessments, documents } from '@/lib/db/schema';
+import { addDays } from '@/lib/utils/date-utils';
 import type { Pass1Result, Pass2Result } from './document-review-assessment-service';
 
 /**
@@ -221,9 +222,7 @@ export async function getWeekP1Context(category: string, weekOf: string): Promis
   if (!isDbAvailable()) return empty;
   const db = getDb();
 
-  const weekEnd = new Date(weekOf);
-  weekEnd.setDate(weekEnd.getDate() + 7);
-  const weekEndStr = weekEnd.toISOString().slice(0, 10);
+  const weekEndStr = addDays(weekOf, 7);
 
   const statsRows = await db.execute(sql`
     SELECT

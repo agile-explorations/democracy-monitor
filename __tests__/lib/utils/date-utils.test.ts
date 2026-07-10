@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { toDateString, getWeekRanges, formatWeekLabel, weeksBetween } from '@/lib/utils/date-utils';
+import {
+  addDays,
+  formatWeekLabel,
+  getWeekRanges,
+  toDateString,
+  weeksBetween,
+} from '@/lib/utils/date-utils';
 
 describe('toDateString', () => {
   it('extracts YYYY-MM-DD from a Date', () => {
@@ -103,5 +109,25 @@ describe('getWeekRanges', () => {
   it('returns a single-day range when start equals end (Monday)', () => {
     const ranges = getWeekRanges('2025-06-16', '2025-06-16');
     expect(ranges).toEqual([{ start: '2025-06-16', end: '2025-06-16' }]);
+  });
+});
+
+describe('addDays across DST transitions (#534)', () => {
+  it('keeps Monday alignment across spring-forward (2026-03-08)', () => {
+    expect(addDays('2026-03-02', 7)).toBe('2026-03-09');
+  });
+
+  it('keeps Monday alignment across fall-back (2025-11-02)', () => {
+    expect(addDays('2025-10-27', 7)).toBe('2025-11-03');
+  });
+
+  it('week windows stay 7 days across spring-forward', () => {
+    // The pre-fix local-time arithmetic produced a 6-day window here,
+    // dropping Sunday-anchored rows from AI summaries (#534).
+    expect(addDays('2026-03-02', 7)).not.toBe('2026-03-08');
+  });
+
+  it('negative offsets are UTC-aligned too', () => {
+    expect(addDays('2026-03-09', -7)).toBe('2026-03-02');
   });
 });

@@ -13,6 +13,7 @@ import type {
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import type { ConcernAssessment, StructuralScore } from '@/lib/types/structural';
 import { formatError } from '@/lib/utils/api-helpers';
+import { addDays } from '@/lib/utils/date-utils';
 import { recordFailure, resolveFailure } from './narrative-failure-store';
 import {
   buildStableTemplate,
@@ -67,9 +68,7 @@ async function checkAggregateCompleteness(weekOf: string): Promise<{
   message?: string;
 }> {
   const db = getDb();
-  const nextWeek = new Date(weekOf);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+  const nextWeekStr = addDays(weekOf, 7);
 
   const docRows = await db
     .select({ category: documents.category, count: sql<number>`count(*)` })

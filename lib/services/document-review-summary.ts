@@ -10,6 +10,7 @@ import { computeAIAssessmentSummary } from '@/lib/services/document-review-asses
 import type { Pass1Result, Pass2Result } from '@/lib/services/document-review-assessment-service';
 import { getBaselineAIFlagRate } from '@/lib/services/document-review-store';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
+import { addDays } from '@/lib/utils/date-utils';
 
 const STUB_META = { tokensInput: 0, tokensOutput: 0, latencyMs: 0 };
 
@@ -72,9 +73,7 @@ function toPass2Result(r: Pass2Row): Pass2Result {
 
 /** Build the week-range filter for a Monday-to-Sunday window. */
 function weekFilter(category: string, weekOf: string) {
-  const nextWeek = new Date(weekOf);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+  const nextWeekStr = addDays(weekOf, 7);
   return and(
     eq(aiDocumentAssessments.category, category),
     gte(aiDocumentAssessments.weekOf, weekOf),

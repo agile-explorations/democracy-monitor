@@ -13,6 +13,7 @@ import type {
 } from '@/lib/types';
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
+import { addDays } from '@/lib/utils/date-utils';
 import { getStoredNarrative } from './narrative-store';
 
 // ---------------------------------------------------------------------------
@@ -26,11 +27,6 @@ const TREND_THRESHOLD = 0.05;
 type Row = Record<string, unknown>;
 
 /** Offset a YYYY-MM-DD date string by a number of days. */
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 /** Format a timestamp value as YYYY-MM-DD, or null. */
 function toDateStr(value: unknown): string | null {
