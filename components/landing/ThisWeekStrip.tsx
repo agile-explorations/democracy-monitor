@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { Sparkline } from '@/components/ui/Sparkline';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
@@ -60,10 +60,41 @@ function ordinal(n: number): string {
   return `${n}${suffix}`;
 }
 
+function WeekLabel({
+  weekOf,
+  isLatestWeek,
+  weekNavigation,
+}: Pick<ThisWeekStripProps, 'weekOf' | 'isLatestWeek' | 'weekNavigation'>) {
+  const label = (
+    <div className="text-center">
+      <p className="text-[11px] uppercase tracking-wider text-dm-muted">
+        {isLatestWeek ? 'This week' : 'Week of'}
+      </p>
+      <p className="text-sm font-semibold text-dm-text-primary">
+        {weekOf ? formatWeekLabelWithYear(weekOf) : '—'}
+      </p>
+    </div>
+  );
+  if (!weekNavigation || weekNavigation.availableWeeks.length === 0) return label;
+  return (
+    <WeekNavigator
+      availableWeeks={weekNavigation.availableWeeks}
+      selectedWeek={weekNavigation.selectedWeek}
+      onWeekChange={weekNavigation.onWeekChange}
+    >
+      {label}
+    </WeekNavigator>
+  );
+}
+
 export interface ThisWeekStripProps {
   weekOf: string | null;
-  /** Week navigation control rendered beside the week label (composition slot). */
-  weekNavigator?: ReactNode;
+  /** When provided, the week label is wrapped in navigation arrows. */
+  weekNavigation?: {
+    availableWeeks: string[];
+    selectedWeek: string | null;
+    onWeekChange: (week: string) => void;
+  };
   /** True when showing the latest week (label + data-gap streak semantics). */
   isLatestWeek: boolean;
   /** True while a past week's category data is being fetched. */
@@ -81,7 +112,7 @@ export interface ThisWeekStripProps {
  */
 export function ThisWeekStrip({
   weekOf,
-  weekNavigator,
+  weekNavigation,
   isLatestWeek,
   weekLoading = false,
   categories,
@@ -111,17 +142,7 @@ export function ThisWeekStrip({
       aria-label="This week's status"
       className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-dm-border bg-dm-card px-4 py-3"
     >
-      <div className="flex items-center gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-dm-muted">
-            {isLatestWeek ? 'This week' : 'Week of'}
-          </p>
-          <p className="text-sm font-semibold text-dm-text-primary">
-            {weekOf ? formatWeekLabelWithYear(weekOf) : '—'}
-          </p>
-        </div>
-        {weekNavigator}
-      </div>
+      <WeekLabel weekOf={weekOf} isLatestWeek={isLatestWeek} weekNavigation={weekNavigation} />
 
       <div className="flex items-center gap-3" aria-label="Category status counts">
         {weekLoading ? (

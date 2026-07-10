@@ -1,12 +1,20 @@
+import type { ReactNode } from 'react';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 export interface WeekNavigatorProps {
   availableWeeks: string[];
   selectedWeek: string | null;
   onWeekChange: (week: string) => void;
+  /** Custom center content between the arrows (defaults to the week label). */
+  children?: ReactNode;
 }
 
-export function WeekNavigator({ availableWeeks, selectedWeek, onWeekChange }: WeekNavigatorProps) {
+export function WeekNavigator({
+  availableWeeks,
+  selectedWeek,
+  onWeekChange,
+  children,
+}: WeekNavigatorProps) {
   const currentIndex = selectedWeek
     ? availableWeeks.indexOf(selectedWeek)
     : availableWeeks.length - 1;
@@ -26,9 +34,11 @@ export function WeekNavigator({ availableWeeks, selectedWeek, onWeekChange }: We
       >
         ◀
       </button>
-      <span className="text-[11px] text-dm-text-secondary tabular-nums min-w-[48px] text-center">
-        {formatWeekLabel(displayWeek)}
-      </span>
+      {children ?? (
+        <span className="text-[11px] text-dm-text-secondary tabular-nums min-w-[48px] text-center">
+          {formatWeekLabel(displayWeek)}
+        </span>
+      )}
       <button
         onClick={() => !atEnd && onWeekChange(availableWeeks[currentIndex + 1])}
         disabled={atEnd}

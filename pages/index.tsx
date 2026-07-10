@@ -4,7 +4,6 @@ import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { ThisWeekStrip } from '@/components/landing/ThisWeekStrip';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
-import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { EmbedButton } from '@/components/overview/EmbedButton';
 import { OverviewStatusSummary } from '@/components/overview/OverviewStatusSummary';
 import { SignificantWeeksList } from '@/components/overview/SignificantWeeksList';
@@ -224,15 +223,7 @@ export default function Home() {
         <div className="mb-8">
           <ThisWeekStrip
             weekOf={selectedWeek ?? latestWeek}
-            weekNavigator={
-              availableWeeks.length > 0 ? (
-                <WeekNavigator
-                  availableWeeks={availableWeeks}
-                  selectedWeek={selectedWeek}
-                  onWeekChange={handleWeekChange}
-                />
-              ) : undefined
-            }
+            weekNavigation={{ availableWeeks, selectedWeek, onWeekChange: handleWeekChange }}
             isLatestWeek={!selectedWeek || selectedWeek === latestWeek}
             weekLoading={weekLoading}
             categories={displayedCategories}
