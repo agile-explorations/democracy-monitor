@@ -96,10 +96,12 @@ describe('ThisWeekStrip', () => {
     expect(screen.getByRole('link', { name: 'Term so far' })).toBeDefined();
   });
 
-  it('sparkline links to the full concern chart', () => {
-    render(<ThisWeekStrip {...baseProps} />);
+  it('sparkline links to the full concern chart and highlights the viewed week', () => {
+    const { container } = render(<ThisWeekStrip {...baseProps} />);
     const chartLink = screen.getByRole('link', { name: 'View full concern chart' });
     expect(chartLink.getAttribute('href')).toBe('#concern-score');
+    // weekOf (2026-06-29) exists in the synchrony series → highlight dot renders
+    expect(container.querySelectorAll('circle').length).toBeGreaterThan(0);
   });
 
   it('hides the heatmap link in summary mode and shows it in detailed mode', () => {

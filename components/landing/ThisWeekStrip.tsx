@@ -147,7 +147,14 @@ export function ThisWeekStrip({
           title="View full concern chart"
           className="ml-auto opacity-80 hover:opacity-100 transition-opacity"
         >
-          <Sparkline data={sparkData} baselineAvg={0} baselineStdDev={0} width={160} height={32} />
+          <Sparkline
+            data={sparkData}
+            baselineAvg={0}
+            baselineStdDev={0}
+            width={160}
+            height={32}
+            highlightWeek={weekOf ?? undefined}
+          />
         </a>
       )}
 
