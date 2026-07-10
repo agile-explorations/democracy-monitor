@@ -26,17 +26,16 @@ describe('actor framework in P2 prompts (#537)', () => {
     }
   });
 
-  it('baseline (no-context) prompt carries the actor framework and schema field', () => {
-    const prompt = buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc');
-    expect(prompt).toContain('Erosion actor framework');
-    expect(prompt).toContain('"erosionActor"');
-  });
-
-  it('contextual prompt carries the actor framework and schema field', () => {
-    const prompt = buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc', CTX);
-    expect(prompt).toContain('Erosion actor framework');
-    expect(prompt).toContain('"erosionActor"');
-    // attribution must be framed as non-load-bearing
-    expect(prompt).toContain('must not influence assessment');
+  it('live P2 prompts do NOT carry the actor framework (decoupled by decision, #537)', () => {
+    // A 3-arm A/B measured 11.1pp prompt-attributable assessment drift, so
+    // attribution runs as a separate light pass. If this test fails, someone
+    // re-coupled attribution into P2 — re-run the calibration gate first.
+    for (const prompt of [
+      buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc'),
+      buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc', CTX),
+    ]) {
+      expect(prompt).not.toContain('Erosion actor framework');
+      expect(prompt).not.toContain('"erosionActor"');
+    }
   });
 });

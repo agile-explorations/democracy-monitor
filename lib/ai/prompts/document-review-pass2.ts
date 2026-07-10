@@ -95,8 +95,6 @@ function buildBaselinePrompt(
     '',
     buildErosionFramework(),
     '',
-    buildActorFramework(),
-    '',
     buildResponseSchema(),
   ].join('\n');
 }
@@ -169,15 +167,7 @@ function buildContextualPrompt(
   ];
 
   if (isCRECDocument(docType, docLink)) parts.push(CREC_FRAMING);
-  parts.push(
-    buildErosionFramework(),
-    '',
-    buildReasoningGuidance(),
-    '',
-    buildActorFramework(),
-    '',
-    buildResponseSchema(),
-  );
+  parts.push(buildErosionFramework(), '', buildReasoningGuidance(), '', buildResponseSchema());
   return parts.join('\n');
 }
 
@@ -200,10 +190,13 @@ export function buildErosionFramework(): string {
 
 /**
  * Actor attribution framework (#537). Classifies WHO performs the
- * erosion-relevant action — orthogonal to erosionType (the mechanism) and
- * deliberately non-load-bearing: attribution never changes the assessment.
- * Exported for reuse by the historical attribution backfill CLI so the
- * taxonomy text is identical in both prompts.
+ * erosion-relevant action — orthogonal to erosionType (the mechanism).
+ * DELIBERATELY NOT injected into the live P2 prompt: a 3-arm calibration A/B
+ * (2026-07-10) measured 11.1pp of prompt-attributable assessment drift above
+ * a 97.8% same-prompt noise floor, so attribution runs as a fully decoupled
+ * light pass (lib/services/actor-attribution.ts) over stored assessments —
+ * P2 calibration stays byte-identical by construction. This builder is the
+ * single source of the taxonomy text for that pass.
  */
 export function buildActorFramework(): string {
   return [
@@ -261,7 +254,6 @@ export function buildResponseSchema(): string {
     '  "comparativeContext": string (how does this compare to normal governance?),',
     '  "citedPassages": string[] (direct quotes from the document supporting your assessment),',
     '  "erosionType": "formal_override" | "operational_hollowing" | "noncompliance_refusal" | "routine" | "unclear",',
-    '  "erosionActor": "federal_executive" | "congress" | "judiciary" | "state_local" | "other_unclear",',
     '  "counterArguments": string[] (reasons this might NOT be concerning)',
     '}',
   ].join('\n');

@@ -351,9 +351,12 @@ function DetailedContent() {
           author or venue: a court opinion documenting a federal agency&apos;s defiance of court
           orders attributes to the federal executive, while a ruling that itself removes a
           protection attributes to the judiciary. Actor attribution is context only — it does not
-          change how any document is assessed or how weekly concern status is computed. How
-          attribution should shape the dashboard&apos;s headline framing is an open product question
-          that will be decided from the attributed data itself.
+          change how any document is assessed or how weekly concern status is computed. To guarantee
+          that, attribution runs as a separate lightweight classification pass, fully decoupled from
+          the assessment prompt: a controlled experiment showed that embedding attribution in the
+          assessment prompt measurably shifted outcomes, so the assessment prompt is kept unchanged.
+          How attribution should shape the dashboard&apos;s headline framing is an open product
+          question that will be decided from the attributed data itself.
         </p>
         <p>
           An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to
