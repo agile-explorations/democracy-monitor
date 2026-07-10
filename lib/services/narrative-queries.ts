@@ -55,7 +55,7 @@ export async function getTopConcerningDocuments(
   const rows = await db.execute(sql`
     SELECT d.title, d.source_type, d.source_origin,
       d.metadata->>'agency' AS agency, d.published_at, d.url,
-      a2.assessment, a2.erosion_type, a2.reasoning,
+      a2.assessment, a2.erosion_type, a2.erosion_actor, a2.reasoning,
       LEFT(d.content, 4000) AS content
     FROM ai_document_assessments a2
     JOIN documents d ON d.url = a2.url AND d.category = a2.category
@@ -81,6 +81,7 @@ export async function getTopConcerningDocuments(
       url: (r.url as string) ?? '',
       assessment: (r.assessment as string) ?? 'unknown',
       erosionType: r.erosion_type as string | null,
+      erosionActor: r.erosion_actor as string | null,
       reasoning: r.reasoning as string | null,
       content: rawContent ? stripBoilerplate(rawContent, sourceOrigin, title) : null,
     };

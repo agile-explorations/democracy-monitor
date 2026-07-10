@@ -172,9 +172,9 @@ function buildContextualPrompt(
   parts.push(
     buildErosionFramework(),
     '',
-    buildActorFramework(),
-    '',
     buildReasoningGuidance(),
+    '',
+    buildActorFramework(),
     '',
     buildResponseSchema(),
   );
@@ -207,10 +207,11 @@ export function buildErosionFramework(): string {
  */
 export function buildActorFramework(): string {
   return [
-    'Erosion actor framework:',
-    'Classify WHO performs the erosion-relevant action. This is the actor whose conduct',
-    "weakens the institutional protection — NOT the document's author, court, or venue.",
-    'This classification does not change how you assess concern.',
+    'Erosion actor framework (attribution only — applies AFTER your assessment):',
+    'First complete your concern assessment exactly as you would without this section.',
+    'Then, separately, classify WHO performs the action you assessed. This is the actor',
+    "whose conduct weakens the institutional protection — NOT the document's author,",
+    'court, or venue. Attribution must not influence assessment, confidence, or reasoning.',
     '  - federal_executive: President, federal agencies, DOJ, federal officials',
     '  - congress: federal legislation or congressional actions that themselves erode protections',
     '  - judiciary: courts removing protections through their own rulings',

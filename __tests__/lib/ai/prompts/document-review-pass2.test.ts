@@ -28,15 +28,15 @@ describe('actor framework in P2 prompts (#537)', () => {
 
   it('baseline (no-context) prompt carries the actor framework and schema field', () => {
     const prompt = buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc');
-    expect(prompt).toContain('Erosion actor framework:');
+    expect(prompt).toContain('Erosion actor framework');
     expect(prompt).toContain('"erosionActor"');
   });
 
   it('contextual prompt carries the actor framework and schema field', () => {
     const prompt = buildPass2Prompt('Doc', 'text', [], 'unclear', 'Category desc', CTX);
-    expect(prompt).toContain('Erosion actor framework:');
+    expect(prompt).toContain('Erosion actor framework');
     expect(prompt).toContain('"erosionActor"');
     // attribution must be framed as non-load-bearing
-    expect(prompt).toContain('does not change how you assess concern');
+    expect(prompt).toContain('must not influence assessment');
   });
 });

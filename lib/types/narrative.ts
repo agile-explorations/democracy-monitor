@@ -24,6 +24,8 @@ export interface NarrativeDocumentContext {
   url: string;
   assessment: string;
   erosionType: string | null;
+  /** WHO performs the erosion-relevant action (#537); null pre-attribution. */
+  erosionActor: string | null;
   reasoning: string | null;
   content: string | null;
 }

@@ -1,3 +1,4 @@
+import { EROSION_ACTOR_LABELS } from '@/lib/data/assessment-labels';
 import { AI_CONCERN_THRESHOLD } from '@/lib/methodology/scoring-config';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
 
@@ -57,6 +58,38 @@ function ConcernBar({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * "Concerning by actor" context line (#537). Renders only when the week's
+ * ai_detail carries actorConfirmations (aggregates enriched pre-attribution
+ * lack it) and at least one confirmed doc exists. Context only — actor
+ * attribution does not affect concern status.
+ */
+function ActorMixLine({
+  actorConfirmations,
+}: {
+  actorConfirmations?: AIAssessmentSummary['actorConfirmations'];
+}) {
+  if (!actorConfirmations) return null;
+  const parts = Object.entries(actorConfirmations)
+    .map(([actor, counts]) => ({
+      actor,
+      n: counts.potentiallyConcerning + counts.clearlyConcerning,
+    }))
+    .filter((p) => p.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .map(
+      (p) =>
+        `${p.n} ${p.actor === 'unattributed' ? 'unattributed' : (EROSION_ACTOR_LABELS[p.actor] ?? p.actor)}`,
+    );
+  if (parts.length === 0) return null;
+  return (
+    <div className="mb-4">
+      <h3 className="text-[11px] font-semibold text-dm-text-secondary mb-1">Concerning by Actor</h3>
+      <p className="text-xs text-dm-text-secondary">{parts.join(' · ')}</p>
     </div>
   );
 }
@@ -141,6 +174,8 @@ export function AIAssessmentPanel({ summary, readingLevel }: AIAssessmentPanelPr
         </h3>
         <ConcernBar distribution={summary.concernDistribution} />
       </div>
+
+      <ActorMixLine actorConfirmations={summary.actorConfirmations} />
 
       {/* Audit */}
       <div className="mb-3">

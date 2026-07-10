@@ -29,7 +29,7 @@ describe('buildAttributionPrompt', () => {
     expect(prompt).toContain('United States v. Hinds County');
     expect(prompt).toContain('consent decree');
     expect(prompt).toContain('violated over two dozen provisions');
-    expect(prompt).toContain('Erosion actor framework:');
+    expect(prompt).toContain('Erosion actor framework');
     expect(prompt).toContain('"erosionActor"');
   });
 

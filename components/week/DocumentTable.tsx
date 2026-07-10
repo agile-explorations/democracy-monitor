@@ -1,56 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
+import {
+  getAIFlag,
+  getAssessment,
+  getErosionType,
+  sortDocuments,
+} from '@/components/week/documentTableSort';
+import type { SortDir, SortField } from '@/components/week/documentTableSort';
+import {
+  ASSESSMENT_LABELS,
+  ASSESSMENT_TIPS,
+  EROSION_ACTOR_LABELS,
+  EROSION_ACTOR_TIPS,
+  EROSION_TYPE_LABELS,
+  EROSION_TYPE_TIPS,
+} from '@/lib/data/assessment-labels';
 import type { DocumentExplanation } from '@/lib/types/explanation';
 import { escapeCell } from '@/lib/utils/csv';
-
-type SortField = 'title' | 'documentClass' | 'aiFlagged' | 'assessment' | 'erosionType';
-type SortDir = 'asc' | 'desc';
-
-export interface DocumentTableProps {
-  documents: DocumentExplanation[];
-  category: string;
-  weekOf: string;
-}
-
-function getAIFlag(doc: DocumentExplanation): string {
-  if (!doc.ai) return '—';
-  return doc.ai.flagged ? 'Yes' : 'No';
-}
-
-function getAssessment(doc: DocumentExplanation): string {
-  return doc.ai?.assessment ?? '—';
-}
-
-function getErosionType(doc: DocumentExplanation): string {
-  return doc.ai?.erosionType ?? '—';
-}
-
-function sortDocuments(
-  docs: DocumentExplanation[],
-  field: SortField,
-  dir: SortDir,
-): DocumentExplanation[] {
-  return [...docs].sort((a, b) => {
-    let cmp = 0;
-    switch (field) {
-      case 'title':
-        cmp = a.title.localeCompare(b.title);
-        break;
-      case 'documentClass':
-        cmp = a.documentClass.localeCompare(b.documentClass);
-        break;
-      case 'aiFlagged':
-        cmp = getAIFlag(a).localeCompare(getAIFlag(b));
-        break;
-      case 'assessment':
-        cmp = getAssessment(a).localeCompare(getAssessment(b));
-        break;
-      case 'erosionType':
-        cmp = getErosionType(a).localeCompare(getErosionType(b));
-        break;
-    }
-    return dir === 'asc' ? cmp : -cmp;
-  });
-}
 
 function toCsvString(docs: DocumentExplanation[]): string {
   const header = 'Title,URL,Class,AI Flagged,Assessment,Erosion Type,Reasoning';
@@ -95,43 +60,17 @@ function SortHeader({
   );
 }
 
+interface DocumentTableProps {
+  documents: DocumentExplanation[];
+  category: string;
+  weekOf: string;
+}
+
 const ASSESSMENT_COLORS: Record<string, string> = {
   clearly_concerning: 'text-status-capture',
   potentially_concerning: 'text-status-drift',
   novel_not_concerning: 'text-dm-text-secondary',
   routine: 'text-dm-text-secondary',
-};
-
-const ASSESSMENT_LABELS: Record<string, string> = {
-  clearly_concerning: 'clearly concerning',
-  potentially_concerning: 'potentially concerning',
-  novel_not_concerning: 'novel, not concerning',
-  routine: 'routine',
-};
-
-const ASSESSMENT_TIPS: Record<string, string> = {
-  clearly_concerning: 'Multiple indicators of democratic erosion with clear institutional impact',
-  potentially_concerning: 'Some erosion indicators present but impact is uncertain or limited',
-  novel_not_concerning: 'Unusual activity that does not indicate democratic erosion',
-  routine: 'Normal administrative activity with no erosion signal',
-};
-
-const EROSION_TYPE_LABELS: Record<string, string> = {
-  formal_override: 'formal override',
-  operational_hollowing: 'operational hollowing',
-  noncompliance_refusal: 'noncompliance / refusal',
-  routine: 'routine',
-  unclear: 'unclear',
-};
-
-const EROSION_TYPE_TIPS: Record<string, string> = {
-  formal_override: 'Explicit legal or policy changes that remove institutional protections',
-  operational_hollowing:
-    'Staffing cuts, budget reductions, or unfilled positions that degrade capacity',
-  noncompliance_refusal:
-    'Ignoring court orders, defying oversight, or refusing information requests',
-  routine: 'Normal administrative activity with no erosion signal',
-  unclear: 'Insufficient information to classify the erosion mechanism',
 };
 
 export function DocumentTable({ documents, category, weekOf }: DocumentTableProps) {
@@ -225,6 +164,14 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                 onSort={handleSort}
                 className="hidden sm:table-cell"
               />
+              <SortHeader
+                label="Actor"
+                field="erosionActor"
+                currentField={sortField}
+                currentDir={sortDir}
+                onSort={handleSort}
+                className="hidden md:table-cell"
+              />
               <th className="px-3 py-2 text-left text-[11px] font-medium text-dm-text-secondary uppercase tracking-wider">
                 Reasoning
               </th>
@@ -279,6 +226,19 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                       >
                         {EROSION_TYPE_LABELS[doc.ai.erosionType] ??
                           doc.ai.erosionType.replace(/_/g, ' ')}
+                      </span>
+                    ) : (
+                      <span className="text-dm-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 hidden md:table-cell">
+                    {doc.ai?.erosionActor ? (
+                      <span
+                        className="text-dm-text-secondary border-b border-dotted border-current cursor-help"
+                        title={EROSION_ACTOR_TIPS[doc.ai.erosionActor]}
+                      >
+                        {EROSION_ACTOR_LABELS[doc.ai.erosionActor] ??
+                          doc.ai.erosionActor.replace(/_/g, ' ')}
                       </span>
                     ) : (
                       <span className="text-dm-muted">—</span>
