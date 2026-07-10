@@ -144,30 +144,69 @@ export function ThisWeekStrip({
     <section
       id="this-week"
       aria-label="This week's status"
-      className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-dm-border bg-dm-card px-4 py-3"
+      className="flex flex-col gap-2 rounded-lg border border-dm-border bg-dm-card px-4 py-3"
     >
-      <WeekLabel weekOf={weekOf} isLatestWeek={isLatestWeek} weekNavigation={weekNavigation} />
+      {/* Row 1 — fixed positions: nav+label · counts · (right) sparkline + links */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <WeekLabel weekOf={weekOf} isLatestWeek={isLatestWeek} weekNavigation={weekNavigation} />
 
-      <div className="flex items-center gap-3" aria-label="Category status counts">
-        {weekLoading ? (
-          <span className="text-sm text-dm-muted animate-pulse">Loading…</span>
-        ) : countParts.length > 0 ? (
-          countParts.map((status) => (
-            <span key={status} className="flex items-center gap-1.5 text-sm">
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: colors[status as keyof typeof colors] }}
-                aria-hidden
-              />
-              <span className="text-dm-text-primary font-medium">{counts[status]}</span>
-              <span className="text-dm-text-secondary">{STATUS_LABELS[status]}</span>
-            </span>
-          ))
-        ) : (
-          <span className="text-sm text-dm-muted">No assessment yet</span>
+        <div className="flex items-center gap-3" aria-label="Category status counts">
+          {weekLoading ? (
+            <span className="text-sm text-dm-muted animate-pulse">Loading…</span>
+          ) : countParts.length > 0 ? (
+            countParts.map((status) => (
+              <span key={status} className="flex items-center gap-1.5 text-sm">
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ backgroundColor: colors[status as keyof typeof colors] }}
+                  aria-hidden
+                />
+                <span className="text-dm-text-primary font-medium">{counts[status]}</span>
+                <span className="text-dm-text-secondary">{STATUS_LABELS[status]}</span>
+              </span>
+            ))
+          ) : (
+            <span className="text-sm text-dm-muted">No assessment yet</span>
+          )}
+        </div>
+
+        {sparkData.length > 1 && (
+          <a
+            href="#concern-score"
+            aria-label="View full concern chart"
+            title="View full concern chart"
+            className="ml-auto opacity-80 hover:opacity-100 transition-opacity"
+          >
+            <Sparkline
+              data={sparkData}
+              baselineAvg={0}
+              baselineStdDev={0}
+              width={160}
+              height={32}
+              highlightWeek={weekOf ?? undefined}
+            />
+          </a>
         )}
+
+        <nav aria-label="Jump to section" className="flex items-center gap-3 text-xs">
+          <Link href="#categories" className="text-dm-accent hover:underline">
+            This week
+          </Link>
+          <Link href="#concern-score" className="text-dm-accent hover:underline">
+            Trend
+          </Link>
+          <Link href="#term-summary" className="text-dm-accent hover:underline">
+            Term so far
+          </Link>
+          {readingLevel === 'detailed' && (
+            <Link href="#status-heatmap" className="text-dm-accent hover:underline">
+              Heatmap
+            </Link>
+          )}
+        </nav>
       </div>
 
+      {/* Row 2 — the headline's length can't move anything above */}
       {(shownHeadline || gapCaveat) && (
         <p className="text-xs text-dm-text-secondary border-l-2 border-dm-border pl-3">
           {shownHeadline}
@@ -175,41 +214,6 @@ export function ThisWeekStrip({
           {gapCaveat && <span className="text-status-drift">{gapCaveat}</span>}
         </p>
       )}
-
-      {sparkData.length > 1 && (
-        <a
-          href="#concern-score"
-          aria-label="View full concern chart"
-          title="View full concern chart"
-          className="ml-auto opacity-80 hover:opacity-100 transition-opacity"
-        >
-          <Sparkline
-            data={sparkData}
-            baselineAvg={0}
-            baselineStdDev={0}
-            width={160}
-            height={32}
-            highlightWeek={weekOf ?? undefined}
-          />
-        </a>
-      )}
-
-      <nav aria-label="Jump to section" className="flex items-center gap-3 text-xs">
-        <Link href="#categories" className="text-dm-accent hover:underline">
-          This week
-        </Link>
-        <Link href="#concern-score" className="text-dm-accent hover:underline">
-          Trend
-        </Link>
-        <Link href="#term-summary" className="text-dm-accent hover:underline">
-          Term so far
-        </Link>
-        {readingLevel === 'detailed' && (
-          <Link href="#status-heatmap" className="text-dm-accent hover:underline">
-            Heatmap
-          </Link>
-        )}
-      </nav>
     </section>
   );
 }
