@@ -28,6 +28,7 @@ type Pass2Row = {
   assessment: string | null;
   confidence: number | null;
   erosionType: string | null;
+  erosionActor: string | null;
   reasoning: string | null;
   comparativeContext: string | null;
   citedPassages: unknown;
@@ -58,6 +59,8 @@ function toPass2Result(r: Pass2Row): Pass2Result {
       assessment: (r.assessment ?? 'routine') as Pass2Result['response']['assessment'],
       confidence: r.confidence ?? 0,
       erosionType: (r.erosionType ?? 'unclear') as Pass2Result['response']['erosionType'],
+      // NULL stays undefined → lands in the 'unattributed' bucket downstream
+      erosionActor: (r.erosionActor ?? undefined) as Pass2Result['response']['erosionActor'],
       reasoning: r.reasoning ?? '',
       comparativeContext: r.comparativeContext ?? '',
       citedPassages: (r.citedPassages as string[]) ?? [],
@@ -103,6 +106,7 @@ async function fetchPassRows(category: string, weekOf: string) {
       assessment: aiDocumentAssessments.assessment,
       confidence: aiDocumentAssessments.confidence,
       erosionType: aiDocumentAssessments.erosionType,
+      erosionActor: aiDocumentAssessments.erosionActor,
       reasoning: aiDocumentAssessments.reasoning,
       comparativeContext: aiDocumentAssessments.comparativeContext,
       citedPassages: aiDocumentAssessments.citedPassages,
