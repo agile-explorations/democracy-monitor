@@ -61,6 +61,10 @@ function ordinal(n: number): string {
 
 export interface ThisWeekStripProps {
   weekOf: string | null;
+  /** True when showing the latest week (label + data-gap streak semantics). */
+  isLatestWeek: boolean;
+  /** True while a past week's category data is being fetched. */
+  weekLoading?: boolean;
   categories: Array<{ convergenceStatus: ConcernLevel | null }>;
   synchrony: SynchronyPoint[];
   fetchTimeline: FetchWeekHealth[];
@@ -74,6 +78,8 @@ export interface ThisWeekStripProps {
  */
 export function ThisWeekStrip({
   weekOf,
+  isLatestWeek,
+  weekLoading = false,
   categories,
   synchrony,
   fetchTimeline,
@@ -84,7 +90,13 @@ export function ThisWeekStrip({
   const colors = CONCERN_LEVEL_COLORS[resolvedMode];
 
   const counts = tallyCurrentWeekStatuses(categories);
-  const notable = deriveNotableCondition(fetchTimeline, significantWeeks, weekOf);
+  // Data-gap streaks describe the present; for past weeks only the
+  // significant-week headline applies.
+  const notable = deriveNotableCondition(
+    isLatestWeek ? fetchTimeline : [],
+    significantWeeks,
+    weekOf,
+  );
   const sparkData = synchrony.map((p) => ({ week: p.week, score: p.weightedScore }));
 
   const countParts = STATUS_ORDER.filter((s) => (counts[s] ?? 0) > 0);
@@ -96,14 +108,18 @@ export function ThisWeekStrip({
       className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-dm-border bg-dm-card px-4 py-3"
     >
       <div>
-        <p className="text-[11px] uppercase tracking-wider text-dm-muted">This week</p>
+        <p className="text-[11px] uppercase tracking-wider text-dm-muted">
+          {isLatestWeek ? 'This week' : 'Week of'}
+        </p>
         <p className="text-sm font-semibold text-dm-text-primary">
           {weekOf ? formatWeekLabelWithYear(weekOf) : '—'}
         </p>
       </div>
 
       <div className="flex items-center gap-3" aria-label="Category status counts">
-        {countParts.length > 0 ? (
+        {weekLoading ? (
+          <span className="text-sm text-dm-muted animate-pulse">Loading…</span>
+        ) : countParts.length > 0 ? (
           countParts.map((status) => (
             <span key={status} className="flex items-center gap-1.5 text-sm">
               <span

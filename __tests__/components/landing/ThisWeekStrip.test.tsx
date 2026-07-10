@@ -79,6 +79,7 @@ describe('deriveNotableCondition', () => {
 describe('ThisWeekStrip', () => {
   const baseProps = {
     weekOf: '2026-06-29',
+    isLatestWeek: true,
     categories: [cat('Stable'), cat('Stable'), cat('Elevated'), cat('ConfirmedConcern')],
     synchrony: SYNCHRONY,
     fetchTimeline: [week('2026-06-29', 0)],
@@ -110,6 +111,30 @@ describe('ThisWeekStrip', () => {
     mockReadingLevel.level = 'detailed';
     render(<ThisWeekStrip {...baseProps} />);
     expect(screen.getByRole('link', { name: 'Heatmap' })).toBeDefined();
+  });
+
+  it('follows the selected week: label flips and gap-streaks are suppressed for past weeks', () => {
+    const gappyTimeline = [week('w1', 1), week('w2', 2)];
+    render(
+      <ThisWeekStrip
+        {...baseProps}
+        weekOf="2026-03-09"
+        isLatestWeek={false}
+        fetchTimeline={gappyTimeline}
+        categories={[cat('ConfirmedConcern'), cat('Stable')]}
+      />,
+    );
+    expect(screen.getByText('Week of')).toBeDefined();
+    expect(screen.getByText(/Mar 9/)).toBeDefined();
+    expect(screen.getByText('Confirmed Concern')).toBeDefined();
+    // present-tense gap streak must not describe a past week
+    expect(screen.queryByText(/data gaps/i)).toBeNull();
+  });
+
+  it('shows a loading placeholder while a past week fetches', () => {
+    render(<ThisWeekStrip {...baseProps} isLatestWeek={false} weekLoading />);
+    expect(screen.getByText('Loading…')).toBeDefined();
+    expect(screen.queryByText('Elevated')).toBeNull();
   });
 
   it('shows a placeholder when no statuses exist yet', () => {

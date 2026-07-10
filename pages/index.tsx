@@ -220,11 +220,13 @@ export default function Home() {
           </details>
         </section>
 
-        {/* Current-week status strip (#533) — pinned to the latest week */}
+        {/* Current-week status strip (#533) — follows the Categories week selection */}
         <div className="mb-8">
           <ThisWeekStrip
-            weekOf={latestWeek}
-            categories={categories}
+            weekOf={selectedWeek ?? latestWeek}
+            isLatestWeek={!selectedWeek || selectedWeek === latestWeek}
+            weekLoading={weekLoading}
+            categories={displayedCategories}
             synchrony={overview?.synchrony ?? []}
             fetchTimeline={fetchTimeline ?? []}
             significantWeeks={significantWeeks}
