@@ -13,21 +13,24 @@ import { formatWeekLabel } from '@/lib/utils/date-utils';
 
 /** Anchor id for the documents table — deep-linked from the overview's "documents behind this status" link. */
 export const WEEK_DOCUMENTS_ANCHOR = 'week-documents';
+/** Anchor id for the narrative — deep-linked from the overview's narrative excerpt. */
+export const WEEK_NARRATIVE_ANCHOR = 'week-narrative';
+
+const WEEK_ANCHORS = [WEEK_DOCUMENTS_ANCHOR, WEEK_NARRATIVE_ANCHOR];
 
 /**
- * Scroll the documents table into view once it has rendered, when the page
- * was opened with the documents anchor in the URL hash. Native anchor
- * scrolling can't work here because the section loads asynchronously.
+ * Scroll the anchored section into view once it has rendered, when the page
+ * was opened with a known week anchor in the URL hash. Native anchor
+ * scrolling can't work here because the sections load asynchronously.
  */
-function useScrollToDocumentsAnchor(ready: boolean) {
+function useScrollToWeekAnchor(ready: boolean) {
   const scrolled = useRef(false);
   useEffect(() => {
     if (!ready || scrolled.current) return;
-    if (window.location.hash !== `#${WEEK_DOCUMENTS_ANCHOR}`) return;
+    const anchor = WEEK_ANCHORS.find((a) => window.location.hash === `#${a}`);
+    if (!anchor) return;
     scrolled.current = true;
-    document
-      .getElementById(WEEK_DOCUMENTS_ANCHOR)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById(anchor)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [ready]);
 }
 
@@ -97,7 +100,7 @@ export function WeekDetailPanel({
   loading,
   onClose,
 }: WeekDetailPanelProps) {
-  useScrollToDocumentsAnchor(!loading && explanation != null);
+  useScrollToWeekAnchor(!loading);
 
   return (
     <div className="space-y-4">
@@ -122,11 +125,13 @@ export function WeekDetailPanel({
           <ConcernHeader synthesis={layers?.convergenceDetail ?? null} />
 
           {/* Narrative */}
-          <NarrativeSection
-            narrative={narrative}
-            readingLevel={readingLevel}
-            editorial={editorial}
-          />
+          <div id={WEEK_NARRATIVE_ANCHOR} className="scroll-mt-4">
+            <NarrativeSection
+              narrative={narrative}
+              readingLevel={readingLevel}
+              editorial={editorial}
+            />
+          </div>
 
           {/* Detail panels — collapsed by default */}
           <CollapsiblePanel title="Structural Anomaly">
