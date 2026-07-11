@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   buildConvergenceSummary,
   extractNarrativeExcerpt,
-} from '@/lib/services/category-summary-service';
+  toDateKey,
+} from '@/lib/services/category-summary-format';
 import type { ConcernAssessment } from '@/lib/types/structural';
 
 function assessment(overrides: Partial<ConcernAssessment> = {}): ConcernAssessment {
@@ -123,5 +124,19 @@ describe('extractNarrativeExcerpt', () => {
     expect(text.length).toBeLessThanOrEqual(321);
     expect(text.endsWith('…')).toBe(true);
     expect(text).not.toContain('  ');
+  });
+});
+
+describe('toDateKey', () => {
+  it('formats Date objects using local calendar components', () => {
+    expect(toDateKey(new Date(2026, 2, 30))).toBe('2026-03-30');
+  });
+
+  it('passes through ISO date strings', () => {
+    expect(toDateKey('2026-03-30')).toBe('2026-03-30');
+  });
+
+  it('trims timestamps down to the date part', () => {
+    expect(toDateKey('2026-03-30T00:00:00.000Z')).toBe('2026-03-30');
   });
 });

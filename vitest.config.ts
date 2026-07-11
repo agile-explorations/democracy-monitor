@@ -23,6 +23,7 @@ export default defineConfig({
         // Embedding pipeline — DB I/O + OpenAI API calls, not unit-testable
         'lib/services/document-embedder.ts',
         // DB I/O and CLI modules — pure functions tested, DB ops need integration tests
+        'lib/services/category-summary-service.ts',
         'lib/services/data-validation-queries.ts',
         'lib/services/document-review-queries.ts',
         'lib/services/ingest-validation-queries.ts',

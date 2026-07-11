@@ -3,6 +3,11 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
 import { baselines, narratives, weeklyAggregates } from '@/lib/db/schema';
 import { PRIMARY_BASELINE_ID } from '@/lib/methodology/scoring-config';
+import {
+  buildConvergenceSummary,
+  extractNarrativeExcerpt,
+  toDateKey,
+} from '@/lib/services/category-summary-format';
 import type { AIAssessmentSummary, ConcernLevel, ConcernAssessment } from '@/lib/types/structural';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
@@ -29,17 +34,6 @@ export interface CategorySummary {
   /** First paragraph of the week's public narrative, when one exists. */
   narrativeExcerpt: string | null;
   computedAt: string | null;
-}
-
-/** Normalize a pg date value (Date object or string) to YYYY-MM-DD. */
-function toDateKey(value: unknown): string {
-  if (value instanceof Date) {
-    const y = value.getFullYear();
-    const m = String(value.getMonth() + 1).padStart(2, '0');
-    const d = String(value.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  }
-  return String(value).slice(0, 10);
 }
 
 /** Fetch baseline avg/stddev per category for the primary baseline. */
@@ -188,71 +182,6 @@ async function fetchNarrativeExcerpts(
     if (wanted.has(key)) result[key] = extractNarrativeExcerpt(row.content);
   }
   return result;
-}
-
-const EXCERPT_MAX_LENGTH = 320;
-
-/**
- * First paragraph of a narrative, with markdown links/emphasis stripped,
- * truncated at a word boundary. Exported for testing.
- */
-export function extractNarrativeExcerpt(content: string): string {
-  const firstParagraph = (content.trim().split(/\n\s*\n/)[0] ?? '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (firstParagraph.length <= EXCERPT_MAX_LENGTH) return firstParagraph;
-  const cut = firstParagraph.slice(0, EXCERPT_MAX_LENGTH);
-  return `${cut.slice(0, cut.lastIndexOf(' '))}…`;
-}
-
-/** Plain-English description of elevated context layers (they never drive status). */
-function describeContextSignals(convergence: ConcernAssessment): string | null {
-  const signals: string[] = [];
-  if (convergence.silenceElevated) signals.push('government sources are unusually quiet');
-  if (convergence.structuralElevated) signals.push('publication patterns are unusual');
-  if (convergence.thematicElevated) signals.push('topic emphasis is shifting');
-  if (signals.length === 0) return null;
-  return `Also observed: ${signals.join('; ')} — context that does not affect the status.`;
-}
-
-export interface SummaryCounts {
-  flagged: number;
-  concerning: number;
-  total: number;
-}
-
-function pluralDocs(count: number): string {
-  return count === 1 ? 'document' : 'documents';
-}
-
-/**
- * Build a reader-facing summary of why the convergence status is what it is.
- * Exported for testing.
- */
-export function buildConvergenceSummary(
-  convergence: ConcernAssessment,
-  counts: SummaryCounts,
-): string {
-  const { status } = convergence;
-  const { flagged, concerning, total } = counts;
-
-  let lead: string;
-  if (status === 'Stable') {
-    lead =
-      total === 0
-        ? 'No documents were published in this category this week.'
-        : `AI review found no concerning government actions in this week's ${total} ${pluralDocs(total)}.`;
-  } else if (status === 'ConfirmedConcern') {
-    const n = concerning > 0 ? concerning : flagged;
-    lead = `AI review confirmed concerning government actions in ${n} of this week's ${total} ${pluralDocs(total)}.`;
-  } else {
-    lead = `AI review flagged ${flagged} of this week's ${total} ${pluralDocs(total)} as potentially concerning.`;
-  }
-
-  const context = describeContextSignals(convergence);
-  return context ? `${lead} ${context}` : lead;
 }
 
 /**
