@@ -26,14 +26,9 @@ export function SiteFooter() {
         <span className="text-dm-border">·</span>
         <span>MIT License</span>
         <span className="text-dm-border">·</span>
-        <a
-          href="https://github.com/sponsors/agile-explorations"
-          className="hover:text-dm-text-secondary transition-colors"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Sponsor this project
-        </a>
+        <Link href="/support" className="hover:text-dm-text-secondary transition-colors">
+          Support this project
+        </Link>
         <span className="text-dm-border">·</span>
         <Link href="/feedback" className="hover:text-dm-text-secondary transition-colors">
           Send feedback

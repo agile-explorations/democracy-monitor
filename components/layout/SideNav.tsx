@@ -116,6 +116,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
 
           <NavSection title="Connect">
             <NavLink href="/feedback" label="Feedback" />
+            <NavLink href="/support" label="Support" />
           </NavSection>
 
           <NavSection title="System">

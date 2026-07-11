@@ -231,18 +231,14 @@ export default function RoadmapPage() {
             makes the analysis better.
           </p>
           <p>
-            <strong>Sponsor the project.</strong> Democracy Monitor runs on AI infrastructure that
+            <strong>Support the project.</strong> Democracy Monitor runs on AI infrastructure that
             costs real money. Every document is assessed through two AI passes, narratives are
-            generated weekly, and the system processes new documents on a continuous basis.{' '}
-            <a
-              href="https://github.com/sponsors/agile-explorations"
-              className="text-dm-accent hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Sponsors
-            </a>{' '}
-            is the primary funding mechanism. Contributions go directly to infrastructure costs.
+            generated weekly, and the system processes new documents on a continuous basis. One-time
+            and monthly contributions on the{' '}
+            <Link href="/support" className="text-dm-accent hover:underline">
+              support page
+            </Link>{' '}
+            go directly to these operating costs.
           </p>
           <p>
             <strong>Contribute code.</strong> The project is open source on{' '}
