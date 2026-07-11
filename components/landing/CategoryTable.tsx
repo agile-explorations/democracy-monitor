@@ -187,8 +187,25 @@ function CategoryRow({
               {description}
             </p>
             {cat.summary && (
-              <p className="text-xs text-dm-muted leading-relaxed max-w-2xl ml-[18px] mt-2 italic">
+              <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px] mt-2 font-medium">
                 {cat.summary}
+              </p>
+            )}
+            {cat.narrativeExcerpt && (
+              <p className="text-xs text-dm-muted leading-relaxed max-w-2xl ml-[18px] mt-2 pl-3 border-l-2 border-dm-accent/30 italic">
+                {cat.narrativeExcerpt}
+              </p>
+            )}
+            {cat.weekOf && cat.documentCount > 0 && (
+              <p className="ml-[18px] mt-2">
+                <Link
+                  href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs text-dm-accent hover:underline"
+                >
+                  See the {cat.documentCount} {cat.documentCount === 1 ? 'document' : 'documents'}{' '}
+                  behind this status &rarr;
+                </Link>
               </p>
             )}
           </td>

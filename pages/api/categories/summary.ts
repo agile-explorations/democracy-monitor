@@ -26,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       documentCount: 0,
       l2FlagCount: 0,
       summary: cat.description,
+      weekOf: null,
+      narrativeExcerpt: null,
       computedAt: null,
     }));
     return res.status(200).json(fallback);
