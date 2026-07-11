@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { DisplaySettings } from '@/components/layout/DisplaySettings';
+import { EmailSignup } from '@/components/shared/EmailSignup';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
 export function SiteHeader({
@@ -77,6 +78,9 @@ export function SiteHeader({
             >
               ♥ Sponsor
             </a>
+            <span className="hidden sm:inline">
+              <EmailSignup variant="badge" />
+            </span>
           </div>
         </div>
 

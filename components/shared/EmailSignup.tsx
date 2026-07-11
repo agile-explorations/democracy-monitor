@@ -1,13 +1,14 @@
 import { useState } from 'react';
 
 interface EmailSignupProps {
-  variant?: 'card' | 'inline';
+  variant?: 'card' | 'inline' | 'badge';
 }
 
 export function EmailSignup({ variant = 'card' }: EmailSignupProps) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,6 +34,58 @@ export function EmailSignup({ variant = 'card' }: EmailSignupProps) {
       setStatus('error');
       setMessage('Network error — please try again');
     }
+  }
+
+  // Header badge (#540): a compact pill matching the Sponsor badge that
+  // expands into the inline form on click.
+  if (variant === 'badge') {
+    if (!expanded) {
+      return (
+        <button
+          onClick={() => setExpanded(true)}
+          className="px-2 py-0.5 mb-1.5 rounded border border-dm-accent/60 text-[10px] text-dm-accent hover:bg-dm-accent/10 transition-colors"
+          aria-expanded={false}
+          aria-label="Subscribe to weekly updates"
+        >
+          ✉ Subscribe
+        </button>
+      );
+    }
+    return (
+      <form onSubmit={handleSubmit} className="flex items-center gap-1.5 mb-1.5">
+        {status === 'success' ? (
+          <span className="text-[10px] text-green-400">{message}</span>
+        ) : (
+          <>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              autoFocus
+              className="px-2 py-0.5 text-[10px] rounded border border-dm-border bg-dm-bg text-dm-text-primary w-40"
+            />
+            <button
+              type="submit"
+              disabled={status === 'loading'}
+              className="px-2 py-0.5 text-[10px] font-medium rounded border border-dm-accent text-dm-accent hover:bg-dm-accent/10 transition-colors disabled:opacity-50"
+            >
+              {status === 'loading' ? '…' : 'Subscribe'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              aria-label="Close subscribe form"
+              className="text-[10px] text-dm-muted hover:text-dm-text-secondary"
+            >
+              ✕
+            </button>
+            {status === 'error' && <span className="text-[10px] text-red-400">{message}</span>}
+          </>
+        )}
+      </form>
+    );
   }
 
   if (variant === 'inline') {
