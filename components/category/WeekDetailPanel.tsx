@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
 import { ConcernHeader } from '@/components/category/ConcernHeader';
 import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
@@ -10,6 +10,26 @@ import type { EditorialRecord } from '@/lib/types';
 import type { CategoryDetailLatestWeek } from '@/lib/types/category-detail';
 import type { WeekExplanation } from '@/lib/types/explanation';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
+
+/** Anchor id for the documents table — deep-linked from the overview's "documents behind this status" link. */
+export const WEEK_DOCUMENTS_ANCHOR = 'week-documents';
+
+/**
+ * Scroll the documents table into view once it has rendered, when the page
+ * was opened with the documents anchor in the URL hash. Native anchor
+ * scrolling can't work here because the section loads asynchronously.
+ */
+function useScrollToDocumentsAnchor(ready: boolean) {
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (!ready || scrolled.current) return;
+    if (window.location.hash !== `#${WEEK_DOCUMENTS_ANCHOR}`) return;
+    scrolled.current = true;
+    document
+      .getElementById(WEEK_DOCUMENTS_ANCHOR)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [ready]);
+}
 
 export interface WeekDetailPanelProps {
   weekOf: string;
@@ -77,6 +97,8 @@ export function WeekDetailPanel({
   loading,
   onClose,
 }: WeekDetailPanelProps) {
+  useScrollToDocumentsAnchor(!loading && explanation != null);
+
   return (
     <div className="space-y-4">
       {/* Week header */}
@@ -129,7 +151,10 @@ export function WeekDetailPanel({
 
           {/* Document table */}
           {explanation && (
-            <div className="rounded-lg border border-dm-border bg-dm-card p-5">
+            <div
+              id={WEEK_DOCUMENTS_ANCHOR}
+              className="rounded-lg border border-dm-border bg-dm-card p-5 scroll-mt-4"
+            >
               <DocumentTable
                 documents={explanation.topDocuments}
                 category={categoryKey}

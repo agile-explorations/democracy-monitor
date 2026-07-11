@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useState } from 'react';
+import { WEEK_DOCUMENTS_ANCHOR } from '@/components/category/WeekDetailPanel';
 import { ConcernLevelPill } from '@/components/ui/ConcernLevelPill';
 import { Sparkline } from '@/components/ui/Sparkline';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -199,7 +200,7 @@ function CategoryRow({
             {cat.weekOf && cat.documentCount > 0 && (
               <p className="ml-[18px] mt-2">
                 <Link
-                  href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}`}
+                  href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}#${WEEK_DOCUMENTS_ANCHOR}`}
                   onClick={(e) => e.stopPropagation()}
                   className="text-xs text-dm-accent hover:underline"
                 >
