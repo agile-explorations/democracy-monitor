@@ -34,6 +34,13 @@
   }
 
   .dark {
+    /* Status scale — severity brightens instead of darkens on dark backgrounds
+       (the light-mode ramp ends at indigo-700, which is unreadable on dark) */
+    --color-status-stable: 100 116 139;
+    --color-status-warning: 129 140 248;
+    --color-status-drift: 165 180 252;
+    --color-status-capture: 199 210 254;
+
     --color-bg: 15 23 42;
     --color-card: 30 41 59;
     --color-text-primary: 241 245 249;
