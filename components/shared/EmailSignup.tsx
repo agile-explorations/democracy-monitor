@@ -36,7 +36,7 @@ export function EmailSignup({ variant = 'card' }: EmailSignupProps) {
     }
   }
 
-  // Header badge (#540): a compact pill matching the Sponsor badge that
+  // Header badge (#540): a compact pill matching the Support badge that
   // expands into the inline form on click.
   if (variant === 'badge') {
     if (!expanded) {
