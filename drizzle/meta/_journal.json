@@ -288,6 +288,13 @@
       "when": 1783723320367,
       "tag": "0040_uneven_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783827418560,
+      "tag": "0041_puzzling_blackheart",
+      "breakpoints": true
     }
   ]
 }
