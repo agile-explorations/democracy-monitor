@@ -148,6 +148,30 @@ export const COMMON_QUESTIONS: CommonQuestion[] = [
       'What it tracks is whether enforcement stays inside constitutional guardrails: hearings before removal, judicial review of detention, limits on using the military against civilians. Those guardrails are not immigration policy — they are the rules that determine what the government may do to a person it has accused. History shows that enforcement powers built without them do not stay pointed at their original targets: the deportation raids of 1919 swept up citizens; the internment camps of 1942 held Americans. Due process is not protection for lawbreakers. It is the procedure for finding out, before the government acts, whether it has the right person.',
     ],
   },
+  {
+    id: 'mandate',
+    question: "The President won the election. Isn't this what voters asked for?",
+    answer: [
+      'Winning an election confers the power to govern: appoint officials, set enforcement priorities, propose budgets, sign or veto laws. It does not confer the power to change the rules that make the next election meaningful. That distinction is the entire design of a constitutional system — majorities decide policy, while the rules protect the ability of future majorities to decide differently.',
+      'A mandate for a policy agenda gets tested at the next ballot box. What this site tracks is a different question: changes to the machinery itself — who counts the votes, who audits the agencies, whether court orders are followed — that determine whether the ballot box can still deliver a verdict at all.',
+    ],
+  },
+  {
+    id: 'every-president',
+    question: "Doesn't every president push the limits? Isn't this just politics as usual?",
+    answer: [
+      'Presidents of both parties test their boundaries — which is exactly why measurement matters more than anecdote. This system was calibrated against normal governance: it read tens of thousands of government documents from the Trump 2017–18 and Biden 2021–22 administrations to establish what ordinary boundary-pushing looks like, from both parties, before assessing anything as unusual.',
+      "That makes 'everyone does it' a testable claim here rather than a conversation-ender. When a week is flagged, it is because documents describe actions that stand out against that two-party baseline — and every flag links to the documents, so you can read them and disagree. Most weeks, under every administration we have measured, come back Stable.",
+    ],
+  },
+  {
+    id: 'trust',
+    question: "Why should I trust this site? Isn't it just another partisan project?",
+    answer: [
+      "Don't trust it — check it. The code is open source, the methodology is published in full, every assessment links to the government documents behind it, and the complete database is downloadable. Anyone can rerun the analysis and disagree in detail. Criticism that survives that kind of scrutiny is the only endorsement worth having.",
+      'The strongest evidence we can offer: the same AI review — same prompts, same thresholds — ran against Biden-administration documents, and those assessments are published here alongside the current ones. Most weeks come back Stable under every administration. A monitor that flagged everything would be a monitor that told you nothing.',
+    ],
+  },
 ];
 
 /** Anchor id of the pillar that covers a given category key, for deep links. */
@@ -155,3 +179,38 @@ export function pillarIdForCategory(categoryKey: string): string | null {
   const pillar = WHY_PILLARS.find((p) => p.categoryKeys.includes(categoryKey));
   return pillar ? pillar.id : null;
 }
+
+/**
+ * One-line "why this matters" shown on each category page, linking to the
+ * category's pillar. Same framing rule as the pillars: reciprocal, never
+ * partisan.
+ */
+export const CATEGORY_WHY_LINES: Record<string, string> = {
+  civilService:
+    'Merit rules are what stop every administration — this one and the next — from staffing the government with loyalists.',
+  fiscal:
+    'If a president can ignore spending laws, every program exists at one person’s pleasure — including the ones you depend on.',
+  executiveOversight:
+    'Inspectors General are the government’s auditors; a president who can fire the auditor for auditing passes that immunity to every successor.',
+  hatch:
+    'When government machinery works for the incumbent’s campaign, elections lose the power to remove anyone.',
+  judicialIndependence:
+    'Court orders you agree with are only enforceable because court orders you disagree with are too.',
+  military:
+    'The rules keeping troops out of domestic politics protect both parties’ voters — whoever is protesting next.',
+  rulemaking:
+    'Independent agencies answer to law rather than to the White House; capture them once, and they answer to every future White House.',
+  executiveActions:
+    'Executive orders carry out laws; when they replace laws, policy lasts exactly until the next president’s pen.',
+  infoAvailability:
+    'Public data is how you check the government’s claims — whichever side you are checking.',
+  elections:
+    'Neutral election administration is the mechanism by which every other abuse can eventually be corrected.',
+  mediaFreedom:
+    'A press the government can punish reports what the government prefers — under every administration.',
+  lawEnforcement: 'Prosecution chosen by politics is a weapon that changes hands every four years.',
+  civilLiberties:
+    'Due process is the procedure for finding out whether the government has the right person — and anyone can be wrongly accused.',
+  immigrationEnforcement:
+    'Enforcement machinery built without due-process limits transfers intact to the next administration, pointed wherever it chooses.',
+};
