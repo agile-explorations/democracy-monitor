@@ -189,7 +189,7 @@ export function AccountabilityDiagram() {
           className="fill-dm-muted/60"
         />
       </svg>
-      <figcaption className="text-sm text-dm-muted mt-1 text-center">
+      <figcaption className="text-sm text-dm-muted mt-4 text-center">
         Every pillar holds up the same thing. Click one to see how — and what it looks like when it
         gives way.
       </figcaption>
