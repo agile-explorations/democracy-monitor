@@ -13,6 +13,8 @@ export interface WhyPillar {
   id: string;
   /** The question this group of checks answers. */
   question: string;
+  /** Short node label for the accountability diagram (#550). */
+  shortLabel: string;
   /** Category keys from CATEGORIES covered by this pillar. */
   categoryKeys: string[];
   /** The system logic: what this check stops any president from doing. */
@@ -28,6 +30,7 @@ export interface WhyPillar {
 export const WHY_PILLARS: WhyPillar[] = [
   {
     id: 'elections',
+    shortLabel: 'Elections',
     question: 'Who decides elections?',
     categoryKeys: ['elections', 'hatch'],
     answer:
@@ -41,6 +44,7 @@ export const WHY_PILLARS: WhyPillar[] = [
   },
   {
     id: 'money-and-rules',
+    shortLabel: 'Money & Rules',
     question: 'Who controls the money and the rules?',
     categoryKeys: ['fiscal', 'rulemaking', 'executiveActions'],
     answer:
@@ -54,6 +58,7 @@ export const WHY_PILLARS: WhyPillar[] = [
   },
   {
     id: 'watchers',
+    shortLabel: 'Watchdogs & Courts',
     question: 'Who watches the watchers?',
     categoryKeys: ['executiveOversight', 'judicialIndependence'],
     answer:
@@ -67,6 +72,7 @@ export const WHY_PILLARS: WhyPillar[] = [
   },
   {
     id: 'civil-service',
+    shortLabel: 'Civil Service',
     question: "Who does the government's work?",
     categoryKeys: ['civilService'],
     answer:
@@ -80,6 +86,7 @@ export const WHY_PILLARS: WhyPillar[] = [
   },
   {
     id: 'information',
+    shortLabel: 'Information & Press',
     question: 'Who can tell you what is happening?',
     categoryKeys: ['mediaFreedom', 'infoAvailability'],
     answer:
@@ -93,6 +100,7 @@ export const WHY_PILLARS: WhyPillar[] = [
   },
   {
     id: 'enforcement-powers',
+    shortLabel: 'Enforcement Powers',
     question: 'Which powers outlast the president who builds them?',
     categoryKeys: ['lawEnforcement', 'immigrationEnforcement', 'military', 'civilLiberties'],
     answer:

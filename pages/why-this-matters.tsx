@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
+import { AccountabilityDiagram } from '@/components/why/AccountabilityDiagram';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { COMMON_QUESTIONS, WHY_PILLARS } from '@/lib/data/why-this-matters';
@@ -101,6 +102,8 @@ export default function WhyThisMattersPage() {
           .
         </p>
       </div>
+
+      <AccountabilityDiagram />
 
       <div className="max-w-3xl space-y-4">
         {WHY_PILLARS.map((pillar) => (
