@@ -13,6 +13,7 @@ import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
+import { pillarIdForCategory } from '@/lib/data/why-this-matters';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 import type { ArchiveWeekEntry } from '@/lib/services/ssr-narrative-data';
@@ -177,6 +178,12 @@ export default function CategoryDetailPage({
           </p>
         )}
         <p className="text-xs mt-3 space-x-3">
+          <Link
+            href={`/why-this-matters#${pillarIdForCategory(categoryKey ?? '') ?? ''}`}
+            className="text-dm-accent hover:underline"
+          >
+            Why this category matters
+          </Link>
           <Link
             href={`/feedback?category=${categoryKey}`}
             className="text-dm-accent hover:underline"
