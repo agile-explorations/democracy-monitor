@@ -23,6 +23,8 @@ const SHAFT_BOTTOM_W = 38;
 const BASE_H = 8;
 const FLOOR_Y = SHAFT_TOP + SHAFT_H + BASE_H + 2;
 const LABEL_TOP = FLOOR_Y + 24;
+/** Fixed baseline so counts align across 1- and 2-line labels. */
+const COUNT_Y = LABEL_TOP + 2 * 16 + 13;
 
 const SLOT_W = (VIEW_W - 2 * MARGIN_X) / WHY_PILLARS.length;
 
@@ -110,19 +112,14 @@ function Column({ index }: { index: number }) {
         <text
           key={i}
           x={cx}
-          y={LABEL_TOP + i * 16}
+          y={(lines.length === 1 ? LABEL_TOP + 8 : LABEL_TOP) + i * 16}
           textAnchor="middle"
           className="fill-dm-text-primary text-[13px] font-semibold group-hover:fill-dm-accent group-focus:fill-dm-accent transition-colors"
         >
           {line}
         </text>
       ))}
-      <text
-        x={cx}
-        y={LABEL_TOP + lines.length * 16 + 13}
-        textAnchor="middle"
-        className="fill-dm-muted text-[10px]"
-      >
+      <text x={cx} y={COUNT_Y} textAnchor="middle" className="fill-dm-muted text-[10px]">
         {count} {count === 1 ? 'category' : 'categories'} &darr;
       </text>
     </a>
@@ -148,7 +145,7 @@ export function AccountabilityDiagram() {
         {/* Pediment */}
         <polygon
           points={`${MARGIN_X + 6},${BEAM_Y} ${VIEW_W - MARGIN_X - 6},${BEAM_Y} ${VIEW_W / 2},${PEDIMENT_APEX_Y}`}
-          className="fill-dm-border/50"
+          className="fill-dm-muted/50"
         />
         {/* Beam */}
         <rect
