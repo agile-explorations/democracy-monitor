@@ -84,7 +84,7 @@ function Column({ index }: { index: number }) {
       {/* Tapered shaft */}
       <polygon
         points={`${cx - SHAFT_TOP_W / 2},${SHAFT_TOP} ${cx + SHAFT_TOP_W / 2},${SHAFT_TOP} ${cx + SHAFT_BOTTOM_W / 2},${shaftBottom} ${cx - SHAFT_BOTTOM_W / 2},${shaftBottom}`}
-        className="fill-dm-border/60 group-hover:fill-dm-accent/40 group-focus:fill-dm-accent/40 transition-colors"
+        className="fill-dm-muted/40 group-hover:fill-dm-accent/40 group-focus:fill-dm-accent/40 transition-colors"
       />
       {/* Fluting */}
       {[-6, 0, 6].map((dx) => (
