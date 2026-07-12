@@ -25,22 +25,22 @@ function PillarCard({ pillar }: { pillar: WhyPillar }) {
       id={pillar.id}
       className="rounded-lg border border-dm-border bg-dm-card p-5 scroll-mt-4 space-y-3"
     >
-      <h3 className="text-sm font-bold text-dm-text-primary">{pillar.question}</h3>
+      <h3 className="text-base font-bold text-dm-text-primary">{pillar.question}</h3>
       <div className="flex flex-wrap gap-1.5">
         {pillar.categoryKeys.map((key) => (
           <CategoryChip key={key} categoryKey={key} />
         ))}
       </div>
-      <p className="text-xs text-dm-text-secondary leading-relaxed">{pillar.answer}</p>
-      <p className="text-xs text-dm-text-secondary leading-relaxed">
+      <p className="text-sm text-dm-text-secondary leading-relaxed">{pillar.answer}</p>
+      <p className="text-sm text-dm-text-secondary leading-relaxed">
         <span className="font-semibold text-dm-text-primary">Why it binds both sides: </span>
         {pillar.bindsBothSides}
       </p>
-      <p className="text-xs text-dm-text-secondary leading-relaxed">
+      <p className="text-sm text-dm-text-secondary leading-relaxed">
         <span className="font-semibold text-dm-text-primary">What erosion looks like: </span>
         {pillar.erosionLooksLike}
       </p>
-      <p className="text-xs text-dm-muted leading-relaxed border-l-2 border-dm-accent/30 pl-3">
+      <p className="text-sm text-dm-muted leading-relaxed border-l-2 border-dm-accent/30 pl-3">
         {pillar.historyAnchor}
       </p>
     </section>
@@ -50,10 +50,10 @@ function PillarCard({ pillar }: { pillar: WhyPillar }) {
 function QuestionCard({ item }: { item: CommonQuestion }) {
   return (
     <section id={item.id} className="scroll-mt-4">
-      <h3 className="text-sm font-bold text-dm-text-primary mb-2">{item.question}</h3>
+      <h3 className="text-base font-bold text-dm-text-primary mb-2">{item.question}</h3>
       <div className="space-y-2">
         {item.answer.map((paragraph, i) => (
-          <p key={i} className="text-xs text-dm-text-secondary leading-relaxed">
+          <p key={i} className="text-sm text-dm-text-secondary leading-relaxed">
             {paragraph}
           </p>
         ))}
@@ -92,7 +92,7 @@ export default function WhyThisMattersPage() {
           everything on this page: a power claimed by a president you support will be inherited,
           intact, by a president you oppose.
         </p>
-        <p className="text-xs text-dm-muted leading-relaxed">
+        <p className="text-sm text-dm-text-secondary leading-relaxed border-l-2 border-dm-accent/30 pl-3">
           We apply the same methodology to every administration — the same AI review reads Biden-era
           documents and Trump-era documents under identical rules. How it works is public:{' '}
           <Link href="/system/methodology" className="text-dm-accent hover:underline">
@@ -109,7 +109,7 @@ export default function WhyThisMattersPage() {
       </div>
 
       <div className="max-w-3xl mt-10">
-        <h2 className="text-base font-semibold text-dm-text-primary mb-4">Common questions</h2>
+        <h2 className="text-lg font-semibold text-dm-text-primary mb-4">Common questions</h2>
         <div className="space-y-6">
           {COMMON_QUESTIONS.map((item) => (
             <QuestionCard key={item.id} item={item} />
@@ -118,7 +118,7 @@ export default function WhyThisMattersPage() {
       </div>
 
       <div className="max-w-3xl mt-10 rounded-lg border border-dm-border bg-dm-card p-5">
-        <p className="text-xs text-dm-text-secondary leading-relaxed">
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
           Everything this site reports traces back to government documents you can read yourself —
           every assessment links to its sources, and the{' '}
           <Link href="/data" className="text-dm-accent hover:underline">
