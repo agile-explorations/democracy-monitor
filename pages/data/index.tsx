@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 
-const GITHUB_REPO = 'https://github.com/michaelkelly322/democracy-monitor';
+const GITHUB_REPO = 'https://github.com/agile-explorations/democracy-monitor';
 
 function DownloadCard({
   title,
@@ -100,7 +100,7 @@ export default function DataPage() {
                 'weekly_aggregates',
                 'Category-week rollups with structural/AI/thematic/concern scores',
               ],
-              ['baselines', 'Biden-era baseline statistics for comparison'],
+              ['baselines', 'Historical baseline statistics (Biden and Trump first-term periods)'],
               ['narratives', 'AI-generated weekly and term summaries'],
               ['document_scores', 'Per-document keyword assessment scores'],
             ]}

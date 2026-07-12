@@ -30,12 +30,14 @@ export default function RoadmapPage() {
             Detection has been validated against 39 known democratic erosion events across both
             Trump administrations (2017–2018 and 2025–present), including the travel ban executive
             orders, James Comey firing, DACA rescission, mass Inspector General firings, Schedule F
-            reinstatement, and DOGE agency interventions. Six negative controls confirm the system
-            does not produce false alarms during normal governance periods.
+            reinstatement, and DOGE agency interventions. Negative-control periods drawn from normal
+            governance are used to verify the system does not produce false alarms; these controls
+            are re-run as the methodology evolves.
           </p>
           <p>
-            The system currently covers five analysis periods: Trump 2017, Trump 2018, Biden 2021,
-            Biden 2022, and Trump second term (2025–present). New documents are processed weekly.
+            The system covers a continuous documentary record from 2017 to the present — both Trump
+            terms and the Biden term, with the final stretches of gap-year backfill nearing
+            completion. New documents are processed weekly.
           </p>
         </Section>
 
@@ -44,11 +46,11 @@ export default function RoadmapPage() {
         <Section title="Detection Quality & Platform Hardening" id="detection-quality">
           <p className="italic text-dm-muted text-xs mb-2">In progress</p>
           <p>
-            Completing the foundation. This includes filling the gaps in our historical coverage
-            (2019–2020 and 2023–2024) to produce a continuous record from 2017 to the present,
-            improving the data download and API access on our Data page, and ongoing refinement of
-            the detection methodology based on what we learn each week. The goal: the most complete,
-            accurate, and accessible repository of assessed government documents available anywhere.
+            Completing the foundation. This includes finishing the last stretches of historical
+            backfill (the 2019–2020 and 2023–2024 gap years are now largely in place), improving the
+            data download and API access on our Data page, and ongoing refinement of the detection
+            methodology based on what we learn each week. The goal: the most complete, accurate, and
+            accessible repository of assessed government documents available anywhere.
           </p>
         </Section>
 
