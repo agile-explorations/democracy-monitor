@@ -43,7 +43,7 @@ export function EditorialPanel({
                 )}
               </h4>
               <div className="max-h-64 overflow-y-auto">
-                <Markdown className="text-xs text-dm-text-secondary leading-relaxed">
+                <Markdown className="text-sm text-dm-text-secondary leading-relaxed">
                   {draft}
                 </Markdown>
               </div>
@@ -60,7 +60,7 @@ export function EditorialPanel({
                 )}
               </h4>
               <div className="max-h-64 overflow-y-auto">
-                <Markdown className="text-xs text-dm-text-secondary leading-relaxed">
+                <Markdown className="text-sm text-dm-text-secondary leading-relaxed">
                   {editorial.feedback}
                 </Markdown>
               </div>

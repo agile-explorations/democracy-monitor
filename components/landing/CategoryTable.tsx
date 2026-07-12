@@ -187,11 +187,11 @@ function CategoryRow({
       {isExpanded && (
         <tr>
           <td colSpan={readingLevel === 'detailed' ? 7 : 3} className="px-4 py-3 bg-dm-border/10">
-            <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
+            <p className="text-sm text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
               {description}
             </p>
             {cat.summary && (
-              <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px] mt-2 font-medium">
+              <p className="text-sm text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px] mt-2 font-medium">
                 {cat.summary}
               </p>
             )}
@@ -201,7 +201,7 @@ function CategoryRow({
                 onClick={(e) => e.stopPropagation()}
                 className="group block max-w-2xl ml-[18px] mt-2 pl-3 border-l-2 border-dm-accent/30 hover:border-dm-accent/60 transition-colors"
               >
-                <p className="text-xs text-dm-muted leading-relaxed italic group-hover:text-dm-text-secondary transition-colors">
+                <p className="text-sm text-dm-muted leading-relaxed italic group-hover:text-dm-text-secondary transition-colors">
                   {cat.narrativeExcerpt}{' '}
                   <span className="not-italic text-dm-accent whitespace-nowrap group-hover:underline">
                     Read the full analysis &rarr;
@@ -214,7 +214,7 @@ function CategoryRow({
                 <Link
                   href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}#${WEEK_DOCUMENTS_ANCHOR}`}
                   onClick={(e) => e.stopPropagation()}
-                  className="text-xs text-dm-accent hover:underline"
+                  className="text-sm text-dm-accent hover:underline"
                 >
                   See the {cat.documentCount} {cat.documentCount === 1 ? 'document' : 'documents'}{' '}
                   behind this status &rarr;
