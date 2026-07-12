@@ -1,24 +1,28 @@
 import { WHY_PILLARS } from '@/lib/data/why-this-matters';
 
 /**
- * The pillars of accountable power (#550): a temple diagram — six columns
- * holding up a beam labeled "Power held accountable". Navigation, not data:
- * clicking a column scrolls to its pillar card below, so the page degrades
- * to the card layout untouched. Theme-aware via dm-* class tokens.
+ * The pillars of accountable power (#550): a temple diagram — six slender
+ * columns holding up a beam labeled "Power held accountable", labels on the
+ * ground beneath each column. Navigation, not data: clicking a column (or
+ * its label) scrolls to its pillar card below, so the page degrades to the
+ * card layout untouched. Theme-aware via dm-* class tokens.
  */
 
 const VIEW_W = 680;
-const VIEW_H = 262;
+const VIEW_H = 300;
 const MARGIN_X = 20;
+const PEDIMENT_APEX_Y = 8;
 const BEAM_Y = 36;
-const BEAM_H = 48;
-const PEDIMENT_APEX_Y = 6;
+const BEAM_H = 42;
 const CAPITAL_H = 8;
+const CAPITAL_W = 52;
 const SHAFT_TOP = BEAM_Y + BEAM_H + CAPITAL_H;
-const SHAFT_H = 148;
-const SHAFT_W = 92;
-const CAPITAL_W = 102;
-const FLOOR_Y = SHAFT_TOP + SHAFT_H + CAPITAL_H;
+const SHAFT_H = 126;
+const SHAFT_TOP_W = 30;
+const SHAFT_BOTTOM_W = 38;
+const BASE_H = 8;
+const FLOOR_Y = SHAFT_TOP + SHAFT_H + BASE_H + 2;
+const LABEL_TOP = FLOOR_Y + 24;
 
 const SLOT_W = (VIEW_W - 2 * MARGIN_X) / WHY_PILLARS.length;
 
@@ -48,7 +52,7 @@ function Column({ index }: { index: number }) {
   const cx = MARGIN_X + SLOT_W * index + SLOT_W / 2;
   const count = pillar.categoryKeys.length;
   const lines = wrapLabel(pillar.shortLabel);
-  const labelBaseY = SHAFT_TOP + (lines.length === 1 ? 64 : 54);
+  const shaftBottom = SHAFT_TOP + SHAFT_H;
 
   return (
     <a
@@ -58,37 +62,55 @@ function Column({ index }: { index: number }) {
       className="group cursor-pointer focus:outline-none"
     >
       <title>{pillar.question}</title>
-      {/* Capital and base */}
+      {/* Full-slot hit target */}
+      <rect
+        x={cx - SLOT_W / 2}
+        y={BEAM_Y + BEAM_H}
+        width={SLOT_W}
+        height={VIEW_H - BEAM_Y - BEAM_H}
+        fill="transparent"
+      />
+      {/* Capital */}
       <rect
         x={cx - CAPITAL_W / 2}
         y={SHAFT_TOP - CAPITAL_H}
         width={CAPITAL_W}
         height={CAPITAL_H}
         rx={2}
-        className="fill-dm-border group-hover:fill-dm-accent/60 group-focus:fill-dm-accent/60 transition-colors"
+        className="fill-dm-muted/60 group-hover:fill-dm-accent group-focus:fill-dm-accent transition-colors"
       />
+      {/* Tapered shaft */}
+      <polygon
+        points={`${cx - SHAFT_TOP_W / 2},${SHAFT_TOP} ${cx + SHAFT_TOP_W / 2},${SHAFT_TOP} ${cx + SHAFT_BOTTOM_W / 2},${shaftBottom} ${cx - SHAFT_BOTTOM_W / 2},${shaftBottom}`}
+        className="fill-dm-border/60 group-hover:fill-dm-accent/40 group-focus:fill-dm-accent/40 transition-colors"
+      />
+      {/* Fluting */}
+      {[-6, 0, 6].map((dx) => (
+        <line
+          key={dx}
+          x1={cx + dx}
+          y1={SHAFT_TOP + 6}
+          x2={cx + dx * (SHAFT_BOTTOM_W / SHAFT_TOP_W)}
+          y2={shaftBottom - 6}
+          className="stroke-dm-bg/70"
+          strokeWidth={1.5}
+        />
+      ))}
+      {/* Base */}
       <rect
         x={cx - CAPITAL_W / 2}
-        y={SHAFT_TOP + SHAFT_H}
+        y={shaftBottom}
         width={CAPITAL_W}
-        height={CAPITAL_H}
+        height={BASE_H}
         rx={2}
-        className="fill-dm-border group-hover:fill-dm-accent/60 group-focus:fill-dm-accent/60 transition-colors"
+        className="fill-dm-muted/60 group-hover:fill-dm-accent group-focus:fill-dm-accent transition-colors"
       />
-      {/* Shaft */}
-      <rect
-        x={cx - SHAFT_W / 2}
-        y={SHAFT_TOP}
-        width={SHAFT_W}
-        height={SHAFT_H}
-        className="fill-dm-card stroke-dm-border group-hover:stroke-dm-accent group-focus:stroke-dm-accent transition-colors"
-        strokeWidth={1.5}
-      />
+      {/* Label beneath the floor */}
       {lines.map((line, i) => (
         <text
           key={i}
           x={cx}
-          y={labelBaseY + i * 17}
+          y={LABEL_TOP + i * 16}
           textAnchor="middle"
           className="fill-dm-text-primary text-[13px] font-semibold group-hover:fill-dm-accent group-focus:fill-dm-accent transition-colors"
         >
@@ -97,7 +119,7 @@ function Column({ index }: { index: number }) {
       ))}
       <text
         x={cx}
-        y={labelBaseY + lines.length * 17 + 14}
+        y={LABEL_TOP + lines.length * 16 + 13}
         textAnchor="middle"
         className="fill-dm-muted text-[10px]"
       >
@@ -125,8 +147,8 @@ export function AccountabilityDiagram() {
 
         {/* Pediment */}
         <polygon
-          points={`${MARGIN_X},${BEAM_Y} ${VIEW_W - MARGIN_X},${BEAM_Y} ${VIEW_W / 2},${PEDIMENT_APEX_Y}`}
-          className="fill-dm-border/40"
+          points={`${MARGIN_X + 6},${BEAM_Y} ${VIEW_W - MARGIN_X - 6},${BEAM_Y} ${VIEW_W / 2},${PEDIMENT_APEX_Y}`}
+          className="fill-dm-border/50"
         />
         {/* Beam */}
         <rect
@@ -134,13 +156,13 @@ export function AccountabilityDiagram() {
           y={BEAM_Y}
           width={VIEW_W - 2 * MARGIN_X}
           height={BEAM_H}
-          rx={6}
+          rx={4}
           className="fill-dm-card stroke-dm-accent"
           strokeWidth={2}
         />
         <text
           x={VIEW_W / 2}
-          y={BEAM_Y + 22}
+          y={BEAM_Y + 20}
           textAnchor="middle"
           className="fill-dm-text-primary text-[15px] font-bold"
         >
@@ -148,7 +170,7 @@ export function AccountabilityDiagram() {
         </text>
         <text
           x={VIEW_W / 2}
-          y={BEAM_Y + 39}
+          y={BEAM_Y + 35}
           textAnchor="middle"
           className="fill-dm-muted text-[10px]"
         >
@@ -163,11 +185,11 @@ export function AccountabilityDiagram() {
         {/* Floor (stylobate) */}
         <rect
           x={MARGIN_X - 8}
-          y={FLOOR_Y}
+          y={FLOOR_Y - 2}
           width={VIEW_W - 2 * MARGIN_X + 16}
           height={6}
           rx={2}
-          className="fill-dm-border"
+          className="fill-dm-muted/60"
         />
       </svg>
       <figcaption className="text-sm text-dm-muted mt-1 text-center">
