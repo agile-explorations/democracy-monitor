@@ -6,7 +6,7 @@ export function WhyThisMattersLine({ categoryKey }: { categoryKey: string }) {
   const line = CATEGORY_WHY_LINES[categoryKey];
   if (!line) return null;
   return (
-    <p className="text-xs text-dm-muted italic mt-3 max-w-3xl leading-relaxed">
+    <p className="text-sm text-dm-text-secondary italic mt-3 max-w-3xl leading-relaxed">
       {line}{' '}
       <Link
         href={`/why-this-matters#${pillarIdForCategory(categoryKey) ?? ''}`}
