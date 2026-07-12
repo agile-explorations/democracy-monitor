@@ -80,7 +80,7 @@ export default function WhyThisMattersPage() {
         <p className="text-sm text-dm-text-secondary leading-relaxed">
           Democracy Monitor tracks 14 categories of government activity. None of them is about
           whether the current administration&apos;s policies are good or bad — that debate belongs
-          to voters. Every one of them is about a different question:{' '}
+          to voters. Every one of them is about the same question:{' '}
           <strong className="text-dm-text-primary">
             are the rules that bind every president — whichever party holds the office — still
             holding?
