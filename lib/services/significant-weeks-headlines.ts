@@ -14,13 +14,13 @@ import { mapConcurrent } from '@/lib/utils/async';
 import type { SignificantWeek } from './significant-weeks-service';
 import { getOverviewExcerpts } from './term-summary-queries';
 
-const HEADLINE_MODEL = 'gpt-4o-mini';
-const HEADLINE_MAX_TOKENS = 90;
+export const HEADLINE_MODEL = 'gpt-4o-mini';
+export const HEADLINE_MAX_TOKENS = 90;
 const TOP_DOCS_PER_WEEK = 3;
 const OVERVIEW_EXCERPT_CHARS = 700;
 const HEADLINE_CONCURRENCY = 4;
 
-const HEADLINE_SYSTEM_PROMPT =
+export const HEADLINE_SYSTEM_PROMPT =
   'You write one-line factual summaries of U.S. government actions for a monitoring dashboard.';
 
 export interface WeekConcernDoc {

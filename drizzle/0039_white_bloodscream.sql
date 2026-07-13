@@ -1,0 +1,1 @@
+ALTER TABLE "ai_document_assessments" ADD COLUMN "erosion_actor" varchar(30);

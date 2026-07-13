@@ -10,6 +10,7 @@ import { computeAIAssessmentSummary } from '@/lib/services/document-review-asses
 import type { Pass1Result, Pass2Result } from '@/lib/services/document-review-assessment-service';
 import { getBaselineAIFlagRate } from '@/lib/services/document-review-store';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
+import { addDays } from '@/lib/utils/date-utils';
 
 const STUB_META = { tokensInput: 0, tokensOutput: 0, latencyMs: 0 };
 
@@ -28,6 +29,7 @@ type Pass2Row = {
   assessment: string | null;
   confidence: number | null;
   erosionType: string | null;
+  erosionActor: string | null;
   reasoning: string | null;
   comparativeContext: string | null;
   citedPassages: unknown;
@@ -58,6 +60,8 @@ function toPass2Result(r: Pass2Row): Pass2Result {
       assessment: (r.assessment ?? 'routine') as Pass2Result['response']['assessment'],
       confidence: r.confidence ?? 0,
       erosionType: (r.erosionType ?? 'unclear') as Pass2Result['response']['erosionType'],
+      // NULL stays undefined → lands in the 'unattributed' bucket downstream
+      erosionActor: (r.erosionActor ?? undefined) as Pass2Result['response']['erosionActor'],
       reasoning: r.reasoning ?? '',
       comparativeContext: r.comparativeContext ?? '',
       citedPassages: (r.citedPassages as string[]) ?? [],
@@ -69,9 +73,7 @@ function toPass2Result(r: Pass2Row): Pass2Result {
 
 /** Build the week-range filter for a Monday-to-Sunday window. */
 function weekFilter(category: string, weekOf: string) {
-  const nextWeek = new Date(weekOf);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-  const nextWeekStr = nextWeek.toISOString().slice(0, 10);
+  const nextWeekStr = addDays(weekOf, 7);
   return and(
     eq(aiDocumentAssessments.category, category),
     gte(aiDocumentAssessments.weekOf, weekOf),
@@ -103,6 +105,7 @@ async function fetchPassRows(category: string, weekOf: string) {
       assessment: aiDocumentAssessments.assessment,
       confidence: aiDocumentAssessments.confidence,
       erosionType: aiDocumentAssessments.erosionType,
+      erosionActor: aiDocumentAssessments.erosionActor,
       reasoning: aiDocumentAssessments.reasoning,
       comparativeContext: aiDocumentAssessments.comparativeContext,
       citedPassages: aiDocumentAssessments.citedPassages,

@@ -31,6 +31,7 @@ function makePass2(
   url: string,
   assessment: 'routine' | 'novel_not_concerning' | 'potentially_concerning' | 'clearly_concerning',
   isAuditSample = false,
+  erosionActor?: Pass2Result['response']['erosionActor'],
 ): Pass2Result {
   return {
     url,
@@ -41,6 +42,7 @@ function makePass2(
       comparativeContext: 'test',
       citedPassages: [],
       erosionType: 'routine',
+      erosionActor,
       counterArguments: [],
     },
     meta: {
@@ -126,6 +128,36 @@ describe('computeAIAssessmentSummary', () => {
     expect(result.concernDistribution.potentiallyConcerning).toBe(1);
     expect(result.concernDistribution.clearlyConcerning).toBe(1);
     expect(result.concernRate).toBeCloseTo(2 / 3);
+  });
+
+  it('buckets confirmed assessments by actor, nulls to unattributed (#537)', () => {
+    const pass1 = [makePass1('a', true), makePass1('b', true), makePass1('c', true)];
+    const pass2 = [
+      makePass2('a', 'clearly_concerning', false, 'federal_executive'),
+      makePass2('b', 'potentially_concerning', false, 'state_local'),
+      makePass2('c', 'clearly_concerning'), // legacy row, no actor
+      makePass2('d', 'routine', false, 'congress'), // routine never counts
+    ];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0, 0.05, 'm1', 'm2');
+
+    expect(result.actorConfirmations?.federal_executive.clearlyConcerning).toBe(1);
+    expect(result.actorConfirmations?.state_local.potentiallyConcerning).toBe(1);
+    expect(result.actorConfirmations?.unattributed.clearlyConcerning).toBe(1);
+    expect(result.actorConfirmations?.congress.clearlyConcerning).toBe(0);
+    expect(result.actorConfirmations?.congress.potentiallyConcerning).toBe(0);
+  });
+
+  it('excludes audit samples from actorConfirmations', () => {
+    const pass1 = [makePass1('a', true)];
+    const pass2 = [
+      makePass2('a', 'clearly_concerning', false, 'judiciary'),
+      makePass2('b', 'clearly_concerning', true, 'judiciary'), // audit sample
+    ];
+
+    const result = computeAIAssessmentSummary(pass1, pass2, 0, 0.05, 'm1', 'm2');
+
+    expect(result.actorConfirmations?.judiciary.clearlyConcerning).toBe(1);
   });
 
   it('separates audit samples from concern distribution', () => {

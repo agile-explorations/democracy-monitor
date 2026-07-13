@@ -47,6 +47,61 @@ export async function fetchWeeklyData(
   return result.rows as unknown as WeekRow[];
 }
 
+/**
+ * Per category x ISO-week counts of confirmed federal_executive P2 rows in a
+ * window, for the actor-scoped NC-3 (#536). Groups by date_trunc('week') so
+ * mid-week week_of anchors (#534) land in their ISO Monday week. Also returns
+ * the window's unattributed confirmed count — a nonzero value means actor
+ * coverage is incomplete and the control would silently under-count.
+ */
+export async function fetchFedExecConcernCounts(
+  from: string,
+  to: string,
+  categoryFilter?: string,
+): Promise<{
+  weeks: Array<{ category: string; week: string; clearly: number; potentially: number }>;
+  unattributedConfirmed: number;
+}> {
+  const db = getDb();
+  const catClause = categoryFilter ? sql` AND category = ${categoryFilter}` : sql``;
+  const result = await db.execute(sql`
+    SELECT category,
+      date_trunc('week', week_of)::date::text AS week,
+      count(*) FILTER (WHERE assessment = 'clearly_concerning') AS clearly,
+      count(*) FILTER (WHERE assessment = 'potentially_concerning') AS potentially
+    FROM ai_document_assessments
+    WHERE pass = 2
+      AND erosion_actor = 'federal_executive'
+      AND assessment IN ('potentially_concerning', 'clearly_concerning')
+      AND (is_audit_sample IS NOT TRUE)
+      AND week_of >= ${from} AND week_of <= ${to}
+      ${catClause}
+    GROUP BY category, date_trunc('week', week_of)
+  `);
+  const gap = await db.execute(sql`
+    SELECT count(*) AS n
+    FROM ai_document_assessments
+    WHERE pass = 2
+      AND erosion_actor IS NULL
+      AND assessment IN ('potentially_concerning', 'clearly_concerning')
+      AND (is_audit_sample IS NOT TRUE)
+      AND week_of >= ${from} AND week_of <= ${to}
+      ${catClause}
+  `);
+  return {
+    weeks: (result.rows as unknown[]).map((r) => {
+      const row = r as { category: string; week: string; clearly: string; potentially: string };
+      return {
+        category: row.category,
+        week: row.week,
+        clearly: Number(row.clearly),
+        potentially: Number(row.potentially),
+      };
+    }),
+    unattributedConfirmed: Number((gap.rows[0] as { n: string }).n),
+  };
+}
+
 export async function fetchP1FlagRates(
   from: string,
   to: string,

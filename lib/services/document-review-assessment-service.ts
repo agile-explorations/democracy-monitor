@@ -4,7 +4,8 @@ import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/document
 import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/document-review-response';
 import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/document-review-response';
 import type { AIProvider, ContentItem } from '@/lib/types';
-import type { AIAssessmentSummary } from '@/lib/types/structural';
+import { EROSION_ACTORS } from '@/lib/types/structural';
+import type { ActorConfirmations, AIAssessmentSummary } from '@/lib/types/structural';
 
 export interface AssessmentMeta {
   model: string;
@@ -197,6 +198,7 @@ export function computeAIAssessmentSummary(
   const auditPass2 = pass2Results.filter((r) => r.isAuditSample);
 
   const concernDistribution = computeConcernDistribution(nonAuditPass2);
+  const actorConfirmations = computeActorConfirmations(nonAuditPass2);
   const concerningCount =
     concernDistribution.potentiallyConcerning + concernDistribution.clearlyConcerning;
   const concernRate = nonAuditPass2.length > 0 ? concerningCount / nonAuditPass2.length : 0;
@@ -210,6 +212,7 @@ export function computeAIAssessmentSummary(
     baselineFlagRate,
     flagRateZScore,
     concernDistribution,
+    actorConfirmations,
     concernRate,
     auditSample: {
       sampled: auditPass2.length,
@@ -223,6 +226,26 @@ export function computeAIAssessmentSummary(
 
 function isConcerning(assessment: string): boolean {
   return assessment === 'potentially_concerning' || assessment === 'clearly_concerning';
+}
+
+/**
+ * Per-actor breakdown of confirmed assessments (#537). Rows without an
+ * erosionActor land in 'unattributed' — a deliberate bucket that keeps
+ * attribution coverage visible. Consumed by context surfaces and headline
+ * prototyping only; concern synthesis never reads this.
+ */
+function computeActorConfirmations(results: Pass2Result[]): ActorConfirmations {
+  const empty = () => ({ potentiallyConcerning: 0, clearlyConcerning: 0 });
+  const buckets = Object.fromEntries(
+    [...EROSION_ACTORS, 'unattributed'].map((a) => [a, empty()]),
+  ) as ActorConfirmations;
+
+  for (const r of results) {
+    const key = r.response.erosionActor ?? 'unattributed';
+    if (r.response.assessment === 'potentially_concerning') buckets[key].potentiallyConcerning++;
+    else if (r.response.assessment === 'clearly_concerning') buckets[key].clearlyConcerning++;
+  }
+  return buckets;
 }
 
 function computeConcernDistribution(results: Pass2Result[]) {

@@ -188,6 +188,51 @@ export function buildErosionFramework(): string {
   ].join('\n');
 }
 
+/**
+ * Actor attribution framework (#537). Classifies WHO performs the
+ * erosion-relevant action — orthogonal to erosionType (the mechanism).
+ * DELIBERATELY NOT injected into the live P2 prompt: a 3-arm calibration A/B
+ * (2026-07-10) measured 11.1pp of prompt-attributable assessment drift above
+ * a 97.8% same-prompt noise floor, so attribution runs as a fully decoupled
+ * light pass (lib/services/actor-attribution.ts) over stored assessments —
+ * P2 calibration stays byte-identical by construction. This builder is the
+ * single source of the taxonomy text for that pass.
+ */
+export function buildActorFramework(): string {
+  return [
+    'Erosion actor framework (attribution only — applies AFTER your assessment):',
+    'First complete your concern assessment exactly as you would without this section.',
+    'Then, separately, classify WHO performs the action you assessed. This is the actor',
+    "whose conduct weakens the institutional protection — NOT the document's author,",
+    'court, or venue. Attribution must not influence assessment, confidence, or reasoning.',
+    '  - federal_executive: President, federal agencies, DOJ, federal officials',
+    '  - congress: federal legislation or congressional actions that themselves erode protections',
+    '  - judiciary: courts removing protections through their own rulings',
+    '  - state_local: state/county/municipal governments, police, jails, or state courts acting as eroders',
+    '  - other_unclear: non-governmental actors, mixed/inseparable, or insufficient information',
+    'Disambiguation rules:',
+    "  - A court opinion DOCUMENTING another actor's erosion takes that actor's label",
+    '    (an opinion finding a federal agency defied a court order = federal_executive).',
+    '  - A court ruling AGAINST an actor is a check functioning, not judicial erosion —',
+    "    the actor being checked is the eroder. Use judiciary only when the court's own",
+    '    ruling removes the protection.',
+    '  - A bill or congressional rule that itself erodes = congress; a floor speech',
+    '    describing an executive action takes federal_executive (the speech is evidence',
+    '    about that action).',
+    '  - State implementing a federal mandate = federal_executive (policy origin);',
+    '    state_local only where the state exceeds the mandate or the policy is its own.',
+    '  - Erosion by inaction (refusal to enforce or comply) attributes to the actor',
+    '    holding the duty.',
+    'Examples:',
+    '  - Opinion: federal agency held in contempt for ignoring discovery orders -> federal_executive',
+    '  - Appellate ruling that itself removes a constitutional protection -> judiciary',
+    '  - Bill restricting protest rights or stripping court jurisdiction -> congress',
+    '  - County jail contempt finding for unconstitutional conditions -> state_local',
+    '  - Floor speech condemning mass firing of inspectors general -> federal_executive',
+    '  - Private-actor intimidation with no government action -> other_unclear',
+  ].join('\n');
+}
+
 export function buildReasoningGuidance(): string {
   return [
     'Reasoning guidance:',

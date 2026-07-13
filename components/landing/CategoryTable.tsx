@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
+import {
+  WEEK_DOCUMENTS_ANCHOR,
+  WEEK_NARRATIVE_ANCHOR,
+} from '@/components/category/WeekDetailPanel';
 import { ConcernLevelPill } from '@/components/ui/ConcernLevelPill';
 import { Sparkline } from '@/components/ui/Sparkline';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -183,12 +187,38 @@ function CategoryRow({
       {isExpanded && (
         <tr>
           <td colSpan={readingLevel === 'detailed' ? 7 : 3} className="px-4 py-3 bg-dm-border/10">
-            <p className="text-xs text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
+            <p className="text-sm text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px]">
               {description}
             </p>
             {cat.summary && (
-              <p className="text-xs text-dm-muted leading-relaxed max-w-2xl ml-[18px] mt-2 italic">
+              <p className="text-sm text-dm-text-secondary leading-relaxed max-w-2xl ml-[18px] mt-2 font-medium">
                 {cat.summary}
+              </p>
+            )}
+            {cat.narrativeExcerpt && cat.weekOf && (
+              <Link
+                href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}#${WEEK_NARRATIVE_ANCHOR}`}
+                onClick={(e) => e.stopPropagation()}
+                className="group block max-w-2xl ml-[18px] mt-2 pl-3 border-l-2 border-dm-accent/30 hover:border-dm-accent/60 transition-colors"
+              >
+                <p className="text-sm text-dm-muted leading-relaxed italic group-hover:text-dm-text-secondary transition-colors">
+                  {cat.narrativeExcerpt}{' '}
+                  <span className="not-italic text-dm-accent whitespace-nowrap group-hover:underline">
+                    Read the full analysis &rarr;
+                  </span>
+                </p>
+              </Link>
+            )}
+            {cat.weekOf && cat.documentCount > 0 && (
+              <p className="ml-[18px] mt-2">
+                <Link
+                  href={`/category/${keyToSlug(cat.category)}?weekOf=${cat.weekOf}#${WEEK_DOCUMENTS_ANCHOR}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-sm text-dm-accent hover:underline"
+                >
+                  See the {cat.documentCount} {cat.documentCount === 1 ? 'document' : 'documents'}{' '}
+                  behind this status &rarr;
+                </Link>
               </p>
             )}
           </td>

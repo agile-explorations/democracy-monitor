@@ -36,6 +36,28 @@ describe('AIAssessmentPanel', () => {
     expect(screen.getByText('15.0%')).toBeDefined(); // concern rate
   });
 
+  it('renders the actor-mix line when actorConfirmations present (#537)', () => {
+    const summary = makeSummary({
+      actorConfirmations: {
+        federal_executive: { potentiallyConcerning: 1, clearlyConcerning: 3 },
+        congress: { potentiallyConcerning: 0, clearlyConcerning: 1 },
+        judiciary: { potentiallyConcerning: 0, clearlyConcerning: 0 },
+        state_local: { potentiallyConcerning: 0, clearlyConcerning: 0 },
+        other_unclear: { potentiallyConcerning: 0, clearlyConcerning: 0 },
+        unattributed: { potentiallyConcerning: 0, clearlyConcerning: 0 },
+      },
+    });
+    render(<AIAssessmentPanel summary={summary} readingLevel="detailed" />);
+    expect(screen.getByText('Concerning by Actor')).toBeDefined();
+    expect(screen.getByText(/4 federal executive/)).toBeDefined();
+    expect(screen.getByText(/1 Congress/)).toBeDefined();
+  });
+
+  it('renders no actor-mix line for legacy ai_detail without actorConfirmations (#537)', () => {
+    render(<AIAssessmentPanel summary={makeSummary()} readingLevel="detailed" />);
+    expect(screen.queryByText('Concerning by Actor')).toBeNull();
+  });
+
   it('highlights concern rate when above threshold', () => {
     render(
       <AIAssessmentPanel summary={makeSummary({ concernRate: 0.25 })} readingLevel="detailed" />,

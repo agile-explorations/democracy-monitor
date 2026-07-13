@@ -30,12 +30,14 @@ export default function RoadmapPage() {
             Detection has been validated against 39 known democratic erosion events across both
             Trump administrations (2017–2018 and 2025–present), including the travel ban executive
             orders, James Comey firing, DACA rescission, mass Inspector General firings, Schedule F
-            reinstatement, and DOGE agency interventions. Six negative controls confirm the system
-            does not produce false alarms during normal governance periods.
+            reinstatement, and DOGE agency interventions. Negative-control periods drawn from normal
+            governance are used to verify the system does not produce false alarms; these controls
+            are re-run as the methodology evolves.
           </p>
           <p>
-            The system currently covers five analysis periods: Trump 2017, Trump 2018, Biden 2021,
-            Biden 2022, and Trump second term (2025–present). New documents are processed weekly.
+            The system covers a continuous documentary record from 2017 to the present — both Trump
+            terms and the Biden term, with the final stretches of gap-year backfill nearing
+            completion. New documents are processed weekly.
           </p>
         </Section>
 
@@ -44,11 +46,11 @@ export default function RoadmapPage() {
         <Section title="Detection Quality & Platform Hardening" id="detection-quality">
           <p className="italic text-dm-muted text-xs mb-2">In progress</p>
           <p>
-            Completing the foundation. This includes filling the gaps in our historical coverage
-            (2019–2020 and 2023–2024) to produce a continuous record from 2017 to the present,
-            improving the data download and API access on our Data page, and ongoing refinement of
-            the detection methodology based on what we learn each week. The goal: the most complete,
-            accurate, and accessible repository of assessed government documents available anywhere.
+            Completing the foundation. This includes finishing the last stretches of historical
+            backfill (the 2019–2020 and 2023–2024 gap years are now largely in place), improving the
+            data download and API access on our Data page, and ongoing refinement of the detection
+            methodology based on what we learn each week. The goal: the most complete, accurate, and
+            accessible repository of assessed government documents available anywhere.
           </p>
         </Section>
 
@@ -231,18 +233,14 @@ export default function RoadmapPage() {
             makes the analysis better.
           </p>
           <p>
-            <strong>Sponsor the project.</strong> Democracy Monitor runs on AI infrastructure that
+            <strong>Support the project.</strong> Democracy Monitor runs on AI infrastructure that
             costs real money. Every document is assessed through two AI passes, narratives are
-            generated weekly, and the system processes new documents on a continuous basis.{' '}
-            <a
-              href="https://github.com/sponsors/agile-explorations"
-              className="text-dm-accent hover:underline"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              GitHub Sponsors
-            </a>{' '}
-            is the primary funding mechanism. Contributions go directly to infrastructure costs.
+            generated weekly, and the system processes new documents on a continuous basis. One-time
+            and monthly contributions on the{' '}
+            <Link href="/support" className="text-dm-accent hover:underline">
+              support page
+            </Link>{' '}
+            go directly to these operating costs.
           </p>
           <p>
             <strong>Contribute code.</strong> The project is open source on{' '}

@@ -13,6 +13,8 @@ export interface DocumentAIAssessment {
   flagged: boolean;
   assessment: string | null;
   erosionType: string | null;
+  /** WHO performs the erosion-relevant action (#537); null pre-attribution. */
+  erosionActor: string | null;
   reasoning: string | null;
 }
 

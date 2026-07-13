@@ -139,6 +139,7 @@ interface ScoredDocRow {
   p1Relevant: boolean | null;
   p2Assessment: string | null;
   p2ErosionType: string | null;
+  p2ErosionActor: string | null;
   p2Reasoning: string | null;
 }
 
@@ -161,6 +162,7 @@ function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
       flagged: row.p1Relevant === true,
       assessment: row.p2Assessment ?? null,
       erosionType: row.p2ErosionType ?? null,
+      erosionActor: row.p2ErosionActor ?? null,
       reasoning: row.p2Reasoning ?? null,
     };
   }
@@ -192,6 +194,7 @@ async function fetchTopScoredDocuments(
       p1Relevant: p1.relevant,
       p2Assessment: p2.assessment,
       p2ErosionType: p2.erosionType,
+      p2ErosionActor: p2.erosionActor,
       p2Reasoning: p2.reasoning,
     })
     .from(documentScores)

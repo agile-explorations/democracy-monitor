@@ -69,6 +69,39 @@ describe('Pass2ResponseSchema', () => {
     };
     expect(Pass2ResponseSchema.safeParse(input).success).toBe(false);
   });
+
+  it('accepts responses with erosionActor and legacy responses without it (#537)', () => {
+    const base = {
+      assessment: 'clearly_concerning',
+      confidence: 0.9,
+      reasoning: 'Agency defied court orders.',
+      comparativeContext: 'Beyond routine litigation posture.',
+      citedPassages: ['the agency declined to comply'],
+      erosionType: 'noncompliance_refusal',
+      counterArguments: [],
+    };
+    // Legacy (pre-attribution) response: no erosionActor — must still parse
+    expect(Pass2ResponseSchema.safeParse(base).success).toBe(true);
+    // New response with actor
+    const withActor = { ...base, erosionActor: 'federal_executive' };
+    const parsed = Pass2ResponseSchema.safeParse(withActor);
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.erosionActor).toBe('federal_executive');
+  });
+
+  it('rejects an invalid erosionActor value', () => {
+    const input = {
+      assessment: 'routine',
+      confidence: 0.5,
+      reasoning: 'test',
+      comparativeContext: 'test',
+      citedPassages: [],
+      erosionType: 'routine',
+      erosionActor: 'municipal_hoa',
+      counterArguments: [],
+    };
+    expect(Pass2ResponseSchema.safeParse(input).success).toBe(false);
+  });
 });
 
 describe('parsePass1Response', () => {

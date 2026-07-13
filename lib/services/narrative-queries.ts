@@ -13,6 +13,7 @@ import type {
 } from '@/lib/types';
 import { OVERVIEW_CATEGORY, TERM_SUMMARY_CATEGORY } from '@/lib/types';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
+import { addDays } from '@/lib/utils/date-utils';
 import { getStoredNarrative } from './narrative-store';
 
 // ---------------------------------------------------------------------------
@@ -26,11 +27,6 @@ const TREND_THRESHOLD = 0.05;
 type Row = Record<string, unknown>;
 
 /** Offset a YYYY-MM-DD date string by a number of days. */
-function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 /** Format a timestamp value as YYYY-MM-DD, or null. */
 function toDateStr(value: unknown): string | null {
@@ -55,7 +51,7 @@ export async function getTopConcerningDocuments(
   const rows = await db.execute(sql`
     SELECT d.title, d.source_type, d.source_origin,
       d.metadata->>'agency' AS agency, d.published_at, d.url,
-      a2.assessment, a2.erosion_type, a2.reasoning,
+      a2.assessment, a2.erosion_type, a2.erosion_actor, a2.reasoning,
       LEFT(d.content, 4000) AS content
     FROM ai_document_assessments a2
     JOIN documents d ON d.url = a2.url AND d.category = a2.category
@@ -81,6 +77,7 @@ export async function getTopConcerningDocuments(
       url: (r.url as string) ?? '',
       assessment: (r.assessment as string) ?? 'unknown',
       erosionType: r.erosion_type as string | null,
+      erosionActor: r.erosion_actor as string | null,
       reasoning: r.reasoning as string | null,
       content: rawContent ? stripBoilerplate(rawContent, sourceOrigin, title) : null,
     };

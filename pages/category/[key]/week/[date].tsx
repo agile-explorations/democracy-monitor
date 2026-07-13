@@ -135,7 +135,7 @@ export default function CategoryWeekPage({
         <h1 className="text-lg font-bold text-dm-text-primary">
           {categoryTitle} — Week of {weekLabel}
         </h1>
-        <p className="text-xs text-dm-text-secondary mt-1">{categoryDescription}</p>
+        <p className="text-sm text-dm-text-secondary mt-1">{categoryDescription}</p>
       </header>
 
       {/* Convergence status */}

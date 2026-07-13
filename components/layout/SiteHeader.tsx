@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { DisplaySettings } from '@/components/layout/DisplaySettings';
+import { EmailSignup } from '@/components/shared/EmailSignup';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 
 export function SiteHeader({
@@ -69,14 +70,15 @@ export function SiteHeader({
             <span className="hidden sm:inline px-1.5 py-0.5 mb-1.5 rounded border border-dm-border text-[10px] text-dm-text-secondary">
               Experimental
             </span>
-            <a
-              href="https://github.com/sponsors/agile-explorations"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/support"
               className="hidden sm:inline px-2 py-0.5 mb-1.5 rounded border border-pink-300 dark:border-pink-700 text-[10px] text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950 transition-colors"
             >
-              ♥ Sponsor
-            </a>
+              ♥ Support
+            </Link>
+            <span className="hidden sm:inline">
+              <EmailSignup variant="badge" />
+            </span>
           </div>
         </div>
 

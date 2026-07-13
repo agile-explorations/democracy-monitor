@@ -274,6 +274,20 @@
       "when": 1783475594246,
       "tag": "0038_unknown_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1783692239382,
+      "tag": "0039_white_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1783723320367,
+      "tag": "0040_uneven_black_tarantula",
+      "breakpoints": true
     }
   ]
 }

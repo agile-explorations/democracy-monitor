@@ -227,6 +227,9 @@ export const aiDocumentAssessments = pgTable(
     relevant: boolean('relevant'),
     confidence: real('confidence'),
     erosionType: varchar('erosion_type', { length: 30 }),
+    /** WHO performs the erosion-relevant action (#537). Nullable: rows
+     *  predating attribution carry NULL until the light-pass backfill. */
+    erosionActor: varchar('erosion_actor', { length: 30 }),
     signals: jsonb('signals').$type<string[]>(),
     assessment: varchar('assessment', { length: 30 }),
     reasoning: text('reasoning'),
@@ -580,6 +583,17 @@ export const feedbackResponses = pgTable(
  * significance rules over weekly_aggregates (no AI). Recomputed whenever the
  * living term summary regenerates (i.e. whenever aggregate data changes).
  */
+/** One-line AI event headline per analysis week (#539). Routine weeks store a
+ *  deterministic fallback (generated=false) — never blank, zero AI cost. */
+export const weekHeadlines = pgTable('week_headlines', {
+  id: serial('id').primaryKey(),
+  weekOf: date('week_of').notNull().unique(),
+  headline: text('headline').notNull(),
+  /** True when AI-generated from confirmed docs; false for the routine fallback. */
+  generated: boolean('generated').notNull().default(false),
+  computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const significantWeeks = pgTable(
   'significant_weeks',
   {

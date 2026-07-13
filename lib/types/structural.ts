@@ -86,6 +86,32 @@ export interface ConcernAssessment {
   bootstrap: boolean;
 }
 
+/**
+ * Institutional actors that can perform an erosion-relevant action (#537).
+ * The actor is WHO performs the action — never the document's author or venue.
+ * Single source of truth: the zod enum, P2 prompt framework, UI label maps,
+ * and actorConfirmations keys all derive from this list.
+ */
+export const EROSION_ACTORS = [
+  'federal_executive',
+  'congress',
+  'judiciary',
+  'state_local',
+  'other_unclear',
+] as const;
+
+export type ErosionActor = (typeof EROSION_ACTORS)[number];
+
+/**
+ * Per-actor confirmed-assessment counts. 'unattributed' captures P2 rows
+ * without an erosion_actor value (pre-attribution assessments) so coverage
+ * gaps stay visible instead of blending into other_unclear.
+ */
+export type ActorConfirmations = Record<
+  ErosionActor | 'unattributed',
+  { potentiallyConcerning: number; clearlyConcerning: number }
+>;
+
 /** Summary of AI document review results for a category-week. */
 export interface AIAssessmentSummary {
   flagCount: number;
@@ -99,6 +125,13 @@ export interface AIAssessmentSummary {
     potentiallyConcerning: number;
     clearlyConcerning: number;
   };
+  /**
+   * Per-actor breakdown of the concerning counts (#537). Optional: aggregates
+   * enriched before actor attribution lack it — consumers must guard.
+   * Deliberately NOT read by concern synthesis (status stays all-actors;
+   * headline framing decision deferred — see issue #537).
+   */
+  actorConfirmations?: ActorConfirmations;
   concernRate: number;
   auditSample: {
     sampled: number;

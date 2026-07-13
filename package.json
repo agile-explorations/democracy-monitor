@@ -66,6 +66,8 @@
     "embeddings:backfill": "tsx lib/cron/embed-missing.ts",
     "scores:enrich": "tsx lib/cron/enrich-weekly-scores.ts",
     "review:backfill": "tsx lib/cron/backfill-document-review.ts",
+    "actor:backfill": "tsx lib/cron/backfill-erosion-actor.ts",
+    "headlines:backfill": "tsx lib/cron/backfill-week-headlines.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
     "structural:distributions": "tsx lib/cron/structural-distributions.ts",
     "validate:narratives": "tsx scripts/validate-narratives.ts",

@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { CategoryChartCard } from '@/components/category/CategoryChartCard';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
+import { WhyThisMattersLine } from '@/components/category/WhyThisMattersLine';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
 import { WeekNavigator } from '@/components/landing/WeekNavigator';
 import { ArchiveItemListJsonLd, BreadcrumbJsonLd } from '@/components/shared/JsonLd';
@@ -176,6 +177,7 @@ export default function CategoryDetailPage({
               : (category ?? ssrCategory)!.description}
           </p>
         )}
+        <WhyThisMattersLine categoryKey={categoryKey ?? ''} />
         <p className="text-xs mt-3 space-x-3">
           <Link
             href={`/feedback?category=${categoryKey}`}
