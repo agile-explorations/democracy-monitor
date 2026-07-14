@@ -91,9 +91,13 @@ function logRecomputeSummary(
   }
 }
 
-async function recomputeWeeklyAggregates(from?: string, to?: string): Promise<void> {
+async function recomputeWeeklyAggregates(
+  from?: string,
+  to?: string,
+  category?: string,
+): Promise<void> {
   console.log('\n[recompute] Recomputing weekly aggregates...');
-  const allAggs = await computeAllWeeklyAggregates({ from, to });
+  const allAggs = await computeAllWeeklyAggregates({ from, to, category });
   let aggCount = 0;
   for (const [cat, aggs] of Object.entries(allAggs)) {
     for (const agg of aggs) {
@@ -197,7 +201,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
         allCategoryCounts[cat].scored += counts.scored;
         allCategoryCounts[cat].nonZero += counts.nonZero;
       }
-      if (!dryRun) await recomputeWeeklyAggregates(period.from, period.to);
+      if (!dryRun) await recomputeWeeklyAggregates(period.from, period.to, options.category);
     }
 
     logRecomputeSummary(grandScored, grandStored, allCategoryCounts, dryRun);
@@ -210,7 +214,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
       batchSize,
     );
     logRecomputeSummary(scored, stored, categoryCounts, dryRun);
-    if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to);
+    if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to, options.category);
   }
 }
 
