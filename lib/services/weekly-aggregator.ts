@@ -220,10 +220,13 @@ export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> 
 
 /**
  * Compute weekly aggregates for all category+week combinations in document_scores.
- * Optionally filter by date range.
+ * Optionally filter by date range and category. The category filter matters for
+ * scoped recomputes: storeWeeklyAggregate resets enrichment fields
+ * (convergence_detail/status), so re-aggregating categories outside the scope
+ * silently wipes their statuses until a full re-enrich (#544 rehearsal finding).
  */
 export async function computeAllWeeklyAggregates(
-  options: { from?: string; to?: string } = {},
+  options: { from?: string; to?: string; category?: string } = {},
 ): Promise<Record<string, WeeklyAggregate[]>> {
   if (!isDbAvailable()) return {};
 
@@ -233,6 +236,7 @@ export async function computeAllWeeklyAggregates(
   const conditions = [sql`1=1`];
   if (options.from) conditions.push(sql`${documentScores.weekOf} >= ${options.from}`);
   if (options.to) conditions.push(sql`${documentScores.weekOf} <= ${options.to}`);
+  if (options.category) conditions.push(sql`${documentScores.category} = ${options.category}`);
 
   const groups = await db
     .selectDistinct({

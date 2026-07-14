@@ -15,6 +15,7 @@ import { getAnalysisPeriods } from '@/lib/data/analysis-periods';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents, aiDocumentAssessments } from '@/lib/db/schema';
 import type { Layer2Options } from '@/lib/services/document-review-orchestrator';
 import {
@@ -122,6 +123,7 @@ export async function getDocumentsForCategoryWeek(
     lt(documents.publishedAt, new Date(weekEnd)),
     sql`${documents.contentType} != 'metadata_only'`,
     sql`length(${documents.content}) >= 100`,
+    retrievalRelevantOnly(),
   ];
   if (source) conditions.push(eq(documents.sourceOrigin, source));
 

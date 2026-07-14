@@ -136,6 +136,7 @@ export async function getSourceTypeBreakdown(
     FROM documents
     WHERE category = ${category}
       AND published_at >= ${weekOf}::date AND published_at < ${weekEnd}::date
+      AND retrieval_relevant IS NOT FALSE
     GROUP BY source_type ORDER BY count DESC
   `);
   return (rows.rows as Row[]).map((r) => ({
@@ -233,6 +234,7 @@ export async function getTotalDocumentCount(category: string, weekOf: string): P
     SELECT COUNT(*)::int AS count FROM documents
     WHERE category = ${category}
       AND published_at >= ${weekOf}::date AND published_at < ${weekEnd}::date
+      AND retrieval_relevant IS NOT FALSE
   `);
   return ((rows.rows as Row[])[0]?.count as number) ?? 0;
 }
@@ -425,6 +427,7 @@ export async function getTypicalDocuments(
         AND published_at >= (${weekOf}::date - interval '56 days')
         AND published_at < ${weekOf}::date
         AND embedding IS NOT NULL
+        AND retrieval_relevant IS NOT FALSE
     )
     SELECT d.title, d.source_type, d.published_at
     FROM documents d, rolling_centroid rc
@@ -432,6 +435,7 @@ export async function getTypicalDocuments(
       AND d.published_at >= (${weekOf}::date - interval '56 days')
       AND d.published_at < ${weekOf}::date
       AND d.embedding IS NOT NULL
+      AND d.retrieval_relevant IS NOT FALSE
       AND rc.centroid IS NOT NULL
     ORDER BY d.embedding <=> rc.centroid
     LIMIT ${limit}
@@ -463,12 +467,14 @@ export async function getDriftDrivingDocuments(
         AND published_at >= (${weekOf}::date - interval '56 days')
         AND published_at < ${weekOf}::date
         AND embedding IS NOT NULL
+        AND retrieval_relevant IS NOT FALSE
     )
     SELECT d.title, d.source_type, d.published_at
     FROM documents d, rolling_centroid rc
     WHERE d.category = ${category}
       AND d.published_at >= ${weekOf}::date AND d.published_at < ${weekEnd}::date
       AND d.embedding IS NOT NULL
+      AND d.retrieval_relevant IS NOT FALSE
       AND rc.centroid IS NOT NULL
     ORDER BY d.embedding <=> rc.centroid DESC
     LIMIT ${limit}

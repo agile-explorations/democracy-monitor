@@ -17,6 +17,7 @@ import {
   ALL_SOURCES_WARNING,
 } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
 import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
@@ -90,9 +91,13 @@ function logRecomputeSummary(
   }
 }
 
-async function recomputeWeeklyAggregates(from?: string, to?: string): Promise<void> {
+async function recomputeWeeklyAggregates(
+  from?: string,
+  to?: string,
+  category?: string,
+): Promise<void> {
   console.log('\n[recompute] Recomputing weekly aggregates...');
-  const allAggs = await computeAllWeeklyAggregates({ from, to });
+  const allAggs = await computeAllWeeklyAggregates({ from, to, category });
   let aggCount = 0;
   for (const [cat, aggs] of Object.entries(allAggs)) {
     for (const agg of aggs) {
@@ -105,7 +110,7 @@ async function recomputeWeeklyAggregates(from?: string, to?: string): Promise<vo
 }
 
 function buildWhereClause(options: RecomputeOptions) {
-  const conditions = [sql`${documents.contentType} != 'metadata_only'`];
+  const conditions = [sql`${documents.contentType} != 'metadata_only'`, retrievalRelevantOnly()];
   if (options.category) conditions.push(eq(documents.category, options.category));
   if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
   if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
@@ -196,7 +201,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
         allCategoryCounts[cat].scored += counts.scored;
         allCategoryCounts[cat].nonZero += counts.nonZero;
       }
-      if (!dryRun) await recomputeWeeklyAggregates(period.from, period.to);
+      if (!dryRun) await recomputeWeeklyAggregates(period.from, period.to, options.category);
     }
 
     logRecomputeSummary(grandScored, grandStored, allCategoryCounts, dryRun);
@@ -209,7 +214,7 @@ export async function recomputeScores(options: RecomputeOptions): Promise<void> 
       batchSize,
     );
     logRecomputeSummary(scored, stored, categoryCounts, dryRun);
-    if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to);
+    if (!dryRun) await recomputeWeeklyAggregates(options.from, options.to, options.category);
   }
 }
 

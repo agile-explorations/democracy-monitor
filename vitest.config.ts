@@ -28,6 +28,8 @@ export default defineConfig({
         'lib/services/document-review-queries.ts',
         'lib/services/ingest-validation-queries.ts',
         'lib/services/fetch-log-store.ts',
+        'lib/services/fr-drop-ledger.ts',
+        'lib/cron/validate-mf-drops.ts',
         'lib/services/snapshot-store.ts',
         'lib/services/narrative-store.ts',
         'lib/services/narrative-pipeline.ts',

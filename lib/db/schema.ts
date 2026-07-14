@@ -55,6 +55,10 @@ export const documents = pgTable(
     speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+    /** NULL = retrieval-relevant (default); false = annotated off-topic by the
+     *  retrieval relevance filter (#524/#544) — excluded from assessment,
+     *  statistics, search, and exports but kept for auditability. */
+    retrievalRelevant: boolean('retrieval_relevant'),
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),
@@ -606,4 +610,31 @@ export const significantWeeks = pgTable(
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('idx_significant_weeks_rank').on(table.rank)],
+);
+
+/**
+ * Drop ledger for the retrieval relevance filter (#524). Documents dropped at
+ * FR fetch time are not stored, but every drop is recorded here so exclusions
+ * stay observable (audit input for validate:mf-drops). FR is a stable archive
+ * addressable by URL, so ledger rows suffice to re-fetch and re-evaluate.
+ */
+export const frDropLedger = pgTable(
+  'fr_drop_ledger',
+  {
+    id: serial('id').primaryKey(),
+    category: varchar('category', { length: 50 }).notNull(),
+    signalUrl: text('signal_url').notNull(),
+    url: text('url').notNull(),
+    title: text('title').notNull(),
+    agency: text('agency'),
+    publishedAt: date('published_at'),
+    /** RelevanceResult reason: no-allow-match | excluded */
+    reason: varchar('reason', { length: 30 }).notNull(),
+    patternVersion: integer('pattern_version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_fr_drop_ledger_url_category').on(table.url, table.category),
+    index('idx_fr_drop_ledger_category_created').on(table.category, table.createdAt),
+  ],
 );

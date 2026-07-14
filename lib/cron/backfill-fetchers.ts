@@ -16,12 +16,14 @@ import {
   fetchFrRawText,
   parseSignalParams,
 } from '@/lib/services/federal-register-fetcher';
+import { recordFrDrops } from '@/lib/services/fr-drop-ledger';
 import {
   fetchGovInfoHistorical,
   fetchGovInfoText,
   parseGovInfoParams,
 } from '@/lib/services/govinfo-fetcher';
 import { fetchHhsOigHistorical, fetchHhsOigReportContent } from '@/lib/services/hhs-oig-fetcher';
+import { partitionByRetrievalRelevance } from '@/lib/services/retrieval-relevance-filter';
 import { fetchSsaOigHistorical } from '@/lib/services/ssa-oig-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
@@ -246,7 +248,11 @@ export async function fetchWeekItemsFr(
       categoryKey,
       week.start,
     );
-    items.push(...result.items);
+    // Retrieval relevance filter (#524): per-signal, so a drop here never
+    // affects the same document fetched by another category's signal.
+    const { kept, dropped } = partitionByRetrievalRelevance(categoryKey, result.items);
+    await recordFrDrops(categoryKey, signal.url, dropped);
+    items.push(...kept);
     if (result.error) errors.push(result.error);
   }
 

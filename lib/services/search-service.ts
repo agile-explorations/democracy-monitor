@@ -163,6 +163,7 @@ function buildResearchQuery(
           LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
           WHERE d.embedding IS NOT NULL
             AND d.source_origin NOT IN ('gdelt', 'whitehouse')
+            AND d.retrieval_relevant IS NOT FALSE
             ${dateFilter}
           ORDER BY d.embedding <=> ${vectorStr}::vector
           LIMIT ${candidateLimit}
@@ -256,6 +257,7 @@ export async function findSimilarDocuments(
         LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
         LEFT JOIN ai_document_assessments ai ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
         WHERE d.embedding IS NOT NULL AND d.id != ${documentId} AND ${catCondition}
+          AND d.retrieval_relevant IS NOT FALSE
         ORDER BY d.embedding <=> ${vectorStr}::vector
         LIMIT ${limit}
       `);

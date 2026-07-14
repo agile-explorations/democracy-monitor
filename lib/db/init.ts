@@ -118,7 +118,7 @@ function restoreFromArchive(connectionString: string, force: boolean): void {
 
   console.log('Restoring documents table...');
   execSync(
-    `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at) FROM STDIN WITH CSV HEADER"`,
+    `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at, retrieval_relevant) FROM STDIN WITH CSV HEADER"`,
     { stdio: 'inherit' },
   );
 

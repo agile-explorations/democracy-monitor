@@ -50,6 +50,7 @@ export async function searchCorpusStats(
           AND (embedding <=> ${vectorStr}::vector) < ${maxDistance}
           AND published_at IS NOT NULL
           AND source_origin NOT IN ('gdelt', 'whitehouse')
+          AND retrieval_relevant IS NOT FALSE
         GROUP BY date_trunc('month', published_at)
         ORDER BY month
       `),
@@ -59,6 +60,7 @@ export async function searchCorpusStats(
         WHERE embedding IS NOT NULL
           AND (embedding <=> ${vectorStr}::vector) < ${maxDistance}
           AND source_origin NOT IN ('gdelt', 'whitehouse')
+          AND retrieval_relevant IS NOT FALSE
         GROUP BY category
         ORDER BY count DESC
       `),
