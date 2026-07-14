@@ -1,6 +1,7 @@
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import type { BaselineConfig } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { classifyBatch } from '@/lib/services/functional-classifier';
 import type { BaselineDistribution, FunctionalBucket, WeekMetadata } from '@/lib/types/structural';
@@ -46,6 +47,7 @@ export async function extractWeekMetadata(
         eq(documents.category, category),
         gte(documents.publishedAt, new Date(weekOf)),
         lt(documents.publishedAt, new Date(weekEnd)),
+        retrievalRelevantOnly(),
       ),
     );
 
@@ -121,6 +123,7 @@ export async function computeBaselineStructuralDistribution(
         eq(documents.category, category),
         gte(documents.publishedAt, new Date(config.from)),
         lt(documents.publishedAt, new Date(config.to)),
+        retrievalRelevantOnly(),
       ),
     );
 

@@ -55,6 +55,10 @@ export const documents = pgTable(
     speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+    /** NULL = retrieval-relevant (default); false = annotated off-topic by the
+     *  retrieval relevance filter (#524/#544) — excluded from assessment,
+     *  statistics, search, and exports but kept for auditability. */
+    retrievalRelevant: boolean('retrieval_relevant'),
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),

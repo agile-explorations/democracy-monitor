@@ -50,5 +50,37 @@ export async function getDataIntegrityChecks(): Promise<DataIntegrityCheck[]> {
     buildOrphanCheck('baselines', baselineCats),
   );
 
+  checks.push(await buildResurrectionCheck(db));
+
   return checks;
+}
+
+/**
+ * Retrieval-relevance exclusion invariant (#544): annotated-off-topic docs
+ * must have NO derived rows. A non-zero count means some code path selected
+ * annotated docs and re-created scores/assessments — find and filter it.
+ */
+async function buildResurrectionCheck(db: ReturnType<typeof getDb>): Promise<DataIntegrityCheck> {
+  const [row] = await db
+    .select({
+      scores: sql<number>`(
+        SELECT count(*) FROM document_scores ds
+        JOIN documents d ON d.url = ds.url AND d.category = ds.category
+        WHERE d.retrieval_relevant = false
+      )::int`,
+      assessments: sql<number>`(
+        SELECT count(*) FROM ai_document_assessments a
+        JOIN documents d ON d.url = a.url AND d.category = a.category
+        WHERE d.retrieval_relevant = false
+      )::int`,
+    })
+    .from(sql`(SELECT 1) AS one`);
+  const resurrected = Number(row.scores) + Number(row.assessments);
+  return {
+    name: 'Derived rows for retrieval-excluded docs (#544 invariant)',
+    count: resurrected,
+    detail:
+      resurrected > 0 ? `${row.scores} score rows, ${row.assessments} assessment rows` : undefined,
+    pass: resurrected === 0,
+  };
 }

@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import {
   aiDocumentAssessments,
   documents,
@@ -176,8 +177,7 @@ async function fetchTopScoredDocuments(
   topN: number,
 ): Promise<DocumentExplanation[]> {
   const db = getDb();
-  const p1 = alias(aiDocumentAssessments, 'p1');
-  const p2 = alias(aiDocumentAssessments, 'p2');
+  const [p1, p2] = [alias(aiDocumentAssessments, 'p1'), alias(aiDocumentAssessments, 'p2')];
   const rows = await db
     .select({
       url: documentScores.url,
@@ -210,7 +210,13 @@ async function fetchTopScoredDocuments(
       p2,
       and(eq(documentScores.url, p2.url), eq(documentScores.category, p2.category), eq(p2.pass, 2)),
     )
-    .where(and(eq(documentScores.category, category), eq(documentScores.weekOf, weekOf)))
+    .where(
+      and(
+        eq(documentScores.category, category),
+        eq(documentScores.weekOf, weekOf),
+        retrievalRelevantOnly(),
+      ),
+    )
     .orderBy(desc(documentScores.finalScore))
     .limit(topN);
 

@@ -5,6 +5,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { requireDb, requireMethod, sendCached } from '@/lib/utils/api-helpers';
 
@@ -22,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const db = getDb();
-    const [row] = await db.select({ total: countDistinct(documents.url) }).from(documents);
+    const [row] = await db
+      .select({ total: countDistinct(documents.url) })
+      .from(documents)
+      .where(retrievalRelevantOnly());
     await cacheSet(CacheKeys.documentCount(), row.total, ONE_WEEK);
     sendCached(res, { total: row.total });
   } catch (err) {

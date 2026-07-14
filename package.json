@@ -59,6 +59,7 @@
     "cl:purge-noise": "tsx lib/cron/purge-cl-noise.ts",
     "crec:purge-noise": "tsx lib/cron/purge-crec-noise.ts",
     "fr:purge-noise": "tsx lib/cron/purge-fr-noise.ts",
+    "mf:annotate": "tsx lib/cron/annotate-retrieval-relevance.ts",
     "validate:fr-signals": "tsx lib/cron/validate-fr-signals.ts",
     "legiscan:bulk": "tsx lib/cron/legiscan-bulk.ts",
     "legiscan:purge-noise": "tsx lib/cron/purge-legiscan-noise.ts",

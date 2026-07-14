@@ -17,6 +17,7 @@ import {
   ALL_SOURCES_WARNING,
 } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
 import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
@@ -105,7 +106,7 @@ async function recomputeWeeklyAggregates(from?: string, to?: string): Promise<vo
 }
 
 function buildWhereClause(options: RecomputeOptions) {
-  const conditions = [sql`${documents.contentType} != 'metadata_only'`];
+  const conditions = [sql`${documents.contentType} != 'metadata_only'`, retrievalRelevantOnly()];
   if (options.category) conditions.push(eq(documents.category, options.category));
   if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
   if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));

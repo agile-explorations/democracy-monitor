@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 
 /**
@@ -131,6 +132,7 @@ async function getWeekSourceCounts(
       AND ${documents.sourceOrigin} IS NOT NULL
       AND ${documents.publishedAt} >= ${weekOf}
       AND ${documents.publishedAt} < ${weekEnd}
+      AND ${retrievalRelevantOnly()}
     GROUP BY ${documents.sourceOrigin}
   `);
 
@@ -173,6 +175,7 @@ async function getRollingGovCounts(category: string, weekOf: string): Promise<nu
       )})`}
       AND ${documents.publishedAt} >= ${windowStart}
       AND ${documents.publishedAt} < ${weekOf}
+      AND ${retrievalRelevantOnly()}
     GROUP BY week_start
     ORDER BY week_start
   `);
