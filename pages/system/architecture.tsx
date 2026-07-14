@@ -131,8 +131,9 @@ function DetailedContent() {
             stored via pgvector for thematic drift analysis
           </li>
           <li>
-            <strong>Assess</strong> — Three-layer detection (structural anomaly, AI document review,
-            thematic drift) runs independently per category
+            <strong>Assess</strong> — AI document review (sole active detection layer) drives
+            concern status; structural anomaly, silence detection, and thematic drift are computed
+            as descriptive context per category
           </li>
           <li>
             <strong>Narrate</strong> — AI generates expert and public narrative summaries for
@@ -148,7 +149,7 @@ function DetailedContent() {
             [
               'Federal Register',
               'Executive orders, rules, notices, presidential documents',
-              'fr-fetcher.ts',
+              'federal-register-fetcher.ts',
             ],
             [
               'CourtListener',
@@ -172,7 +173,7 @@ function DetailedContent() {
               'Federal legislative bill tracking via bulk datasets',
               'legiscan-fetcher.ts',
             ],
-            ['OIG', 'Inspector General reports (HHS, DOJ, SSA)', 'hhs-oig-fetcher.ts'],
+            ['OIG', 'Inspector General reports (HHS, DOJ, SSA)', 'hhs/doj/ssa-oig-fetcher.ts'],
             [
               'GDELT',
               'Global news coverage filtered to U.S. government activity (metadata only)',
@@ -217,12 +218,11 @@ function DetailedContent() {
               'baselines',
               'Historical baseline statistics per category (mean, stddev, distributions)',
             ],
-            ['assessment_snapshots', 'Three-layer convergence results per category per week'],
-            ['narratives', 'AI-generated expert and public narrative summaries'],
             [
-              'layer_scores',
-              'Individual layer scores (L1 structural, L2 AI, L3 drift) per assessment',
+              'weekly_aggregates',
+              'Also carries per-layer scores and convergence synthesis per category per week',
             ],
+            ['narratives', 'AI-generated expert and public narrative summaries'],
           ]}
         />
         <p>
@@ -250,7 +250,7 @@ function DetailedContent() {
             [
               'Database Dump',
               'Monday 05:00 UTC',
-              'Creates pg_dump backup and uploads to GitHub Releases for disaster recovery',
+              'Creates a pg_dump backup on the persistent disk, served at /api/data/dump (GitHub Releases holds only the bootstrap dump)',
             ],
           ]}
         />
@@ -303,8 +303,8 @@ function DetailedContent() {
             <strong>Redis</strong> — Key-value store for API response caching (600s default TTL)
           </li>
           <li>
-            <strong>Cron Jobs</strong> — Three scheduled tasks (snapshot, digest, uptime) running on
-            Render&apos;s cron infrastructure
+            <strong>Cron Jobs</strong> — Three scheduled tasks (LegiScan fetch, weekly snapshot,
+            database dump) running on Render&apos;s cron infrastructure
           </li>
         </ul>
       </Section>

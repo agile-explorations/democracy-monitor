@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
 import { CategoryTable } from '@/components/landing/CategoryTable';
@@ -257,6 +258,12 @@ export default function Home() {
                   : 'Latest week scores and 8-week sparkline trends'}
               </p>
             </div>
+            <Link
+              href="/why-this-matters"
+              className="text-[11px] text-dm-accent hover:underline shrink-0"
+            >
+              Why do these matter? &rarr;
+            </Link>
           </div>
           {loading || weekLoading ? (
             <div className="space-y-2">

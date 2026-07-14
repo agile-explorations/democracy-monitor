@@ -47,7 +47,7 @@ export function AiReviewerNotes({
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-2">
           {heading}
         </h2>
-        <p className="text-xs text-dm-muted italic">No AI review available for this assessment.</p>
+        <p className="text-sm text-dm-muted italic">No AI review available for this assessment.</p>
       </section>
     );
   }
@@ -61,7 +61,7 @@ export function AiReviewerNotes({
         <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-2">
           {heading}
         </h2>
-        <p className="text-xs text-dm-text-secondary">
+        <p className="text-sm text-dm-text-secondary">
           AI reviewer {label}{' '}
           <span className="font-medium text-dm-text-primary">{aiResult.status}</span> assessment
           (confidence {(aiResult.confidence * 100).toFixed(0)}%)
@@ -83,7 +83,7 @@ export function AiReviewerNotes({
         </p>
       )}
 
-      <p className="text-xs text-dm-text-secondary mb-3">
+      <p className="text-sm text-dm-text-secondary mb-3">
         AI reviewer {label}{' '}
         <span className="font-medium text-dm-text-primary">{aiResult.status}</span> assessment
         (confidence {(aiResult.confidence * 100).toFixed(0)}%,{' '}
@@ -97,7 +97,7 @@ export function AiReviewerNotes({
       </p>
 
       {/* Reasoning */}
-      <p className="text-xs text-dm-text-primary leading-relaxed mb-4">{aiResult.reasoning}</p>
+      <p className="text-sm text-dm-text-primary leading-relaxed mb-4">{aiResult.reasoning}</p>
 
       {/* Keyword verdicts */}
       {keywordReview && keywordReview.length > 0 && (
@@ -105,7 +105,7 @@ export function AiReviewerNotes({
           <h3 className="text-[11px] font-semibold text-dm-text-secondary mb-2">Keyword review</h3>
           <div className="space-y-1.5">
             {keywordReview.map((kv, i) => (
-              <div key={i} className="text-xs">
+              <div key={i} className="text-sm">
                 <span className="font-mono text-dm-text-primary">{kv.keyword}</span>
                 <span className="text-dm-muted ml-1.5">— {kv.assessment}</span>
                 <p className="text-dm-text-secondary ml-3 leading-relaxed">{kv.reasoning}</p>
@@ -124,7 +124,7 @@ export function AiReviewerNotes({
             </h3>
             <ul className="space-y-1">
               {evidenceFor.map((e, i) => (
-                <li key={i} className="text-xs text-dm-text-secondary flex items-start gap-1.5">
+                <li key={i} className="text-sm text-dm-text-secondary flex items-start gap-1.5">
                   <span className="shrink-0 text-dm-muted">{'\u2022'}</span>
                   <span>{e.text}</span>
                 </li>
@@ -139,7 +139,7 @@ export function AiReviewerNotes({
             </h3>
             <ul className="space-y-1">
               {evidenceAgainst.map((e, i) => (
-                <li key={i} className="text-xs text-dm-text-secondary flex items-start gap-1.5">
+                <li key={i} className="text-sm text-dm-text-secondary flex items-start gap-1.5">
                   <span className="shrink-0 text-dm-muted">{'\u2022'}</span>
                   <span>{e.text}</span>
                 </li>
@@ -155,7 +155,7 @@ export function AiReviewerNotes({
           <h3 className="text-[11px] font-semibold text-dm-text-secondary mb-1.5">
             What would change our mind
           </h3>
-          <p className="text-xs text-dm-text-secondary leading-relaxed">{whatWouldChangeMind}</p>
+          <p className="text-sm text-dm-text-secondary leading-relaxed">{whatWouldChangeMind}</p>
         </div>
       )}
     </section>

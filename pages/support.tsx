@@ -29,7 +29,7 @@ function OneTimeSection() {
   return (
     <section className="rounded-lg border border-dm-border bg-dm-card p-5">
       <h2 className="text-sm font-semibold text-dm-text-primary mb-2">One-time contribution</h2>
-      <p className="text-xs text-dm-text-secondary mb-4">
+      <p className="text-sm text-dm-text-secondary mb-4">
         Give any amount you like — many supporters choose $10, $25, or $100. Checkout is handled by
         Stripe; card, Apple Pay, and Google Pay are accepted, and no account is required.
       </p>
@@ -42,7 +42,7 @@ function MonthlySection() {
   return (
     <section className="rounded-lg border border-dm-border bg-dm-card p-5">
       <h2 className="text-sm font-semibold text-dm-text-primary mb-2">Monthly support</h2>
-      <p className="text-xs text-dm-text-secondary mb-4">
+      <p className="text-sm text-dm-text-secondary mb-4">
         Recurring support is what keeps the monitor running month to month. Ten supporters at
         $25/month — or fifty at $5 — cover the entire operating cost.
       </p>
@@ -61,7 +61,7 @@ function WhereTheMoneyGoes() {
   return (
     <section>
       <h2 className="text-sm font-semibold text-dm-text-primary mb-2">Where the money goes</h2>
-      <p className="text-xs text-dm-text-secondary">
+      <p className="text-sm text-dm-text-secondary">
         Democracy Monitor costs about ${MONTHLY_OPERATING_COST_USD}/month to run: hosting for the
         web service and database, and AI review of every new government document each week. The
         code, methodology, and data are all open — anyone can inspect how assessments are made or
@@ -80,7 +80,7 @@ function DeveloperSection() {
   return (
     <section>
       <h2 className="text-sm font-semibold text-dm-text-primary mb-2">For developers</h2>
-      <p className="text-xs text-dm-text-secondary">
+      <p className="text-sm text-dm-text-secondary">
         If you already have a GitHub account, you can also support the project through{' '}
         <a
           href={GITHUB_SPONSORS_URL}
@@ -132,7 +132,7 @@ export default function SupportPage() {
           </>
         ) : (
           <section className="rounded-lg border border-dm-border bg-dm-card p-5">
-            <p className="text-xs text-dm-text-secondary">
+            <p className="text-sm text-dm-text-secondary">
               Payment links are being set up and will be available here shortly. In the meantime,
               you can support the project through{' '}
               <a
@@ -151,7 +151,7 @@ export default function SupportPage() {
         <WhereTheMoneyGoes />
         <DeveloperSection />
 
-        <p className="text-[11px] text-dm-muted">
+        <p className="text-sm text-dm-muted">
           Democracy Monitor is built and operated by Agile Explorations LLC, a for-profit company.
           Contributions support the project directly and are not tax-deductible charitable
           donations.

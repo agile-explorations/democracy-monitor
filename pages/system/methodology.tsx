@@ -182,15 +182,16 @@ function DetailedContent() {
               'Every few days',
             ],
             [
+              'Congressional Record (CREC)',
+              'Senate and House floor speeches with speaker attribution',
+              'Daily when in session',
+            ],
+            [
               'Inspector General (OIG)',
               'Audit reports and investigations from HHS, DOJ, and SSA Inspectors General',
               'Every few days',
             ],
-            [
-              'LegiScan',
-              'State and federal legislative bill tracking via bulk datasets',
-              'Periodic',
-            ],
+            ['LegiScan', 'Federal legislative bill tracking via bulk datasets', 'Periodic'],
             [
               'FEC',
               'Federal Election Commission advisory opinions and Matters Under Review',
@@ -204,10 +205,9 @@ function DetailedContent() {
           ]}
         />
         <p>
-          Additionally, RSS feeds from the FCC provide supplementary signals for specific
-          categories. Each source type has an expected publication cadence. When a source goes
-          silent beyond its expected window, the system flags it for attention and may reduce
-          confidence in assessments that depend on that source.
+          Each source type has an expected publication cadence. When a source goes silent beyond its
+          expected window, the system flags it for attention and may reduce confidence in
+          assessments that depend on that source.
         </p>
       </Section>
 
@@ -555,8 +555,12 @@ function DetailedContent() {
         <p>
           The methodology constants are also available programmatically via the{' '}
           <code className="text-xs bg-dm-card px-1 py-0.5 rounded">/api/methodology</code> JSON
-          endpoint. Seed data for local reproduction is available via{' '}
-          <code className="text-xs bg-dm-card px-1 py-0.5 rounded">pnpm seed:import</code>.
+          endpoint. The full database can be restored locally for reproduction via{' '}
+          <code className="text-xs bg-dm-card px-1 py-0.5 rounded">pnpm db:init</code> (see the{' '}
+          <Link href="/data" className="text-dm-accent hover:underline">
+            Data page
+          </Link>
+          ).
         </p>
       </Section>
 
