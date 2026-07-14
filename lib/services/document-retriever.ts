@@ -39,6 +39,7 @@ export async function retrieveRelevantDocuments(
           FROM documents
           WHERE category IN (${categoryList})
             AND embedding IS NOT NULL
+            AND retrieval_relevant IS NOT FALSE
           ORDER BY embedding <=> ${vectorStr}::vector
           LIMIT ${topK}`,
     );

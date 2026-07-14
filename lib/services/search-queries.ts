@@ -9,7 +9,9 @@ import type { ExploreSearchResult, SearchFilters, SearchResultDocument } from '.
 const VECTOR_CANDIDATE_LIMIT = 500;
 
 export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof sql>[] {
-  const conditions: ReturnType<typeof sql>[] = [];
+  // Retrieval-relevance exclusion (#544) is unconditional: annotated off-topic
+  // docs never surface in Explore search.
+  const conditions: ReturnType<typeof sql>[] = [sql`d.retrieval_relevant IS NOT FALSE`];
 
   if (filters.category) {
     conditions.push(sql`d.category = ${filters.category}`);

@@ -1,0 +1,1 @@
+ALTER TABLE "documents" ADD COLUMN "retrieval_relevant" boolean;

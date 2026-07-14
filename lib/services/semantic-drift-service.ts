@@ -1,6 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import {
   BOOTSTRAP_CONFIDENCE,
@@ -44,6 +45,7 @@ export async function computeWeekCentroid(
         eq(documents.category, category),
         sql`date_trunc('week', ${documents.publishedAt}) = date_trunc('week', ${weekOf}::date)`,
         sql`${documents.embedding} IS NOT NULL`,
+        retrievalRelevantOnly(),
       ),
     );
 

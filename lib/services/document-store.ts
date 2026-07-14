@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import type { ContentItem } from '@/lib/types';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
@@ -136,6 +137,7 @@ export async function getDocumentsForWeek(
         eq(documents.category, category),
         gte(documents.publishedAt, new Date(weekStart)),
         lte(documents.publishedAt, new Date(weekEnd)),
+        retrievalRelevantOnly(),
       ),
     )
     .orderBy(desc(documents.publishedAt));

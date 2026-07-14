@@ -5,6 +5,7 @@ import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents, weeklyAggregates, aiDocumentAssessments } from '@/lib/db/schema';
 import type {
   Layer2Completeness,
@@ -66,6 +67,7 @@ async function queryL2DocAndP1(from: string, to: string, category?: string) {
     sql`${documents.contentType} != 'metadata_only'`,
     sql`${documents.content} is not null`,
     sql`length(${documents.content}) >= 100`,
+    retrievalRelevantOnly(),
   );
 
   const docRows = await db

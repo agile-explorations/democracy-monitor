@@ -1,6 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { and, eq, isNull, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
 
@@ -165,6 +166,7 @@ async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<numbe
   const conditions = [
     isNull(documents.embeddedAt),
     sql`${documents.contentType} != 'metadata_only'`,
+    retrievalRelevantOnly(),
   ];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);
