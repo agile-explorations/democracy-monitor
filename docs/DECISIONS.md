@@ -22,9 +22,19 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Bonus fix found during verification:** `useLocalStorage` clobbered stored values before reading them (ref-based hydration gate + StrictMode double effects) — saved display preferences could never survive a reload in dev, with a transient prod overwrite window. Gate is now state. Lesson: **verify with the browser, not just tests** — no unit test would have exercised the read-then-persist race across a real reload.
 
-## Sprint R-ACTOR: Erosion Actor Attribution (#537, #536, #535) — build ✅, prod runbook pending
+## Sprint R-ACTOR: Erosion Actor Attribution (#537, #536, #535) — ✅ complete
 
-**Status: Build complete on develop (2026-07-10).** Milestone 81. Prod runbook (R0–R8) gated on the 2026-07-13 post-deploy checkpoint + per-invocation user approvals for baseline writes; NC-3 threshold decision at R8 from measured data. #534 fixed en route; #536 closes when the redefined NC-3 evaluates in prod.
+**Status: Complete (2026-07-14).** Milestone 81 closed. Build landed 2026-07-10; merged to main at the clean 7/13 checkpoint (35487f5); prod runbook R0–R8 executed 2026-07-13/14 with per-invocation user approvals on all baseline writes.
+
+**Runbook results (2026-07-14):**
+
+- **R2 pilot (user-adjudicated): 106/109 = 97.2% accuracy, 0 fed↔state confusions** — both gates passed. All 3 errors shared one shape: a protective/checking response attributed to the responding institution instead of the eroder being checked (candidate rule for a future prompt version; not applied — would have invalidated a passing pilot).
+- **R3/R4:** 3,880 T2 + 151 biden_2022 confirmed rows attributed (T2: 85% federal_executive; baseline civilLiberties state_local-heavy at 27 vs 8 — matching rehearsal priors). Two adjudicated single-row corrections applied with user confirmation (Vought/USAID other_unclear→federal_executive; Patronage Act congress→federal_executive). H.R. 1002 row sits in biden_2023 — outside all scopes, remains in the visible `unattributed` bucket.
+- **R5 post-write audit (user-adjudicated): 30/30 = 100%.**
+- **R6** re-enriched 1,047 T2 aggregates (actorConfirmations now populated; 16 zero-P2 weeks legitimately lack it). **Observed: one net week upgraded Elevated→ConfirmedConcern** (R0 before 499/221/327 → 500/220/327). Unidentified (computed_at overwritten; local DB proved stale as a reference); mechanism: first re-enrich of pre-2026-04-20 weeks under current code — the merge's only aggregation-path change was the #534 DST fix plus additive actorConfirmations. Accepted by user decision (new value is the more-correct one; event detection unchanged); that week's stored narrative may transiently mismatch its badge until any future regeneration.
+- **R8: 39/39 events detected (identical), NC-3 PASSES actor-scoped** — worst category civilLiberties at 5.8% federal-executive Elevated+ vs thresholds 12%/15% (**user decision: keep the provisional thresholds** — >2× headroom, tight enough to catch over-firing, loose enough for recalibrations). **#535 disposition (user decision): NC-2 floor lowered 7%→5%** — the floor guards against a dead/over-strict P2, independently disproven by 39/39 + NC-5 + audit FN rates; 6.6% on a calm baseline reflects P1 over-flagging in not-yet-calibrated categories (NC-1's job), expected to rise with threat-vector P1 calibration.
+- **R7 (baseline re-enrich) not run** — nothing consumes baseline aggregates' actor buckets yet; deferred until something does.
+- **Runbook finding (ops):** the weekly digest email has never sent — RESEND_API_KEY was never set on the weekly-snapshot cron service in Render (web service has its own copy; the non-fatal error path hid ~15 weeks of silent skips).
 
 **Product outcome:** Every confirmed erosion event gains a "who did this" dimension — the drill-down for the nation-wide-institutions product framing, whose headline presentation is deliberately deferred until the attributed distributions exist. Category pages gain a "Concerning by Actor" line and an Actor column; the attribution prompt joins the public transparency page; NC-3 becomes a coherent control ("baseline federal-executive erosion stays low") instead of one failing-by-decision. Assessment behavior is untouched — enforced by experiment, not assumption.
 

@@ -101,12 +101,12 @@ describe('negative control evaluations', () => {
   });
 
   describe('NC-2: Biden 2022 P2 confirmation rate', () => {
-    it('passes within 7–70% range', () => {
+    it('passes within 5–70% range', () => {
       expect(evaluateNc2BidenP2ConfirmRate(0.35).pass).toBe(true);
     });
 
-    it('fails below 7%', () => {
-      expect(evaluateNc2BidenP2ConfirmRate(0.05).pass).toBe(false);
+    it('fails below 5%', () => {
+      expect(evaluateNc2BidenP2ConfirmRate(0.04).pass).toBe(false);
     });
 
     it('fails above 70%', () => {
@@ -114,7 +114,7 @@ describe('negative control evaluations', () => {
     });
 
     it('passes at boundaries', () => {
-      expect(evaluateNc2BidenP2ConfirmRate(0.07).pass).toBe(true);
+      expect(evaluateNc2BidenP2ConfirmRate(0.05).pass).toBe(true);
       expect(evaluateNc2BidenP2ConfirmRate(0.7).pass).toBe(true);
     });
   });
