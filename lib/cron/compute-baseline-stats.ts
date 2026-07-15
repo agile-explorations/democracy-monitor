@@ -8,10 +8,12 @@
  * (computes any missing ones from document_scores).
  */
 
+import { and, eq, gte, lte } from 'drizzle-orm';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import type { BaselineConfig } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
-import { isDbAvailable } from '@/lib/db';
+import { getDb, isDbAvailable } from '@/lib/db';
+import { weeklyAggregates } from '@/lib/db/schema';
 import { computeBaseline, storeBaseline } from '@/lib/services/baseline-service';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { checkHelp } from '@/lib/utils/cli-help';
@@ -22,14 +24,34 @@ interface ComputeBaselineOptions {
   category?: string;
 }
 
-/** Ensure weekly aggregates exist for all weeks in a baseline period. */
+/**
+ * Ensure weekly aggregates exist for all weeks in a baseline period.
+ * Only MISSING (category, week) rows are computed: storeWeeklyAggregate's
+ * upsert resets enrichment fields (convergence_detail/status), so re-storing
+ * existing rows silently wipes statuses written by scores:enrich — this
+ * nulled 418 mediaFreedom baseline-week statuses during the #544 runbook.
+ */
 async function ensureAggregates(config: BaselineConfig, categoryFilter?: string): Promise<number> {
   const weeks = getWeekRanges(config.from, config.to);
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
+  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block
+  const db = getDb();
 
   let computed = 0;
   for (const cat of cats) {
+    const existing = await db
+      .select({ weekOf: weeklyAggregates.weekOf })
+      .from(weeklyAggregates)
+      .where(
+        and(
+          eq(weeklyAggregates.category, cat.key),
+          gte(weeklyAggregates.weekOf, config.from),
+          lte(weeklyAggregates.weekOf, config.to),
+        ),
+      );
+    const have = new Set(existing.map((r) => r.weekOf));
     for (const week of weeks) {
+      if (have.has(week.start)) continue;
       const agg = await computeWeeklyAggregate(cat.key, week.start);
       await storeWeeklyAggregate(agg);
       computed++;
