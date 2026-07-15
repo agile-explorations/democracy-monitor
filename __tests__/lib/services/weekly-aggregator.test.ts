@@ -411,6 +411,100 @@ describe('storeWeeklyAggregate', () => {
     expect(mockOnConflict).toHaveBeenCalled();
   });
 
+  it('preserves enrichment columns on conflict (#554): default store omits them from SET', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+    const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+
+    const { storeWeeklyAggregate } = await import('@/lib/services/weekly-aggregator');
+    await storeWeeklyAggregate({
+      category: 'agencies',
+      weekOf: '2025-02-03',
+      totalSeverity: 10,
+      documentCount: 2,
+      avgSeverityPerDoc: 5,
+      captureProportion: 0.5,
+      driftProportion: 0.3,
+      warningProportion: 0.2,
+      severityMix: 2.6,
+      captureMatchCount: 5,
+      driftMatchCount: 3,
+      warningMatchCount: 2,
+      suppressedMatchCount: 1,
+      topKeywords: ['test'],
+      computedAt: new Date().toISOString(),
+    });
+
+    // nosemgrep: opengrep.no-mock-call-assertions — the conflict SET clause IS the behavior under test (it determines whether enrichment survives a re-store); no DB round-trip harness exists here
+    const set = mockOnConflict.mock.calls[0][0].set;
+    // Count/severity columns must update on conflict
+    expect(set).toHaveProperty('totalSeverity');
+    expect(set).toHaveProperty('documentCount');
+    expect(set).toHaveProperty('computedAt');
+    // Enrichment columns must be ABSENT so existing values are preserved
+    for (const col of [
+      'structuralScore',
+      'structuralDetail',
+      'thematicScore',
+      'thematicDetail',
+      'convergenceScore',
+      'convergenceDetail',
+      'aiScore',
+      'aiDetail',
+    ]) {
+      expect(set).not.toHaveProperty(col);
+    }
+  });
+
+  it('writes enrichment columns on conflict via storeEnrichedWeeklyAggregate (#554)', async () => {
+    mockIsDbAvailable.mockReturnValue(true);
+
+    const mockOnConflict = vi.fn().mockResolvedValue(undefined);
+    const mockValues = vi.fn().mockReturnValue({ onConflictDoUpdate: mockOnConflict });
+    const mockInsert = vi.fn().mockReturnValue({ values: mockValues });
+    mockGetDb.mockReturnValue({ insert: mockInsert } as never);
+
+    const { storeEnrichedWeeklyAggregate } = await import('@/lib/services/weekly-aggregator');
+    await storeEnrichedWeeklyAggregate({
+      category: 'agencies',
+      weekOf: '2025-02-03',
+      totalSeverity: 10,
+      documentCount: 2,
+      avgSeverityPerDoc: 5,
+      captureProportion: 0.5,
+      driftProportion: 0.3,
+      warningProportion: 0.2,
+      severityMix: 2.6,
+      captureMatchCount: 5,
+      driftMatchCount: 3,
+      warningMatchCount: 2,
+      suppressedMatchCount: 1,
+      topKeywords: ['test'],
+      convergenceScore: 1,
+      convergenceDetail: { status: 'Stable' },
+      computedAt: new Date().toISOString(),
+    });
+
+    // nosemgrep: opengrep.no-mock-call-assertions — the conflict SET clause IS the behavior under test
+    const set = mockOnConflict.mock.calls[0][0].set;
+    expect(set).toHaveProperty('totalSeverity');
+    for (const col of [
+      'structuralScore',
+      'structuralDetail',
+      'thematicScore',
+      'thematicDetail',
+      'convergenceScore',
+      'convergenceDetail',
+      'aiScore',
+      'aiDetail',
+    ]) {
+      expect(set).toHaveProperty(col);
+    }
+  });
+
   it('handles optional layer fields with null defaults', async () => {
     mockIsDbAvailable.mockReturnValue(true);
 
