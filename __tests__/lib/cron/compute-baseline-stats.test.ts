@@ -3,7 +3,9 @@ import { runComputeBaselineStats } from '@/lib/cron/compute-baseline-stats';
 
 vi.mock('@/lib/db', () => ({
   isDbAvailable: vi.fn().mockReturnValue(true),
-  getDb: vi.fn(),
+  getDb: vi.fn().mockReturnValue({
+    select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
+  }),
 }));
 
 vi.mock('@/lib/services/baseline-service', () => ({

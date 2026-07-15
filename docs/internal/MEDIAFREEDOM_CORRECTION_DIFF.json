@@ -1,0 +1,23 @@
+[
+  {
+    "week": "2019-03-04",
+    "before": "Stable",
+    "after": "Elevated",
+    "docs_before": 31,
+    "docs_after": 12
+  },
+  {
+    "week": "2026-02-02",
+    "before": "ConfirmedConcern",
+    "after": "Elevated",
+    "docs_before": 38,
+    "docs_after": 5
+  },
+  {
+    "week": "2026-07-13",
+    "before": "(absent)",
+    "after": "Stable",
+    "docs_before": null,
+    "docs_after": 0
+  }
+]
