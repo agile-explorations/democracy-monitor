@@ -84,6 +84,25 @@ export interface ConcernAssessment {
   layersElevated: number;
   pattern: string;
   bootstrap: boolean;
+  /**
+   * Full silence-detection detail (#546) — persists mode (zscore | sparse),
+   * presence rate, zero streak, and the sparse-coverage note alongside the
+   * silenceElevated boolean so narratives and the UI can explain HOW silence
+   * was assessed for sparse categories.
+   */
+  silence?: SilenceDetail;
+}
+
+/** Serialized subset of SilenceScore stored inside convergence_detail (#546). */
+export interface SilenceDetail {
+  mode: 'zscore' | 'sparse';
+  govDocCount: number;
+  independentDocCount: number;
+  rollingGovMean: number;
+  govSilenceZ: number;
+  presenceRate?: number;
+  zeroStreak?: number;
+  coverageNote?: string;
 }
 
 /**
