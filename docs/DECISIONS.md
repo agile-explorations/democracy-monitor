@@ -12,6 +12,21 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-MF: mediaFreedom Retrieval Relevance Filter (#524, #541–#545) — ✅ complete
+
+**Status: Complete (2026-07-15).** Milestone 82. Filter built on `feat/524-retrieval-filter` (2026-07-12), verified in #543 (owner adjudication 50/50 = 100% label reliability; fresh holdout week 0 kept / 67 dropped, 0 false drops), #544 build + prod runbook executed 2026-07-15 with per-invocation approvals on baseline-touching steps. Mid-week deploy by user decision — FR fetches happen only in the Monday cron, so the filter-live→annotation-complete gap was structurally empty (post-deploy sweep: 0 docs).
+
+**Product outcome:** mediaFreedom's FR corpus was ≥95% administrative boilerplate (airworthiness directives, PRA notices) matched by full-text FOIA-term queries — 88.5% of T2 volume contributing ~0% of detection, and silence detection blinded by ~65 junk gov-docs/week. Now: fetch-time title+abstract filter (versioned patterns + public drop ledger + weekly LLM audit), **17,241 historical docs annotated** (not deleted; 328 kept, 1.87% ≈ predicted base rate), derived rows cascade-deleted, every consumer surface filtered via a central `document-filters` condition. Weekly kept-FR volume drops ~65 → 0–2, un-blinding silence detection for the category where suppression-by-silence matters most. **Transparency result: 9 years of recomputed history changed 2 week-statuses** (2019-03-04 Stable→Elevated — noise had diluted signal; 2026-02-02 ConfirmedConcern→Elevated — contamination-era inputs had inflated it). Diff artifact: `docs/internal/MEDIAFREEDOM_CORRECTION_DIFF.json`; methodology page carries the public correction note. After-state gates: 6/6 negative controls, 39/39 events, resurrection invariant 0/0.
+
+**Two latent bugs of one family found by runbook verification, both fixed same-day:** `storeWeeklyAggregate`'s upsert resets enrichment fields, so ANY re-store of existing aggregates silently wipes statuses. (1) `scores:recompute --category` re-aggregated ALL categories in the date window (caught in local rehearsal — 0/39 events after the chain; would have nulled every category's status history in prod; fixed by threading category into `computeAllWeeklyAggregates`). (2) `baselines:compute`'s `ensureAggregates` re-stored every baseline week instead of only missing ones (masked in rehearsal by a later full re-enrich; caught in prod by the after-state trajectory check minutes after it nulled 418 mediaFreedom baseline-week statuses; repaired by scoped re-enrich, fixed to skip existing rows).
+
+**Lessons learned:**
+
+- **Any aggregate re-store is an enrichment-wiper.** The upsert-resets-enrichment behavior has now produced three incidents (R-INGEST-GAPS documented it; this sprint hit it twice more). Candidate structural fix: make the upsert preserve enrichment fields unless explicitly provided — worth an issue before the next recompute-adjacent sprint.
+- **Rehearse on a full copy, and verify the FINAL state, not intermediate states.** The rehearsal caught bug 1 only because validate:detection ran after the whole chain; it missed bug 2 because a later repair step re-enriched and masked the wipe. Assert invariants immediately after each step in future runbooks.
+- **Permanent tripwires beat one-time checks:** the validate:data resurrection invariant and the dump/init column-list CI test now guard the two silent-failure classes this sprint exposed.
+- **Structurally-empty gaps beat raced gaps:** scheduling the deploy against the weekly fetch cadence removed the re-pollution window instead of racing it.
+
 ## #533: Current-Week-First Landing (standalone item) ✅
 
 **Status: Done on develop (2026-07-10)**, merges to main with R-ACTOR after the 7/13 checkpoint. Design was agreed in the issue (2026-07-07); user clarifications during planning: mini sparkline is a single click-target jumping to the full chart (no per-week clicks at sparkline scale), and `#concern-score` remains a shareable deep link with a new "Trend" jump link surfacing it.

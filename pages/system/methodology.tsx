@@ -209,6 +209,18 @@ function DetailedContent() {
           expected window, the system flags it for attention and may reduce confidence in
           assessments that depend on that source.
         </p>
+        <p>
+          <strong>Retrieval-relevance correction (July 2026):</strong> Federal Register full-text
+          term queries for the Press Freedom category had matched administrative boilerplate
+          (Privacy Act statements, paperwork notices) in routine documents from unrelated agencies.
+          A verified title-and-abstract relevance filter now screens these at fetch time, and 17,241
+          historical off-topic documents (2017–2026) were annotated and excluded from assessment,
+          statistics, search, and exports — annotated, not deleted, and every exclusion is recorded
+          in a public drop ledger. Recomputing nine years of Press Freedom history with the
+          corrected corpus changed 2 week-statuses (one week rose to Elevated, one ConfirmedConcern
+          week was revised to Elevated), confirming that detection had been driven by real signal
+          rather than the noise.
+        </p>
       </Section>
 
       {/* Categories */}
