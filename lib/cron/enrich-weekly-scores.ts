@@ -20,7 +20,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
 import { buildAISummaryFromDB } from '@/lib/services/document-review-summary';
-import { storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
+import { storeEnrichedWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { WeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ConcernAssessment } from '@/lib/types/structural';
@@ -94,7 +94,7 @@ async function enrichAggregates(aggregates: WeeklyAggregate[]): Promise<{
     if (!aiSummary) skippedNoL2++;
 
     const result = await enrichWithLayerScores(agg, aiSummary);
-    await storeWeeklyAggregate(result);
+    await storeEnrichedWeeklyAggregate(result);
     enriched++;
     catCounts[agg.category] = (catCounts[agg.category] || 0) + 1;
 

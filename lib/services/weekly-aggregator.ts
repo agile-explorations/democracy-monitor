@@ -177,7 +177,8 @@ function buildAggregateValues(agg: WeeklyAggregate) {
   };
 }
 
-const UPSERT_SET = {
+/** Count/severity/keyword columns — safe for every caller to overwrite. */
+const COUNT_UPSERT_SET = {
   totalSeverity: sql`excluded.total_severity`,
   documentCount: sql`excluded.document_count`,
   avgSeverityPerDoc: sql`excluded.avg_severity_per_doc`,
@@ -190,6 +191,16 @@ const UPSERT_SET = {
   warningMatchCount: sql`excluded.warning_match_count`,
   suppressedMatchCount: sql`excluded.suppressed_match_count`,
   topKeywords: sql`excluded.top_keywords`,
+  computedAt: sql`excluded.computed_at`,
+};
+
+/**
+ * Enrichment columns — written only by the enrichment path (#554). Bare
+ * count/severity callers must NOT touch these: three separate incidents
+ * (R-INGEST-GAPS, both #544 runbook bugs) came from re-stores nulling the
+ * public weekly status via convergence_detail.
+ */
+const ENRICHMENT_UPSERT_SET = {
   structuralScore: sql`excluded.structural_score`,
   structuralDetail: sql`excluded.structural_detail`,
   thematicScore: sql`excluded.thematic_score`,
@@ -198,13 +209,12 @@ const UPSERT_SET = {
   convergenceDetail: sql`excluded.convergence_detail`,
   aiScore: sql`excluded.ai_score`,
   aiDetail: sql`excluded.ai_detail`,
-  computedAt: sql`excluded.computed_at`,
 };
 
-/**
- * Upsert a weekly aggregate into the database.
- */
-export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> {
+async function upsertAggregate(
+  agg: WeeklyAggregate,
+  set: Record<string, ReturnType<typeof sql>>,
+): Promise<void> {
   if (!isDbAvailable()) return;
 
   const db = getDb();
@@ -214,16 +224,37 @@ export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> 
     .values(buildAggregateValues(agg))
     .onConflictDoUpdate({
       target: [weeklyAggregates.category, weeklyAggregates.weekOf],
-      set: UPSERT_SET,
+      set,
     });
 }
 
 /**
+ * Upsert a weekly aggregate's count/severity fields. On conflict, enrichment
+ * fields (structural/thematic/convergence/ai score+detail — including the
+ * public weekly status) are PRESERVED. Fresh inserts still write any
+ * enrichment fields present on the input (null when absent).
+ *
+ * Use storeEnrichedWeeklyAggregate for the enrichment path.
+ */
+export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> {
+  await upsertAggregate(agg, COUNT_UPSERT_SET);
+}
+
+/**
+ * Upsert a fully-enriched weekly aggregate: counts AND enrichment fields are
+ * written, including clearing stale layer values to null when the input
+ * omits them. Only enrichWithLayerScores results should flow through here.
+ */
+export async function storeEnrichedWeeklyAggregate(agg: WeeklyAggregate): Promise<void> {
+  await upsertAggregate(agg, { ...COUNT_UPSERT_SET, ...ENRICHMENT_UPSERT_SET });
+}
+
+/**
  * Compute weekly aggregates for all category+week combinations in document_scores.
- * Optionally filter by date range and category. The category filter matters for
- * scoped recomputes: storeWeeklyAggregate resets enrichment fields
- * (convergence_detail/status), so re-aggregating categories outside the scope
- * silently wipes their statuses until a full re-enrich (#544 rehearsal finding).
+ * Optionally filter by date range and category. (Since #554,
+ * storeWeeklyAggregate preserves enrichment on conflict, so scoped recomputes
+ * no longer risk wiping other categories' statuses; the category filter
+ * remains correct for scope and efficiency.)
  */
 export async function computeAllWeeklyAggregates(
   options: { from?: string; to?: string; category?: string } = {},

@@ -5,6 +5,11 @@ import {
   computeStats,
   addDays,
   getAdminInaugurationDate,
+  computeSparseSilence,
+  mondayOf,
+  SPARSE_MIN_PRESENCE,
+  SPARSE_STREAK_P,
+  SPARSE_VOLUME_FLOOR,
 } from '@/lib/services/silence-detection-service';
 
 describe('silence-detection-service', () => {
@@ -104,6 +109,75 @@ describe('silence-detection-service', () => {
 
     it('falls back to earliest inauguration for very old dates', () => {
       expect(getAdminInaugurationDate('2016-01-01')).toBe('2017-01-20');
+    });
+  });
+
+  describe('computeSparseSilence (#546)', () => {
+    const steadySixteen = Array(16).fill(1); // presence rate 1.0
+
+    it('fires on an improbable zero streak when the source normally speaks', () => {
+      // p=1.0 → any zero week has absenceProb 0 < 0.05
+      const r = computeSparseSilence(steadySixteen, 0, 2);
+      expect(r.presenceRate).toBe(1);
+      expect(r.zeroStreak).toBe(1);
+      expect(r.conspicuous).toBe(true);
+      expect(r.silenceScore).toBeGreaterThan(0);
+    });
+
+    it('does not fire when the current week has government documents', () => {
+      const r = computeSparseSilence(steadySixteen, 2, 2);
+      expect(r.zeroStreak).toBe(0);
+      expect(r.conspicuous).toBe(false);
+      expect(r.silenceScore).toBe(0);
+    });
+
+    it('requires an improbably long streak at moderate presence rates', () => {
+      // 8 present + 4 trailing zeros → p≈0.67; streak = 4+1 = 5 → (0.33)^5 ≈ 0.004 < 0.05
+      const series = [1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0];
+      const long = computeSparseSilence(series, 0, 1);
+      expect(long.zeroStreak).toBe(5);
+      expect(long.conspicuous).toBe(true);
+
+      // Same presence rate, streak of 1 → (0.33)^1 ≈ 0.33 > 0.05: not conspicuous
+      const short = computeSparseSilence([1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 1], 0, 1);
+      expect(short.zeroStreak).toBe(1);
+      expect(short.conspicuous).toBe(false);
+    });
+
+    it('never fires for sources that rarely speak (presence below floor)', () => {
+      const sparse = [0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]; // p=0.125
+      const r = computeSparseSilence(sparse, 0, 3);
+      expect(r.presenceRate).toBeLessThan(SPARSE_MIN_PRESENCE);
+      expect(r.conspicuous).toBe(false);
+    });
+
+    it('handles an empty series without firing', () => {
+      const r = computeSparseSilence([], 0, 1);
+      expect(r.presenceRate).toBe(0);
+      expect(r.conspicuous).toBe(false);
+    });
+
+    it('exposes calibrated constants', () => {
+      expect(SPARSE_VOLUME_FLOOR).toBe(3);
+      expect(SPARSE_STREAK_P).toBe(0.05);
+    });
+  });
+
+  describe('mondayOf', () => {
+    it('returns the same day for a Monday', () => {
+      expect(mondayOf('2025-01-20')).toBe('2025-01-20');
+    });
+
+    it('snaps a Wednesday inauguration back to its Monday', () => {
+      expect(mondayOf('2021-01-20')).toBe('2021-01-18');
+    });
+
+    it('snaps a Friday inauguration back to its Monday', () => {
+      expect(mondayOf('2017-01-20')).toBe('2017-01-16');
+    });
+
+    it('handles Sunday (previous Monday, not next)', () => {
+      expect(mondayOf('2025-01-19')).toBe('2025-01-13');
     });
   });
 });

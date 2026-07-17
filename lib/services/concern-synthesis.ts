@@ -14,6 +14,7 @@ import type {
   AIAssessmentSummary,
   ConcernLevel,
   ConcernAssessment,
+  SilenceDetail,
   StructuralScore,
   ThematicDriftScore,
 } from '@/lib/types/structural';
@@ -66,6 +67,21 @@ export function synthesizeConvergence(
     layersElevated,
     pattern,
     bootstrap: isBootstrap,
+    silence: silence ? toSilenceDetail(silence) : undefined,
+  };
+}
+
+/** Persist how silence was assessed (#546) without the full score internals. */
+function toSilenceDetail(s: SilenceScore): SilenceDetail {
+  return {
+    mode: s.mode,
+    govDocCount: s.govDocCount,
+    independentDocCount: s.independentDocCount,
+    rollingGovMean: s.rollingGovMean,
+    govSilenceZ: s.govSilenceZ,
+    presenceRate: s.presenceRate,
+    zeroStreak: s.zeroStreak,
+    coverageNote: s.coverageNote,
   };
 }
 

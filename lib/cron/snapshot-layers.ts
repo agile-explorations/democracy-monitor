@@ -4,7 +4,10 @@
  * Extracted from snapshot.ts (max-lines).
  */
 
-import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
+import {
+  computeWeeklyAggregate,
+  storeEnrichedWeeklyAggregate,
+} from '@/lib/services/weekly-aggregator';
 import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
@@ -62,7 +65,7 @@ export async function runLayersAndAggregate(
     const aiSummary = await buildAISummaryFromDB(category, weekOf);
     const agg = await computeWeeklyAggregate(category, weekOf);
     const enriched = await enrichWithLayerScores(agg, aiSummary);
-    await storeWeeklyAggregate(enriched);
+    await storeEnrichedWeeklyAggregate(enriched);
   } catch (err) {
     const msg = `Weekly aggregate failed for ${category}: ${formatError(err)}`;
     console.error(`[snapshot] ${msg}`);
