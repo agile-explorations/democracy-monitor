@@ -15,6 +15,14 @@ function formatP2Line(doc: ResearchDocument): string {
   return parts.join('\n');
 }
 
+/**
+ * Per-tier content budgets (#552): primary sources (ACTION) carry the holding
+ * or operative text deeper into the excerpt; DISCUSSION docs are summarizable
+ * from less. 30 docs at these budgets ≈ 18k tokens of context.
+ */
+export const ACTION_EXCERPT_CHARS = 2200;
+export const DISCUSSION_EXCERPT_CHARS = 1200;
+
 function formatDocumentContext(docs: ResearchDocument[]): string {
   return docs
     .map((doc, i) => {
@@ -26,11 +34,13 @@ function formatDocumentContext(docs: ResearchDocument[]): string {
           })
         : 'date unknown';
       const score = doc.finalScore != null ? ` · Score: ${doc.finalScore.toFixed(1)}` : '';
-      const contentExcerpt = doc.content ? doc.content.slice(0, 1500) : '(no content available)';
+      const budget = doc.tier === 'discussion' ? DISCUSSION_EXCERPT_CHARS : ACTION_EXCERPT_CHARS;
+      const contentExcerpt = doc.content ? doc.content.slice(0, budget) : '(no content available)';
       const p2Line = formatP2Line(doc);
+      const tierTag = doc.tier === 'discussion' ? 'DISCUSSION' : 'ACTION';
 
       const lines = [
-        `[Doc ${i + 1}] ${doc.title}`,
+        `[Doc ${i + 1} | ${tierTag}] ${doc.title}`,
         `  Date: ${date} · Source: ${doc.sourceType} (${doc.sourceOrigin ?? 'unknown'}) · Category: ${doc.category}${score}`,
       ];
       if (p2Line) lines.push(p2Line);
@@ -101,10 +111,15 @@ function draftRules(p2Count: number, totalDocs: number): string[] {
     '9. Explicitly state the date range of retrieved documents in your answer and note that',
     '   documents are weighted toward recent publications. If corpus statistics show many',
     '   matching documents outside the retrieval window, note this.',
+    '10. Documents are tagged ACTION (primary sources: what the government did — opinions,',
+    '    orders, rules, bills, reports) or DISCUSSION (reactions: floor speeches, remarks,',
+    '    debate). Ground claims about government actions in ACTION documents; use DISCUSSION',
+    '    documents for reception, characterization, and political response, attributed as such',
+    '    ("Senator X characterized...").',
   ];
   if (p2Count > 0) {
     rules.push(
-      `10. ${p2Count} of ${totalDocs} documents include prior AI assessments. Reference these`,
+      `11. ${p2Count} of ${totalDocs} documents include prior AI assessments. Reference these`,
       '    where relevant ("the system previously assessed this document as...").',
     );
   }
@@ -231,6 +246,8 @@ function selfVerificationChecklist(hasCorpusStats: boolean): string[] {
     '(d) COUNTER-ARGUMENTS — Include plausible alternative explanations where they exist.',
     '(e) BALANCE — Present stated justifications from the documents, not just critiques.',
     '(f) COVERAGE GAPS — Acknowledge limitations of the documentary record.',
+    '(h) TIER GROUNDING — Claims about government actions cite ACTION documents; DISCUSSION',
+    '    documents are used only for reception/characterization, attributed to their speaker.',
   ];
   if (hasCorpusStats) {
     lines.push(

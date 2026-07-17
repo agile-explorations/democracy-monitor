@@ -7,6 +7,12 @@
  */
 
 import { sql } from 'drizzle-orm';
+import type { DocumentTier } from '@/lib/data/document-tiers';
+import {
+  composeTieredResults,
+  DISCUSSION_SOURCE_TYPES,
+  tierForSourceType,
+} from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
@@ -70,6 +76,8 @@ export interface ResearchDocument {
   url: string | null;
   publishedAt: string | null;
   sourceType: string;
+  /** Action/discussion tier (#552) — derived from sourceType at map time. */
+  tier: DocumentTier;
   sourceOrigin: string | null;
   category: string;
   cosineSimilarity: number;
@@ -126,16 +134,31 @@ function buildDateFilter(dateFrom?: string, dateTo?: string) {
   return sql`${dateFrom ? sql`AND d.published_at >= ${dateFrom}::timestamptz` : sql``}${dateTo ? sql` AND d.published_at <= ${dateTo}::timestamptz + interval '1 day'` : sql``}`;
 }
 
+/** Tier condition for the research candidate scan (#552). */
+function buildTierFilter(tier?: DocumentTier) {
+  if (!tier) return sql``;
+  const types = sql.join(
+    [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),
+    sql`, `,
+  );
+  return tier === 'action'
+    ? sql`AND d.source_type NOT IN (${types})`
+    : sql`AND d.source_type IN (${types})`;
+}
+
+interface ResearchQueryOpts {
+  topK: number;
+  dateFrom?: string;
+  dateTo?: string;
+  tier?: DocumentTier;
+}
+
 /** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
-function buildResearchQuery(
-  vectorStr: string,
-  query: string,
-  topK: number,
-  candidateLimit: number,
-  dateFrom?: string,
-  dateTo?: string,
-) {
+function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQueryOpts) {
+  const { topK, dateFrom, dateTo, tier } = opts;
+  const candidateLimit = topK * 5;
   const dateFilter = buildDateFilter(dateFrom, dateTo);
+  const tierFilter = buildTierFilter(tier);
 
   return sql`
     SELECT r.*, ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
@@ -165,6 +188,7 @@ function buildResearchQuery(
             AND d.source_origin NOT IN ('gdelt', 'whitehouse')
             AND d.retrieval_relevant IS NOT FALSE
             ${dateFilter}
+            ${tierFilter}
           ORDER BY d.embedding <=> ${vectorStr}::vector
           LIMIT ${candidateLimit}
         ) candidates
@@ -178,12 +202,15 @@ function buildResearchQuery(
   `;
 }
 
+export type ResearchTierFilter = 'all' | DocumentTier;
+
 export async function searchResearch(
   query: string,
-  topK = 20,
+  topK = 30,
   precomputedEmbedding?: number[],
   dateFrom?: string,
   dateTo?: string,
+  tierFilter: ResearchTierFilter = 'all',
 ): Promise<ResearchDocument[]> {
   if (!isDbAvailable()) return [];
   const embedding = precomputedEmbedding ?? (await embedText(query));
@@ -193,12 +220,62 @@ export async function searchResearch(
   const vectorStr = `[${embedding.join(',')}]`;
 
   try {
-    const results = await db.execute(
-      buildResearchQuery(vectorStr, query, topK, topK * 5, dateFrom, dateTo),
+    if (tierFilter !== 'all') {
+      const results = await db.execute(
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
+      );
+      return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
+    }
+    // Per-tier candidate pools: primary sources must not be crowded out of a
+    // shared pool by debate-style text that embeds closer to question phrasing.
+    const [actionRows, discussionRows] = await Promise.all([
+      db.execute(buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' })),
+      db.execute(
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
+      ),
+    ]);
+    return composeTieredResults(
+      (actionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
+      (discussionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
+      topK,
     );
-    return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
   } catch (err) {
     console.error('[search] Research search failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Fetch research documents by id, preserving the input order (#552).
+ * Phase 2 (the synthesis stream) uses this to consume EXACTLY the doc set and
+ * ordering that phase 1 returned for citations — the two phases previously ran
+ * independent retrievals whose agreement was accidental.
+ */
+export async function fetchResearchDocsByIds(ids: number[]): Promise<ResearchDocument[]> {
+  if (!isDbAvailable() || ids.length === 0) return [];
+  const db = getDb();
+  try {
+    const results = await db.execute(sql`
+      SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type,
+        d.source_origin, d.category,
+        0 as cosine_similarity, ds.final_score, ds.document_class,
+        ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
+        ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
+      FROM documents d
+      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
+      LEFT JOIN ai_document_assessments ai
+        ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
+      WHERE d.id IN (${sql.join(
+        ids.map((i) => sql`${i}`),
+        sql`, `,
+      )})
+    `);
+    const byId = new Map(
+      (results.rows as Record<string, unknown>[]).map((r) => [Number(r.id), mapToResearchDoc(r)]),
+    );
+    return ids.map((id) => byId.get(id)).filter((d): d is ResearchDocument => d !== undefined);
+  } catch (err) {
+    console.error('[search] fetchResearchDocsByIds failed:', err);
     return [];
   }
 }
@@ -211,6 +288,7 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
     url: row.url as string | null,
     publishedAt: row.published_at ? String(row.published_at) : null,
     sourceType: row.source_type as string,
+    tier: tierForSourceType(row.source_type as string),
     sourceOrigin: row.source_origin as string | null,
     category: row.category as string,
     cosineSimilarity: Number(row.cosine_similarity),

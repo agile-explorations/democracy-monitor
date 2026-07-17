@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import { EditorialPanel } from '@/components/shared/EditorialPanel';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { labelForSourceType } from '@/lib/data/document-tiers';
 import type { EditorialRecord } from '@/lib/types';
 import { categoryLabel, formatDate, similarityBar } from './helpers';
 import type { ResearchDocResult, ResearchResult } from './types';
@@ -101,7 +102,20 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
               {categoryLabel(doc.category)}
             </span>
             {doc.finalScore != null && <span>Score: {doc.finalScore.toFixed(1)}</span>}
-            <span>{doc.sourceType}</span>
+            <span
+              className={`px-1.5 py-0 rounded font-medium ${
+                doc.tier === 'discussion'
+                  ? 'bg-dm-border/50 text-dm-muted'
+                  : 'bg-dm-accent/15 text-dm-accent'
+              }`}
+              title={
+                doc.tier === 'discussion'
+                  ? 'Commentary or debate about government actions'
+                  : 'Primary source: a government action'
+              }
+            >
+              {labelForSourceType(doc.sourceType)}
+            </span>
           </div>
         </div>
       </div>

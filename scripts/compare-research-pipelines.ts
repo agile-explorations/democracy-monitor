@@ -20,7 +20,7 @@ import { searchResearch } from '@/lib/services/search-service';
 const DEFAULT_QUERY =
   'What actions has the executive branch taken regarding immigration enforcement and habeas corpus protections?';
 
-const CONTEXT_DOCS = 20;
+const CONTEXT_DOCS = 30;
 const DIVIDER = '='.repeat(80);
 const SECTION = '-'.repeat(60);
 
