@@ -15,6 +15,7 @@ import {
 } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
+import { executeFilteredVectorQuery, fetchResearchDocRowsByIds } from './research-retrieval';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
 
 // ---------------------------------------------------------------------------
@@ -160,21 +161,24 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
   const dateFilter = buildDateFilter(dateFrom, dateTo);
   const tierFilter = buildTierFilter(tier);
 
+  // Candidate stages carry only ids + ranking inputs; content is joined back
+  // for the final topK rows only, capped at 3000 chars (the prompt uses at
+  // most ACTION_EXCERPT_CHARS=2200). Shipping full opinion texts (up to ~1MB
+  // each) over the wire measured ~8-10s of the retrieval latency.
   return sql`
-    SELECT r.*, ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
+    SELECT r.id, d2.title, LEFT(d2.content, 3000) as content, d2.url, d2.published_at, d2.source_type,
+      d2.source_origin, d2.category, r.cosine_similarity, r.final_score, r.document_class,
+      ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
     FROM (
-      SELECT id, title, content, url, published_at, source_type, source_origin, category,
-        cosine_similarity, final_score, document_class,
+      SELECT id, url, category, cosine_similarity, final_score, document_class,
         (cosine_similarity * 0.6 + recency * 0.2
           + CASE WHEN keyword_match THEN 0.2 ELSE 0 END) as combined_score
       FROM (
         SELECT DISTINCT ON (url)
-          id, title, content, url, published_at, source_type, source_origin, category,
-          cosine_similarity, final_score, document_class, recency, keyword_match
+          id, url, category, cosine_similarity, final_score, document_class, recency, keyword_match
         FROM (
-          SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type,
-            d.source_origin, d.category,
+          SELECT d.id, d.url, d.category,
             1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
             ds.final_score, ds.document_class,
             CASE WHEN d.published_at IS NULL THEN 0
@@ -187,6 +191,7 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
           WHERE d.embedding IS NOT NULL
             AND d.source_origin NOT IN ('gdelt', 'whitehouse')
             AND d.retrieval_relevant IS NOT FALSE
+            AND d.content_type != 'metadata_only'
             ${dateFilter}
             ${tierFilter}
           ORDER BY d.embedding <=> ${vectorStr}::vector
@@ -197,8 +202,10 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
       ORDER BY combined_score DESC
       LIMIT ${topK}
     ) r
+    JOIN documents d2 ON d2.id = r.id
     LEFT JOIN ai_document_assessments ai
       ON ai.url = r.url AND ai.category = r.category AND ai.pass = 2
+    ORDER BY r.combined_score DESC
   `;
 }
 
@@ -221,7 +228,8 @@ export async function searchResearch(
 
   try {
     if (tierFilter !== 'all') {
-      const results = await db.execute(
+      const results = await executeFilteredVectorQuery(
+        db,
         buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
       );
       return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
@@ -229,8 +237,12 @@ export async function searchResearch(
     // Per-tier candidate pools: primary sources must not be crowded out of a
     // shared pool by debate-style text that embeds closer to question phrasing.
     const [actionRows, discussionRows] = await Promise.all([
-      db.execute(buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' })),
-      db.execute(
+      executeFilteredVectorQuery(
+        db,
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
+      ),
+      executeFilteredVectorQuery(
+        db,
         buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
       ),
     ]);
@@ -245,39 +257,10 @@ export async function searchResearch(
   }
 }
 
-/**
- * Fetch research documents by id, preserving the input order (#552).
- * Phase 2 (the synthesis stream) uses this to consume EXACTLY the doc set and
- * ordering that phase 1 returned for citations — the two phases previously ran
- * independent retrievals whose agreement was accidental.
- */
+/** Fetch research documents by id, preserving input order (#552). */
 export async function fetchResearchDocsByIds(ids: number[]): Promise<ResearchDocument[]> {
-  if (!isDbAvailable() || ids.length === 0) return [];
-  const db = getDb();
-  try {
-    const results = await db.execute(sql`
-      SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type,
-        d.source_origin, d.category,
-        0 as cosine_similarity, ds.final_score, ds.document_class,
-        ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
-        ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
-      FROM documents d
-      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      LEFT JOIN ai_document_assessments ai
-        ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
-      WHERE d.id IN (${sql.join(
-        ids.map((i) => sql`${i}`),
-        sql`, `,
-      )})
-    `);
-    const byId = new Map(
-      (results.rows as Record<string, unknown>[]).map((r) => [Number(r.id), mapToResearchDoc(r)]),
-    );
-    return ids.map((id) => byId.get(id)).filter((d): d is ResearchDocument => d !== undefined);
-  } catch (err) {
-    console.error('[search] fetchResearchDocsByIds failed:', err);
-    return [];
-  }
+  const rows = await fetchResearchDocRowsByIds(ids);
+  return rows.map(mapToResearchDoc);
 }
 
 function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
