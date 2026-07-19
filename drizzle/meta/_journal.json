@@ -302,6 +302,13 @@
       "when": 1784061434187,
       "tag": "0042_rapid_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1784471207503,
+      "tag": "0043_swift_phalanx",
+      "breakpoints": true
     }
   ]
 }

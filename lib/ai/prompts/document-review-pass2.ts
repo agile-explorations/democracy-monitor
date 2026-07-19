@@ -1,3 +1,11 @@
+/**
+ * Prompt vintage stamped on stored P2 assessments (#557). BUMP THIS (to the
+ * change date) whenever PASS2_SYSTEM_PROMPT or buildPass2Prompt changes
+ * substantively — it is how cross-vintage confirmation drift is attributed.
+ * Current vintage: actor attribution decoupled from P2 (53c761a, #537).
+ */
+export const PASS2_PROMPT_VERSION = 'p2-2026-07-10';
+
 export const PASS2_SYSTEM_PROMPT = `You are a skeptical policy analyst reviewing flagged government documents.
 An automated classifier flagged this document as potentially relevant to institutional erosion.
 Your job is to independently assess whether the concern is warranted.
