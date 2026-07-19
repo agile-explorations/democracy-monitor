@@ -277,11 +277,15 @@ Requires updating:
 | ------------ | ----------------------- | ----------------- |
 | Trump Year 1 | 2017-01-20 → 2018-01-19 | Baseline          |
 | Trump Year 2 | 2018-01-20 → 2019-01-19 | Baseline          |
+| Trump Year 3 | 2019-01-20 → 2020-01-19 | Baseline          |
+| Trump Year 4 | 2020-01-20 → 2021-01-19 | Baseline          |
 | Biden Year 1 | 2021-01-20 → 2022-01-19 | Baseline          |
 | Biden Year 2 | 2022-01-20 → 2023-01-19 | Baseline          |
+| Biden Year 3 | 2023-01-20 → 2024-01-19 | Baseline          |
+| Biden Year 4 | 2024-01-20 → 2025-01-19 | Baseline          |
 | Trump T2     | 2025-01-20 → present    | Active monitoring |
 
-Gap years (2019–2020, 2023–2024) are intentionally excluded. Pipeline commands default to these periods only via `lib/data/analysis-periods.ts`. Use `--all-dates` to process gap-year documents.
+All eight baseline periods are analysis periods (`lib/data/analysis-periods.ts` derives them from `BASELINE_CONFIGS`) — the former "gap years" (2019–2020, 2023–2024) were added as baselines and, as of R-SEARCH (2026-07-18), 2023–2024 has full L2 coverage. Any prod write into these periods is baseline-gated per the standing rule.
 
 ### Backfill commands (R-S1e redesign)
 

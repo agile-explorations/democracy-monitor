@@ -1,6 +1,7 @@
 /**
  * Single source of truth for which date ranges the pipeline should process by default.
- * Combines the four baseline periods from BASELINE_CONFIGS with the T2 monitoring period.
+ * Combines every baseline period from BASELINE_CONFIGS (eight as of 2026-07: four core
+ * baselines plus trump_2019/2020 and biden_2023/2024) with the T2 monitoring period.
  *
  * Every pipeline command should restrict to these periods unless --all-dates is passed.
  */
