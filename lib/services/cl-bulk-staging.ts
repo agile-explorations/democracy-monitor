@@ -14,6 +14,7 @@ import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Pool } from 'pg';
+import { CIRCUIT_COURT_IDS, EXEC_POWER_PHRASES } from '@/lib/data/court-queries';
 import { findBulkFiles, routeDocket, yearsToDateRanges } from '@/lib/services/cl-bulk-pipeline';
 import type { BulkPipelineResult } from '@/lib/services/cl-bulk-pipeline';
 import {
@@ -23,6 +24,7 @@ import {
   toContentItem,
 } from '@/lib/services/courtlistener-fetcher';
 import type { OpinionData } from '@/lib/services/courtlistener-fetcher';
+import { classifyOpinionToCategories } from '@/lib/services/crec-classifier';
 import { storeDocuments } from '@/lib/services/document-store';
 
 const CL_BASE_URL = 'https://www.courtlistener.com';
@@ -247,6 +249,12 @@ async function hasOpinionTable(): Promise<boolean> {
 
 const FIRST_AMENDMENT_RE = `'\\mfirst amendment\\M'`;
 const FIRST_AMENDMENT_QUALIFIERS = `'\\m(violation|injunction|challenge|retaliation|free speech|free press)\\M'`;
+
+/** Bulk-SQL analogs of the court-scoped queries (#555) — see lib/data/court-queries.ts. */
+const EXEC_POWER_RE = `'\\m(${EXEC_POWER_PHRASES.join('|')})\\M'`;
+const CIRCUIT_COURT_ID_SQL = CIRCUIT_COURT_IDS.split(' ')
+  .map((id) => `'${id}'`)
+  .join(', ');
 
 /** Build the facade SQL query for matched dockets. */
 function buildFacadeQuery(docketDateClause: string, searchOpinionText: boolean): string {
@@ -595,11 +603,36 @@ export async function queryStagingStats(years: number[]): Promise<void> {
  * cases. A case filed in 2015 with an opinion issued in 2017 would be missed
  * by the docket-first approach but captured here.
  */
-/** Query opinion clusters issued in a date range, with parent docket and opinion text. */
+/** A cluster matched by the opinion-first bulk query, tracking why (for routing, #555). */
+interface BulkMatchedCluster {
+  docket: Record<string, unknown>;
+  opinions: OpinionRow[];
+  /** Matched the original NOS / first-amendment branch (docket-routed). */
+  baseMatch: boolean;
+  /** COURT_QUERIES keys that matched (content-routed branch; provenance markers). */
+  courtQueries: Set<string>;
+}
+
+/**
+ * Query opinion clusters issued in a date range, with parent docket and opinion
+ * text. Matches the same layers as the CL API path (cl-opinion-first-fetcher):
+ * the NOS/first-amendment base branch, plus the court-scoped branches (#555) —
+ * every SCOTUS opinion, and circuit/D.D.C. opinions whose text matches the
+ * executive-power phrases.
+ */
 async function queryOpinionsByDate(
   from: string,
   to: string,
-): Promise<Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>> {
+): Promise<Map<number, BulkMatchedCluster>> {
+  const docketText = `(COALESCE(d.case_name,'') || ' ' || COALESCE(d.cause,''))`;
+  const baseMatchSql = `(substring(d.nature_of_suit FROM '^\\d{3}') IN ('440', '530', '890')
+         OR (${docketText} ~* ${FIRST_AMENDMENT_RE}
+             AND ${docketText} ~* ${FIRST_AMENDMENT_QUALIFIERS})
+         OR o.plain_text ~* ${FIRST_AMENDMENT_RE})`;
+  const scotusMatchSql = `(d.court_id = 'scotus')`;
+  const circuitsMatchSql = `(d.court_id IN (${CIRCUIT_COURT_ID_SQL}) AND o.plain_text ~* ${EXEC_POWER_RE})`;
+  const dcdMatchSql = `(d.court_id = 'dcd' AND o.plain_text ~* ${EXEC_POWER_RE})`;
+
   const result = await getPool().query(
     `SELECT d.id AS docket_id, COALESCE(d.case_name, '(untitled case)') AS case_name,
        COALESCE(ct.full_name, d.court_id) AS court_name,
@@ -607,47 +640,81 @@ async function queryOpinionsByDate(
        COALESCE(d.cause, '') AS cause, COALESCE(d.docket_number, '') AS docket_number,
        d.date_filed::text AS docket_date_filed, COALESCE(d.slug, '') AS slug,
        oc.id AS cluster_id, oc.date_filed::text AS cluster_date_filed,
-       oc.slug AS cluster_slug, o.type AS opinion_type, o.plain_text, o.download_url
+       oc.slug AS cluster_slug, o.type AS opinion_type, o.plain_text, o.download_url,
+       ${baseMatchSql} AS base_match,
+       ${scotusMatchSql} AS scotus_match,
+       ${circuitsMatchSql} AS circuits_match,
+       ${dcdMatchSql} AS dcd_match
      FROM search_opinioncluster oc
      JOIN search_docket d ON oc.docket_id = d.id
      JOIN search_court ct ON d.court_id = ct.id
      JOIN search_opinion o ON o.cluster_id = oc.id
      WHERE ct.jurisdiction IN ('F', 'FD', 'FB')
-       AND (substring(d.nature_of_suit FROM '^\\d{3}') IN ('440', '530', '890')
-         OR ((COALESCE(d.case_name,'') || ' ' || COALESCE(d.cause,''))
-               ~* '\\mfirst amendment\\M'
-             AND (COALESCE(d.case_name,'') || ' ' || COALESCE(d.cause,''))
-               ~* '\\m(violation|injunction|challenge|retaliation|free speech|free press)\\M')
-         OR o.plain_text ~* '\\mfirst amendment\\M')
+       AND (${baseMatchSql} OR ${scotusMatchSql} OR ${circuitsMatchSql} OR ${dcdMatchSql})
        AND oc.date_filed >= $1 AND oc.date_filed <= $2
      ORDER BY oc.docket_id, oc.date_filed DESC, o.id`,
     [from, to],
   );
 
-  const clusterMap = new Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>();
+  const clusterMap = new Map<number, BulkMatchedCluster>();
   for (const row of result.rows) {
+    let entry = clusterMap.get(row.cluster_id);
+    if (!entry) {
+      entry = { docket: row, opinions: [], baseMatch: false, courtQueries: new Set() };
+      clusterMap.set(row.cluster_id, entry);
+    }
+    if (row.base_match) entry.baseMatch = true;
+    if (row.scotus_match) entry.courtQueries.add('scotus-all');
+    if (row.circuits_match) entry.courtQueries.add('circuits-exec');
+    if (row.dcd_match) entry.courtQueries.add('dcd-exec');
+
     const opType = row.opinion_type || '010combined';
     if (PROCEDURAL_OPINION_TYPES.has(opType)) continue;
     const cleaned = (row.plain_text || '').replace(/\0/g, '');
     if (!cleaned) continue;
-    const op: OpinionRow = {
+    entry.opinions.push({
       type: opType,
       plain_text: cleaned,
       download_url: row.download_url || '',
-    };
-    const existing = clusterMap.get(row.cluster_id);
-    if (existing) {
-      existing.opinions.push(op);
-    } else {
-      clusterMap.set(row.cluster_id, { docket: row, opinions: [op] });
-    }
+    });
+  }
+  for (const [clusterId, entry] of clusterMap) {
+    if (entry.opinions.length === 0) clusterMap.delete(clusterId);
   }
   return clusterMap;
 }
 
-/** Store opinion clusters as docket + opinion ContentItem pairs. */
+/**
+ * Route a bulk-matched opinion cluster (#555). Base (NOS/first-amendment)
+ * matches keep docket-based routing with the first-amendment text fallback;
+ * court-scoped matches are content-routed via classifyOpinionToCategories and
+ * gated — a court-only cluster that classifies to nothing is not stored
+ * (mirrors routeMatchedCluster in cl-opinion-first-fetcher).
+ */
+export function routeBulkOpinionCluster(
+  match: { baseMatch: boolean; courtQueries: ReadonlySet<string> },
+  docket: { natureOfSuit: string; caseName: string; cause: string },
+  opinionText: string,
+): { baseCategories: string[]; courtCategories: string[] } {
+  const baseCategories = match.baseMatch
+    ? routeDocket(docket.natureOfSuit, docket.caseName, docket.cause)
+    : [];
+  if (match.baseMatch && baseCategories.length === 0 && /\bfirst amendment\b/i.test(opinionText)) {
+    baseCategories.push('civilLiberties');
+  }
+  const courtCategories =
+    match.courtQueries.size > 0
+      ? classifyOpinionToCategories(docket.caseName, opinionText).filter(
+          (c) => !baseCategories.includes(c),
+        )
+      : [];
+  return { baseCategories, courtCategories };
+}
+
+/** Store opinion clusters: docket + opinion pairs for base matches; opinion-only
+ *  for court-scoped categories (mirrors the API path, which has no docket row). */
 function storeOpinionClusters(
-  clusterMap: Map<number, { docket: Record<string, unknown>; opinions: OpinionRow[] }>,
+  clusterMap: Map<number, BulkMatchedCluster>,
   dryRun: boolean,
 ): Promise<number> {
   let stored = 0;
@@ -655,25 +722,21 @@ function storeOpinionClusters(
   const entries = [...clusterMap.entries()];
 
   return (async () => {
-    for (const [clusterId, { docket: row, opinions }] of entries) {
+    for (const [clusterId, entry] of entries) {
       processed++;
       if (processed % 500 === 0) {
         console.log(`[cl-bulk] Storing: ${processed}/${entries.length} clusters, ${stored} docs`);
       }
 
-      const r = row as Record<string, string>;
-      const docketItem = toContentItem({
-        docket_id: parseInt(r.docket_id, 10),
-        docket_absolute_url: `${CL_BASE_URL}/docket/${r.docket_id}/${r.slug}/`,
-        caseName: r.case_name,
-        dateFiled: r.docket_date_filed,
-        court: r.court_name,
-        suitNature: r.nature_of_suit,
-        cause: r.cause,
-        docketNumber: r.docket_number,
-      });
+      const r = entry.docket as Record<string, string>;
+      const opData = buildOpinionData(entry.opinions, r.cluster_date_filed);
+      const { baseCategories, courtCategories } = routeBulkOpinionCluster(
+        entry,
+        { natureOfSuit: r.nature_of_suit, caseName: r.case_name, cause: r.cause },
+        opData.text,
+      );
+      if (baseCategories.length + courtCategories.length === 0) continue;
 
-      const opData = buildOpinionData(opinions, r.cluster_date_filed);
       const opinionUrl = `${CL_BASE_URL}/opinion/${clusterId}/${r.cluster_slug || ''}/`;
       const opinionItem = buildOpinionContentItem(
         { ...opData, opinionUrl },
@@ -682,17 +745,27 @@ function storeOpinionClusters(
           court: r.court_name,
           docketId: parseInt(r.docket_id, 10),
           suitNature: r.nature_of_suit || undefined,
+          clQueries: [...entry.courtQueries],
         },
       );
 
-      const categories = routeDocket(r.nature_of_suit, r.case_name, r.cause);
-      if (categories.length === 0 && opData.text.match(/\bfirst amendment\b/i)) {
-        categories.push('civilLiberties');
+      if (baseCategories.length > 0) {
+        const docketItem = toContentItem({
+          docket_id: parseInt(r.docket_id, 10),
+          docket_absolute_url: `${CL_BASE_URL}/docket/${r.docket_id}/${r.slug}/`,
+          caseName: r.case_name,
+          dateFiled: r.docket_date_filed,
+          court: r.court_name,
+          suitNature: r.nature_of_suit,
+          cause: r.cause,
+          docketNumber: r.docket_number,
+        });
+        for (const category of baseCategories) {
+          stored += dryRun ? 2 : await storeDocuments([docketItem, opinionItem], category);
+        }
       }
-      if (categories.length === 0) continue;
-
-      for (const category of categories) {
-        stored += dryRun ? 2 : await storeDocuments([docketItem, opinionItem], category);
+      for (const category of courtCategories) {
+        stored += dryRun ? 1 : await storeDocuments([opinionItem], category);
       }
     }
     return stored;
@@ -706,7 +779,10 @@ export async function backfillOpinionsByDate(
 ): Promise<{ docketsFound: number; opinionsStored: number }> {
   console.log(`[cl-bulk] Opinion-first backfill: ${from} → ${to}`);
   const clusterMap = await queryOpinionsByDate(from, to);
-  console.log(`[cl-bulk] ${clusterMap.size} unique opinion clusters to store`);
+  const courtMatched = [...clusterMap.values()].filter((e) => e.courtQueries.size > 0).length;
+  console.log(
+    `[cl-bulk] ${clusterMap.size} unique opinion clusters to store (${courtMatched} court-scoped)`,
+  );
   const stored = await storeOpinionClusters(clusterMap, dryRun);
   console.log(
     `[cl-bulk] Opinion-first complete: ${clusterMap.size} clusters, ${stored} docs ${dryRun ? '(dry run)' : 'stored'}`,

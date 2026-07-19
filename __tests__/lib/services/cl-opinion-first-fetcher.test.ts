@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  apiOpinionFirstPass,
-  buildOpinionSearchUrl,
   CIRCUIT_COURT_IDS,
   COURT_QUERIES,
   EXEC_POWER_QUERY,
   FIRST_AMENDMENT_QUERY,
+} from '@/lib/data/court-queries';
+import {
+  apiOpinionFirstPass,
+  buildOpinionSearchUrl,
 } from '@/lib/services/cl-opinion-first-fetcher';
 import type { ContentItem } from '@/lib/types';
 
