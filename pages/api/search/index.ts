@@ -8,12 +8,12 @@ import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import { searchCorpusStats } from '@/lib/services/search-research-queries';
-import type { ResearchDocument } from '@/lib/services/search-service';
+import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
-const RESEARCH_CONTEXT_DOCS = 20; // docs sent to LLM
+const RESEARCH_CONTEXT_DOCS = 30; // docs sent to LLM
 
 interface CachedResearchResult {
   synthesis: ResearchSynthesisResult;
@@ -71,6 +71,14 @@ async function adaptiveCorpusStats(
   return leastSimilarity > 0 ? searchCorpusStats(embedding, 1 - leastSimilarity) : null;
 }
 
+/** Run the tiered research retrieval with the request's date + tier params (#552). */
+async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
+  const dateFrom = req.query.dateFrom as string | undefined;
+  const dateTo = req.query.dateTo as string | undefined;
+  const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
+  return searchResearch(query, RESEARCH_CONTEXT_DOCS, embedding, dateFrom, dateTo, tier);
+}
+
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -86,9 +94,7 @@ async function handleResearch(
     return;
   }
 
-  const dateFrom = req.query.dateFrom as string | undefined;
-  const dateTo = req.query.dateTo as string | undefined;
-  const allDocs = await searchResearch(query, 20, embedding, dateFrom, dateTo);
+  const allDocs = await retrieveResearchDocs(req, query, embedding);
   if (allDocs.length === 0) {
     res.status(200).json(emptyResearchResponse(docsOnly));
     return;
@@ -146,6 +152,7 @@ function formatDocList(docs: ResearchDocument[]) {
   return docs.map((doc, i) => ({
     citationIndex: i + 1,
     id: doc.id,
+    tier: doc.tier,
     title: doc.title,
     url: doc.url,
     publishedAt: doc.publishedAt,

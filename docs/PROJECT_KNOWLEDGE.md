@@ -25,6 +25,12 @@ Cross-sprint constraints that apply to all future work. Not tied to any single s
 - **GDELT is metadata-only.** News/media documents are not ingested. The project uses government documents exclusively for detection.
 - **GAO decision texts are unobtainable** (verified 2026-07-08, #529): GovInfo's GAOREPORTS collection is a dead archive (no content after 2008-09), gao.gov is WAF-blocked (403 on all paths, incl. sitemap), api.gao.gov does not exist, and nothing is on data.gov. B-###### rulings (incl. Impoundment Control Act decisions) appear in permitted sources only as citations. Fiscal impoundment coverage is proxied by impoundment _litigation_ via the CL court-scoped queries (#528). Re-check GAO API availability periodically.
 
+### Coverage parity (cross-period comparability)
+
+- **Every routing, filtering, retrieval, or assessment change MUST ship with one of:** (a) historical application across ALL analysis periods — the #544 mediaFreedom pattern (fetch-time filter + full 2017–2026 annotation + recompute, shipped together); or (b) a documented parity exception recording which periods the change covers, which cross-period surfaces it distorts, and why uniform application was deferred. T2-only pipeline improvements silently turn cross-period comparisons into coverage comparisons (owner concern, 2026-07-19).
+- **Why the detection core tolerates asymmetry but comparisons don't:** concern status is absolute-threshold L2 (no baseline comparison, by design), so per-period statuses stay valid. The affected surfaces are the comparative/descriptive ones: L1 structural context (T2 vs baseline distributions), aiScore flag-rate z-scores (vs biden_2022), NC-4 (the one cross-period control), and the public cross-period trend charts.
+- **Known open asymmetries** (tracked; see the coverage-parity audit): court-scoped opinion layer exists for 2023-01-20→present only — 2017–2023 pending #556 (reframed as parity work, gated on #555 + NC-impact rehearsal); P1 prompt-version drift across assessment vintages (calibrated prompts from 2025-10 onward; earlier assessments ran older versions); inherent source-depth differences (LegiScan cadence, DOJ archive depth) that historical data cannot fix — disclose, don't pretend to repair.
+
 ### Production access
 
 - **Query production DB via `source .env.prod.local && export DATABASE_URL`** in shell commands. Production requires SSL (`ssl: { rejectUnauthorized: false }`). Never read `.env.prod.local` with Read/Grep/Glob tools — only source it in Bash commands.
@@ -277,11 +283,15 @@ Requires updating:
 | ------------ | ----------------------- | ----------------- |
 | Trump Year 1 | 2017-01-20 → 2018-01-19 | Baseline          |
 | Trump Year 2 | 2018-01-20 → 2019-01-19 | Baseline          |
+| Trump Year 3 | 2019-01-20 → 2020-01-19 | Baseline          |
+| Trump Year 4 | 2020-01-20 → 2021-01-19 | Baseline          |
 | Biden Year 1 | 2021-01-20 → 2022-01-19 | Baseline          |
 | Biden Year 2 | 2022-01-20 → 2023-01-19 | Baseline          |
+| Biden Year 3 | 2023-01-20 → 2024-01-19 | Baseline          |
+| Biden Year 4 | 2024-01-20 → 2025-01-19 | Baseline          |
 | Trump T2     | 2025-01-20 → present    | Active monitoring |
 
-Gap years (2019–2020, 2023–2024) are intentionally excluded. Pipeline commands default to these periods only via `lib/data/analysis-periods.ts`. Use `--all-dates` to process gap-year documents.
+All eight baseline periods are analysis periods (`lib/data/analysis-periods.ts` derives them from `BASELINE_CONFIGS`) — the former "gap years" (2019–2020, 2023–2024) were added as baselines and, as of R-SEARCH (2026-07-18), 2023–2024 has full L2 coverage. Any prod write into these periods is baseline-gated per the standing rule.
 
 ### Backfill commands (R-S1e redesign)
 

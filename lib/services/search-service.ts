@@ -7,8 +7,15 @@
  */
 
 import { sql } from 'drizzle-orm';
+import type { DocumentTier } from '@/lib/data/document-tiers';
+import {
+  composeTieredResults,
+  DISCUSSION_SOURCE_TYPES,
+  tierForSourceType,
+} from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
+import { executeFilteredVectorQuery, fetchResearchDocRowsByIds } from './research-retrieval';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +77,8 @@ export interface ResearchDocument {
   url: string | null;
   publishedAt: string | null;
   sourceType: string;
+  /** Action/discussion tier (#552) — derived from sourceType at map time. */
+  tier: DocumentTier;
   sourceOrigin: string | null;
   category: string;
   cosineSimilarity: number;
@@ -126,32 +135,50 @@ function buildDateFilter(dateFrom?: string, dateTo?: string) {
   return sql`${dateFrom ? sql`AND d.published_at >= ${dateFrom}::timestamptz` : sql``}${dateTo ? sql` AND d.published_at <= ${dateTo}::timestamptz + interval '1 day'` : sql``}`;
 }
 
-/** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
-function buildResearchQuery(
-  vectorStr: string,
-  query: string,
-  topK: number,
-  candidateLimit: number,
-  dateFrom?: string,
-  dateTo?: string,
-) {
-  const dateFilter = buildDateFilter(dateFrom, dateTo);
+/** Tier condition for the research candidate scan (#552). */
+function buildTierFilter(tier?: DocumentTier) {
+  if (!tier) return sql``;
+  const types = sql.join(
+    [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),
+    sql`, `,
+  );
+  return tier === 'action'
+    ? sql`AND d.source_type NOT IN (${types})`
+    : sql`AND d.source_type IN (${types})`;
+}
 
+interface ResearchQueryOpts {
+  topK: number;
+  dateFrom?: string;
+  dateTo?: string;
+  tier?: DocumentTier;
+}
+
+/** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
+function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQueryOpts) {
+  const { topK, dateFrom, dateTo, tier } = opts;
+  const candidateLimit = topK * 5;
+  const dateFilter = buildDateFilter(dateFrom, dateTo);
+  const tierFilter = buildTierFilter(tier);
+
+  // Candidate stages carry only ids + ranking inputs; content is joined back
+  // for the final topK rows only, capped at 3000 chars (the prompt uses at
+  // most ACTION_EXCERPT_CHARS=2200). Shipping full opinion texts (up to ~1MB
+  // each) over the wire measured ~8-10s of the retrieval latency.
   return sql`
-    SELECT r.*, ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
+    SELECT r.id, d2.title, LEFT(d2.content, 3000) as content, d2.url, d2.published_at, d2.source_type,
+      d2.source_origin, d2.category, r.cosine_similarity, r.final_score, r.document_class,
+      ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
     FROM (
-      SELECT id, title, content, url, published_at, source_type, source_origin, category,
-        cosine_similarity, final_score, document_class,
+      SELECT id, url, category, cosine_similarity, final_score, document_class,
         (cosine_similarity * 0.6 + recency * 0.2
           + CASE WHEN keyword_match THEN 0.2 ELSE 0 END) as combined_score
       FROM (
         SELECT DISTINCT ON (url)
-          id, title, content, url, published_at, source_type, source_origin, category,
-          cosine_similarity, final_score, document_class, recency, keyword_match
+          id, url, category, cosine_similarity, final_score, document_class, recency, keyword_match
         FROM (
-          SELECT d.id, d.title, d.content, d.url, d.published_at, d.source_type,
-            d.source_origin, d.category,
+          SELECT d.id, d.url, d.category,
             1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
             ds.final_score, ds.document_class,
             CASE WHEN d.published_at IS NULL THEN 0
@@ -164,7 +191,9 @@ function buildResearchQuery(
           WHERE d.embedding IS NOT NULL
             AND d.source_origin NOT IN ('gdelt', 'whitehouse')
             AND d.retrieval_relevant IS NOT FALSE
+            AND d.content_type != 'metadata_only'
             ${dateFilter}
+            ${tierFilter}
           ORDER BY d.embedding <=> ${vectorStr}::vector
           LIMIT ${candidateLimit}
         ) candidates
@@ -173,17 +202,22 @@ function buildResearchQuery(
       ORDER BY combined_score DESC
       LIMIT ${topK}
     ) r
+    JOIN documents d2 ON d2.id = r.id
     LEFT JOIN ai_document_assessments ai
       ON ai.url = r.url AND ai.category = r.category AND ai.pass = 2
+    ORDER BY r.combined_score DESC
   `;
 }
 
+export type ResearchTierFilter = 'all' | DocumentTier;
+
 export async function searchResearch(
   query: string,
-  topK = 20,
+  topK = 30,
   precomputedEmbedding?: number[],
   dateFrom?: string,
   dateTo?: string,
+  tierFilter: ResearchTierFilter = 'all',
 ): Promise<ResearchDocument[]> {
   if (!isDbAvailable()) return [];
   const embedding = precomputedEmbedding ?? (await embedText(query));
@@ -193,14 +227,40 @@ export async function searchResearch(
   const vectorStr = `[${embedding.join(',')}]`;
 
   try {
-    const results = await db.execute(
-      buildResearchQuery(vectorStr, query, topK, topK * 5, dateFrom, dateTo),
+    if (tierFilter !== 'all') {
+      const results = await executeFilteredVectorQuery(
+        db,
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
+      );
+      return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
+    }
+    // Per-tier candidate pools: primary sources must not be crowded out of a
+    // shared pool by debate-style text that embeds closer to question phrasing.
+    const [actionRows, discussionRows] = await Promise.all([
+      executeFilteredVectorQuery(
+        db,
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
+      ),
+      executeFilteredVectorQuery(
+        db,
+        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
+      ),
+    ]);
+    return composeTieredResults(
+      (actionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
+      (discussionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
+      topK,
     );
-    return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
   } catch (err) {
     console.error('[search] Research search failed:', err);
     return [];
   }
+}
+
+/** Fetch research documents by id, preserving input order (#552). */
+export async function fetchResearchDocsByIds(ids: number[]): Promise<ResearchDocument[]> {
+  const rows = await fetchResearchDocRowsByIds(ids);
+  return rows.map(mapToResearchDoc);
 }
 
 function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
@@ -211,6 +271,7 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
     url: row.url as string | null,
     publishedAt: row.published_at ? String(row.published_at) : null,
     sourceType: row.source_type as string,
+    tier: tierForSourceType(row.source_type as string),
     sourceOrigin: row.source_origin as string | null,
     category: row.category as string,
     cosineSimilarity: Number(row.cosine_similarity),

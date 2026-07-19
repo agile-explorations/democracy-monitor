@@ -24,6 +24,7 @@ export interface ResearchDocResult {
   url: string | null;
   publishedAt: string | null;
   sourceType: string;
+  tier?: 'action' | 'discussion';
   sourceOrigin: string | null;
   category: string;
   cosineSimilarity: number;

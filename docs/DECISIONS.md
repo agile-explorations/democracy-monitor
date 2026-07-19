@@ -12,6 +12,28 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-SEARCH: action-first research retrieval + SCOTUS gap-year backfill (#552, #553) — ✅ complete
+
+**Status: Complete (2026-07-18).** Milestone 85. Design agreed in-conversation 2026-07-17 (recorded on #552, supersedes the original diversity-quota idea); #553 backfill + full post-chain executed with per-invocation approvals (gating correction posted: biden_2023/2024 ARE baselines — the issue's original "non-baseline" claim was wrong).
+
+**Product outcome:** "Search the Documentary Record" now returns the record. Tiered retrieval (action/discussion source-type map, per-tier HNSW candidate pools, 60/40 action-weighted K=30 context) puts primary sources first; facet chips (All / Government actions / Commentary & debate) and tier-tinted source-type badges expose the layer; the synthesis prompt grounds action-claims in ACTION docs with DISCUSSION attributed to speakers. The regression query that exposed the gap now opens with the actual rulings (Chevron elimination cited to Loper Bright; Trump v. CASA) instead of "No actual Supreme Court opinions are included in this document set." 2,602 court-scoped 2023–24 opinions backfilled (Loper Bright → executiveActions+rulemaking; the 2024 immunity Trump v. United States → civilLiberties+executiveActions). Citation correctness fixed structurally: the synthesis stream consumes phase-1's exact ordered doc ids (previously two independent retrievals agreed only by accident) — and skips its redundant vector search. Gates: 6/6 negative controls, 39/39 events, #544 invariant green.
+
+**Verification harness earned its keep — three ship-blockers caught pre-merge:** (1) filtered HNSW queries starved at ef_search=40 (11 of 30 action docs; zero discussion docs for speech queries) → pgvector 0.8 `iterative_scan=relaxed_order` at DEFAULT ef — raising ef alongside it multiplies continuation cost (measured ~110s; default-ef iterative = ~1.4s); (2) full opinion texts (~1MB) shipped over the wire per result when the prompt uses ≤2,200 chars → content joined for final topK only, `LEFT(content, 3000)` — retrieval 10s → ~1.5s warm, faster than pre-sprint; (3) metadata_only docket stubs were never excluded from research retrieval.
+
+**Incidents & overruns (honest ledger):**
+
+- **~4x AI cost overrun (~$70–80 vs ~$15–20 estimated):** `review:backfill --baseline` assessed 41,249 docs, not the ~2,500 new opinions — the 2023–24 baselines had never been L2-assessed, so the membership sweep took the whole backlog. Lesson: **estimate review:backfill from `SELECT count(*) WHERE unassessed`, never from the delta being added.** Side effect worth owning: the gap years now have full L2 coverage and their recomputed statuses show 115 Elevated / 42 ConfirmedConcern weeks where charts previously showed near-empty calm — consistent with the institutions-wide product view, materially helps #556, but it arrived as a side effect rather than a decision.
+- **CL API network failure killed the backfill at week 74/105** (one week before Loper Bright); resumed idempotently.
+- **Overnight laptop sleep hung the chain 10h on a dead DB socket** (0% CPU, silent). Relaunched idempotently; all chain steps now run under `caffeinate -i`. Lesson: long local runbooks need sleep protection AND liveness checks — a hung process looks identical to a slow one.
+- **#555 filed en route:** the cl-bulk opinion path predates #528 and lacks the court-scoped queries — bulk-staging environments silently lose marquee-opinion coverage.
+
+**Lessons learned:**
+
+- **A verification harness with fixed queries is the cheapest reviewer we have** — it converted three invisible defects into measurements before any user saw them. Make one standard for retrieval/ranking changes.
+- **pgvector filtered ANN is a loaded gun:** any WHERE on a vector scan can starve results at default ef_search; iterative scan is the fix, and ef must stay at default with it.
+- **Wire cost is real on remote DBs:** SELECTing wide text columns through candidate stages is invisible locally and dominant against a remote Postgres.
+- Stale docs cleaned: PROJECT_KNOWLEDGE "gap years intentionally excluded" and the analysis-periods "four baselines" comment both predated the 8-config reality.
+
 ## Sprint R-SPARSE: sparse silence + contamination index + upsert fix (#546, #548, #554) — ✅ complete
 
 **Status: Complete (2026-07-16).** Milestone 84 closed. All three items landed on develop (28a95bc, 579ecfb + docs); ride to main at the next checkpoint.

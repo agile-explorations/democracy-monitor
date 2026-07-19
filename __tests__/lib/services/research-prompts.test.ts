@@ -5,6 +5,7 @@ import {
   buildRevisionPrompt,
   computeDateRange,
   formatCorpusStats,
+  buildSinglePassPrompt,
 } from '@/lib/services/research-prompts';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import type { ResearchDocument } from '@/lib/services/search-service';
@@ -17,6 +18,7 @@ function makeDoc(overrides: Partial<ResearchDocument> = {}): ResearchDocument {
     url: 'https://example.com/doc',
     publishedAt: '2026-01-15T00:00:00Z',
     sourceType: 'judicial_opinion',
+    tier: 'action',
     sourceOrigin: 'courtlistener',
     category: 'civilLiberties',
     cosineSimilarity: 0.55,
@@ -90,7 +92,7 @@ describe('buildDraftPrompt', () => {
 
   it('includes document context with Doc 1 citation', () => {
     const prompt = buildDraftPrompt('q', [makeDoc({ title: 'Important Case' })]);
-    expect(prompt).toContain('[Doc 1] Important Case');
+    expect(prompt).toContain('[Doc 1 | ACTION] Important Case');
   });
 
   it('includes "why this might matter" instruction (rule 8)', () => {
@@ -221,5 +223,42 @@ describe('buildRevisionPrompt', () => {
     );
     expect(prompt).toContain('CORPUS STATISTICS');
     expect(prompt).toContain('Total matching documents across full corpus: 150');
+  });
+});
+
+describe('buildSinglePassPrompt (#552 tier contract)', () => {
+  it('tags docs with their tier and applies per-tier excerpt budgets', () => {
+    const longText = 'Z'.repeat(3000);
+    const action = makeDoc({ id: 1, title: 'An Opinion', content: longText });
+    const discussion = makeDoc({
+      id: 2,
+      title: 'A Speech',
+      sourceType: 'floor_speech',
+      tier: 'discussion',
+      content: longText,
+    });
+    const prompt = buildSinglePassPrompt('q', [action, discussion]);
+
+    expect(prompt).toContain('[Doc 1 | ACTION] An Opinion');
+    expect(prompt).toContain('[Doc 2 | DISCUSSION] A Speech');
+
+    // Per-tier budgets: action excerpt is 2200 chars, discussion 1200
+    const actionExcerpt = prompt.split('[Doc 1 | ACTION]')[1].split('[Doc 2')[0];
+    const discussionExcerpt = prompt.split('[Doc 2 | DISCUSSION]')[1];
+    expect((actionExcerpt.match(/Z/g) ?? []).length).toBe(2200);
+    expect((discussionExcerpt.match(/Z/g) ?? []).length).toBe(1200);
+  });
+
+  it('includes the tier grounding rule and checklist item', () => {
+    const prompt = buildSinglePassPrompt('q', [makeDoc()]);
+    expect(prompt).toContain('Ground claims about government actions in ACTION documents');
+    expect(prompt).toContain('TIER GROUNDING');
+  });
+
+  it('keeps the streaming section headers the client parser depends on', () => {
+    const prompt = buildSinglePassPrompt('q', [makeDoc()]);
+    expect(prompt).toContain('=== EXPERT');
+    expect(prompt).toContain('=== PUBLIC');
+    expect(prompt).toContain('=== RELATED QUESTIONS');
   });
 });

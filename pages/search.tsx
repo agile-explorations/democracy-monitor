@@ -11,6 +11,8 @@ import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
 
+type TierFilterValue = 'all' | 'action' | 'discussion';
+
 export default function SearchPage() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
@@ -34,6 +36,8 @@ export default function SearchPage() {
   const [filterSource, setFilterSource] = useState('');
   const [filterSort, setFilterSort] = useState('relevance');
   const [filterPage, setFilterPage] = useState(1);
+  // Research facet (#552): 'all' = action-weighted tiered default
+  const [tierFilter, setTierFilter] = useState<TierFilterValue>('all');
 
   // Close history dropdown when clicking outside
   useEffect(() => {
@@ -45,7 +49,8 @@ export default function SearchPage() {
   }, []);
 
   const performSearch = useCallback(
-    async (q: string, searchMode: SearchMode, page = 1) => {
+    async (q: string, searchMode: SearchMode, page = 1, tierOverride?: TierFilterValue) => {
+      const tier = tierOverride ?? tierFilter;
       if (!q.trim()) return;
       addEntry(q);
       setShowHistory(false);
@@ -56,6 +61,7 @@ export default function SearchPage() {
       if (filterDateFrom) params.set('dateFrom', filterDateFrom);
       if (filterDateTo) params.set('dateTo', filterDateTo);
       if (datePreset) params.set('datePreset', datePreset);
+      if (searchMode === 'research' && tier !== 'all') params.set('tier', tier);
       if (searchMode === 'explore') {
         if (filterCategory) params.set('category', filterCategory);
         if (filterSource) params.set('source', filterSource);
@@ -83,7 +89,16 @@ export default function SearchPage() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filterCategory, datePreset, filterDateFrom, filterDateTo, filterSource, filterSort, router],
+    [
+      filterCategory,
+      datePreset,
+      filterDateFrom,
+      filterDateTo,
+      filterSource,
+      filterSort,
+      tierFilter,
+      router,
+    ],
   );
 
   const performResearch = async (q: string, urlParams: URLSearchParams) => {
@@ -112,11 +127,17 @@ export default function SearchPage() {
     setLoading(false);
     setSynthesizing(true);
 
-    // Phase 2: Stream single-pass Sonnet synthesis via SSE
+    // Phase 2: Stream single-pass Sonnet synthesis via SSE. Pass the exact
+    // ordered doc ids from phase 1 so [Doc N] citations always match the doc
+    // cards (#552) and the stream skips a redundant vector search.
     try {
       const streamParams = new URLSearchParams({ q });
       if (filterDateFrom) streamParams.set('dateFrom', filterDateFrom);
       if (filterDateTo) streamParams.set('dateTo', filterDateTo);
+      const docIds = (docsData.documents as Array<{ id?: number }>)
+        .map((d) => d.id)
+        .filter((id): id is number => typeof id === 'number');
+      if (docIds.length > 0) streamParams.set('ids', docIds.join(','));
       const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
       let accumulated = '';
 
@@ -178,6 +199,8 @@ export default function SearchPage() {
     if (router.query.source) setFilterSource(router.query.source as string);
     if (router.query.sort) setFilterSort(router.query.sort as string);
     if (router.query.page) setFilterPage(Number(router.query.page));
+    const t = router.query.tier as string | undefined;
+    if (t === 'action' || t === 'discussion') setTierFilter(t);
     if (q && q.trim().length > 0) performSearch(q, m ?? mode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady]);
@@ -280,6 +303,39 @@ export default function SearchPage() {
           onDateToChange={setFilterDateTo}
         />
       </div>
+
+      {mode === 'research' && (
+        <div
+          className="flex items-center gap-2 mb-4"
+          role="group"
+          aria-label="Document type filter"
+        >
+          {(
+            [
+              ['all', 'All documents'],
+              ['action', 'Government actions'],
+              ['discussion', 'Commentary & debate'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setTierFilter(value);
+                if (query.trim()) performSearch(query, 'research', 1, value);
+              }}
+              className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                tierFilter === value
+                  ? 'bg-dm-accent text-white border-dm-accent'
+                  : 'border-dm-border text-dm-muted hover:border-dm-accent'
+              }`}
+              aria-pressed={tierFilter === value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {mode === 'explore' && (
         <ExploreFilters
