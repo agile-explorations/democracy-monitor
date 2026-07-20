@@ -1,4 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
+import { PASS1_PROMPT_VERSION } from '@/lib/ai/prompts/document-review-pass1';
+import { PASS2_PROMPT_VERSION } from '@/lib/ai/prompts/document-review-pass2';
 import type { Pass1Response } from '@/lib/ai/schemas/document-review-response';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
@@ -29,6 +31,7 @@ export async function storePass1Assessment(
       signals: result.response.signals,
       model: result.meta.model,
       provider: result.meta.provider,
+      promptVersion: PASS1_PROMPT_VERSION,
       tokensInput: result.meta.tokensInput,
       tokensOutput: result.meta.tokensOutput,
       latencyMs: result.meta.latencyMs,
@@ -67,6 +70,7 @@ export async function storePass2Assessment(
       isAuditSample: result.isAuditSample,
       model: result.meta.model,
       provider: result.meta.provider,
+      promptVersion: PASS2_PROMPT_VERSION,
       tokensInput: result.meta.tokensInput,
       tokensOutput: result.meta.tokensOutput,
       latencyMs: result.meta.latencyMs,

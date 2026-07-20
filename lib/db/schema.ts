@@ -243,6 +243,10 @@ export const aiDocumentAssessments = pgTable(
     isAuditSample: boolean('is_audit_sample').notNull().default(false),
     model: varchar('model', { length: 100 }).notNull(),
     provider: varchar('provider', { length: 50 }).notNull(),
+    /** Prompt vintage that produced this row (#557 parity audit). Nullable:
+     *  rows predating 2026-07-19 carry NULL — vintage inferable only from
+     *  assessed_at. Constants live beside the prompts (document-review-pass1/2). */
+    promptVersion: varchar('prompt_version', { length: 30 }),
     tokensInput: integer('tokens_input'),
     tokensOutput: integer('tokens_output'),
     latencyMs: integer('latency_ms'),

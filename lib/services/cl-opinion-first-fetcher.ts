@@ -23,6 +23,7 @@
  * duplicate row.
  */
 
+import { COURT_QUERIES, FIRST_AMENDMENT_QUERY } from '@/lib/data/court-queries';
 import { backfillOpinionsByDate, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
 import {
   buildOpinionContentItem,
@@ -42,33 +43,6 @@ export interface OpinionFirstResult {
   docketsFound: number;
   opinionsStored: number;
 }
-
-/** CL search q for the first-amendment branch (mirrors the categories.ts signal). */
-export const FIRST_AMENDMENT_QUERY =
-  '"first amendment" AND (violation OR injunction OR challenge OR retaliation OR "free speech" OR "free press")';
-
-/**
- * Court-scoped executive-power queries (#528). The NOS/first-amendment scope
- * above only surfaces district civil-rights material; marquee appellate/SCOTUS
- * executive-power opinions (agency-head removal, birthright citizenship, Alien
- * Enemies Act) fall entirely outside it. These queries capture that layer:
- * every SCOTUS opinion, plus circuit and D.D.C. opinions matching an
- * executive-power text query. Routed by content via
- * classifyOpinionToCategories (not NOS), gated — unrouted opinions are not
- * stored. Volumes verified 2026-07-08 (T2: 207 + 401 + 268 ≈ 12/week).
- */
-export const EXEC_POWER_QUERY =
-  '"executive order" OR "presidential authority" OR "separation of powers" OR impoundment OR "unitary executive" OR "removal power"';
-
-/** All 13 federal circuit courts (CL court ids), space-separated for the court= param. */
-export const CIRCUIT_COURT_IDS = 'ca1 ca2 ca3 ca4 ca5 ca6 ca7 ca8 ca9 ca10 ca11 cadc cafc';
-
-/** Court-scoped queries: key doubles as the metadata.clQueries provenance marker. */
-export const COURT_QUERIES: ReadonlyArray<{ key: string; court: string; query?: string }> = [
-  { key: 'scotus-all', court: 'scotus' },
-  { key: 'circuits-exec', court: CIRCUIT_COURT_IDS, query: EXEC_POWER_QUERY },
-  { key: 'dcd-exec', court: 'dcd', query: EXEC_POWER_QUERY },
-];
 
 /** Keep only federal opinions (jurisdiction codes start with 'F': F, FD, FB, FS). */
 function isFederalJurisdiction(code: string | undefined): boolean {

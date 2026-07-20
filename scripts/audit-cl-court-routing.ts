@@ -15,8 +15,8 @@
 
 import fs from 'fs';
 import path from 'path';
+import { COURT_QUERIES, EXEC_POWER_QUERY } from '@/lib/data/court-queries';
 import { TOPIC_ROUTING_TERMS } from '@/lib/data/topic-routing-terms';
-import { COURT_QUERIES, EXEC_POWER_QUERY } from '@/lib/services/cl-opinion-first-fetcher';
 import {
   buildOpinionDataFromSubOpinions,
   CL_API_V4,

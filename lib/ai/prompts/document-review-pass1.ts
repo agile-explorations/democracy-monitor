@@ -1,3 +1,11 @@
+/**
+ * Prompt vintage stamped on stored P1 assessments (#557). BUMP THIS (to the
+ * change date) whenever PASS1_SYSTEM_PROMPT or buildPass1Prompt changes
+ * substantively — it is how cross-vintage flag-rate drift is attributed.
+ * Current vintage: content-window raise + routing expansion (abcf0cf).
+ */
+export const PASS1_PROMPT_VERSION = 'p1-2026-03-24';
+
 export const PASS1_SYSTEM_PROMPT = `You are a document classifier for a democracy monitoring system.
 Your task is to determine whether a government document is relevant to concerns about
 institutional erosion in a specific governance category.

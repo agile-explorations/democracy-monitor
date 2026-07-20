@@ -8,6 +8,8 @@
  * Filesystem contract (on /var/data):
  *   - `database.pgdump.tmp` — exists while a dump is in progress.
  *   - `database.pgdump`     — last completed dump, served by /api/data/dump.
+ *                             ABSENT while a dump runs (#560: the disk can't
+ *                             hold two dumps; the old one is deleted first).
  *   - `dump-result.json`    — last result written by the spawner script.
  *   - `dump.log`            — pg_dump stderr from the most recent run.
  */
@@ -33,6 +35,11 @@ START_ISO=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 write_result() {
   printf '%s\\n' "$1" > "$RESULT_FILE.tmp" && mv "$RESULT_FILE.tmp" "$RESULT_FILE"
 }
+# Remove the previous dump BEFORE writing the new one (#560): the disk cannot
+# hold two full dumps at once, and the ENOSPC failure also blanks the error
+# log (it lives on the same disk). /api/data/dump 404s during the ~13-min
+# window; db:init falls back to the GitHub Releases copy.
+rm -f "$DUMP_FILE"
 if pg_dump -Fc --no-owner --no-privileges -f "$DUMP_TEMP" "$DATABASE_URL" 2>"$LOG_FILE"; then
   mv "$DUMP_TEMP" "$DUMP_FILE"
   END=$(date +%s)

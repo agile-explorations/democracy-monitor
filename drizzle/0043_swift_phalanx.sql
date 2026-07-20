@@ -1,0 +1,1 @@
+ALTER TABLE "ai_document_assessments" ADD COLUMN "prompt_version" varchar(30);

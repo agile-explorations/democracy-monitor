@@ -37,15 +37,36 @@ counts exclude retrieval-annotated and metadata-only docs._
    provider but no prompt version, so cross-vintage P1 drift can be reasoned about only from
    dates. Recommend: store a `prompt_version` on new assessments (small forward-only change).
 
-## Recommendations
+## Recommendations, with estimated repair costs
 
-- **Repair (queued):** #556 court-scoped opinions 2017–2023 — and its plan should now also
-  weigh the trump_2017/2018 CL thinness (a bulk-backfill question, bigger than opinions).
-- **Repair (investigate):** LegiScan gaps for the three affected periods, if bulk datasets exist.
+_Cost basis (2026-07-19): AI all-in ≈ $1.8–2.5/1k docs (P1+P2, anchored to the R-SEARCH
+actual: ~$70–80 for the 41,249-doc gap-year sweep); embeddings negligible (<$5 at any scale
+here). All fetches run off local bulk staging (covers 2017→end-2025), so CL API time is zero.
+Sizing queries: #556 issue comments (court-scoped) and the docket-first counts below._
+
+- **Repair (queued): #556 court-scoped opinions 2017–2023.** Sized 2026-07-19: 2,348 matched
+  substantive clusters, 61% route through the classifier gate → **~2,230 new doc rows.
+  AI <$15; fetch minutes; runbook ~half a day** including approval-gated recompute/enrich/
+  baseline steps. (Raw cluster counts overcount ~10x — text-less SCOTUS cert-denial orders;
+  always filter to substantive.)
+- **Repair (large — needs its own product decision): trump_2017/2018 CL thinness.** Staging
+  has the data: 29,423 (2017) / 25,260 (2018) matched dockets vs 21,110 for trump_2019 —
+  the underlying case volume is comparable-or-higher; the 838/1,742 stored docs are pure
+  ingestion history. At trump_2019's stored-rows-per-docket ratio (~2.27), full repair ≈
+  **~120k new doc rows. AI ≈ $220–300; review:backfill wall-clock ~2–3 days** (chunkable,
+  rate-limited) plus recompute/enrich/baselines for two baseline periods. Alternative:
+  disclose-only, or partial repair (dockets without opinion enrichment) at roughly half.
+- **Repair (small): LegiScan gaps** (trump_2020, biden_2023, biden_2024). Bulk datasets
+  confirmed available for the 116th and 118th Congress (verified 2026-07-19 via
+  getDatasetList). Expected ~**4–5k new docs total → AI ≈ $10**; download free; ~1–2h
+  wall-clock. Worth folding into the #556 sprint.
 - **Disclose (unfixable or not worth unifying):** CL ingestion-era volume differences
   pre-repair; prompt-version vintage for historical assessments; inherent source-depth
   differences. Public disclosure note added to the methodology page (Data Sources section).
-- **Forward-only:** `prompt_version` column on ai_document_assessments (file when convenient).
+  **Cost: $0** (shipped).
+- **Forward-only: `prompt_version` column** — **DONE 2026-07-19** (migration 0043, commit
+  5381897): stamped on new assessments from constants beside the prompts
+  (p1-2026-03-24 / p2-2026-07-10). Historical rows stay NULL. **Cost: $0.**
 
 The detection core (absolute-threshold L2) is unaffected by all of the above; the affected
 surfaces are comparative/descriptive: cross-period charts, L1 structural context, aiScore
