@@ -124,7 +124,8 @@ function buildPopulationSummary(t2Weeks: WeekRow[]): PopulationSummary {
   };
 }
 
-async function runNegativeControls(catFilter?: string): Promise<NegativeControlResult[]> {
+/** Exported for the NC-margin capture tool (nc:margins) — #556 rehearsal diffs. */
+export async function runNegativeControls(catFilter?: string): Promise<NegativeControlResult[]> {
   const controls: NegativeControlResult[] = [];
   const b22 = getBaselineRange('biden_2022')!;
 
