@@ -399,8 +399,11 @@ async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<vo
  * Assess the completed week's STORED documents and re-aggregate. The per-category
  * fetch path only assesses freshly-fetched FR/DOJ items; CREC floor speeches,
  * LegiScan bills, and CL opinions are stored by other paths and never assessed.
- * This sweeps all stored docs for the week through Layer 2 (runLayer2Assessment
- * dedups already-assessed docs, so only the new sources incur cost) and
+ * This sweeps all stored docs for the week through keyword scoring (#559 —
+ * LegiScan/CL-opinion store sites don't score, and unscored docs are invisible
+ * to the evidence table and undercounted in aggregates; the upsert makes
+ * re-scoring already-scored docs a no-op) and Layer 2 (runLayer2Assessment
+ * dedups already-assessed docs, so only the new sources incur cost), then
  * re-aggregates each category with the fuller assessment set. Runs globally
  * across all categories — consistent with the other post-steps (CPD/CREC/
  * narratives), which are not scoped by the --category filter. Returns the number
@@ -413,6 +416,7 @@ async function assessStoredWeek(weekOf: string, errors: string[]): Promise<numbe
     try {
       const stored = await getDocumentsForCategoryWeek(cat.key, weekOf);
       if (stored.length === 0) continue;
+      await storeDocumentScores(scoreDocumentBatch(stored, cat.key));
       const { errors: layerErrors } = await runLayersAndAggregate(stored, cat.key, weekOf);
       errors.push(...layerErrors);
       assessed++;

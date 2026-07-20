@@ -170,7 +170,29 @@ function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
   return explained;
 }
 
-/** Fetch top N scored documents for a category+week, joining documents table for titles. */
+/**
+ * AI-assessment priority for evidence-table ordering (#558): concern status is
+ * driven by L2, so the docs that caused it must survive the LIMIT cut —
+ * keyword final_score is frequently an all-zero tie and would otherwise drop
+ * them arbitrarily.
+ */
+function aiAssessmentPriority(
+  p1: ReturnType<typeof alias<typeof aiDocumentAssessments, string>>,
+  p2: ReturnType<typeof alias<typeof aiDocumentAssessments, string>>,
+) {
+  return sql`CASE
+    WHEN ${p2.assessment} = 'clearly_concerning' THEN 0
+    WHEN ${p2.assessment} IS NOT NULL THEN 1
+    WHEN ${p1.relevant} = true THEN 2
+    ELSE 3
+  END`;
+}
+
+/**
+ * Fetch top N scored documents for a category+week, joining documents table
+ * for titles. Ordered by AI-assessment priority, then keyword score, then URL
+ * (a stable tie-break across requests).
+ */
 async function fetchTopScoredDocuments(
   category: string,
   weekOf: string,
@@ -217,7 +239,7 @@ async function fetchTopScoredDocuments(
         retrievalRelevantOnly(),
       ),
     )
-    .orderBy(desc(documentScores.finalScore))
+    .orderBy(aiAssessmentPriority(p1, p2), desc(documentScores.finalScore), documentScores.url)
     .limit(topN);
 
   return rows.map(toDocumentExplanation);
