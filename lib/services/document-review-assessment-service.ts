@@ -3,6 +3,7 @@ import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
 import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass2';
 import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/document-review-response';
 import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/document-review-response';
+import { assertAiCallBudget, recordAiCall } from '@/lib/services/ai-call-budget';
 import type { AIProvider, ContentItem } from '@/lib/types';
 import { EROSION_ACTORS } from '@/lib/types/structural';
 import type { ActorConfirmations, AIAssessmentSummary } from '@/lib/types/structural';
@@ -42,6 +43,7 @@ async function completePass1WithParseRetry(
   model: string | undefined,
   docLabel: string,
 ) {
+  recordAiCall();
   let result = await provider.complete(prompt, {
     systemPrompt: PASS1_SYSTEM_PROMPT,
     temperature: 0,
@@ -50,6 +52,7 @@ async function completePass1WithParseRetry(
   let parsed = parsePass1Response(result.content);
   if (!parsed) {
     console.warn(`[layer2] Pass 1 unparseable at temp 0 for ${docLabel}, retrying`);
+    recordAiCall();
     result = await provider.complete(prompt, {
       systemPrompt: PASS1_SYSTEM_PROMPT,
       temperature: PARSE_RETRY_TEMPERATURE,
@@ -70,6 +73,10 @@ export async function assessPass1(
   provider: AIProvider,
   model?: string,
 ): Promise<Pass1Result | null> {
+  // Budget check OUTSIDE the try below — the per-doc catch must not swallow
+  // a budget stop into a skipped document (#564).
+  assertAiCallBudget();
+
   const prompt = buildPass1Prompt(
     doc.title ?? '',
     doc.content,
@@ -125,6 +132,8 @@ export async function assessPass2(
   model?: string,
   weekContext?: Pass2WeekContext,
 ): Promise<Pass2Result | null> {
+  assertAiCallBudget();
+
   const prompt = buildPass2Prompt(
     doc.title ?? '',
     doc.content,
@@ -137,6 +146,7 @@ export async function assessPass2(
   );
 
   try {
+    recordAiCall();
     const result = await provider.complete(prompt, {
       systemPrompt: PASS2_SYSTEM_PROMPT,
       temperature: 0,

@@ -17,6 +17,11 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents, aiDocumentAssessments } from '@/lib/db/schema';
+import {
+  AiCallBudgetExceededError,
+  configureAiCallBudget,
+  getAiCallCount,
+} from '@/lib/services/ai-call-budget';
 import type { Layer2Options } from '@/lib/services/document-review-orchestrator';
 import {
   runLayer2Assessment,
@@ -36,6 +41,7 @@ interface BackfillArgs {
   category?: string;
   source?: string;
   pass?: number;
+  maxCalls?: number;
   dryRun: boolean;
   fresh: boolean;
   confirm: boolean;
@@ -73,6 +79,11 @@ function parseArgs(): BackfillArgs {
       case '--pass':
         result.pass = parseInt(args[++i], 10);
         break;
+      case '--max-calls': {
+        const n = parseInt(args[++i], 10);
+        if (!isNaN(n) && n > 0) result.maxCalls = n;
+        break;
+      }
       case '--dry-run':
         result.dryRun = true;
         break;
@@ -304,16 +315,26 @@ Options:
   --category <key>    Process a single category
   --source <origin>   Scope to a source_origin (e.g. fec, oig, cpd)
   --pass <n>          Run only pass 1 or 2
+  --max-calls <n>     Hard AI-call budget: exits 3 when reached (#564).
+                      Set from the runbook precheck estimate x safety factor.
   --retry-p2          Fast retry of only missing Pass 2 assessments
   --dry-run           Preview without writing to DB
   --fresh --confirm   Delete assessments and re-run (scoped by --source or --category if set)
   --verbose           Show per-URL skip/failure details`,
   );
   const args = parseArgs();
+  configureAiCallBudget(args.maxCalls ?? null);
   const run = args.retryP2 ? runRetryP2(args) : runBackfillLayer2(args);
   run
     .then(() => process.exit(0))
     .catch((err) => {
+      if (err instanceof AiCallBudgetExceededError) {
+        // Distinct exit code: chain scripts must NOT retry a budget stop —
+        // the estimate is wrong and a human reviews before resuming (#564).
+        console.error(`[backfill-l2] ${err.message}`);
+        console.error(`[backfill-l2] AI calls this run: ${getAiCallCount()}. Exiting 3.`);
+        process.exit(3);
+      }
       console.error('[backfill-l2] Fatal error:', err);
       process.exit(1);
     });
