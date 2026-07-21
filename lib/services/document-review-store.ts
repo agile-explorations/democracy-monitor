@@ -114,6 +114,35 @@ export async function getExistingPass1Urls(
 }
 
 /**
+ * Get URLs that already have Pass 2 assessments for a category (#563).
+ * Pass 2 previously had no dedup: every backfill re-called the P2 model for
+ * all flagged docs in any week containing one new doc, then discarded the
+ * result on conflict — pure spend with no data effect.
+ */
+export async function getExistingPass2Urls(urls: string[], category: string): Promise<Set<string>> {
+  if (!isDbAvailable() || urls.length === 0) return new Set();
+  const db = getDb();
+
+  const BATCH = 500;
+  const found = new Set<string>();
+  for (let i = 0; i < urls.length; i += BATCH) {
+    const batch = urls.slice(i, i + BATCH);
+    const rows = await db
+      .select({ url: aiDocumentAssessments.url })
+      .from(aiDocumentAssessments)
+      .where(
+        and(
+          inArray(aiDocumentAssessments.url, batch),
+          eq(aiDocumentAssessments.pass, 2),
+          eq(aiDocumentAssessments.category, category),
+        ),
+      );
+    for (const r of rows) found.add(r.url);
+  }
+  return found;
+}
+
+/**
  * Load stored Pass 1 results for a set of URLs in a specific category.
  * Returns synthetic Pass1Result objects with zero token/latency metadata.
  */

@@ -203,7 +203,10 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
 
   if (categories.length === 0) throw new Error(`Unknown category: ${args.category}`);
 
-  const options: Layer2Options = { dryRun: args.dryRun, verbose: args.verbose };
+  // #563: --pass was parsed but never wired — "--pass 1" ran the full P1+P2
+  // pipeline and "--pass 2" ran it all again.
+  const passFilter = args.pass === 1 || args.pass === 2 ? (args.pass as 1 | 2) : undefined;
+  const options: Layer2Options = { dryRun: args.dryRun, verbose: args.verbose, passFilter };
   let totalDocs = 0;
   let totalFlagged = 0;
   let skipped = 0;
@@ -232,7 +235,8 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
         const existingUrls = await getExistingPass1Urls(itemUrls, '', cat.key);
         if (itemUrls.every((u) => existingUrls.has(u))) {
           skipped += items.length;
-          p2Retried += await retryMissingPass2(cat.key, weekOf, options);
+          // P2 gap-fill is P2 work — skip it on a P1-only run (#563).
+          if (passFilter !== 1) p2Retried += await retryMissingPass2(cat.key, weekOf, options);
           continue;
         }
 

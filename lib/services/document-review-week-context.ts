@@ -10,6 +10,9 @@ export interface Layer2Options {
   auditSampleRate?: number;
   dryRun?: boolean;
   verbose?: boolean;
+  /** Run only one pass (#563): 1 = P1 only (skip P2 entirely); 2 = P2 only
+   *  (P1 loads from stored rows). Omit to run both. */
+  passFilter?: 1 | 2;
 }
 
 const MAX_PEER_TITLES = 5;
