@@ -210,15 +210,15 @@ function DetailedContent() {
           assessments that depend on that source.
         </p>
         <p>
-          <strong>Coverage differences across periods:</strong> document volume is not uniform
-          across the periods this system compares. Court-document ingestion depth varies with when
-          each period was backfilled (2017–2018 have far fewer court documents than later years);
-          the court-scoped opinion layer added in 2026 currently covers 2023 onward (extension to
-          2017–2023 is planned); and some sources (state legislation) lack data for certain years.
-          Weekly concern statuses are unaffected — they use fixed, absolute criteria within each
-          week — but cross-period volume comparisons partly reflect these coverage differences
-          rather than changes in government behavior. A full accounting is maintained in the
-          project&apos;s coverage-parity audit.
+          <strong>Coverage differences across periods:</strong> most historical coverage gaps were
+          repaired in July 2026 — the court-scoped opinion layer and federal-legislation tracking
+          now extend uniformly across all monitored periods (a correction that raised concern
+          statuses in 147 historical weeks once previously missing court decisions and bills were
+          assessed). One known difference remains: general court-document depth in 2017–2018
+          reflects how those years were originally ingested and is thinner than later years. Weekly
+          concern statuses use fixed, absolute criteria within each week, but cross-period volume
+          comparisons partly reflect this remaining difference rather than changes in government
+          behavior. A full accounting is maintained in the project&apos;s coverage-parity audit.
         </p>
         <p>
           <strong>Retrieval-relevance correction (July 2026):</strong> Federal Register full-text
