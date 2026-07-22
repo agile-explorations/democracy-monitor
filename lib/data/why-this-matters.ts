@@ -149,6 +149,15 @@ export const COMMON_QUESTIONS: CommonQuestion[] = [
     ],
   },
   {
+    id: 'efficiency',
+    question: "Isn't making government more efficient a good thing?",
+    answer: [
+      'Yes — waste is real, and wanting government to work better is one of the few genuinely bipartisan instincts. The question worth asking is what "efficient" means for a government, because it does not mean what it means for a business. A business has one measure of success. The Constitution\'s preamble lists six — justice, domestic tranquility, common defense, general welfare, liberty, union — and efficiency is not among them. Those purposes pull against each other, and they are owed to everyone, including the people who lost the last election. Much of what makes a business efficient is choosing whom to serve. Government does not get that choice — the hardest people to serve are still owed the same justice, the same ballot, and the same due process as everyone else.',
+      "Much of what looks inefficient in government is constraint doing its job. Notice-and-comment rulemaking is slower than decree; appropriations are slower than a purchase order; courts are slower than orders. The most efficient possible government is one person deciding everything — which is the exact arrangement the Constitution's authors had just fought a war to escape. They chose friction on purpose.",
+      'It is also worth checking whether an efficiency campaign cuts waste or cuts the machinery that finds waste. Inspectors General, the Government Accountability Office, and agency audit offices exist to catch fraud and duplication — eliminating them is not efficiency even on its own terms. That distinction is what this monitor tracks: not whether any particular cut is good policy, but whether the constraints that outlast every administration — the ones that will also bind the next president, whoever that is — are holding.',
+    ],
+  },
+  {
     id: 'immigration-and-democracy',
     question: 'What does immigration enforcement have to do with democracy?',
     answer: [

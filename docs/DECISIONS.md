@@ -12,6 +12,26 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-PARITY: coverage-parity repair — court-scoped opinions 2017–2023 + LegiScan gaps (#555, #556) — ✅ complete
+
+**Status: Complete (2026-07-22).** Owner-driven from the standing coverage-parity constraint (PROJECT_KNOWLEDGE.md) and the #557 audit. Executed with per-invocation approvals on every baseline-period write; two owner mid-flight decisions (Option-B mechanical rehearsal; LegiScan folded in) and two owner acceptances (5 stale-enrichment flips, then the full 147-flip assessment effect).
+
+**Product outcome:** baseline years now carry the same court-scoped opinion layer and LegiScan coverage T2 has. 5,813 docs landed (2,071 opinions incl. Trump v. Hawaii/Seila Law/Vance/Mazars correctly routed; 3,742 bills filling trump_2020 and biden_2023/2024 from zero); ~5,465 P1 + ~1,900 P2 assessments; baselines recomputed ×8; 2017→2025 re-enriched. **147 baseline-week status upgrades (95 Elevated, 52 CC, 0 downgrades) owner-accepted** — concentrated in immigrationEnforcement/elections/rulemaking/executiveActions in 2020/2023/2024, landing on real events (Trump v. Hawaii decision week, Dec-2020 election litigation, COVID emergency rules). Gates at close: 39/39 events, 6/6 NCs (NC-3 required an 8-doc actor-attribution pass for the new biden_2022 confirmations). NC-1 elections at 18.1% vs ≤20% is the standing calibration watch item.
+
+**Method innovations that should recur:** verified-copy (fetch/verify locally off bulk staging, anti-join on url+category, insert exact rows into prod — minutes instead of a fragile 6-year CL API crawl); nc:margins capture/diff (margins, not pass/fail, at every phase boundary); detached chain scripts with done-markers + monitor events (survived task reaping that killed three plain background runs).
+
+**Incidents & overruns (honest ledger):**
+
+- **#563 — ~$190–200 duplicate-P2 burn, chain stopped mid-run:** `runPass2Phase` had no dedup (re-called Sonnet for every previously-flagged doc in any week containing one new doc, discarding results on conflict) AND `review:backfill --pass` was parsed but never wired, running the full pipeline twice per baseline. ~16k P2 calls for 1,894 real rows. Retroactively explains much of R-SEARCH's "4x overrun." Fixed same day (dedup + wired passFilter); post-fix the identical remaining work ran at pennies. Total sprint spend $220–230 vs $8–18 quoted ($30–35 legit).
+- **#564 — spend protocol (owner-approved) now structural:** prechecks model CALLS not documents; every AI step runs `--max-calls <estimate × 3>` (exit 3, never retried); canary-before-fleet for rehearsal-skipped steps; spend sentinel in chain scripts; actuals posted post-run. CLAUDE.md "AI spend protocol."
+- **"Exactly 5 flips" stop condition was a framing error:** it bound the mechanical rehearsal's diff, but Option B structurally cannot preview assessment-driven status impact — the 147 flips were the repair working, not a malfunction, yet they arrived unapproved. **Standing rule: any repair that adds documents to baseline periods gates on an Option-A (full-AI) rehearsal or a prod canary with status-diff before the fleet.** Applies to the pending trump_2017/2018 CL decision.
+- **Monday checkpoint collateral (all fixed same-day):** #560 weekly dump ENOSPC (disk holds one dump, not two — old dump now deleted first); #561 db:init treated pg_restore's benign version-mismatch exit as failure and destructively fell back to a March GitHub release over a fully-restored local DB (fallback now bootstrap-only); #562 filed (bulk path stores docket pairs the API path doesn't — 7,190 dockets excluded from the copy under the parity constraint).
+- **LegiScan root cause was code, not data:** BASELINE_PERIODS ended terms at year 2 — the 116th/118th Congress never matched. Two-line range fix; weekly cron now maintains full-term coverage.
+
+**Lessons learned:** estimate what pipelines call, not what they store (conflict-discarding writes hide call volume); spend is a gated quantity like data integrity; a rehearsal's stop conditions must be derivable from what the rehearsal actually exercised; stale enrichment can hide latent status changes that any scoped re-enrich will surface (the original 5); pg_restore exit codes lie (completed-with-ignored-errors = 1).
+
+---
+
 ## Sprint R-SEARCH: action-first research retrieval + SCOTUS gap-year backfill (#552, #553) — ✅ complete
 
 **Status: Complete (2026-07-18).** Milestone 85. Design agreed in-conversation 2026-07-17 (recorded on #552, supersedes the original diversity-quota idea); #553 backfill + full post-chain executed with per-invocation approvals (gating correction posted: biden_2023/2024 ARE baselines — the issue's original "non-baseline" claim was wrong).

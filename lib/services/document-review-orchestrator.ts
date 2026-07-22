@@ -17,6 +17,7 @@ import {
   storePass2Assessment,
   getBaselineAIFlagRate,
   getExistingPass1Urls,
+  getExistingPass2Urls,
   loadStoredPass1Results,
   getWeekP1Context,
 } from './document-review-store';
@@ -103,18 +104,24 @@ export async function runLayer2Assessment(
     getWeekP1Context(categoryKey, priorWeek),
   ]);
 
-  const pass2Results = await runPass2FromPass1(
-    items,
-    pass1Results,
-    resolved,
-    category.description,
-    categoryKey,
-    weekOf,
-    category.title,
-    category.expertDescription,
-    baseline?.rate ?? 0,
-    priorWeekCtx,
-  );
+  // passFilter 1 (#563): P1 only — previously the flag was parsed by the
+  // backfill CLI but never wired, so "--pass 1" ran the full P1+P2 pipeline
+  // and "--pass 2" ran it all again.
+  const pass2Results =
+    options?.passFilter === 1
+      ? []
+      : await runPass2FromPass1(
+          items,
+          pass1Results,
+          resolved,
+          category.description,
+          categoryKey,
+          weekOf,
+          category.title,
+          category.expertDescription,
+          baseline?.rate ?? 0,
+          priorWeekCtx,
+        );
 
   return computeAIAssessmentSummary(
     pass1Results,
@@ -214,6 +221,24 @@ async function runPass1Phase(
   return results;
 }
 
+/**
+ * Dedup P2 candidates against stored rows (#563). Without this, every
+ * backfill re-ran the P2 model for all previously-flagged docs in any week
+ * that contained a single new doc — the result was then discarded by
+ * onConflictDoNothing.
+ */
+async function dedupAgainstStoredP2(
+  candidateUrls: string[],
+  categoryKey: string,
+  dryRun?: boolean,
+): Promise<{ validUrls: string[]; p2Cached: number }> {
+  const existingP2 = dryRun
+    ? new Set<string>()
+    : await getExistingPass2Urls(candidateUrls, categoryKey);
+  const validUrls = candidateUrls.filter((url) => !existingP2.has(url));
+  return { validUrls, p2Cached: candidateUrls.length - validUrls.length };
+}
+
 async function runPass2Phase(
   items: ContentItem[],
   pass1Results: Pass1Result[],
@@ -232,7 +257,8 @@ async function runPass2Phase(
   const pass1ByUrl = new Map(pass1Results.map((r) => [r.url, r]));
   const itemByUrl = new Map(items.map((i) => [i.link || i.title, i]));
   const urlsToProcess = [...flaggedUrls, ...auditUrls];
-  const validUrls = urlsToProcess.filter((url) => itemByUrl.has(url) && pass1ByUrl.has(url));
+  const candidateUrls = urlsToProcess.filter((url) => itemByUrl.has(url) && pass1ByUrl.has(url));
+  const { validUrls, p2Cached } = await dedupAgainstStoredP2(candidateUrls, categoryKey, dryRun);
 
   const pass2Results = await mapConcurrent(validUrls, PASS2_CONCURRENCY, async (url) => {
     const item = itemByUrl.get(url)!;
@@ -255,6 +281,10 @@ async function runPass2Phase(
     if (r) results.push(r);
   }
 
-  console.log(`[layer2] Pass 2: ${results.length} assessed (${auditUrls.size} audit samples)`);
+  console.log(
+    `[layer2] Pass 2: ${results.length} assessed` +
+      (p2Cached > 0 ? `, ${p2Cached} cached` : '') +
+      ` (${auditUrls.size} audit samples)`,
+  );
   return results;
 }

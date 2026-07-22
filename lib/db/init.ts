@@ -47,6 +47,38 @@ function tryExec(cmd: string): boolean {
   }
 }
 
+/**
+ * Newer pg_dump versions emit SET commands (e.g. `transaction_timeout`,
+ * PG17+) that older servers reject. pg_restore completes the restore, counts
+ * them under "errors ignored on restore", and still exits 1 — which must not
+ * be read as failure (#561: doing so triggered the destructive archive
+ * fallback over a fully restored database).
+ */
+const BENIGN_RESTORE_ERROR = /unrecognized configuration parameter/;
+
+function runPgRestore(cmd: string): boolean {
+  try {
+    // stderr piped (not inherited) so ignored-error output can be inspected.
+    execSync(cmd, { stdio: ['ignore', 'inherit', 'pipe'], maxBuffer: 32 * 1024 * 1024 });
+    return true;
+  } catch (err) {
+    const stderr = (err as { stderr?: Buffer }).stderr?.toString() ?? '';
+    process.stderr.write(stderr);
+    const errorLines = stderr.split('\n').filter((l) => l.includes('pg_restore: error:'));
+    if (
+      errorLines.length > 0 &&
+      errorLines.every((l) => BENIGN_RESTORE_ERROR.test(l)) &&
+      stderr.includes('errors ignored on restore')
+    ) {
+      console.warn(
+        'pg_restore completed with benign ignored errors (version-mismatch SET commands).',
+      );
+      return true;
+    }
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Primary restore: single pg_dump file from app endpoint
 // ---------------------------------------------------------------------------
@@ -63,7 +95,7 @@ function restoreFromApp(connectionString: string, force: boolean): boolean {
   // pg_restore reads custom-format dumps from stdin in single-pass mode.
   // bash -c with pipefail ensures a curl failure isn't masked by pg_restore success.
   // -# forces curl's progress bar to stderr even when piped (default disables it).
-  const restored = tryExec(
+  const restored = runPgRestore(
     `bash -c "set -o pipefail; curl -fL -# '${APP_DUMP_URL}' | pg_restore ${flags} --dbname '${connectionString}'"`,
   );
   if (!restored) return false;
@@ -108,9 +140,9 @@ function restoreFromArchive(connectionString: string, force: boolean): void {
   execSync(`tar -xzf /tmp/${ARCHIVE_FILENAME} -C /tmp`, { stdio: 'inherit' });
 
   console.log('Restoring main database...');
-  execSync(`pg_restore ${flags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`, {
-    stdio: 'inherit',
-  });
+  if (!runPgRestore(`pg_restore ${flags} --dbname "${connectionString}" /tmp/${DUMP_FILENAME}`)) {
+    throw new Error('Archive pg_restore failed');
+  }
 
   if (force) {
     execSync(`psql "${connectionString}" -c "TRUNCATE documents CASCADE"`, { stdio: 'inherit' });
@@ -154,6 +186,16 @@ async function main() {
     // Try single-file dump from app endpoint first
     const restored = restoreFromApp(connectionString, force);
     if (!restored) {
+      if (!empty) {
+        // #561: the archive fallback's --clean would replace existing data
+        // with the (potentially months-old) GitHub release. Only acceptable
+        // when bootstrapping an empty database — never over real data.
+        console.error(
+          'App-endpoint restore failed on a non-empty database. NOT falling back to the ' +
+            'GitHub Releases archive (stale-release risk) — fix the endpoint or restore manually.',
+        );
+        process.exit(1);
+      }
       // Fall back to GitHub Releases archive (two-file split)
       console.log('App endpoint not available, falling back to GitHub Releases...');
       restoreFromArchive(connectionString, force);

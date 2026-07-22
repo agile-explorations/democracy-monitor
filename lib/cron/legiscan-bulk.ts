@@ -27,11 +27,14 @@ const BASELINE_PERIODS: Array<{
 }> = [
   {
     label: 'Trump T1',
-    dateRange: { start: '2017-01-20', end: '2019-01-19' },
+    // Full term (#556): the original 2019-01-19 end left trump_2019/2020
+    // with zero LegiScan coverage — the 116th Congress never matched.
+    dateRange: { start: '2017-01-20', end: '2021-01-19' },
   },
   {
     label: 'Biden',
-    dateRange: { start: '2021-01-20', end: '2023-01-19' },
+    // Full term (#556): ditto for biden_2023/2024 and the 118th Congress.
+    dateRange: { start: '2021-01-20', end: '2025-01-19' },
   },
   {
     label: 'Trump T2',

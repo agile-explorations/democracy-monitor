@@ -39,10 +39,15 @@ counts exclude retrieval-annotated and metadata-only docs._
 
 ## Recommendations, with estimated repair costs
 
-_Cost basis (2026-07-19): AI all-in ≈ $1.8–2.5/1k docs (P1+P2, anchored to the R-SEARCH
-actual: ~$70–80 for the 41,249-doc gap-year sweep); embeddings negligible (<$5 at any scale
-here). All fetches run off local bulk staging (covers 2017→end-2025), so CL API time is zero.
-Sizing queries: #556 issue comments (court-scoped) and the docket-first counts below._
+_Cost basis (2026-07-19, REVISED 2026-07-21 after #563): the original $1.8–2.5/1k anchor
+(R-SEARCH actuals) was inflated by the duplicate-P2 defects fixed in #563 — P2 re-called the
+model for already-assessed docs and the dead --pass flag ran the pipeline twice. Post-fix
+measured unit cost (#556 chain, rows actually written): ~$4.5/1k for opinion-heavy corpora
+(long P2 inputs), of which P1 is trivial and Sonnet P2 on the flagged subset dominates.
+Pre-#563 estimates would have blown out 5–10x on any large review:backfill; post-fix they
+hold. Embeddings negligible (<$5 at any scale here). All fetches run off local bulk staging
+(covers 2017→end-2025), so CL API time is zero. Sizing queries: #556 issue comments
+(court-scoped) and the docket-first counts below._
 
 - **Repair (queued): #556 court-scoped opinions 2017–2023.** Sized 2026-07-19: 2,348 matched
   substantive clusters, 61% route through the classifier gate → **~2,230 new doc rows.
@@ -53,9 +58,20 @@ Sizing queries: #556 issue comments (court-scoped) and the docket-first counts b
   has the data: 29,423 (2017) / 25,260 (2018) matched dockets vs 21,110 for trump_2019 —
   the underlying case volume is comparable-or-higher; the 838/1,742 stored docs are pure
   ingestion history. At trump_2019's stored-rows-per-docket ratio (~2.27), full repair ≈
-  **~120k new doc rows. AI ≈ $220–300; review:backfill wall-clock ~2–3 days** (chunkable,
-  rate-limited) plus recompute/enrich/baselines for two baseline periods. Alternative:
+  **~120k new doc rows. AI ≈ $150–250 post-#563** (P1 ~$40; Sonnet P2 on the flagged subset
+  dominates; the prior $220–300 figure was calibrated on duplicate-inflated actuals — without
+  the #563 fix this job would have run $500–900); **review:backfill wall-clock ~2–3 days**
+  (chunkable, rate-limited) plus recompute/enrich/baselines for two baseline periods. Alternative:
   disclose-only, or partial repair (dockets without opinion enrichment) at roughly half.
+  **Plus a calibration review** — a 3–5x corpus change for two baseline years materially
+  moves structural volume baselines and NC denominators, so this repair carries costs the
+  small repairs don't: before/after NC-margin capture (`pnpm nc:margins`, tooling exists),
+  threshold review if any margin moves near its limit (NC-1 ≤20%, NC-3 ≤12/15%, NC-5 ≤5%),
+  an owner-adjudicated routing/assessment sample (~50–100 docs, 1–2h owner time, the #548
+  pattern), and a full backtest + retrospective re-run (compute only). Estimate:
+  **+0.5–1 day engineering, 1–2h owner adjudication, <$5 AI** on top of the repair itself —
+  more if margins force actual threshold changes (that re-opens the 39/39 + 6/6 validation
+  loop, ~1 additional day).
 - **Repair (small): LegiScan gaps** (trump_2020, biden_2023, biden_2024). Bulk datasets
   confirmed available for the 116th and 118th Congress (verified 2026-07-19 via
   getDatasetList). Expected ~**4–5k new docs total → AI ≈ $10**; download free; ~1–2h

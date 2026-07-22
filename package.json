@@ -45,6 +45,7 @@
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
     "scores:recompute": "tsx lib/cron/recompute-scores.ts",
     "scores:backfill": "tsx lib/cron/backfill-scores.ts",
+    "nc:margins": "tsx lib/cron/nc-margins.ts",
     "backtest": "tsx lib/cron/run-backtest.ts",
     "retrospective": "tsx lib/cron/run-retrospective.ts",
     "baselines:compute": "tsx lib/cron/compute-baseline-stats.ts",
