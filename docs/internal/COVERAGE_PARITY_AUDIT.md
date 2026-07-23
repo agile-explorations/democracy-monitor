@@ -28,13 +28,18 @@ coverage ranged 98.6–100%. All repaired except trump_2017/2018 general CL dept
 
 ## Findings, ranked by surface visibility (status as of 2026-07-22)
 
-1. **OPEN — CourtListener ingestion history remains the one unrepaired asymmetry.** Total
-   corpus size still varies ~3x (26k → 82k) almost entirely from general CL depth:
-   trump_2017/2018 have ~1–2k CL docs; 2019–2020 have 42–48k (bulk-staging era); Biden years
-   ~14k; 2023+ ~28k. Any cross-period volume comparison is dominated by when and how CL was
-   backfilled. Affects: public trend charts, L1 structural volume context. **This is the
-   pending product decision** (repair options + calibration costs below); publicly disclosed
-   on the methodology page meanwhile.
+1. **REPAIRED to source limits (#565 + #566, 2026-07-22→23).** The "3x asymmetry" decomposed
+   into three parts once measured properly: (a) missing substantive opinions — already
+   repaired by #556's base branch (~3.1k docs); (b) ~4.3k genuinely absent rows — copied
+   (#565, 47 P1 calls ≈ $0.02); (c) the dominant term: **inconsistent scoring policy across
+   ingestion eras** — the 2019-era pipeline scored every docket stub into the weekly counts
+   (503 docs/week) while current rules don't (75/week). Owner chose substantive-only counts
+   everywhere (#566): 119,298 stub/orphan score rows purged, scoring now enforces the L2
+   content floor at every site, all periods re-aggregated/re-enriched. **Outcome:
+   lawEnforcement avg docs/week now 50 (2017) / 103 (2019) / 76 (2023) / 89 (2026)** — the
+   residual spread reflects CourtListener's own archive coverage growing after 2018, a
+   source-side reality disclosed on the methodology page, not an ingestion artifact. Zero
+   status flips in either repair (verified by pre/post snapshot both times).
 2. **REPAIRED (#556, 2026-07-20→22) — court-scoped opinion layer** now uniform 2017→present
    (280–455/yr baseline years; T2's higher count reflects its longer window and busier
    executive-power docket).
@@ -46,6 +51,19 @@ coverage ranged 98.6–100%. All repaired except trump_2017/2018 general CL dept
 5. **FR is the model citizen** (12.5k–20.1k, smooth) — mediaFreedom's uniform correction shows.
 6. **SHIPPED (5381897, migration 0043) — `prompt_version`** stamped on all new assessments
    (p1-2026-03-24 / p2-2026-07-10); historical rows stay NULL by design.
+
+## Sizing lessons (2026-07-23, after three consecutive over-estimates)
+
+The trump_2017/2018 estimate fell from $220–300 → $150–250 → $20–40 → **$0.02 actual** across
+four passes. Standing rules now:
+
+1. **Three numbers before any repair proposal:** source-matched count, net-new after
+   anti-join against current prod, and assessable after eligibility filters. Rows are never
+   the cost unit; assessable content is.
+2. **Findings sharing substrate are re-sized after any sibling repair** (#556's base branch
+   quietly repaired most of finding #1's opinions; nothing re-measured until execution).
+3. **Volume metrics measure scoring policy, not just data** — before calling a count
+   asymmetry a data gap, check whether the eras scored the same things.
 
 ## Recommendations, with estimated repair costs
 

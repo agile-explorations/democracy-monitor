@@ -83,7 +83,7 @@ Any command that writes to baseline-period data (before 2025-01-20) — document
 
 Spend is a gated quantity, like data integrity. A wrong estimate must cost the cap, not the night.
 
-1. **Precheck models calls, not documents.** Estimate what the pipeline will _call_ (per pass, incl. audit samples and retries), not what it will store. Record expected calls and dollars on the runbook issue.
+1. **Precheck models calls, not documents.** Estimate what the pipeline will _call_ (per pass, incl. audit samples and retries), not what it will store. Record expected calls and dollars on the runbook issue. Every repair proposal quotes **three numbers**: source-matched, net-new after anti-join against current prod, and assessable after eligibility filters (#565's estimate fell $220→$0.02 across four passes for lack of the last two).
 2. **Every AI step runs capped**: `review:backfill ... --max-calls <expected × 3>`. Cap trip exits 3; chain scripts must NOT retry exit 3 — a human reviews the estimate first.
 3. **Canary before fleet** for any step the rehearsal skipped: run one baseline/category-week, reconcile calls vs rows-written vs dollars against the precheck, then proceed.
 4. **Spend sentinel in every long chain**: recount calls from the run's log every 15 min; alert at 1.5x expected, kill-marker at 3x. Template: `scripts/prod-chain-template.sh`.
