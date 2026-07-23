@@ -319,11 +319,25 @@ describe('scoreDocument category isolation', () => {
 });
 
 describe('scoreDocumentBatch', () => {
+  const substantiveContent =
+    'This document describes agency workforce policy changes in detail, including staffing plans, ' +
+    'timelines, and the offices affected by the reorganization across multiple regions.';
+
   it('filters out error and warning items', () => {
     const items = [
-      { title: 'Mass termination order signed', isError: true, pubDate: '2025-06-01' },
-      { title: 'Connection failed', isWarning: true, pubDate: '2025-06-01' },
-      { title: 'Routine report on workforce', pubDate: '2025-06-01' },
+      {
+        title: 'Mass termination order signed',
+        content: substantiveContent,
+        isError: true,
+        pubDate: '2025-06-01',
+      },
+      {
+        title: 'Connection failed',
+        content: substantiveContent,
+        isWarning: true,
+        pubDate: '2025-06-01',
+      },
+      { title: 'Routine report on workforce', content: substantiveContent, pubDate: '2025-06-01' },
     ];
     const scores = scoreDocumentBatch(items, 'civilService');
     expect(scores).toHaveLength(1);
@@ -332,12 +346,27 @@ describe('scoreDocumentBatch', () => {
 
   it('scores all valid items', () => {
     const items = [
-      { title: 'Mass termination announced', pubDate: '2025-06-01' },
-      { title: 'Routine report on workforce', pubDate: '2025-06-01' },
-      { title: 'Reclassification announced', pubDate: '2025-06-01' },
+      { title: 'Mass termination announced', content: substantiveContent, pubDate: '2025-06-01' },
+      {
+        title: 'Routine report on workforce',
+        content: substantiveContent,
+        pubDate: '2025-06-01',
+      },
+      { title: 'Reclassification announced', content: substantiveContent, pubDate: '2025-06-01' },
     ];
     const scores = scoreDocumentBatch(items, 'civilService');
     expect(scores).toHaveLength(3);
+  });
+
+  it('excludes stub items below the content floor (#566)', () => {
+    const items = [
+      { title: 'Docket stub with no content', pubDate: '2025-06-01' },
+      { title: 'Short stub', content: 'Case filed.', pubDate: '2025-06-01' },
+      { title: 'Substantive doc', content: substantiveContent, pubDate: '2025-06-01' },
+    ];
+    const scores = scoreDocumentBatch(items, 'civilService');
+    expect(scores).toHaveLength(1);
+    expect(scores[0].title).toBe('Substantive doc');
   });
 });
 
@@ -628,7 +657,13 @@ describe('matchKeywordsWithSuppression edge cases', () => {
 
 describe('scoreDocumentBatch edge cases', () => {
   it('filters out items with no date (scoreDocument returns null)', () => {
-    const items = [{ title: 'No date item' }, { title: 'Has date', pubDate: '2025-06-01' }];
+    const content =
+      'This document describes agency policy changes in enough detail to clear the scoring ' +
+      'content floor, including affected offices and effective dates for the changes.';
+    const items = [
+      { title: 'No date item', content },
+      { title: 'Has date', content, pubDate: '2025-06-01' },
+    ];
     const scores = scoreDocumentBatch(items, 'civilService');
     expect(scores).toHaveLength(1);
     expect(scores[0].title).toBe('Has date');
