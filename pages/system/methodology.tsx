@@ -210,15 +210,16 @@ function DetailedContent() {
           assessments that depend on that source.
         </p>
         <p>
-          <strong>Coverage differences across periods:</strong> document volume is not uniform
-          across the periods this system compares. Court-document ingestion depth varies with when
-          each period was backfilled (2017–2018 have far fewer court documents than later years);
-          the court-scoped opinion layer added in 2026 currently covers 2023 onward (extension to
-          2017–2023 is planned); and some sources (state legislation) lack data for certain years.
-          Weekly concern statuses are unaffected — they use fixed, absolute criteria within each
-          week — but cross-period volume comparisons partly reflect these coverage differences
-          rather than changes in government behavior. A full accounting is maintained in the
-          project&apos;s coverage-parity audit.
+          <strong>Coverage parity (July 2026):</strong> historical coverage and counting gaps were
+          repaired in July 2026 — the court-scoped opinion layer and federal-legislation tracking
+          now extend uniformly across all monitored periods (a correction that raised concern
+          statuses in 147 historical weeks once previously missing court decisions and bills were
+          assessed), and weekly document counts now count substantive documents only, under the same
+          rule in every period. One inherent difference remains and cannot be repaired: public
+          court-record archives digitized fewer documents for 2017–2018 than for later years, so
+          court-document volume in those years reflects the source archives themselves. Weekly
+          concern statuses use fixed, absolute criteria within each week and are unaffected. A full
+          accounting is maintained in the project&apos;s coverage-parity audit.
         </p>
         <p>
           <strong>Retrieval-relevance correction (July 2026):</strong> Federal Register full-text

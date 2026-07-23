@@ -36,6 +36,9 @@ async function findAffectedWeeks(
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const categoryKeys = CATEGORIES.map((c) => c.key);
+  // Eligibility here MUST match the scorer's (#566): without the length
+  // floor, weeks holding permanently-ineligible stubs re-surface as
+  // "affected" on every run and get re-processed forever.
   const rows = await db.execute(sql`
     SELECT d.category, d.published_at
     FROM documents d
@@ -47,6 +50,7 @@ async function findAffectedWeeks(
       )})
       AND d.published_at >= ${from}
       AND d.content_type != 'metadata_only'
+      AND length(coalesce(d.content, '')) >= 100
       AND d.retrieval_relevant IS NOT FALSE
   `);
 

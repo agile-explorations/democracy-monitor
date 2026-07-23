@@ -12,6 +12,16 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CL-DEPTH: trump_2017/2018 CL depth + substantive-only counts (#565, #566) — ✅ complete
+
+**Status: Complete (2026-07-23).** Milestone 86. Owner decisions: full repair, immediate start (promotion timing inverted the wait-for-Monday default), adjudication sample waived (volume-only change), option B for count semantics (deflate all eras to substantive-only rather than inflating 2017–2018 to the stub-counting basis).
+
+**Planned vs built:** planned as a ~120k-row, $150–250, 2–3 day repair of the audit's last finding. Under measurement the finding decomposed into (a) substantive opinions — already repaired by #556's base branch, unnoticed until execution; (b) 4,285 genuinely missing rows — copied for **$0.02** (47 P1 calls); (c) the dominant cause, **era-inconsistent scoring policy** — the 2019-era pipeline scored every docket stub into weekly counts (503/wk) while current rules don't (75/wk). Fixed by #566: scoring floor (100-char L2 eligibility) enforced at every score site, 119,298 stub/orphan score rows purged, 1,647 category-weeks re-aggregated, 8 baselines recomputed, 6,899 weeks re-enriched. **Outcome: lawEnforcement 50/103/76/89 avg docs/wk across eras** — the 6.7x artifact gone; residual spread is the source archives' own coverage (publicly disclosed). **Zero status flips in both repairs**, verified by pre/post snapshot; 6/6 NCs; 39/39 events; total sprint AI spend $0.02 vs ~$40 protocol budget.
+
+**Deviations & lessons:** four sizing passes fell $220→$0.02 → **three-numbers rule** (source-matched / net-new after anti-join against prod / assessable after eligibility) now in CLAUDE.md's spend protocol; **sibling audit findings sharing substrate must be re-sized after any one is repaired**; **count asymmetries can be scoring-policy artifacts, not data gaps** — check what each era scored before proposing ingestion. One false-alarm chain stop (`--load-opinions` confusion; 20 min, $0) — the 90-second-completion tell was read as a bug when it was dedup working. R-PARITY's machinery (Option-A rehearsal, zero-flip invariant, detached chains, caps/sentinel) ran twice more without modification and caught nothing because there was nothing to catch — which is the point.
+
+---
+
 ## Sprint R-PARITY: coverage-parity repair — court-scoped opinions 2017–2023 + LegiScan gaps (#555, #556) — ✅ complete
 
 **Status: Complete (2026-07-22).** Owner-driven from the standing coverage-parity constraint (PROJECT_KNOWLEDGE.md) and the #557 audit. Executed with per-invocation approvals on every baseline-period write; two owner mid-flight decisions (Option-B mechanical rehearsal; LegiScan folded in) and two owner acceptances (5 stale-enrichment flips, then the full 147-flip assessment effect).

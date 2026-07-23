@@ -221,9 +221,16 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
   };
 }
 
+/** Minimum content length for a doc to be scored — matches L2 eligibility.
+ *  Sub-threshold docket stubs must not enter document_scores: weekly
+ *  documentCount aggregates from score rows, and counting stubs made
+ *  cross-period volumes depend on ingestion-era scoring policy (#566). */
+export const SCORING_MIN_CONTENT_CHARS = 100;
+
 export function scoreDocumentBatch(items: ContentItem[], category: string): DocumentScore[] {
   return items
     .filter((item) => !item.isError && !item.isWarning)
+    .filter((item) => (item.content ?? '').length >= SCORING_MIN_CONTENT_CHARS)
     .map((item) => scoreDocument(item, category))
     .filter((score): score is DocumentScore => score !== null);
 }

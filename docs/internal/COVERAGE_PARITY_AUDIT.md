@@ -1,41 +1,69 @@
 # Coverage-Parity Audit (#557)
 
-_Read-only measurement, 2026-07-19. Companion to the coverage-parity standing constraint
-(PROJECT_KNOWLEDGE.md) and the #556 reframe. Raw matrix: `parity-matrix` queries in the issue;
-counts exclude retrieval-annotated and metadata-only docs._
+_Read-only measurement, 2026-07-19; matrix refreshed 2026-07-22 after the R-PARITY repair
+(#556: court-scoped opinions 2017–2023, LegiScan full-term ranges, gap-backlog L2 sweep —
+147 owner-accepted baseline status upgrades). Companion to the coverage-parity standing
+constraint (PROJECT_KNOWLEDGE.md). Counts exclude retrieval-annotated and metadata-only docs._
 
-## The matrix (docs by period × source)
+## The matrix (docs by period × source) — post-repair, 2026-07-22
 
 | Period     | Total      | FR     | CL         | CREC   | LegiScan | DOJ   | GovInfo | Court-scoped opinions | P1 coverage |
 | ---------- | ---------- | ------ | ---------- | ------ | -------- | ----- | ------- | --------------------- | ----------- |
-| trump_2017 | 26,059     | 12,512 | **838**    | 5,914  | 2,550    | 625   | 2,903   | **0**                 | 99.9%       |
-| trump_2018 | 26,453     | 13,141 | **1,742**  | 5,643  | 1,176    | 807   | 3,167   | **0**                 | 100%        |
-| trump_2019 | **81,279** | 14,641 | **47,809** | 11,757 | 2,476    | 1,039 | 3,007   | **0**                 | 98.6%       |
-| trump_2020 | 68,299     | 15,571 | 41,619     | 6,348  | **0**    | 939   | 3,223   | **0**                 | 100%        |
-| biden_2021 | 37,434     | 14,896 | 13,212     | 3,954  | 1,212    | 860   | 2,853   | **0**                 | 100%        |
-| biden_2022 | 37,790     | 15,236 | 13,559     | 3,401  | 763      | 1,102 | 3,262   | 13                    | 100%        |
-| biden_2023 | 55,419     | 15,087 | 28,492     | 8,119  | **0**    | 1,239 | 2,059   | 1,278                 | 100%        |
-| biden_2024 | 59,650     | 16,569 | 29,393     | 9,022  | 126      | 1,623 | 2,502   | 1,311                 | 100%        |
-| trump_t2   | 64,762     | 19,822 | 28,332     | 8,646  | 2,369    | 1,479 | 3,563   | 2,249                 | 100%        |
+| trump_2017 | 26,345     | 12,512 | **1,124**  | 5,914  | 2,550    | 625   | 2,903   | 284                   | 100%        |
+| trump_2018 | 26,749     | 13,141 | **2,023**  | 5,643  | 1,191    | 807   | 3,167   | 281                   | 100%        |
+| trump_2019 | **81,585** | 14,641 | **48,115** | 11,757 | 2,476    | 1,039 | 3,007   | 306                   | 100%        |
+| trump_2020 | 70,230     | 15,571 | 42,074     | 6,348  | 1,476    | 939   | 3,223   | 455                   | 100%        |
+| biden_2021 | 37,812     | 14,896 | 13,590     | 3,954  | 1,212    | 860   | 2,853   | 339                   | 100%        |
+| biden_2022 | 38,144     | 15,236 | 13,911     | 3,401  | 765      | 1,102 | 3,262   | 335                   | 100%        |
+| biden_2023 | 56,797     | 15,087 | 28,492     | 8,119  | 1,378    | 1,239 | 2,059   | 1,278                 | 100%        |
+| biden_2024 | 60,521     | 16,569 | 29,393     | 9,022  | 997      | 1,623 | 2,502   | 1,311                 | 100%        |
+| trump_t2   | 65,585     | 20,088 | 28,532     | 8,920  | 2,407    | 1,503 | 3,571   | 2,272                 | 100%        |
 
-## Findings, ranked by surface visibility
+_Note: T2's higher court-scoped count reflects its longer window (18 months vs 12) and a
+busier executive-power docket, not a coverage difference — the queries are now uniform._
 
-1. **CourtListener ingestion history is the largest asymmetry — larger than the court-scoped
-   layer.** Total corpus size varies ~3x (26k → 81k) almost entirely from CL: trump_2017/2018
-   have <2k CL docs; 2019–2020 have 40k+ (bulk-staging era); Biden years ~13k; 2023+ ~28k.
-   Any cross-period volume comparison is dominated by when and how CL was backfilled, not by
-   government behavior. Affects: public trend charts, L1 structural volume context.
-2. **Court-scoped opinion layer: 0 before 2023-01-20; ~1,300/yr after** (the known #556 gap,
-   boundary confirmed; 13 biden_2022 strays via other routes).
-3. **LegiScan: zero for trump_2020 and biden_2023, near-zero for biden_2024** (126) vs
-   1–2.5k elsewhere. Repairability depends on LegiScan bulk-dataset availability for those
-   sessions — to check during #556 planning.
-4. **P1 assessment coverage is uniform (98.6–100%)** — after the 2026-07-18 gap-year sweep,
-   L2 coverage is no longer an asymmetry. trump_2019 has a ~1.1k-doc tail.
-5. **FR is the model citizen** (12.5k–19.8k, smooth) — mediaFreedom's uniform correction shows.
-6. **Prompt-version vintage is not recorded on assessments** — assessment rows carry model and
-   provider but no prompt version, so cross-vintage P1 drift can be reasoned about only from
-   dates. Recommend: store a `prompt_version` on new assessments (small forward-only change).
+**Pre-repair matrix (2026-07-19), for the record:** trump_2017 had 838 CL / 0 court-scoped;
+trump_2018 1,742 / 0; trump_2020 and biden_2023 had 0 LegiScan; biden_2024 had 126; P1
+coverage ranged 98.6–100%. All repaired except trump_2017/2018 general CL depth (below).
+
+## Findings, ranked by surface visibility (status as of 2026-07-22)
+
+1. **REPAIRED to source limits (#565 + #566, 2026-07-22→23).** The "3x asymmetry" decomposed
+   into three parts once measured properly: (a) missing substantive opinions — already
+   repaired by #556's base branch (~3.1k docs); (b) ~4.3k genuinely absent rows — copied
+   (#565, 47 P1 calls ≈ $0.02); (c) the dominant term: **inconsistent scoring policy across
+   ingestion eras** — the 2019-era pipeline scored every docket stub into the weekly counts
+   (503 docs/week) while current rules don't (75/week). Owner chose substantive-only counts
+   everywhere (#566): 119,298 stub/orphan score rows purged, scoring now enforces the L2
+   content floor at every site, all periods re-aggregated/re-enriched. **Outcome:
+   lawEnforcement avg docs/week now 50 (2017) / 103 (2019) / 76 (2023) / 89 (2026)** — the
+   residual spread reflects CourtListener's own archive coverage growing after 2018, a
+   source-side reality disclosed on the methodology page, not an ingestion artifact. Zero
+   status flips in either repair (verified by pre/post snapshot both times).
+2. **REPAIRED (#556, 2026-07-20→22) — court-scoped opinion layer** now uniform 2017→present
+   (280–455/yr baseline years; T2's higher count reflects its longer window and busier
+   executive-power docket).
+3. **REPAIRED (#556 + 0b93752) — LegiScan** now covers all full terms (997–2,550/period); the
+   root cause was BASELINE_PERIODS ending terms at year 2, so the weekly cron maintains
+   coverage going forward.
+4. **REPAIRED — P1 assessment coverage is exactly 100% in every period** (the #556 chain also
+   swept the 602-doc residual backlog incl. trump_2019's 565 tail).
+5. **FR is the model citizen** (12.5k–20.1k, smooth) — mediaFreedom's uniform correction shows.
+6. **SHIPPED (5381897, migration 0043) — `prompt_version`** stamped on all new assessments
+   (p1-2026-03-24 / p2-2026-07-10); historical rows stay NULL by design.
+
+## Sizing lessons (2026-07-23, after three consecutive over-estimates)
+
+The trump_2017/2018 estimate fell from $220–300 → $150–250 → $20–40 → **$0.02 actual** across
+four passes. Standing rules now:
+
+1. **Three numbers before any repair proposal:** source-matched count, net-new after
+   anti-join against current prod, and assessable after eligibility filters. Rows are never
+   the cost unit; assessable content is.
+2. **Findings sharing substrate are re-sized after any sibling repair** (#556's base branch
+   quietly repaired most of finding #1's opinions; nothing re-measured until execution).
+3. **Volume metrics measure scoring policy, not just data** — before calling a count
+   asymmetry a data gap, check whether the eras scored the same things.
 
 ## Recommendations, with estimated repair costs
 
