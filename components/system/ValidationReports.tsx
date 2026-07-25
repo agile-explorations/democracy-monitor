@@ -568,12 +568,20 @@ export function renderBacktest(data: any) {
 /* ── Derivation Graph ─────────────────────────────────────────────── */
 
 export function renderGraph(data: any) {
+  if (data.pending) {
+    return (
+      <p className="text-xs text-dm-muted">
+        No stored report yet — the contract runs at the end of each weekly snapshot and its results
+        appear here after the next Monday run.
+      </p>
+    );
+  }
   const results = data.results ?? [];
   return (
     <div className="space-y-5 max-h-[600px] overflow-y-auto">
       <SubsectionHeading
         title="Edge Contract"
-        description="Referential and freshness invariants across documents → scores → aggregates → enrichment → narratives. Warnings are informational; failures indicate a pipeline defect or an unfinished repair."
+        description={`Referential and freshness invariants across documents → scores → aggregates → enrichment → narratives, stored by the weekly snapshot${data.generatedAt ? ` (last run ${new Date(data.generatedAt).toLocaleString()})` : ''}. Warnings are informational; failures indicate a pipeline defect or an unfinished repair.`}
       />
       <DataTable
         headers={['Invariant', 'Description', 'Violations', 'Status']}
