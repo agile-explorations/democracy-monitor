@@ -94,13 +94,16 @@ export default function DataPage() {
               ['documents', 'Source documents with metadata, content, source type'],
               [
                 'ai_document_assessments',
-                'Per-document AI review (P1 flag, P2 classification, reasoning)',
+                'Per-document AI review (P1 flag, P2 classification, reasoning, prompt_version)',
               ],
               [
                 'weekly_aggregates',
                 'Category-week rollups with structural/AI/thematic/concern scores',
               ],
-              ['baselines', 'Historical baseline statistics (Biden and Trump first-term periods)'],
+              [
+                'baselines',
+                'Historical baseline statistics (eight cycle-year periods: Trump 2017–2020, Biden 2021–2024)',
+              ],
               ['narratives', 'AI-generated weekly and term summaries'],
               ['document_scores', 'Per-document keyword assessment scores'],
             ]}

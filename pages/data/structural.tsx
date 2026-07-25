@@ -161,9 +161,10 @@ export default function StructuralDimensionsPage() {
             order volume, more personnel changes), so comparing like-to-like avoids false positives.
           </p>
           <p>
-            The system maintains four historical baselines: Biden 2021 (Year 1), Biden 2022 (Year
-            2), Trump 2017 (Year 1), and Trump 2018 (Year 2). The Biden baselines are the primary
-            reference; Trump baselines are available for cross-administration comparison in the{' '}
+            The system maintains eight historical baselines — every year of the two preceding
+            administrations: Biden 2021–2024 (cycle years 1–4) and Trump 2017–2020 (cycle years
+            1–4). The Biden baselines are the primary reference; Trump baselines are available for
+            cross-administration comparison in the{' '}
             <Link href="/data" className="text-dm-accent hover:underline">
               CSV export
             </Link>
