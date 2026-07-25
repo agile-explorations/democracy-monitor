@@ -186,4 +186,7 @@ export interface TermStatistics {
   }>;
   peakConvergenceWeek: string | null;
   currentTrend: Array<{ category: string; direction: 'improving' | 'stable' | 'worsening' }>;
+  /** Distinct substantive documents ingested this term — grounds the summary's
+   *  corpus-size claim so the model never estimates it (2026-07-25). */
+  termDocumentCount: number;
 }

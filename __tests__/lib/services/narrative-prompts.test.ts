@@ -250,6 +250,7 @@ describe('buildTermSummaryPrompt', () => {
         ],
         peakConvergenceWeek: '2026-02-17',
         currentTrend: [{ category: 'civilService', direction: 'worsening' }],
+        termDocumentCount: 43571,
       },
       ...overrides,
     };
@@ -309,6 +310,11 @@ describe('buildTermSummaryPrompt', () => {
     const prompt = buildTermSummaryPrompt(input, 'expert');
     expect(prompt).toContain('TRAJECTORY SUMMARY');
     expect(prompt).toContain('No trajectory data available.');
+  });
+
+  it('includes the grounded term document count', () => {
+    const prompt = buildTermSummaryPrompt(makeTermInput(), 'expert');
+    expect(prompt).toContain('Total documents ingested this term: 43,571');
   });
 
   it('handles null peakConvergenceWeek', () => {

@@ -343,17 +343,37 @@ async function queryCurrentTrend(toDate: string) {
   });
 }
 
+/** Distinct substantive documents ingested this term (grounds the summary's
+ *  corpus-size claim — the model previously invented "50,000+"). */
+async function queryTermDocumentCount(fromDate: string): Promise<number> {
+  const db = getDb();
+  const rows = await db.execute(sql`
+    SELECT count(DISTINCT url)::int AS n
+    FROM documents
+    WHERE retrieval_relevant IS NOT FALSE
+      AND content_type != 'metadata_only'
+      AND published_at >= ${fromDate}
+  `);
+  return Number((rows.rows as Array<{ n: number }>)[0]?.n ?? 0);
+}
+
 /** Aggregate term-level statistics: status counts, peak week, and trend direction. */
 export async function getTermStatistics(fromDate: string, toDate: string): Promise<TermStatistics> {
   if (!isDbAvailable()) {
-    return { weeksPerStatus: [], peakConvergenceWeek: null, currentTrend: [] };
+    return {
+      weeksPerStatus: [],
+      peakConvergenceWeek: null,
+      currentTrend: [],
+      termDocumentCount: 0,
+    };
   }
-  const [weeksPerStatus, peakConvergenceWeek, currentTrend] = await Promise.all([
+  const [weeksPerStatus, peakConvergenceWeek, currentTrend, termDocumentCount] = await Promise.all([
     queryWeeksPerStatus(fromDate, toDate),
     queryPeakConvergenceWeek(fromDate, toDate),
     queryCurrentTrend(toDate),
+    queryTermDocumentCount(fromDate),
   ]);
-  return { weeksPerStatus, peakConvergenceWeek, currentTrend };
+  return { weeksPerStatus, peakConvergenceWeek, currentTrend, termDocumentCount };
 }
 
 // ---------------------------------------------------------------------------
