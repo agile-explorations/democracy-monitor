@@ -13,9 +13,12 @@
  *   G2a  every completed category-week has an aggregate row
  *   G2b  aggregate document_count equals the week's score-row count
  *   G3   enrichment freshness: enriched_at >= newest assessment in the week
- *   G4   recent narratives not older than their week's enrichment
- *   G4h  (warn) historical narratives older than enrichment — regeneration is
- *        a per-repair owner decision, so this reports but never fails the run
+ *   G3L  (warn) legacy weeks (enriched_at never stamped) holding assessments —
+ *        enforced forward-only; shrinks as repairs re-enrich those weeks
+ *   G4   recent narratives not older than their week's assessment data
+ *   G4h  (warn) historical narratives older than their week's assessment
+ *        data — regeneration is a per-repair owner decision, so this
+ *        reports but never fails the run
  *   G5   no assessment rows for absent or retrieval-excluded documents
  */
 
@@ -35,8 +38,15 @@ export interface GraphInvariantResult {
   sample?: string[];
 }
 
-/** Weeks within this window must have narratives newer than their enrichment. */
-const NARRATIVE_FRESHNESS_WEEKS = 8;
+/**
+ * Error-tier narrative freshness covers only the most recent completed week:
+ * staleness there right after a snapshot means the cron generated narratives
+ * before assessing (an ordering defect), or a repair touched the week
+ * visitors are actually reading. Older staleness is the G4h warning — mid-
+ * week repairs routinely extend past weeks' assessment sets, and whether to
+ * regenerate those narratives is a per-repair owner decision.
+ */
+const NARRATIVE_FRESHNESS_WEEKS = 1;
 
 type Row = Record<string, unknown>;
 
@@ -136,55 +146,77 @@ async function g2bCountParity(): Promise<GraphInvariantResult> {
   };
 }
 
-async function g3EnrichmentFreshness(): Promise<GraphInvariantResult> {
+async function g3EnrichmentFreshness(legacy: boolean): Promise<GraphInvariantResult> {
+  // enriched_at exists only for rows enriched after #568 shipped. NULL rows
+  // are legacy — their true enrichment time is unknowable, so they report as
+  // a warning (visibility) rather than an error; the invariant bites on every
+  // week enrichment actually touches going forward.
+  const nullCheck = legacy ? sql`wa.enriched_at IS NULL` : sql`wa.enriched_at < x.newest`;
   const rows = await q(sql`
-    SELECT wa.category, wa.week_of::text AS w
+    SELECT count(*) AS total,
+      (array_agg(wa.category || ' ' || wa.week_of::text))[1:3] AS sample
     FROM weekly_aggregates wa
     JOIN LATERAL (
       SELECT max(a.assessed_at) AS newest FROM ai_document_assessments a
       WHERE a.category = wa.category
         AND a.week_of >= wa.week_of AND a.week_of < wa.week_of + 7
     ) x ON x.newest IS NOT NULL
-    WHERE wa.enriched_at IS NULL OR wa.enriched_at < x.newest
-    LIMIT 500`);
-  return {
-    id: 'G3',
-    severity: 'error',
-    description: 'enrichment is newer than the newest assessment touching the week',
-    violations: rows.length,
-    pass: rows.length === 0,
-    sample: rows.slice(0, 3).map((r) => `${r.category} ${r.w}`),
-  };
+    WHERE ${nullCheck}`);
+  const total = Number(rows[0]?.total ?? 0);
+  const sample = (rows[0]?.sample ?? []) as string[];
+  return legacy
+    ? {
+        id: 'G3L',
+        severity: 'warn',
+        description: 'legacy weeks (no enriched_at stamp) holding assessments',
+        violations: total,
+        pass: total === 0,
+      }
+    : {
+        id: 'G3',
+        severity: 'error',
+        description: 'enrichment is newer than the newest assessment touching the week',
+        violations: total,
+        pass: total === 0,
+        sample,
+      };
 }
 
 async function g4NarrativeFreshness(recent: boolean): Promise<GraphInvariantResult> {
-  // Historical narratives are deliberately NOT regenerated after derived-value
-  // recomputes (regeneration costs AI spend and is a per-repair owner
-  // decision), so staleness outside the recent window reports as a warning.
-  // Inside the window it is an error: the weekly snapshot generates the
-  // narrative after enrichment, so a stale recent narrative means the
-  // pipeline ran out of order or a repair skipped regeneration.
-  const cutoff = sql`date_trunc('week', now())::date - ${NARRATIVE_FRESHNESS_WEEKS * 7}`;
+  // A narrative is stale when ASSESSMENT DATA newer than it exists in its
+  // week — not when enrichment merely re-ran (a no-op re-enrich bumps
+  // enriched_at without changing what the narrative describes). Historical
+  // narratives are deliberately not regenerated after repairs (AI spend,
+  // per-repair owner decision), so outside the recent window this reports
+  // as a warning. Inside the window it is an error: the weekly snapshot
+  // assesses before it generates narratives, so a stale recent narrative
+  // means the pipeline ran out of order or a repair skipped regeneration.
+  const cutoff = sql`date_trunc('week', now())::date - (${NARRATIVE_FRESHNESS_WEEKS * 7})::int`;
   const compare = recent ? sql`n.week_of >= ${cutoff}` : sql`n.week_of < ${cutoff}`;
   const rows = await q(sql`
     SELECT count(*) AS n
     FROM narratives n
-    JOIN weekly_aggregates wa ON wa.category = n.category AND wa.week_of = n.week_of
-    WHERE wa.enriched_at IS NOT NULL AND n.generated_at < wa.enriched_at
+    JOIN LATERAL (
+      SELECT max(a.assessed_at) AS newest FROM ai_document_assessments a
+      WHERE a.category = n.category
+        AND a.week_of >= n.week_of AND a.week_of < n.week_of + 7
+    ) x ON x.newest IS NOT NULL
+    WHERE n.generated_at < x.newest
       AND ${compare}`);
   const total = Number(rows[0]?.n ?? 0);
   return recent
     ? {
         id: 'G4',
         severity: 'error',
-        description: `recent narratives (last ${NARRATIVE_FRESHNESS_WEEKS} weeks) not older than enrichment`,
+        description: "current-week narratives not older than their week's assessments",
         violations: total,
         pass: total === 0,
       }
     : {
         id: 'G4h',
         severity: 'warn',
-        description: 'historical narratives older than enrichment (regeneration is owner-decided)',
+        description:
+          "historical narratives older than their week's assessments (regeneration is owner-decided)",
         violations: total,
         pass: total === 0,
       };
@@ -213,7 +245,8 @@ export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
     await g1bNoOrphanOrStubScores(),
     await g2aAggregatePresence(),
     await g2bCountParity(),
-    await g3EnrichmentFreshness(),
+    await g3EnrichmentFreshness(false),
+    await g3EnrichmentFreshness(true),
     await g4NarrativeFreshness(true),
     await g4NarrativeFreshness(false),
     await g5AssessmentReferential(),

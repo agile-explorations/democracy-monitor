@@ -1,5 +1,5 @@
 /**
- * CLI: pnpm scores:backfill [--from YYYY-MM-DD] [--dry-run]
+ * CLI: pnpm scores:backfill [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--dry-run]
  *
  * Repair pass for #559: finds stored documents with no document_scores row
  * (LegiScan bills and CL opinion-first docs were stored without scoring),
@@ -26,12 +26,15 @@ import { checkHelp } from '@/lib/utils/cli-help';
 
 interface BackfillScoresOptions {
   from: string;
+  /** Inclusive publish-date ceiling; unbounded when omitted. */
+  to?: string;
   dryRun: boolean;
 }
 
 /** Distinct (category, weekOf) pairs containing docs with no score row. */
 async function findAffectedWeeks(
   from: string,
+  to?: string,
 ): Promise<Array<{ category: string; weekOf: string }>> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
@@ -49,6 +52,7 @@ async function findAffectedWeeks(
         sql`, `,
       )})
       AND d.published_at >= ${from}
+      AND (${to ?? null}::date IS NULL OR d.published_at < ${to ?? null}::date + 1)
       AND d.content_type != 'metadata_only'
       AND length(coalesce(d.content, '')) >= 100
       AND d.retrieval_relevant IS NOT FALSE
@@ -74,7 +78,7 @@ export async function runScoresBackfill(options: BackfillScoresOptions): Promise
     );
   }
 
-  const affected = await findAffectedWeeks(options.from);
+  const affected = await findAffectedWeeks(options.from, options.to);
   console.log(`[backfill-scores] ${affected.length} category-weeks with unscored docs`);
 
   for (const { category, weekOf } of affected) {
@@ -102,6 +106,7 @@ function parseCliArgs(args: string[]): BackfillScoresOptions {
   const opts: BackfillScoresOptions = { from: '2025-01-20', dryRun: false };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--from') opts.from = args[++i];
+    else if (args[i] === '--to') opts.to = args[++i];
     else if (args[i] === '--dry-run') opts.dryRun = true;
   }
   return opts;
@@ -120,6 +125,7 @@ from stored docs, and re-aggregates (count-preserving; enrichment untouched).
 
 Options:
   --from <date>   Only consider docs published on/after this date (default 2025-01-20)
+  --to <date>     Only consider docs published on/before this date (default unbounded)
   --dry-run       Report affected category-weeks without writing`,
   );
   const options = parseCliArgs(argv);

@@ -19,7 +19,11 @@ import {
 import { getDb, isDbAvailable } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
-import { scoreDocument, storeDocumentScores } from '@/lib/services/document-scorer';
+import {
+  SCORING_MIN_CONTENT_CHARS,
+  scoreDocument,
+  storeDocumentScores,
+} from '@/lib/services/document-scorer';
 import { computeAllWeeklyAggregates, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import type { DocumentScore } from '@/lib/types/scoring';
@@ -110,7 +114,13 @@ async function recomputeWeeklyAggregates(
 }
 
 function buildWhereClause(options: RecomputeOptions) {
-  const conditions = [sql`${documents.contentType} != 'metadata_only'`, retrievalRelevantOnly()];
+  const conditions = [
+    sql`${documents.contentType} != 'metadata_only'`,
+    // Same floor scoreDocumentBatch applies (#566): this path calls
+    // scoreDocument directly, so sub-threshold stubs must be excluded here.
+    sql`length(coalesce(${documents.content}, '')) >= ${SCORING_MIN_CONTENT_CHARS}`,
+    retrievalRelevantOnly(),
+  ];
   if (options.category) conditions.push(eq(documents.category, options.category));
   if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));
   if (options.to) conditions.push(lte(documents.publishedAt, new Date(options.to)));
