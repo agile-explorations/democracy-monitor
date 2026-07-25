@@ -110,14 +110,13 @@ function printNcGate(pre: NegativeControlResult[], post: NegativeControlResult[]
 
 async function runPostValidation(): Promise<boolean> {
   const report = await runValidation({});
-  const det =
-    report.summary.controlsFailed === 0 && report.summary.eventsMissed === 0
-      ? true
-      : (console.log(
-          `  ✗ validate:detection — ${report.summary.controlsFailed} controls failed, ` +
-            `${report.summary.eventsMissed} events missed`,
-        ),
-        false);
+  const det = report.summary.controlsFailed === 0 && report.summary.eventsMissed === 0;
+  if (!det) {
+    console.log(
+      `  ✗ validate:detection — ${report.summary.controlsFailed} controls failed, ` +
+        `${report.summary.eventsMissed} events missed`,
+    );
+  }
   const graph = await runGraphValidation();
   const graphErrors = graph.filter((g) => !g.pass && g.severity === 'error');
   for (const g of graphErrors) console.log(`  ✗ validate:graph — ${g.id}: ${g.violations}`);
