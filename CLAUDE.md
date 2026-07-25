@@ -24,6 +24,8 @@ pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagin
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
 pnpm validate:narratives   # Narrative quality: 3-pass generation + spec criteria (--type, --category, --week, --output)
+pnpm validate:graph        # Derivation-graph edge contract (G1a..G5); nonzero exit on error-severity violations
+pnpm pipeline:repair       # DAG-aware re-derivation for --from/--to with built-in gates (--expect-flips, --confirm-baseline)
 pnpm baselines:compute # Compute baseline statistics from existing aggregates/embeddings
 pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots

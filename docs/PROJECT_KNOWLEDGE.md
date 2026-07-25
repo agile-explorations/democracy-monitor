@@ -93,6 +93,26 @@ enrichment + assessments ──(7)──> narratives / week_headlines / term sum
 Pre/post status snapshot with an explicit expected-flips list (usually empty — anything else
 stops the run), `nc:margins` diff at each phase boundary, `validate:detection` (39/39 + 6/6),
 and the AI spend protocol (CLAUDE.md) for any edge involving model calls.
+`pipeline:repair --from --to [--expect-flips FILE] [--confirm-baseline]` (#570) runs the whole
+walk with these gates built in; prefer it over bespoke chains for pure re-derivation (it does
+not cover edges with model calls — review:backfill stays a separate, spend-protocol step).
+
+### Edge contract (`validate:graph`, #569)
+
+Named invariants checked by `pnpm validate:graph`, by the Monday snapshot's final post-step, and
+on /system/health ("Derivation Graph" panel): G1a/G1b document↔score, G2a/G2b score↔aggregate,
+G3 enrichment freshness, G4/G4h narrative freshness, G5 assessment referential integrity.
+Severity tiers: errors fail the run; warnings (G3L legacy weeks, G4h historical narratives) are
+visibility-only. Two semantics decisions worth remembering:
+
+- **`enriched_at` is forward-only.** Rows enriched before #568 keep NULL (their true enrichment
+  time is unknowable); they surface as the G3L warning and shrink as repairs re-enrich. No
+  backfilled initialization — an earlier `enriched_at := computed_at` experiment poisoned G4
+  because count-only upserts bump `computed_at`.
+- **Narrative staleness is measured against assessment data, not enrichment timestamps.** A
+  no-op re-enrich must not flag narratives; new assessments in a narrative's week do. Error
+  tier covers only the current completed week; everything older is the G4h warning because
+  historical regeneration is a per-repair owner decision.
 
 ## Sprint tracking
 
