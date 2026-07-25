@@ -1,6 +1,13 @@
 import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
+import {
+  gateAndSendDigest,
+  tryEnsureWeekHeadline,
+  tryGenerateNarratives,
+  tryRegenerateTermSummary,
+  tryValidateGraph,
+} from '@/lib/cron/snapshot-poststeps';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
@@ -27,10 +34,10 @@ import {
 import { saveIntentSnapshot } from '@/lib/services/intent-snapshot-store';
 import { aggregateAllAreas } from '@/lib/services/intent-weekly-aggregator';
 import { computeMetaAssessment } from '@/lib/services/meta-assessment-service';
+import type { MetaAssessment } from '@/lib/services/meta-assessment-service';
 import {
   generateNarrativesForWeek,
   regenerateTermSummaryIfStale,
-  retryFailedNarratives,
 } from '@/lib/services/narrative-pipeline';
 import type { SourceHealthCheck } from '@/lib/services/source-health-service';
 import {
@@ -367,85 +374,6 @@ async function processIncompleteWeeks(
   }
 }
 
-/** Regenerate the living term summary if stale (non-fatal — errors appended but don't fail snapshot). */
-/** Current week's one-line event headline (#539) — non-fatal. */
-async function tryEnsureWeekHeadline(weekOf: string, errors: string[]): Promise<void> {
-  try {
-    const { ensureWeekHeadline } = await import('@/lib/services/week-headlines');
-    const { status } = await ensureWeekHeadline(weekOf, { force: true });
-    console.log(`[snapshot] Week headline: ${status}`);
-  } catch (err) {
-    errors.push(`Week headline failed: ${formatError(err)}`);
-  }
-}
-
-async function tryRegenerateTermSummary(errors: string[]): Promise<void> {
-  const status = await regenerateTermSummaryIfStale();
-  if (status === 'failed') errors.push('Term summary regeneration failed (see logs)');
-}
-
-const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
-
-/** Generate the week's narratives, then retry any failures (non-fatal). */
-async function tryGenerateNarratives(currentWeek: string, errors: string[]): Promise<boolean> {
-  let narrativesGenerated = false;
-  try {
-    await generateNarrativesForWeek(currentWeek);
-    narrativesGenerated = true;
-  } catch (err) {
-    errors.push(`Narrative generation failed: ${formatError(err)}`);
-  }
-  try {
-    const { resolved: retried } = await retryFailedNarratives(currentWeek);
-    if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
-  } catch (err) {
-    console.warn('[snapshot] Narrative retry failed:', err);
-  }
-  return narrativesGenerated;
-}
-
-/**
- * Post-run derivation-graph contract check (#571). Runs after every write the
- * snapshot performs so it sees the final state; error-severity violations are
- * appended to the cron error channel (and render on /system/health via
- * /api/health/validate-graph) without failing the snapshot.
- */
-async function tryValidateGraph(errors: string[]): Promise<void> {
-  try {
-    const { runGraphValidation } = await import('@/lib/cron/validate-graph');
-    const results = await runGraphValidation();
-    const failed = results.filter((r) => !r.pass && r.severity === 'error');
-    for (const r of failed) {
-      errors.push(`validate:graph ${r.id} — ${r.violations} violations (${r.description})`);
-    }
-    console.log(
-      `[snapshot] validate:graph: ${failed.length === 0 ? 'all invariants hold' : `${failed.length} VIOLATED`}`,
-    );
-    // The full-scan queries exceed the web proxy timeout, so the Health page
-    // serves this stored copy instead of validating on request (#571).
-    const { cacheSet } = await import('@/lib/cache');
-    const { CacheKeys } = await import('@/lib/cache/keys');
-    await cacheSet(
-      CacheKeys.validateGraph(),
-      { results, generatedAt: new Date().toISOString() },
-      THIRTY_DAYS_SECONDS,
-    );
-  } catch (err) {
-    errors.push(`validate:graph failed to run: ${formatError(err)}`);
-  }
-}
-
-/** Send weekly digest email to subscribers (non-fatal — errors appended but don't fail snapshot). */
-async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<void> {
-  try {
-    const { sendWeeklyDigest } = await import('@/lib/services/subscriber-service');
-    const sent = await sendWeeklyDigest(weekOf);
-    if (sent > 0) console.log(`[snapshot] Weekly digest sent to ${sent} subscribers`);
-  } catch (err) {
-    errors.push(`Weekly digest failed: ${formatError(err)}`);
-  }
-}
-
 /**
  * Assess the completed week's STORED documents and re-aggregate. The per-category
  * fetch path only assesses freshly-fetched FR/DOJ items; CREC floor speeches,
@@ -529,9 +457,10 @@ async function runPostCategorySteps(
     }
   }
 
+  let meta: MetaAssessment | null = null;
   if (allHealthChecks.length > 0) {
     const summary = computeHealthSummary(allHealthChecks);
-    const meta = computeMetaAssessment(summary, allHealthChecks);
+    meta = computeMetaAssessment(summary, allHealthChecks);
     console.log(
       `[snapshot] Source health: ${meta.dataIntegrity} (${summary.healthySources}/${summary.totalSources} healthy)`,
     );
@@ -569,11 +498,18 @@ async function runPostCategorySteps(
   // Living term summary: at most one regeneration per run, only if data changed.
   await tryRegenerateTermSummary(errors);
 
+  const graphErrorViolations = await tryValidateGraph(errors);
   if (narrativesGenerated) {
-    await trySendWeeklyDigest(currentWeek, errors);
+    await gateAndSendDigest(
+      currentWeek,
+      {
+        dataIntegrity: meta?.dataIntegrity ?? null,
+        graphErrorViolations,
+        unresolvedAggregateFailures: failedAggregates.length - aggregateRetries,
+      },
+      errors,
+    );
   }
-
-  await tryValidateGraph(errors);
 
   return {
     aggregateRetries,

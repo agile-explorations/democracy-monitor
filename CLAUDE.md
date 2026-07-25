@@ -26,6 +26,7 @@ pnpm validate:detection    # Detection correctness: known events, negative contr
 pnpm validate:narratives   # Narrative quality: 3-pass generation + spec criteria (--type, --category, --week, --output)
 pnpm validate:graph        # Derivation-graph edge contract (G1a..G5); nonzero exit on error-severity violations
 pnpm pipeline:repair       # DAG-aware re-derivation for --from/--to with built-in gates (--expect-flips, --confirm-baseline)
+pnpm digest:send           # Manually release a held weekly digest (--week YYYY-MM-DD) after reviewing the narrative
 pnpm baselines:compute # Compute baseline statistics from existing aggregates/embeddings
 pnpm scores:recompute  # Re-score documents + re-aggregate (analysis periods only; --all-dates for everything)
 pnpm demo:seed      # DEV ONLY: generate deterministic demo snapshots
