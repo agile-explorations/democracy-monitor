@@ -21,10 +21,10 @@ export default function RoadmapPage() {
         <Section title="Current State" id="current-state">
           <p>
             The system ingests documents from 9 federal sources — the Federal Register,
-            Congressional Record, CourtListener, Compilation of Presidential Documents, DOJ press
-            releases, LegiScan federal bills, FEC advisory opinions, White House briefing room, and
-            GDELT media references — and assesses each across 14 categories of democratic
-            institutional health.
+            Congressional Record, CourtListener, Compilation of Presidential Documents, GovInfo
+            congressional reports and public laws, DOJ press releases, Inspector General reports,
+            LegiScan federal bills, and FEC advisory opinions — and assesses each across 14
+            categories of democratic institutional health.
           </p>
           <p>
             Detection has been validated against 39 known democratic erosion events across both

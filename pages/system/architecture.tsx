@@ -33,10 +33,10 @@ function SummaryContent() {
       <Section title="Data Sources" id="data-sources">
         <p>
           Nine source types provide coverage of different government activities: the Federal
-          Register (executive orders, rules), GovInfo (presidential documents via CPD,
-          GAO/congressional reports), Congressional Record (CREC floor speeches), CourtListener
-          (federal courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA), LegiScan
-          (federal legislation), FEC filings, and GDELT global news.
+          Register (executive orders, rules), GovInfo (presidential documents via CPD, congressional
+          reports, public laws), Congressional Record (CREC floor speeches), CourtListener (federal
+          courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA), LegiScan (federal
+          legislation), FEC filings, and GDELT global news.
         </p>
       </Section>
 
@@ -110,8 +110,8 @@ function DetailedContent() {
         </div>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <strong>Fetch</strong> — Backfill pipeline fetches historical data; snapshot pipeline
-            fetches daily increments from all source types
+            <strong>Fetch</strong> — Backfill pipeline fetches historical data; the weekly snapshot
+            pipeline fetches incremental updates from all source types
           </li>
           <li>
             <strong>Store</strong> — Raw documents persisted to the{' '}
@@ -162,8 +162,8 @@ function DetailedContent() {
               'doj-fetcher.ts',
             ],
             [
-              'GovInfo / GAO',
-              'GAO audit reports, congressional reports, public laws',
+              'GovInfo',
+              'Congressional reports, public laws, presidential documents (CPD)',
               'govinfo-fetcher.ts',
             ],
             ['FEC', 'Advisory opinions and Matters Under Review (MURs)', 'fec-fetcher.ts'],
@@ -220,7 +220,7 @@ function DetailedContent() {
             ],
             [
               'weekly_aggregates',
-              'Also carries per-layer scores and convergence synthesis per category per week',
+              'Weekly counts plus the AI-driven concern status and descriptive layer scores per category per week',
             ],
             ['narratives', 'AI-generated expert and public narrative summaries'],
           ]}

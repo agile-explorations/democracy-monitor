@@ -64,8 +64,10 @@ function SummaryContent() {
         <p>
           <strong>Silence Detection (descriptive only)</strong> — Measures whether
           government-controlled sources have gone unusually quiet while independent-branch sources
-          (courts, Congress) remain active. Uses an 8-week intra-administration rolling window.
-          Provides narrative context but does not drive concern status.
+          (courts, Congress) remain active. Uses an 8-week intra-administration rolling window;
+          categories that average under 3 documents a week use a presence-rate test over 16 weeks
+          instead, since week-to-week zeros are normal for rare-event categories. Provides narrative
+          context but does not drive concern status.
         </p>
         <p>
           <strong>Structural Anomaly (descriptive only)</strong> — Deterministic, metadata-only
@@ -167,8 +169,8 @@ function DetailedContent() {
               'Daily',
             ],
             [
-              'GovInfo / GAO',
-              'GAO audit reports, congressional reports, public laws, presidential documents (CPD)',
+              'GovInfo',
+              'Congressional reports, public laws, presidential documents (CPD)',
               'Every few days',
             ],
             [
@@ -452,7 +454,7 @@ function DetailedContent() {
       <Section title="Baselines" id="baselines">
         <p>
           All anomaly detection requires a reference period for comparison. The system maintains
-          four historical baselines:
+          eight historical baselines — every year of the two preceding administrations:
         </p>
         <DataTable
           headers={['Baseline', 'Period', 'Role']}
@@ -463,14 +465,19 @@ function DetailedContent() {
               'Primary baseline — chosen for stability and comprehensive source coverage',
             ],
             ['Biden 2021', 'Year 1 of term', 'First-year-in-term comparison'],
+            ['Biden 2023', 'Year 3 of term', 'Late-term comparison'],
+            ['Biden 2024', 'Year 4 of term', 'Election-year comparison'],
             ['Trump 2017', 'Year 1 of term', 'Cross-administration, first year'],
             ['Trump 2018', 'Year 2 of term', 'Cross-administration, same cycle year as primary'],
+            ['Trump 2019', 'Year 3 of term', 'Cross-administration, late term'],
+            ['Trump 2020', 'Year 4 of term', 'Cross-administration, election year'],
           ]}
         />
         <p>
-          All four baselines cover the same core data sources (Federal Register, CourtListener, DOJ,
-          GovInfo, FEC, LegiScan, OIG) to ensure consistent comparison. Baselines that would have
-          covered only a subset of sources were excluded.
+          All eight baselines cover the same core data sources (Federal Register, CourtListener,
+          DOJ, GovInfo, FEC, LegiScan, OIG) under uniform routing and filtering rules — see the
+          coverage-parity note above for the July 2026 repairs that made this true across every
+          period.
         </p>
         <p>
           <strong>Cycle-year adjustment:</strong> First-year administrations systematically differ
