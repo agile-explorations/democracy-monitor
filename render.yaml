@@ -8,10 +8,10 @@ services:
     disk:
       name: data-disk
       mountPath: /var/data
-      # NOTE (#560): the live disk was resized in the Render dashboard and this
-      # value has drifted from it. Must hold one full dump (~6.2 GB, growing).
-      # Update to the dashboard value before any Blueprint re-sync.
-      sizeGB: 5
+      # Verified against the Render dashboard 2026-07-25 (#560). Must hold one
+      # full dump (~6.2 GB and growing; the previous dump is deleted before a
+      # new one is written, so peak usage is a single dump).
+      sizeGB: 10
     envVars:
       - key: DATABASE_URL
         fromDatabase:
