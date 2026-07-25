@@ -28,28 +28,15 @@ The three-layer detection system was built over one month of intensive developme
 
 The AI API costs are low because the weekly document volume is modest (~500-800 docs/week across 14 categories) and GPT-4o-mini is inexpensive. Claude Sonnet (Pass 2) only runs on flagged documents and a 3% audit sample.
 
-## Sponsorship Tiers
+## How to Support
 
-### Sustain — $10/mo
+There are two channels, serving different audiences:
 
-Help keep Democracy Monitor running. Your sponsorship covers a share of the hosting infrastructure that powers weekly monitoring of 14 institutional categories.
+- **GitHub Sponsors** (this page's home turf) — for developers and organizations who found the project through the code. Click the **Sponsor** button on the [repository page](https://github.com/agile-explorations/democracy-monitor) or visit [github.com/sponsors/agile-explorations](https://github.com/sponsors/agile-explorations). GitHub Sponsors tiers mirror the amounts below.
+- **Direct support** (no GitHub account needed) — one-time or monthly contributions at [democracymonitor.us/support](https://democracymonitor.us/support). This is the canonical tier list ($5 / $10 / $25 monthly, or any one-time amount); the site page always reflects the current options.
 
-### Infrastructure — $60/mo
+For larger commitments — dedicated maintainer time, or sponsoring a full development sprint from the [project roadmap](docs/ROADMAP.md) with named deliverables tracked publicly in [DECISIONS.md](docs/DECISIONS.md) — email [michaelk@agileexplorations.com](mailto:michaelk@agileexplorations.com).
 
-Cover the full hosting stack: web service, PostgreSQL database, Redis cache, and 3 weekly cron jobs on Render.com. The project runs debt-free with this tier filled.
+## A note on tax deductibility
 
-### Full Operations — $260/mo
-
-Cover hosting plus development tools (Claude Code Max) used to build and maintain the detection system (AI document review plus descriptive context layers), concern synthesis, and assessment pipeline.
-
-### Maintainer — $1,000/mo
-
-Fund dedicated maintainer time: dependency updates, bug fixes, pipeline monitoring, threshold calibration, issue triage, and keeping the daily snapshot pipeline healthy.
-
-### Sprint Sponsor — $2,500 (one-time)
-
-Fund a full development sprint from the [project roadmap](docs/ROADMAP.md). Each sprint produces named deliverables tracked publicly — see [DECISIONS.md](docs/DECISIONS.md) for retrospectives showing planned vs. built for every completed sprint.
-
-## How to Sponsor
-
-Click the **Sponsor** button on the [repository page](https://github.com/agile-explorations/democracy-monitor) or visit [github.com/sponsors/agile-explorations](https://github.com/sponsors/agile-explorations).
+Democracy Monitor is built and operated by Agile Explorations LLC, a for-profit company. The project itself is free civic technology — open source, open methodology, open data — but contributions support the project directly and are **not tax-deductible charitable donations**.
