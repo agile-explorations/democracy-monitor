@@ -48,6 +48,7 @@
     "nc:margins": "tsx lib/cron/nc-margins.ts",
     "scores:purge-stubs": "tsx lib/cron/purge-stub-scores.ts",
     "docs:mark-stubs": "tsx lib/cron/mark-docket-stubs.ts",
+    "aggregates:backfill-gaps": "tsx lib/cron/backfill-aggregate-gaps.ts",
     "backtest": "tsx lib/cron/run-backtest.ts",
     "retrospective": "tsx lib/cron/run-retrospective.ts",
     "baselines:compute": "tsx lib/cron/compute-baseline-stats.ts",

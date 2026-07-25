@@ -7,6 +7,7 @@
 import {
   computeWeeklyAggregate,
   storeEnrichedWeeklyAggregate,
+  storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
 import { enrichWithLayerScores } from '@/lib/services/weekly-enrichment';
 import type { ContentItem } from '@/lib/types';
@@ -64,8 +65,17 @@ export async function runLayersAndAggregate(
     const { buildAISummaryFromDB } = await import('@/lib/services/document-review-summary');
     const aiSummary = await buildAISummaryFromDB(category, weekOf);
     const agg = await computeWeeklyAggregate(category, weekOf);
-    const enriched = await enrichWithLayerScores(agg, aiSummary);
-    await storeEnrichedWeeklyAggregate(enriched);
+    try {
+      const enriched = await enrichWithLayerScores(agg, aiSummary);
+      await storeEnrichedWeeklyAggregate(enriched);
+    } catch (enrichErr) {
+      // The aggregate ROW must exist even when enrichment fails (#567):
+      // zero-document weeks are valid data ("absence is meaningful") and an
+      // absent row renders as instrument-failure "No data" in the heatmap.
+      // Store the bare count row, then surface the failure for retry.
+      await storeWeeklyAggregate(agg);
+      throw enrichErr;
+    }
   } catch (err) {
     const msg = `Weekly aggregate failed for ${category}: ${formatError(err)}`;
     console.error(`[snapshot] ${msg}`);
