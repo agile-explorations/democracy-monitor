@@ -12,6 +12,7 @@ export interface DashboardData {
   fetchTimeline: FetchWeekHealth[];
   lastCheckedAt: string | null;
   documentCount: number | null;
+  fullTextCount: number | null;
   loading: boolean;
 }
 
@@ -24,6 +25,7 @@ export function useDashboardData(): DashboardData {
   const [fetchTimeline, setFetchTimeline] = useState<FetchWeekHealth[]>([]);
   const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null);
   const [documentCount, setDocumentCount] = useState<number | null>(null);
+  const [fullTextCount, setFullTextCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,8 +44,9 @@ export function useDashboardData(): DashboardData {
         if (metaRes.ok) setMeta(await metaRes.json());
         if (timelineRes.ok) setFetchTimeline(await timelineRes.json());
         if (docCountRes.ok) {
-          const { total } = await docCountRes.json();
+          const { total, fullText } = await docCountRes.json();
           setDocumentCount(total);
+          if (typeof fullText === 'number') setFullTextCount(fullText);
         }
         if (srcRes.ok) {
           const srcData = await srcRes.json();
@@ -73,6 +76,7 @@ export function useDashboardData(): DashboardData {
     fetchTimeline,
     lastCheckedAt,
     documentCount,
+    fullTextCount,
     loading,
   };
 }
