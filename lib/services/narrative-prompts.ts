@@ -326,7 +326,11 @@ export function buildWeeklySummaryPrompt(
 }
 
 function formatTermStatistics(stats: TermSummaryInput['statistics']): string {
-  const lines = ['Weeks per status by category:'];
+  const lines = [
+    `Total documents ingested this term: ${(stats.termDocumentCount ?? 0).toLocaleString()} ` +
+      '(use this figure for any corpus-size statement; do not estimate your own)',
+    'Weeks per status by category:',
+  ];
   for (const e of stats.weeksPerStatus) {
     lines.push(
       `  ${e.category}: Stable=${e.stable}, Elevated=${e.elevated}, Divergent=${e.divergent}, ConfirmedConcern=${e.confirmedConcern}`,
