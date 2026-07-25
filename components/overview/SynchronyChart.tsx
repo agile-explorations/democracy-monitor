@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Area,
   Brush,
@@ -46,12 +46,12 @@ export function SynchronyChart({
   const statusColors: StatusColorMap = useMemo(() => CONCERN_LEVEL_COLORS[mode], [mode]);
   const comparisonColors = useMemo(() => COMPARISON_COLORS[mode], [mode]);
   const trendColor = mode === 'dark' ? '#f1f5f9' : '#334155';
+  // Comparisons render whenever prior-administration data exists — the
+  // toggle button confused users, so the overlay is always on.
   const hasComparison = useMemo(
     () => data.some((d) => d.trumpT1Trend != null || d.bidenT1Trend != null),
     [data],
   );
-  // Show comparison by default when comparison data exists
-  const [showComparison, setShowComparison] = useState(hasComparison);
 
   const trendData: TrendPoint[] = useMemo(() => {
     const scores = data.map((d) => d.weightedScore);
@@ -79,10 +79,8 @@ export function SynchronyChart({
         readingLevel={readingLevel}
         statusColors={statusColors}
         trendColor={trendColor}
-        showComparison={showComparison}
         comparisonColors={comparisonColors}
         hasComparison={hasComparison}
-        onToggleComparison={() => setShowComparison((v) => !v)}
       />
       <ResponsiveContainer width="100%" height={250}>
         <ComposedChart
@@ -133,7 +131,7 @@ export function SynchronyChart({
               <Tooltip
                 content={
                   <SummaryTooltip
-                    showComparison={showComparison}
+                    showComparison={hasComparison}
                     comparisonColors={comparisonColors}
                   />
                 }
@@ -152,7 +150,7 @@ export function SynchronyChart({
                 content={
                   <DetailedTooltip
                     statusColors={statusColors}
-                    showComparison={showComparison}
+                    showComparison={hasComparison}
                     comparisonColors={comparisonColors}
                   />
                 }
@@ -184,7 +182,7 @@ export function SynchronyChart({
             dot={false}
             isAnimationActive={false}
           />
-          {showComparison && (
+          {hasComparison && (
             <Line
               type="monotone"
               dataKey="trumpT1Trend"
@@ -196,7 +194,7 @@ export function SynchronyChart({
               isAnimationActive={false}
             />
           )}
-          {showComparison && (
+          {hasComparison && (
             <Line
               type="monotone"
               dataKey="bidenT1Trend"
