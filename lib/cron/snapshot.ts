@@ -623,12 +623,24 @@ Options:
     undefined,
     opts.forceUnlock,
   )
-    .then((ran) => {
+    .then(async (ran) => {
       if (!ran) process.exit(2); // lock held → skipped
+      if (snapshotResult && snapshotResult.errors.length > 0) {
+        const { sendOpsAlert } = await import('@/lib/services/ops-alert-service');
+        await sendOpsAlert(
+          `[Democracy Monitor] Snapshot completed with ${snapshotResult.errors.length} error(s) ` +
+            `(${snapshotResult.succeeded} categories succeeded, ${snapshotResult.failed} failed)`,
+          snapshotResult.errors,
+        );
+      }
       process.exit(snapshotResult && snapshotResult.failed > snapshotResult.succeeded ? 1 : 0);
     })
-    .catch((err) => {
+    .catch(async (err) => {
       console.error('[snapshot] Fatal error:', err);
+      const { sendOpsAlert } = await import('@/lib/services/ops-alert-service');
+      await sendOpsAlert('[Democracy Monitor] Snapshot FAILED with a fatal error', [
+        err instanceof Error ? (err.stack ?? err.message) : String(err),
+      ]);
       process.exit(1);
     });
 }

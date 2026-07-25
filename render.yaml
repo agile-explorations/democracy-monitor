@@ -90,6 +90,8 @@ services:
         sync: false
       - key: RESEND_FROM_EMAIL
         value: Democracy Monitor <updates@democracymonitor.us>
+      - key: OPS_ALERT_EMAIL
+        sync: false
 
   - type: cron
     name: weekly-legiscan
