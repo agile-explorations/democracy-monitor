@@ -148,7 +148,7 @@ function BootstrapLegendItem({ mode }: { mode: 'light' | 'dark' }) {
     <>
       <span className="flex items-center gap-1 ml-3">
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
-        No data
+        No documents that week
       </span>
       <span className="flex items-center gap-1 ml-2">
         <span
