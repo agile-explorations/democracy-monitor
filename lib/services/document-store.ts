@@ -80,6 +80,11 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
           caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
           speaker: extractSpeaker(item),
+          // Docket entries are metadata stubs by design (opinions arrive as
+          // separate judicial_opinion docs) — mark at ingest so search,
+          // embeddings, and corpus counts exclude them without periodic
+          // SQL sweeps. Historical sweep: mark-docket-stubs (2026-07-25).
+          contentType: item.type === 'court_opinion' ? 'metadata_only' : 'full_text',
         })
         .onConflictDoUpdate({
           target: [documents.url, documents.category],

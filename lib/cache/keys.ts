@@ -14,5 +14,5 @@ export const CacheKeys = {
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
   searchResearch: (queryHash: string) => `search:research:${queryHash}`,
-  documentCount: () => 'stats:doc-count',
+  documentCount: () => 'stats:doc-count:v2',
 } as const;
