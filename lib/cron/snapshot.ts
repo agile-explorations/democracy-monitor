@@ -384,6 +384,8 @@ async function tryRegenerateTermSummary(errors: string[]): Promise<void> {
   if (status === 'failed') errors.push('Term summary regeneration failed (see logs)');
 }
 
+const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
+
 /** Generate the week's narratives, then retry any failures (non-fatal). */
 async function tryGenerateNarratives(currentWeek: string, errors: string[]): Promise<boolean> {
   let narrativesGenerated = false;
@@ -418,6 +420,15 @@ async function tryValidateGraph(errors: string[]): Promise<void> {
     }
     console.log(
       `[snapshot] validate:graph: ${failed.length === 0 ? 'all invariants hold' : `${failed.length} VIOLATED`}`,
+    );
+    // The full-scan queries exceed the web proxy timeout, so the Health page
+    // serves this stored copy instead of validating on request (#571).
+    const { cacheSet } = await import('@/lib/cache');
+    const { CacheKeys } = await import('@/lib/cache/keys');
+    await cacheSet(
+      CacheKeys.validateGraph(),
+      { results, generatedAt: new Date().toISOString() },
+      THIRTY_DAYS_SECONDS,
     );
   } catch (err) {
     errors.push(`validate:graph failed to run: ${formatError(err)}`);

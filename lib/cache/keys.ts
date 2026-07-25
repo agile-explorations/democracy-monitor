@@ -15,4 +15,5 @@ export const CacheKeys = {
   fec: (queryKey: string) => `fec:${queryKey}`,
   searchResearch: (queryHash: string) => `search:research:${queryHash}`,
   documentCount: () => 'stats:doc-count:v2',
+  validateGraph: () => 'health:validate-graph:v1',
 } as const;
