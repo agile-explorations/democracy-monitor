@@ -72,7 +72,7 @@ export default function DataPage() {
             For developers and researchers who need the complete dataset, a PostgreSQL dump is
             available for download. The dump is a single{' '}
             <code className="text-xs bg-dm-card px-1 py-0.5 rounded">pg_dump -Fc</code> file
-            including all tables (~2 GB): source documents, AI assessments, weekly aggregates,
+            including all tables (~6 GB): source documents, AI assessments, weekly aggregates,
             baselines, narratives, and vector embeddings. Updated weekly.
           </p>
 
