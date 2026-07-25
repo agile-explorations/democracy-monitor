@@ -43,6 +43,77 @@ Cross-sprint constraints that apply to all future work. Not tied to any single s
 
 - **Start with production diagnostics before proposing fixes.** (R-CONTENT lesson) Query production data, sample documents, classify root causes with evidence before designing solutions. The diagnostic step prevents wasted sprints optimizing the wrong layer. Add as step 0 before Analysis in the sprint process.
 
+## Derivation graph (#572)
+
+The canonical map of derived data. Every repair, backfill, and validator must respect these
+edges and their ordering. `pipeline:repair` (#570) encodes the walk; `validate:graph` (#569)
+checks the invariants; anything that mutates a node must re-derive everything downstream.
+
+### Nodes and edges
+
+```
+documents ──(1)──> document_scores ──(2)──> weekly_aggregates(counts)
+documents ──(3)──> ai_document_assessments (P1 → P2 → erosion_actor)
+documents ──(4)──> embeddings (documents.embedding)
+weekly_aggregates(counts) + assessments ──(5)──> weekly_aggregates(enrichment:
+                                                  convergence_detail/status, layer scores)
+weekly_aggregates(counts) ──(6)──> baselines (per-baseline statistics)
+baselines ──(feeds 5)──> enrichment (structural z-scores need baseline stats)
+enrichment + assessments ──(7)──> narratives / week_headlines / term summary
+```
+
+| Edge                  | Owning tool(s)                                                                                         | Eligibility rule                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| (1) score             | weekly: `scoreDocumentBatch` at store sites + `assessStoredWeek`; repair: `scores:backfill`            | content ≥ 100 chars, not metadata_only (`SCORING_MIN_CONTENT_CHARS`)        |
+| (2) count aggregation | `computeWeeklyAggregate` + `storeWeeklyAggregate` (count-preserving); gaps: `aggregates:backfill-gaps` | every completed category-week gets a row, even 0-doc (#567)                 |
+| (3) assessment        | weekly: `assessStoredWeek`; repair: `review:backfill` (capped, per #564)                               | content ≥ 100 chars, not metadata_only, retrieval-relevant                  |
+| (4) embedding         | `embeddings:backfill` / snapshot post-step                                                             | same eligibility as (3)                                                     |
+| (5) enrichment        | weekly: `runLayersAndAggregate`; repair: `scores:enrich --from --to` (never bare)                      | consumes (2)+(3)+baselines; bare row stored even if enrichment fails (#567) |
+| (6) baselines         | `baselines:compute --baseline X`                                                                       | after any (1)/(2) change inside that baseline period                        |
+| (7) narratives        | snapshot narrative cascade; `narratives:regenerate`                                                    | term summary regenerates on staleness vs newest aggregate                   |
+
+### Invalidation rules (if X changes → re-run, in order)
+
+- **documents added/removed/re-marked** → (1) `scores:backfill` (additions) or targeted purge +
+  re-aggregation (removals; see `scores:purge-stubs` pattern) → (6) `baselines:compute` for any
+  touched baseline period → (5) `scores:enrich` over the touched range → flip-gate + `nc:margins`
+  diff → (7) narratives only if statuses/labels changed.
+- **assessments added (review:backfill)** → (5) enrich over the touched range (statuses may
+  legitimately move — Option-A rehearsal or prod canary REQUIRED for doc-adding baseline repairs,
+  per the R-PARITY retro rule) → (7) term-summary staleness handles itself.
+- **eligibility/count semantics changed** (e.g., #566) → (1) purge/rescore → (2) re-aggregate
+  affected weeks → (6) all affected baselines → (5) enrich full affected range.
+- **prompts changed** → bump `PASS1_PROMPT_VERSION`/`PASS2_PROMPT_VERSION`; historical rows keep
+  their vintage (never rewrite).
+- **category titles/labels changed** → stored narrative text may carry the old label; mechanical
+  `replace()` in narratives.content is the accepted pattern (2026-07-25 hatch rename).
+
+### Standing gates for any prod re-derivation
+
+Pre/post status snapshot with an explicit expected-flips list (usually empty — anything else
+stops the run), `nc:margins` diff at each phase boundary, `validate:detection` (39/39 + 6/6),
+and the AI spend protocol (CLAUDE.md) for any edge involving model calls.
+`pipeline:repair --from --to [--expect-flips FILE] [--confirm-baseline]` (#570) runs the whole
+walk with these gates built in; prefer it over bespoke chains for pure re-derivation (it does
+not cover edges with model calls — review:backfill stays a separate, spend-protocol step).
+
+### Edge contract (`validate:graph`, #569)
+
+Named invariants checked by `pnpm validate:graph`, by the Monday snapshot's final post-step, and
+on /system/health ("Derivation Graph" panel): G1a/G1b document↔score, G2a/G2b score↔aggregate,
+G3 enrichment freshness, G4/G4h narrative freshness, G5 assessment referential integrity.
+Severity tiers: errors fail the run; warnings (G3L legacy weeks, G4h historical narratives) are
+visibility-only. Two semantics decisions worth remembering:
+
+- **`enriched_at` is forward-only.** Rows enriched before #568 keep NULL (their true enrichment
+  time is unknowable); they surface as the G3L warning and shrink as repairs re-enrich. No
+  backfilled initialization — an earlier `enriched_at := computed_at` experiment poisoned G4
+  because count-only upserts bump `computed_at`.
+- **Narrative staleness is measured against assessment data, not enrichment timestamps.** A
+  no-op re-enrich must not flag narratives; new assessments in a narrative's week do. Error
+  tier covers only the current completed week; everything older is the G4h warning because
+  historical regeneration is a per-repair owner decision.
+
 ## Sprint tracking
 
 Sprints are tracked via GitHub Milestones (one per sprint) and Issues (one per work item).
@@ -506,3 +577,4 @@ See `CLAUDE.md` for sprint process, project management workflow, and labels. Add
 - Sprint R-NAR-QUALITY: 3-pass summary generation + regenerate CLI — weekly/term summaries upgraded to 3-pass (Claude draft → GPT-4o feedback → Claude revision), factual summary data block in prompts, `narratives:regenerate` CLI with batch mode + correction email. Issues #513-#518, Milestone 77.
 - Sprint R-PARITY: Coverage-parity repair — court-scoped opinions 2017–2023 (#555 bulk-path port; 2,071 opinions) + LegiScan full-term ranges (3,742 bills filling trump_2020/biden_2023/biden_2024), verified-copy pattern (local bulk fetch → anti-join → prod insert), nc:margins capture/diff tool, 147 owner-accepted baseline status upgrades; en-route fixes: dump ENOSPC (#560), db:init destructive fallback (#561), P2 dedup + dead --pass flag (#563), AI spend protocol with enforced call budgets (#564). Issues #555-#564.
 - Sprint R-CL-DEPTH: trump_2017/2018 CL depth + substantive-only counts — 4,285-row verified-copy ($0.02 AI), scoring floor at every score site, 119k stub score rows purged, all eras re-aggregated/re-enriched, zero flips; parity audit closed to source limits; three-numbers sizing rule added to spend protocol. Issues #565-#566, Milestone 86.
+- Sprint R-GRAPH: derivation-graph contract + repair orchestrator — enriched_at lineage column (forward-only, no init), validate:graph (9 invariants, error/warn tiers) wired into the Monday cron + /system/health, pipeline:repair DAG walker with built-in gates (--expect-flips, --confirm-baseline), scores:recompute eligibility-floor bug fixed; first prod run found 77 orphan scores / 120 orphan assessments / 1 stale aggregate (deploy-day remediation). Issues #568-#572, Milestone 87.

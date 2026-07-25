@@ -1,0 +1,1 @@
+ALTER TABLE "weekly_aggregates" ADD COLUMN "enriched_at" timestamp with time zone;

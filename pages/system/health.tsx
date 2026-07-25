@@ -7,6 +7,7 @@ import {
   renderIngest,
   renderDataReport,
   renderDetection,
+  renderGraph,
   renderBacktest,
 } from '@/components/system/ValidationReports';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -153,6 +154,12 @@ export default function HealthPage() {
               description="Validates the system correctly detects known events and does not over-flag during calm baseline periods."
               endpoint="/api/health/validate-detection"
               renderReport={renderDetection}
+            />
+            <ValidationPanel
+              title="Derivation Graph"
+              description="Edge-contract invariants across the derivation pipeline: every eligible document scored, aggregates present with matching counts, enrichment and narratives fresh."
+              endpoint="/api/health/validate-graph"
+              renderReport={renderGraph}
             />
             <ValidationPanel
               title="Historical Backtest"

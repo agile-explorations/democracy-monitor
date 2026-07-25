@@ -10,6 +10,7 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/services/document-scorer', () => ({
+  SCORING_MIN_CONTENT_CHARS: 100,
   scoreDocument: vi.fn(),
   storeDocumentScores: vi.fn(),
 }));

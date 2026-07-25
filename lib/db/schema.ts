@@ -321,6 +321,11 @@ export const weeklyAggregates = pgTable(
     aiScore: real('ai_score'),
     aiDetail: jsonb('ai_detail'),
     computedAt: timestamp('computed_at', { withTimezone: true }).defaultNow().notNull(),
+    /** When enrichment (layer scores + convergence status) last ran for this
+     *  row (#568). Distinct from computed_at, which count-only upserts also
+     *  bump. Drives the enrichment-freshness invariant in validate:graph:
+     *  enriched_at must be >= the newest assessment touching the week. */
+    enrichedAt: timestamp('enriched_at', { withTimezone: true }),
   },
   (table) => [
     unique('uq_weekly_aggregates_category_week').on(table.category, table.weekOf),

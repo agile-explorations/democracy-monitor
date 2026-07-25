@@ -82,6 +82,21 @@ export async function runPurgeStubScores(dryRun: boolean): Promise<void> {
     if (done % 100 === 0) console.log(`[purge-stubs] re-aggregated ${done}/${pairs.length}`);
   }
   console.log(`[purge-stubs] Complete: ${pairs.length} category-weeks re-aggregated`);
+
+  // Referential hygiene for the assessment edge (#569 G5): assessments whose
+  // documents were later deleted (noise purges) skew weekly flag-rate
+  // denominators — buildAISummaryFromDB reads assessments without joining
+  // documents. Baseline-period rows are covered by the standing approval rule
+  // for the invoking runbook.
+  const orphans = await db.execute(sql`
+    DELETE FROM ai_document_assessments a
+    WHERE NOT EXISTS (
+      SELECT 1 FROM documents d WHERE d.url = a.url AND d.category = a.category
+    )
+  `);
+  if ((orphans.rowCount ?? 0) > 0) {
+    console.log(`[purge-stubs] deleted ${orphans.rowCount} orphaned assessment rows`);
+  }
 }
 
 if (require.main === module) {

@@ -564,3 +564,33 @@ export function renderBacktest(data: any) {
     </div>
   );
 }
+
+/* ── Derivation Graph ─────────────────────────────────────────────── */
+
+export function renderGraph(data: any) {
+  const results = data.results ?? [];
+  return (
+    <div className="space-y-5 max-h-[600px] overflow-y-auto">
+      <SubsectionHeading
+        title="Edge Contract"
+        description="Referential and freshness invariants across documents → scores → aggregates → enrichment → narratives. Warnings are informational; failures indicate a pipeline defect or an unfinished repair."
+      />
+      <DataTable
+        headers={['Invariant', 'Description', 'Violations', 'Status']}
+        rows={results.map((r: any) => [
+          r.id,
+          r.description,
+          String(r.violations),
+          r.pass ? 'PASS' : r.severity === 'warn' ? 'WARN' : 'FAIL',
+        ])}
+      />
+      {results.some((r: any) => !r.pass && r.severity === 'error' && r.sample?.length) && (
+        <WarningsList
+          warnings={results
+            .filter((r: any) => !r.pass && r.severity === 'error' && r.sample?.length)
+            .flatMap((r: any) => r.sample.map((s: string) => `${r.id}: ${s}`))}
+        />
+      )}
+    </div>
+  );
+}

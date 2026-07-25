@@ -384,6 +384,46 @@ async function tryRegenerateTermSummary(errors: string[]): Promise<void> {
   if (status === 'failed') errors.push('Term summary regeneration failed (see logs)');
 }
 
+/** Generate the week's narratives, then retry any failures (non-fatal). */
+async function tryGenerateNarratives(currentWeek: string, errors: string[]): Promise<boolean> {
+  let narrativesGenerated = false;
+  try {
+    await generateNarrativesForWeek(currentWeek);
+    narrativesGenerated = true;
+  } catch (err) {
+    errors.push(`Narrative generation failed: ${formatError(err)}`);
+  }
+  try {
+    const { resolved: retried } = await retryFailedNarratives(currentWeek);
+    if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
+  } catch (err) {
+    console.warn('[snapshot] Narrative retry failed:', err);
+  }
+  return narrativesGenerated;
+}
+
+/**
+ * Post-run derivation-graph contract check (#571). Runs after every write the
+ * snapshot performs so it sees the final state; error-severity violations are
+ * appended to the cron error channel (and render on /system/health via
+ * /api/health/validate-graph) without failing the snapshot.
+ */
+async function tryValidateGraph(errors: string[]): Promise<void> {
+  try {
+    const { runGraphValidation } = await import('@/lib/cron/validate-graph');
+    const results = await runGraphValidation();
+    const failed = results.filter((r) => !r.pass && r.severity === 'error');
+    for (const r of failed) {
+      errors.push(`validate:graph ${r.id} — ${r.violations} violations (${r.description})`);
+    }
+    console.log(
+      `[snapshot] validate:graph: ${failed.length === 0 ? 'all invariants hold' : `${failed.length} VIOLATED`}`,
+    );
+  } catch (err) {
+    errors.push(`validate:graph failed to run: ${formatError(err)}`);
+  }
+}
+
 /** Send weekly digest email to subscribers (non-fatal — errors appended but don't fail snapshot). */
 async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<void> {
   try {
@@ -511,20 +551,7 @@ async function runPostCategorySteps(
     missedWeeksProcessed = incompleteWeeksList.length;
   }
 
-  let narrativesGenerated = false;
-  try {
-    await generateNarrativesForWeek(currentWeek);
-    narrativesGenerated = true;
-  } catch (err) {
-    errors.push(`Narrative generation failed: ${formatError(err)}`);
-  }
-
-  try {
-    const { resolved: retried } = await retryFailedNarratives(currentWeek);
-    if (retried > 0) console.log(`[snapshot] Retried ${retried} failed narratives`);
-  } catch (err) {
-    console.warn('[snapshot] Narrative retry failed:', err);
-  }
+  const narrativesGenerated = await tryGenerateNarratives(currentWeek, errors);
 
   await tryEnsureWeekHeadline(currentWeek, errors);
 
@@ -534,6 +561,8 @@ async function runPostCategorySteps(
   if (narrativesGenerated) {
     await trySendWeeklyDigest(currentWeek, errors);
   }
+
+  await tryValidateGraph(errors);
 
   return {
     aggregateRetries,
