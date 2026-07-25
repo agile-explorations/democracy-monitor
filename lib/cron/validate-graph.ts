@@ -12,6 +12,7 @@
  *   G1b  no score row points at an ineligible or absent document
  *   G2a  every completed category-week has an aggregate row
  *   G2b  aggregate document_count equals the week's score-row count
+ *   G2c  every aggregate row is Monday-anchored (no off-grid week_of)
  *   G3   enrichment freshness: enriched_at >= newest assessment in the week
  *   G3L  (warn) legacy weeks (enriched_at never stamped) holding assessments —
  *        enforced forward-only; shrinks as repairs re-enrich those weeks
@@ -120,6 +121,24 @@ async function g2aAggregatePresence(): Promise<GraphInvariantResult> {
     violations: total,
     pass: total === 0,
     sample: rows.slice(0, 3).map((r) => `${r.category}: ${r.n} missing weeks`),
+  };
+}
+
+async function g2cMondayAnchors(): Promise<GraphInvariantResult> {
+  // Off-grid rows duplicate real weeks and double-count in scoped scans, but
+  // pass G2a (which only checks presence on the Monday grid).
+  const rows = await q(sql`
+    SELECT count(*) AS total,
+      (array_agg(category || ' ' || week_of::text))[1:3] AS sample
+    FROM weekly_aggregates WHERE extract(dow FROM week_of) != 1`);
+  const total = Number(rows[0]?.total ?? 0);
+  return {
+    id: 'G2c',
+    severity: 'error',
+    description: 'every aggregate row is Monday-anchored',
+    violations: total,
+    pass: total === 0,
+    sample: (rows[0]?.sample ?? []) as string[],
   };
 }
 
@@ -245,6 +264,7 @@ export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
     await g1bNoOrphanOrStubScores(),
     await g2aAggregatePresence(),
     await g2bCountParity(),
+    await g2cMondayAnchors(),
     await g3EnrichmentFreshness(false),
     await g3EnrichmentFreshness(true),
     await g4NarrativeFreshness(true),

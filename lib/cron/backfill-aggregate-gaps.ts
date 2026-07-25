@@ -33,7 +33,12 @@ export async function runBackfillAggregateGaps(opts: GapOptions): Promise<void> 
 
   const holes = await db.execute(sql`
     WITH cats AS (SELECT DISTINCT category FROM weekly_aggregates),
-    weeks AS (SELECT generate_series(${opts.from}::date, ${opts.to}::date, '7 days'::interval)::date AS w)
+    -- Aggregates anchor on MONDAYS. Align the series to the Monday of the
+    -- from-week: a raw non-Monday start would generate off-grid dates and
+    -- "fill" phantom rows that duplicate real weeks (2026-07-25 incident:
+    -- a Sunday --from created 14 phantom aggregates in prod).
+    weeks AS (SELECT generate_series(date_trunc('week', ${opts.from}::date)::date,
+      ${opts.to}::date, '7 days'::interval)::date AS w)
     SELECT c.category, w.w::text AS week_of
     FROM cats c CROSS JOIN weeks w
     WHERE NOT EXISTS (
