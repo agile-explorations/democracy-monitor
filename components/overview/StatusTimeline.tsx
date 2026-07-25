@@ -36,9 +36,11 @@ function noDataBg(mode: 'light' | 'dark'): string {
 function TimelineLegend({
   colors,
   mode,
+  hasUnassessed,
 }: {
   colors: Record<string, string>;
   mode: 'light' | 'dark';
+  hasUnassessed: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-[11px] text-dm-text-secondary">
@@ -51,10 +53,17 @@ function TimelineLegend({
           {label}
         </span>
       ))}
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
-        No data
-      </span>
+      {/* Shown only when the rendered range actually contains such a cell —
+          post-#567 that means an assessment is briefly pending, not missing. */}
+      {hasUnassessed && (
+        <span className="flex items-center gap-1.5">
+          <span
+            className="inline-block w-3 h-3 rounded-sm"
+            style={{ background: noDataBg(mode) }}
+          />
+          Not yet assessed
+        </span>
+      )}
     </div>
   );
 }
@@ -75,10 +84,11 @@ export function StatusTimeline({
 
   const weeks = entries[0].segments.map((s) => s.week);
   const labelInterval = Math.max(1, Math.ceil(weeks.length / 8));
+  const hasUnassessed = entries.some((e) => e.segments.some((seg) => seg.status === null));
 
   return (
     <div>
-      <TimelineLegend colors={colors} mode={mode} />
+      <TimelineLegend colors={colors} mode={mode} hasUnassessed={hasUnassessed} />
       <div className="overflow-x-auto">
         <div
           className="grid gap-px min-w-[600px]"
@@ -158,7 +168,7 @@ function TimelineRow({
       </div>
       {entry.segments.map((seg) => {
         const isNoData = seg.status === null;
-        const statusLabel = seg.status ? STATUS_LABELS[seg.status] : 'No data';
+        const statusLabel = seg.status ? STATUS_LABELS[seg.status] : 'Not yet assessed';
         const isSelected = selectedWeek === seg.week;
 
         return (
