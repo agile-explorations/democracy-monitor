@@ -38,7 +38,7 @@ pnpm dev                      # http://localhost:3000
 
 **Requirements:** Node.js 18+, pnpm, PostgreSQL
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup and the full dataset download.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for data setup — `pnpm db:init` restores the current production dataset (~6 GB) in one command.
 
 ### Running tests
 
@@ -106,7 +106,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code conventions, 
 - **Detection methodology** — Improving AI assessment accuracy, reducing false positives, expanding known-events validation
 - **Signal coverage** — Adding data sources for under-monitored categories (state-level data, international indices)
 - **Source integrations** — New fetchers for government data sources (Oversight.gov, state-level courts)
-- **Test coverage** — 2000+ tests across 138 files; UI components and newer services need coverage
+- **Test coverage** — 2400+ tests across 166 files; UI components and newer services need coverage
 - **Accessibility** — WCAG compliance audit
 
 ## Sponsor This Project
