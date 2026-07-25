@@ -23,14 +23,15 @@ pnpm dev                      # http://localhost:3000
 
 ### Data Setup
 
-Download the latest database dump from [GitHub Releases](https://github.com/agile-explorations/democracy-monitor/releases) and restore it:
+Restore the current production dataset with one command (the dump is ~6 GB and grows weekly — plan for the download and disk space):
 
 ```bash
 createdb democracy_monitor
-pg_restore --no-owner --no-privileges -d democracy_monitor data-dump.pgdump
-pnpm db:migrate     # Apply any migrations newer than the dump
+pnpm db:init        # downloads the latest dump from the app endpoint, restores, migrates
 pnpm dev
 ```
+
+`db:init` pulls from `https://democracymonitor.us/api/data/dump`, which is refreshed every Monday. (The GitHub Releases archive is a bootstrap-only fallback and may be months stale — don't restore from it directly.)
 
 This gives you the full production dataset including all AI assessment data. No API keys needed to explore the data and run the app.
 

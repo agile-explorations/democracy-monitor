@@ -21,7 +21,7 @@ After the first deploy, the weekly dump cron writes to the persistent disk and `
 
 ### 2. Deploy to Render
 
-Connect the repo in the Render dashboard. `render.yaml` provisions: web service (with 5GB persistent disk), PostgreSQL, Redis, and cron jobs.
+Connect the repo in the Render dashboard. `render.yaml` provisions: web service (with a persistent disk — size it to hold one full dump, currently ~6.2 GB and growing; 15 GB recommended), PostgreSQL, Redis, and cron jobs.
 
 Set these secrets in the Render dashboard:
 
@@ -51,7 +51,7 @@ Check that the app loads with historical data, the dump is downloadable at `/api
 
 ### Persistent disk — Weekly dumps
 
-The web service has a 5GB persistent disk mounted at `/var/data`. Every Monday at 05:00 UTC, the dump cron triggers `POST /api/cron/dump`, which runs `pg_dump -Fc` (single file, includes all tables and embeddings) and saves it to the disk. The file is served at `GET /api/data/dump` for public download.
+The web service has a persistent disk mounted at `/var/data` (must hold one full dump — ~6.2 GB and growing; the previous dump is deleted before each new one is written, so peak usage is a single dump). Every Monday at 05:00 UTC, the dump cron triggers `POST /api/cron/dump`, which runs `pg_dump -Fc` (single file, includes all tables and embeddings) and saves it to the disk. The file is served at `GET /api/data/dump` for public download.
 
 ### GitHub Releases — Bootstrap fallback
 
@@ -143,7 +143,7 @@ pnpm db:init                 # empty DB: downloads dump, restores, migrates
 pnpm db:init --force         # existing DB: overwrites with latest production data
 ```
 
-`db:init` downloads the latest dump from `https://democracymonitor.us/api/data/dump` (a single `pg_dump -Fc` file including all tables and embeddings), restores it, and runs migrations. Falls back to GitHub Releases if the app endpoint is unavailable.
+`db:init` downloads the latest dump from `https://democracymonitor.us/api/data/dump` (a single `pg_dump -Fc` file including all tables and embeddings), restores it, and runs migrations. If the app endpoint is unavailable it falls back to the GitHub Releases archive **only when the database is empty** (first-deploy bootstrap); on a non-empty database `db:init --force` aborts instead — the release archive can be months stale and must never overwrite real data.
 
 **Manual:**
 

@@ -37,6 +37,15 @@ pnpm seed:apply     # Apply keyword changes from review decisions to assessment-
 pnpm backtest       # Run historical backtesting
 pnpm structural:distributions  # Show per-category structural score distributions (Biden 2022)
 pnpm retrospective     # Re-run detection pipeline on known events (--event, --all, --period)
+pnpm scores:backfill   # Score docs missing document_scores rows + re-aggregate affected weeks (--from, --dry-run)
+pnpm scores:purge-stubs        # Delete score rows for ineligible/stub docs + re-aggregate (--dry-run)
+pnpm docs:mark-stubs           # Mark CL docket entries metadata_only (--dry-run)
+pnpm aggregates:backfill-gaps  # Create missing zero-doc weekly aggregate rows (--from, --to, --dry-run)
+pnpm nc:margins        # Capture/diff negative-control margins (--out FILE, --diff FILE)
+pnpm actor:backfill    # Erosion-actor attribution light pass (--baseline, --dry-run; baseline writes need approval)
+pnpm narratives:regenerate     # Regenerate narratives (--type weekly|term|all, --week)
+pnpm backfill:opinions # Opinion-first CL backfill (bulk staging locally, CL API in prod; --from, --to, --dry-run)
+pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
@@ -152,7 +161,7 @@ __tests__/        # Vitest test files mirroring lib/ structure
 - **`lib/services/concern-synthesis.ts`** — Concern synthesis (AI review drives status; structural/silence/thematic provide context).
 - **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
 - **`lib/methodology/scoring-config.ts`** — Tier weights, class multipliers, volume thresholds, named constants.
-- **`lib/cron/snapshot.ts`** — Daily snapshot pipeline: fetch → assess → concern synthesis → store.
+- **`lib/cron/snapshot.ts`** — Weekly snapshot pipeline: fetch → assess → concern synthesis → store.
 - **`lib/cron/backfill.ts`** — Historical backfill (FR + WH + GDELT + CourtListener + DOJ + GovInfo + FEC) with AI assessment.
 - **`lib/cache/index.ts`** — Redis cache with automatic in-memory fallback when Redis is unavailable.
 - **`lib/ai/provider.ts`** — AI provider factory (OpenAI, Anthropic) with availability checks.

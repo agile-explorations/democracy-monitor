@@ -1,5 +1,18 @@
 # Democracy Monitor — Proposed Architecture Redesign
 
+> **⚠️ HISTORICAL DESIGN DOCUMENT (March 2026) — the built system diverged from this proposal.**
+> Kept as the design-rationale record; do not use it as a reference for current behavior.
+> Key divergences: detection is driven **solely by AI two-pass document review** (structural,
+> silence, and thematic layers are descriptive context, not scored — the three-layer convergence
+> voting and "Divergent"/"Baseline Invalid" statuses described below were never shipped); there
+> are **8 baseline periods**, not 4; all **14 categories** are operational; CourtListener ingest
+> is opinion-first and court-scoped with docket entries stored as metadata stubs; narratives use
+> a 3-pass draft→feedback→revise pipeline; reproducibility shipped as per-pass `prompt_version`
+> stamping plus enforced AI call budgets rather than bundle hashes.
+> **Current references:** [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md) (public
+> methodology), `docs/PROJECT_KNOWLEDGE.md` (architecture decisions and current state), and
+> `docs/DECISIONS.md` (sprint retrospectives).
+
 ## Purpose of This Document
 
 This document proposes a fundamental architectural change to Democracy Monitor's detection and assessment pipeline. It is written for review by both ChatGPT (architectural/epistemic critique) and Claude Code (codebase-aware implementation feasibility).

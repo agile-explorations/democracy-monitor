@@ -1,6 +1,6 @@
 # Assessment Methodology
 
-Democracy Monitor is an open-source system that tracks signs of executive-power centralization across U.S. government institutions. It reads publicly available government documents — federal regulations, court filings, press releases, legislative reports — and uses three independent detection methods to identify when institutional norms may be shifting. When multiple methods flag the same category, confidence in the finding increases.
+Democracy Monitor is an open-source system that tracks signs of executive-power centralization across U.S. government institutions. It reads publicly available government documents — federal regulations, court filings, press releases, legislative reports — and uses AI content assessment as its primary detection method — supported by three descriptive context methods (structural anomaly, silence detection, thematic drift) — to identify when institutional norms may be shifting.
 
 The system is designed to surface patterns worth human examination, not render definitive judgments. All assessments trace to specific documents, reproducible metrics, and published thresholds.
 
@@ -11,7 +11,7 @@ Democracy Monitor ingests documents from multiple source types, covering differe
 | Source                      | What It Provides                                                                                 | Update Cadence |
 | --------------------------- | ------------------------------------------------------------------------------------------------ | -------------- |
 | **Federal Register**        | Executive orders, proposed and final rules, notices, presidential documents                      | Daily          |
-| **GovInfo / GAO**           | GAO audit reports, congressional reports, public laws, presidential documents (CPD collection)   | Every few days |
+| **GovInfo**                 | Congressional reports, public laws, presidential documents (CPD collection)                      | Every few days |
 | **CourtListener**           | Federal court opinions, docket entries, RECAP archive (civil rights, enforcement, habeas corpus) | Every few days |
 | **DOJ Press Releases**      | Department of Justice press releases across divisions (Criminal, Civil Rights, etc.)             | Every few days |
 | **Inspector General (OIG)** | Audit reports and investigations from HHS, DOJ, and SSA Inspectors General                       | Every few days |
@@ -73,12 +73,13 @@ These methods are computed and stored for narrative grounding and research, but 
 
 #### Silence Detection (Descriptive Only)
 
-Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo) have gone unusually quiet while independent-branch sources (CourtListener, congressional records, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression. Silence scores are preserved as narrative context but do not trigger status escalation.
+Silence detection measures whether government-controlled sources (Federal Register, DOJ, OIG, FEC, GovInfo presidential documents) have gone unusually quiet while independent-branch sources (CourtListener, congressional records and reports, public laws, LegiScan) remain active. This contrast — government silence alongside continued independent activity — may indicate deliberate information suppression. Silence scores are preserved as narrative context but do not trigger status escalation.
 
 - Uses an 8-week intra-administration rolling window to establish "normal" government volume
 - Computes a z-score for government-source volume deviation
 - Requires both government silence (z > 1.5σ below mean) AND independent activity to be conspicuous
 - Cold-start periods (fewer than 4 weeks of data) are flagged as low confidence
+- **Sparse-source mode:** categories whose true weekly government volume averages under 3 documents (e.g., Hatch Act enforcement) cannot support a z-test — week-to-week zeros are Poisson noise, not silence. For these, silence is instead assessed by a presence-rate and zero-streak test over a 16-week window: a streak of zero-weeks is conspicuous only when its probability under the category's own presence rate falls below 5%, and the category historically publishes in at least half of weeks
 
 #### Structural Anomaly Detection (Descriptive Only)
 
@@ -118,16 +119,20 @@ Structural anomaly, silence detection, and thematic drift provide descriptive co
 
 ## Baselines
 
-All anomaly detection requires a reference period for comparison. The system maintains four historical baselines:
+All anomaly detection requires a reference period for comparison. The system maintains eight historical baselines — every year of the two preceding administrations:
 
 | Baseline       | Period         | Role                                                                      |
 | -------------- | -------------- | ------------------------------------------------------------------------- |
 | **Biden 2022** | Year 2 of term | Primary baseline — chosen for stability and comprehensive source coverage |
 | **Biden 2021** | Year 1 of term | First-year-in-term comparison                                             |
+| **Biden 2023** | Year 3 of term | Late-term comparison                                                      |
+| **Biden 2024** | Year 4 of term | Election-year comparison                                                  |
 | **Trump 2017** | Year 1 of term | Cross-administration, first year                                          |
 | **Trump 2018** | Year 2 of term | Cross-administration, same cycle year as primary                          |
+| **Trump 2019** | Year 3 of term | Cross-administration, late term                                           |
+| **Trump 2020** | Year 4 of term | Cross-administration, election year                                       |
 
-All four baselines cover the same core data sources (Federal Register, CourtListener, DOJ, GovInfo, FEC, LegiScan, OIG) to ensure consistent comparison. Baselines that would have covered only a subset of sources were excluded to avoid confounding the analysis.
+All eight baselines cover the same core data sources (Federal Register, CourtListener, DOJ, GovInfo, FEC, LegiScan, OIG) under uniform routing and filtering rules — see the coverage-parity note on the methodology page for the July 2026 repairs that made this true across every period.
 
 **Cycle-year adjustment:** First-year administrations systematically differ from second-year administrations (higher executive order volume, more personnel changes). Cycle adjustment factors, computed from baseline data, account for these predictable Year 1 vs. Year 2 differences so that expected seasonal patterns don't trigger false positives.
 
