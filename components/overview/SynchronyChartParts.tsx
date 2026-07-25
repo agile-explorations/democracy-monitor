@@ -93,19 +93,11 @@ function Swatch({ color, opacity }: { color: string; opacity?: number }) {
   );
 }
 
-/** Dashed line swatch matching the chart's strokeDasharray rendering. */
-function DashedSwatch({ color, dashArray }: { color: string; dashArray: string }) {
+/** Dashed line swatch matching the chart's shared strokeDasharray ("4 3"). */
+function DashedSwatch({ color }: { color: string }) {
   return (
     <svg width="20" height="4" aria-hidden="true">
-      <line
-        x1="0"
-        y1="2"
-        x2="20"
-        y2="2"
-        stroke={color}
-        strokeWidth={2}
-        strokeDasharray={dashArray}
-      />
+      <line x1="0" y1="2" x2="20" y2="2" stroke={color} strokeWidth={2} strokeDasharray="4 3" />
     </svg>
   );
 }
@@ -143,17 +135,17 @@ export function ChartLegend({
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-medium">Trend Lines:</span>
         <span className="flex items-center gap-1">
-          <DashedSwatch color={trendColor} dashArray="6 3" />
+          <DashedSwatch color={trendColor} />
           Trump T2
         </span>
         {hasComparison && (
           <>
             <span className="flex items-center gap-1">
-              <DashedSwatch color={comparisonColors.trumpT1} dashArray="4 3" />
+              <DashedSwatch color={comparisonColors.trumpT1} />
               Trump T1
             </span>
             <span className="flex items-center gap-1">
-              <DashedSwatch color={comparisonColors.bidenT1} dashArray="4 3" />
+              <DashedSwatch color={comparisonColors.bidenT1} />
               Biden T1
             </span>
           </>
