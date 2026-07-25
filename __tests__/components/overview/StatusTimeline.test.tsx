@@ -56,7 +56,7 @@ describe('StatusTimeline', () => {
     const withNull: StatusTimelineEntry[] = [
       {
         category: 'hatch',
-        title: 'Keeping Politics Out of Government',
+        title: 'Political Campaigning Rules (Hatch Act)',
         segments: [
           { week: '2026-01-06', status: null },
           { week: '2026-01-13', status: 'Stable' },
