@@ -185,7 +185,7 @@ export const CATEGORIES: Category[] = [
   },
   {
     key: 'hatch',
-    title: 'Keeping Politics Out of Government',
+    title: 'Political Campaigning Rules (Hatch Act)',
     description:
       'Government workers should serve all Americans, not just one political party. The Hatch Act is a law that stops them from campaigning while at work.',
     expertDescription:
