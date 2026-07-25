@@ -47,6 +47,27 @@ describe('StatusTimeline', () => {
     expect(screen.getByTitle(/Fiscal Controls — Jan 13: Confirmed Concern/)).toBeDefined();
   });
 
+  it('hides the Not-yet-assessed legend entry when every cell has a status', () => {
+    render(<StatusTimeline entries={sampleEntries} mode="light" />);
+    expect(screen.queryByText('Not yet assessed')).toBeNull();
+  });
+
+  it('shows the Not-yet-assessed legend entry and cell label for null-status cells', () => {
+    const withNull: StatusTimelineEntry[] = [
+      {
+        category: 'hatch',
+        title: 'Keeping Politics Out of Government',
+        segments: [
+          { week: '2026-01-06', status: null },
+          { week: '2026-01-13', status: 'Stable' },
+        ],
+      },
+    ];
+    render(<StatusTimeline entries={withNull} mode="light" />);
+    expect(screen.getByText('Not yet assessed')).toBeDefined();
+    expect(screen.getByTitle(/Jan 6: Not yet assessed/)).toBeDefined();
+  });
+
   it('renders in dark mode without errors', () => {
     render(<StatusTimeline entries={sampleEntries} mode="dark" />);
     expect(screen.getByTitle('Government Worker Protections')).toBeDefined();
