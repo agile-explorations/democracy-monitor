@@ -93,12 +93,20 @@ function Swatch({ color, opacity }: { color: string; opacity?: number }) {
   );
 }
 
-function DashedSwatch({ color }: { color: string }) {
+/** Dashed line swatch matching the chart's strokeDasharray rendering. */
+function DashedSwatch({ color, dashArray }: { color: string; dashArray: string }) {
   return (
-    <span
-      className="inline-block w-3 h-0.5"
-      style={{ backgroundColor: color, borderTop: `2px dashed ${color}` }}
-    />
+    <svg width="20" height="4" aria-hidden="true">
+      <line
+        x1="0"
+        y1="2"
+        x2="20"
+        y2="2"
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray={dashArray}
+      />
+    </svg>
   );
 }
 
@@ -106,18 +114,14 @@ export function ChartLegend({
   readingLevel,
   statusColors,
   trendColor,
-  showComparison,
   comparisonColors,
   hasComparison,
-  onToggleComparison,
 }: {
   readingLevel: ReadingLevel;
   statusColors: StatusColorMap;
   trendColor: string;
-  showComparison: boolean;
   comparisonColors: { trumpT1: string; bidenT1: string };
   hasComparison: boolean;
-  onToggleComparison: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-dm-text-secondary mb-1">
@@ -136,36 +140,25 @@ export function ChartLegend({
           </span>
         </>
       )}
-      <span className="flex items-center gap-1">
-        <DashedSwatch color={trendColor} />
-        Trend
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-medium">Trend Lines:</span>
+        <span className="flex items-center gap-1">
+          <DashedSwatch color={trendColor} dashArray="6 3" />
+          Trump T2
+        </span>
+        {hasComparison && (
+          <>
+            <span className="flex items-center gap-1">
+              <DashedSwatch color={comparisonColors.trumpT1} dashArray="4 3" />
+              Trump T1
+            </span>
+            <span className="flex items-center gap-1">
+              <DashedSwatch color={comparisonColors.bidenT1} dashArray="4 3" />
+              Biden T1
+            </span>
+          </>
+        )}
       </span>
-      {showComparison && (
-        <>
-          <span className="flex items-center gap-1">
-            <DashedSwatch color={comparisonColors.trumpT1} />
-            Trump T1
-          </span>
-          <span className="flex items-center gap-1">
-            <DashedSwatch color={comparisonColors.bidenT1} />
-            Biden T1
-          </span>
-        </>
-      )}
-      {hasComparison && (
-        <button
-          type="button"
-          className={[
-            'ml-auto rounded px-1.5 py-0.5 border text-[10px] font-medium transition-colors',
-            showComparison
-              ? 'border-dm-accent bg-dm-accent/10 text-dm-accent'
-              : 'border-dm-border text-dm-text-secondary hover:border-dm-accent',
-          ].join(' ')}
-          onClick={onToggleComparison}
-        >
-          Compare Previous Administrations
-        </button>
-      )}
     </div>
   );
 }

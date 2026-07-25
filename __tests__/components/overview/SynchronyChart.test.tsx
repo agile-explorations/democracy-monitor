@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { SynchronyChart } from '@/components/overview/SynchronyChart';
 import type { SynchronyPoint } from '@/lib/types/overview';
@@ -89,14 +89,16 @@ describe('SynchronyChart', () => {
   it('renders legend with Concern Score in summary mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
     expect(screen.getByText('Concern Score')).toBeDefined();
-    expect(screen.getByText('Trend')).toBeDefined();
+    expect(screen.getByText('Trend Lines:')).toBeDefined();
+    expect(screen.getByText('Trump T2')).toBeDefined();
   });
 
   it('renders legend with status levels in detailed mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
     expect(screen.getByText('Elevated')).toBeDefined();
     expect(screen.getByText('Confirmed')).toBeDefined();
-    expect(screen.getByText('Trend')).toBeDefined();
+    expect(screen.getByText('Trend Lines:')).toBeDefined();
+    expect(screen.getByText('Trump T2')).toBeDefined();
   });
 
   it('renders in dark mode without errors', () => {
@@ -110,12 +112,13 @@ describe('SynchronyChart', () => {
     expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
   });
 
-  it('does not show Compare button when no comparison data exists', () => {
+  it('hides comparison legend entries when no comparison data exists', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="summary" />);
-    expect(screen.queryByText('Compare Previous Administrations')).toBeNull();
+    expect(screen.queryByText('Trump T1')).toBeNull();
+    expect(screen.queryByText('Biden T1')).toBeNull();
   });
 
-  it('shows Compare button and renders comparison lines when toggled', () => {
+  it('always renders comparison lines and legend when comparison data exists', () => {
     const dataWithComparison: SynchronyPoint[] = sampleData.map((d, i) => ({
       ...d,
       trumpT1Trend: i + 1,
@@ -123,19 +126,12 @@ describe('SynchronyChart', () => {
     }));
     render(<SynchronyChart data={dataWithComparison} mode="light" readingLevel="summary" />);
 
-    // Compare button should be visible
-    const compareBtn = screen.getByText('Compare Previous Administrations');
-    expect(compareBtn).toBeDefined();
+    // No toggle button — comparisons are always on (user feedback 2026-07-25)
+    expect(screen.queryByText('Compare Previous Administrations')).toBeNull();
 
-    // Comparison lines and legend shown by default when comparison data exists
     expect(screen.getByTestId('line-trumpT1Trend')).toBeDefined();
     expect(screen.getByTestId('line-bidenT1Trend')).toBeDefined();
     expect(screen.getByText('Trump T1')).toBeDefined();
     expect(screen.getByText('Biden T1')).toBeDefined();
-
-    // Toggle comparison off
-    fireEvent.click(compareBtn);
-    expect(screen.queryByTestId('line-trumpT1Trend')).toBeNull();
-    expect(screen.queryByTestId('line-bidenT1Trend')).toBeNull();
   });
 });
