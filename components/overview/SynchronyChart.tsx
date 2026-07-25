@@ -178,7 +178,7 @@ export function SynchronyChart({
             dataKey="trend"
             stroke={trendColor}
             strokeWidth={2}
-            strokeDasharray="6 3"
+            strokeDasharray="4 3"
             dot={false}
             isAnimationActive={false}
           />
