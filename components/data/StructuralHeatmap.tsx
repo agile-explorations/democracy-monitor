@@ -58,6 +58,8 @@ function buildTooltip(
   const lines = [`${title} \u2014 ${weekLabel}`];
   if (week.composite !== null) {
     lines.push(`Composite: ${week.composite.toFixed(2)}${week.anomalous ? ' (anomalous)' : ''}`);
+  } else {
+    lines.push('No documents that week \u2014 structural analysis not applicable');
   }
   const dimKeys: StructuralDimension[] = [
     'volume',
@@ -118,7 +120,7 @@ function GradientLegend({ mode }: { mode: 'light' | 'dark' }) {
       <span className="ml-2 text-dm-muted">z-score</span>
       <span className="flex items-center gap-1 ml-3">
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
-        No data
+        No documents that week
       </span>
     </div>
   );
