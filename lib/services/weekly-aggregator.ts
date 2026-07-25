@@ -201,6 +201,10 @@ const COUNT_UPSERT_SET = {
  * public weekly status via convergence_detail.
  */
 const ENRICHMENT_UPSERT_SET = {
+  // Lineage stamp (#568): when enrichment last ran. Distinct from computed_at,
+  // which count-only upserts also bump; validate:graph's freshness invariant
+  // compares this against the newest assessment touching the week.
+  enrichedAt: sql`now()`,
   structuralScore: sql`excluded.structural_score`,
   structuralDetail: sql`excluded.structural_detail`,
   thematicScore: sql`excluded.thematic_score`,
@@ -214,6 +218,7 @@ const ENRICHMENT_UPSERT_SET = {
 async function upsertAggregate(
   agg: WeeklyAggregate,
   set: Record<string, ReturnType<typeof sql>>,
+  extraValues: Partial<typeof weeklyAggregates.$inferInsert> = {},
 ): Promise<void> {
   if (!isDbAvailable()) return;
 
@@ -221,7 +226,7 @@ async function upsertAggregate(
 
   await db
     .insert(weeklyAggregates)
-    .values(buildAggregateValues(agg))
+    .values({ ...buildAggregateValues(agg), ...extraValues })
     .onConflictDoUpdate({
       target: [weeklyAggregates.category, weeklyAggregates.weekOf],
       set,
@@ -246,7 +251,13 @@ export async function storeWeeklyAggregate(agg: WeeklyAggregate): Promise<void> 
  * omits them. Only enrichWithLayerScores results should flow through here.
  */
 export async function storeEnrichedWeeklyAggregate(agg: WeeklyAggregate): Promise<void> {
-  await upsertAggregate(agg, { ...COUNT_UPSERT_SET, ...ENRICHMENT_UPSERT_SET });
+  await upsertAggregate(
+    agg,
+    { ...COUNT_UPSERT_SET, ...ENRICHMENT_UPSERT_SET },
+    {
+      enrichedAt: new Date(),
+    },
+  );
 }
 
 /**

@@ -43,6 +43,57 @@ Cross-sprint constraints that apply to all future work. Not tied to any single s
 
 - **Start with production diagnostics before proposing fixes.** (R-CONTENT lesson) Query production data, sample documents, classify root causes with evidence before designing solutions. The diagnostic step prevents wasted sprints optimizing the wrong layer. Add as step 0 before Analysis in the sprint process.
 
+## Derivation graph (#572)
+
+The canonical map of derived data. Every repair, backfill, and validator must respect these
+edges and their ordering. `pipeline:repair` (#570) encodes the walk; `validate:graph` (#569)
+checks the invariants; anything that mutates a node must re-derive everything downstream.
+
+### Nodes and edges
+
+```
+documents ──(1)──> document_scores ──(2)──> weekly_aggregates(counts)
+documents ──(3)──> ai_document_assessments (P1 → P2 → erosion_actor)
+documents ──(4)──> embeddings (documents.embedding)
+weekly_aggregates(counts) + assessments ──(5)──> weekly_aggregates(enrichment:
+                                                  convergence_detail/status, layer scores)
+weekly_aggregates(counts) ──(6)──> baselines (per-baseline statistics)
+baselines ──(feeds 5)──> enrichment (structural z-scores need baseline stats)
+enrichment + assessments ──(7)──> narratives / week_headlines / term summary
+```
+
+| Edge                  | Owning tool(s)                                                                                         | Eligibility rule                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
+| (1) score             | weekly: `scoreDocumentBatch` at store sites + `assessStoredWeek`; repair: `scores:backfill`            | content ≥ 100 chars, not metadata_only (`SCORING_MIN_CONTENT_CHARS`)        |
+| (2) count aggregation | `computeWeeklyAggregate` + `storeWeeklyAggregate` (count-preserving); gaps: `aggregates:backfill-gaps` | every completed category-week gets a row, even 0-doc (#567)                 |
+| (3) assessment        | weekly: `assessStoredWeek`; repair: `review:backfill` (capped, per #564)                               | content ≥ 100 chars, not metadata_only, retrieval-relevant                  |
+| (4) embedding         | `embeddings:backfill` / snapshot post-step                                                             | same eligibility as (3)                                                     |
+| (5) enrichment        | weekly: `runLayersAndAggregate`; repair: `scores:enrich --from --to` (never bare)                      | consumes (2)+(3)+baselines; bare row stored even if enrichment fails (#567) |
+| (6) baselines         | `baselines:compute --baseline X`                                                                       | after any (1)/(2) change inside that baseline period                        |
+| (7) narratives        | snapshot narrative cascade; `narratives:regenerate`                                                    | term summary regenerates on staleness vs newest aggregate                   |
+
+### Invalidation rules (if X changes → re-run, in order)
+
+- **documents added/removed/re-marked** → (1) `scores:backfill` (additions) or targeted purge +
+  re-aggregation (removals; see `scores:purge-stubs` pattern) → (6) `baselines:compute` for any
+  touched baseline period → (5) `scores:enrich` over the touched range → flip-gate + `nc:margins`
+  diff → (7) narratives only if statuses/labels changed.
+- **assessments added (review:backfill)** → (5) enrich over the touched range (statuses may
+  legitimately move — Option-A rehearsal or prod canary REQUIRED for doc-adding baseline repairs,
+  per the R-PARITY retro rule) → (7) term-summary staleness handles itself.
+- **eligibility/count semantics changed** (e.g., #566) → (1) purge/rescore → (2) re-aggregate
+  affected weeks → (6) all affected baselines → (5) enrich full affected range.
+- **prompts changed** → bump `PASS1_PROMPT_VERSION`/`PASS2_PROMPT_VERSION`; historical rows keep
+  their vintage (never rewrite).
+- **category titles/labels changed** → stored narrative text may carry the old label; mechanical
+  `replace()` in narratives.content is the accepted pattern (2026-07-25 hatch rename).
+
+### Standing gates for any prod re-derivation
+
+Pre/post status snapshot with an explicit expected-flips list (usually empty — anything else
+stops the run), `nc:margins` diff at each phase boundary, `validate:detection` (39/39 + 6/6),
+and the AI spend protocol (CLAUDE.md) for any edge involving model calls.
+
 ## Sprint tracking
 
 Sprints are tracked via GitHub Milestones (one per sprint) and Issues (one per work item).
