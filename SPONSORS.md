@@ -32,8 +32,8 @@ The AI API costs are low because the weekly document volume is modest (~500-800 
 
 There are two channels, serving different audiences:
 
-- **GitHub Sponsors** (this page's home turf) — for developers and organizations who found the project through the code. Click the **Sponsor** button on the [repository page](https://github.com/agile-explorations/democracy-monitor) or visit [github.com/sponsors/agile-explorations](https://github.com/sponsors/agile-explorations). GitHub Sponsors tiers mirror the amounts below.
-- **Direct support** (no GitHub account needed) — one-time or monthly contributions at [democracymonitor.us/support](https://democracymonitor.us/support). This is the canonical tier list ($5 / $10 / $25 monthly, or any one-time amount); the site page always reflects the current options.
+- **GitHub Sponsors** (this page's home turf) — for developers and organizations who found the project through the code. Click the **Sponsor** button on the [repository page](https://github.com/agile-explorations/democracy-monitor) or visit [github.com/sponsors/agile-explorations](https://github.com/sponsors/agile-explorations). Tiers there are set for project- and organization-level sponsorship.
+- **Direct support** (no GitHub account needed) — one-time or monthly contributions at [democracymonitor.us/support](https://democracymonitor.us/support). Individual-supporter tiers ($5 / $10 / $25 monthly, or any one-time amount); the site page always reflects the current options.
 
 For larger commitments — dedicated maintainer time, or sponsoring a full development sprint from the [project roadmap](docs/ROADMAP.md) with named deliverables tracked publicly in [DECISIONS.md](docs/DECISIONS.md) — email [michaelk@agileexplorations.com](mailto:michaelk@agileexplorations.com).
 
