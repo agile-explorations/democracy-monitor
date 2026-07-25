@@ -31,23 +31,29 @@ export function useDashboardData(): DashboardData {
   useEffect(() => {
     async function loadData() {
       try {
-        const [catRes, overviewRes, metaRes, srcRes, timelineRes, docCountRes] = await Promise.all([
+        // Corpus counts load independently — a slow stats endpoint must never
+        // block the dashboard (2026-07-25 incident: the whole homepage hung on
+        // this fetch inside Promise.all).
+        fetch('/api/stats/document-count')
+          .then(async (r) => {
+            if (!r.ok) return;
+            const { total, fullText } = await r.json();
+            setDocumentCount(total);
+            if (typeof fullText === 'number') setFullTextCount(fullText);
+          })
+          .catch(() => {});
+
+        const [catRes, overviewRes, metaRes, srcRes, timelineRes] = await Promise.all([
           fetch('/api/categories/summary'),
           fetch('/api/overview/summary'),
           fetch('/api/health/meta'),
           fetch('/api/health/sources'),
           fetch('/api/health/fetch-timeline'),
-          fetch('/api/stats/document-count'),
         ]);
         if (catRes.ok) setCategories(await catRes.json());
         if (overviewRes.ok) setOverview(await overviewRes.json());
         if (metaRes.ok) setMeta(await metaRes.json());
         if (timelineRes.ok) setFetchTimeline(await timelineRes.json());
-        if (docCountRes.ok) {
-          const { total, fullText } = await docCountRes.json();
-          setDocumentCount(total);
-          if (typeof fullText === 'number') setFullTextCount(fullText);
-        }
         if (srcRes.ok) {
           const srcData = await srcRes.json();
           if (srcData.summary) setHealthSummary(srcData.summary);

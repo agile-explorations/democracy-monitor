@@ -37,10 +37,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const db = getDb();
+    // fullText MUST NOT touch documents.content: length(content) detoasts
+    // ~6GB per request and hangs the endpoint (2026-07-25 homepage incident).
+    // "Searchable full-text" = what research search can actually return:
+    // embedded and not metadata-only.
     const [row] = await db
       .select({
         total: countDistinct(documents.url),
-        fullText: sql<number>`count(DISTINCT ${documents.url}) FILTER (WHERE ${documents.contentType} != 'metadata_only' AND ${documents.content} IS NOT NULL AND length(${documents.content}) >= 100)`,
+        fullText: sql<number>`count(DISTINCT ${documents.url}) FILTER (WHERE ${documents.embeddedAt} IS NOT NULL AND ${documents.contentType} != 'metadata_only')`,
       })
       .from(documents)
       .where(retrievalRelevantOnly());
