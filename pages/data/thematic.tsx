@@ -165,7 +165,7 @@ export default function ThematicDriftPage() {
               <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
                 What stands out
               </h2>
-              <ul className="space-y-1.5">
+              <ul className="space-y-1.5 list-disc list-inside marker:text-dm-muted">
                 {standouts.map((run) => (
                   <li key={`${run.category}-${run.startWeek}`} className="text-sm">
                     <Link

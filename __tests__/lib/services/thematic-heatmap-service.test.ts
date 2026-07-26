@@ -197,3 +197,45 @@ describe('upward instrument-drift suppression (#581)', () => {
     expect(detectThematicStandouts(rows as any)).toHaveLength(0);
   });
 });
+
+describe('spike detection + shift-first ranking (#582)', () => {
+  const wk = (week: string, zScore: number | null) => ({
+    week,
+    zScore,
+    centroidDistance: null,
+    novelDocRate: null,
+    varianceRatio: null,
+    crossAdminDistance: null,
+    bootstrap: false,
+    lowVolume: false,
+  });
+
+  it('surfaces a single-week spike and ranks it above a static run', () => {
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [wk('2025-05-05', 0.2), wk('2025-05-12', 6), wk('2025-05-19', 0.1)],
+      },
+      {
+        category: 'fiscal',
+        title: 'Spending Money Congress Approved',
+        weeks: [wk('2025-05-05', -3), wk('2025-05-12', -3), wk('2025-05-19', -3)],
+      },
+    ];
+    const runs = detectThematicStandouts(rows as any);
+    expect(runs[0].sentence).toContain('topics shifted sharply in the week of 2025-05-12');
+    expect(runs[runs.length - 1].direction).toBe('below');
+  });
+
+  it('suppresses spikes in weeks covered by an instrument change for the category', () => {
+    const rows = [
+      {
+        category: 'civilLiberties',
+        title: 'Civil Rights & Liberties',
+        weeks: [wk('2026-03-02', 44)],
+      },
+    ];
+    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+  });
+});

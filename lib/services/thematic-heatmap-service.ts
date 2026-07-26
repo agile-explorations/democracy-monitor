@@ -1,4 +1,5 @@
 import { CATEGORIES } from '@/lib/data/categories';
+import { overlapsInstrumentChange } from '@/lib/data/instrument-changes';
 import { THEMATIC_MIN_DOC_COUNT } from '@/lib/methodology/scoring-config';
 import { scanStandoutRuns } from '@/lib/services/structural-heatmap-service';
 import type { StandoutRun } from '@/lib/services/structural-heatmap-service';
@@ -67,12 +68,20 @@ export function buildThematicHeatmapRows(rows: AggregateRow[]): ThematicHeatmapR
   });
 }
 
+/** Single-week drift z at or above this is a standout spike (#582). */
+const THEMATIC_SPIKE_Z = 4;
+const THEMATIC_STANDOUT_LIMIT = 8;
+
 /**
- * Sustained thematic drift runs (#580). Only the z-score is scanned — it is
- * the one metric normalized against the category's own recent behavior.
+ * Thematic standouts (#580/#582). Rolling-window z-scores MEAN-REVERT: after
+ * a real topic shift the window absorbs the new mix within a week or two, so
+ * upward drift almost never sustains a 3-week run — the interesting shifts
+ * are SPIKES. Detect single-week spikes (z >= 4, instrument-suppressed) and
+ * rank them above sustained runs; static (below) runs rank last — they are
+ * context, not headlines.
  */
 export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun[] {
-  return scanStandoutRuns(
+  const runs = scanStandoutRuns(
     rows.map((r) => ({
       category: r.category,
       title: r.title,
@@ -86,4 +95,35 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
         : `${run.title} was unusually thematically static for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
     'both',
   );
+
+  const inRun = new Set(
+    runs.flatMap((r) => [`${r.category}|${r.startWeek}`, `${r.category}|${r.endWeek}`]),
+  );
+  const spikes: StandoutRun[] = [];
+  for (const row of rows) {
+    for (const w of row.weeks) {
+      if (w.zScore === null || w.zScore < THEMATIC_SPIKE_Z) continue;
+      if (inRun.has(`${row.category}|${w.week}`)) continue;
+      if (overlapsInstrumentChange(row.category, w.week, w.week)) continue;
+      spikes.push({
+        category: row.category,
+        title: row.title,
+        dimension: 'zScore',
+        dimensionLabel: 'thematic drift',
+        startWeek: w.week,
+        endWeek: w.week,
+        weekCount: 1,
+        meanZ: w.zScore,
+        direction: 'above',
+        sentence: `${row.title}'s topics shifted sharply in the week of ${w.week}.`,
+      });
+    }
+  }
+
+  const score = (r: StandoutRun) => r.weekCount * Math.abs(r.meanZ);
+  const shifts = [...spikes, ...runs.filter((r) => r.direction === 'above')].sort(
+    (a, b) => score(b) - score(a),
+  );
+  const statics = runs.filter((r) => r.direction === 'below').sort((a, b) => score(b) - score(a));
+  return [...shifts, ...statics].slice(0, THEMATIC_STANDOUT_LIMIT);
 }
