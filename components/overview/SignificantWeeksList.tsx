@@ -35,6 +35,9 @@ export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
               <Link href={`/weekly/${w.weekOf}`} className="text-dm-accent hover:underline">
                 Week of {formatWeekLabelWithYear(w.weekOf)}
               </Link>
+              {typeof w.concernScore === 'number' && (
+                <span className="text-dm-muted"> · Concern Score {w.concernScore}</span>
+              )}
               {w.headline ? (
                 <>
                   <span className="text-dm-text-secondary"> — {w.headline}</span>

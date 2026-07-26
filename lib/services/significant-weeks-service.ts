@@ -15,6 +15,7 @@ import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { significantWeeks, weeklyAggregates } from '@/lib/db/schema';
+import { STATUS_WEIGHT } from '@/lib/services/overview-service';
 
 export interface WeekStatusRow {
   weekOf: string;
@@ -223,10 +224,38 @@ export async function getSignificantWeeks(): Promise<SignificantWeek[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
   const rows = await db.select().from(significantWeeks).orderBy(asc(significantWeeks.rank));
-  return rows.map((r) => ({
-    weekOf: String(r.weekOf).slice(0, 10),
-    reasons: (r.reasons ?? []) as SignificantWeekReason[],
-    headline: r.headline ?? null,
-    rank: r.rank,
-  }));
+  if (rows.length === 0) return [];
+
+  // Attach each week's cumulative Concern Score — the same 1×Elevated +
+  // 2×Confirmed sum the overview chart plots — so "significance" is anchored
+  // to a number users can see on the chart. Computed at read time from
+  // weekly_aggregates (always current; no schema change).
+  const weekKeys = rows.map((r) => String(r.weekOf).slice(0, 10));
+  const scores = await db.execute(sql`
+    SELECT week_of::text AS w,
+      sum(CASE convergence_detail->>'status'
+        WHEN 'ConfirmedConcern' THEN ${STATUS_WEIGHT.ConfirmedConcern}::int
+        WHEN 'Elevated' THEN ${STATUS_WEIGHT.Elevated}::int
+        WHEN 'Divergent' THEN ${STATUS_WEIGHT.Divergent}::int
+        ELSE 0 END)::int AS score
+    FROM weekly_aggregates
+    WHERE week_of IN (${sql.join(
+      weekKeys.map((w) => sql`${w}::date`),
+      sql`, `,
+    )})
+    GROUP BY 1`);
+  const scoreByWeek = new Map(
+    (scores.rows as Array<{ w: string; score: number }>).map((r) => [r.w, Number(r.score)]),
+  );
+
+  return rows.map((r) => {
+    const weekOf = String(r.weekOf).slice(0, 10);
+    return {
+      weekOf,
+      reasons: (r.reasons ?? []) as SignificantWeekReason[],
+      headline: r.headline ?? null,
+      rank: r.rank,
+      concernScore: scoreByWeek.get(weekOf) ?? null,
+    };
+  });
 }
