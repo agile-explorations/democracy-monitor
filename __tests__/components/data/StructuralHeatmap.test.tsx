@@ -130,3 +130,35 @@ describe('StructuralHeatmap', () => {
     expect(fiscalFirstCell.style.background).toContain('url(');
   });
 });
+
+describe('methodology-change markers (#576)', () => {
+  it('renders a marker with tooltip when an instrument change falls in a rendered week', () => {
+    // 2026-07-20 hosts the platform-wide substantive-count floor change.
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [
+          { week: '2026-07-13', dimensions: {}, composite: 0.5, anomalous: false },
+          { week: '2026-07-20', dimensions: {}, composite: 0.5, anomalous: false },
+        ],
+      },
+    ] as any;
+    render(<StructuralHeatmap rows={rows} mode="light" />);
+    expect(screen.getByText('Methodology changes')).toBeDefined();
+    const marker = screen.getByLabelText(/Methodology change in week of/);
+    expect(marker.getAttribute('title')).toContain('Substantive-count floor');
+  });
+
+  it('renders no marker row when no changes fall in range', () => {
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [{ week: '2025-05-05', dimensions: {}, composite: 0.5, anomalous: false }],
+      },
+    ] as any;
+    render(<StructuralHeatmap rows={rows} mode="light" />);
+    expect(screen.queryByText('Methodology changes')).toBeNull();
+  });
+});
