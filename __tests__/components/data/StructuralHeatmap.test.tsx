@@ -184,9 +184,15 @@ describe('count-comparability masking (#587 interim)', () => {
     expect(cell.getAttribute('title')).toContain('Collection breadth changed');
   });
 
-  it('leaves non-count dimensions unmasked', () => {
+  it('masks Composite too — it inherits the broken dimensions', () => {
     render(<StructuralHeatmap rows={[clRow]} mode="light" />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Agency' }));
+    const cell = screen.getByRole('cell');
+    expect(cell.getAttribute('title')).toContain('Collection breadth changed');
+  });
+
+  it('leaves Convergence unmasked — the one dimension measured clean across the seam', () => {
+    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Convergence' }));
     const cell = screen.getByRole('cell');
     expect(cell.getAttribute('title') ?? '').not.toContain('Collection breadth changed');
   });

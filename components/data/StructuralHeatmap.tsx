@@ -25,8 +25,22 @@ const DIMENSION_OPTIONS: Array<{ key: DimensionOption; label: string }> = [
   { key: 'sourceConvergence', label: 'Convergence' },
 ];
 
-/** Dimensions whose values derive from document counts vs the baseline. */
-const COUNT_DERIVED_DIMENSIONS = new Set<DimensionOption>(['volume', 'publicationTempo']);
+/**
+ * Dimensions whose baseline comparison breaks when collection breadth
+ * changes. Measured across the Feb 2026 CL seam (court categories, new
+ * empirical scoring, control categories flat): volume +0.84→−1.17, tempo
+ * +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21 (opinions carry little
+ * agency metadata, so proportions shift massively), functional +0.19→+0.86,
+ * composite 1.01→1.58. Only convergence was unaffected (−0.12→−0.10).
+ */
+const BASELINE_BREAK_DIMENSIONS = new Set<DimensionOption>([
+  'composite',
+  'volume',
+  'typeComposition',
+  'functionalDistribution',
+  'agencyActivity',
+  'publicationTempo',
+]);
 
 const DIMENSION_FULL_LABELS: Record<DimensionOption, string> = {
   composite: 'Composite',
@@ -132,7 +146,7 @@ function GradientLegend({
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
         No documents that week
       </span>
-      {COUNT_DERIVED_DIMENSIONS.has(dimension) && (
+      {BASELINE_BREAK_DIMENSIONS.has(dimension) && (
         <span className="flex items-center gap-1 ml-3">
           <span
             className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
@@ -262,7 +276,7 @@ function HeatmapRow({
         // after a collection-breadth change they measure the instrument, not
         // the government — dim them until #587 makes counting consistent.
         const masked =
-          COUNT_DERIVED_DIMENSIONS.has(dimension) &&
+          BASELINE_BREAK_DIMENSIONS.has(dimension) &&
           isCountComparabilityBroken(row.category, week.week);
         const tooltip =
           buildTooltip(row.title, weekLabel, week) +
