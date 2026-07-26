@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Chevron } from '@/components/ui/Chevron';
 import { Markdown } from '@/components/ui/Markdown';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import type { EditorialRecord } from '@/lib/types';
@@ -26,9 +27,10 @@ export function EditorialPanel({
     <div className="mt-3 border-t border-dm-border pt-3">
       <button
         onClick={() => setOpen(!open)}
-        className="text-xs text-dm-text-secondary hover:text-dm-text-primary transition-colors"
+        className="inline-flex items-center gap-1 text-xs text-dm-text-secondary hover:text-dm-text-primary transition-colors"
       >
-        {open ? '\u25BE Hide editorial process' : '\u25B8 View editorial process'}
+        <Chevron open={open} className="w-3 h-3" />
+        {open ? 'Hide editorial process' : 'View editorial process'}
       </button>
       {open && (
         <div className="mt-3 space-y-4">

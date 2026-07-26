@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Chevron } from '@/components/ui/Chevron';
 import type { PromptExample } from '@/lib/ai/prompts/prompt-examples';
 import { getPromptExamples } from '@/lib/ai/prompts/prompt-examples';
 import { DataTable } from './ContentHelpers';
@@ -18,7 +19,9 @@ function PromptPanel({ prompt }: { prompt: PromptExample }) {
             {prompt.model}
           </span>
         </div>
-        <span className="text-dm-muted text-xs">{open ? '▾' : '▸'}</span>
+        <span className="text-dm-muted">
+          <Chevron open={open} />
+        </span>
       </button>
 
       {open && (

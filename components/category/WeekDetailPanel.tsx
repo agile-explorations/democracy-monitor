@@ -4,6 +4,7 @@ import { ConcernHeader } from '@/components/category/ConcernHeader';
 import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
+import { Chevron } from '@/components/ui/Chevron';
 import { DocumentTable } from '@/components/week/DocumentTable';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import type { EditorialRecord } from '@/lib/types';
@@ -66,7 +67,9 @@ function CollapsiblePanel({
         <span className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary">
           {title}
         </span>
-        <span className="text-dm-muted text-xs">{open ? '\u25B2' : '\u25BC'}</span>
+        <span className="text-dm-muted">
+          <Chevron open={open} />
+        </span>
       </button>
       {open && <div className="px-5 pb-5">{children}</div>}
     </div>
