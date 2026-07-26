@@ -41,33 +41,39 @@ export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
         {visible.map((w) => {
           const reasonText = w.reasons.map((r) => r.detail).join(' · ');
           return (
-            <li key={w.weekOf} className="text-xs leading-snug">
-              {w.reasons.map((r) => (
-                <span
-                  key={r.type}
-                  className={`inline-block mr-1.5 px-1.5 py-px rounded-full border text-[10px] align-middle ${
-                    r.type === 'peak_concern'
-                      ? 'border-red-500/40 text-red-600 dark:text-red-400'
-                      : 'border-dm-border text-dm-text-secondary'
-                  }`}
-                >
-                  {BADGE_LABELS[r.type] ?? r.type}
-                </span>
-              ))}
-              <Link href={`/weekly/${w.weekOf}`} className="text-dm-accent hover:underline">
-                Week of {formatWeekLabelWithYear(w.weekOf)}
-              </Link>
-              {typeof w.concernScore === 'number' && (
-                <span className="text-dm-muted"> · Concern Score {w.concernScore}</span>
-              )}
-              {w.headline ? (
-                <>
-                  <span className="text-dm-text-secondary"> — {w.headline}</span>
-                  <div className="text-[11px] text-dm-muted mt-0.5">{reasonText}</div>
-                </>
-              ) : (
-                <span className="text-dm-muted"> — {reasonText}</span>
-              )}
+            <li key={w.weekOf} className="text-xs leading-snug flex items-start gap-1.5">
+              {/* Badge column stays fixed so wrapped text hangs at the text
+                  margin instead of flowing back under the badges. */}
+              <span className="flex shrink-0 gap-1 pt-px">
+                {w.reasons.map((r) => (
+                  <span
+                    key={r.type}
+                    className={`inline-block px-1.5 py-px rounded-full border text-[10px] ${
+                      r.type === 'peak_concern'
+                        ? 'border-red-500/40 text-red-600 dark:text-red-400'
+                        : 'border-dm-border text-dm-text-secondary'
+                    }`}
+                  >
+                    {BADGE_LABELS[r.type] ?? r.type}
+                  </span>
+                ))}
+              </span>
+              <span className="min-w-0">
+                <Link href={`/weekly/${w.weekOf}`} className="text-dm-accent hover:underline">
+                  Week of {formatWeekLabelWithYear(w.weekOf)}
+                </Link>
+                {typeof w.concernScore === 'number' && (
+                  <span className="text-dm-muted"> · Concern Score {w.concernScore}</span>
+                )}
+                {w.headline ? (
+                  <>
+                    <span className="text-dm-text-secondary"> — {w.headline}</span>
+                    <span className="block text-[11px] text-dm-muted mt-0.5">{reasonText}</span>
+                  </>
+                ) : (
+                  <span className="text-dm-muted"> — {reasonText}</span>
+                )}
+              </span>
             </li>
           );
         })}
