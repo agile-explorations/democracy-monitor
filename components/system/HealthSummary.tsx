@@ -69,6 +69,9 @@ function IngestSummary({ data }: { data: any }) {
 }
 
 function DataSummary({ data }: { data: any }) {
+  if (data.pending) {
+    return <p className="text-xs text-dm-muted">Report pending — stored by the weekly snapshot.</p>;
+  }
   const sc = data.stageCompleteness;
   return (
     <>

@@ -216,6 +216,14 @@ export function renderIngest(data: any) {
 /* ── Data Readiness ───────────────────────────────────────────────── */
 
 export function renderDataReport(data: any) {
+  if (data.pending) {
+    return (
+      <p className="text-xs text-dm-muted">
+        No stored report yet — data readiness runs at the end of each weekly snapshot and its
+        results appear here after the next Monday run.
+      </p>
+    );
+  }
   const sc = data.stageCompleteness;
   return (
     <div className="space-y-5 max-h-[600px] overflow-y-auto">
