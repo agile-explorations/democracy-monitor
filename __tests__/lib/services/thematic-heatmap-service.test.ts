@@ -174,3 +174,26 @@ describe('detectThematicStandouts + lowVolume (#579/#580)', () => {
     expect(hatch.weeks[0].lowVolume).toBe(true);
   });
 });
+
+describe('upward instrument-drift suppression (#581)', () => {
+  it('suppresses ABOVE runs overlapping an instrument change — doc-mix changes read as upward drift', () => {
+    const wk = (week: string, zScore: number) => ({
+      week,
+      zScore,
+      centroidDistance: null,
+      novelDocRate: null,
+      varianceRatio: null,
+      crossAdminDistance: null,
+      bootstrap: false,
+      lowVolume: false,
+    });
+    const rows = [
+      {
+        category: 'civilLiberties',
+        title: 'Civil Rights & Liberties',
+        weeks: [wk('2026-03-02', 40), wk('2026-03-09', 5), wk('2026-03-16', 4)],
+      },
+    ];
+    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+  });
+});

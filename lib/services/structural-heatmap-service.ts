@@ -165,6 +165,11 @@ export function scanStandoutRuns(
   dims: string[],
   labels: Record<string, string>,
   sentence: (run: Omit<StandoutRun, 'sentence'>) => string,
+  // Which run directions an instrument change invalidates. Volume-family
+  // metrics only lose signal downward when ingest removes docs ('below');
+  // centroid-based metrics register a doc-mix change as UPWARD drift, so
+  // thematic suppresses both (the 2026-03-02 CL rework read as z=+44).
+  suppressDirections: 'below' | 'both' = 'below',
 ): StandoutRun[] {
   const runs: StandoutRun[] = [];
   for (const row of rows) {
@@ -175,7 +180,8 @@ export function scanStandoutRuns(
   return runs
     .filter(
       (r) =>
-        r.direction === 'above' || !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek),
+        (suppressDirections === 'below' && r.direction === 'above') ||
+        !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek),
     )
     .sort((a, b) => b.weekCount * Math.abs(b.meanZ) - a.weekCount * Math.abs(a.meanZ))
     .slice(0, STANDOUT_LIMIT);

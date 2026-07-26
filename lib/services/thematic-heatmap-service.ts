@@ -84,5 +84,6 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
       run.direction === 'above'
         ? `${run.title} shifted topics well beyond its recent norm for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`
         : `${run.title} was unusually thematically static for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
+    'both',
   );
 }
