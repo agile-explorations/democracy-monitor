@@ -112,9 +112,9 @@ describe('StructuralHeatmap', () => {
 
   it('renders gradient legend', () => {
     render(<StructuralHeatmap rows={sampleRows} mode="light" />);
-    expect(screen.getByText('-4')).toBeDefined();
-    expect(screen.getByText('+4')).toBeDefined();
-    expect(screen.getByText('z-score')).toBeDefined();
+    expect(screen.getByText('quieter than baseline')).toBeDefined();
+    expect(screen.getByText('busier than baseline')).toBeDefined();
+    expect(screen.getByText('z-score −4 to +4')).toBeDefined();
   });
 
   it('renders in dark mode without errors', () => {
