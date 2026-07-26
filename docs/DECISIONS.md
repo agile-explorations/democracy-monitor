@@ -12,6 +12,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-STRUCT: make the structural heatmaps carry their weight (#573–577) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25, develop, unpushed; deploy + prod re-derivation ride together after the Monday checkpoint per owner decision):
+
+- #573 empirical JSD baseline stats — as planned. `buildBaselineDistribution` computes each baseline week's JSD against the aggregate distribution; scoring uses the empirical mean/std (floor 0.01) with the old constants as documented, effectively-unreachable fallback.
+- #575 "What stands out" panel — as planned (|z| ≥ 2.5 for ≥3 weeks, ranked duration × magnitude, top 8, plain sentences).
+- #576 legibility — directional legend, methodology-change tick marks, recent-heat row ordering; owner approved the 3-entry instrument-change registry as-is.
+- #577 provenance check — verdict: **instrument drift**. civilLiberties CL rows fell ~1,100→~100/month across the CL rework while non-CL sources rose 66→~200/month. Wired into code, not just prose: below-baseline standout runs ending after a registered change for their category are suppressed.
+- #574 prod re-derivation — pending Tuesday (with deploy), zero-flip gate + NC diff + detection + graph; saturation before/after to the issue.
+
+**Key decisions:**
+
+- **Instrument changes are regime shifts, not point events.** First cut suppressed only runs _spanning_ a change date; a test exposed that the post-change regime is exactly the artifact case. Suppression now covers any below-baseline run ending after the change; above-baseline runs are never suppressed (this period's ingest changes only removed volume).
+- **Marker registry is code, owner-approved** (`lib/data/instrument-changes.ts`) — one source of truth for both the visual ticks and the findings suppression.
+- Standout sentences are composed server-side so the API serves display-ready findings (review finding 2, accepted).
+
+**Diagnostic that drove it** (2026-07-25 prod): agency z saturated >+4 in 76.1% of current-term weeks (mean 6.49), type 40.4% — z divided by hardcoded `JSD_BASELINE_MEAN=0 / STDDEV=0.05`, never calibrated; small-sample weeks always diverge from an aggregate distribution. Local verify after fix (blitz window): agency 76.1%→7.2%, type 40.4%→1.2%, and the story _sharpened_ — civilService tempo z 14.6 with agency correctly ~0–2.
+
+**Lessons learned:**
+
+- **A dimension that alarms every week alarms never.** Constant-red is indistinguishable from broken; saturation percentage is a cheap standing metric for any z-scored display (candidate for a future validate:data check).
+- **Never z-score against assumed moments when the empirical ones are already in memory.** The baseline docs were grouped by week in the same function that used hardcoded stats.
+- **Before presenting a "quiet period" as signal, check whether the instrument changed.** The most striking pattern in the heatmap (the 2026 CL blue band) was our own pipeline; one month-by-origin query settled it.
+
 ## Sprint R-GRAPH: derivation-graph contract + repair orchestrator (#568–572) — ✅ code complete, deploy held
 
 **Planned vs built** (2026-07-25, develop only; rides to main after the Monday 7/27 checkpoint):
@@ -95,17 +119,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **pgvector filtered ANN is a loaded gun:** any WHERE on a vector scan can starve results at default ef_search; iterative scan is the fix, and ef must stay at default with it.
 - **Wire cost is real on remote DBs:** SELECTing wide text columns through candidate stages is invisible locally and dominant against a remote Postgres.
 - Stale docs cleaned: PROJECT_KNOWLEDGE "gap years intentionally excluded" and the analysis-periods "four baselines" comment both predated the 8-config reality.
-
-## Sprint R-SPARSE: sparse silence + contamination index + upsert fix (#546, #548, #554) — ✅ complete
-
-**Status: Complete (2026-07-16).** Milestone 84 closed. All three items landed on develop (28a95bc, 579ecfb + docs); ride to main at the next checkpoint.
-
-**Product outcome:** (1) **#554** kills the aggregate-wipe bug family structurally — `storeWeeklyAggregate` now preserves enrichment on conflict (two-mode API; enrichment writes go through `storeEnrichedWeeklyAggregate`), E2E-proven by re-storing enriched weeks and watching statuses survive. The two #544-era call-site guards remain as scope/efficiency measures, no longer as the only defense. (2) **#546** makes silence detection meaningful for the four post-#544 sparse categories (hatch/elections/mediaFreedom/judicialIndependence at ~1–2 gov docs/wk): below a true weekly mean of 3, a 16-week presence-rate/zero-streak test replaces z-scores ((1-p)^k < 0.05 with presence ≥ 0.5 and independent sources active), and the full silence detail now persists in `convergence_detail.silence`. (3) **#548** measured the adjacent-category contamination with owner-adjudicated labels (96%/98% reliability): infoAvailability's FR flood is _worse_ than mediaFreedom's (random stratum 0/100 on-topic; silence blinded at ~152 docs/wk) but FR supplies **49% of its confirmed detections** — and of 30 confirmed-but-misrouted docs, only 10 are confirmed elsewhere, so the mediaFreedom cure would erase ~20 real detections. executiveOversight: equally dirty pipe, small blast radius (8% of detections), no action. Report: `docs/internal/CONTAMINATION_INDEX_548.md`. Recommendations await owner direction (filter+reroute sprint for infoAvailability, keyed to the #547 funnel diagnostic).
-
-**Key decisions:** sparse floor = 3 (captures exactly the four broken categories; borderline rulemaking/civilService stay z-score until evidence); label-criteria boundary tightened by owner adjudication — transparency-_adjacent_ regulation is OFF unless the subject IS information access; relevance is direction-agnostic (a records _release_ is ON — concern is L2's job).
-
-**Lessons learned:**
-
-- **Measure before porting a cure.** The same measurement protocol on a nearly identical symptom (96.9% FR share vs mediaFreedom's 88.5%) produced the opposite prescription because the detection-contribution profile differed (49% vs 6% of confirmations from FR). The #548 issue's "re-derive, don't port" instruction was empirically vindicated twice over.
-- **Cross-category overlap is the load-bearing fact for any category-scoped exclusion**: what looks like removable noise in one category can be the system's only confirmed copy of a real signal.
-- **Two-mode APIs beat magic key-presence semantics** for preserve-vs-write upserts: the enrichment path legitimately clears stale fields to null, so COALESCE-preserve would have broken it silently.

@@ -4,6 +4,22 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-SPARSE: sparse silence + contamination index + upsert fix (#546, #548, #554) — ✅ complete
+
+**Status: Complete (2026-07-16).** Milestone 84 closed. All three items landed on develop (28a95bc, 579ecfb + docs); ride to main at the next checkpoint.
+
+**Product outcome:** (1) **#554** kills the aggregate-wipe bug family structurally — `storeWeeklyAggregate` now preserves enrichment on conflict (two-mode API; enrichment writes go through `storeEnrichedWeeklyAggregate`), E2E-proven by re-storing enriched weeks and watching statuses survive. The two #544-era call-site guards remain as scope/efficiency measures, no longer as the only defense. (2) **#546** makes silence detection meaningful for the four post-#544 sparse categories (hatch/elections/mediaFreedom/judicialIndependence at ~1–2 gov docs/wk): below a true weekly mean of 3, a 16-week presence-rate/zero-streak test replaces z-scores ((1-p)^k < 0.05 with presence ≥ 0.5 and independent sources active), and the full silence detail now persists in `convergence_detail.silence`. (3) **#548** measured the adjacent-category contamination with owner-adjudicated labels (96%/98% reliability): infoAvailability's FR flood is _worse_ than mediaFreedom's (random stratum 0/100 on-topic; silence blinded at ~152 docs/wk) but FR supplies **49% of its confirmed detections** — and of 30 confirmed-but-misrouted docs, only 10 are confirmed elsewhere, so the mediaFreedom cure would erase ~20 real detections. executiveOversight: equally dirty pipe, small blast radius (8% of detections), no action. Report: `docs/internal/CONTAMINATION_INDEX_548.md`. Recommendations await owner direction (filter+reroute sprint for infoAvailability, keyed to the #547 funnel diagnostic).
+
+**Key decisions:** sparse floor = 3 (captures exactly the four broken categories; borderline rulemaking/civilService stay z-score until evidence); label-criteria boundary tightened by owner adjudication — transparency-_adjacent_ regulation is OFF unless the subject IS information access; relevance is direction-agnostic (a records _release_ is ON — concern is L2's job).
+
+**Lessons learned:**
+
+- **Measure before porting a cure.** The same measurement protocol on a nearly identical symptom (96.9% FR share vs mediaFreedom's 88.5%) produced the opposite prescription because the detection-contribution profile differed (49% vs 6% of confirmations from FR). The #548 issue's "re-derive, don't port" instruction was empirically vindicated twice over.
+- **Cross-category overlap is the load-bearing fact for any category-scoped exclusion**: what looks like removable noise in one category can be the system's only confirmed copy of a real signal.
+- **Two-mode APIs beat magic key-presence semantics** for preserve-vs-write upserts: the enrichment path legitimately clears stale fields to null, so COALESCE-preserve would have broken it silently.
+
+---
+
 ## Sprint R-MF: mediaFreedom Retrieval Relevance Filter (#524, #541–#545) — ✅ complete
 
 **Status: Complete (2026-07-15).** Milestone 82. Filter built on `feat/524-retrieval-filter` (2026-07-12), verified in #543 (owner adjudication 50/50 = 100% label reliability; fresh holdout week 0 kept / 67 dropped, 0 false drops), #544 build + prod runbook executed 2026-07-15 with per-invocation approvals on baseline-touching steps. Mid-week deploy by user decision — FR fetches happen only in the Monday cron, so the filter-live→annotation-complete gap was structurally empty (post-deploy sweep: 0 docs).
