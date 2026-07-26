@@ -493,3 +493,54 @@ describe('buildBaselineDistribution', () => {
     expect(typeof result.stdDevSourceConvergenceRatio).toBe('number');
   });
 });
+
+describe('jsdStats (#573)', () => {
+  const baseConfig = {
+    id: 'biden_2021',
+    from: '2025-06-01',
+    to: '2025-07-01',
+  } as Parameters<typeof buildBaselineDistribution>[0];
+  const doc = (sourceType: string, agency: string | null, publishedAt: string) => ({
+    sourceType,
+    title: `${sourceType}-${publishedAt}`,
+    action: null,
+    agency,
+    publishedAt: new Date(publishedAt),
+  });
+
+  it('captures empirical weekly divergence — a mix-shifting baseline yields nonzero mean', () => {
+    // Week 1 all Notices from EPA; week 2 all Rules from DOJ: each week
+    // diverges strongly from the 50/50 aggregate.
+    const rows = [
+      doc('Notice', 'EPA', '2025-06-02'),
+      doc('Notice', 'EPA', '2025-06-03'),
+      doc('Rule', 'DOJ', '2025-06-09'),
+      doc('Rule', 'DOJ', '2025-06-10'),
+    ];
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(result.jsdStats).toBeDefined();
+    expect(result.jsdStats!.type.mean).toBeGreaterThan(0.1);
+    expect(result.jsdStats!.agency.mean).toBeGreaterThan(0.1);
+  });
+
+  it('applies the std floor when every week diverges identically (single-week baseline)', () => {
+    const rows = [doc('Notice', 'EPA', '2025-06-02'), doc('Notice', 'EPA', '2025-06-03')];
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    // One week: stddev of one value is 0 → floored at 0.01.
+    expect(result.jsdStats!.type.std).toBe(0.01);
+    expect(result.jsdStats!.agency.std).toBe(0.01);
+    // And that single week matches the aggregate exactly → mean JSD 0.
+    expect(result.jsdStats!.type.mean).toBeCloseTo(0, 6);
+  });
+
+  it('a uniform baseline yields near-zero mean divergence (weeks match the aggregate)', () => {
+    const rows = [
+      doc('Notice', 'EPA', '2025-06-02'),
+      doc('Notice', 'EPA', '2025-06-09'),
+      doc('Notice', 'EPA', '2025-06-16'),
+    ];
+    const result = buildBaselineDistribution(baseConfig, 'environment', rows);
+    expect(result.jsdStats!.type.mean).toBeCloseTo(0, 6);
+    expect(result.jsdStats!.agency.mean).toBeCloseTo(0, 6);
+  });
+});

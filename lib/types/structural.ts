@@ -186,4 +186,23 @@ export interface BaselineDistribution {
   stdDevDailyVariance: number;
   meanSourceConvergenceRatio?: number;
   stdDevSourceConvergenceRatio?: number;
+  /**
+   * Empirical JSD baseline statistics (#573): mean/std of each baseline
+   * week's divergence from the baseline aggregate distribution. Small-sample
+   * weeks always diverge from the aggregate, so these run well above zero —
+   * the earlier hardcoded mean 0 / std 0.05 assumption saturated the z-scores
+   * (agency z ≈ +11 every week). Absent on legacy captures; scoring falls
+   * back to the documented constants.
+   */
+  jsdStats?: {
+    type: JsdStat;
+    functional: JsdStat;
+    agency: JsdStat;
+  };
+}
+
+/** Mean/std of weekly JSD values across a baseline period. */
+export interface JsdStat {
+  mean: number;
+  std: number;
 }

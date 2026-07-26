@@ -4,7 +4,13 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { classifyBatch } from '@/lib/services/functional-classifier';
-import type { BaselineDistribution, FunctionalBucket, WeekMetadata } from '@/lib/types/structural';
+import { jensenShannonDivergence } from '@/lib/services/structural-anomaly-service';
+import type {
+  BaselineDistribution,
+  FunctionalBucket,
+  JsdStat,
+  WeekMetadata,
+} from '@/lib/types/structural';
 import { addDays, getMonday } from '@/lib/utils/date-utils';
 import { mean, stddev } from '@/lib/utils/math';
 
@@ -166,6 +172,12 @@ export function buildBaselineDistribution(
     computeSourceConvergenceRatio(weekRows),
   );
 
+  const jsdStats = computeWeeklyJsdStats(weeklyGroups, {
+    typeDistribution,
+    functionalDistribution,
+    agencyDistribution,
+  });
+
   return {
     baselineId: config.id,
     category,
@@ -178,7 +190,66 @@ export function buildBaselineDistribution(
     stdDevDailyVariance: stddev(weeklyDailyVariances),
     meanSourceConvergenceRatio: mean(weeklySourceRatios),
     stdDevSourceConvergenceRatio: stddev(weeklySourceRatios),
+    jsdStats,
   };
+}
+
+/**
+ * Guard against near-zero empirical spread producing runaway z-scores; the
+ * floor is deliberately far below normal weekly JSD variation (~0.05–0.15).
+ */
+const JSD_STD_FLOOR = 0.01;
+
+/**
+ * Empirical per-dimension JSD baseline stats (#573): each baseline week's
+ * divergence from the baseline aggregate distribution, summarized as
+ * mean/std. This is what "normal weekly divergence" actually looks like for
+ * the category — the reference the current week's JSD is z-scored against.
+ */
+export function computeWeeklyJsdStats(
+  weeklyGroups: Record<string, DocumentRow[]>,
+  aggregate: {
+    typeDistribution: Record<string, number>;
+    functionalDistribution: Record<FunctionalBucket, number>;
+    agencyDistribution: Record<string, number>;
+  },
+): { type: JsdStat; functional: JsdStat; agency: JsdStat } {
+  const typeJsds: number[] = [];
+  const funcJsds: number[] = [];
+  const agencyJsds: number[] = [];
+
+  for (const weekRows of Object.values(weeklyGroups)) {
+    typeJsds.push(
+      jensenShannonDivergence(
+        computeDistribution(weekRows.map((r) => r.sourceType)),
+        aggregate.typeDistribution,
+      ),
+    );
+    funcJsds.push(
+      jensenShannonDivergence(
+        classifyBatch(
+          weekRows.map((r) => ({
+            title: r.title,
+            sourceType: r.sourceType,
+            action: r.action ?? undefined,
+          })),
+        ) as Record<string, number>,
+        aggregate.functionalDistribution as Record<string, number>,
+      ),
+    );
+    agencyJsds.push(
+      jensenShannonDivergence(
+        computeDistribution(weekRows.map((r) => r.agency ?? UNKNOWN_AGENCY).filter(Boolean)),
+        aggregate.agencyDistribution,
+      ),
+    );
+  }
+
+  const stat = (values: number[]): JsdStat => ({
+    mean: mean(values),
+    std: Math.max(stddev(values), JSD_STD_FLOOR),
+  });
+  return { type: stat(typeJsds), functional: stat(funcJsds), agency: stat(agencyJsds) };
 }
 
 /** Document types that indicate government-origin documents. */

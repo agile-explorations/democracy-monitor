@@ -9,6 +9,7 @@ import {
   STRUCTURAL_MIN_DOC_COUNT,
 } from '@/lib/methodology/scoring-config';
 import type {
+  JsdStat,
   BaselineDistribution,
   DimensionScore,
   FunctionalBucket,
@@ -104,6 +105,15 @@ export function detectFunctionalShifts(
   return shifts;
 }
 
+/**
+ * Empirical JSD stats (#573) when the baseline capture carries them; the
+ * legacy constants (mean 0 / std 0.05) remain only as a fallback and are
+ * known to saturate — small-sample weeks always diverge from the aggregate.
+ */
+function makeJsdDimensionScore(jsd: number, stat?: JsdStat) {
+  return makeDimensionScore(jsd, stat?.mean ?? JSD_BASELINE_MEAN, stat?.std ?? JSD_BASELINE_STDDEV);
+}
+
 function computeDimensions(
   week: WeekMetadata,
   baseline: BaselineDistribution,
@@ -114,21 +124,21 @@ function computeDimensions(
     baseline.stdDevDocCount,
   );
 
-  const typeJSD = jensenShannonDivergence(week.typeDistribution, baseline.typeDistribution);
-  const typeComposition = makeDimensionScore(typeJSD, JSD_BASELINE_MEAN, JSD_BASELINE_STDDEV);
-
-  const funcJSD = jensenShannonDivergence(
-    week.functionalDistribution as Record<string, number>,
-    baseline.functionalDistribution as Record<string, number>,
+  const typeComposition = makeJsdDimensionScore(
+    jensenShannonDivergence(week.typeDistribution, baseline.typeDistribution),
+    baseline.jsdStats?.type,
   );
-  const functionalDistribution = makeDimensionScore(
-    funcJSD,
-    JSD_BASELINE_MEAN,
-    JSD_BASELINE_STDDEV,
+  const functionalDistribution = makeJsdDimensionScore(
+    jensenShannonDivergence(
+      week.functionalDistribution as Record<string, number>,
+      baseline.functionalDistribution as Record<string, number>,
+    ),
+    baseline.jsdStats?.functional,
   );
-
-  const agencyJSD = jensenShannonDivergence(week.agencyDistribution, baseline.agencyDistribution);
-  const agencyActivity = makeDimensionScore(agencyJSD, JSD_BASELINE_MEAN, JSD_BASELINE_STDDEV);
+  const agencyActivity = makeJsdDimensionScore(
+    jensenShannonDivergence(week.agencyDistribution, baseline.agencyDistribution),
+    baseline.jsdStats?.agency,
+  );
 
   const dailyVar = variance(week.dailyCounts);
   const publicationTempo = makeDimensionScore(
