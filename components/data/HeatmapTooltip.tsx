@@ -27,6 +27,7 @@ export function HeatmapTooltip({
   const [visible, setVisible] = useState(false);
   const [labels, setLabels] = useState<ShiftLabels | 'empty' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchLabels = useCallback(async () => {
@@ -60,14 +61,29 @@ export function HeatmapTooltip({
       ref={containerRef}
       className="relative"
       onMouseEnter={() => {
+        // Fixed positioning below the cell escapes the heatmap's
+        // overflow-x-auto clipping and sits above everything; clamp
+        // horizontally so edge cells stay fully on screen.
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+          const half = 140; // half of max-w-[280px]
+          const left = Math.min(
+            Math.max(rect.left + rect.width / 2, half + 8),
+            window.innerWidth - half - 8,
+          );
+          setPos({ top: rect.bottom + 6, left });
+        }
         setVisible(true);
         if (!labels && !loading) fetchLabels();
       }}
       onMouseLeave={() => setVisible(false)}
     >
       {children}
-      {visible && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 px-2.5 py-1.5 rounded shadow-lg text-[10px] leading-relaxed whitespace-pre-line pointer-events-none bg-dm-card border border-dm-border text-dm-text-primary min-w-[180px] max-w-[280px]">
+      {visible && pos && (
+        <div
+          className="fixed z-[9999] -translate-x-1/2 px-2.5 py-1.5 rounded shadow-lg text-[10px] leading-relaxed whitespace-pre-line pointer-events-none bg-dm-card border border-dm-border text-dm-text-primary min-w-[180px] max-w-[280px]"
+          style={{ top: pos.top, left: pos.left }}
+        >
           {tooltipText}
           {loading && <p className="text-dm-muted italic mt-1">Loading drift labels…</p>}
           {labels && labels !== 'empty' && (
