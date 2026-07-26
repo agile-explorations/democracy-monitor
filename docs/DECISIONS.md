@@ -12,6 +12,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DRIFT: light up the thematic drift heatmaps (#578–583) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25, develop; rides Tuesday's single deploy + re-derivation with R-STRUCT):
+
+- #578 novelty/variance wiring — as planned, plus empirical threshold calibration (see decisions).
+- #579 small-N masking — as planned (`THEMATIC_MIN_DOC_COUNT = 5`, distance tabs only).
+- #580 legibility ports — as planned, via generalization rather than copying (`scanStandoutRuns`, shared `buildMarkersByWeek`).
+- #581 verification — caught a live defect (see decisions).
+- #582/#583 (unplanned, owner feedback on the live panel) — spike detection over static runs; AI theme labels on shifts; methodology-text alignment; comparison basis moved to the panel header.
+
+**Key decisions:**
+
+- **The metrics were never wired, not miscalibrated.** `detectNovelDocuments` and `computeVarianceRatio` existed as exported, unit-tested pure functions in the same file whose result builders hardcoded 0/1 — 100% of 1,042 current-term weeks displayed literal constants. The enabler: the centroid path already fetched every needed embedding and discarded it.
+- **Novelty threshold 0.5 = p90, empirically.** The dormant 0.3 default sat at the _median_ of real doc-to-centroid distances and would have flagged half of all documents. Post-calibration: novel rate mean 0.109 / median 0.049 — discriminating.
+- **Instrument suppression is direction-dependent per metric family.** Verification caught the CL ingest rework reading as z=+44 _upward_ thematic drift (doc-mix changes move the centroid), while structural volume metrics only lose signal _downward_ — `scanStandoutRuns` takes `suppressDirections` ('below' structural, 'both' thematic).
+- **Rolling-window drift z mean-reverts ⇒ spikes, not runs, are the thematic headline.** The window absorbs a real shift within ~2 weeks, so upward drift can't sustain a 3-week run; the first panel render filled with "thematically static" items until spike detection (z ≥ 4) was added and ranked first.
+- **Panel = AI headline, tooltip = raw evidence** (owner decision). The hover term lists (TF-IDF, deterministic, auditable) carry _more_ information than the AI phrase; replacing them would have made the detail surface less detailed. Left as complementary layers.
+- **Methodology text now matches the computation**: the z denominator is typical _consecutive week-to-week_ centroid movement, not deviations of the distance-from-mean itself, and the current week is never in its own window — /data/thematic, /system/methodology, and ASSESSMENT_METHODOLOGY.md all corrected (the imprecise wording had propagated from the page into the owner's own understanding).
+
+**Lessons learned:**
+
+- **A spec'd field that ships with a constant is worse than an unshipped field** — it renders as a working display. Distribution checks (stddev = 0, value = constant) on stored JSONB fields are one query and would have caught this the week it shipped.
+- **Verify suppression logic against each metric's failure direction** — the same instrument change reads downward in counts and upward in centroids.
+- **Owner-facing surfaces earn feedback that diagnostics can't** — both #582 issues (static-domination, comparison-basis clarity) came from the owner reading the live panel, minutes after it rendered.
+
+**Prod runbook (Tuesday, with R-STRUCT):** single `pipeline:repair --from 2025-01-20 --to <last Monday>` re-derives structural + thematic; thematic distribution before/after (novel-rate no longer all-zero, variance std > 0) added to #574's gate comment; zero-flip gate unchanged.
+
+---
+
 ## Sprint R-STRUCT: make the structural heatmaps carry their weight (#573–577) — ✅ code complete, deploys Tue 7/28
 
 **Planned vs built** (2026-07-25, develop, unpushed; deploy + prod re-derivation ride together after the Monday checkpoint per owner decision):
@@ -97,25 +126,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Lessons learned:** estimate what pipelines call, not what they store (conflict-discarding writes hide call volume); spend is a gated quantity like data integrity; a rehearsal's stop conditions must be derivable from what the rehearsal actually exercised; stale enrichment can hide latent status changes that any scoped re-enrich will surface (the original 5); pg_restore exit codes lie (completed-with-ignored-errors = 1).
 
 ---
-
-## Sprint R-SEARCH: action-first research retrieval + SCOTUS gap-year backfill (#552, #553) — ✅ complete
-
-**Status: Complete (2026-07-18).** Milestone 85. Design agreed in-conversation 2026-07-17 (recorded on #552, supersedes the original diversity-quota idea); #553 backfill + full post-chain executed with per-invocation approvals (gating correction posted: biden_2023/2024 ARE baselines — the issue's original "non-baseline" claim was wrong).
-
-**Product outcome:** "Search the Documentary Record" now returns the record. Tiered retrieval (action/discussion source-type map, per-tier HNSW candidate pools, 60/40 action-weighted K=30 context) puts primary sources first; facet chips (All / Government actions / Commentary & debate) and tier-tinted source-type badges expose the layer; the synthesis prompt grounds action-claims in ACTION docs with DISCUSSION attributed to speakers. The regression query that exposed the gap now opens with the actual rulings (Chevron elimination cited to Loper Bright; Trump v. CASA) instead of "No actual Supreme Court opinions are included in this document set." 2,602 court-scoped 2023–24 opinions backfilled (Loper Bright → executiveActions+rulemaking; the 2024 immunity Trump v. United States → civilLiberties+executiveActions). Citation correctness fixed structurally: the synthesis stream consumes phase-1's exact ordered doc ids (previously two independent retrievals agreed only by accident) — and skips its redundant vector search. Gates: 6/6 negative controls, 39/39 events, #544 invariant green.
-
-**Verification harness earned its keep — three ship-blockers caught pre-merge:** (1) filtered HNSW queries starved at ef_search=40 (11 of 30 action docs; zero discussion docs for speech queries) → pgvector 0.8 `iterative_scan=relaxed_order` at DEFAULT ef — raising ef alongside it multiplies continuation cost (measured ~110s; default-ef iterative = ~1.4s); (2) full opinion texts (~1MB) shipped over the wire per result when the prompt uses ≤2,200 chars → content joined for final topK only, `LEFT(content, 3000)` — retrieval 10s → ~1.5s warm, faster than pre-sprint; (3) metadata_only docket stubs were never excluded from research retrieval.
-
-**Incidents & overruns (honest ledger):**
-
-- **~4x AI cost overrun (~$70–80 vs ~$15–20 estimated):** `review:backfill --baseline` assessed 41,249 docs, not the ~2,500 new opinions — the 2023–24 baselines had never been L2-assessed, so the membership sweep took the whole backlog. Lesson: **estimate review:backfill from `SELECT count(*) WHERE unassessed`, never from the delta being added.** Side effect worth owning: the gap years now have full L2 coverage and their recomputed statuses show 115 Elevated / 42 ConfirmedConcern weeks where charts previously showed near-empty calm — consistent with the institutions-wide product view, materially helps #556, but it arrived as a side effect rather than a decision.
-- **CL API network failure killed the backfill at week 74/105** (one week before Loper Bright); resumed idempotently.
-- **Overnight laptop sleep hung the chain 10h on a dead DB socket** (0% CPU, silent). Relaunched idempotently; all chain steps now run under `caffeinate -i`. Lesson: long local runbooks need sleep protection AND liveness checks — a hung process looks identical to a slow one.
-- **#555 filed en route:** the cl-bulk opinion path predates #528 and lacks the court-scoped queries — bulk-staging environments silently lose marquee-opinion coverage.
-
-**Lessons learned:**
-
-- **A verification harness with fixed queries is the cheapest reviewer we have** — it converted three invisible defects into measurements before any user saw them. Make one standard for retrieval/ranking changes.
-- **pgvector filtered ANN is a loaded gun:** any WHERE on a vector scan can starve results at default ef_search; iterative scan is the fix, and ef must stay at default with it.
-- **Wire cost is real on remote DBs:** SELECTing wide text columns through candidate stages is invisible locally and dominant against a remote Postgres.
-- Stale docs cleaned: PROJECT_KNOWLEDGE "gap years intentionally excluded" and the analysis-periods "four baselines" comment both predated the 8-config reality.
