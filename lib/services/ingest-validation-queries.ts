@@ -11,7 +11,7 @@ import type {
   SourcePeriodCoverage,
   ClOpinionCoverage,
 } from './ingest-validation-service';
-import { CONTENT_FIXABLE_ORIGINS } from './ingest-validation-service';
+import { CONTENT_FIXABLE_ORIGINS } from './ingest-warnings';
 
 export interface SignalCoverageGap {
   category: string;
