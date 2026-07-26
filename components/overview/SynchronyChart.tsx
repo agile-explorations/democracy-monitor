@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { CHART_COLORS, COMPARISON_COLORS, CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { SynchronyPoint } from '@/lib/types/overview';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
@@ -58,6 +59,8 @@ export function SynchronyChart({
     const trend = movingAverage(scores, TREND_WINDOW);
     return data.map((d, i) => ({ ...d, trend: trend[i] }));
   }, [data]);
+
+  const markersByWeek = useMemo(() => buildMarkersByWeek(data.map((d) => d.week)), [data]);
 
   const startIdx = brushStartIndex ?? 0;
   const endIdx = brushEndIndex ?? data.length - 1;
@@ -214,6 +217,17 @@ export function SynchronyChart({
               strokeDasharray="4 2"
             />
           )}
+          {/* Methodology-change markers: our own ingest regime shifts, marked
+              so count movements aren't read as government behavior. */}
+          {[...markersByWeek.keys()].map((week) => (
+            <ReferenceLine
+              key={`marker-${week}`}
+              x={week}
+              stroke={colors.textSecondary}
+              strokeDasharray="2 4"
+              label={{ value: '▲', position: 'top', fontSize: 9, fill: colors.textSecondary }}
+            />
+          ))}
           <Brush
             dataKey="week"
             tickFormatter={formatWeekLabel}
@@ -239,6 +253,14 @@ export function SynchronyChart({
           />
         </ComposedChart>
       </ResponsiveContainer>
+      {markersByWeek.size > 0 && (
+        <p className="text-[10px] text-dm-muted mt-1">
+          ▲ methodology changes:{' '}
+          {[...markersByWeek.entries()]
+            .map(([week, labels]) => `${formatWeekLabelWithYear(week)} — ${labels.join('; ')}`)
+            .join(' · ')}
+        </p>
+      )}
       {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
     </div>
   );

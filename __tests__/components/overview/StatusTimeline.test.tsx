@@ -108,3 +108,21 @@ describe('StatusTimeline', () => {
     expect(cells[0].className).not.toContain('ring-2');
   });
 });
+
+describe('methodology-change markers (#584)', () => {
+  it('renders a marker row when an instrument change falls in a rendered week', () => {
+    const entries = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        segments: [
+          { week: '2026-07-13', status: 'Stable' },
+          { week: '2026-07-20', status: 'Stable' },
+        ],
+      },
+    ] as any;
+    render(<StatusTimeline entries={entries} mode="light" />);
+    expect(screen.getByText('Methodology changes')).toBeDefined();
+    expect(screen.getByLabelText(/Methodology change in week of/)).toBeDefined();
+  });
+});

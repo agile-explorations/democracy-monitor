@@ -23,7 +23,10 @@ export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
 
   return (
     <div className="mt-3 rounded-lg border border-dm-border bg-dm-card p-4">
-      <h3 className="text-xs font-semibold text-dm-text-primary mb-2">Significant weeks</h3>
+      <h3 className="text-xs font-semibold text-dm-text-primary mb-2">
+        Significant weeks{' '}
+        <span className="font-normal text-dm-muted">(ranked by significance)</span>
+      </h3>
       <ul className="space-y-2">
         {visible.map((w) => {
           const reasonText = w.reasons.map((r) => r.detail).join(' · ');

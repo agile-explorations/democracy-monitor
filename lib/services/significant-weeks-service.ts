@@ -23,7 +23,7 @@ export interface WeekStatusRow {
 }
 
 export interface SignificantWeekReason {
-  type: 'peak_concern' | 'concern_spike' | 'new_concern';
+  type: 'peak_concern' | 'concern_spike' | 'new_concern' | 'monitoring_began';
   detail: string;
 }
 
@@ -45,6 +45,13 @@ const REENTRY_GAP_WEEKS = 4;
 const PEAK_SCORE = 100;
 const SPIKE_SCORE_PER_CATEGORY = 5;
 const NEW_CONCERN_SCORE = 10;
+/**
+ * Score for the inauguration bootstrap entry (#585): week one auto-qualifies
+ * every confirmed category as "new" (weeksBelow starts at Infinity), which is
+ * monitoring cold-start, not detection — it must never outrank real events
+ * (peak = 100, spikes/new-concerns compound), but stays findable.
+ */
+const MONITORING_BEGAN_SCORE = 20;
 
 function categoryTitle(key: string): string {
   return CATEGORIES.find((c) => c.key === key)?.title ?? key;
@@ -150,6 +157,13 @@ export function rankSignificantWeeks(
   }
 
   for (const [weekOf, categories] of findNewConcerns(rows)) {
+    if (weekOf === T2_INAUGURATION) {
+      add(weekOf, MONITORING_BEGAN_SCORE, {
+        type: 'monitoring_began',
+        detail: 'Monitoring began — initial category statuses assigned',
+      });
+      continue;
+    }
     const titles = categories.map(categoryTitle).sort();
     add(weekOf, categories.length * NEW_CONCERN_SCORE, {
       type: 'new_concern',
