@@ -84,7 +84,7 @@ export function StatusTimeline({
   }
 
   const weeks = entries[0].segments.map((s) => s.week);
-  const markersByWeek = buildMarkersByWeek(weeks);
+  const markersByWeek = buildMarkersByWeek(weeks, { statusSurface: true });
   const labelInterval = Math.max(1, Math.ceil(weeks.length / 8));
   const hasUnassessed = entries.some((e) => e.segments.some((seg) => seg.status === null));
 

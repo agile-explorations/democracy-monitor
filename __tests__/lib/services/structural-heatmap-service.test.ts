@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import {
   detectStandoutRuns,
   orderRowsByRecentHeat,
@@ -92,5 +93,39 @@ describe('instrument-change suppression + ordering (#576/#577)', () => {
     const hot = { category: 'a', title: 'A', weeks: [week('2026-01-05', null, 3)] } as any;
     const cool = { category: 'b', title: 'B', weeks: [week('2026-01-05', null, 0.2)] } as any;
     expect(orderRowsByRecentHeat([cool, hot]).map((r) => r.category)).toEqual(['a', 'b']);
+  });
+});
+
+describe('buildMarkersByWeek surface scoping (#584 rework)', () => {
+  const changes = [
+    {
+      date: '2026-02-02',
+      label: 'volume-only change',
+      retroactive: false,
+      affectsConcernStatuses: false,
+    },
+    {
+      date: '2026-03-02',
+      label: 'status-breaking change',
+      retroactive: false,
+      affectsConcernStatuses: true,
+    },
+    {
+      date: '2026-04-06',
+      label: 'retroactive change',
+      retroactive: true,
+      affectsConcernStatuses: false,
+    },
+  ];
+  const weeks = ['2026-01-26', '2026-02-02', '2026-03-02', '2026-04-06'];
+
+  it('volume surfaces mark every non-retroactive change', () => {
+    const map = buildMarkersByWeek(weeks, { changes });
+    expect([...map.keys()].sort()).toEqual(['2026-02-02', '2026-03-02']);
+  });
+
+  it('status surfaces mark only status-breaking changes', () => {
+    const map = buildMarkersByWeek(weeks, { changes, statusSurface: true });
+    expect([...map.keys()]).toEqual(['2026-03-02']);
   });
 });

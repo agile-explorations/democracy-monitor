@@ -25,6 +25,17 @@ export interface InstrumentChange {
    * differently, which is false for a retroactive change.
    */
   retroactive: boolean;
+  /**
+   * True only when the change is known to break comparability of CONCERN
+   * STATUSES across the date. Detection is content-based against absolute
+   * thresholds and every pipeline change runs a zero-flip gate, so status
+   * surfaces (concern chart, status timeline) stay comparable through
+   * collection changes that break volume comparability — verified for the
+   * CL rework: court-category confirmed statuses show no seam (5/10/6/4/7/7/7
+   * per month, Nov 2025–May 2026). Status surfaces only mark changes with
+   * this flag; volume/centroid surfaces mark every non-retroactive change.
+   */
+  affectsConcernStatuses: boolean;
 }
 
 export const INSTRUMENT_CHANGES: InstrumentChange[] = [
@@ -34,6 +45,7 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
       'We changed how court records are collected. Document volumes before and after this period reflect different collection methods and are not directly comparable.',
     categories: ['civilLiberties', 'lawEnforcement', 'judicialIndependence', 'courtOrders'],
     retroactive: false,
+    affectsConcernStatuses: false,
   },
   {
     date: '2026-07-06',
@@ -41,11 +53,13 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
       'A relevance filter for press-freedom coverage was applied to all periods, past and present.',
     categories: ['mediaFreedom'],
     retroactive: true,
+    affectsConcernStatuses: false,
   },
   {
     date: '2026-07-20',
     label: 'Document-count rules were updated and applied to all periods, past and present.',
     retroactive: true,
+    affectsConcernStatuses: false,
   },
 ];
 
@@ -70,11 +84,16 @@ export function overlapsInstrumentChange(
  * Map each rendered week (ascending Mondays) to the instrument-change labels
  * landing in it. Shared by the structural and thematic heatmaps (#576/#580).
  */
-export function buildMarkersByWeek(weeks: string[], weekLengthDays = 7): Map<string, string[]> {
+export function buildMarkersByWeek(
+  weeks: string[],
+  options: { statusSurface?: boolean; changes?: InstrumentChange[]; weekLengthDays?: number } = {},
+): Map<string, string[]> {
+  const { statusSurface = false, changes = INSTRUMENT_CHANGES, weekLengthDays = 7 } = options;
   const map = new Map<string, string[]>();
   if (weeks.length === 0) return map;
-  for (const change of INSTRUMENT_CHANGES) {
+  for (const change of changes) {
     if (change.retroactive) continue;
+    if (statusSurface && !change.affectsConcernStatuses) continue;
     let owner: string | null = null;
     for (let i = weeks.length - 1; i >= 0; i--) {
       if (weeks[i] <= change.date) {

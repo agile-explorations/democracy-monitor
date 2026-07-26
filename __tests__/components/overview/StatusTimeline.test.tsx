@@ -109,8 +109,10 @@ describe('StatusTimeline', () => {
   });
 });
 
-describe('methodology-change markers (#584)', () => {
-  it('renders a marker row when an instrument change falls in a rendered week', () => {
+describe('collection-change markers (#584)', () => {
+  it('shows NO marker row for collection changes that leave statuses comparable', () => {
+    // The CL rework breaks volume comparability but not status comparability
+    // (content-based detection, zero-flip-gated) — status surfaces stay clean.
     const entries = [
       {
         category: 'military',
@@ -122,7 +124,6 @@ describe('methodology-change markers (#584)', () => {
       },
     ] as any;
     render(<StatusTimeline entries={entries} mode="light" />);
-    expect(screen.getByText('Collection changes')).toBeDefined();
-    expect(screen.getByLabelText(/Data collection change in week of/)).toBeDefined();
+    expect(screen.queryByText('Collection changes')).toBeNull();
   });
 });

@@ -60,7 +60,16 @@ export function SynchronyChart({
     return data.map((d, i) => ({ ...d, trend: trend[i] }));
   }, [data]);
 
-  const markersByWeek = useMemo(() => buildMarkersByWeek(data.map((d) => d.week)), [data]);
+  // Status surface: concern scores are content-derived and gate-verified
+  // comparable across collection changes — only status-breaking changes mark.
+  const markersByWeek = useMemo(
+    () =>
+      buildMarkersByWeek(
+        data.map((d) => d.week),
+        { statusSurface: true },
+      ),
+    [data],
+  );
 
   const startIdx = brushStartIndex ?? 0;
   const endIdx = brushEndIndex ?? data.length - 1;
