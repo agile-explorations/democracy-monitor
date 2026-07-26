@@ -12,6 +12,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-OVERVIEW: landing-page integrity + the CL-seam honesty arc (#584–587) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25/26, develop): planned as a half-day (markers, significant-weeks reframe, dead component). Owner feedback drove five substantive escalations, each catching something analysis had settled too early:
+
+1. Caption legibility → plain-language copy.
+2. **Retroactive vs non-retroactive changes**: two of three registry entries were reprocessed across all history — no seam exists; markers now claim discontinuity only where one is real (`retroactive` flag; time-axis markers + suppression consult it).
+3. **Per-surface marker semantics**: the concern chart/status timeline are status-derived and verified comparable across the CL seam (confirmed/month 5/10/6/4/7/7/7 — content-based detection + zero-flip gates); status surfaces mark only `affectsConcernStatuses` changes (currently none). Volume surfaces keep the marker.
+4. **Mask scope measured, not assumed**: across the seam (new scoring, control categories flat) volume +0.84→−1.17, tempo +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21, functional +0.19→+0.86, composite 1.01→1.58; only convergence clean (−0.12→−0.10). Mask widened to all baseline-relative dims incl. Composite; numbers recorded in the code comment and as #587 acceptance criteria.
+5. **Fix the data, not just the display** (#587 filed): method-consistent counting population — L2 evidence population untouched so statuses can't flip and re-derivation costs $0 AI; teardown checklist of every interim measure posted to the issue, keyed to the single `retroactive: true` flip.
+
+Also: significant weeks reframed (inauguration = `monitoring_began`, score 20), Concern Score displayed per entry (exact chart formula, `STATUS_WEIGHT` exported as single source), then re-sorted recent-first with event badges when the visible score exposed that the ranking was event-based and undecodable; thematic tooltip fixed to fixed-position below-cell top-z; dead `CategoryDriftHeatmap` removed (kept alive only by its own test — knip counts tests as entries); Data-page downloader caveat added (comment-tagged for #587 removal).
+
+**Lessons learned:**
+
+- **A marker on a time axis is a factual claim** — "before and after are measured differently." Retroactively-applied rule changes make that claim false; only genuine collection seams may mark, and only on the surfaces they actually break.
+- **"Compensated" must mean the surface a user is looking at.** Findings suppression protected the panel while the cells still showed the artifact; each rendering surface needs its own honesty treatment.
+- **Measure mask scope; don't reason it.** "Count-derived dims only" missed that proportions shift when one source collapses — agency hit +5.2σ through metadata sparsity, and Composite inherited everything.
+- **Displaying a number next to a ranking it doesn't drive invites (correct) distrust** — either rank by the visible number or drop the ranking claim.
+- **File the teardown with the workaround.** Interim measures documented as a checklist on the fixing issue, keyed to one flag, with tests that will fail loudly on the flip.
+
+**Tuesday runbook (combined with R-STRUCT/R-DRIFT):** verify Monday green → merge develop→main → deploy → `pipeline:repair --from 2025-01-20 --to <last Monday>` (zero-flip gate; re-derives structural + thematic) → `recomputeSignificantWeeks` one-off → saturation + thematic distribution before/afters to #574 → close #573–586, milestones 88–90.
+
+---
+
 ## Sprint R-DRIFT: light up the thematic drift heatmaps (#578–583) — ✅ code complete, deploys Tue 7/28
 
 **Planned vs built** (2026-07-25, develop; rides Tuesday's single deploy + re-derivation with R-STRUCT):
@@ -104,25 +128,5 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Planned vs built:** planned as a ~120k-row, $150–250, 2–3 day repair of the audit's last finding. Under measurement the finding decomposed into (a) substantive opinions — already repaired by #556's base branch, unnoticed until execution; (b) 4,285 genuinely missing rows — copied for **$0.02** (47 P1 calls); (c) the dominant cause, **era-inconsistent scoring policy** — the 2019-era pipeline scored every docket stub into weekly counts (503/wk) while current rules don't (75/wk). Fixed by #566: scoring floor (100-char L2 eligibility) enforced at every score site, 119,298 stub/orphan score rows purged, 1,647 category-weeks re-aggregated, 8 baselines recomputed, 6,899 weeks re-enriched. **Outcome: lawEnforcement 50/103/76/89 avg docs/wk across eras** — the 6.7x artifact gone; residual spread is the source archives' own coverage (publicly disclosed). **Zero status flips in both repairs**, verified by pre/post snapshot; 6/6 NCs; 39/39 events; total sprint AI spend $0.02 vs ~$40 protocol budget.
 
 **Deviations & lessons:** four sizing passes fell $220→$0.02 → **three-numbers rule** (source-matched / net-new after anti-join against prod / assessable after eligibility) now in CLAUDE.md's spend protocol; **sibling audit findings sharing substrate must be re-sized after any one is repaired**; **count asymmetries can be scoring-policy artifacts, not data gaps** — check what each era scored before proposing ingestion. One false-alarm chain stop (`--load-opinions` confusion; 20 min, $0) — the 90-second-completion tell was read as a bug when it was dedup working. R-PARITY's machinery (Option-A rehearsal, zero-flip invariant, detached chains, caps/sentinel) ran twice more without modification and caught nothing because there was nothing to catch — which is the point.
-
----
-
-## Sprint R-PARITY: coverage-parity repair — court-scoped opinions 2017–2023 + LegiScan gaps (#555, #556) — ✅ complete
-
-**Status: Complete (2026-07-22).** Owner-driven from the standing coverage-parity constraint (PROJECT_KNOWLEDGE.md) and the #557 audit. Executed with per-invocation approvals on every baseline-period write; two owner mid-flight decisions (Option-B mechanical rehearsal; LegiScan folded in) and two owner acceptances (5 stale-enrichment flips, then the full 147-flip assessment effect).
-
-**Product outcome:** baseline years now carry the same court-scoped opinion layer and LegiScan coverage T2 has. 5,813 docs landed (2,071 opinions incl. Trump v. Hawaii/Seila Law/Vance/Mazars correctly routed; 3,742 bills filling trump_2020 and biden_2023/2024 from zero); ~5,465 P1 + ~1,900 P2 assessments; baselines recomputed ×8; 2017→2025 re-enriched. **147 baseline-week status upgrades (95 Elevated, 52 CC, 0 downgrades) owner-accepted** — concentrated in immigrationEnforcement/elections/rulemaking/executiveActions in 2020/2023/2024, landing on real events (Trump v. Hawaii decision week, Dec-2020 election litigation, COVID emergency rules). Gates at close: 39/39 events, 6/6 NCs (NC-3 required an 8-doc actor-attribution pass for the new biden_2022 confirmations). NC-1 elections at 18.1% vs ≤20% is the standing calibration watch item.
-
-**Method innovations that should recur:** verified-copy (fetch/verify locally off bulk staging, anti-join on url+category, insert exact rows into prod — minutes instead of a fragile 6-year CL API crawl); nc:margins capture/diff (margins, not pass/fail, at every phase boundary); detached chain scripts with done-markers + monitor events (survived task reaping that killed three plain background runs).
-
-**Incidents & overruns (honest ledger):**
-
-- **#563 — ~$190–200 duplicate-P2 burn, chain stopped mid-run:** `runPass2Phase` had no dedup (re-called Sonnet for every previously-flagged doc in any week containing one new doc, discarding results on conflict) AND `review:backfill --pass` was parsed but never wired, running the full pipeline twice per baseline. ~16k P2 calls for 1,894 real rows. Retroactively explains much of R-SEARCH's "4x overrun." Fixed same day (dedup + wired passFilter); post-fix the identical remaining work ran at pennies. Total sprint spend $220–230 vs $8–18 quoted ($30–35 legit).
-- **#564 — spend protocol (owner-approved) now structural:** prechecks model CALLS not documents; every AI step runs `--max-calls <estimate × 3>` (exit 3, never retried); canary-before-fleet for rehearsal-skipped steps; spend sentinel in chain scripts; actuals posted post-run. CLAUDE.md "AI spend protocol."
-- **"Exactly 5 flips" stop condition was a framing error:** it bound the mechanical rehearsal's diff, but Option B structurally cannot preview assessment-driven status impact — the 147 flips were the repair working, not a malfunction, yet they arrived unapproved. **Standing rule: any repair that adds documents to baseline periods gates on an Option-A (full-AI) rehearsal or a prod canary with status-diff before the fleet.** Applies to the pending trump_2017/2018 CL decision.
-- **Monday checkpoint collateral (all fixed same-day):** #560 weekly dump ENOSPC (disk holds one dump, not two — old dump now deleted first); #561 db:init treated pg_restore's benign version-mismatch exit as failure and destructively fell back to a March GitHub release over a fully-restored local DB (fallback now bootstrap-only); #562 filed (bulk path stores docket pairs the API path doesn't — 7,190 dockets excluded from the copy under the parity constraint).
-- **LegiScan root cause was code, not data:** BASELINE_PERIODS ended terms at year 2 — the 116th/118th Congress never matched. Two-line range fix; weekly cron now maintains full-term coverage.
-
-**Lessons learned:** estimate what pipelines call, not what they store (conflict-discarding writes hide call volume); spend is a gated quantity like data integrity; a rehearsal's stop conditions must be derivable from what the rehearsal actually exercised; stale enrichment can hide latent status changes that any scoped re-enrich will surface (the original 5); pg_restore exit codes lie (completed-with-ignored-errors = 1).
 
 ---
