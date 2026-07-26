@@ -253,15 +253,16 @@ export function SynchronyChart({
           />
         </ComposedChart>
       </ResponsiveContainer>
+      {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
       {markersByWeek.size > 0 && (
-        <p className="text-[10px] text-dm-muted mt-1">
-          ▲ methodology changes:{' '}
+        <div className="mt-2 text-[11px] text-dm-text-secondary border-t border-dm-border pt-1.5">
+          <span className="text-dm-accent">▲</span>{' '}
+          <span className="font-medium">Methodology changes:</span>{' '}
           {[...markersByWeek.entries()]
             .map(([week, labels]) => `${formatWeekLabelWithYear(week)} — ${labels.join('; ')}`)
             .join(' · ')}
-        </p>
+        </div>
       )}
-      {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
     </div>
   );
 }
