@@ -147,7 +147,7 @@ describe('detectThematicStandouts + lowVolume (#579/#580)', () => {
     ];
     const runs = detectThematicStandouts(rows as any);
     expect(runs).toHaveLength(1);
-    expect(runs[0].sentence).toContain('shifted topics well beyond its recent norm');
+    expect(runs[0].sentence).toContain('beyond its preceding 8-week norm');
   });
 
   it('suppresses static (below) runs after an instrument change for the category', () => {
@@ -224,7 +224,9 @@ describe('spike detection + shift-first ranking (#582)', () => {
       },
     ];
     const runs = detectThematicStandouts(rows as any);
-    expect(runs[0].sentence).toContain('topics shifted sharply in the week of 2025-05-12');
+    expect(runs[0].sentence).toContain(
+      'week of 2025-05-12 moved unusually far from its preceding 8 weeks',
+    );
     expect(runs[runs.length - 1].direction).toBe('below');
   });
 

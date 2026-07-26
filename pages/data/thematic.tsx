@@ -73,8 +73,9 @@ export default function ThematicDriftPage() {
         <Section title="How to read the heatmap" id="how-to-read">
           <p>
             Each cell represents one category in one week. The default view shows{' '}
-            <strong>z-scores</strong>, which measure how far the current week&apos;s thematic
-            distance deviates from the rolling 8-week mean.
+            <strong>z-scores</strong>: how far this week&apos;s language sits from the average of
+            the preceding 8 weeks, measured in units of typical week-to-week change within that
+            window. The current week is never part of its own comparison window.
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li>
@@ -108,12 +109,12 @@ export default function ThematicDriftPage() {
               [
                 'z-Score',
                 '-4 to +4',
-                'Standard deviations from rolling 8-week mean centroid distance. Default view.',
+                'Distance from the preceding 8 weeks\u2019 mean centroid, divided by the typical week-to-week centroid movement inside that window. Default view.',
               ],
               [
                 'Centroid Distance',
                 '0\u20130.5',
-                'Cosine distance between this week\u2019s document centroid and the rolling 8-week centroid. Higher = more semantic shift.',
+                'Cosine distance between this week\u2019s document centroid and the mean centroid of the preceding 8 weeks. Higher = more semantic shift.',
               ],
               [
                 'Novel Doc Rate',

@@ -1,6 +1,9 @@
 import { CATEGORIES } from '@/lib/data/categories';
 import { overlapsInstrumentChange } from '@/lib/data/instrument-changes';
-import { THEMATIC_MIN_DOC_COUNT } from '@/lib/methodology/scoring-config';
+import {
+  THEMATIC_MIN_DOC_COUNT,
+  THEMATIC_ROLLING_WINDOW_WEEKS,
+} from '@/lib/methodology/scoring-config';
 import { scanStandoutRuns } from '@/lib/services/structural-heatmap-service';
 import type { StandoutRun } from '@/lib/services/structural-heatmap-service';
 import type { ThematicHeatmapRow } from '@/lib/types/overview';
@@ -91,8 +94,8 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
     { zScore: 'thematic drift' },
     (run) =>
       run.direction === 'above'
-        ? `${run.title} shifted topics well beyond its recent norm for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`
-        : `${run.title} was unusually thematically static for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
+        ? `${run.title} shifted topics well beyond its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS}-week norm for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`
+        : `${run.title} showed far less week-to-week topic change than its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS} weeks for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
     'both',
   );
 
@@ -115,7 +118,7 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
         weekCount: 1,
         meanZ: w.zScore,
         direction: 'above',
-        sentence: `${row.title}'s topics shifted sharply in the week of ${w.week}.`,
+        sentence: `${row.title}'s topics in the week of ${w.week} moved unusually far from its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS} weeks.`,
       });
     }
   }
