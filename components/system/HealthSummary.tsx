@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DataTable } from '@/components/system/ContentHelpers';
+import { SeverityWarnings } from '@/components/system/SeverityWarnings';
 
 function SummaryCard({
   title,
@@ -49,6 +50,9 @@ function LoadingSkeleton() {
 function IngestSummary({ data }: { data: any }) {
   return (
     <>
+      <div className="mb-3">
+        <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
+      </div>
       {data.fetchErrors?.length > 0 && (
         <DataTable
           headers={['Source', 'Categories', 'Incomplete', 'Errors']}
@@ -63,7 +67,6 @@ function IngestSummary({ data }: { data: any }) {
       {(!data.fetchErrors || data.fetchErrors.length === 0) && (
         <p className="text-xs text-dm-muted">No fetch errors.</p>
       )}
-      <WarningsList warnings={data.warnings} />
     </>
   );
 }
@@ -161,10 +164,38 @@ function DetectionSummary({ data }: { data: any }) {
   );
 }
 
+function GraphSummary({ data }: { data: any }) {
+  if (data.pending) {
+    return (
+      <p className="text-xs text-dm-muted">
+        Report pending — stored by the weekly snapshot after each Monday run.
+      </p>
+    );
+  }
+  const results = (data.results ?? []) as Array<{
+    id: string;
+    pass: boolean;
+    severity: string;
+    violations: number;
+  }>;
+  const failed = results.filter((r) => !r.pass && r.severity === 'error');
+  const warned = results.filter((r) => !r.pass && r.severity === 'warn');
+  return (
+    <p className="text-xs text-dm-text-secondary">
+      {failed.length === 0
+        ? `All ${results.filter((r) => r.severity === 'error').length} error-severity invariants hold.`
+        : `${failed.length} invariant(s) violated: ${failed.map((r) => `${r.id} (${r.violations})`).join(', ')}`}
+      {warned.length > 0 &&
+        ` ${warned.length} informational warning(s): ${warned.map((r) => r.id).join(', ')}.`}
+    </p>
+  );
+}
+
 interface HealthData {
   ingest: { data: any; error: string | null };
   dataReport: { data: any; error: string | null };
   detection: { data: any; error: string | null };
+  graph: { data: any; error: string | null };
 }
 
 export function HealthSummary() {
@@ -172,6 +203,7 @@ export function HealthSummary() {
     ingest: { data: null, error: null },
     dataReport: { data: null, error: null },
     detection: { data: null, error: null },
+    graph: { data: null, error: null },
   });
   const [loading, setLoading] = useState(true);
 
@@ -181,6 +213,7 @@ export function HealthSummary() {
       { key: 'ingest' as const, url: '/api/health/validate-ingest' },
       { key: 'dataReport' as const, url: '/api/health/validate-data' },
       { key: 'detection' as const, url: '/api/health/validate-detection' },
+      { key: 'graph' as const, url: '/api/health/validate-graph' },
     ];
 
     const results = await Promise.allSettled(
@@ -195,6 +228,7 @@ export function HealthSummary() {
       ingest: { data: null, error: null },
       dataReport: { data: null, error: null },
       detection: { data: null, error: null },
+      graph: { data: null, error: null },
     };
 
     for (const r of results) {
@@ -236,6 +270,10 @@ export function HealthSummary() {
 
       <SummaryCard title="Detection Correctness" error={health.detection.error}>
         {health.detection.data && <DetectionSummary data={health.detection.data} />}
+      </SummaryCard>
+
+      <SummaryCard title="Derivation Graph" error={health.graph.error}>
+        {health.graph.data && <GraphSummary data={health.graph.data} />}
       </SummaryCard>
     </div>
   );

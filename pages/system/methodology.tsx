@@ -79,6 +79,13 @@ function SummaryContent() {
           topic shifts using an 8-week intra-administration rolling window. Provides research
           context.
         </p>
+        <p>
+          <strong>Data reprocessing</strong> — When scoring or filtering rules change, all
+          historical periods are reprocessed under the new rules, so cross-era comparisons remain
+          valid. Collection-method changes that cannot be applied to the past are marked on the
+          volume-based research charts as <span className="text-dm-accent">▲</span>; concern
+          statuses are verified to remain comparable across them.
+        </p>
       </Section>
 
       {/* Concern Synthesis */}
