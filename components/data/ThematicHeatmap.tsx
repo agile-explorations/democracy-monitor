@@ -146,7 +146,7 @@ function GradientLegend({ mode, metric }: { mode: 'light' | 'dark'; metric: Them
         <span className="flex items-center gap-1 ml-3">
           <span
             className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
-            style={{ opacity: 0.25 }}
+            style={{ opacity: 0.1 }}
           />
           Too few documents for a reliable distance
         </span>
@@ -311,7 +311,7 @@ function ThematicHeatmapRow({
                   ? { background: noDataBg(mode), ...bootstrapBorder }
                   : {
                       backgroundColor: color,
-                      ...(masked ? { opacity: 0.25 } : {}),
+                      ...(masked ? { opacity: 0.1 } : {}),
                       ...bootstrapBorder,
                     }
               }

@@ -136,7 +136,7 @@ function GradientLegend({
         <span className="flex items-center gap-1 ml-3">
           <span
             className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
-            style={{ opacity: 0.25 }}
+            style={{ opacity: 0.1 }}
           />
           Collection breadth changed — not baseline-comparable
         </span>
@@ -277,7 +277,7 @@ function HeatmapRow({
             style={
               color === null
                 ? { background: noDataBg(mode) }
-                : { backgroundColor: color, ...(masked ? { opacity: 0.25 } : {}) }
+                : { backgroundColor: color, ...(masked ? { opacity: 0.1 } : {}) }
             }
             title={tooltip}
             role="cell"
