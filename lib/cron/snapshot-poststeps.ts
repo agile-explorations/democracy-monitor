@@ -89,6 +89,28 @@ export async function tryValidateGraph(errors: string[]): Promise<number> {
 }
 
 /**
+ * Store the data-readiness report for the Health page (#571 pattern): its
+ * full-scan queries exceed the web proxy timeout, so the page serves this
+ * weekly stored copy. Non-fatal — a missing report renders as "pending".
+ */
+export async function tryStoreDataReport(errors: string[]): Promise<void> {
+  try {
+    const { runDataValidation } = await import('@/lib/services/data-validation-service');
+    const report = await runDataValidation();
+    const { cacheSet } = await import('@/lib/cache');
+    const { CacheKeys } = await import('@/lib/cache/keys');
+    await cacheSet(
+      CacheKeys.validateData(),
+      { ...report, generatedAt: new Date().toISOString() },
+      THIRTY_DAYS_SECONDS,
+    );
+    console.log('[snapshot] validate:data report stored for Health page');
+  } catch (err) {
+    errors.push(`validate:data report failed: ${formatError(err)}`);
+  }
+}
+
+/**
  * Send the digest only when the run's quality signals are clean — ingest
  * failures can yield an internally consistent but grossly wrong narrative.
  * A held digest is released with `pnpm digest:send --week <date>` after

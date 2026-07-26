@@ -6,6 +6,7 @@ import {
   tryEnsureWeekHeadline,
   tryGenerateNarratives,
   tryRegenerateTermSummary,
+  tryStoreDataReport,
   tryValidateGraph,
 } from '@/lib/cron/snapshot-poststeps';
 import { CATEGORIES } from '@/lib/data/categories';
@@ -499,6 +500,7 @@ async function runPostCategorySteps(
   await tryRegenerateTermSummary(errors);
 
   const graphErrorViolations = await tryValidateGraph(errors);
+  await tryStoreDataReport(errors);
   if (narrativesGenerated) {
     await gateAndSendDigest(
       currentWeek,

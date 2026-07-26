@@ -167,8 +167,8 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
   const [docStats] = await db
     .select({
       total: sql<number>`count(*)::int`,
-      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.category} != 'intent')::int`,
-      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.category} = 'intent')::int`,
+      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.category} != 'intent')::int`,
+      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.category} = 'intent')::int`,
       metadataOnlyCount: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
     })
     .from(documents)
@@ -183,7 +183,12 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
     )
     .where(
       and(
+        // Mirror the scorer's eligibility (#566 / validate:graph G1a): the
+        // floor and retrieval filter keep permanently-ineligible docs from
+        // reporting as "missing scores" forever.
         sql`${documents.contentType} != 'metadata_only'`,
+        sql`length(coalesce(${documents.content}, '')) >= 100`,
+        sql`${documents.retrievalRelevant} is not false`,
         isNull(documentScores.id),
         ...(catFilter ? [catFilter] : []),
       ),
