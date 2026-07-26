@@ -186,11 +186,16 @@ export function collectWarningDetails(
     });
   }
 
-  // Fetch errors — remediable data loss.
+  // Fetch errors — remediable data loss. Baseline-only backlogs say so:
+  // the Source Fetch Health bar is current-term-scoped, and an unscoped
+  // count next to a green bar reads as a contradiction.
   for (const fe of report.fetchErrors) {
+    const scope = fe.allBaseline
+      ? ` — all in baseline periods (${fe.earliestWeek} to ${fe.latestWeek}), current term clean`
+      : '';
     warnings.push({
       severity: 'action',
-      text: `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies) (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
+      text: `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies)${scope} (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
     });
   }
 

@@ -122,7 +122,7 @@ export default function HealthPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">System Health</h1>
 
       <div className="space-y-6">
-        {/* Source Fetch Health — Trump T2 */}
+        {/* Source Fetch Health — current term — Trump T2 */}
         <section>
           {loading ? (
             <div className="animate-pulse h-32 bg-dm-border/30 rounded-lg" />

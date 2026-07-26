@@ -7,6 +7,7 @@
  * Source-specific queries: ingest-validation-queries.ts
  */
 
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import type { Category } from '@/lib/types';
@@ -73,6 +74,10 @@ export interface FetchErrorSummary {
   totalIncomplete: number;
   categories: number;
   totalErrors: number;
+  earliestWeek: string | null;
+  latestWeek: string | null;
+  /** True when every incomplete week predates the current term (baseline-only backlog). */
+  allBaseline: boolean;
 }
 
 export interface IngestReport {
@@ -115,27 +120,41 @@ export {
 interface IncompleteWeekRow {
   sourceOrigin: string;
   category: string;
+  weekStart: string;
   errors: string[] | null;
 }
 
 function summarizeFetchErrors(incompleteWeeks: IncompleteWeekRow[]): FetchErrorSummary[] {
-  const bySource = new Map<string, { categories: Set<string>; errors: number; count: number }>();
+  const bySource = new Map<
+    string,
+    { categories: Set<string>; errors: number; count: number; weeks: string[] }
+  >();
   for (const w of incompleteWeeks) {
     if (!bySource.has(w.sourceOrigin))
-      bySource.set(w.sourceOrigin, { categories: new Set(), errors: 0, count: 0 });
+      bySource.set(w.sourceOrigin, { categories: new Set(), errors: 0, count: 0, weeks: [] });
     const entry = bySource.get(w.sourceOrigin)!;
     entry.categories.add(w.category);
     entry.errors += w.errors?.length ?? 0;
     entry.count++;
+    entry.weeks.push(String(w.weekStart).slice(0, 10));
   }
   return [...bySource.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([source, data]) => ({
-      sourceOrigin: source,
-      totalIncomplete: data.count,
-      categories: data.categories.size,
-      totalErrors: data.errors,
-    }));
+    .map(([source, data]) => {
+      const weeks = data.weeks.sort();
+      const latest = weeks[weeks.length - 1] ?? null;
+      return {
+        sourceOrigin: source,
+        totalIncomplete: data.count,
+        categories: data.categories.size,
+        totalErrors: data.errors,
+        earliestWeek: weeks[0] ?? null,
+        latestWeek: latest,
+        // The Source Fetch Health bar is current-term-scoped; a baseline-only
+        // backlog must say so or the two widgets appear to contradict.
+        allBaseline: latest !== null && latest < T2_INAUGURATION,
+      };
+    });
 }
 
 // ---------------------------------------------------------------------------

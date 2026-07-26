@@ -211,3 +211,56 @@ describe('collectWarningDetails', () => {
     expect(warnings.every((w) => w.severity === 'limitation')).toBe(true);
   });
 });
+
+describe('fetch-error warning scope (#588 clarity)', () => {
+  function report(fe: any): IngestReport {
+    return {
+      documentCoverage: [],
+      contentCompleteness: [],
+      contentCompletenessByOrigin: [],
+      paginationFitness: [],
+      frPeriodCoverage: [],
+      cpdPeriodCoverage: [],
+      sourcePeriodCoverage: [],
+      clOpinionCoverage: null,
+      signalCoverageGaps: [],
+      fetchErrors: [fe],
+      warnings: [],
+      warningDetails: [],
+    };
+  }
+
+  it('baseline-only backlogs say so — the fetch-health bar is current-term scoped', () => {
+    const warnings = collectWarningDetails(
+      report({
+        sourceOrigin: 'oig',
+        totalIncomplete: 106,
+        categories: 1,
+        totalErrors: 106,
+        earliestWeek: '2019-01-14',
+        latestWeek: '2025-01-13',
+        allBaseline: true,
+      }),
+    );
+    const fe = warnings.find((w) => w.text.includes('incomplete fetch'))!;
+    expect(fe.text).toContain(
+      'all in baseline periods (2019-01-14 to 2025-01-13), current term clean',
+    );
+  });
+
+  it('backlogs touching the current term carry no baseline suffix', () => {
+    const warnings = collectWarningDetails(
+      report({
+        sourceOrigin: 'oig',
+        totalIncomplete: 3,
+        categories: 1,
+        totalErrors: 3,
+        earliestWeek: '2026-04-06',
+        latestWeek: '2026-04-27',
+        allBaseline: false,
+      }),
+    );
+    const fe = warnings.find((w) => w.text.includes('incomplete fetch'))!;
+    expect(fe.text).not.toContain('baseline periods');
+  });
+});
