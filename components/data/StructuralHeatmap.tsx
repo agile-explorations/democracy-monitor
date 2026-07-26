@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
-import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
+import { buildMarkersByWeek, isCountComparabilityBroken } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import { divergingZScoreColor } from '@/lib/utils/color';
 import { addDays, formatWeekLabel } from '@/lib/utils/date-utils';
@@ -24,6 +24,9 @@ const DIMENSION_OPTIONS: Array<{ key: DimensionOption; label: string }> = [
   { key: 'publicationTempo', label: 'Tempo' },
   { key: 'sourceConvergence', label: 'Convergence' },
 ];
+
+/** Dimensions whose values derive from document counts vs the baseline. */
+const COUNT_DERIVED_DIMENSIONS = new Set<DimensionOption>(['volume', 'publicationTempo']);
 
 const DIMENSION_FULL_LABELS: Record<DimensionOption, string> = {
   composite: 'Composite',
@@ -106,7 +109,13 @@ function DimensionSelector({
   );
 }
 
-function GradientLegend({ mode }: { mode: 'light' | 'dark' }) {
+function GradientLegend({
+  mode,
+  dimension,
+}: {
+  mode: 'light' | 'dark';
+  dimension: DimensionOption;
+}) {
   const colors = Z_SCORE_SCALE_COLORS[mode];
   return (
     <div className="flex items-center gap-2 mb-3 text-[11px] text-dm-text-secondary">
@@ -123,6 +132,15 @@ function GradientLegend({ mode }: { mode: 'light' | 'dark' }) {
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
         No documents that week
       </span>
+      {COUNT_DERIVED_DIMENSIONS.has(dimension) && (
+        <span className="flex items-center gap-1 ml-3">
+          <span
+            className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
+            style={{ opacity: 0.25 }}
+          />
+          Collection breadth changed — not baseline-comparable
+        </span>
+      )}
     </div>
   );
 }
@@ -145,7 +163,7 @@ export function StructuralHeatmap({ rows, mode, onCellClick }: StructuralHeatmap
   return (
     <div>
       <DimensionSelector selected={dimension} onChange={setDimension} />
-      <GradientLegend mode={mode} />
+      <GradientLegend mode={mode} dimension={dimension} />
       <div className="overflow-x-auto">
         <div
           className="grid gap-px min-w-[600px]"
@@ -240,13 +258,27 @@ function HeatmapRow({
         const z = getZScore(week, dimension);
         const color = divergingZScoreColor(z, mode);
         const weekLabel = formatWeekLabel(week.week);
-        const tooltip = buildTooltip(row.title, weekLabel, week);
+        // Count-derived dimensions compare against the category's baseline;
+        // after a collection-breadth change they measure the instrument, not
+        // the government — dim them until #587 makes counting consistent.
+        const masked =
+          COUNT_DERIVED_DIMENSIONS.has(dimension) &&
+          isCountComparabilityBroken(row.category, week.week);
+        const tooltip =
+          buildTooltip(row.title, weekLabel, week) +
+          (masked
+            ? '\nCollection breadth changed — not comparable to this category\u2019s baseline'
+            : '');
 
         return (
           <div
             key={week.week}
             className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
-            style={color === null ? { background: noDataBg(mode) } : { backgroundColor: color }}
+            style={
+              color === null
+                ? { background: noDataBg(mode) }
+                : { backgroundColor: color, ...(masked ? { opacity: 0.25 } : {}) }
+            }
             title={tooltip}
             role="cell"
             onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}

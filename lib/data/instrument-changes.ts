@@ -112,3 +112,15 @@ function dateWithinDays(date: string, weekStart: string, days: number): boolean 
   const d = new Date(`${date}T00:00:00Z`).getTime();
   return d - start < days * 24 * 60 * 60 * 1000;
 }
+
+/**
+ * True when a non-retroactive collection change affecting the category took
+ * effect on or before this week — count-derived values (volume, tempo) from
+ * such weeks are not comparable to the category's baseline. Interim guard
+ * until the counting population is made method-consistent (#587).
+ */
+export function isCountComparabilityBroken(category: string, week: string): boolean {
+  return INSTRUMENT_CHANGES.some(
+    (c) => !c.retroactive && (!c.categories || c.categories.includes(category)) && c.date <= week,
+  );
+}
