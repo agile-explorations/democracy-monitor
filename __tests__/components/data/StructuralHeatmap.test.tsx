@@ -133,21 +133,22 @@ describe('StructuralHeatmap', () => {
 
 describe('methodology-change markers (#576)', () => {
   it('renders a marker with tooltip when an instrument change falls in a rendered week', () => {
-    // 2026-07-20 hosts the platform-wide substantive-count floor change.
+    // 2026-02-02 hosts the CourtListener collection change (non-retroactive —
+    // the only class of change that marks the axis).
     const rows = [
       {
         category: 'military',
         title: 'Using Military Inside the U.S.',
         weeks: [
-          { week: '2026-07-13', dimensions: {}, composite: 0.5, anomalous: false },
-          { week: '2026-07-20', dimensions: {}, composite: 0.5, anomalous: false },
+          { week: '2026-01-26', dimensions: {}, composite: 0.5, anomalous: false },
+          { week: '2026-02-02', dimensions: {}, composite: 0.5, anomalous: false },
         ],
       },
     ] as any;
     render(<StructuralHeatmap rows={rows} mode="light" />);
-    expect(screen.getByText('Methodology changes')).toBeDefined();
-    const marker = screen.getByLabelText(/Methodology change in week of/);
-    expect(marker.getAttribute('title')).toContain('Substantive-count floor');
+    expect(screen.getByText('Collection changes')).toBeDefined();
+    const marker = screen.getByLabelText(/Data collection change in week of/);
+    expect(marker.getAttribute('title')).toContain('how court records are collected');
   });
 
   it('renders no marker row when no changes fall in range', () => {
@@ -159,6 +160,6 @@ describe('methodology-change markers (#576)', () => {
       },
     ] as any;
     render(<StructuralHeatmap rows={rows} mode="light" />);
-    expect(screen.queryByText('Methodology changes')).toBeNull();
+    expect(screen.queryByText('Collection changes')).toBeNull();
   });
 });

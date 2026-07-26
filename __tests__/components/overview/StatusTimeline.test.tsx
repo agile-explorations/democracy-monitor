@@ -116,13 +116,13 @@ describe('methodology-change markers (#584)', () => {
         category: 'military',
         title: 'Using Military Inside the U.S.',
         segments: [
-          { week: '2026-07-13', status: 'Stable' },
-          { week: '2026-07-20', status: 'Stable' },
+          { week: '2026-01-26', status: 'Stable' },
+          { week: '2026-02-02', status: 'Stable' },
         ],
       },
     ] as any;
     render(<StatusTimeline entries={entries} mode="light" />);
-    expect(screen.getByText('Methodology changes')).toBeDefined();
-    expect(screen.getByLabelText(/Methodology change in week of/)).toBeDefined();
+    expect(screen.getByText('Collection changes')).toBeDefined();
+    expect(screen.getByLabelText(/Data collection change in week of/)).toBeDefined();
   });
 });

@@ -257,7 +257,7 @@ export function SynchronyChart({
       {markersByWeek.size > 0 && (
         <div className="mt-2 text-[11px] text-dm-text-secondary border-t border-dm-border pt-1.5">
           <span className="text-dm-accent">▲</span>{' '}
-          <span className="font-medium">Methodology changes:</span>{' '}
+          <span className="font-medium">Data collection changes:</span>{' '}
           {[...markersByWeek.entries()]
             .map(([week, labels]) => `${formatWeekLabelWithYear(week)} — ${labels.join('; ')}`)
             .join(' · ')}

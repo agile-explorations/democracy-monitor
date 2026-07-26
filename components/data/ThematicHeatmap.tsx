@@ -220,7 +220,7 @@ export function ThematicHeatmap({ rows, mode, onCellClick }: ThematicHeatmapProp
                 className="text-[9px] text-dm-muted uppercase tracking-wider px-1 pb-1 flex items-end"
                 role="rowheader"
               >
-                Methodology changes
+                Collection changes
               </div>
               {weeks.map((week) => {
                 const changes = markersByWeek.get(week);
@@ -229,8 +229,8 @@ export function ThematicHeatmap({ rows, mode, onCellClick }: ThematicHeatmapProp
                     {changes && (
                       <span
                         className="text-[9px] text-dm-accent cursor-help"
-                        title={changes.map((c) => `Methodology change: ${c}`).join('\n')}
-                        aria-label={`Methodology change in week of ${formatWeekLabel(week)}`}
+                        title={changes.map((c) => `Data collection change: ${c}`).join('\n')}
+                        aria-label={`Data collection change in week of ${formatWeekLabel(week)}`}
                       >
                         ▲
                       </span>

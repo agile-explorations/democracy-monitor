@@ -431,6 +431,14 @@ function DetailedContent() {
           During the bootstrap period (first weeks of a new administration), confidence is reduced
           because the rolling window lacks sufficient history for meaningful comparison.
         </p>
+        <p>
+          <strong>Data reprocessing.</strong> When scoring or filtering rules change, all historical
+          periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule
+          changes do not create breaks in the data. The exception is collection-method changes that
+          cannot be applied to the past (for example, changing how court records are gathered):
+          those create a genuine before/after difference and are marked directly on charts as{' '}
+          <span className="text-dm-accent">▲</span> data collection changes.
+        </p>
       </Section>
 
       {/* Concern Synthesis */}

@@ -12,25 +12,40 @@
 export interface InstrumentChange {
   /** Monday of the week the change took effect in prod. */
   date: string;
+  /** Plain-language, user-facing description of the change. */
   label: string;
   /** Omit for platform-wide changes. */
   categories?: string[];
+  /**
+   * True when the change was applied to ALL historical data (history
+   * reprocessed under the new rules — no before/after seam exists in the
+   * series). Retroactive changes are disclosed on the methodology page but
+   * MUST NOT appear as time-axis markers or drive findings-suppression:
+   * a marker on a date claims the data before and after it are measured
+   * differently, which is false for a retroactive change.
+   */
+  retroactive: boolean;
 }
 
 export const INSTRUMENT_CHANGES: InstrumentChange[] = [
   {
     date: '2026-02-02',
-    label: 'CourtListener ingest rework begins: docket noise purges, opinion-first fetching',
+    label:
+      'We changed how court records are collected. Document volumes before and after this period reflect different collection methods and are not directly comparable.',
     categories: ['civilLiberties', 'lawEnforcement', 'judicialIndependence', 'courtOrders'],
+    retroactive: false,
   },
   {
     date: '2026-07-06',
-    label: 'mediaFreedom retrieval-relevance filter (#544)',
+    label:
+      'A relevance filter for press-freedom coverage was applied to all periods, past and present.',
     categories: ['mediaFreedom'],
+    retroactive: true,
   },
   {
     date: '2026-07-20',
-    label: 'Substantive-count floor: docket stubs excluded from weekly counts (#566)',
+    label: 'Document-count rules were updated and applied to all periods, past and present.',
+    retroactive: true,
   },
 ];
 
@@ -46,7 +61,8 @@ export function overlapsInstrumentChange(
   endWeek: string,
 ): boolean {
   return INSTRUMENT_CHANGES.some(
-    (c) => (!c.categories || c.categories.includes(category)) && c.date <= endWeek,
+    (c) =>
+      !c.retroactive && (!c.categories || c.categories.includes(category)) && c.date <= endWeek,
   );
 }
 
@@ -58,6 +74,7 @@ export function buildMarkersByWeek(weeks: string[], weekLengthDays = 7): Map<str
   const map = new Map<string, string[]>();
   if (weeks.length === 0) return map;
   for (const change of INSTRUMENT_CHANGES) {
+    if (change.retroactive) continue;
     let owner: string | null = null;
     for (let i = weeks.length - 1; i >= 0; i--) {
       if (weeks[i] <= change.date) {
