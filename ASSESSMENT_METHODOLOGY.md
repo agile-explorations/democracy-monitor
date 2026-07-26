@@ -106,7 +106,7 @@ Thematic drift uses embedding-based analysis to detect when the _topics_ discuss
 
 Thematic drift signals are preserved for research visualization but do not drive concern status.
 
-**Data reprocessing.** When scoring or filtering rules change, all historical periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule changes do not create breaks in the data. Collection-method changes that cannot be applied to the past (for example, changing how court records are gathered) create a genuine before/after difference; those are marked directly on charts as ▲ data collection changes, and below-baseline "findings" that overlap them are suppressed rather than presented as detection.
+**Data reprocessing.** When scoring or filtering rules change, all historical periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule changes do not create breaks in the data. Collection-method changes that cannot be applied to the past (for example, changing how court records are gathered) create a genuine before/after difference in _document volumes_; the volume-based research views mark those with ▲ and suppress quiet-side "findings" that overlap them rather than presenting them as detection. Concern statuses are derived from document _content_ against absolute thresholds and are verified to remain comparable across such changes (every pipeline change is gated on producing zero unexplained status flips), so status-based displays carry no such breaks.
 
 ## Concern Synthesis
 

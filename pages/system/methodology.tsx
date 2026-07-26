@@ -434,10 +434,14 @@ function DetailedContent() {
         <p>
           <strong>Data reprocessing.</strong> When scoring or filtering rules change, all historical
           periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule
-          changes do not create breaks in the data. The exception is collection-method changes that
-          cannot be applied to the past (for example, changing how court records are gathered):
-          those create a genuine before/after difference and are marked directly on charts as{' '}
-          <span className="text-dm-accent">▲</span> data collection changes.
+          changes do not create breaks in the data. Collection-method changes that cannot be applied
+          to the past (for example, changing how court records are gathered) create a genuine
+          before/after difference in <em>document volumes</em>; the volume-based research views on
+          the Data pages mark those with <span className="text-dm-accent">▲</span> and suppress
+          quiet-side findings that overlap them. Concern statuses are derived from document{' '}
+          <em>content</em> against absolute thresholds and are verified to remain comparable across
+          such changes (every pipeline change is gated on producing zero unexplained status flips),
+          so the concern chart and status timeline carry no such breaks.
         </p>
       </Section>
 
