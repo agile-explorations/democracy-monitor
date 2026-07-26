@@ -5,12 +5,14 @@ import { ThematicHeatmap } from '@/components/data/ThematicHeatmap';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useTheme } from '@/lib/contexts/ThemeContext';
+import type { StandoutRun } from '@/lib/services/structural-heatmap-service';
 import type { ThematicHeatmapRow } from '@/lib/types/overview';
 
 export default function ThematicDriftPage() {
   const { resolvedMode: mode } = useTheme();
   const router = useRouter();
   const [rows, setRows] = useState<ThematicHeatmapRow[]>([]);
+  const [standouts, setStandouts] = useState<StandoutRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +23,7 @@ export default function ThematicDriftPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setRows(data.rows);
+        setStandouts(data.standouts ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -156,7 +159,28 @@ export default function ThematicDriftPage() {
       {loading && <p className="text-sm text-dm-text-secondary py-4">Loading thematic data...</p>}
       {error && <p className="text-sm text-red-500 py-4">Error: {error}</p>}
       {!loading && !error && (
-        <ThematicHeatmap rows={rows} mode={mode} onCellClick={handleCellClick} />
+        <>
+          {standouts.length > 0 && (
+            <section className="mb-6 rounded-lg border border-dm-border bg-dm-card p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
+                What stands out
+              </h2>
+              <ul className="space-y-1.5">
+                {standouts.map((run) => (
+                  <li key={`${run.category}-${run.startWeek}`} className="text-sm">
+                    <Link
+                      href={`/category/${run.category}`}
+                      className="text-dm-text-primary hover:text-dm-accent"
+                    >
+                      {run.sentence}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <ThematicHeatmap rows={rows} mode={mode} onCellClick={handleCellClick} />
+        </>
       )}
     </>
   );

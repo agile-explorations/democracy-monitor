@@ -2,7 +2,10 @@ import { desc, sql } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/lib/db';
 import { weeklyAggregates } from '@/lib/db/schema';
-import { buildThematicHeatmapRows } from '@/lib/services/thematic-heatmap-service';
+import {
+  buildThematicHeatmapRows,
+  detectThematicStandouts,
+} from '@/lib/services/thematic-heatmap-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
@@ -27,6 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         category: weeklyAggregates.category,
         weekOf: weeklyAggregates.weekOf,
         thematicDetail: weeklyAggregates.thematicDetail,
+        documentCount: weeklyAggregates.documentCount,
       })
       .from(weeklyAggregates)
       .where(
@@ -42,11 +46,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       category: r.category,
       week_of: r.weekOf,
       thematic_detail: r.thematicDetail,
+      document_count: r.documentCount,
     }));
 
     const heatmapRows = buildThematicHeatmapRows(mapped);
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    return res.status(200).json({ rows: heatmapRows });
+    return res.status(200).json({
+      rows: heatmapRows,
+      standouts: detectThematicStandouts(heatmapRows),
+    });
   } catch (err) {
     return res.status(500).json({ error: formatError(err) });
   }

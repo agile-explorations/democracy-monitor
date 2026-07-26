@@ -77,7 +77,7 @@ const DIMENSION_LABELS: Record<StructuralDimension, string> = {
 export interface StandoutRun {
   category: string;
   title: string;
-  dimension: StructuralDimension;
+  dimension: string;
   dimensionLabel: string;
   startWeek: string;
   endWeek: string;
@@ -96,76 +96,104 @@ const STANDOUT_LIMIT = 8;
  * three consecutive weeks in one dimension. Ranked by duration x magnitude so
  * long, strong departures surface first. Null weeks (no data) break runs.
  */
-function buildRun(
-  row: StructuralHeatmapRow,
-  dim: StructuralDimension,
-  startWeek: string,
-  endWeek: string,
-  zs: number[],
-): StandoutRun {
-  const meanZ = zs.reduce((a, b) => a + b, 0) / zs.length;
-  const direction = meanZ > 0 ? 'above' : 'below';
-  return {
-    category: row.category,
-    title: row.title,
-    dimension: dim,
-    dimensionLabel: DIMENSION_LABELS[dim],
-    startWeek,
-    endWeek,
-    weekCount: zs.length,
-    meanZ,
-    direction,
-    sentence:
-      `${row.title} ran ${direction === 'above' ? 'well above' : 'well below'} its baseline ` +
-      `${DIMENSION_LABELS[dim]} for ${zs.length} straight weeks (${startWeek} to ${endWeek}).`,
-  };
+/** A row any heatmap can offer the run scanner. */
+export interface RunnableRow {
+  category: string;
+  title: string;
+  weeks: Array<{ week: string; values: Record<string, number | null | undefined> }>;
 }
 
-export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] {
+/**
+ * Generic sustained-run scanner (#575/#580): |z| >= 2.5 for >= 3 consecutive
+ * same-sign weeks per (row, dimension); below-direction runs ending after an
+ * instrument change for the category are suppressed as likely instrument
+ * drift; ranked by duration x magnitude, top 8. `sentence` renders the
+ * display copy so each surface keeps its own wording.
+ */
+function scanDimension(
+  row: RunnableRow,
+  dim: string,
+  labels: Record<string, string>,
+  sentence: (run: Omit<StandoutRun, 'sentence'>) => string,
+  runs: StandoutRun[],
+): void {
+  let start = -1;
+  let zs: number[] = [];
+  const flush = (endIdx: number) => {
+    if (start >= 0 && zs.length >= STANDOUT_MIN_WEEKS) {
+      const meanZ = zs.reduce((a, b) => a + b, 0) / zs.length;
+      const base: Omit<StandoutRun, 'sentence'> = {
+        category: row.category,
+        title: row.title,
+        dimension: dim,
+        dimensionLabel: labels[dim] ?? dim,
+        startWeek: row.weeks[start].week,
+        endWeek: row.weeks[endIdx].week,
+        weekCount: zs.length,
+        meanZ,
+        direction: meanZ > 0 ? 'above' : 'below',
+      };
+      runs.push({ ...base, sentence: sentence(base) });
+    }
+    start = -1;
+    zs = [];
+  };
+  row.weeks.forEach((w, i) => {
+    const z = w.values[dim];
+    const prev = zs.length > 0 ? zs[zs.length - 1] : null;
+    const qualifies =
+      z !== null &&
+      z !== undefined &&
+      Math.abs(z) >= STANDOUT_MIN_ABS_Z &&
+      (prev === null || Math.sign(z) === Math.sign(prev));
+    if (qualifies) {
+      if (start < 0) start = i;
+      zs.push(z as number);
+    } else {
+      flush(i - 1);
+      if (z !== null && z !== undefined && Math.abs(z) >= STANDOUT_MIN_ABS_Z) {
+        start = i;
+        zs = [z as number];
+      }
+    }
+  });
+  flush(row.weeks.length - 1);
+}
+
+export function scanStandoutRuns(
+  rows: RunnableRow[],
+  dims: string[],
+  labels: Record<string, string>,
+  sentence: (run: Omit<StandoutRun, 'sentence'>) => string,
+): StandoutRun[] {
   const runs: StandoutRun[] = [];
   for (const row of rows) {
-    for (const dim of STRUCTURAL_DIMENSION_KEYS) {
-      let start = -1;
-      let zs: number[] = [];
-      const flush = (endIdx: number) => {
-        if (start >= 0 && zs.length >= STANDOUT_MIN_WEEKS) {
-          runs.push(buildRun(row, dim, row.weeks[start].week, row.weeks[endIdx].week, zs));
-        }
-        start = -1;
-        zs = [];
-      };
-      row.weeks.forEach((w, i) => {
-        const z = w.dimensions[dim];
-        const prev = zs.length > 0 ? zs[zs.length - 1] : null;
-        const qualifies =
-          z !== null &&
-          z !== undefined &&
-          Math.abs(z) >= STANDOUT_MIN_ABS_Z &&
-          (prev === null || Math.sign(z) === Math.sign(prev));
-        if (qualifies) {
-          if (start < 0) start = i;
-          zs.push(z as number);
-        } else {
-          flush(i - 1);
-          if (z !== null && z !== undefined && Math.abs(z) >= STANDOUT_MIN_ABS_Z) {
-            start = i;
-            zs = [z as number];
-          }
-        }
-      });
-      flush(row.weeks.length - 1);
+    for (const dim of dims) {
+      scanDimension(row, dim, labels, sentence, runs);
     }
   }
   return runs
     .filter(
-      // A below-baseline run overlapping an ingest-methodology change for its
-      // category is likely instrument drift, not world drift (#577) — never
-      // present it as a finding.
       (r) =>
         r.direction === 'above' || !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek),
     )
     .sort((a, b) => b.weekCount * Math.abs(b.meanZ) - a.weekCount * Math.abs(a.meanZ))
     .slice(0, STANDOUT_LIMIT);
+}
+
+export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] {
+  return scanStandoutRuns(
+    rows.map((r) => ({
+      category: r.category,
+      title: r.title,
+      weeks: r.weeks.map((w) => ({ week: w.week, values: w.dimensions })),
+    })),
+    STRUCTURAL_DIMENSION_KEYS,
+    DIMENSION_LABELS,
+    (run) =>
+      `${run.title} ran ${run.direction === 'above' ? 'well above' : 'well below'} its baseline ` +
+      `${run.dimensionLabel} for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
+  );
 }
 
 /** Trailing-12-week mean |composite| per category, for row ordering (#576). */

@@ -49,3 +49,30 @@ export function overlapsInstrumentChange(
     (c) => (!c.categories || c.categories.includes(category)) && c.date <= endWeek,
   );
 }
+
+/**
+ * Map each rendered week (ascending Mondays) to the instrument-change labels
+ * landing in it. Shared by the structural and thematic heatmaps (#576/#580).
+ */
+export function buildMarkersByWeek(weeks: string[], weekLengthDays = 7): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  if (weeks.length === 0) return map;
+  for (const change of INSTRUMENT_CHANGES) {
+    let owner: string | null = null;
+    for (let i = weeks.length - 1; i >= 0; i--) {
+      if (weeks[i] <= change.date) {
+        const isLast = i === weeks.length - 1;
+        if (!isLast || dateWithinDays(change.date, weeks[i], weekLengthDays)) owner = weeks[i];
+        break;
+      }
+    }
+    if (owner) map.set(owner, [...(map.get(owner) ?? []), change.label]);
+  }
+  return map;
+}
+
+function dateWithinDays(date: string, weekStart: string, days: number): boolean {
+  const start = new Date(`${weekStart}T00:00:00Z`).getTime();
+  const d = new Date(`${date}T00:00:00Z`).getTime();
+  return d - start < days * 24 * 60 * 60 * 1000;
+}

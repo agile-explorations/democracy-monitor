@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
-import { INSTRUMENT_CHANGES } from '@/lib/data/instrument-changes';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import { divergingZScoreColor } from '@/lib/utils/color';
 import { addDays, formatWeekLabel } from '@/lib/utils/date-utils';
@@ -209,26 +209,6 @@ export function StructuralHeatmap({ rows, mode, onCellClick }: StructuralHeatmap
       </div>
     </div>
   );
-}
-
-/** Map each rendered week to the instrument-change labels landing in it. */
-function buildMarkersByWeek(weeks: string[]): Map<string, string[]> {
-  const map = new Map<string, string[]>();
-  if (weeks.length === 0) return map;
-  for (const change of INSTRUMENT_CHANGES) {
-    // Owning week = the last rendered Monday on/before the change date,
-    // provided the date falls inside that week (not past the rendered range).
-    let owner: string | null = null;
-    for (let i = weeks.length - 1; i >= 0; i--) {
-      if (weeks[i] <= change.date) {
-        const isLast = i === weeks.length - 1;
-        if (!isLast || change.date <= addDays(weeks[i], 6)) owner = weeks[i];
-        break;
-      }
-    }
-    if (owner) map.set(owner, [...(map.get(owner) ?? []), change.label]);
-  }
-  return map;
 }
 
 function HeatmapRow({

@@ -18,6 +18,8 @@ export interface ThematicHeatmapRow {
     varianceRatio: number | null;
     crossAdminDistance: number | null;
     bootstrap: boolean;
+    /** Under THEMATIC_MIN_DOC_COUNT docs — distance metrics unreliable (#579). */
+    lowVolume: boolean;
   }>;
 }
 
