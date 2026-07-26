@@ -6,6 +6,7 @@ import {
   buildThematicHeatmapRows,
   detectThematicStandouts,
 } from '@/lib/services/thematic-heatmap-service';
+import { getThemeLabel } from '@/lib/services/thematic-theme-labels';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
 
@@ -51,10 +52,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const heatmapRows = buildThematicHeatmapRows(mapped);
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    return res.status(200).json({
-      rows: heatmapRows,
-      standouts: detectThematicStandouts(heatmapRows),
-    });
+    const standouts = detectThematicStandouts(heatmapRows);
+    // AI theme labels on shifts (#583): cached 7 days, <=8 calls worst case,
+    // every failure degrades to the unlabeled sentence.
+    await Promise.all(
+      standouts
+        .filter((r) => r.direction === 'above')
+        .map(async (r) => {
+          const label = await getThemeLabel(r.category, r.endWeek);
+          if (label) r.sentence = `${r.sentence.replace(/\.$/, '')} — ${label}.`;
+        }),
+    );
+    return res.status(200).json({ rows: heatmapRows, standouts });
   } catch (err) {
     return res.status(500).json({ error: formatError(err) });
   }
