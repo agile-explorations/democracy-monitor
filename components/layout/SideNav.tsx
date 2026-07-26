@@ -28,7 +28,18 @@ function NavSection({
         className="flex items-center justify-between w-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-dm-muted hover:text-dm-text-secondary transition-colors"
       >
         {title}
-        <span className="text-[10px]">{open ? '\u25B4' : '\u25BE'}</span>
+        <svg
+          className={`w-3.5 h-3.5 shrink-0 transition-transform ${open ? '' : '-rotate-90'}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
       {open && <ul className="space-y-px">{children}</ul>}
     </div>
