@@ -95,7 +95,7 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
     (run) =>
       run.direction === 'above'
         ? `${run.title} shifted topics well beyond its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS}-week norm for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`
-        : `${run.title} showed far less week-to-week topic change than its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS} weeks for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
+        : `${run.title} was unusually thematically static for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
     'both',
   );
 
@@ -118,7 +118,7 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
         weekCount: 1,
         meanZ: w.zScore,
         direction: 'above',
-        sentence: `${row.title}'s topics in the week of ${w.week} moved unusually far from its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS} weeks.`,
+        sentence: `${row.title}'s topics shifted sharply in the week of ${w.week}.`,
       });
     }
   }

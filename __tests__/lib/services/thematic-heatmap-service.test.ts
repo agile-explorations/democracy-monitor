@@ -224,9 +224,7 @@ describe('spike detection + shift-first ranking (#582)', () => {
       },
     ];
     const runs = detectThematicStandouts(rows as any);
-    expect(runs[0].sentence).toContain(
-      'week of 2025-05-12 moved unusually far from its preceding 8 weeks',
-    );
+    expect(runs[0].sentence).toContain('topics shifted sharply in the week of 2025-05-12');
     expect(runs[runs.length - 1].direction).toBe('below');
   });
 

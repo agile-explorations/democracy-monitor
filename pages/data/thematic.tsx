@@ -5,6 +5,7 @@ import { ThematicHeatmap } from '@/components/data/ThematicHeatmap';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useTheme } from '@/lib/contexts/ThemeContext';
+import { THEMATIC_ROLLING_WINDOW_WEEKS } from '@/lib/methodology/scoring-config';
 import type { StandoutRun } from '@/lib/services/structural-heatmap-service';
 import type { ThematicHeatmapRow } from '@/lib/types/overview';
 
@@ -164,7 +165,10 @@ export default function ThematicDriftPage() {
           {standouts.length > 0 && (
             <section className="mb-6 rounded-lg border border-dm-border bg-dm-card p-4">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
-                What stands out
+                What stands out{' '}
+                <span className="normal-case font-normal text-dm-muted">
+                  (compared to the previous {THEMATIC_ROLLING_WINDOW_WEEKS} weeks)
+                </span>
               </h2>
               <ul className="space-y-1.5 list-disc list-inside marker:text-dm-muted">
                 {standouts.map((run) => (
