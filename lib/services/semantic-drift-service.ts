@@ -8,6 +8,7 @@ import {
   SEMANTIC_DRIFT_ANOMALY_THRESHOLD,
   SEMANTIC_DRIFT_ELEVATED_THRESHOLD,
   THEMATIC_ROLLING_WINDOW_WEEKS,
+  THEMATIC_NOVELTY_THRESHOLD,
 } from '@/lib/methodology/scoring-config';
 import { getBaseline } from '@/lib/services/baseline-service';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
@@ -26,14 +27,12 @@ export interface SemanticDriftResult {
 }
 
 /**
- * Compute the centroid of all embedded documents for a given category and week.
- * Returns null if no embeddings are available for that week.
+ * Load the embedding vectors of all embedded documents for a category-week.
+ * The per-document vectors feed novelty/variance metrics (#578) as well as
+ * the centroid.
  */
-export async function computeWeekCentroid(
-  category: string,
-  weekOf: string,
-): Promise<number[] | null> {
-  if (!isDbAvailable()) return null;
+export async function loadWeekEmbeddings(category: string, weekOf: string): Promise<number[][]> {
+  if (!isDbAvailable()) return [];
 
   const db = getDb();
 
@@ -49,9 +48,20 @@ export async function computeWeekCentroid(
       ),
     );
 
-  if (rows.length === 0) return null;
+  return rows.map((r) => r.embedding!);
+}
 
-  return computeCentroid(rows.map((r) => r.embedding!));
+/**
+ * Compute the centroid of all embedded documents for a given category and week.
+ * Returns null if no embeddings are available for that week.
+ */
+export async function computeWeekCentroid(
+  category: string,
+  weekOf: string,
+): Promise<number[] | null> {
+  const embeddings = await loadWeekEmbeddings(category, weekOf);
+  if (embeddings.length === 0) return null;
+  return computeCentroid(embeddings);
 }
 
 /**
@@ -134,15 +144,26 @@ export async function computeRollingThematicDrift(
   const windowSize = options?.windowSize ?? THEMATIC_ROLLING_WINDOW_WEEKS;
   const baselineId = options?.baselineId ?? BASELINE_CONFIGS[0].id;
 
-  const currentCentroid = await computeWeekCentroid(category, weekOf);
+  const currentEmbeddings = await loadWeekEmbeddings(category, weekOf);
+  if (currentEmbeddings.length === 0) return null;
+  const currentCentroid = computeCentroid(currentEmbeddings);
   if (!currentCentroid) return null;
 
   const precedingWeeks = getPrecedingWeeks(weekOf, windowSize);
   const rollingCentroids: number[][] = [];
+  // Per-doc vectors across the window feed variance/novelty (#578); the
+  // window was already being fetched to build centroids, so this keeps the
+  // vectors instead of discarding them (~30MB transient worst case).
+  const rollingEmbeddings: number[][] = [];
 
   for (const w of precedingWeeks) {
-    const c = await computeWeekCentroid(category, w);
-    if (c) rollingCentroids.push(c);
+    const weekEmbeddings = await loadWeekEmbeddings(category, w);
+    if (weekEmbeddings.length === 0) continue;
+    const c = computeCentroid(weekEmbeddings);
+    if (c) {
+      rollingCentroids.push(c);
+      rollingEmbeddings.push(...weekEmbeddings);
+    }
   }
 
   const isBootstrap = rollingCentroids.length < windowSize / 2;
@@ -160,7 +181,9 @@ export async function computeRollingThematicDrift(
 
   return buildRollingResult(
     currentCentroid,
+    currentEmbeddings,
     rollingCentroids,
+    rollingEmbeddings,
     crossAdminDistance,
     baselineId,
     windowSize,
@@ -187,7 +210,9 @@ function buildBootstrapResult(
 
 function buildRollingResult(
   currentCentroid: number[],
+  currentEmbeddings: number[][],
   rollingCentroids: number[][],
+  rollingEmbeddings: number[][],
   crossAdminDistance: number | null,
   baselineId: string,
   windowSize: number,
@@ -197,6 +222,21 @@ function buildRollingResult(
   const distanceFromRolling = rollingMeanCentroid
     ? 1 - cosineSimilarity(currentCentroid, rollingMeanCentroid)
     : 0;
+
+  // #578: these were spec'd, implemented, and tested — but never called;
+  // the result carried literal 0/1 constants for the field's whole life.
+  const novelDocumentRate = rollingMeanCentroid
+    ? detectNovelDocuments(currentEmbeddings, rollingMeanCentroid, THEMATIC_NOVELTY_THRESHOLD)
+        .novelRate
+    : 0;
+  const varianceRatio = rollingMeanCentroid
+    ? computeVarianceRatio(
+        currentEmbeddings,
+        currentCentroid,
+        rollingEmbeddings,
+        rollingMeanCentroid,
+      )
+    : 1;
 
   // Compute inter-week distances within the rolling window for mean/stddev
   const interWeekDistances: number[] = [];
@@ -212,8 +252,8 @@ function buildRollingResult(
     rollingCentroidDistance: distanceFromRolling,
     rollingWindow: { weeks: rollingCentroids.length, meanDistance: meanDist, stdDev: stdDist },
     zScore: isBootstrap ? z * BOOTSTRAP_CONFIDENCE : z,
-    novelDocumentRate: 0,
-    varianceRatio: 1,
+    novelDocumentRate,
+    varianceRatio,
     crossAdminDistance,
     crossAdminBaseline: baselineId,
     bootstrap: isBootstrap,
