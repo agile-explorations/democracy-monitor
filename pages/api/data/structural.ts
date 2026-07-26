@@ -5,6 +5,7 @@ import { weeklyAggregates } from '@/lib/db/schema';
 import {
   buildStructuralHeatmapRows,
   detectStandoutRuns,
+  orderRowsByRecentHeat,
 } from '@/lib/services/structural-heatmap-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { latestCompleteWeek } from '@/lib/utils/date-utils';
@@ -49,7 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const heatmapRows = buildStructuralHeatmapRows(mapped);
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=600');
-    return res.status(200).json({ rows: heatmapRows, standouts: detectStandoutRuns(heatmapRows) });
+    return res.status(200).json({
+      rows: orderRowsByRecentHeat(heatmapRows),
+      standouts: detectStandoutRuns(heatmapRows),
+    });
   } catch (err) {
     return res.status(500).json({ error: formatError(err) });
   }

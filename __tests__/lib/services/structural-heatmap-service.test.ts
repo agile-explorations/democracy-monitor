@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { detectStandoutRuns } from '@/lib/services/structural-heatmap-service';
+import {
+  detectStandoutRuns,
+  orderRowsByRecentHeat,
+} from '@/lib/services/structural-heatmap-service';
 
 describe('detectStandoutRuns (#575)', () => {
   const week = (w: string, z: number | null) => ({
@@ -56,5 +59,38 @@ describe('detectStandoutRuns (#575)', () => {
     const short = row([week('2026-01-05', 4), week('2026-01-12', 4), week('2026-01-19', 4)]);
     const runs = detectStandoutRuns([long, short]);
     expect(runs[0].weekCount).toBe(10);
+  });
+});
+
+describe('instrument-change suppression + ordering (#576/#577)', () => {
+  const week = (w: string, z: number | null, composite: number | null = null) => ({
+    week: w,
+    dimensions: { volume: z } as Record<string, number | null>,
+    composite,
+    anomalous: false,
+  });
+
+  it('suppresses below-baseline runs overlapping an instrument change for the category', () => {
+    const clQuiet = {
+      category: 'civilLiberties',
+      title: 'Civil Rights & Liberties',
+      weeks: [week('2026-03-02', -3), week('2026-03-09', -3), week('2026-03-16', -3)],
+    } as any;
+    expect(detectStandoutRuns([clQuiet])).toHaveLength(0);
+  });
+
+  it('keeps above-baseline runs even across instrument changes', () => {
+    const clBusy = {
+      category: 'civilLiberties',
+      title: 'Civil Rights & Liberties',
+      weeks: [week('2026-03-02', 3), week('2026-03-09', 3), week('2026-03-16', 3)],
+    } as any;
+    expect(detectStandoutRuns([clBusy])).toHaveLength(1);
+  });
+
+  it('orders rows by trailing mean |composite|', () => {
+    const hot = { category: 'a', title: 'A', weeks: [week('2026-01-05', null, 3)] } as any;
+    const cool = { category: 'b', title: 'B', weeks: [week('2026-01-05', null, 0.2)] } as any;
+    expect(orderRowsByRecentHeat([cool, hot]).map((r) => r.category)).toEqual(['a', 'b']);
   });
 });

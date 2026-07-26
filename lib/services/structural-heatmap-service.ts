@@ -1,4 +1,5 @@
 import { CATEGORIES } from '@/lib/data/categories';
+import { overlapsInstrumentChange } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import type { StructuralScore } from '@/lib/types/structural';
 
@@ -156,6 +157,26 @@ export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] 
     }
   }
   return runs
+    .filter(
+      // A below-baseline run overlapping an ingest-methodology change for its
+      // category is likely instrument drift, not world drift (#577) — never
+      // present it as a finding.
+      (r) =>
+        r.direction === 'above' || !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek),
+    )
     .sort((a, b) => b.weekCount * Math.abs(b.meanZ) - a.weekCount * Math.abs(a.meanZ))
     .slice(0, STANDOUT_LIMIT);
+}
+
+/** Trailing-12-week mean |composite| per category, for row ordering (#576). */
+export function orderRowsByRecentHeat(rows: StructuralHeatmapRow[]): StructuralHeatmapRow[] {
+  const heat = (row: StructuralHeatmapRow): number => {
+    const recent = row.weeks
+      .slice(-12)
+      .map((w) => w.composite)
+      .filter((v): v is number => v !== null);
+    if (recent.length === 0) return -1;
+    return recent.reduce((a, b) => a + Math.abs(b), 0) / recent.length;
+  };
+  return [...rows].sort((a, b) => heat(b) - heat(a));
 }

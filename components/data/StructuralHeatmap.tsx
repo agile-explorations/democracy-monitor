@@ -109,15 +109,15 @@ function GradientLegend({ mode }: { mode: 'light' | 'dark' }) {
   const colors = Z_SCORE_SCALE_COLORS[mode];
   return (
     <div className="flex items-center gap-2 mb-3 text-[11px] text-dm-text-secondary">
-      <span>-4</span>
+      <span>quieter than baseline</span>
       <div
         className="h-3 w-32 rounded-sm"
         style={{
           background: `linear-gradient(to right, ${colors.low}, ${colors.mid}, ${colors.high})`,
         }}
       />
-      <span>+4</span>
-      <span className="ml-2 text-dm-muted">z-score</span>
+      <span>busier than baseline</span>
+      <span className="ml-2 text-dm-muted">z-score −4 to +4</span>
       <span className="flex items-center gap-1 ml-3">
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
         No documents that week
