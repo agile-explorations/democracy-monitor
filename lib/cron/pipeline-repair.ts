@@ -192,6 +192,11 @@ function parseArgs(argv: string[]): RepairOptions {
     else if (argv[i] === '--dry-run') opts.dryRun = true;
   }
   if (!opts.from || !opts.to) throw new Error('--from and --to are required');
+  // Weekly data anchors on Mondays; an off-anchor scope creates phantom
+  // aggregate rows in the gap-fill stage and mis-keys the flip gate.
+  if (new Date(`${opts.from}T00:00:00Z`).getUTCDay() !== 1) {
+    throw new Error(`--from must be a Monday (weekly anchor); got ${opts.from}`);
+  }
   return opts;
 }
 
