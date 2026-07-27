@@ -12,6 +12,83 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-OVERVIEW: landing-page integrity + the CL-seam honesty arc (#584–587) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25/26, develop): planned as a half-day (markers, significant-weeks reframe, dead component). Owner feedback drove five substantive escalations, each catching something analysis had settled too early:
+
+1. Caption legibility → plain-language copy.
+2. **Retroactive vs non-retroactive changes**: two of three registry entries were reprocessed across all history — no seam exists; markers now claim discontinuity only where one is real (`retroactive` flag; time-axis markers + suppression consult it).
+3. **Per-surface marker semantics**: the concern chart/status timeline are status-derived and verified comparable across the CL seam (confirmed/month 5/10/6/4/7/7/7 — content-based detection + zero-flip gates); status surfaces mark only `affectsConcernStatuses` changes (currently none). Volume surfaces keep the marker.
+4. **Mask scope measured, not assumed**: across the seam (new scoring, control categories flat) volume +0.84→−1.17, tempo +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21, functional +0.19→+0.86, composite 1.01→1.58; only convergence clean (−0.12→−0.10). Mask widened to all baseline-relative dims incl. Composite; numbers recorded in the code comment and as #587 acceptance criteria.
+5. **Fix the data, not just the display** (#587 filed): method-consistent counting population — L2 evidence population untouched so statuses can't flip and re-derivation costs $0 AI; teardown checklist of every interim measure posted to the issue, keyed to the single `retroactive: true` flip.
+
+Also: significant weeks reframed (inauguration = `monitoring_began`, score 20), Concern Score displayed per entry (exact chart formula, `STATUS_WEIGHT` exported as single source), then re-sorted recent-first with event badges when the visible score exposed that the ranking was event-based and undecodable; thematic tooltip fixed to fixed-position below-cell top-z; dead `CategoryDriftHeatmap` removed (kept alive only by its own test — knip counts tests as entries); Data-page downloader caveat added (comment-tagged for #587 removal).
+
+**Lessons learned:**
+
+- **A marker on a time axis is a factual claim** — "before and after are measured differently." Retroactively-applied rule changes make that claim false; only genuine collection seams may mark, and only on the surfaces they actually break.
+- **"Compensated" must mean the surface a user is looking at.** Findings suppression protected the panel while the cells still showed the artifact; each rendering surface needs its own honesty treatment.
+- **Measure mask scope; don't reason it.** "Count-derived dims only" missed that proportions shift when one source collapses — agency hit +5.2σ through metadata sparsity, and Composite inherited everything.
+- **Displaying a number next to a ranking it doesn't drive invites (correct) distrust** — either rank by the visible number or drop the ranking claim.
+- **File the teardown with the workaround.** Interim measures documented as a checklist on the fixing issue, keyed to one flag, with tests that will fail loudly on the flip.
+
+**Tuesday runbook (combined with R-STRUCT/R-DRIFT):** verify Monday green → merge develop→main → deploy → `pipeline:repair --from 2025-01-20 --to <last Monday>` (zero-flip gate; re-derives structural + thematic) → `recomputeSignificantWeeks` one-off → saturation + thematic distribution before/afters to #574 → close #573–586, milestones 88–90.
+
+---
+
+## Sprint R-DRIFT: light up the thematic drift heatmaps (#578–583) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25, develop; rides Tuesday's single deploy + re-derivation with R-STRUCT):
+
+- #578 novelty/variance wiring — as planned, plus empirical threshold calibration (see decisions).
+- #579 small-N masking — as planned (`THEMATIC_MIN_DOC_COUNT = 5`, distance tabs only).
+- #580 legibility ports — as planned, via generalization rather than copying (`scanStandoutRuns`, shared `buildMarkersByWeek`).
+- #581 verification — caught a live defect (see decisions).
+- #582/#583 (unplanned, owner feedback on the live panel) — spike detection over static runs; AI theme labels on shifts; methodology-text alignment; comparison basis moved to the panel header.
+
+**Key decisions:**
+
+- **The metrics were never wired, not miscalibrated.** `detectNovelDocuments` and `computeVarianceRatio` existed as exported, unit-tested pure functions in the same file whose result builders hardcoded 0/1 — 100% of 1,042 current-term weeks displayed literal constants. The enabler: the centroid path already fetched every needed embedding and discarded it.
+- **Novelty threshold 0.5 = p90, empirically.** The dormant 0.3 default sat at the _median_ of real doc-to-centroid distances and would have flagged half of all documents. Post-calibration: novel rate mean 0.109 / median 0.049 — discriminating.
+- **Instrument suppression is direction-dependent per metric family.** Verification caught the CL ingest rework reading as z=+44 _upward_ thematic drift (doc-mix changes move the centroid), while structural volume metrics only lose signal _downward_ — `scanStandoutRuns` takes `suppressDirections` ('below' structural, 'both' thematic).
+- **Rolling-window drift z mean-reverts ⇒ spikes, not runs, are the thematic headline.** The window absorbs a real shift within ~2 weeks, so upward drift can't sustain a 3-week run; the first panel render filled with "thematically static" items until spike detection (z ≥ 4) was added and ranked first.
+- **Panel = AI headline, tooltip = raw evidence** (owner decision). The hover term lists (TF-IDF, deterministic, auditable) carry _more_ information than the AI phrase; replacing them would have made the detail surface less detailed. Left as complementary layers.
+- **Methodology text now matches the computation**: the z denominator is typical _consecutive week-to-week_ centroid movement, not deviations of the distance-from-mean itself, and the current week is never in its own window — /data/thematic, /system/methodology, and ASSESSMENT_METHODOLOGY.md all corrected (the imprecise wording had propagated from the page into the owner's own understanding).
+
+**Lessons learned:**
+
+- **A spec'd field that ships with a constant is worse than an unshipped field** — it renders as a working display. Distribution checks (stddev = 0, value = constant) on stored JSONB fields are one query and would have caught this the week it shipped.
+- **Verify suppression logic against each metric's failure direction** — the same instrument change reads downward in counts and upward in centroids.
+- **Owner-facing surfaces earn feedback that diagnostics can't** — both #582 issues (static-domination, comparison-basis clarity) came from the owner reading the live panel, minutes after it rendered.
+
+**Prod runbook (Tuesday, with R-STRUCT):** single `pipeline:repair --from 2025-01-20 --to <last Monday>` re-derives structural + thematic; thematic distribution before/after (novel-rate no longer all-zero, variance std > 0) added to #574's gate comment; zero-flip gate unchanged.
+
+---
+
+## Sprint R-STRUCT: make the structural heatmaps carry their weight (#573–577) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25, develop, unpushed; deploy + prod re-derivation ride together after the Monday checkpoint per owner decision):
+
+- #573 empirical JSD baseline stats — as planned. `buildBaselineDistribution` computes each baseline week's JSD against the aggregate distribution; scoring uses the empirical mean/std (floor 0.01) with the old constants as documented, effectively-unreachable fallback.
+- #575 "What stands out" panel — as planned (|z| ≥ 2.5 for ≥3 weeks, ranked duration × magnitude, top 8, plain sentences).
+- #576 legibility — directional legend, methodology-change tick marks, recent-heat row ordering; owner approved the 3-entry instrument-change registry as-is.
+- #577 provenance check — verdict: **instrument drift**. civilLiberties CL rows fell ~1,100→~100/month across the CL rework while non-CL sources rose 66→~200/month. Wired into code, not just prose: below-baseline standout runs ending after a registered change for their category are suppressed.
+- #574 prod re-derivation — pending Tuesday (with deploy), zero-flip gate + NC diff + detection + graph; saturation before/after to the issue.
+
+**Key decisions:**
+
+- **Instrument changes are regime shifts, not point events.** First cut suppressed only runs _spanning_ a change date; a test exposed that the post-change regime is exactly the artifact case. Suppression now covers any below-baseline run ending after the change; above-baseline runs are never suppressed (this period's ingest changes only removed volume).
+- **Marker registry is code, owner-approved** (`lib/data/instrument-changes.ts`) — one source of truth for both the visual ticks and the findings suppression.
+- Standout sentences are composed server-side so the API serves display-ready findings (review finding 2, accepted).
+
+**Diagnostic that drove it** (2026-07-25 prod): agency z saturated >+4 in 76.1% of current-term weeks (mean 6.49), type 40.4% — z divided by hardcoded `JSD_BASELINE_MEAN=0 / STDDEV=0.05`, never calibrated; small-sample weeks always diverge from an aggregate distribution. Local verify after fix (blitz window): agency 76.1%→7.2%, type 40.4%→1.2%, and the story _sharpened_ — civilService tempo z 14.6 with agency correctly ~0–2.
+
+**Lessons learned:**
+
+- **A dimension that alarms every week alarms never.** Constant-red is indistinguishable from broken; saturation percentage is a cheap standing metric for any z-scored display (candidate for a future validate:data check).
+- **Never z-score against assumed moments when the empirical ones are already in memory.** The baseline docs were grouped by week in the same function that used hardcoded stats.
+- **Before presenting a "quiet period" as signal, check whether the instrument changed.** The most striking pattern in the heatmap (the 2026 CL blue band) was our own pipeline; one month-by-origin query settled it.
+
 ## Sprint R-GRAPH: derivation-graph contract + repair orchestrator (#568–572) — ✅ code complete, deploy held
 
 **Planned vs built** (2026-07-25, develop only; rides to main after the Monday 7/27 checkpoint):
@@ -53,59 +130,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Deviations & lessons:** four sizing passes fell $220→$0.02 → **three-numbers rule** (source-matched / net-new after anti-join against prod / assessable after eligibility) now in CLAUDE.md's spend protocol; **sibling audit findings sharing substrate must be re-sized after any one is repaired**; **count asymmetries can be scoring-policy artifacts, not data gaps** — check what each era scored before proposing ingestion. One false-alarm chain stop (`--load-opinions` confusion; 20 min, $0) — the 90-second-completion tell was read as a bug when it was dedup working. R-PARITY's machinery (Option-A rehearsal, zero-flip invariant, detached chains, caps/sentinel) ran twice more without modification and caught nothing because there was nothing to catch — which is the point.
 
 ---
-
-## Sprint R-PARITY: coverage-parity repair — court-scoped opinions 2017–2023 + LegiScan gaps (#555, #556) — ✅ complete
-
-**Status: Complete (2026-07-22).** Owner-driven from the standing coverage-parity constraint (PROJECT_KNOWLEDGE.md) and the #557 audit. Executed with per-invocation approvals on every baseline-period write; two owner mid-flight decisions (Option-B mechanical rehearsal; LegiScan folded in) and two owner acceptances (5 stale-enrichment flips, then the full 147-flip assessment effect).
-
-**Product outcome:** baseline years now carry the same court-scoped opinion layer and LegiScan coverage T2 has. 5,813 docs landed (2,071 opinions incl. Trump v. Hawaii/Seila Law/Vance/Mazars correctly routed; 3,742 bills filling trump_2020 and biden_2023/2024 from zero); ~5,465 P1 + ~1,900 P2 assessments; baselines recomputed ×8; 2017→2025 re-enriched. **147 baseline-week status upgrades (95 Elevated, 52 CC, 0 downgrades) owner-accepted** — concentrated in immigrationEnforcement/elections/rulemaking/executiveActions in 2020/2023/2024, landing on real events (Trump v. Hawaii decision week, Dec-2020 election litigation, COVID emergency rules). Gates at close: 39/39 events, 6/6 NCs (NC-3 required an 8-doc actor-attribution pass for the new biden_2022 confirmations). NC-1 elections at 18.1% vs ≤20% is the standing calibration watch item.
-
-**Method innovations that should recur:** verified-copy (fetch/verify locally off bulk staging, anti-join on url+category, insert exact rows into prod — minutes instead of a fragile 6-year CL API crawl); nc:margins capture/diff (margins, not pass/fail, at every phase boundary); detached chain scripts with done-markers + monitor events (survived task reaping that killed three plain background runs).
-
-**Incidents & overruns (honest ledger):**
-
-- **#563 — ~$190–200 duplicate-P2 burn, chain stopped mid-run:** `runPass2Phase` had no dedup (re-called Sonnet for every previously-flagged doc in any week containing one new doc, discarding results on conflict) AND `review:backfill --pass` was parsed but never wired, running the full pipeline twice per baseline. ~16k P2 calls for 1,894 real rows. Retroactively explains much of R-SEARCH's "4x overrun." Fixed same day (dedup + wired passFilter); post-fix the identical remaining work ran at pennies. Total sprint spend $220–230 vs $8–18 quoted ($30–35 legit).
-- **#564 — spend protocol (owner-approved) now structural:** prechecks model CALLS not documents; every AI step runs `--max-calls <estimate × 3>` (exit 3, never retried); canary-before-fleet for rehearsal-skipped steps; spend sentinel in chain scripts; actuals posted post-run. CLAUDE.md "AI spend protocol."
-- **"Exactly 5 flips" stop condition was a framing error:** it bound the mechanical rehearsal's diff, but Option B structurally cannot preview assessment-driven status impact — the 147 flips were the repair working, not a malfunction, yet they arrived unapproved. **Standing rule: any repair that adds documents to baseline periods gates on an Option-A (full-AI) rehearsal or a prod canary with status-diff before the fleet.** Applies to the pending trump_2017/2018 CL decision.
-- **Monday checkpoint collateral (all fixed same-day):** #560 weekly dump ENOSPC (disk holds one dump, not two — old dump now deleted first); #561 db:init treated pg_restore's benign version-mismatch exit as failure and destructively fell back to a March GitHub release over a fully-restored local DB (fallback now bootstrap-only); #562 filed (bulk path stores docket pairs the API path doesn't — 7,190 dockets excluded from the copy under the parity constraint).
-- **LegiScan root cause was code, not data:** BASELINE_PERIODS ended terms at year 2 — the 116th/118th Congress never matched. Two-line range fix; weekly cron now maintains full-term coverage.
-
-**Lessons learned:** estimate what pipelines call, not what they store (conflict-discarding writes hide call volume); spend is a gated quantity like data integrity; a rehearsal's stop conditions must be derivable from what the rehearsal actually exercised; stale enrichment can hide latent status changes that any scoped re-enrich will surface (the original 5); pg_restore exit codes lie (completed-with-ignored-errors = 1).
-
----
-
-## Sprint R-SEARCH: action-first research retrieval + SCOTUS gap-year backfill (#552, #553) — ✅ complete
-
-**Status: Complete (2026-07-18).** Milestone 85. Design agreed in-conversation 2026-07-17 (recorded on #552, supersedes the original diversity-quota idea); #553 backfill + full post-chain executed with per-invocation approvals (gating correction posted: biden_2023/2024 ARE baselines — the issue's original "non-baseline" claim was wrong).
-
-**Product outcome:** "Search the Documentary Record" now returns the record. Tiered retrieval (action/discussion source-type map, per-tier HNSW candidate pools, 60/40 action-weighted K=30 context) puts primary sources first; facet chips (All / Government actions / Commentary & debate) and tier-tinted source-type badges expose the layer; the synthesis prompt grounds action-claims in ACTION docs with DISCUSSION attributed to speakers. The regression query that exposed the gap now opens with the actual rulings (Chevron elimination cited to Loper Bright; Trump v. CASA) instead of "No actual Supreme Court opinions are included in this document set." 2,602 court-scoped 2023–24 opinions backfilled (Loper Bright → executiveActions+rulemaking; the 2024 immunity Trump v. United States → civilLiberties+executiveActions). Citation correctness fixed structurally: the synthesis stream consumes phase-1's exact ordered doc ids (previously two independent retrievals agreed only by accident) — and skips its redundant vector search. Gates: 6/6 negative controls, 39/39 events, #544 invariant green.
-
-**Verification harness earned its keep — three ship-blockers caught pre-merge:** (1) filtered HNSW queries starved at ef_search=40 (11 of 30 action docs; zero discussion docs for speech queries) → pgvector 0.8 `iterative_scan=relaxed_order` at DEFAULT ef — raising ef alongside it multiplies continuation cost (measured ~110s; default-ef iterative = ~1.4s); (2) full opinion texts (~1MB) shipped over the wire per result when the prompt uses ≤2,200 chars → content joined for final topK only, `LEFT(content, 3000)` — retrieval 10s → ~1.5s warm, faster than pre-sprint; (3) metadata_only docket stubs were never excluded from research retrieval.
-
-**Incidents & overruns (honest ledger):**
-
-- **~4x AI cost overrun (~$70–80 vs ~$15–20 estimated):** `review:backfill --baseline` assessed 41,249 docs, not the ~2,500 new opinions — the 2023–24 baselines had never been L2-assessed, so the membership sweep took the whole backlog. Lesson: **estimate review:backfill from `SELECT count(*) WHERE unassessed`, never from the delta being added.** Side effect worth owning: the gap years now have full L2 coverage and their recomputed statuses show 115 Elevated / 42 ConfirmedConcern weeks where charts previously showed near-empty calm — consistent with the institutions-wide product view, materially helps #556, but it arrived as a side effect rather than a decision.
-- **CL API network failure killed the backfill at week 74/105** (one week before Loper Bright); resumed idempotently.
-- **Overnight laptop sleep hung the chain 10h on a dead DB socket** (0% CPU, silent). Relaunched idempotently; all chain steps now run under `caffeinate -i`. Lesson: long local runbooks need sleep protection AND liveness checks — a hung process looks identical to a slow one.
-- **#555 filed en route:** the cl-bulk opinion path predates #528 and lacks the court-scoped queries — bulk-staging environments silently lose marquee-opinion coverage.
-
-**Lessons learned:**
-
-- **A verification harness with fixed queries is the cheapest reviewer we have** — it converted three invisible defects into measurements before any user saw them. Make one standard for retrieval/ranking changes.
-- **pgvector filtered ANN is a loaded gun:** any WHERE on a vector scan can starve results at default ef_search; iterative scan is the fix, and ef must stay at default with it.
-- **Wire cost is real on remote DBs:** SELECTing wide text columns through candidate stages is invisible locally and dominant against a remote Postgres.
-- Stale docs cleaned: PROJECT_KNOWLEDGE "gap years intentionally excluded" and the analysis-periods "four baselines" comment both predated the 8-config reality.
-
-## Sprint R-SPARSE: sparse silence + contamination index + upsert fix (#546, #548, #554) — ✅ complete
-
-**Status: Complete (2026-07-16).** Milestone 84 closed. All three items landed on develop (28a95bc, 579ecfb + docs); ride to main at the next checkpoint.
-
-**Product outcome:** (1) **#554** kills the aggregate-wipe bug family structurally — `storeWeeklyAggregate` now preserves enrichment on conflict (two-mode API; enrichment writes go through `storeEnrichedWeeklyAggregate`), E2E-proven by re-storing enriched weeks and watching statuses survive. The two #544-era call-site guards remain as scope/efficiency measures, no longer as the only defense. (2) **#546** makes silence detection meaningful for the four post-#544 sparse categories (hatch/elections/mediaFreedom/judicialIndependence at ~1–2 gov docs/wk): below a true weekly mean of 3, a 16-week presence-rate/zero-streak test replaces z-scores ((1-p)^k < 0.05 with presence ≥ 0.5 and independent sources active), and the full silence detail now persists in `convergence_detail.silence`. (3) **#548** measured the adjacent-category contamination with owner-adjudicated labels (96%/98% reliability): infoAvailability's FR flood is _worse_ than mediaFreedom's (random stratum 0/100 on-topic; silence blinded at ~152 docs/wk) but FR supplies **49% of its confirmed detections** — and of 30 confirmed-but-misrouted docs, only 10 are confirmed elsewhere, so the mediaFreedom cure would erase ~20 real detections. executiveOversight: equally dirty pipe, small blast radius (8% of detections), no action. Report: `docs/internal/CONTAMINATION_INDEX_548.md`. Recommendations await owner direction (filter+reroute sprint for infoAvailability, keyed to the #547 funnel diagnostic).
-
-**Key decisions:** sparse floor = 3 (captures exactly the four broken categories; borderline rulemaking/civilService stay z-score until evidence); label-criteria boundary tightened by owner adjudication — transparency-_adjacent_ regulation is OFF unless the subject IS information access; relevance is direction-agnostic (a records _release_ is ON — concern is L2's job).
-
-**Lessons learned:**
-
-- **Measure before porting a cure.** The same measurement protocol on a nearly identical symptom (96.9% FR share vs mediaFreedom's 88.5%) produced the opposite prescription because the detection-contribution profile differed (49% vs 6% of confirmations from FR). The #548 issue's "re-derive, don't port" instruction was empirically vindicated twice over.
-- **Cross-category overlap is the load-bearing fact for any category-scoped exclusion**: what looks like removable noise in one category can be the system's only confirmed copy of a real signal.
-- **Two-mode APIs beat magic key-presence semantics** for preserve-vs-write upserts: the enrichment path legitimately clears stale fields to null, so COALESCE-preserve would have broken it silently.

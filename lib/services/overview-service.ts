@@ -28,7 +28,7 @@ function weeksSinceAdminStart(): number {
 
 const ELEVATED_STATUSES = new Set<ConcernLevel>(['Elevated', 'Divergent', 'ConfirmedConcern']);
 
-const STATUS_WEIGHT: Record<ConcernLevel, number> = {
+export const STATUS_WEIGHT: Record<ConcernLevel, number> = {
   Stable: 0,
   Elevated: 1,
   Divergent: 1, // Legacy — no longer produced, mapped to Elevated weight

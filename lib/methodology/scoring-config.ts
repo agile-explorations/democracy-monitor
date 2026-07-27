@@ -220,6 +220,19 @@ export const THEMATIC_ROLLING_WINDOW_WEEKS = 8;
 /** Z-score above this for thematic drift is considered elevated. */
 export const THEMATIC_DRIFT_ELEVATED = 3.5;
 
+/**
+ * Cosine-distance from the rolling centroid above which a document counts as
+ * novel (#578). Calibrated 2026-07-25 against the local prod copy: doc-to-
+ * rolling-centroid distances ran p50 0.318 / p90 0.507 / p95 0.546 (n=417
+ * docs, 8 category-weeks) — 0.5 ≈ p90, so a typical week reads ~10% novel.
+ * The pre-wiring default (0.3 ≈ p50) would have flagged half of everything;
+ * it was never exercised: novelDocumentRate was hardcoded to 0 until R-DRIFT.
+ */
+export const THEMATIC_NOVELTY_THRESHOLD = 0.5;
+
+/** Weeks below this document count render distance metrics as low-volume (#579). */
+export const THEMATIC_MIN_DOC_COUNT = 5;
+
 /** Confidence multiplier during bootstrap period (first N weeks). */
 export const BOOTSTRAP_CONFIDENCE = 0.5;
 

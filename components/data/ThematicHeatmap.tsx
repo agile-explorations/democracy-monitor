@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { SEQUENTIAL_SCALE_COLORS, Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { ThematicHeatmapRow, ThematicMetric } from '@/lib/types/overview';
 import { divergingZScoreColor, sequentialScaleColor } from '@/lib/utils/color';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
@@ -28,6 +29,8 @@ const METRIC_FULL_LABELS: Record<ThematicMetric, string> = {
   varianceRatio: 'Variance Ratio',
   crossAdminDistance: 'Cross-Admin Distance',
 };
+
+const DISTANCE_METRICS = new Set<ThematicMetric>(['centroidDistance', 'crossAdminDistance']);
 
 const METRIC_MAX: Record<Exclude<ThematicMetric, 'zScore'>, number> = {
   centroidDistance: 0.5,
@@ -110,15 +113,15 @@ function GradientLegend({ mode, metric }: { mode: 'light' | 'dark'; metric: Them
     const colors = Z_SCORE_SCALE_COLORS[mode];
     return (
       <div className="flex items-center gap-2 mb-3 text-[11px] text-dm-text-secondary">
-        <span>-4</span>
+        <span>more stable than recent weeks</span>
         <div
           className="h-3 w-32 rounded-sm"
           style={{
             background: `linear-gradient(to right, ${colors.low}, ${colors.mid}, ${colors.high})`,
           }}
         />
-        <span>+4</span>
-        <span className="ml-2 text-dm-muted">z-score</span>
+        <span>shifting faster than recent weeks</span>
+        <span className="ml-2 text-dm-muted">z-score −4 to +4</span>
         <BootstrapLegendItem mode={mode} />
       </div>
     );
@@ -139,6 +142,15 @@ function GradientLegend({ mode, metric }: { mode: 'light' | 'dark'; metric: Them
       <span>{max}</span>
       <span className="ml-2 text-dm-muted">{label}</span>
       <BootstrapLegendItem mode={mode} />
+      {DISTANCE_METRICS.has(metric) && (
+        <span className="flex items-center gap-1 ml-3">
+          <span
+            className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
+            style={{ opacity: 0.1 }}
+          />
+          Too few documents for a reliable distance
+        </span>
+      )}
     </div>
   );
 }
@@ -174,6 +186,7 @@ export function ThematicHeatmap({ rows, mode, onCellClick }: ThematicHeatmapProp
   }
 
   const labelInterval = Math.max(1, Math.ceil(weeks.length / 8));
+  const markersByWeek = buildMarkersByWeek(weeks);
 
   return (
     <div>
@@ -197,6 +210,36 @@ export function ThematicHeatmap({ rows, mode, onCellClick }: ThematicHeatmapProp
               {i % labelInterval === 0 ? formatWeekLabel(week) : ''}
             </div>
           ))}
+
+          {/* Methodology-change markers (#580) — same treatment as the
+              structural heatmap: regime shifts in our own ingest, marked so
+              they aren't read as government behavior. */}
+          {markersByWeek.size > 0 && (
+            <>
+              <div
+                className="text-[9px] text-dm-muted uppercase tracking-wider px-1 pb-1 flex items-end"
+                role="rowheader"
+              >
+                Collection changes
+              </div>
+              {weeks.map((week) => {
+                const changes = markersByWeek.get(week);
+                return (
+                  <div key={`marker-${week}`} className="text-center pb-1" role="cell">
+                    {changes && (
+                      <span
+                        className="text-[9px] text-dm-accent cursor-help"
+                        title={changes.map((c) => `Data collection change: ${c}`).join('\n')}
+                        aria-label={`Data collection change in week of ${formatWeekLabel(week)}`}
+                      >
+                        ▲
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           {/* Data rows */}
           {rows.map((row) => (
@@ -243,7 +286,13 @@ function ThematicHeatmapRow({
         const value = getMetricValue(week, metric);
         const color = getCellColor(value, metric, mode);
         const weekLabel = formatWeekLabel(week.week);
-        const tooltip = buildTooltip(row.title, weekLabel, week);
+        // With very few docs the week centroid IS the docs, so distance
+        // metrics read as drift on tiny weeks (#579) — dim them rather than
+        // present arithmetic as politics.
+        const masked = week.lowVolume && DISTANCE_METRICS.has(metric);
+        const tooltip =
+          buildTooltip(row.title, weekLabel, week) +
+          (masked ? '\nToo few documents for a reliable distance' : '');
         const bootstrapBorder = week.bootstrap
           ? { border: `1px dashed ${mode === 'dark' ? '#64748b' : '#94a3b8'}` }
           : {};
@@ -260,7 +309,11 @@ function ThematicHeatmapRow({
               style={
                 color === null
                   ? { background: noDataBg(mode), ...bootstrapBorder }
-                  : { backgroundColor: color, ...bootstrapBorder }
+                  : {
+                      backgroundColor: color,
+                      ...(masked ? { opacity: 0.1 } : {}),
+                      ...bootstrapBorder,
+                    }
               }
               role="cell"
               onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}

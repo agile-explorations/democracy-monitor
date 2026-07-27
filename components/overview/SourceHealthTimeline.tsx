@@ -90,7 +90,9 @@ export function SourceHealthTimeline({
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-dm-text-primary">Source Fetch Health</h2>
+      <h2 className="text-sm font-semibold text-dm-text-primary">
+        Source Fetch Health <span className="font-normal text-dm-muted">(current term)</span>
+      </h2>
       <p className="text-[11px] text-dm-muted mt-0.5 mb-2">
         Per-week data collection reliability across all sources &mdash; click a week for detail
       </p>

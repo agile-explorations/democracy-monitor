@@ -1,4 +1,5 @@
 import { DataTable } from '@/components/system/ContentHelpers';
+import { SeverityWarnings } from '@/components/system/SeverityWarnings';
 
 function SubsectionHeading({ title, description }: { title: string; description: string }) {
   return (
@@ -40,6 +41,7 @@ function PassFail({ pass }: { pass: boolean }) {
 export function renderIngest(data: any) {
   return (
     <div className="space-y-5 max-h-[600px] overflow-y-auto">
+      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
       {data.documentCoverage?.length > 0 && (
         <>
           <SubsectionHeading
@@ -208,7 +210,6 @@ export function renderIngest(data: any) {
           />
         </>
       )}
-      <WarningsList warnings={data.warnings} />
     </div>
   );
 }

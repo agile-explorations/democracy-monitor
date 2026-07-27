@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { ConcernLevel } from '@/lib/types';
 import type { StatusTimelineEntry } from '@/lib/types/overview';
 import { formatWeekLabel } from '@/lib/utils/date-utils';
@@ -83,6 +84,7 @@ export function StatusTimeline({
   }
 
   const weeks = entries[0].segments.map((s) => s.week);
+  const markersByWeek = buildMarkersByWeek(weeks, { statusSurface: true });
   const labelInterval = Math.max(1, Math.ceil(weeks.length / 8));
   const hasUnassessed = entries.some((e) => e.segments.some((seg) => seg.status === null));
 
@@ -118,6 +120,36 @@ export function StatusTimeline({
               </div>
             );
           })}
+
+          {/* Methodology-change markers — same treatment as the data-page
+              heatmaps: our own ingest regime shifts, marked so they aren't
+              read as government behavior. */}
+          {markersByWeek.size > 0 && (
+            <>
+              <div
+                className="text-[9px] text-dm-muted uppercase tracking-wider px-1 pb-1 flex items-end"
+                role="rowheader"
+              >
+                Collection changes
+              </div>
+              {weeks.map((week) => {
+                const changes = markersByWeek.get(week);
+                return (
+                  <div key={`marker-${week}`} className="text-center pb-1" role="cell">
+                    {changes && (
+                      <span
+                        className="text-[9px] text-dm-accent cursor-help"
+                        title={changes.map((c) => `Data collection change: ${c}`).join('\n')}
+                        aria-label={`Data collection change in week of ${formatWeekLabel(week)}`}
+                      >
+                        ▲
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           {/* Rows */}
           {entries.map((entry) => (

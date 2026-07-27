@@ -98,12 +98,15 @@ Each dimension produces a z-score. The composite structural score is a weighted 
 
 Thematic drift uses embedding-based analysis to detect when the _topics_ discussed in a category shift away from recent norms. It operates on an intra-administration rolling window (8 weeks):
 
-- **Centroid Distance** — Distance from the rolling centroid of recent weeks
-- **Novel Document Rate** — Fraction of documents dissimilar to any in the rolling window
-- **Variance Ratio** — Whether document diversity is expanding or contracting
-- **Cross-Administration Distance** — Comparison against a prior administration's baseline
+- **Centroid Distance** — Cosine distance between the week's document centroid and the mean centroid of the preceding eight weeks (the current week is never part of its own window)
+- **z-Score** — That distance expressed against the typical week-to-week centroid movement inside the window: (distance from window mean − mean consecutive-week distance) / standard deviation of consecutive-week distances
+- **Novel Document Rate** — Fraction of the week's documents whose cosine distance from the rolling centroid exceeds the calibrated novelty threshold (0.5 ≈ the 90th percentile of typical document distances)
+- **Variance Ratio** — Embedding variance of the week's documents relative to the window's: above 1 means topics are diversifying, below 1 means narrowing
+- **Cross-Administration Distance** — Comparison against a prior administration's baseline centroid
 
 Thematic drift signals are preserved for research visualization but do not drive concern status.
+
+**Data reprocessing.** When scoring or filtering rules change, all historical periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule changes do not create breaks in the data. Collection-method changes that cannot be applied to the past (for example, changing how court records are gathered) create a genuine before/after difference in _document volumes_; the volume-based research views mark those with ▲ and suppress quiet-side "findings" that overlap them rather than presenting them as detection. Concern statuses are derived from document _content_ against absolute thresholds and are verified to remain comparable across such changes (every pipeline change is gated on producing zero unexplained status flips), so status-based displays carry no such breaks.
 
 ## Concern Synthesis
 

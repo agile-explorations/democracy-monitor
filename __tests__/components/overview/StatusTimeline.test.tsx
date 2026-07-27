@@ -108,3 +108,22 @@ describe('StatusTimeline', () => {
     expect(cells[0].className).not.toContain('ring-2');
   });
 });
+
+describe('collection-change markers (#584)', () => {
+  it('shows NO marker row for collection changes that leave statuses comparable', () => {
+    // The CL rework breaks volume comparability but not status comparability
+    // (content-based detection, zero-flip-gated) — status surfaces stay clean.
+    const entries = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        segments: [
+          { week: '2026-01-26', status: 'Stable' },
+          { week: '2026-02-02', status: 'Stable' },
+        ],
+      },
+    ] as any;
+    render(<StatusTimeline entries={entries} mode="light" />);
+    expect(screen.queryByText('Collection changes')).toBeNull();
+  });
+});

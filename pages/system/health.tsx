@@ -10,6 +10,7 @@ import {
   renderGraph,
   renderBacktest,
 } from '@/components/system/ValidationReports';
+import { Chevron } from '@/components/ui/Chevron';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
@@ -62,7 +63,7 @@ function ValidationPanel({
           <p className="text-xs text-dm-muted mt-0.5">{description}</p>
         </div>
         <span className="text-dm-muted text-xs shrink-0 ml-4">
-          {loading ? '\u25CF' : open ? '\u25B2' : '\u25BC'}
+          {loading ? '\u25CF' : <Chevron open={open} />}
         </span>
       </button>
       {open && (
@@ -122,7 +123,7 @@ export default function HealthPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">System Health</h1>
 
       <div className="space-y-6">
-        {/* Source Fetch Health — Trump T2 */}
+        {/* Source Fetch Health — current term — Trump T2 */}
         <section>
           {loading ? (
             <div className="animate-pulse h-32 bg-dm-border/30 rounded-lg" />

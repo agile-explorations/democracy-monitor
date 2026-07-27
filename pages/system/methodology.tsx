@@ -79,6 +79,13 @@ function SummaryContent() {
           topic shifts using an 8-week intra-administration rolling window. Provides research
           context.
         </p>
+        <p>
+          <strong>Data reprocessing</strong> — When scoring or filtering rules change, all
+          historical periods are reprocessed under the new rules, so cross-era comparisons remain
+          valid. Collection-method changes that cannot be applied to the past are marked on the
+          volume-based research charts as <span className="text-dm-accent">▲</span>; concern
+          statuses are verified to remain comparable across them.
+        </p>
       </Section>
 
       {/* Concern Synthesis */}
@@ -402,16 +409,24 @@ function DetailedContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <strong>Centroid Distance</strong> — How far the current week&apos;s document embeddings
-            are from the rolling centroid of recent weeks.
+            <strong>Centroid Distance</strong> — Cosine distance between the week&apos;s document
+            centroid and the mean centroid of the preceding eight weeks (the current week is never
+            part of its own comparison window).
           </li>
           <li>
-            <strong>Novel Document Rate</strong> — Fraction of documents dissimilar to any document
-            in the rolling window.
+            <strong>z-Score</strong> — That distance expressed against the typical week-to-week
+            centroid movement inside the window, so a spike means the week departed from the recent
+            average by far more than adjacent weeks normally differ from each other.
           </li>
           <li>
-            <strong>Variance Ratio</strong> — Whether document diversity is expanding or
-            contracting.
+            <strong>Novel Document Rate</strong> — Fraction of the week&apos;s documents whose
+            distance from the rolling centroid exceeds the calibrated novelty threshold (0.5, about
+            the 90th percentile of typical document distances).
+          </li>
+          <li>
+            <strong>Variance Ratio</strong> — Embedding variance of the week&apos;s documents
+            relative to the window&apos;s: above 1 means topics are diversifying, below 1 means
+            narrowing.
           </li>
           <li>
             <strong>Cross-Administration Distance</strong> — When available, comparison against a
@@ -422,6 +437,18 @@ function DetailedContent() {
         <p>
           During the bootstrap period (first weeks of a new administration), confidence is reduced
           because the rolling window lacks sufficient history for meaningful comparison.
+        </p>
+        <p>
+          <strong>Data reprocessing.</strong> When scoring or filtering rules change, all historical
+          periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule
+          changes do not create breaks in the data. Collection-method changes that cannot be applied
+          to the past (for example, changing how court records are gathered) create a genuine
+          before/after difference in <em>document volumes</em>; the volume-based research views on
+          the Data pages mark those with <span className="text-dm-accent">▲</span> and suppress
+          quiet-side findings that overlap them. Concern statuses are derived from document{' '}
+          <em>content</em> against absolute thresholds and are verified to remain comparable across
+          such changes (every pipeline change is gated on producing zero unexplained status flips),
+          so the concern chart and status timeline carry no such breaks.
         </p>
       </Section>
 

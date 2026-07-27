@@ -17,11 +17,8 @@ import type {
   SourcePeriodGap,
   ClOpinionCoverage,
 } from '@/lib/services/ingest-validation-service';
-import {
-  runIngestValidation,
-  CONTENT_FIXABLE_TYPES,
-  CONTENT_FIXABLE_ORIGINS,
-} from '@/lib/services/ingest-validation-service';
+import { runIngestValidation } from '@/lib/services/ingest-validation-service';
+import { CONTENT_FIXABLE_ORIGINS, CONTENT_FIXABLE_TYPES } from '@/lib/services/ingest-warnings';
 import type { Category } from '@/lib/types';
 import { checkHelp } from '@/lib/utils/cli-help';
 

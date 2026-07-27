@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseThematicDimensions,
   buildThematicHeatmapRows,
+  detectThematicStandouts,
+  parseThematicDimensions,
 } from '@/lib/services/thematic-heatmap-service';
 
 describe('parseThematicDimensions', () => {
@@ -121,5 +122,120 @@ describe('buildThematicHeatmapRows', () => {
     const result = buildThematicHeatmapRows([]);
     expect(result.length).toBe(14);
     expect(result[0].weeks).toHaveLength(0);
+  });
+});
+
+describe('detectThematicStandouts + lowVolume (#579/#580)', () => {
+  const wk = (week: string, zScore: number | null) => ({
+    week,
+    zScore,
+    centroidDistance: null,
+    novelDocRate: null,
+    varianceRatio: null,
+    crossAdminDistance: null,
+    bootstrap: false,
+    lowVolume: false,
+  });
+
+  it('surfaces sustained drift with thematic wording', () => {
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [wk('2026-01-05', 3), wk('2026-01-12', 3), wk('2026-01-19', 3)],
+      },
+    ];
+    const runs = detectThematicStandouts(rows as any);
+    expect(runs).toHaveLength(1);
+    expect(runs[0].sentence).toContain('beyond its preceding 8-week norm');
+  });
+
+  it('suppresses static (below) runs after an instrument change for the category', () => {
+    const rows = [
+      {
+        category: 'civilLiberties',
+        title: 'Civil Rights & Liberties',
+        weeks: [wk('2026-03-02', -3), wk('2026-03-09', -3), wk('2026-03-16', -3)],
+      },
+    ];
+    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+  });
+
+  it('flags lowVolume from document_count below the floor', () => {
+    const rows = buildThematicHeatmapRows([
+      {
+        category: 'hatch',
+        week_of: '2026-01-05',
+        thematic_detail: { zScore: 1 },
+        document_count: 2,
+      },
+    ]);
+    const hatch = rows.find((r) => r.category === 'hatch')!;
+    expect(hatch.weeks[0].lowVolume).toBe(true);
+  });
+});
+
+describe('upward instrument-drift suppression (#581)', () => {
+  it('suppresses ABOVE runs overlapping an instrument change — doc-mix changes read as upward drift', () => {
+    const wk = (week: string, zScore: number) => ({
+      week,
+      zScore,
+      centroidDistance: null,
+      novelDocRate: null,
+      varianceRatio: null,
+      crossAdminDistance: null,
+      bootstrap: false,
+      lowVolume: false,
+    });
+    const rows = [
+      {
+        category: 'civilLiberties',
+        title: 'Civil Rights & Liberties',
+        weeks: [wk('2026-03-02', 40), wk('2026-03-09', 5), wk('2026-03-16', 4)],
+      },
+    ];
+    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+  });
+});
+
+describe('spike detection + shift-first ranking (#582)', () => {
+  const wk = (week: string, zScore: number | null) => ({
+    week,
+    zScore,
+    centroidDistance: null,
+    novelDocRate: null,
+    varianceRatio: null,
+    crossAdminDistance: null,
+    bootstrap: false,
+    lowVolume: false,
+  });
+
+  it('surfaces a single-week spike and ranks it above a static run', () => {
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [wk('2025-05-05', 0.2), wk('2025-05-12', 6), wk('2025-05-19', 0.1)],
+      },
+      {
+        category: 'fiscal',
+        title: 'Spending Money Congress Approved',
+        weeks: [wk('2025-05-05', -3), wk('2025-05-12', -3), wk('2025-05-19', -3)],
+      },
+    ];
+    const runs = detectThematicStandouts(rows as any);
+    expect(runs[0].sentence).toContain('topics shifted sharply in the week of 2025-05-12');
+    expect(runs[runs.length - 1].direction).toBe('below');
+  });
+
+  it('suppresses spikes in weeks covered by an instrument change for the category', () => {
+    const rows = [
+      {
+        category: 'civilLiberties',
+        title: 'Civil Rights & Liberties',
+        weeks: [wk('2026-03-02', 44)],
+      },
+    ];
+    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
   });
 });

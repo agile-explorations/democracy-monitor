@@ -6,9 +6,9 @@ import {
 import {
   getDocumentCoverage,
   getContentCompleteness,
-  collectWarnings,
 } from '@/lib/services/ingest-validation-service';
 import type { IngestReport } from '@/lib/services/ingest-validation-service';
+import { collectWarningDetails } from '@/lib/services/ingest-warnings';
 
 function createChainable(defaultValue: unknown = []) {
   const obj: Record<string, unknown> = {};
@@ -151,7 +151,7 @@ describe('ingest-validation-service', () => {
   });
 });
 
-describe('collectWarnings', () => {
+describe('collectWarningDetails', () => {
   function emptyReport(overrides: Partial<IngestReport> = {}): IngestReport {
     return {
       documentCoverage: [],
@@ -165,6 +165,7 @@ describe('collectWarnings', () => {
       signalCoverageGaps: [],
       fetchErrors: [],
       warnings: [],
+      warningDetails: [],
       ...overrides,
     };
   }
@@ -175,9 +176,12 @@ describe('collectWarnings', () => {
         { category: 'civilLiberties', sourceOrigin: 'courtlistener', peakWeeklyCount: 950 },
       ],
     });
-    const warnings = collectWarnings(report);
+    const warnings = collectWarningDetails(report);
     expect(warnings).toContainEqual(
-      expect.stringContaining('civilLiberties CourtListener peak=950'),
+      expect.objectContaining({
+        severity: 'action',
+        text: expect.stringContaining('civilLiberties CourtListener peak=950'),
+      }),
     );
   });
 
@@ -187,18 +191,76 @@ describe('collectWarnings', () => {
         { sourceType: 'Presidential Document', total: 5000, nullContent: 2586 },
       ],
     });
-    const warnings = collectWarnings(report);
+    const warnings = collectWarningDetails(report);
     expect(warnings).toContainEqual(
-      expect.stringContaining('2586 Presidential Document docs have null content'),
+      expect.objectContaining({
+        severity: 'action',
+        text: expect.stringContaining('2586 Presidential Document docs have null content'),
+      }),
     );
   });
 
   it('returns no pagination or content warnings when those sections are clean', () => {
     const report = emptyReport();
-    const warnings = collectWarnings(report);
+    const warnings = collectWarningDetails(report);
     // No content or pagination warnings (FR coverage warnings are expected
     // since the report has no FR data — that's correct behavior)
-    expect(warnings.filter((w) => w.includes('null content'))).toEqual([]);
-    expect(warnings.filter((w) => w.includes('pagination cap'))).toEqual([]);
+    expect(warnings.filter((w) => w.text.includes('null content'))).toEqual([]);
+    expect(warnings.filter((w) => w.text.includes('pagination cap'))).toEqual([]);
+    // ...and those FR coverage facts classify as limitations, not actions.
+    expect(warnings.every((w) => w.severity === 'limitation')).toBe(true);
+  });
+});
+
+describe('fetch-error warning scope (#588 clarity)', () => {
+  function report(fe: any): IngestReport {
+    return {
+      documentCoverage: [],
+      contentCompleteness: [],
+      contentCompletenessByOrigin: [],
+      paginationFitness: [],
+      frPeriodCoverage: [],
+      cpdPeriodCoverage: [],
+      sourcePeriodCoverage: [],
+      clOpinionCoverage: null,
+      signalCoverageGaps: [],
+      fetchErrors: [fe],
+      warnings: [],
+      warningDetails: [],
+    };
+  }
+
+  it('baseline-only backlogs say so — the fetch-health bar is current-term scoped', () => {
+    const warnings = collectWarningDetails(
+      report({
+        sourceOrigin: 'oig',
+        totalIncomplete: 106,
+        categories: 1,
+        totalErrors: 106,
+        earliestWeek: '2019-01-14',
+        latestWeek: '2025-01-13',
+        allBaseline: true,
+      }),
+    );
+    const fe = warnings.find((w) => w.text.includes('incomplete fetch'))!;
+    expect(fe.text).toContain(
+      'all in baseline periods (2019-01-14 to 2025-01-13), current term clean',
+    );
+  });
+
+  it('backlogs touching the current term carry no baseline suffix', () => {
+    const warnings = collectWarningDetails(
+      report({
+        sourceOrigin: 'oig',
+        totalIncomplete: 3,
+        categories: 1,
+        totalErrors: 3,
+        earliestWeek: '2026-04-06',
+        latestWeek: '2026-04-27',
+        allBaseline: false,
+      }),
+    );
+    const fe = warnings.find((w) => w.text.includes('incomplete fetch'))!;
+    expect(fe.text).not.toContain('baseline periods');
   });
 });

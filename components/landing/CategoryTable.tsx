@@ -4,6 +4,7 @@ import {
   WEEK_DOCUMENTS_ANCHOR,
   WEEK_NARRATIVE_ANCHOR,
 } from '@/components/category/WeekDetailPanel';
+import { Chevron } from '@/components/ui/Chevron';
 import { ConcernLevelPill } from '@/components/ui/ConcernLevelPill';
 import { Sparkline } from '@/components/ui/Sparkline';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -130,8 +131,8 @@ function CategoryRow({
       >
         <td className="py-2 pr-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-dm-muted text-[10px] w-3 shrink-0" aria-hidden="true">
-              {isExpanded ? '\u25BE' : '\u25B8'}
+            <span className="text-dm-muted w-4 shrink-0" aria-hidden="true">
+              <Chevron open={isExpanded} />
             </span>
             <Link
               href={`/category/${keyToSlug(cat.category)}${linkParams}`}

@@ -112,9 +112,9 @@ describe('StructuralHeatmap', () => {
 
   it('renders gradient legend', () => {
     render(<StructuralHeatmap rows={sampleRows} mode="light" />);
-    expect(screen.getByText('-4')).toBeDefined();
-    expect(screen.getByText('+4')).toBeDefined();
-    expect(screen.getByText('z-score')).toBeDefined();
+    expect(screen.getByText('quieter than baseline')).toBeDefined();
+    expect(screen.getByText('busier than baseline')).toBeDefined();
+    expect(screen.getByText('z-score −4 to +4')).toBeDefined();
   });
 
   it('renders in dark mode without errors', () => {
@@ -128,5 +128,72 @@ describe('StructuralHeatmap', () => {
     // fiscal row, first week has null composite — should have background pattern
     const fiscalFirstCell = cells[2] as HTMLElement;
     expect(fiscalFirstCell.style.background).toContain('url(');
+  });
+});
+
+describe('methodology-change markers (#576)', () => {
+  it('renders a marker with tooltip when an instrument change falls in a rendered week', () => {
+    // 2026-02-02 hosts the CourtListener collection change (non-retroactive —
+    // the only class of change that marks the axis).
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [
+          { week: '2026-01-26', dimensions: {}, composite: 0.5, anomalous: false },
+          { week: '2026-02-02', dimensions: {}, composite: 0.5, anomalous: false },
+        ],
+      },
+    ] as any;
+    render(<StructuralHeatmap rows={rows} mode="light" />);
+    expect(screen.getByText('Collection changes')).toBeDefined();
+    const marker = screen.getByLabelText(/Data collection change in week of/);
+    expect(marker.getAttribute('title')).toContain('how court records are collected');
+  });
+
+  it('renders no marker row when no changes fall in range', () => {
+    const rows = [
+      {
+        category: 'military',
+        title: 'Using Military Inside the U.S.',
+        weeks: [{ week: '2025-05-05', dimensions: {}, composite: 0.5, anomalous: false }],
+      },
+    ] as any;
+    render(<StructuralHeatmap rows={rows} mode="light" />);
+    expect(screen.queryByText('Collection changes')).toBeNull();
+  });
+});
+
+describe('count-comparability masking (#587 interim)', () => {
+  const week = (w: string) => ({
+    week: w,
+    dimensions: { volume: -3, publicationTempo: -3 },
+    composite: 0.5,
+    anomalous: false,
+  });
+  const clRow = {
+    category: 'civilLiberties',
+    title: 'Civil Rights & Liberties',
+    weeks: [week('2026-03-02')],
+  } as any;
+
+  it('appends the comparability note to affected cells on count-derived tabs', () => {
+    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Volume' }));
+    const cell = screen.getByRole('cell');
+    expect(cell.getAttribute('title')).toContain('Collection breadth changed');
+  });
+
+  it('masks Composite too — it inherits the broken dimensions', () => {
+    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
+    const cell = screen.getByRole('cell');
+    expect(cell.getAttribute('title')).toContain('Collection breadth changed');
+  });
+
+  it('leaves Convergence unmasked — the one dimension measured clean across the seam', () => {
+    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Convergence' }));
+    const cell = screen.getByRole('cell');
+    expect(cell.getAttribute('title') ?? '').not.toContain('Collection breadth changed');
   });
 });

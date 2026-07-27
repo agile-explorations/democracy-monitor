@@ -11,6 +11,8 @@ export interface SignificantWeekLink {
   reasons: { type: string; detail: string }[];
   headline: string | null;
   rank: number;
+  /** Cumulative Concern Score for the week — same number the overview chart plots. */
+  concernScore?: number | null;
 }
 
 interface LandingNarrativesState {

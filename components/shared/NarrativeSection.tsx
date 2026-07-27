@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Chevron } from '@/components/ui/Chevron';
 import { Markdown } from '@/components/ui/Markdown';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import type { EditorialRecord } from '@/lib/types';
@@ -84,7 +85,9 @@ export function NarrativeSection({
           <h3 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary">
             AI Narrative
           </h3>
-          <span className="text-dm-muted text-xs">{collapsed ? '\u25BC' : '\u25B2'}</span>
+          <span className="text-dm-muted">
+            <Chevron open={!collapsed} />
+          </span>
         </button>
         {!collapsed && <p className="mt-3 text-sm text-dm-muted italic">{placeholder}</p>}
       </div>
@@ -108,7 +111,9 @@ export function NarrativeSection({
             {editorial?.finalModel && ` — ${modelLabel(editorial.finalModel)}`}
           </span>
         </h3>
-        <span className="text-dm-muted text-xs">{collapsed ? '\u25BC' : '\u25B2'}</span>
+        <span className="text-dm-muted">
+          <Chevron open={!collapsed} />
+        </span>
       </button>
       {collapsed ? (
         <button onClick={() => setCollapsed(false)} className="block w-full text-left">

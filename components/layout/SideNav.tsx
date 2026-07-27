@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
+import { Chevron } from '@/components/ui/Chevron';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
 
@@ -28,7 +29,7 @@ function NavSection({
         className="flex items-center justify-between w-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-dm-muted hover:text-dm-text-secondary transition-colors"
       >
         {title}
-        <span className="text-[10px]">{open ? '\u25B4' : '\u25BE'}</span>
+        <Chevron open={open} />
       </button>
       {open && <ul className="space-y-px">{children}</ul>}
     </div>

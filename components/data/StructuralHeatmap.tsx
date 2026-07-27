@@ -2,9 +2,10 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
+import { buildMarkersByWeek, isCountComparabilityBroken } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import { divergingZScoreColor } from '@/lib/utils/color';
-import { formatWeekLabel } from '@/lib/utils/date-utils';
+import { addDays, formatWeekLabel } from '@/lib/utils/date-utils';
 
 export interface StructuralHeatmapProps {
   rows: StructuralHeatmapRow[];
@@ -23,6 +24,23 @@ const DIMENSION_OPTIONS: Array<{ key: DimensionOption; label: string }> = [
   { key: 'publicationTempo', label: 'Tempo' },
   { key: 'sourceConvergence', label: 'Convergence' },
 ];
+
+/**
+ * Dimensions whose baseline comparison breaks when collection breadth
+ * changes. Measured across the Feb 2026 CL seam (court categories, new
+ * empirical scoring, control categories flat): volume +0.84→−1.17, tempo
+ * +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21 (opinions carry little
+ * agency metadata, so proportions shift massively), functional +0.19→+0.86,
+ * composite 1.01→1.58. Only convergence was unaffected (−0.12→−0.10).
+ */
+const BASELINE_BREAK_DIMENSIONS = new Set<DimensionOption>([
+  'composite',
+  'volume',
+  'typeComposition',
+  'functionalDistribution',
+  'agencyActivity',
+  'publicationTempo',
+]);
 
 const DIMENSION_FULL_LABELS: Record<DimensionOption, string> = {
   composite: 'Composite',
@@ -105,23 +123,38 @@ function DimensionSelector({
   );
 }
 
-function GradientLegend({ mode }: { mode: 'light' | 'dark' }) {
+function GradientLegend({
+  mode,
+  dimension,
+}: {
+  mode: 'light' | 'dark';
+  dimension: DimensionOption;
+}) {
   const colors = Z_SCORE_SCALE_COLORS[mode];
   return (
     <div className="flex items-center gap-2 mb-3 text-[11px] text-dm-text-secondary">
-      <span>-4</span>
+      <span>quieter than baseline</span>
       <div
         className="h-3 w-32 rounded-sm"
         style={{
           background: `linear-gradient(to right, ${colors.low}, ${colors.mid}, ${colors.high})`,
         }}
       />
-      <span>+4</span>
-      <span className="ml-2 text-dm-muted">z-score</span>
+      <span>busier than baseline</span>
+      <span className="ml-2 text-dm-muted">z-score −4 to +4</span>
       <span className="flex items-center gap-1 ml-3">
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
         No documents that week
       </span>
+      {BASELINE_BREAK_DIMENSIONS.has(dimension) && (
+        <span className="flex items-center gap-1 ml-3">
+          <span
+            className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
+            style={{ opacity: 0.1 }}
+          />
+          Collection breadth changed — not baseline-comparable
+        </span>
+      )}
     </div>
   );
 }
@@ -139,11 +172,12 @@ export function StructuralHeatmap({ rows, mode, onCellClick }: StructuralHeatmap
   }
 
   const labelInterval = Math.max(1, Math.ceil(weeks.length / 8));
+  const markersByWeek = buildMarkersByWeek(weeks);
 
   return (
     <div>
       <DimensionSelector selected={dimension} onChange={setDimension} />
-      <GradientLegend mode={mode} />
+      <GradientLegend mode={mode} dimension={dimension} />
       <div className="overflow-x-auto">
         <div
           className="grid gap-px min-w-[600px]"
@@ -162,6 +196,36 @@ export function StructuralHeatmap({ rows, mode, onCellClick }: StructuralHeatmap
               {i % labelInterval === 0 ? formatWeekLabel(week) : ''}
             </div>
           ))}
+
+          {/* Methodology-change markers (#576): ingest changes are regime
+              shifts — mark them so pipeline changes aren't read as government
+              behavior. */}
+          {markersByWeek.size > 0 && (
+            <>
+              <div
+                className="text-[9px] text-dm-muted uppercase tracking-wider px-1 pb-1 flex items-end"
+                role="rowheader"
+              >
+                Collection changes
+              </div>
+              {weeks.map((week) => {
+                const changes = markersByWeek.get(week);
+                return (
+                  <div key={`marker-${week}`} className="text-center pb-1" role="cell">
+                    {changes && (
+                      <span
+                        className="text-[9px] text-dm-accent cursor-help"
+                        title={changes.map((c) => `Data collection change: ${c}`).join('\n')}
+                        aria-label={`Data collection change in week of ${formatWeekLabel(week)}`}
+                      >
+                        ▲
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
           {/* Data rows */}
           {rows.map((row) => (
@@ -208,13 +272,27 @@ function HeatmapRow({
         const z = getZScore(week, dimension);
         const color = divergingZScoreColor(z, mode);
         const weekLabel = formatWeekLabel(week.week);
-        const tooltip = buildTooltip(row.title, weekLabel, week);
+        // Count-derived dimensions compare against the category's baseline;
+        // after a collection-breadth change they measure the instrument, not
+        // the government — dim them until #587 makes counting consistent.
+        const masked =
+          BASELINE_BREAK_DIMENSIONS.has(dimension) &&
+          isCountComparabilityBroken(row.category, week.week);
+        const tooltip =
+          buildTooltip(row.title, weekLabel, week) +
+          (masked
+            ? '\nCollection breadth changed — not comparable to this category\u2019s baseline'
+            : '');
 
         return (
           <div
             key={week.week}
             className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
-            style={color === null ? { background: noDataBg(mode) } : { backgroundColor: color }}
+            style={
+              color === null
+                ? { background: noDataBg(mode) }
+                : { backgroundColor: color, ...(masked ? { opacity: 0.1 } : {}) }
+            }
             title={tooltip}
             role="cell"
             onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}

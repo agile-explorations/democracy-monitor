@@ -67,6 +67,9 @@ interface SnapshotOptions {
   forceUnlock?: boolean;
 }
 
+/** Completed weeks the stored-doc sweep covers — lag-published docs land in prior weeks (#589). */
+const TRAILING_SWEEP_WEEKS = 2;
+
 export interface SnapshotResult {
   succeeded: number;
   failed: number;
@@ -423,11 +426,22 @@ async function ingestAndAssessSecondarySources(errors: string[]): Promise<number
   const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
   await opinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
 
-  // Assess the completed week's stored CREC/bill/opinion docs (the per-category
-  // fetch path only covers FR/DOJ) and re-aggregate with the fuller L2 set.
-  const storedWeekAssessed = await assessStoredWeek(getLastCompletedWeek(), errors);
-  if (storedWeekAssessed > 0)
-    console.log(`[snapshot] Assessed stored docs for ${storedWeekAssessed} categories`);
+  // Assess stored CREC/bill/opinion docs (the per-category fetch path only
+  // covers FR/DOJ) and re-aggregate with the fuller L2 set. Sweeps the last
+  // TWO completed weeks (#589): sources publish with lag — the 2026-07-27 run
+  // stored bills published the PRIOR week after that week's sweep had passed,
+  // leaving them unscored (G1a) and the week's aggregate stale (G2b). The
+  // second pass is cheap: scoring upserts are no-ops for already-scored docs
+  // and runLayer2Assessment dedups already-assessed ones.
+  let storedWeekAssessed = 0;
+  for (let weeksBack = TRAILING_SWEEP_WEEKS - 1; weeksBack >= 0; weeksBack--) {
+    const sweepWeek = addDays(getLastCompletedWeek(), -7 * weeksBack);
+    storedWeekAssessed = await assessStoredWeek(sweepWeek, errors);
+    if (storedWeekAssessed > 0)
+      console.log(
+        `[snapshot] Assessed stored docs for ${storedWeekAssessed} categories (${sweepWeek})`,
+      );
+  }
   return storedWeekAssessed;
 }
 

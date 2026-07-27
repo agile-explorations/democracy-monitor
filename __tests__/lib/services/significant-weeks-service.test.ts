@@ -135,3 +135,23 @@ describe('rankSignificantWeeks', () => {
     expect(rankSignificantWeeks(rows)).toEqual(rankSignificantWeeks([...rows].reverse()));
   });
 });
+
+describe('inauguration bootstrap reframe (#585)', () => {
+  it('reframes the inauguration week as monitoring_began and ranks real peaks first', () => {
+    const rows = [
+      // Inauguration week: two categories confirmed (bootstrap)
+      { weekOf: '2025-01-20', category: 'a', status: 'ConfirmedConcern' },
+      { weekOf: '2025-01-20', category: 'b', status: 'ConfirmedConcern' },
+      { weekOf: '2025-01-20', category: 'c', status: 'Stable' },
+      // Later genuine peak: all three confirmed
+      { weekOf: '2025-06-02', category: 'a', status: 'ConfirmedConcern' },
+      { weekOf: '2025-06-02', category: 'b', status: 'ConfirmedConcern' },
+      { weekOf: '2025-06-02', category: 'c', status: 'ConfirmedConcern' },
+    ];
+    const ranked = rankSignificantWeeks(rows as any);
+    expect(ranked[0].weekOf).toBe('2025-06-02');
+    const inaug = ranked.find((w) => w.weekOf === '2025-01-20')!;
+    expect(inaug.reasons.map((r) => r.type)).toEqual(['monitoring_began']);
+    expect(inaug.reasons[0].detail).toContain('Monitoring began');
+  });
+});

@@ -5,12 +5,15 @@ import { ThematicHeatmap } from '@/components/data/ThematicHeatmap';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useTheme } from '@/lib/contexts/ThemeContext';
+import { THEMATIC_ROLLING_WINDOW_WEEKS } from '@/lib/methodology/scoring-config';
+import type { StandoutRun } from '@/lib/services/structural-heatmap-service';
 import type { ThematicHeatmapRow } from '@/lib/types/overview';
 
 export default function ThematicDriftPage() {
   const { resolvedMode: mode } = useTheme();
   const router = useRouter();
   const [rows, setRows] = useState<ThematicHeatmapRow[]>([]);
+  const [standouts, setStandouts] = useState<StandoutRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +24,7 @@ export default function ThematicDriftPage() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         setRows(data.rows);
+        setStandouts(data.standouts ?? []);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -70,8 +74,9 @@ export default function ThematicDriftPage() {
         <Section title="How to read the heatmap" id="how-to-read">
           <p>
             Each cell represents one category in one week. The default view shows{' '}
-            <strong>z-scores</strong>, which measure how far the current week&apos;s thematic
-            distance deviates from the rolling 8-week mean.
+            <strong>z-scores</strong>: how far this week&apos;s language sits from the average of
+            the preceding 8 weeks, measured in units of typical week-to-week change within that
+            window. The current week is never part of its own comparison window.
           </p>
           <ul className="list-disc list-inside space-y-1 ml-2">
             <li>
@@ -105,12 +110,12 @@ export default function ThematicDriftPage() {
               [
                 'z-Score',
                 '-4 to +4',
-                'Standard deviations from rolling 8-week mean centroid distance. Default view.',
+                'Distance from the preceding 8 weeks\u2019 mean centroid, divided by the typical week-to-week centroid movement inside that window. Default view.',
               ],
               [
                 'Centroid Distance',
                 '0\u20130.5',
-                'Cosine distance between this week\u2019s document centroid and the rolling 8-week centroid. Higher = more semantic shift.',
+                'Cosine distance between this week\u2019s document centroid and the mean centroid of the preceding 8 weeks. Higher = more semantic shift.',
               ],
               [
                 'Novel Doc Rate',
@@ -156,7 +161,31 @@ export default function ThematicDriftPage() {
       {loading && <p className="text-sm text-dm-text-secondary py-4">Loading thematic data...</p>}
       {error && <p className="text-sm text-red-500 py-4">Error: {error}</p>}
       {!loading && !error && (
-        <ThematicHeatmap rows={rows} mode={mode} onCellClick={handleCellClick} />
+        <>
+          {standouts.length > 0 && (
+            <section className="mb-6 rounded-lg border border-dm-border bg-dm-card p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary mb-3">
+                What stands out{' '}
+                <span className="normal-case font-normal text-dm-muted">
+                  (compared to the previous {THEMATIC_ROLLING_WINDOW_WEEKS} weeks)
+                </span>
+              </h2>
+              <ul className="space-y-1.5 list-disc list-inside marker:text-dm-muted">
+                {standouts.map((run) => (
+                  <li key={`${run.category}-${run.startWeek}`} className="text-sm">
+                    <Link
+                      href={`/category/${run.category}`}
+                      className="text-dm-text-primary hover:text-dm-accent"
+                    >
+                      {run.sentence}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          <ThematicHeatmap rows={rows} mode={mode} onCellClick={handleCellClick} />
+        </>
       )}
     </>
   );

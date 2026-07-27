@@ -312,3 +312,38 @@ describe('computeLongHorizonDrift', () => {
     expect(result.cumulativeDeviation).toBeCloseTo(12.0, 5);
   });
 });
+
+describe('empirical JSD stats (#573)', () => {
+  it('uses the baseline jsdStats instead of the saturating constants when present', () => {
+    const week = makeWeekMetadata({
+      typeDistribution: { Notice: 1 },
+      agencyDistribution: { OPM: 1 },
+    });
+    const legacy = computeStructuralScore(week, makeBaseline());
+    const empirical = computeStructuralScore(
+      week,
+      makeBaseline({
+        jsdStats: {
+          type: { mean: 0.4, std: 0.15 },
+          functional: { mean: 0.3, std: 0.12 },
+          agency: { mean: 0.5, std: 0.2 },
+        },
+      }),
+    );
+    // Same week, same divergences: empirical stats normalize against real
+    // weekly variation instead of the 0/0.05 constants, so z drops sharply.
+    expect(Math.abs(empirical.dimensions.typeComposition.zScore)).toBeLessThan(
+      Math.abs(legacy.dimensions.typeComposition.zScore),
+    );
+    expect(Math.abs(empirical.dimensions.agencyActivity.zScore)).toBeLessThan(
+      Math.abs(legacy.dimensions.agencyActivity.zScore),
+    );
+    expect(Math.abs(empirical.dimensions.agencyActivity.zScore)).toBeLessThan(4);
+  });
+
+  it('falls back to the documented constants when jsdStats is absent (legacy capture)', () => {
+    const week = makeWeekMetadata();
+    const score = computeStructuralScore(week, makeBaseline());
+    expect(score.dimensions.typeComposition.baselineStdDev).toBe(0.05);
+  });
+});

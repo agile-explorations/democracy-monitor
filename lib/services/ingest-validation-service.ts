@@ -7,6 +7,7 @@
  * Source-specific queries: ingest-validation-queries.ts
  */
 
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable } from '@/lib/db';
 import type { Category } from '@/lib/types';
@@ -28,6 +29,8 @@ import type {
   SignalCoverageRow,
   SignalCoverageGap,
 } from './ingest-validation-queries';
+import { collectWarningDetails } from './ingest-warnings';
+import type { IngestWarning } from './ingest-warnings';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,6 +74,10 @@ export interface FetchErrorSummary {
   totalIncomplete: number;
   categories: number;
   totalErrors: number;
+  earliestWeek: string | null;
+  latestWeek: string | null;
+  /** True when every incomplete week predates the current term (baseline-only backlog). */
+  allBaseline: boolean;
 }
 
 export interface IngestReport {
@@ -85,13 +92,11 @@ export interface IngestReport {
   signalCoverageGaps: SignalCoverageGap[];
   fetchErrors: FetchErrorSummary[];
   warnings: string[];
+  /** Same warnings with severity: 'action' = has a remediation, 'limitation' = documented coverage fact (#feedback 2026-07-25). */
+  warningDetails: IngestWarning[];
 }
 
-/** Source types where content can be backfilled via `pnpm backfill:content`. */
-export const CONTENT_FIXABLE_TYPES = new Set(['Presidential Document', 'congressional_report']);
-
-/** Source origins where content can be backfilled via `pnpm backfill:content`. */
-export const CONTENT_FIXABLE_ORIGINS = new Map<string, string>();
+export type { IngestWarning } from './ingest-warnings';
 
 // Re-export query functions and types for consumers
 export type { SourcePeriodGap, SignalCoverageRow, SignalCoverageGap };
@@ -109,183 +114,47 @@ export {
 };
 
 // ---------------------------------------------------------------------------
-// Warning collection
-// ---------------------------------------------------------------------------
-
-const EXPECTED_PERIODS = ['biden_2022', 'biden_2021', 'trump_2017', 'trump_2018', 'trump_t2'];
-const CL_PAGINATION_CAP = 900;
-const THIN_CATEGORY_THRESHOLD = 500;
-
-function checkFrCoverage(frCoverage: SourcePeriodCoverage[], cats: Category[]): string[] {
-  const warnings: string[] = [];
-  const frByCat = new Map<string, Set<string>>();
-  for (const row of frCoverage) {
-    if (!frByCat.has(row.category)) frByCat.set(row.category, new Set());
-    frByCat.get(row.category)!.add(row.period);
-  }
-  for (const cat of cats) {
-    const periods = frByCat.get(cat.key);
-    if (!periods) {
-      warnings.push(`${cat.key} has no FR documents in any period`);
-      continue;
-    }
-    const missing = EXPECTED_PERIODS.filter((p) => !periods.has(p));
-    if (missing.length > 0) {
-      warnings.push(`${cat.key} missing FR documents in: ${missing.join(', ')}`);
-    }
-  }
-  return warnings;
-}
-
-/** Expected start dates for each analysis period. */
-const PERIOD_START_DATES: Record<string, string> = {
-  trump_2017: '2017-01-20',
-  trump_2018: '2018-01-20',
-  biden_2021: '2021-01-20',
-  biden_2022: '2022-01-20',
-  trump_t2: '2025-01-20',
-};
-
-/** Days after period start before a source is considered "late". */
-const LATE_START_DAYS = 30;
-
-/** Sources excluded from period gap warnings (retired or metadata-only). */
-const RETIRED_SOURCES = new Set(['whitehouse', 'gdelt']);
-
-function checkSourcePeriodGaps(coverage: SourcePeriodGap[]): string[] {
-  const warnings: string[] = [];
-
-  // Build map: source -> { period -> { count, earliest } }
-  const bySource = new Map<string, Map<string, { count: number; earliest: string | null }>>();
-  for (const row of coverage) {
-    if (row.period === 'other') continue;
-    if (RETIRED_SOURCES.has(row.sourceOrigin)) continue;
-    if (!bySource.has(row.sourceOrigin)) bySource.set(row.sourceOrigin, new Map());
-    bySource.get(row.sourceOrigin)!.set(row.period, {
-      count: row.count,
-      earliest: row.earliestDate,
-    });
-  }
-
-  for (const [source, periods] of bySource) {
-    const hasAnyBaseline = EXPECTED_PERIODS.some(
-      (p) => p !== 'trump_t2' && (periods.get(p)?.count ?? 0) > 0,
-    );
-    const t2 = periods.get('trump_t2');
-
-    // Source in baselines but missing from T2
-    if (hasAnyBaseline && (!t2 || t2.count === 0)) {
-      warnings.push(`${source}: present in baselines but missing from T2`);
-    }
-
-    // Source in T2 but started late (>30 days after inauguration)
-    if (t2 && t2.count > 0 && t2.earliest) {
-      const periodStart = new Date(PERIOD_START_DATES.trump_t2);
-      const earliest = new Date(t2.earliest);
-      const daysDiff = Math.round(
-        (earliest.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      if (daysDiff > LATE_START_DAYS) {
-        warnings.push(
-          `${source}: T2 data starts ${t2.earliest} (${daysDiff} days after inauguration)`,
-        );
-      }
-    }
-
-    // Large volume asymmetry across periods (baseline vs baseline)
-    const baselinePeriods = ['biden_2022', 'biden_2021', 'trump_2017', 'trump_2018'];
-    const baselineCounts = baselinePeriods
-      .map((p) => periods.get(p)?.count ?? 0)
-      .filter((c) => c > 0);
-    if (baselineCounts.length >= 2) {
-      const max = Math.max(...baselineCounts);
-      const min = Math.min(...baselineCounts);
-      if (max > 10 * min && min > 0) {
-        warnings.push(`${source}: >10x volume asymmetry across baselines (${min}–${max})`);
-      }
-    }
-  }
-
-  return warnings;
-}
-
-export function collectWarnings(report: IngestReport, categoryFilter?: string): string[] {
-  const warnings: string[] = [];
-  const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
-
-  for (const cc of report.contentCompleteness) {
-    if (CONTENT_FIXABLE_TYPES.has(cc.sourceType)) {
-      const source = cc.sourceType === 'Presidential Document' ? 'fr' : 'govinfo';
-      warnings.push(
-        `${cc.nullContent} ${cc.sourceType} docs have null content (run: pnpm backfill:content --source ${source})`,
-      );
-    }
-  }
-
-  for (const cc of report.contentCompletenessByOrigin) {
-    const source = CONTENT_FIXABLE_ORIGINS.get(cc.sourceType);
-    if (source) {
-      warnings.push(
-        `${cc.nullContent} ${cc.sourceType} docs have null content (run: pnpm backfill:content --source ${source})`,
-      );
-    }
-  }
-
-  for (const pf of report.paginationFitness) {
-    if (pf.peakWeeklyCount >= CL_PAGINATION_CAP) {
-      warnings.push(
-        `${pf.category} CourtListener peak=${pf.peakWeeklyCount} hits pagination cap ${CL_PAGINATION_CAP}`,
-      );
-    }
-  }
-
-  warnings.push(...checkFrCoverage(report.frPeriodCoverage, cats));
-  warnings.push(...checkSourcePeriodGaps(report.sourcePeriodCoverage));
-
-  // Signal definition coverage gaps
-  for (const gap of report.signalCoverageGaps) {
-    const label = gap.origin === 'signal' ? 'signal-defined' : 'pipeline-routed';
-    warnings.push(`${gap.category} missing ${label} source: ${gap.expectedSource}`);
-  }
-
-  // Fetch errors
-  for (const fe of report.fetchErrors) {
-    warnings.push(
-      `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies) (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
-    );
-  }
-
-  return warnings;
-}
-
-// ---------------------------------------------------------------------------
 // Fetch error summarization
 // ---------------------------------------------------------------------------
 
 interface IncompleteWeekRow {
   sourceOrigin: string;
   category: string;
+  weekStart: string;
   errors: string[] | null;
 }
 
 function summarizeFetchErrors(incompleteWeeks: IncompleteWeekRow[]): FetchErrorSummary[] {
-  const bySource = new Map<string, { categories: Set<string>; errors: number; count: number }>();
+  const bySource = new Map<
+    string,
+    { categories: Set<string>; errors: number; count: number; weeks: string[] }
+  >();
   for (const w of incompleteWeeks) {
     if (!bySource.has(w.sourceOrigin))
-      bySource.set(w.sourceOrigin, { categories: new Set(), errors: 0, count: 0 });
+      bySource.set(w.sourceOrigin, { categories: new Set(), errors: 0, count: 0, weeks: [] });
     const entry = bySource.get(w.sourceOrigin)!;
     entry.categories.add(w.category);
     entry.errors += w.errors?.length ?? 0;
     entry.count++;
+    entry.weeks.push(String(w.weekStart).slice(0, 10));
   }
   return [...bySource.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([source, data]) => ({
-      sourceOrigin: source,
-      totalIncomplete: data.count,
-      categories: data.categories.size,
-      totalErrors: data.errors,
-    }));
+    .map(([source, data]) => {
+      const weeks = data.weeks.sort();
+      const latest = weeks[weeks.length - 1] ?? null;
+      return {
+        sourceOrigin: source,
+        totalIncomplete: data.count,
+        categories: data.categories.size,
+        totalErrors: data.errors,
+        earliestWeek: weeks[0] ?? null,
+        latestWeek: latest,
+        // The Source Fetch Health bar is current-term-scoped; a baseline-only
+        // backlog must say so or the two widgets appear to contradict.
+        allBaseline: latest !== null && latest < T2_INAUGURATION,
+      };
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -335,8 +204,10 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     signalCoverageGaps,
     fetchErrors,
     warnings: [],
+    warningDetails: [],
   };
-  report.warnings = collectWarnings(report, category);
+  report.warningDetails = collectWarningDetails(report, category);
+  report.warnings = report.warningDetails.map((w) => w.text);
 
   return report;
 }

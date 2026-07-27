@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { CHART_COLORS, COMPARISON_COLORS, CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { SynchronyPoint } from '@/lib/types/overview';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 import { movingAverage } from '@/lib/utils/math';
@@ -58,6 +59,17 @@ export function SynchronyChart({
     const trend = movingAverage(scores, TREND_WINDOW);
     return data.map((d, i) => ({ ...d, trend: trend[i] }));
   }, [data]);
+
+  // Status surface: concern scores are content-derived and gate-verified
+  // comparable across collection changes — only status-breaking changes mark.
+  const markersByWeek = useMemo(
+    () =>
+      buildMarkersByWeek(
+        data.map((d) => d.week),
+        { statusSurface: true },
+      ),
+    [data],
+  );
 
   const startIdx = brushStartIndex ?? 0;
   const endIdx = brushEndIndex ?? data.length - 1;
@@ -214,6 +226,17 @@ export function SynchronyChart({
               strokeDasharray="4 2"
             />
           )}
+          {/* Methodology-change markers: our own ingest regime shifts, marked
+              so count movements aren't read as government behavior. */}
+          {[...markersByWeek.keys()].map((week) => (
+            <ReferenceLine
+              key={`marker-${week}`}
+              x={week}
+              stroke={colors.textSecondary}
+              strokeDasharray="2 4"
+              label={{ value: '▲', position: 'top', fontSize: 9, fill: colors.textSecondary }}
+            />
+          ))}
           <Brush
             dataKey="week"
             tickFormatter={formatWeekLabel}
@@ -240,6 +263,15 @@ export function SynchronyChart({
         </ComposedChart>
       </ResponsiveContainer>
       {rangeLabel && <p className="text-[11px] text-dm-muted text-center -mt-1">{rangeLabel}</p>}
+      {markersByWeek.size > 0 && (
+        <div className="mt-2 text-[11px] text-dm-text-secondary border-t border-dm-border pt-1.5">
+          <span className="text-dm-accent">▲</span>{' '}
+          <span className="font-medium">Data collection changes:</span>{' '}
+          {[...markersByWeek.entries()]
+            .map(([week, labels]) => `${formatWeekLabelWithYear(week)} — ${labels.join('; ')}`)
+            .join(' · ')}
+        </div>
+      )}
     </div>
   );
 }
