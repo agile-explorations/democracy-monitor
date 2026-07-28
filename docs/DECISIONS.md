@@ -12,6 +12,25 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-RETRIEVAL: research retrieval quality for journalist outreach (#592–598, milestone 93) — ✅ deployed 2026-07-28
+
+**Origin**: live testing of the outreach plan's 12 sample research questions (probes + 3 syntheses, ~$0.50). Findings drove six issues; owner approved all, including a standing per-query re-rank cost.
+
+**Shipped**: #593 procedural-CREC title demotion (0.12 combined-score penalty, conservative genre list + TS twin); #592 era-stratified retrieval (deterministic era extraction onto the baselines' term windows — named pairs 2×15 slots, across-admins 3×10; user dates intersect windows with surfaced conflicts; removable comparison chips; era-labeled synthesis prompt); #595 attributed provenance + tier legend; #598 query failures throw instead of returning empty; #594 bearing-on-question re-rank (overfetch 2×, gpt-4o-mini, ~$0.0008/query, strict fallback to vector order); #596 conservative tier suggestion (suggest, never override).
+
+**Acceptance (prod re-runs)**: Schedule-F comparison 0→12 docs from 2020 (EO 13957 at #2, 15/15 strata); IM4 T1-vs-T2 gained 14 first-term docs; boilerplate out of every top-5; IG-firings top-10 noise 4→0 with 2.1s docs-phase latency.
+
+**Incident en route**: the #593 deploy broke research search for ~15 min — drizzle sends numeric params as text and `CASE WHEN … THEN $1 ELSE 0` failed, swallowed into empty results. Hotfixed with ::numeric; follow-ups #597 (OpenGrep cast rule) and #598 (fixed in-sprint).
+
+**Lessons learned:**
+
+- **Behavioral verification before deploy applies to ranking changes, not just data ops.** The broken SQL passed unit tests (they covered the TS twin, not the query); only executing against a real DB would have caught it — and did, for every subsequent change in the sprint.
+- **Drizzle `${}` params are text: any use inside SQL arithmetic/CASE/comparison needs an explicit cast.** Two incidents from one class (#597 files the lint rule).
+- **Empty-on-error is the worst failure mode for a research tool** — a broken query rendered as "the corpus lacks documents," precisely the credibility failure the outreach plan warns about. Errors must look like errors.
+- **Deterministic beats clever for query understanding**: regex era-extraction is reproducible from the question text alone, testable against the real outreach questions, and free — the model is reserved for judgment (re-rank), with a fallback that can only improve on baseline.
+
+---
+
 ## Sprint R-POPULATION: method-consistent court-category counting (#587, milestone 91) — ✅ deployed 2026-07-28
 
 **Planned vs built**: plan approved as Option D — a local deterministic opinion-scope classifier mirroring the pipeline's collection criteria, applied uniformly to all eras, so counting is method-consistent _by construction_. Built as planned with two mid-sprint discoveries that changed the data definition:
