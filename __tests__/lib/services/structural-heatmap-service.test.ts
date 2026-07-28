@@ -80,13 +80,13 @@ describe('instrument-change suppression + ordering (#576/#577)', () => {
     expect(detectStandoutRuns([clQuiet])).toHaveLength(0);
   });
 
-  it('keeps above-baseline runs even across instrument changes', () => {
+  it('suppresses above-baseline runs across instrument changes too — mix dims break upward', () => {
     const clBusy = {
       category: 'civilLiberties',
       title: 'Civil Rights & Liberties',
       weeks: [week('2026-03-02', 3), week('2026-03-09', 3), week('2026-03-16', 3)],
     } as any;
-    expect(detectStandoutRuns([clBusy])).toHaveLength(1);
+    expect(detectStandoutRuns([clBusy])).toHaveLength(0);
   });
 
   it('orders rows by trailing mean |composite|', () => {
