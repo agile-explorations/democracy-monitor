@@ -17,7 +17,7 @@ import {
   ALL_SOURCES_WARNING,
 } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { countingScopeOnly, retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import {
   SCORING_MIN_CONTENT_CHARS,
@@ -120,6 +120,7 @@ function buildWhereClause(options: RecomputeOptions) {
     // scoreDocument directly, so sub-threshold stubs must be excluded here.
     sql`length(coalesce(${documents.content}, '')) >= ${SCORING_MIN_CONTENT_CHARS}`,
     retrievalRelevantOnly(),
+    countingScopeOnly(),
   ];
   if (options.category) conditions.push(eq(documents.category, options.category));
   if (options.from) conditions.push(gte(documents.publishedAt, new Date(options.from)));

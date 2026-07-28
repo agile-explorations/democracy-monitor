@@ -2,7 +2,7 @@ import { and, eq, gte, lte, sql } from 'drizzle-orm';
 import type { BaselineConfig } from '@/lib/data/baselines';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { countingEligible } from '@/lib/db/document-filters';
 import { baselines, documents, weeklyAggregates } from '@/lib/db/schema';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
 import { addDays } from '@/lib/utils/date-utils';
@@ -99,7 +99,7 @@ async function computeEmbeddingBaseline(
           gte(documents.publishedAt, new Date(from)),
           lte(documents.publishedAt, new Date(to)),
           sql`${documents.embedding} IS NOT NULL`,
-          retrievalRelevantOnly(),
+          countingEligible(),
         ),
       );
 

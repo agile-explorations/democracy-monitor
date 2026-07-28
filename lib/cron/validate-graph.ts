@@ -60,7 +60,8 @@ async function q(text: ReturnType<typeof sql>): Promise<Row[]> {
 
 const ELIGIBLE_DOC = sql`d.content_type != 'metadata_only'
   AND d.content IS NOT NULL AND length(d.content) >= 100
-  AND d.retrieval_relevant IS NOT FALSE`;
+  AND d.retrieval_relevant IS NOT FALSE
+  AND d.counting_scope IS NOT FALSE`;
 
 async function g1aEligibleDocsScored(): Promise<GraphInvariantResult> {
   const rows = await q(sql`

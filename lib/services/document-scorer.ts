@@ -12,6 +12,7 @@ import {
   NEGATION_WINDOW_BEFORE,
   NEGATION_WINDOW_AFTER,
 } from '@/lib/methodology/scoring-config';
+import { itemCountingScope } from '@/lib/services/opinion-scope-classifier';
 import type { ContentItem } from '@/lib/types';
 import type {
   DocumentScore,
@@ -228,11 +229,17 @@ export function scoreDocument(item: ContentItem, category: string): DocumentScor
 export const SCORING_MIN_CONTENT_CHARS = 100;
 
 export function scoreDocumentBatch(items: ContentItem[], category: string): DocumentScore[] {
-  return items
-    .filter((item) => !item.isError && !item.isWarning)
-    .filter((item) => (item.content ?? '').length >= SCORING_MIN_CONTENT_CHARS)
-    .map((item) => scoreDocument(item, category))
-    .filter((score): score is DocumentScore => score !== null);
+  return (
+    items
+      .filter((item) => !item.isError && !item.isWarning)
+      .filter((item) => (item.content ?? '').length >= SCORING_MIN_CONTENT_CHARS)
+      // Out-of-scope opinions never enter document_scores (#587): weekly
+      // documentCount aggregates from score rows, and the counting population
+      // must stay method-consistent across collection changes.
+      .filter((item) => itemCountingScope(item, category) !== false)
+      .map((item) => scoreDocument(item, category))
+      .filter((score): score is DocumentScore => score !== null)
+  );
 }
 
 function buildScoreRow(score: DocumentScore) {

@@ -1,7 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { and, eq, isNull, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { countingScopeOnly, retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
 
@@ -161,15 +161,22 @@ async function processBatches(
  * Full-length docs are packed into batches up to the API token limit.
  * Oversized docs (>8192 tokens) are truncated and embedded individually.
  */
-async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<number> {
-  const db = getDb();
+/** Embedding eligibility: unembedded, counting-population docs (+ optional filters). */
+function embeddableConditions(category?: string, dateFilter?: SQL): SQL[] {
   const conditions = [
     isNull(documents.embeddedAt),
     sql`${documents.contentType} != 'metadata_only'`,
     retrievalRelevantOnly(),
+    countingScopeOnly(),
   ];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);
+  return conditions;
+}
+
+async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<number> {
+  const db = getDb();
+  const conditions = embeddableConditions(category, dateFilter);
 
   const unembedded = await db
     .select({ id: documents.id, title: documents.title, content: documents.content })

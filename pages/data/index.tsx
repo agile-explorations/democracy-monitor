@@ -100,7 +100,10 @@ export default function DataPage() {
           <DataTable
             headers={['Table', 'Description']}
             rows={[
-              ['documents', 'Source documents with metadata, content, source type'],
+              [
+                'documents',
+                'Source documents with metadata, content, source type. counting_scope = false marks judicial opinions outside the documented counting population (v1 classifier: SCOTUS; circuits/D.D.C. on executive-power phrases) — stored and assessed, but excluded from counts and statistics for cross-era consistency',
+              ],
               [
                 'ai_document_assessments',
                 'Per-document AI review (P1 flag, P2 classification, reasoning, prompt_version)',

@@ -60,7 +60,9 @@ async function queryL2DocAndP1(from: string, to: string, category?: string) {
   const db = getDb();
   const { dateFilter, catFilter, catAiFilter } = buildL2Filters(from, to, category);
 
-  // Review-eligible docs: non-metadata_only, content >= 100 chars (matches backfill-document-review.ts filter)
+  // Review-eligible docs: non-metadata_only, content >= 100 chars (matches
+  // backfill-document-review.ts filter). counting_scope is deliberately NOT
+  // applied: this is the L2 evidence population, which #587 leaves intact.
   const l2Eligible = and(
     dateFilter,
     catFilter,

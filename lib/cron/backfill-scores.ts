@@ -56,6 +56,7 @@ async function findAffectedWeeks(
       AND d.content_type != 'metadata_only'
       AND length(coalesce(d.content, '')) >= 100
       AND d.retrieval_relevant IS NOT FALSE
+      AND d.counting_scope IS NOT FALSE
   `);
 
   const pairs = new Map<string, { category: string; weekOf: string }>();

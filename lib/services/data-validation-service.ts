@@ -167,8 +167,8 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
   const [docStats] = await db
     .select({
       total: sql<number>`count(*)::int`,
-      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.category} != 'intent')::int`,
-      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.category} = 'intent')::int`,
+      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.countingScope} is not false and ${documents.category} != 'intent')::int`,
+      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.countingScope} is not false and ${documents.category} = 'intent')::int`,
       metadataOnlyCount: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
     })
     .from(documents)
@@ -189,6 +189,7 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
         sql`${documents.contentType} != 'metadata_only'`,
         sql`length(coalesce(${documents.content}, '')) >= 100`,
         sql`${documents.retrievalRelevant} is not false`,
+        sql`${documents.countingScope} is not false`,
         isNull(documentScores.id),
         ...(catFilter ? [catFilter] : []),
       ),

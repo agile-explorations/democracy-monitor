@@ -5,7 +5,8 @@
  * ingestion eras scored different things — the bulk-era pipeline scored every
  * docket stub while current rules score substantive docs only. This purges
  * score rows whose underlying document fails current scoring eligibility
- * (metadata_only, missing, or content under 100 chars — incl. rows orphaned
+ * (metadata_only, missing, content under 100 chars, or outside the #587
+ * counting scope — incl. rows orphaned
  * by past document purges), then re-aggregates every affected category-week
  * with the count-preserving upsert (enrichment/statuses untouched here;
  * baselines:compute + scores:enrich follow in the runbook).
@@ -32,6 +33,7 @@ async function findPurgeTargets(): Promise<{
        OR d.content_type = 'metadata_only'
        OR d.content IS NULL
        OR length(d.content) < 100
+       OR d.counting_scope IS FALSE
     GROUP BY s.category, s.week_of
     ORDER BY s.category, s.week_of
   `);
@@ -69,6 +71,7 @@ export async function runPurgeStubScores(dryRun: boolean): Promise<void> {
          OR d.content_type = 'metadata_only'
          OR d.content IS NULL
          OR length(d.content) < 100
+         OR d.counting_scope IS FALSE
     ) t
     WHERE s.url = t.url AND s.category = t.category
   `);
@@ -108,7 +111,8 @@ if (require.main === module) {
     `Usage: pnpm scores:purge-stubs [--dry-run]
 
 Deletes document_scores rows whose document fails scoring eligibility
-(metadata-only, absent, or <100 chars of content) and re-aggregates the
+(metadata-only, absent, <100 chars of content, or outside the #587
+counting scope) and re-aggregates the
 affected weeks (count-preserving). Run baselines:compute + scores:enrich
 afterwards per the runbook.`,
   );

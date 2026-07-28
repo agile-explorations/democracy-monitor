@@ -59,6 +59,12 @@ export const documents = pgTable(
      *  retrieval relevance filter (#524/#544) — excluded from assessment,
      *  statistics, search, and exports but kept for auditability. */
     retrievalRelevant: boolean('retrieval_relevant'),
+    /** NULL = in counting scope (default); false = judicial opinion outside
+     *  the documented counting population (#587: opinion-scope classifier
+     *  applied uniformly to all eras) — excluded from counts, structural
+     *  statistics, embeddings, and drift, but kept stored and still eligible
+     *  as L2 assessment evidence. */
+    countingScope: boolean('counting_scope'),
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),

@@ -46,3 +46,27 @@ export const COURT_QUERIES: ReadonlyArray<{ key: string; court: string; query?: 
   { key: 'circuits-exec', court: CIRCUIT_COURT_IDS, query: EXEC_POWER_QUERY },
   { key: 'dcd-exec', court: 'dcd', query: EXEC_POWER_QUERY },
 ];
+
+/**
+ * Court-NAME classification (#587). Documents store the human-readable court
+ * name in the agency field ('Court of Appeals for the Ninth Circuit'), not
+ * the CL id ('ca9') — these patterns map stored names onto the query scopes
+ * above. Verified against all stored variants 2026-07-28: SCOTUS is exactly
+ * one string; federal circuits all match 'Court of Appeals for the … Circuit'
+ * (state appellate courts — 'Ohio Court of Appeals', 'Texas Court of Appeals,
+ * 15th District', 'District of Columbia Court of Appeals' — never do).
+ */
+export const SCOTUS_COURT_NAME = 'Supreme Court of the United States';
+export const FEDERAL_CIRCUIT_NAME_PATTERN = /^Court of Appeals for the .+ Circuit$/;
+export const DCD_COURT_NAME = 'District Court, District of Columbia';
+
+export type CourtScopeClass = 'scotus' | 'circuit' | 'dcd' | 'other';
+
+export function classifyCourtName(courtName: string | null | undefined): CourtScopeClass {
+  if (!courtName) return 'other';
+  const name = courtName.trim();
+  if (name === SCOTUS_COURT_NAME) return 'scotus';
+  if (FEDERAL_CIRCUIT_NAME_PATTERN.test(name)) return 'circuit';
+  if (name === DCD_COURT_NAME) return 'dcd';
+  return 'other';
+}
