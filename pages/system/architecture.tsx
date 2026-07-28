@@ -32,11 +32,11 @@ function SummaryContent() {
 
       <Section title="Data Sources" id="data-sources">
         <p>
-          Nine source types provide coverage of different government activities: the Federal
-          Register (executive orders, rules), GovInfo (presidential documents via CPD, congressional
-          reports, public laws), Congressional Record (CREC floor speeches), CourtListener (federal
-          courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA), LegiScan (federal
-          legislation), FEC filings, and GDELT global news.
+          Eight source types provide coverage of different government activities, all of them
+          government documents: the Federal Register (executive orders, rules), GovInfo
+          (presidential documents via CPD, congressional reports, public laws), Congressional Record
+          (CREC floor speeches), CourtListener (federal courts), DOJ press releases, Inspector
+          General reports (HHS, DOJ, SSA), LegiScan (federal legislation), and FEC filings.
         </p>
       </Section>
 
@@ -174,11 +174,6 @@ function DetailedContent() {
               'legiscan-fetcher.ts',
             ],
             ['OIG', 'Inspector General reports (HHS, DOJ, SSA)', 'hhs/doj/ssa-oig-fetcher.ts'],
-            [
-              'GDELT',
-              'Global news coverage filtered to U.S. government activity (metadata only)',
-              'gdelt-fetcher.ts',
-            ],
           ]}
         />
         <p>

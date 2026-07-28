@@ -206,17 +206,14 @@ function DetailedContent() {
               'Federal Election Commission advisory opinions and Matters Under Review',
               'Weekly',
             ],
-            [
-              'GDELT',
-              'Global news coverage of U.S. government activity (filtered to U.S. sources)',
-              'Daily',
-            ],
           ]}
         />
         <p>
-          Each source type has an expected publication cadence. When a source goes silent beyond its
-          expected window, the system flags it for attention and may reduce confidence in
-          assessments that depend on that source.
+          Source ingestion is health-checked on every weekly run. A source that fails to fetch is
+          marked unavailable; one that succeeds but returns zero documents for two consecutive
+          checks is marked silent. Unhealthy sources surface as alerts on the System pages and roll
+          up to the site-wide data-integrity level, which is shown on the overview page and gates
+          the weekly email digest — no digest is sent for a week whose ingest looks degraded.
         </p>
         <p>
           <strong>Coverage parity (July 2026):</strong> historical coverage and counting gaps were
