@@ -22,3 +22,31 @@ export function retrievalRelevantOnly(): SQL {
 export function retrievalRelevantOnlySql(alias: string): string {
   return `${alias}.retrieval_relevant IS NOT FALSE`;
 }
+
+/**
+ * Counting-scope exclusion (#587). Judicial opinions annotated
+ * `counting_scope = false` fall outside the documented counting population
+ * (opinion-scope classifier, applied uniformly to all eras so document counts
+ * are method-consistent across collection changes). They stay stored and
+ * remain L2 assessment evidence, but must not enter document counts,
+ * structural statistics, embeddings, or drift. NULL means in scope — only an
+ * explicit `false` excludes.
+ */
+export function countingScopeOnly(): SQL {
+  return sql`${documents.countingScope} IS NOT FALSE`;
+}
+
+/**
+ * The full counting-population predicate (#587): excludes docket stubs
+ * (metadata_only), retrieval-irrelevant docs, and out-of-scope opinions in one
+ * condition. Every surface that counts documents or computes distributions
+ * over them (structural dimensions, silence source counts, drift embeddings,
+ * baseline centroids) must use this so all statistics describe the same,
+ * era-consistent population. Scoring/embedding pipelines with extra conditions
+ * (length floor, embedded_at) compose the pieces individually.
+ */
+export function countingEligible(): SQL {
+  return sql`${documents.contentType} != 'metadata_only'
+    AND ${documents.retrievalRelevant} IS NOT FALSE
+    AND ${documents.countingScope} IS NOT FALSE`;
+}

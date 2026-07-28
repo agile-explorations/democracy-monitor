@@ -2,6 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
+import { itemCountingScope } from '@/lib/services/opinion-scope-classifier';
 import type { ContentItem } from '@/lib/types';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { toDateString } from '@/lib/utils/date-utils';
@@ -55,6 +56,28 @@ function extractSpeaker(item: ContentItem): string | null {
  * is logged so callers can detect a category-wide storage failure even when no
  * exception is thrown.
  */
+function buildDocumentRow(item: ContentItem, category: string) {
+  return {
+    sourceType: item.type || 'rss',
+    category,
+    title: item.title || '(untitled)',
+    content: item.content || null,
+    url: item.link!,
+    publishedAt: item.pubDate ? new Date(item.pubDate) : null,
+    fetchedAt: new Date(),
+    metadata: buildMetadata(item),
+    sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
+    caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
+    speaker: extractSpeaker(item),
+    // Docket entries are metadata stubs by design (opinions arrive as
+    // separate judicial_opinion docs) — mark at ingest so search,
+    // embeddings, and corpus counts exclude them without periodic
+    // SQL sweeps. Historical sweep: mark-docket-stubs (2026-07-25).
+    contentType: item.type === 'court_opinion' ? 'metadata_only' : 'full_text',
+    countingScope: itemCountingScope(item, category),
+  };
+}
+
 export async function storeDocuments(items: ContentItem[], category: string): Promise<number> {
   if (!isDbAvailable()) return 0;
 
@@ -68,24 +91,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
     try {
       await db
         .insert(documents)
-        .values({
-          sourceType: item.type || 'rss',
-          category,
-          title: item.title || '(untitled)',
-          content: item.content || null,
-          url: item.link!,
-          publishedAt: item.pubDate ? new Date(item.pubDate) : null,
-          fetchedAt: new Date(),
-          metadata: buildMetadata(item),
-          sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
-          caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
-          speaker: extractSpeaker(item),
-          // Docket entries are metadata stubs by design (opinions arrive as
-          // separate judicial_opinion docs) — mark at ingest so search,
-          // embeddings, and corpus counts exclude them without periodic
-          // SQL sweeps. Historical sweep: mark-docket-stubs (2026-07-25).
-          contentType: item.type === 'court_opinion' ? 'metadata_only' : 'full_text',
-        })
+        .values(buildDocumentRow(item, category))
         .onConflictDoUpdate({
           target: [documents.url, documents.category],
           set: {
@@ -96,6 +102,8 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
             sourceOrigin: sql`excluded.source_origin`,
             caseId: sql`excluded.case_id`,
             speaker: sql`excluded.speaker`,
+            // Refreshed content can change scope-phrase matches.
+            countingScope: sql`excluded.counting_scope`,
           },
         });
       stored++;

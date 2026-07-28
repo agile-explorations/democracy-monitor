@@ -46,6 +46,7 @@
     "scores:recompute": "tsx lib/cron/recompute-scores.ts",
     "scores:backfill": "tsx lib/cron/backfill-scores.ts",
     "nc:margins": "tsx lib/cron/nc-margins.ts",
+    "scope:backfill": "tsx lib/cron/backfill-counting-scope.ts",
     "scores:purge-stubs": "tsx lib/cron/purge-stub-scores.ts",
     "docs:mark-stubs": "tsx lib/cron/mark-docket-stubs.ts",
     "aggregates:backfill-gaps": "tsx lib/cron/backfill-aggregate-gaps.ts",

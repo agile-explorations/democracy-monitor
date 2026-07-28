@@ -12,7 +12,7 @@ import { getProvider } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { countingEligible } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { computeCentroid, cosineSimilarity } from '@/lib/services/embedding-service';
 import { addDays } from '@/lib/utils/date-utils';
@@ -49,7 +49,7 @@ async function loadTitledEmbeddings(
         sql`${documents.publishedAt} >= ${from}::date`,
         sql`${documents.publishedAt} < ${to}::date`,
         sql`${documents.embedding} IS NOT NULL`,
-        retrievalRelevantOnly(),
+        countingEligible(),
       ),
     );
   return rows.map((r) => ({ title: r.title, embedding: r.embedding! }));
