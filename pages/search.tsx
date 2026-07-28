@@ -303,6 +303,39 @@ export default function SearchPage() {
         />
       </div>
 
+      {mode === 'research' && (
+        <div
+          className="flex items-center gap-2 mb-4"
+          role="group"
+          aria-label="Document type filter"
+        >
+          {(
+            [
+              ['all', 'All documents'],
+              ['action', 'Government actions'],
+              ['discussion', 'Commentary & debate'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setTierFilter(value);
+                if (query.trim()) performSearch(query, 'research', 1, value);
+              }}
+              className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+                tierFilter === value
+                  ? 'bg-dm-accent text-white border-dm-accent'
+                  : 'border-dm-border text-dm-muted hover:border-dm-accent'
+              }`}
+              aria-pressed={tierFilter === value}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} ref={formRef} className="mb-4">
         <div className="relative flex gap-2">
           <div className="relative flex-1">
@@ -344,39 +377,6 @@ export default function SearchPage() {
           </button>
         </div>
       </form>
-
-      {mode === 'research' && (
-        <div
-          className="flex items-center gap-2 mb-4"
-          role="group"
-          aria-label="Document type filter"
-        >
-          {(
-            [
-              ['all', 'All documents'],
-              ['action', 'Government actions'],
-              ['discussion', 'Commentary & debate'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setTierFilter(value);
-                if (query.trim()) performSearch(query, 'research', 1, value);
-              }}
-              className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-                tierFilter === value
-                  ? 'bg-dm-accent text-white border-dm-accent'
-                  : 'border-dm-border text-dm-muted hover:border-dm-accent'
-              }`}
-              aria-pressed={tierFilter === value}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {mode === 'explore' && (
         <ExploreFilters
