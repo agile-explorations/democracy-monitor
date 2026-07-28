@@ -65,6 +65,13 @@ export default function DataPage() {
               filename="document-scores.csv"
             />
           </div>
+          <p className="text-xs text-dm-text-secondary mt-3">
+            Every column in both CSVs is documented in the{' '}
+            <Link href="/data/dictionary" className="text-dm-accent hover:underline">
+              data dictionary
+            </Link>
+            .
+          </p>
           <p className="text-xs text-dm-muted mt-3">
             Document counts for the court-record categories are computed from a single documented
             counting rule applied uniformly to all periods (the{' '}
@@ -95,6 +102,13 @@ export default function DataPage() {
           <h3 className="text-sm font-semibold text-dm-text-primary mt-4 mb-2">
             Key tables for researchers
           </h3>
+          <p className="text-xs text-dm-text-secondary mb-2">
+            Column-level documentation for all six tables is in the{' '}
+            <Link href="/data/dictionary" className="text-dm-accent hover:underline">
+              data dictionary
+            </Link>
+            .
+          </p>
           <DataTable
             headers={['Table', 'Description']}
             rows={[
@@ -178,36 +192,15 @@ export default function DataPage() {
 
         <Section title="CSV Column Reference" id="csv-columns">
           <p>
-            CSV exports flatten nested JSON fields into individual columns. Weekly aggregates
-            include prefixed columns for each detection layer:
-          </p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>
-              <strong>structural_*</strong> — Composite score, per-dimension z-scores with raw
-              values, baseline means, and baseline standard deviations (volume, type composition,
-              functional distribution, agency activity, publication tempo, source convergence),
-              anomalous flag, drift trend, long-horizon cumulative deviation/window, functional
-              shifts (bucket:direction pairs)
-            </li>
-            <li>
-              <strong>ai_*</strong> — Flag count, total documents, flag/concern rates, P2
-              classification distribution (routine, novel, potentially/clearly concerning), audit
-              false negative rate
-            </li>
-            <li>
-              <strong>thematic_*</strong> — Centroid distance, z-score, novel document rate,
-              variance ratio, cross-admin distance, rolling window metadata (weeks, mean distance,
-              std dev), cross-admin baseline period, bootstrap flag
-            </li>
-            <li>
-              <strong>concern_*</strong> — Status, pattern description, per-layer elevation flags
-            </li>
-          </ul>
-          <p>
-            Document scores flatten{' '}
-            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">matches</code> and{' '}
-            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">suppressed</code> arrays into
-            count + comma-joined keyword columns.
+            Full field-level documentation for both CSV exports — every column&apos;s meaning,
+            derivation, and caveats — lives in the{' '}
+            <Link href="/data/dictionary" className="text-dm-accent hover:underline">
+              data dictionary
+            </Link>{' '}
+            (machine-readable at{' '}
+            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">/api/export/dictionary</code>
+            ). The dictionary is generated from the same registry the export code is tested against,
+            so it cannot drift from the actual columns.
           </p>
         </Section>
 
