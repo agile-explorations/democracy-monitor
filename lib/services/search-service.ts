@@ -13,6 +13,7 @@ import {
   DISCUSSION_SOURCE_TYPES,
   tierForSourceType,
 } from '@/lib/data/document-tiers';
+import { PROCEDURAL_TITLE_PATTERN, PROCEDURAL_TITLE_PENALTY } from '@/lib/data/procedural-titles';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { buildPublishedAtWindow } from '@/lib/utils/date-window';
 import { embedText } from './embedding-service';
@@ -153,6 +154,12 @@ interface ResearchQueryOpts {
 }
 
 /** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
+/** Combined ranking score: semantic similarity, recency, keyword hit, minus
+ *  the procedural-boilerplate penalty (#593). */
+const COMBINED_SCORE = sql`(cosine_similarity * 0.6 + recency * 0.2
+  + CASE WHEN keyword_match THEN 0.2 ELSE 0 END
+  - CASE WHEN procedural THEN ${PROCEDURAL_TITLE_PENALTY} ELSE 0 END)`;
+
 function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQueryOpts) {
   const { topK, dateFrom, dateTo, tier } = opts;
   const candidateLimit = topK * 5;
@@ -170,15 +177,16 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
     FROM (
       SELECT id, url, category, cosine_similarity, final_score, document_class,
-        (cosine_similarity * 0.6 + recency * 0.2
-          + CASE WHEN keyword_match THEN 0.2 ELSE 0 END) as combined_score
+        ${COMBINED_SCORE} as combined_score
       FROM (
         SELECT DISTINCT ON (url)
-          id, url, category, cosine_similarity, final_score, document_class, recency, keyword_match
+          id, url, category, cosine_similarity, final_score, document_class, recency, keyword_match,
+          procedural
         FROM (
           SELECT d.id, d.url, d.category,
             1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
             ds.final_score, ds.document_class,
+            d.title ~* ${PROCEDURAL_TITLE_PATTERN} as procedural,
             CASE WHEN d.published_at IS NULL THEN 0
               ELSE GREATEST(0, 1 - EXTRACT(EPOCH FROM (now() - d.published_at))
                 / (365.25 * 86400 * 4))
