@@ -1,0 +1,1 @@
+ALTER TABLE "narratives" ADD COLUMN "staleness_accepted_at" timestamp with time zone;
