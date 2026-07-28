@@ -120,8 +120,12 @@ function draftRules(p2Count: number, totalDocs: number): string[] {
   ];
   if (p2Count > 0) {
     rules.push(
-      `11. ${p2Count} of ${totalDocs} documents include prior AI assessments. Reference these`,
-      '    where relevant ("the system previously assessed this document as...").',
+      `11. ${p2Count} of ${totalDocs} documents include classifications from Democracy Monitor's`,
+      '    automated document review. When referencing one, attribute it explicitly and render',
+      '    the label in plain language — write "Democracy Monitor\'s automated review classified',
+      '    this document as clearly concerning (a formal override of existing rules)", never the',
+      '    raw label ("clearly_concerning (formal_override)") and never phrased as the',
+      "    document's own claim or as this answer's judgment.",
     );
   }
   return rules;
