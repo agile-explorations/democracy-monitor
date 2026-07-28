@@ -2,6 +2,7 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
+import { SCORING_MIN_CONTENT_CHARS } from '@/lib/services/document-scorer';
 import { itemCountingScope } from '@/lib/services/opinion-scope-classifier';
 import type { ContentItem } from '@/lib/types';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
@@ -96,14 +97,28 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
           target: [documents.url, documents.category],
           set: {
             title: sql`excluded.title`,
-            content: sql`excluded.content`,
+            // Content-regression guard (#588 finding): a refetch can extract a
+            // near-empty body (e.g. a 23-char DOJ-OIG summary page) where an
+            // earlier fetch got full text. Never replace substantive stored
+            // content with sub-floor content — that flips a scored document to
+            // scoring-ineligible and orphans its score row (G1b).
+            content: sql`CASE
+              WHEN length(coalesce(excluded.content, '')) < ${SCORING_MIN_CONTENT_CHARS}
+               AND length(coalesce(${documents.content}, '')) >= ${SCORING_MIN_CONTENT_CHARS}
+              THEN ${documents.content}
+              ELSE excluded.content END`,
             fetchedAt: sql`excluded.fetched_at`,
             metadata: sql`excluded.metadata`,
             sourceOrigin: sql`excluded.source_origin`,
             caseId: sql`excluded.case_id`,
             speaker: sql`excluded.speaker`,
-            // Refreshed content can change scope-phrase matches.
-            countingScope: sql`excluded.counting_scope`,
+            // Refreshed content can change scope-phrase matches — but when the
+            // guard above keeps the stored content, keep its scope flag too.
+            countingScope: sql`CASE
+              WHEN length(coalesce(excluded.content, '')) < ${SCORING_MIN_CONTENT_CHARS}
+               AND length(coalesce(${documents.content}, '')) >= ${SCORING_MIN_CONTENT_CHARS}
+              THEN ${documents.countingScope}
+              ELSE excluded.counting_scope END`,
           },
         });
       stored++;
