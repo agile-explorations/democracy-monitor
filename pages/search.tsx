@@ -10,6 +10,7 @@ import type { ExploreResult, ResearchResult, SearchMode } from '@/components/sea
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
+import { suggestTierFromQuestion } from '@/lib/services/tier-hint';
 
 type TierFilterValue = 'all' | 'action' | 'discussion';
 
@@ -21,6 +22,8 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [tierHintDismissed, setTierHintDismissed] = useState(false);
+  const tierHint = suggestTierFromQuestion(query);
   const formRef = useRef<HTMLFormElement>(null);
   const { history, addEntry, clearHistory } = useSearchHistory();
 
@@ -351,7 +354,10 @@ export default function SearchPage() {
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setTierHintDismissed(false);
+              }}
               onFocus={() => setShowHistory(true)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') setShowHistory(false);
@@ -415,6 +421,39 @@ export default function SearchPage() {
           </p>
         </div>
       )}
+
+      {!loading &&
+        mode === 'research' &&
+        researchResult &&
+        tierFilter === 'all' &&
+        !tierHintDismissed &&
+        tierHint && (
+          <div className="flex items-center gap-2 mb-3 text-xs text-dm-text-secondary">
+            <span>
+              Your question mentions “{tierHint.phrase}” —{' '}
+              <button
+                type="button"
+                className="text-dm-accent hover:underline"
+                onClick={() => {
+                  setTierFilter(tierHint.tier);
+                  performSearch(query, 'research', 1, tierHint.tier);
+                }}
+              >
+                filter to{' '}
+                {tierHint.tier === 'discussion' ? 'Commentary & debate' : 'Government actions'}
+              </button>
+              ?
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss filter suggestion"
+              className="text-dm-muted hover:text-dm-text-secondary"
+              onClick={() => setTierHintDismissed(true)}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
       {!loading && mode === 'research' && researchResult?.strata && (
         <div className="flex flex-wrap items-center gap-2 mb-3" aria-label="Comparison eras">
