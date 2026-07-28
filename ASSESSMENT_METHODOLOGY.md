@@ -17,11 +17,10 @@ Democracy Monitor ingests documents from multiple source types, covering differe
 | **Inspector General (OIG)** | Audit reports and investigations from HHS, DOJ, and SSA Inspectors General                       | Every few days |
 | **LegiScan**                | State and federal legislative bill tracking via bulk datasets                                    | Periodic       |
 | **FEC**                     | Federal Election Commission advisory opinions and Matters Under Review (MURs)                    | Weekly         |
-| **GDELT**                   | Global news coverage of U.S. government activity (filtered to U.S. sources)                      | Daily          |
 
 Additionally, RSS feeds from the FCC provide supplementary signals for specific categories.
 
-Each source type has an expected publication cadence. When a source goes silent beyond its expected window, the system flags it for attention and may reduce confidence in assessments that depend on that source.
+Source ingestion is health-checked on every weekly run. A source that fails to fetch is marked unavailable; one that succeeds but returns zero documents for two consecutive checks is marked silent. Unhealthy sources surface as alerts on the System pages and roll up to the site-wide data-integrity level, which is shown on the overview page and gates the weekly email digest — no digest is sent for a week whose ingest looks degraded.
 
 ## Categories
 
@@ -158,9 +157,9 @@ Source health maps to four integrity levels:
 | **Low**      | Significant source unavailability             |
 | **Critical** | Majority of sources unavailable               |
 
-When source availability drops below critical thresholds, data coverage scores are capped to prevent high-confidence assessments based on incomplete data. A critical source health level caps the maximum confidence at 30%, ensuring the system does not present findings with false certainty when it lacks the data to support them.
+When overall source health degrades, the site-wide data-integrity level drops (surfaced on the overview page) and the weekly digest is withheld until ingest is repaired, so findings are not distributed on incomplete data.
 
-Source silence detection compares each source's output against its expected publication cadence. A source that has been silent for more than twice its expected cadence is flagged for investigation.
+A source is marked silent after two consecutive scheduled checks return zero documents; silent sources are flagged for investigation on the System health pages.
 
 ## AI Narrative Generation
 
