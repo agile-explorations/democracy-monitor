@@ -209,6 +209,20 @@ export default function SearchPage() {
           } else if (data.type === 'done') {
             eventSource.close();
             const final = parseStreamingSections(accumulated);
+            if (!final.expert && !final.public) {
+              // #598 spirit: a completed stream with no parseable answer is a
+              // failure, not an empty page. Keep the documents visible.
+              console.error(
+                '[search] synthesis completed without parseable sections:',
+                accumulated.slice(0, 300),
+              );
+              reject(
+                new Error(
+                  'The answer could not be generated from the response. Please try the search again.',
+                ),
+              );
+              return;
+            }
             setResearchResult((prev) =>
               prev
                 ? {
