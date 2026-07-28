@@ -71,13 +71,25 @@ describe('instrument-change suppression + ordering (#576/#577)', () => {
     anomalous: false,
   });
 
+  // Fixture, not the live registry (#587 teardown): the machinery stays for
+  // future non-retroactive collection changes, so it is tested with one.
+  const SYNTHETIC_CHANGE = [
+    {
+      date: '2026-02-02',
+      label: 'synthetic non-retroactive collection change',
+      categories: ['civilLiberties'],
+      retroactive: false,
+      affectsConcernStatuses: false,
+    },
+  ];
+
   it('suppresses below-baseline runs overlapping an instrument change for the category', () => {
     const clQuiet = {
       category: 'civilLiberties',
       title: 'Civil Rights & Liberties',
       weeks: [week('2026-03-02', -3), week('2026-03-09', -3), week('2026-03-16', -3)],
     } as any;
-    expect(detectStandoutRuns([clQuiet])).toHaveLength(0);
+    expect(detectStandoutRuns([clQuiet], SYNTHETIC_CHANGE)).toHaveLength(0);
   });
 
   it('suppresses above-baseline runs across instrument changes too — mix dims break upward', () => {
@@ -86,7 +98,18 @@ describe('instrument-change suppression + ordering (#576/#577)', () => {
       title: 'Civil Rights & Liberties',
       weeks: [week('2026-03-02', 3), week('2026-03-09', 3), week('2026-03-16', 3)],
     } as any;
-    expect(detectStandoutRuns([clBusy])).toHaveLength(0);
+    expect(detectStandoutRuns([clBusy], SYNTHETIC_CHANGE)).toHaveLength(0);
+  });
+
+  it('does not suppress runs when every registered change is retroactive', () => {
+    const clQuiet = {
+      category: 'civilLiberties',
+      title: 'Civil Rights & Liberties',
+      weeks: [week('2026-03-02', -3), week('2026-03-09', -3), week('2026-03-16', -3)],
+    } as any;
+    expect(
+      detectStandoutRuns([clQuiet], [{ ...SYNTHETIC_CHANGE[0], retroactive: true }]),
+    ).toHaveLength(1);
   });
 
   it('orders rows by trailing mean |composite|', () => {

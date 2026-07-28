@@ -1,4 +1,5 @@
 import { CATEGORIES } from '@/lib/data/categories';
+import type { InstrumentChange } from '@/lib/data/instrument-changes';
 import { overlapsInstrumentChange } from '@/lib/data/instrument-changes';
 import {
   THEMATIC_MIN_DOC_COUNT,
@@ -83,7 +84,10 @@ const THEMATIC_STANDOUT_LIMIT = 8;
  * rank them above sustained runs; static (below) runs rank last — they are
  * context, not headlines.
  */
-export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun[] {
+export function detectThematicStandouts(
+  rows: ThematicHeatmapRow[],
+  changes?: InstrumentChange[],
+): StandoutRun[] {
   const runs = scanStandoutRuns(
     rows.map((r) => ({
       category: r.category,
@@ -97,6 +101,7 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
         ? `${run.title} shifted topics well beyond its preceding ${THEMATIC_ROLLING_WINDOW_WEEKS}-week norm for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`
         : `${run.title} was unusually thematically static for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
     'both',
+    changes,
   );
 
   const inRun = new Set(
@@ -107,7 +112,7 @@ export function detectThematicStandouts(rows: ThematicHeatmapRow[]): StandoutRun
     for (const w of row.weeks) {
       if (w.zScore === null || w.zScore < THEMATIC_SPIKE_Z) continue;
       if (inRun.has(`${row.category}|${w.week}`)) continue;
-      if (overlapsInstrumentChange(row.category, w.week, w.week)) continue;
+      if (overlapsInstrumentChange(row.category, w.week, w.week, changes)) continue;
       spikes.push({
         category: row.category,
         title: row.title,

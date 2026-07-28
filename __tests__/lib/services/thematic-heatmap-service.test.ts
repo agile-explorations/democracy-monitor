@@ -5,6 +5,16 @@ import {
   parseThematicDimensions,
 } from '@/lib/services/thematic-heatmap-service';
 
+const SYNTHETIC_CHANGE = [
+  {
+    date: '2026-02-02',
+    label: 'synthetic non-retroactive collection change',
+    categories: ['civilLiberties'],
+    retroactive: false,
+    affectsConcernStatuses: false,
+  },
+];
+
 describe('parseThematicDimensions', () => {
   it('returns nulls for null/undefined detail', () => {
     expect(parseThematicDimensions(null)).toEqual({
@@ -158,7 +168,7 @@ describe('detectThematicStandouts + lowVolume (#579/#580)', () => {
         weeks: [wk('2026-03-02', -3), wk('2026-03-09', -3), wk('2026-03-16', -3)],
       },
     ];
-    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+    expect(detectThematicStandouts(rows as any, SYNTHETIC_CHANGE)).toHaveLength(0);
   });
 
   it('flags lowVolume from document_count below the floor', () => {
@@ -194,7 +204,7 @@ describe('upward instrument-drift suppression (#581)', () => {
         weeks: [wk('2026-03-02', 40), wk('2026-03-09', 5), wk('2026-03-16', 4)],
       },
     ];
-    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+    expect(detectThematicStandouts(rows as any, SYNTHETIC_CHANGE)).toHaveLength(0);
   });
 });
 
@@ -236,6 +246,6 @@ describe('spike detection + shift-first ranking (#582)', () => {
         weeks: [wk('2026-03-02', 44)],
       },
     ];
-    expect(detectThematicStandouts(rows as any)).toHaveLength(0);
+    expect(detectThematicStandouts(rows as any, SYNTHETIC_CHANGE)).toHaveLength(0);
   });
 });

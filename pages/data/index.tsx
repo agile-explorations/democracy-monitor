@@ -65,14 +65,12 @@ export default function DataPage() {
               filename="document-scores.csv"
             />
           </div>
-          {/* Interim caveat — remove when #587 makes the counting population
-              method-consistent across the Feb 2026 collection change. */}
           <p className="text-xs text-dm-muted mt-3">
-            <strong>Known caveat:</strong> in February 2026 we changed how court records are
-            collected. Document counts for the four court-record categories (Civil Rights &amp;
-            Liberties, Federal Law Enforcement, Judicial Independence, Following Court Orders) are
-            not directly comparable across that date. Concern statuses are unaffected — detection is
-            content-based and verified consistent across the change.
+            Document counts for the court-record categories are computed from a single documented
+            counting rule applied uniformly to all periods (the{' '}
+            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">counting_scope</code> flag in
+            the documents table), so they are directly comparable across the February 2026
+            collection change.
           </p>
         </Section>
 
