@@ -228,6 +228,44 @@ export default function SearchPage() {
         Search government documents indexed by Democracy Monitor.
       </p>
 
+      {/* Mode toggle + date range (shared) */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <span className="text-xs text-dm-muted">Mode:</span>
+        <div className="flex rounded-lg border border-dm-border overflow-hidden">
+          {(['research', 'explore'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => {
+                setMode(m);
+                setResearchResult(null);
+                setExploreResult(null);
+                setError(null);
+              }}
+              className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
+                mode === m
+                  ? 'bg-dm-accent text-white'
+                  : 'bg-dm-card text-dm-text-secondary hover:text-dm-text-primary'
+              }`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        <DateRangeSelect
+          datePreset={datePreset}
+          dateFrom={filterDateFrom}
+          dateTo={filterDateTo}
+          onPresetChange={(preset, from, to) => {
+            setDatePreset(preset);
+            setFilterDateFrom(from);
+            setFilterDateTo(to);
+          }}
+          onDateFromChange={setFilterDateFrom}
+          onDateToChange={setFilterDateTo}
+        />
+      </div>
+
       <form onSubmit={handleSubmit} ref={formRef} className="mb-4">
         <div className="relative flex gap-2">
           <div className="relative flex-1">
@@ -269,44 +307,6 @@ export default function SearchPage() {
           </button>
         </div>
       </form>
-
-      {/* Mode toggle + date range (shared) */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <span className="text-xs text-dm-muted">Mode:</span>
-        <div className="flex rounded-lg border border-dm-border overflow-hidden">
-          {(['research', 'explore'] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => {
-                setMode(m);
-                setResearchResult(null);
-                setExploreResult(null);
-                setError(null);
-              }}
-              className={`px-3 py-1 text-xs font-medium transition-colors capitalize ${
-                mode === m
-                  ? 'bg-dm-accent text-white'
-                  : 'bg-dm-card text-dm-text-secondary hover:text-dm-text-primary'
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-
-        <DateRangeSelect
-          datePreset={datePreset}
-          dateFrom={filterDateFrom}
-          dateTo={filterDateTo}
-          onPresetChange={(preset, from, to) => {
-            setDatePreset(preset);
-            setFilterDateFrom(from);
-            setFilterDateTo(to);
-          }}
-          onDateFromChange={setFilterDateFrom}
-          onDateToChange={setFilterDateTo}
-        />
-      </div>
 
       {mode === 'research' && (
         <div
