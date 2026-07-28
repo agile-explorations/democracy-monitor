@@ -26,6 +26,10 @@ export function SiteFooter() {
         <span className="text-dm-border">·</span>
         <span>MIT License</span>
         <span className="text-dm-border">·</span>
+        <Link href="/about" className="hover:text-dm-text-secondary transition-colors">
+          About
+        </Link>
+        <span className="text-dm-border">·</span>
         <Link href="/support" className="hover:text-dm-text-secondary transition-colors">
           Support this project
         </Link>
