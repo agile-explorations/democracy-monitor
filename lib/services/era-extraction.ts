@@ -93,3 +93,33 @@ export function extractComparisonEras(question: string): EraWindow[] | null {
     .filter((k) => found.has(k))
     .map((k) => ERA_WINDOWS[k]);
 }
+
+/**
+ * Era framing for comparative questions (#592): retrieval stratified the
+ * documents across the administrations the question names, so tell the model
+ * which era each document belongs to and require like-for-like comparison —
+ * including saying plainly when one era's record is thinner.
+ */
+export function buildComparativeInstruction(
+  query: string,
+  docs: Array<{ publishedAt?: string | null }>,
+): string[] {
+  const eras = extractComparisonEras(query);
+  if (!eras) return [];
+  const byEra = eras.map((era) => {
+    const members = docs
+      .map((d, i) => ({ d, n: i + 1 }))
+      .filter(({ d }) => {
+        const p = d.publishedAt ?? '';
+        return p >= era.from && (!era.to || p <= `${era.to}T23:59:59Z`);
+      })
+      .map(({ n }) => `Doc ${n}`);
+    return `- ${era.label}: ${members.length > 0 ? members.join(', ') : 'no documents retrieved'}`;
+  });
+  return [
+    '',
+    'COMPARATIVE QUESTION — documents were retrieved separately for each era being compared:',
+    ...byEra,
+    'Structure the answer as a like-for-like comparison across these eras. Where one era has fewer or no relevant documents, say so explicitly rather than generalizing from the better-covered era.',
+  ];
+}

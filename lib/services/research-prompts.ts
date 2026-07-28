@@ -1,4 +1,5 @@
 /** Prompt builders for the research synthesis pipeline. */
+import { buildComparativeInstruction } from '@/lib/services/era-extraction';
 import type { CorpusStats } from './search-research-queries';
 import type { ResearchDocument } from './search-service';
 
@@ -266,6 +267,7 @@ export function buildSinglePassPrompt(
   const stats = corpusStats ?? null;
   return [
     ...buildPromptBody(query, docs, stats),
+    ...buildComparativeInstruction(query, docs),
     '',
     ...selfVerificationChecklist(!!stats),
     '',
