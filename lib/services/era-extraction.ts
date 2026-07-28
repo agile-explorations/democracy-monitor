@@ -1,0 +1,95 @@
+/**
+ * Era extraction for comparative research questions (#592).
+ *
+ * Detects which presidential terms a question compares and maps them to the
+ * same term windows the baselines use, so "administration" means one thing
+ * everywhere in the system. Deterministic (regex, no model call): retrieval
+ * behavior must be reproducible from the question text alone.
+ *
+ * Stratification triggers only when the question is genuinely comparative:
+ * a comparison keyword plus either two-or-more distinct era references or an
+ * across-administrations phrase. "What happened since 2025?" is a date
+ * range, not a comparison.
+ */
+
+export interface EraWindow {
+  key: 'trump_t1' | 'biden' | 'trump_t2';
+  label: string;
+  from: string;
+  /** undefined = open-ended (current term). */
+  to?: string;
+}
+
+export const ERA_WINDOWS: Record<EraWindow['key'], EraWindow> = {
+  trump_t1: { key: 'trump_t1', label: 'Trump 2017–21', from: '2017-01-20', to: '2021-01-19' },
+  biden: { key: 'biden', label: 'Biden 2021–25', from: '2021-01-20', to: '2025-01-19' },
+  trump_t2: { key: 'trump_t2', label: 'Trump 2025–', from: '2025-01-20' },
+};
+
+const COMPARATIVE =
+  /\b(compar\w*|versus|vs\.?|differ\w*|contrast\w*|between\b.*\b(and|admin)|both\b.*\badministrations?)\b/i;
+
+const ACROSS_ADMINS = /\b(across|between|all( three)?) administrations\b/i;
+
+const ERA_PATTERNS: Array<[EraWindow['key'], RegExp]> = [
+  [
+    'trump_t1',
+    /\b(first trump (administration|term)|trump'?s? first (administration|term)|trump (administration|term) 1|trump t1)\b/i,
+  ],
+  [
+    'trump_t2',
+    /\b(second trump (administration|term)|trump'?s? second (administration|term)|trump (administration|term) 2|trump t2|current (trump )?administration|reinstatement)\b/i,
+  ],
+  ['biden', /\bbiden\b/i],
+];
+
+/** Map a 4-digit year mention to the term containing it. */
+function eraForYear(year: number): EraWindow['key'] | null {
+  if (year >= 2017 && year <= 2020) return 'trump_t1';
+  if (year >= 2021 && year <= 2024) return 'biden';
+  if (year >= 2025) return 'trump_t2';
+  return null;
+}
+
+/** "first and second Trump administrations" — both refs share one noun. */
+const FIRST_AND_SECOND = /\bfirst and second trump administrations?\b/i;
+
+/**
+ * Returns the era windows to stratify retrieval across, in chronological
+ * order — or null when the question is not comparative (single-window
+ * retrieval unchanged).
+ */
+export function extractComparisonEras(question: string): EraWindow[] | null {
+  const comparative = COMPARATIVE.test(question) || ACROSS_ADMINS.test(question);
+  if (!comparative) return null;
+
+  if (ACROSS_ADMINS.test(question)) {
+    return [ERA_WINDOWS.trump_t1, ERA_WINDOWS.biden, ERA_WINDOWS.trump_t2];
+  }
+
+  const found = new Set<EraWindow['key']>();
+  if (FIRST_AND_SECOND.test(question) || /\b(both|two) trump administrations?\b/i.test(question)) {
+    found.add('trump_t1');
+    found.add('trump_t2');
+  }
+  for (const [key, re] of ERA_PATTERNS) {
+    if (re.test(question)) found.add(key);
+  }
+  // A bare "Trump" with no term qualifier is ambiguous when Trump eras are
+  // not already matched: treat it as both Trump terms only if the question
+  // also references another era (e.g. "Biden vs Trump").
+  if (!found.has('trump_t1') && !found.has('trump_t2') && /\btrump\b/i.test(question)) {
+    if (found.has('biden')) {
+      found.add('trump_t2');
+    }
+  }
+  for (const m of question.matchAll(/\b(20\d{2})\b/g)) {
+    const era = eraForYear(parseInt(m[1], 10));
+    if (era) found.add(era);
+  }
+
+  if (found.size < 2) return null;
+  return (['trump_t1', 'biden', 'trump_t2'] as const)
+    .filter((k) => found.has(k))
+    .map((k) => ERA_WINDOWS[k]);
+}
