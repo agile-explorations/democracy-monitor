@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
+import { ERA_WINDOWS, extractComparisonEras } from '@/lib/services/era-extraction';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
@@ -71,12 +72,75 @@ async function adaptiveCorpusStats(
   return leastSimilarity > 0 ? searchCorpusStats(embedding, 1 - leastSimilarity) : null;
 }
 
-/** Run the tiered research retrieval with the request's date + tier params (#552). */
+export interface RetrievalStratum {
+  key: string;
+  label: string;
+  from: string;
+  to?: string;
+  docCount: number;
+  /** True when the user's date range excludes this era entirely; the era
+   *  window itself was searched and the conflict surfaced, not hidden. */
+  dateConflict?: boolean;
+}
+
+/**
+ * Run the tiered research retrieval with the request's date + tier params
+ * (#552). Comparative questions stratify the context slots across the
+ * administrations the question names (#592): each era competes only with
+ * itself, so the recency-dense current term cannot crowd out the eras being
+ * compared. User date bounds intersect each era window; an intersection that
+ * would be empty falls back to the full era window and is flagged.
+ */
 async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
   const dateFrom = req.query.dateFrom as string | undefined;
   const dateTo = req.query.dateTo as string | undefined;
   const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-  return searchResearch(query, RESEARCH_CONTEXT_DOCS, embedding, dateFrom, dateTo, tier);
+
+  // Chips UI override (#592): eras=trump_t1,trump_t2 pins the strata after
+  // the user removes one; a single remaining era degrades to a plain
+  // date-windowed retrieval.
+  const eraParam = req.query.eras as string | undefined;
+  const requested = eraParam
+    ? eraParam
+        .split(',')
+        .map((k) => ERA_WINDOWS[k as keyof typeof ERA_WINDOWS])
+        .filter(Boolean)
+    : null;
+  const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
+  if (!eras || eras.length < 2) {
+    const w = eras?.[0];
+    const docs = await searchResearch(
+      query,
+      RESEARCH_CONTEXT_DOCS,
+      embedding,
+      w ? w.from : dateFrom,
+      w ? w.to : dateTo,
+      tier,
+    );
+    return { docs, strata: null };
+  }
+
+  const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
+  const windows = eras.map((era) => {
+    const from = dateFrom && dateFrom > era.from ? dateFrom : era.from;
+    const to = dateTo && (!era.to || dateTo < era.to) ? dateTo : era.to;
+    const dateConflict = Boolean(to && from > to);
+    return dateConflict
+      ? { era, from: era.from, to: era.to, dateConflict }
+      : { era, from, to, dateConflict };
+  });
+  const perEra = await Promise.all(
+    windows.map((w) => searchResearch(query, slots, embedding, w.from, w.to, tier)),
+  );
+  const strata: RetrievalStratum[] = windows.map((w, i) => ({
+    key: w.era.key,
+    label: w.era.label,
+    from: w.from,
+    to: w.to,
+    docCount: perEra[i].length,
+    ...(w.dateConflict ? { dateConflict: true } : {}),
+  }));
+  return { docs: perEra.flat(), strata };
 }
 
 async function handleResearch(
@@ -94,7 +158,7 @@ async function handleResearch(
     return;
   }
 
-  const allDocs = await retrieveResearchDocs(req, query, embedding);
+  const { docs: allDocs, strata } = await retrieveResearchDocs(req, query, embedding);
   if (allDocs.length === 0) {
     res.status(200).json(emptyResearchResponse(docsOnly));
     return;
@@ -111,6 +175,7 @@ async function handleResearch(
       documents: formatDocList(allDocs),
       dateRange,
       queryConfidence: avgSimilarity,
+      ...(strata ? { strata } : {}),
     });
     return;
   }
