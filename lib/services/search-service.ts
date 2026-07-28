@@ -130,9 +130,16 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 // Research mode: vector search for government documents
 // ---------------------------------------------------------------------------
 
-function buildDateFilter(dateFrom?: string, dateTo?: string) {
+/**
+ * Inclusive-day date window. dateTo means "through the end of that day":
+ * strictly less than midnight of the NEXT day. Must stay strict — date-only
+ * sources store published_at at exactly next-day-boundary midnight, and <=
+ * leaked the first day outside the window (a Biden-era dateTo returned
+ * 2025-01-20 executive orders).
+ */
+export function buildDateFilter(dateFrom?: string, dateTo?: string) {
   if (!dateFrom && !dateTo) return sql``;
-  return sql`${dateFrom ? sql`AND d.published_at >= ${dateFrom}::timestamptz` : sql``}${dateTo ? sql` AND d.published_at <= ${dateTo}::timestamptz + interval '1 day'` : sql``}`;
+  return sql`${dateFrom ? sql`AND d.published_at >= ${dateFrom}::timestamptz` : sql``}${dateTo ? sql` AND d.published_at < ${dateTo}::timestamptz + interval '1 day'` : sql``}`;
 }
 
 /** Tier condition for the research candidate scan (#552). */
