@@ -199,6 +199,11 @@ export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] 
     (run) =>
       `${run.title} ran ${run.direction === 'above' ? 'well above' : 'well below'} its baseline ` +
       `${run.dimensionLabel} for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
+    // Both directions: the Feb 2026 collection seam measured UPWARD in the
+    // mix dimensions (agency +5.2σ — opinions carry little agency metadata),
+    // not just downward in counts. A standout in a region the cells mask as
+    // not-baseline-comparable must not be presented as a finding either way.
+    'both',
   );
 }
 
