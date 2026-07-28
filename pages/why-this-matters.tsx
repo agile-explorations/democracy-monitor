@@ -67,7 +67,7 @@ export default function WhyThisMattersPage() {
   return (
     <>
       <SEOHead
-        title="Why These Matter"
+        title="Why These 14 Categories Matter"
         description="Why the 14 categories Democracy Monitor tracks matter — the checks that bind every president, whichever party holds the office."
         canonicalPath="/why-this-matters"
       />
@@ -76,7 +76,9 @@ export default function WhyThisMattersPage() {
         &larr; Back to overview
       </Link>
 
-      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">Why These Matter</h1>
+      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
+        Why These 14 Categories Matter
+      </h1>
       <div className="max-w-3xl space-y-2 mb-8">
         <p className="text-sm text-dm-text-secondary leading-relaxed">
           Democracy Monitor tracks 14 categories of government activity. None of them is about

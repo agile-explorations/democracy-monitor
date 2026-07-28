@@ -270,7 +270,7 @@ export default function Home() {
               href="/why-this-matters"
               className="shrink-0 px-3 py-1.5 rounded-md bg-dm-accent/10 border border-dm-accent/20 text-xs font-medium text-dm-accent hover:bg-dm-accent/20 hover:border-dm-accent/40 transition-colors"
             >
-              Why do these matter? &rarr;
+              Why do these 14 categories matter? &rarr;
             </Link>
           </div>
           {loading || weekLoading ? (
