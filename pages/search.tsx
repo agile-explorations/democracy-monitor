@@ -73,8 +73,12 @@ export default function SearchPage() {
       page = 1,
       tierOverride?: TierFilterValue,
       erasOverride?: string[],
+      dateOverrides?: { dateFrom?: string; dateTo?: string; datePreset?: string },
     ) => {
       const tier = tierOverride ?? tierFilter;
+      const df = dateOverrides?.dateFrom ?? filterDateFrom;
+      const dt = dateOverrides?.dateTo ?? filterDateTo;
+      const dp = dateOverrides?.datePreset ?? datePreset;
       if (!q.trim()) return;
       addEntry(q);
       setShowHistory(false);
@@ -89,9 +93,9 @@ export default function SearchPage() {
       setError(null);
 
       const params = new URLSearchParams({ q, mode: searchMode });
-      if (filterDateFrom) params.set('dateFrom', filterDateFrom);
-      if (filterDateTo) params.set('dateTo', filterDateTo);
-      if (datePreset) params.set('datePreset', datePreset);
+      if (df) params.set('dateFrom', df);
+      if (dt) params.set('dateTo', dt);
+      if (dp) params.set('datePreset', dp);
       if (searchMode === 'research' && tier !== 'all') params.set('tier', tier);
       if (searchMode === 'research' && erasOverride && erasOverride.length > 0)
         params.set('eras', erasOverride.join(','));
@@ -175,8 +179,10 @@ export default function SearchPage() {
     // cards (#552) and the stream skips a redundant vector search.
     try {
       const streamParams = new URLSearchParams({ q });
-      if (filterDateFrom) streamParams.set('dateFrom', filterDateFrom);
-      if (filterDateTo) streamParams.set('dateTo', filterDateTo);
+      const df = urlParams.get('dateFrom');
+      const dt = urlParams.get('dateTo');
+      if (df) streamParams.set('dateFrom', df);
+      if (dt) streamParams.set('dateTo', dt);
       const docIds = (docsData.documents as Array<{ id?: number }>)
         .map((d) => d.id)
         .filter((id): id is number => typeof id === 'number');
@@ -243,6 +249,7 @@ export default function SearchPage() {
     if (m && (m === 'research' || m === 'explore')) setMode(m);
     if (router.query.category) setFilterCategory(router.query.category as string);
     if (router.query.datePreset) setDatePreset(router.query.datePreset as string);
+    else if (router.query.dateFrom || router.query.dateTo) setDatePreset('custom');
     if (router.query.dateFrom) setFilterDateFrom(router.query.dateFrom as string);
     if (router.query.dateTo) setFilterDateTo(router.query.dateTo as string);
     if (router.query.source) setFilterSource(router.query.source as string);
@@ -250,7 +257,24 @@ export default function SearchPage() {
     if (router.query.page) setFilterPage(Number(router.query.page));
     const t = router.query.tier as string | undefined;
     if (t === 'action' || t === 'discussion') setTierFilter(t);
-    if (q && q.trim().length > 0) performSearch(q, m ?? mode);
+    // Shared-link fidelity: state setters above have not committed yet, so
+    // the initial search must receive every parsed setting explicitly — a
+    // clicked outreach URL is the complete instruction, no toggles needed.
+    const eras = (router.query.eras as string | undefined)?.split(',').filter(Boolean);
+    if (q && q.trim().length > 0) {
+      performSearch(
+        q,
+        m ?? mode,
+        Number(router.query.page) || 1,
+        t === 'action' || t === 'discussion' ? t : undefined,
+        eras,
+        {
+          dateFrom: router.query.dateFrom as string | undefined,
+          dateTo: router.query.dateTo as string | undefined,
+          datePreset: router.query.datePreset as string | undefined,
+        },
+      );
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.isReady]);
 
