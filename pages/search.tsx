@@ -48,12 +48,34 @@ export default function SearchPage() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Latest-search-wins (#race): each performSearch bumps the sequence and
+  // cancels the previous run's stream/fetch; every state write checks it is
+  // still the current run, so an abandoned search can never flash results
+  // or stomp loading state.
+  const searchSeq = useRef(0);
+  const activeStream = useRef<EventSource | null>(null);
+  const activeAbort = useRef<AbortController | null>(null);
+  useEffect(
+    () => () => {
+      activeStream.current?.close();
+      activeAbort.current?.abort();
+    },
+    [],
+  );
+
   const performSearch = useCallback(
     async (q: string, searchMode: SearchMode, page = 1, tierOverride?: TierFilterValue) => {
       const tier = tierOverride ?? tierFilter;
       if (!q.trim()) return;
       addEntry(q);
       setShowHistory(false);
+      const seq = ++searchSeq.current;
+      const isCurrent = () => seq === searchSeq.current;
+      activeStream.current?.close();
+      activeStream.current = null;
+      activeAbort.current?.abort();
+      const abort = new AbortController();
+      activeAbort.current = abort;
       setLoading(true);
       setError(null);
 
@@ -72,20 +94,23 @@ export default function SearchPage() {
 
       try {
         if (searchMode === 'research') {
-          await performResearch(q, params);
+          await performResearch(q, params, isCurrent, abort.signal);
         } else {
-          const res = await fetch(`/api/search?${params.toString()}`);
+          const res = await fetch(`/api/search?${params.toString()}`, { signal: abort.signal });
           if (!res.ok) {
             const body = await res.json().catch(() => ({}));
             throw new Error(body.error || `Search failed (${res.status})`);
           }
-          setExploreResult((await res.json()) as ExploreResult);
+          const data = (await res.json()) as ExploreResult;
+          if (!isCurrent()) return;
+          setExploreResult(data);
           setResearchResult(null);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Search failed');
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (isCurrent()) setError(err instanceof Error ? err.message : 'Search failed');
       } finally {
-        setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,13 +126,18 @@ export default function SearchPage() {
     ],
   );
 
-  const performResearch = async (q: string, urlParams: URLSearchParams) => {
+  const performResearch = async (
+    q: string,
+    urlParams: URLSearchParams,
+    isCurrent: () => boolean,
+    signal: AbortSignal,
+  ) => {
     setExploreResult(null);
 
     // Phase 1: Fetch documents immediately (fast)
     const docsParams = new URLSearchParams(urlParams);
     docsParams.set('docsOnly', 'true');
-    const docsRes = await fetch(`/api/search?${docsParams.toString()}`);
+    const docsRes = await fetch(`/api/search?${docsParams.toString()}`, { signal });
     if (!docsRes.ok) {
       const body = await docsRes.json().catch(() => ({}));
       throw new Error(body.error || `Search failed (${docsRes.status})`);
@@ -123,6 +153,7 @@ export default function SearchPage() {
       relatedQuestions: [],
       corpusStats: docsData.corpusStats ?? null,
     };
+    if (!isCurrent()) return;
     setResearchResult(baseResult);
     setLoading(false);
     setSynthesizing(true);
@@ -139,10 +170,16 @@ export default function SearchPage() {
         .filter((id): id is number => typeof id === 'number');
       if (docIds.length > 0) streamParams.set('ids', docIds.join(','));
       const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
+      activeStream.current = eventSource;
       let accumulated = '';
 
       await new Promise<void>((resolve, reject) => {
         eventSource.onmessage = (event) => {
+          if (!isCurrent()) {
+            eventSource.close();
+            resolve();
+            return;
+          }
           const data = JSON.parse(event.data);
 
           if (data.type === 'chunk') {
@@ -176,9 +213,9 @@ export default function SearchPage() {
         };
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Answer generation failed');
+      if (isCurrent()) setError(err instanceof Error ? err.message : 'Answer generation failed');
     } finally {
-      setSynthesizing(false);
+      if (isCurrent()) setSynthesizing(false);
     }
   };
 
