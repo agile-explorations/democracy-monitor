@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractComparisonEras } from '@/lib/services/era-extraction';
+import { extractComparisonEras, extractDateFloor } from '@/lib/services/era-extraction';
 
 const keys = (q: string) => extractComparisonEras(q)?.map((e) => e.key) ?? null;
 
@@ -44,5 +44,23 @@ describe('extractComparisonEras (#592)', () => {
     expect(keys('What OPM actions have been taken since January 2025?')).toBeNull();
     expect(keys('What executive orders were issued in 2020?')).toBeNull();
     expect(keys('Which members of Congress spoke about reclassification?')).toBeNull();
+  });
+});
+
+describe('extractDateFloor (#594 range phrases)', () => {
+  it('maps "since January 2025" to a month floor', () => {
+    expect(
+      extractDateFloor(
+        'What OPM and OMB actions have been taken regarding federal workforce restructuring since January 2025?',
+      ),
+    ).toBe('2025-01-01');
+  });
+  it('maps bare "since 2017" to a year floor', () => {
+    expect(
+      extractDateFloor('What executive orders have modified agency independence since 2017?'),
+    ).toBe('2017-01-01');
+  });
+  it('stays silent without a range phrase', () => {
+    expect(extractDateFloor('What court cases have challenged executive authority?')).toBeNull();
   });
 });

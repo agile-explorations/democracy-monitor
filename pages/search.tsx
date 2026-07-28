@@ -168,6 +168,7 @@ export default function SearchPage() {
       relatedQuestions: [],
       corpusStats: docsData.corpusStats ?? null,
       strata: docsData.strata ?? null,
+      inferredDateFrom: docsData.inferredDateFrom ?? null,
     };
     if (!isCurrent()) return;
     setResearchResult(baseResult);
@@ -492,6 +493,13 @@ export default function SearchPage() {
             </button>
           </div>
         )}
+
+      {!loading && mode === 'research' && researchResult?.inferredDateFrom && (
+        <p className="text-xs text-dm-muted mb-2">
+          Applied a date floor of {researchResult.inferredDateFrom} from your question&apos;s
+          phrasing. Use the Period control to override.
+        </p>
+      )}
 
       {!loading && mode === 'research' && researchResult?.strata && (
         <div className="flex flex-wrap items-center gap-2 mb-3" aria-label="Comparison eras">

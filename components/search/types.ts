@@ -17,6 +17,8 @@ export interface ResearchResult {
     docCount: number;
     dateConflict?: boolean;
   }> | null;
+  /** Date floor inferred from range phrasing in the question (#594). */
+  inferredDateFrom?: string | null;
   editorial?: {
     expertDraft: string;
     publicDraft: string;

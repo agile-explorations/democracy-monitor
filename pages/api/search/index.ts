@@ -3,7 +3,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
-import { ERA_WINDOWS, extractComparisonEras } from '@/lib/services/era-extraction';
+import type { EraWindow } from '@/lib/services/era-extraction';
+import {
+  ERA_WINDOWS,
+  extractComparisonEras,
+  extractDateFloor,
+} from '@/lib/services/era-extraction';
 import { rerankByRelevance } from '@/lib/services/relevance-rerank';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
@@ -84,6 +89,19 @@ export interface RetrievalStratum {
   dateConflict?: boolean;
 }
 
+/** Intersect user date bounds with each era window; an empty intersection
+ *  falls back to the full era and is flagged rather than silently dropped. */
+function intersectEraWindows(eras: EraWindow[], dateFrom?: string, dateTo?: string) {
+  return eras.map((era) => {
+    const from = dateFrom && dateFrom > era.from ? dateFrom : era.from;
+    const to = dateTo && (!era.to || dateTo < era.to) ? dateTo : era.to;
+    const dateConflict = Boolean(to && from > to);
+    return dateConflict
+      ? { era, from: era.from, to: era.to, dateConflict }
+      : { era, from, to, dateConflict };
+  });
+}
+
 /**
  * Run the tiered research retrieval with the request's date + tier params
  * (#552). Comparative questions stratify the context slots across the
@@ -93,7 +111,11 @@ export interface RetrievalStratum {
  * would be empty falls back to the full era window and is flagged.
  */
 async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
-  const dateFrom = req.query.dateFrom as string | undefined;
+  // Range phrases in the question ("since January 2025") become a date floor
+  // when the user has not set explicit dates; surfaced in the response so
+  // the page can show what was inferred.
+  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
+  const dateFrom = (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined;
   const dateTo = req.query.dateTo as string | undefined;
   const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
 
@@ -119,18 +141,11 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
       tier,
     );
     const docs = await rerankByRelevance(query, candidates, RESEARCH_CONTEXT_DOCS);
-    return { docs, strata: null };
+    return { docs, strata: null, inferredFrom };
   }
 
   const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
-  const windows = eras.map((era) => {
-    const from = dateFrom && dateFrom > era.from ? dateFrom : era.from;
-    const to = dateTo && (!era.to || dateTo < era.to) ? dateTo : era.to;
-    const dateConflict = Boolean(to && from > to);
-    return dateConflict
-      ? { era, from: era.from, to: era.to, dateConflict }
-      : { era, from, to, dateConflict };
-  });
+  const windows = intersectEraWindows(eras, dateFrom, dateTo);
   const perEra = await Promise.all(
     windows.map(async (w) => {
       const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
@@ -145,7 +160,7 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
     docCount: perEra[i].length,
     ...(w.dateConflict ? { dateConflict: true } : {}),
   }));
-  return { docs: perEra.flat(), strata };
+  return { docs: perEra.flat(), strata, inferredFrom };
 }
 
 async function handleResearch(
@@ -163,7 +178,7 @@ async function handleResearch(
     return;
   }
 
-  const { docs: allDocs, strata } = await retrieveResearchDocs(req, query, embedding);
+  const { docs: allDocs, strata, inferredFrom } = await retrieveResearchDocs(req, query, embedding);
   if (allDocs.length === 0) {
     res.status(200).json(emptyResearchResponse(docsOnly));
     return;
@@ -181,6 +196,7 @@ async function handleResearch(
       dateRange,
       queryConfidence: avgSimilarity,
       ...(strata ? { strata } : {}),
+      ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
     });
     return;
   }
