@@ -158,7 +158,7 @@ interface ResearchQueryOpts {
  *  the procedural-boilerplate penalty (#593). */
 const COMBINED_SCORE = sql`(cosine_similarity * 0.6 + recency * 0.2
   + CASE WHEN keyword_match THEN 0.2 ELSE 0 END
-  - CASE WHEN procedural THEN ${PROCEDURAL_TITLE_PENALTY} ELSE 0 END)`;
+  - CASE WHEN procedural THEN ${PROCEDURAL_TITLE_PENALTY}::numeric ELSE 0 END)`;
 
 function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQueryOpts) {
   const { topK, dateFrom, dateTo, tier } = opts;
