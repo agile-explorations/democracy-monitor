@@ -213,6 +213,12 @@ async function g4NarrativeFreshness(recent: boolean): Promise<GraphInvariantResu
   // means the pipeline ran out of order or a repair skipped regeneration.
   const cutoff = sql`date_trunc('week', now())::date - (${NARRATIVE_FRESHNESS_WEEKS * 7})::int`;
   const compare = recent ? sql`n.week_of >= ${cutoff}` : sql`n.week_of < ${cutoff}`;
+  // Historical staleness the owner has explicitly accepted (staleness_accepted_at
+  // via narratives:accept-stale) does not count; assessment data newer than the
+  // acceptance re-flags. The recent window (G4, error) never honors acceptance.
+  const acceptance = recent
+    ? sql``
+    : sql`AND (n.staleness_accepted_at IS NULL OR n.staleness_accepted_at < x.newest)`;
   const rows = await q(sql`
     SELECT count(*) AS n
     FROM narratives n
@@ -222,7 +228,7 @@ async function g4NarrativeFreshness(recent: boolean): Promise<GraphInvariantResu
         AND a.week_of >= n.week_of AND a.week_of < n.week_of + 7
     ) x ON x.newest IS NOT NULL
     WHERE n.generated_at < x.newest
-      AND ${compare}`);
+      AND ${compare} ${acceptance}`);
   const total = Number(rows[0]?.n ?? 0);
   return recent
     ? {
@@ -236,7 +242,7 @@ async function g4NarrativeFreshness(recent: boolean): Promise<GraphInvariantResu
         id: 'G4h',
         severity: 'warn',
         description:
-          "historical narratives older than their week's assessments (regeneration is owner-decided)",
+          'historical narratives with unacknowledged staleness (accept via narratives:accept-stale or regenerate — owner-decided)',
         violations: total,
         pass: total === 0,
       };

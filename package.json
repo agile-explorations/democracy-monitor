@@ -83,6 +83,7 @@
     "validate:narratives": "tsx scripts/validate-narratives.ts",
     "validate:mf-drops": "tsx lib/cron/validate-mf-drops.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
+    "narratives:accept-stale": "tsx lib/cron/accept-stale-narratives.ts",
     "narratives:regenerate": "tsx scripts/narratives-regenerate.ts",
     "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky"

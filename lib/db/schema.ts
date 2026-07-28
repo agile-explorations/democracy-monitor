@@ -471,6 +471,11 @@ export const narratives = pgTable(
     content: text('content').notNull(),
     model: varchar('model', { length: 100 }).notNull(),
     generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+    /** Owner accepted this narrative as-is despite newer assessment data
+     *  (G4h): set by narratives:accept-stale after a repair review. Assessment
+     *  data newer than this stamp re-flags the narrative — acceptance covers
+     *  what the owner saw, not the future. generated_at is never rewritten. */
+    stalenessAcceptedAt: timestamp('staleness_accepted_at', { withTimezone: true }),
   },
   (table) => [
     unique('uq_narratives_category_week_version').on(table.category, table.weekOf, table.version),
