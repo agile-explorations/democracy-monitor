@@ -116,12 +116,12 @@ describe('buildDraftPrompt', () => {
   it('includes P2 rule when documents have assessments', () => {
     const doc = makeDoc({ p2Assessment: 'concerning', p2ErosionType: 'formal_override' });
     const prompt = buildDraftPrompt('q', [doc]);
-    expect(prompt).toContain('1 of 1 documents include prior AI assessments');
+    expect(prompt).toContain("1 of 1 documents include classifications from Democracy Monitor's");
   });
 
   it('omits P2 rule when no documents have assessments', () => {
     const prompt = buildDraftPrompt('q', [makeDoc()]);
-    expect(prompt).not.toContain('prior AI assessments');
+    expect(prompt).not.toContain('automated document review');
   });
 
   it('includes corpus stats when provided', () => {

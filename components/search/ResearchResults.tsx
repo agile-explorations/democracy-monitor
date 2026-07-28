@@ -196,6 +196,16 @@ export function ResearchResults({
               {result.dateRange.earliest !== 'unknown' &&
                 ` \u00B7 ${result.dateRange.earliest} \u2013 ${result.dateRange.latest}`}
             </p>
+            <p className="text-[11px] text-dm-muted mt-1">
+              Documents are labeled ACTION (what the government did: orders, rules, opinions, bills)
+              or DISCUSSION (reactions: floor speeches, debate). Where the answer cites Democracy
+              Monitor&apos;s automated review, that classification comes from our two-pass AI
+              document assessment \u2014 methodology on the{' '}
+              <a href="/system/methodology" className="text-dm-accent hover:underline">
+                methodology page
+              </a>
+              .
+            </p>
           </div>
           <div className="text-dm-text-secondary">
             <AnswerRenderer text={answer} documents={result.documents} />
