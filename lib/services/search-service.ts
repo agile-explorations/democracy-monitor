@@ -123,8 +123,11 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
     }
     return await textExplore(db, filters, hasQuery, page, pageSize, offset);
   } catch (err) {
+    // #598: a failed query must surface as an error, never as an empty result
+    // set — the #593 incident rendered a broken ranking query as "no matching
+    // documents" for every user. The API layer converts throws to HTTP 500.
     console.error('[search] Explore search failed:', err);
-    return { totalResults: 0, page, pageSize, documents: [] };
+    throw err;
   }
 }
 
@@ -258,8 +261,9 @@ export async function searchResearch(
       topK,
     );
   } catch (err) {
+    // #598: throw, never return [] — see searchExplore's catch for rationale.
     console.error('[search] Research search failed:', err);
-    return [];
+    throw err;
   }
 }
 
