@@ -5,7 +5,6 @@ import {
   computeWeightedConfidence,
 } from '@/lib/services/confidence-scoring';
 import type { ConfidenceFactors } from '@/lib/services/confidence-scoring';
-import type { SourceHealthSummary } from '@/lib/services/source-health-service';
 import type { AssessmentResult } from '@/lib/types';
 
 function makeResult(overrides: Partial<AssessmentResult> = {}): AssessmentResult {
@@ -125,43 +124,6 @@ describe('calculateDataCoverage', () => {
     // Only 1 valid item out of 3, so coverage should be 0.1 (1/10)
     expect(factors.evidenceCoverage).toBe(0.1);
   });
-
-  it('incorporates source availability from health summary', () => {
-    const items = [{ title: 'Item' }];
-    const result = makeResult({ matches: ['test'] });
-    const health: SourceHealthSummary = {
-      totalSources: 8,
-      healthySources: 4,
-      degradedSources: 2,
-      unavailableSources: 2,
-      silentSources: 0,
-      overallHealth: 'degraded',
-      dataAvailabilityScore: 0.5,
-      checkedAt: new Date().toISOString(),
-    };
-    const { factors } = calculateDataCoverage(items, result, undefined, health);
-    expect(factors.sourceAvailability).toBe(0.5);
-  });
-
-  it('caps confidence when source health is critical', () => {
-    const items = Array.from({ length: 10 }, (_, i) => ({
-      title: `Item ${i}`,
-      agency: 'GAO',
-    }));
-    const result = makeResult({ matches: ['a', 'b', 'c'] });
-    const health: SourceHealthSummary = {
-      totalSources: 8,
-      healthySources: 1,
-      degradedSources: 0,
-      unavailableSources: 7,
-      silentSources: 0,
-      overallHealth: 'critical',
-      dataAvailabilityScore: 0.125,
-      checkedAt: new Date().toISOString(),
-    };
-    const { confidence } = calculateDataCoverage(items, result, 'Warning', health);
-    expect(confidence).toBeLessThanOrEqual(0.3);
-  });
 });
 
 describe('computeAiAgreement', () => {
@@ -194,7 +156,6 @@ describe('computeWeightedConfidence', () => {
     evidenceCoverage: 1,
     keywordDensity: 1,
     aiAgreement: 1,
-    sourceAvailability: 1,
   };
 
   it('returns 1.0 when all factors are maxed', () => {
@@ -208,24 +169,8 @@ describe('computeWeightedConfidence', () => {
       evidenceCoverage: 0,
       keywordDensity: 0,
       aiAgreement: 0,
-      sourceAvailability: 0,
     };
     expect(computeWeightedConfidence(zeroFactors)).toBe(0);
-  });
-
-  it('caps at CRITICAL_CONFIDENCE_CAP when health is critical', () => {
-    const health: SourceHealthSummary = {
-      totalSources: 4,
-      healthySources: 0,
-      degradedSources: 0,
-      unavailableSources: 4,
-      silentSources: 0,
-      overallHealth: 'critical',
-      dataAvailabilityScore: 0,
-      checkedAt: new Date().toISOString(),
-    };
-    const result = computeWeightedConfidence(baseFactors, health);
-    expect(result).toBe(0.3);
   });
 
   it('does not cap when health is not critical', () => {

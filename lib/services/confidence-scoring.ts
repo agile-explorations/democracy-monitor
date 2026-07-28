@@ -1,6 +1,5 @@
 import {
   AUTHORITY_COUNT_MAX,
-  CRITICAL_CONFIDENCE_CAP,
   DATA_COVERAGE_WEIGHTS,
   EVIDENCE_COUNT_MAX,
   KEYWORD_DENSITY_RATIO,
@@ -8,7 +7,6 @@ import {
 } from '@/lib/methodology/scoring-config';
 import type { AssessmentResult, ContentItem } from '@/lib/types';
 import { roundTo } from '@/lib/utils/math';
-import type { SourceHealthSummary } from './source-health-service';
 
 export interface ConfidenceFactors {
   sourceDiversity: number;
@@ -16,7 +14,6 @@ export interface ConfidenceFactors {
   evidenceCoverage: number;
   keywordDensity: number;
   aiAgreement: number;
-  sourceAvailability: number;
 }
 
 const HIGH_AUTHORITY_SOURCES = ['gao', 'court', 'inspector general', 'supreme court', 'judicial'];
@@ -36,23 +33,16 @@ export function computeAiAgreement(keywordStatus: string, aiStatus?: string): nu
   return AI_AGREEMENT_BY_DISTANCE[distance] ?? AI_AGREEMENT_BY_DISTANCE[3];
 }
 
-/** Weighted sum of factors, capped if source health is critical. */
-export function computeWeightedConfidence(
-  factors: ConfidenceFactors,
-  sourceHealth?: SourceHealthSummary,
-): number {
+/** Weighted sum of the confidence factors. */
+export function computeWeightedConfidence(factors: ConfidenceFactors): number {
   const w = DATA_COVERAGE_WEIGHTS;
-  let confidence =
+  const confidence =
     factors.sourceDiversity * w.sourceDiversity +
     factors.authorityWeight * w.authorityWeight +
     factors.evidenceCoverage * w.evidenceCoverage +
     factors.keywordDensity * w.keywordDensity +
-    factors.aiAgreement * w.aiAgreement +
-    factors.sourceAvailability * w.sourceAvailability;
+    factors.aiAgreement * w.aiAgreement;
 
-  if (sourceHealth?.overallHealth === 'critical') {
-    confidence = Math.min(CRITICAL_CONFIDENCE_CAP, confidence);
-  }
   return roundTo(confidence, 2);
 }
 
@@ -60,7 +50,6 @@ export function calculateDataCoverage(
   items: ContentItem[],
   keywordResult: AssessmentResult,
   aiStatus?: string,
-  sourceHealth?: SourceHealthSummary,
 ): { confidence: number; factors: ConfidenceFactors } {
   const validItems = items.filter((i) => !i.isError && !i.isWarning);
 
@@ -91,8 +80,7 @@ export function calculateDataCoverage(
     evidenceCoverage,
     keywordDensity,
     aiAgreement: computeAiAgreement(keywordResult.status, aiStatus),
-    sourceAvailability: sourceHealth?.dataAvailabilityScore ?? 1,
   };
 
-  return { confidence: computeWeightedConfidence(factors, sourceHealth), factors };
+  return { confidence: computeWeightedConfidence(factors), factors };
 }

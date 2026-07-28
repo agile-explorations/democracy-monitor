@@ -60,12 +60,13 @@ export const CONVERGENCE_ENTRENCHED_THRESHOLD = 50;
 
 /** Data coverage factor weights (must sum to 1.0). */
 export const DATA_COVERAGE_WEIGHTS = {
-  sourceDiversity: 0.13,
-  authorityWeight: 0.22,
-  evidenceCoverage: 0.17,
-  keywordDensity: 0.13,
-  aiAgreement: 0.2,
-  sourceAvailability: 0.15,
+  // Renormalized when the always-1 sourceAvailability factor was removed
+  // (#590): previous weights divided by 0.85, preserving relative importance.
+  sourceDiversity: 0.153,
+  authorityWeight: 0.259,
+  evidenceCoverage: 0.2,
+  keywordDensity: 0.153,
+  aiAgreement: 0.235,
 } as const;
 
 /** Source health classification thresholds. */
@@ -79,9 +80,6 @@ export const HEALTH_THRESHOLDS = {
   /** >25% of sources unavailable or degraded = degraded overall health. */
   degradedSourceFraction: 0.25,
 } as const;
-
-/** Max confidence when source health is critical. */
-export const CRITICAL_CONFIDENCE_CAP = 0.3;
 
 /** Data integrity classification thresholds. */
 export const INTEGRITY_THRESHOLDS = {
