@@ -7,6 +7,16 @@ export interface ResearchResult {
   queryConfidence: number;
   relatedQuestions: string[];
   corpusStats?: { totalMatching: number } | null;
+  /** Present for comparative questions: the era windows retrieval was
+   *  stratified across (#592). */
+  strata?: Array<{
+    key: string;
+    label: string;
+    from: string;
+    to?: string;
+    docCount: number;
+    dateConflict?: boolean;
+  }> | null;
   editorial?: {
     expertDraft: string;
     publicDraft: string;

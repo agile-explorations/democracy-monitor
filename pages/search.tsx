@@ -64,7 +64,13 @@ export default function SearchPage() {
   );
 
   const performSearch = useCallback(
-    async (q: string, searchMode: SearchMode, page = 1, tierOverride?: TierFilterValue) => {
+    async (
+      q: string,
+      searchMode: SearchMode,
+      page = 1,
+      tierOverride?: TierFilterValue,
+      erasOverride?: string[],
+    ) => {
       const tier = tierOverride ?? tierFilter;
       if (!q.trim()) return;
       addEntry(q);
@@ -84,6 +90,8 @@ export default function SearchPage() {
       if (filterDateTo) params.set('dateTo', filterDateTo);
       if (datePreset) params.set('datePreset', datePreset);
       if (searchMode === 'research' && tier !== 'all') params.set('tier', tier);
+      if (searchMode === 'research' && erasOverride && erasOverride.length > 0)
+        params.set('eras', erasOverride.join(','));
       if (searchMode === 'explore') {
         if (filterCategory) params.set('category', filterCategory);
         if (filterSource) params.set('source', filterSource);
@@ -152,6 +160,7 @@ export default function SearchPage() {
       queryConfidence: docsData.queryConfidence,
       relatedQuestions: [],
       corpusStats: docsData.corpusStats ?? null,
+      strata: docsData.strata ?? null,
     };
     if (!isCurrent()) return;
     setResearchResult(baseResult);
@@ -404,6 +413,44 @@ export default function SearchPage() {
               ? 'Retrieving documents and generating answer...'
               : 'Searching documents...'}
           </p>
+        </div>
+      )}
+
+      {!loading && mode === 'research' && researchResult?.strata && (
+        <div className="flex flex-wrap items-center gap-2 mb-3" aria-label="Comparison eras">
+          <span className="text-xs text-dm-muted">Comparing:</span>
+          {researchResult.strata.map((s) => (
+            <span
+              key={s.key}
+              title={
+                s.dateConflict
+                  ? 'Your date range excludes this era; its full term window was searched instead.'
+                  : `${s.from} – ${s.to ?? 'present'}`
+              }
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs ${
+                s.dateConflict
+                  ? 'border-amber-500/50 text-amber-600 dark:text-amber-400'
+                  : 'border-dm-accent/40 text-dm-accent'
+              }`}
+            >
+              {s.label} ({s.docCount} docs){s.dateConflict ? ' ⚠' : ''}
+              {researchResult.strata!.length > 1 && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${s.label} from the comparison`}
+                  className="hover:opacity-70"
+                  onClick={() => {
+                    const remaining = researchResult
+                      .strata!.filter((x) => x.key !== s.key)
+                      .map((x) => x.key);
+                    performSearch(query, 'research', 1, undefined, remaining);
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          ))}
         </div>
       )}
 

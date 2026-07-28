@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
-import { extractComparisonEras } from '@/lib/services/era-extraction';
+import { ERA_WINDOWS, extractComparisonEras } from '@/lib/services/era-extraction';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
@@ -96,14 +96,25 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
   const dateTo = req.query.dateTo as string | undefined;
   const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
 
-  const eras = extractComparisonEras(query);
-  if (!eras) {
+  // Chips UI override (#592): eras=trump_t1,trump_t2 pins the strata after
+  // the user removes one; a single remaining era degrades to a plain
+  // date-windowed retrieval.
+  const eraParam = req.query.eras as string | undefined;
+  const requested = eraParam
+    ? eraParam
+        .split(',')
+        .map((k) => ERA_WINDOWS[k as keyof typeof ERA_WINDOWS])
+        .filter(Boolean)
+    : null;
+  const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
+  if (!eras || eras.length < 2) {
+    const w = eras?.[0];
     const docs = await searchResearch(
       query,
       RESEARCH_CONTEXT_DOCS,
       embedding,
-      dateFrom,
-      dateTo,
+      w ? w.from : dateFrom,
+      w ? w.to : dateTo,
       tier,
     );
     return { docs, strata: null };
