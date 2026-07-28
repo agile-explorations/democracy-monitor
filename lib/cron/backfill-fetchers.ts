@@ -192,11 +192,26 @@ async function fillFecContent(items: ContentItem[]): Promise<void> {
   }
 }
 
+/** Attempts per item for detail-page scrape + PDF extraction. */
+const OIG_CONTENT_MAX_ATTEMPTS = 3;
+/** Base backoff between per-item content attempts. */
+const OIG_CONTENT_RETRY_DELAY_MS = 5_000;
+
 /** Fill content for OIG items by scraping detail pages or extracting PDFs. */
 async function fillOigContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
-    const result = await fetchOigItemContent(item.link);
+    // The enrichment chain (detail-page scrape → PDF extraction) is
+    // per-document network work; single-shot, one transient failure stored
+    // thin listing content for good (#588's 23-char DOJ-OIG regression).
+    // Deliberate skips (oversized/corrupt PDFs) also return null and get
+    // retried — rare and mostly rejected by a cheap content-length check.
+    let result = await fetchOigItemContent(item.link);
+    for (let attempt = 2; attempt <= OIG_CONTENT_MAX_ATTEMPTS && !result.content; attempt++) {
+      await sleep(OIG_CONTENT_RETRY_DELAY_MS * (attempt - 1));
+      console.warn(`  [oig] content attempt ${attempt}/${OIG_CONTENT_MAX_ATTEMPTS}: ${item.link}`);
+      result = await fetchOigItemContent(item.link);
+    }
     if (result.content && result.content.length > (item.content?.length ?? 0)) {
       item.content = result.content;
     }
