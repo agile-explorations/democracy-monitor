@@ -103,8 +103,12 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
             <SearchNavLink />
           </div>
 
+          <NavSection title="Start Here">
+            <NavLink href="/about" label="About" />
+            <NavLink href="/why-this-matters" label="Why These 14 Categories Matter" />
+          </NavSection>
+
           <NavSection title="Categories">
-            <NavLink href="/why-this-matters" label="Why These Matter" />
             {CATEGORIES.map((cat) => (
               <NavLink key={cat.key} href={`/category/${keyToSlug(cat.key)}`} label={cat.title} />
             ))}
