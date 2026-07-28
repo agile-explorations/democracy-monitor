@@ -44,10 +44,19 @@ export class AnthropicProvider implements AIProvider {
       messages: [{ role: 'user', content: prompt }],
     });
 
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        yield event.delta.text;
+    // If the consumer stops iterating early (client disconnect, generator
+    // .return()), abort the underlying API request so the model stops
+    // generating — otherwise an abandoned stream bills to completion.
+    let completed = false;
+    try {
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          yield event.delta.text;
+        }
       }
+      completed = true;
+    } finally {
+      if (!completed) stream.abort();
     }
 
     const finalMessage = await stream.finalMessage();

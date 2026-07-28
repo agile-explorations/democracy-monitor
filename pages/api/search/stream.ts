@@ -63,7 +63,12 @@ async function retrieveDocuments(
   return { docs: contextDocs, prompt: buildSinglePassPrompt(query, contextDocs, null) };
 }
 
-async function streamCompletion(provider: AnthropicProvider, prompt: string, res: NextApiResponse) {
+async function streamCompletion(
+  provider: AnthropicProvider,
+  prompt: string,
+  res: NextApiResponse,
+  clientGone: () => boolean,
+) {
   const stream = provider.completeStream(prompt, {
     model: SINGLE_PASS_MODEL,
     maxTokens: 4096,
@@ -72,6 +77,13 @@ async function streamCompletion(provider: AnthropicProvider, prompt: string, res
 
   let result = await stream.next();
   while (!result.done) {
+    if (clientGone()) {
+      // Client dropped (new search or navigation): stop the model call via
+      // the generator's finally-abort instead of billing to completion.
+      await stream.return(undefined as never);
+      console.log('[api/search/stream] client disconnected — synthesis aborted');
+      return;
+    }
     sendEvent(res, { type: 'chunk', text: result.value });
     result = await stream.next();
   }
@@ -108,6 +120,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     'X-Accel-Buffering': 'no',
   });
 
+  let disconnected = false;
+  res.once('close', () => {
+    disconnected = true;
+  });
+
   try {
     const dateFrom = req.query.dateFrom as string | undefined;
     const dateTo = req.query.dateTo as string | undefined;
@@ -125,7 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
       return;
     }
-    await streamCompletion(provider, retrieved.prompt, res);
+    await streamCompletion(provider, retrieved.prompt, res, () => disconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';
     console.error('[api/search/stream] Error:', err);
