@@ -236,6 +236,9 @@ export default function SearchPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setShowHistory(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') setShowHistory(false);
+              }}
               placeholder={
                 mode === 'research'
                   ? 'Ask a question about the government record...'
@@ -253,6 +256,7 @@ export default function SearchPage() {
                 onClear={clearHistory}
                 onClose={() => setShowHistory(false)}
                 showCurated={mode === 'research'}
+                filter={query}
               />
             )}
           </div>

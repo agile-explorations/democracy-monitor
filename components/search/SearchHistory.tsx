@@ -94,27 +94,36 @@ export function SearchHistoryDropdown({
   onClear,
   onClose,
   showCurated = true,
+  filter = '',
 }: {
   history: string[];
   onSelect: (query: string) => void;
   onClear: () => void;
   onClose: () => void;
   showCurated?: boolean;
+  /** Live query text: narrows the lists as the user types, so a novel
+   *  question dismisses the dropdown instead of covering the controls
+   *  below the search box. */
+  filter?: string;
 }) {
-  if (!showCurated && history.length === 0) return null;
+  const needle = filter.trim().toLowerCase();
+  const matches = (q: string) => needle === '' || q.toLowerCase().includes(needle);
+  const filteredHistory = history.filter(matches);
+  const filteredCurated = showCurated ? CURATED_SEARCHES.filter(matches) : [];
+  if (filteredHistory.length === 0 && filteredCurated.length === 0) return null;
 
   return (
     <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-lg border border-dm-border bg-dm-card shadow-lg overflow-hidden max-h-96 overflow-y-auto">
-      {history.length > 0 && (
+      {filteredHistory.length > 0 && (
         <>
           <SectionHeader label="Recent searches" action={{ text: 'Clear', onClick: onClear }} />
-          <SuggestionList items={history} onSelect={onSelect} onClose={onClose} />
+          <SuggestionList items={filteredHistory} onSelect={onSelect} onClose={onClose} />
         </>
       )}
-      {showCurated && (
+      {filteredCurated.length > 0 && (
         <>
           <SectionHeader label="Curated searches" />
-          <SuggestionList items={CURATED_SEARCHES} onSelect={onSelect} onClose={onClose} />
+          <SuggestionList items={filteredCurated} onSelect={onSelect} onClose={onClose} />
         </>
       )}
     </div>
