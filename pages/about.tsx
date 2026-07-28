@@ -69,8 +69,8 @@ export default function AboutPage() {
             it.
           </p>
           <p className="text-sm text-dm-text-secondary leading-relaxed">
-            The data suggests erosion may be underway. Whether that is what it amounts to is not
-            this site&apos;s call to make — it is for the American people to decide, from the{' '}
+            Whether erosion of democracy in America is underway is not this site&apos;s call to make
+            — it is for the American people to decide, from the{' '}
             <Link href="/data" className="text-dm-accent hover:underline">
               evidence
             </Link>
