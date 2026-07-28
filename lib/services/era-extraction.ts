@@ -123,3 +123,34 @@ export function buildComparativeInstruction(
     'Structure the answer as a like-for-like comparison across these eras. Where one era has fewer or no relevant documents, say so explicitly rather than generalizing from the better-covered era.',
   ];
 }
+
+const MONTHS: Record<string, string> = {
+  january: '01',
+  february: '02',
+  march: '03',
+  april: '04',
+  may: '05',
+  june: '06',
+  july: '07',
+  august: '08',
+  september: '09',
+  october: '10',
+  november: '11',
+  december: '12',
+};
+
+/**
+ * Date floor from range phrasing (#594 follow-on): "since January 2025" /
+ * "since 2017" become a dateFrom the way era phrases become strata — the
+ * question's own words were previously just embedding food, so a perfectly
+ * on-topic document from outside the stated window could outrank in-window
+ * matches. Deterministic; returns null when no range phrase is present.
+ */
+export function extractDateFloor(question: string): string | null {
+  const m = question.match(
+    /\bsince\s+(january|february|march|april|may|june|july|august|september|october|november|december)?\s*(20\d{2})\b/i,
+  );
+  if (!m) return null;
+  const month = m[1] ? MONTHS[m[1].toLowerCase()] : '01';
+  return `${m[2]}-${month}-01`;
+}
