@@ -1,7 +1,16 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { StructuralHeatmap } from '@/components/data/StructuralHeatmap';
 import type { StructuralHeatmapRow } from '@/lib/types/overview';
+
+// Marker construction is unit-tested with fixtures in
+// structural-heatmap-service.test.ts; here we drive the component's marker
+// ROW rendering directly (the live registry has only retroactive entries).
+let markerFixture = new Map<string, string[]>();
+vi.mock('@/lib/data/instrument-changes', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/data/instrument-changes')>()),
+  buildMarkersByWeek: (weeks: string[], opts?: unknown) => markerFixture,
+}));
 
 const sampleRows: StructuralHeatmapRow[] = [
   {
@@ -133,8 +142,9 @@ describe('StructuralHeatmap', () => {
 
 describe('methodology-change markers (#576)', () => {
   it('renders a marker with tooltip when an instrument change falls in a rendered week', () => {
-    // 2026-02-02 hosts the CourtListener collection change (non-retroactive —
-    // the only class of change that marks the axis).
+    // Synthetic fixture (#587 teardown): the live registry holds only
+    // retroactive entries, which never mark the axis.
+    markerFixture = new Map([['2026-02-02', ['We changed how court records are collected.']]]);
     const rows = [
       {
         category: 'military',
@@ -152,6 +162,7 @@ describe('methodology-change markers (#576)', () => {
   });
 
   it('renders no marker row when no changes fall in range', () => {
+    markerFixture = new Map();
     const rows = [
       {
         category: 'military',
@@ -161,39 +172,5 @@ describe('methodology-change markers (#576)', () => {
     ] as any;
     render(<StructuralHeatmap rows={rows} mode="light" />);
     expect(screen.queryByText('Collection changes')).toBeNull();
-  });
-});
-
-describe('count-comparability masking (#587 interim)', () => {
-  const week = (w: string) => ({
-    week: w,
-    dimensions: { volume: -3, publicationTempo: -3 },
-    composite: 0.5,
-    anomalous: false,
-  });
-  const clRow = {
-    category: 'civilLiberties',
-    title: 'Civil Rights & Liberties',
-    weeks: [week('2026-03-02')],
-  } as any;
-
-  it('appends the comparability note to affected cells on count-derived tabs', () => {
-    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Volume' }));
-    const cell = screen.getByRole('cell');
-    expect(cell.getAttribute('title')).toContain('Collection breadth changed');
-  });
-
-  it('masks Composite too — it inherits the broken dimensions', () => {
-    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
-    const cell = screen.getByRole('cell');
-    expect(cell.getAttribute('title')).toContain('Collection breadth changed');
-  });
-
-  it('leaves Convergence unmasked — the one dimension measured clean across the seam', () => {
-    render(<StructuralHeatmap rows={[clRow]} mode="light" />);
-    fireEvent.click(screen.getByRole('tab', { name: 'Convergence' }));
-    const cell = screen.getByRole('cell');
-    expect(cell.getAttribute('title') ?? '').not.toContain('Collection breadth changed');
   });
 });

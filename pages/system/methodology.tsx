@@ -80,11 +80,11 @@ function SummaryContent() {
           context.
         </p>
         <p>
-          <strong>Data reprocessing</strong> — When scoring or filtering rules change, all
-          historical periods are reprocessed under the new rules, so cross-era comparisons remain
-          valid. Collection-method changes that cannot be applied to the past are marked on the
-          volume-based research charts as <span className="text-dm-accent">▲</span>; concern
-          statuses are verified to remain comparable across them.
+          <strong>Data reprocessing</strong> — When scoring, filtering, or counting rules change,
+          all historical periods are reprocessed under the new rules, so cross-era comparisons
+          remain valid. If a future collection change cannot be reconciled this way, it is marked on
+          the volume-based research charts as <span className="text-dm-accent">▲</span>; concern
+          statuses are verified to remain comparable across every change.
         </p>
       </Section>
 
@@ -439,16 +439,18 @@ function DetailedContent() {
           because the rolling window lacks sufficient history for meaningful comparison.
         </p>
         <p>
-          <strong>Data reprocessing.</strong> When scoring or filtering rules change, all historical
-          periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule
-          changes do not create breaks in the data. Collection-method changes that cannot be applied
-          to the past (for example, changing how court records are gathered) create a genuine
-          before/after difference in <em>document volumes</em>; the volume-based research views on
-          the Data pages mark those with <span className="text-dm-accent">▲</span> and suppress
-          quiet-side findings that overlap them. Concern statuses are derived from document{' '}
-          <em>content</em> against absolute thresholds and are verified to remain comparable across
-          such changes (every pipeline change is gated on producing zero unexplained status flips),
-          so the concern chart and status timeline carry no such breaks.
+          <strong>Data reprocessing.</strong> When scoring, filtering, or counting rules change, all
+          historical periods are reprocessed under the new rules, so cross-era comparisons remain
+          valid — rule changes do not create breaks in the data. When court-record collection was
+          reworked in February 2026, document counts were made consistent in July 2026 by defining
+          the counting population with a documented classifier applied uniformly to all periods (the{' '}
+          <code>counting_scope</code> flag in the published data). If a future collection change
+          cannot be reconciled this way, the volume-based research views mark it with{' '}
+          <span className="text-dm-accent">▲</span> and suppress findings that overlap it. Concern
+          statuses are derived from document <em>content</em> against absolute thresholds and are
+          verified to remain comparable across every change (each pipeline change is gated on
+          producing zero unexplained status flips), so the concern chart and status timeline carry
+          no breaks.
         </p>
       </Section>
 

@@ -42,9 +42,12 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
   {
     date: '2026-02-02',
     label:
-      'We changed how court records are collected. Document volumes before and after this period reflect different collection methods and are not directly comparable.',
+      'Court-record collection was reworked in February 2026; in July 2026 document counts for all periods, past and present, were recomputed under a single documented counting rule, making them directly comparable across the change (#587).',
     categories: ['civilLiberties', 'lawEnforcement', 'judicialIndependence', 'courtOrders'],
-    retroactive: false,
+    // Flipped 2026-07-28 after the #587 re-derivation: the counting population
+    // is now method-consistent across the collection change, so no seam exists
+    // in the published series. Entry kept as the reprocessing-history record.
+    retroactive: true,
     affectsConcernStatuses: false,
   },
   {
@@ -73,8 +76,9 @@ export function overlapsInstrumentChange(
   category: string,
   _startWeek: string,
   endWeek: string,
+  changes: InstrumentChange[] = INSTRUMENT_CHANGES,
 ): boolean {
-  return INSTRUMENT_CHANGES.some(
+  return changes.some(
     (c) =>
       !c.retroactive && (!c.categories || c.categories.includes(category)) && c.date <= endWeek,
   );
@@ -111,16 +115,4 @@ function dateWithinDays(date: string, weekStart: string, days: number): boolean 
   const start = new Date(`${weekStart}T00:00:00Z`).getTime();
   const d = new Date(`${date}T00:00:00Z`).getTime();
   return d - start < days * 24 * 60 * 60 * 1000;
-}
-
-/**
- * True when a non-retroactive collection change affecting the category took
- * effect on or before this week — count-derived values (volume, tempo) from
- * such weeks are not comparable to the category's baseline. Interim guard
- * until the counting population is made method-consistent (#587).
- */
-export function isCountComparabilityBroken(category: string, week: string): boolean {
-  return INSTRUMENT_CHANGES.some(
-    (c) => !c.retroactive && (!c.categories || c.categories.includes(category)) && c.date <= week,
-  );
 }

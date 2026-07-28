@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { Z_SCORE_SCALE_COLORS } from '@/lib/data/chart-colors';
-import { buildMarkersByWeek, isCountComparabilityBroken } from '@/lib/data/instrument-changes';
+import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import { divergingZScoreColor } from '@/lib/utils/color';
 import { addDays, formatWeekLabel } from '@/lib/utils/date-utils';
@@ -24,23 +24,6 @@ const DIMENSION_OPTIONS: Array<{ key: DimensionOption; label: string }> = [
   { key: 'publicationTempo', label: 'Tempo' },
   { key: 'sourceConvergence', label: 'Convergence' },
 ];
-
-/**
- * Dimensions whose baseline comparison breaks when collection breadth
- * changes. Measured across the Feb 2026 CL seam (court categories, new
- * empirical scoring, control categories flat): volume +0.84→−1.17, tempo
- * +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21 (opinions carry little
- * agency metadata, so proportions shift massively), functional +0.19→+0.86,
- * composite 1.01→1.58. Only convergence was unaffected (−0.12→−0.10).
- */
-const BASELINE_BREAK_DIMENSIONS = new Set<DimensionOption>([
-  'composite',
-  'volume',
-  'typeComposition',
-  'functionalDistribution',
-  'agencyActivity',
-  'publicationTempo',
-]);
 
 const DIMENSION_FULL_LABELS: Record<DimensionOption, string> = {
   composite: 'Composite',
@@ -146,15 +129,6 @@ function GradientLegend({
         <span className="inline-block w-3 h-3 rounded-sm" style={{ background: noDataBg(mode) }} />
         No documents that week
       </span>
-      {BASELINE_BREAK_DIMENSIONS.has(dimension) && (
-        <span className="flex items-center gap-1 ml-3">
-          <span
-            className="inline-block w-3 h-3 rounded-sm bg-dm-text-secondary"
-            style={{ opacity: 0.1 }}
-          />
-          Collection breadth changed — not baseline-comparable
-        </span>
-      )}
     </div>
   );
 }
@@ -272,27 +246,13 @@ function HeatmapRow({
         const z = getZScore(week, dimension);
         const color = divergingZScoreColor(z, mode);
         const weekLabel = formatWeekLabel(week.week);
-        // Count-derived dimensions compare against the category's baseline;
-        // after a collection-breadth change they measure the instrument, not
-        // the government — dim them until #587 makes counting consistent.
-        const masked =
-          BASELINE_BREAK_DIMENSIONS.has(dimension) &&
-          isCountComparabilityBroken(row.category, week.week);
-        const tooltip =
-          buildTooltip(row.title, weekLabel, week) +
-          (masked
-            ? '\nCollection breadth changed — not comparable to this category\u2019s baseline'
-            : '');
+        const tooltip = buildTooltip(row.title, weekLabel, week);
 
         return (
           <div
             key={week.week}
             className={`rounded-sm min-h-[24px]${onCellClick ? ' cursor-pointer hover:ring-1 hover:ring-dm-accent/50' : ''}`}
-            style={
-              color === null
-                ? { background: noDataBg(mode) }
-                : { backgroundColor: color, ...(masked ? { opacity: 0.1 } : {}) }
-            }
+            style={color === null ? { background: noDataBg(mode) } : { backgroundColor: color }}
             title={tooltip}
             role="cell"
             onClick={onCellClick ? () => onCellClick(row.category, week.week) : undefined}

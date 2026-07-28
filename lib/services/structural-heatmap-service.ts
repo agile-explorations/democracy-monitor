@@ -1,4 +1,5 @@
 import { CATEGORIES } from '@/lib/data/categories';
+import type { InstrumentChange } from '@/lib/data/instrument-changes';
 import { overlapsInstrumentChange } from '@/lib/data/instrument-changes';
 import type { StructuralDimension, StructuralHeatmapRow } from '@/lib/types/overview';
 import type { StructuralScore } from '@/lib/types/structural';
@@ -170,6 +171,7 @@ export function scanStandoutRuns(
   // centroid-based metrics register a doc-mix change as UPWARD drift, so
   // thematic suppresses both (the 2026-03-02 CL rework read as z=+44).
   suppressDirections: 'below' | 'both' = 'below',
+  changes?: InstrumentChange[],
 ): StandoutRun[] {
   const runs: StandoutRun[] = [];
   for (const row of rows) {
@@ -181,13 +183,16 @@ export function scanStandoutRuns(
     .filter(
       (r) =>
         (suppressDirections === 'below' && r.direction === 'above') ||
-        !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek),
+        !overlapsInstrumentChange(r.category, r.startWeek, r.endWeek, changes),
     )
     .sort((a, b) => b.weekCount * Math.abs(b.meanZ) - a.weekCount * Math.abs(a.meanZ))
     .slice(0, STANDOUT_LIMIT);
 }
 
-export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] {
+export function detectStandoutRuns(
+  rows: StructuralHeatmapRow[],
+  changes?: InstrumentChange[],
+): StandoutRun[] {
   return scanStandoutRuns(
     rows.map((r) => ({
       category: r.category,
@@ -201,9 +206,10 @@ export function detectStandoutRuns(rows: StructuralHeatmapRow[]): StandoutRun[] 
       `${run.dimensionLabel} for ${run.weekCount} straight weeks (${run.startWeek} to ${run.endWeek}).`,
     // Both directions: the Feb 2026 collection seam measured UPWARD in the
     // mix dimensions (agency +5.2σ — opinions carry little agency metadata),
-    // not just downward in counts. A standout in a region the cells mask as
-    // not-baseline-comparable must not be presented as a finding either way.
+    // not just downward in counts. A standout in a region an instrument
+    // change invalidates must not be presented as a finding either way.
     'both',
+    changes,
   );
 }
 
