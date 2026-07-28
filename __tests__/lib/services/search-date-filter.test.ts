@@ -1,6 +1,6 @@
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
-import { buildDateFilter } from '@/lib/services/search-service';
+import { buildPublishedAtWindow as buildDateFilter } from '@/lib/utils/date-window';
 
 const render = (f?: string, t?: string) => new PgDialect().sqlToQuery(buildDateFilter(f, t)).sql;
 
