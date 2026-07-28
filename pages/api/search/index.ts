@@ -4,6 +4,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
 import { ERA_WINDOWS, extractComparisonEras } from '@/lib/services/era-extraction';
+import { rerankByRelevance } from '@/lib/services/relevance-rerank';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
@@ -109,14 +110,15 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
   const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
   if (!eras || eras.length < 2) {
     const w = eras?.[0];
-    const docs = await searchResearch(
+    const candidates = await searchResearch(
       query,
-      RESEARCH_CONTEXT_DOCS,
+      RESEARCH_CONTEXT_DOCS * 2,
       embedding,
       w ? w.from : dateFrom,
       w ? w.to : dateTo,
       tier,
     );
+    const docs = await rerankByRelevance(query, candidates, RESEARCH_CONTEXT_DOCS);
     return { docs, strata: null };
   }
 
@@ -130,7 +132,10 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
       : { era, from, to, dateConflict };
   });
   const perEra = await Promise.all(
-    windows.map((w) => searchResearch(query, slots, embedding, w.from, w.to, tier)),
+    windows.map(async (w) => {
+      const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
+      return rerankByRelevance(query, candidates, slots);
+    }),
   );
   const strata: RetrievalStratum[] = windows.map((w, i) => ({
     key: w.era.key,
