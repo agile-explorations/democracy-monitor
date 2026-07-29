@@ -42,8 +42,9 @@ export default function AboutPage() {
             , Yorba Linda, California, June 26, 2026
           </figcaption>
           <p className="mt-3 text-sm text-dm-text-secondary leading-relaxed">
-            Joke or not, the half-life of news touching on democracy in America is now measured in
-            hours. This project exists to measure and hold onto what the news cycle no longer can.
+            Joke or not, the Vice President is right about the news cycle. The half-life of news
+            touching on democracy in America is now measured in hours. This project exists to
+            measure and hold onto what the news cycle no longer can.
           </p>
         </figure>
 
