@@ -658,3 +658,23 @@ export const frDropLedger = pgTable(
     index('idx_fr_drop_ledger_category_created').on(table.category, table.createdAt),
   ],
 );
+
+/**
+ * CHRG hearings seen but routed to zero categories (#608). Makes routing
+ * drops auditable and stops the weekly trailing-window pass from re-fetching
+ * the same off-topic transcripts forever.
+ */
+export const chrgSeenLedger = pgTable(
+  'chrg_seen_ledger',
+  {
+    id: serial('id').primaryKey(),
+    packageId: text('package_id').notNull(),
+    title: text('title').notNull(),
+    committees: text('committees'),
+    dateIssued: date('date_issued'),
+    /** Why the hearing was not ingested: zero_categories | no_text */
+    reason: varchar('reason', { length: 30 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [unique('uq_chrg_seen_ledger_package_id').on(table.packageId)],
+);

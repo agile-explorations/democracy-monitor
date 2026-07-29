@@ -17,7 +17,7 @@ const MAX_SUMMARY_LENGTH = 800;
 type GovInfoCollection = 'CRPT' | 'PLAW';
 
 /** Result from the GovInfo search POST endpoint. */
-interface GovInfoSearchResult {
+export interface GovInfoSearchResult {
   packageId?: string;
   title?: string;
   dateIssued?: string;
@@ -27,7 +27,7 @@ interface GovInfoSearchResult {
   resultLink?: string;
 }
 
-interface GovInfoSearchResponse {
+export interface GovInfoSearchResponse {
   results?: GovInfoSearchResult[];
   count?: number;
   offsetMark?: string | null;
@@ -128,7 +128,7 @@ function getApiKey(): string | undefined {
 }
 
 /** Execute a GovInfo search POST request with cursor-based pagination. */
-async function searchGovInfo(
+export async function searchGovInfo(
   query: string,
   apiKey: string,
   pageSize: number,

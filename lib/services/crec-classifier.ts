@@ -89,6 +89,39 @@ function opinionTermsFor(
 }
 
 /**
+ * Classification window for hearing transcripts: title page, committee line,
+ * and the chair's opening statement — where a hearing declares its subject.
+ * Full transcripts (~80-500 pages) eventually mention every topic and would
+ * over-route; same rationale as OPINION_CLASSIFY_TEXT_CAP.
+ */
+export const HEARING_CLASSIFY_TEXT_CAP = 6000;
+
+/**
+ * Route a CONGRESSIONAL HEARING TRANSCRIPT to zero or more monitoring
+ * categories (#608). Uses the shared TOPIC_ROUTING_TERMS without the opinion
+ * excludes/additions — those are judicial-boilerplate calibrations. Committee
+ * is deliberately NOT a routing input (a Judiciary hearing may belong to
+ * judicialIndependence, lawEnforcement, or civilLiberties by subject);
+ * committee tags serve as the independent cross-check in rehearsal audits.
+ * Returns [] for off-topic hearings — callers treat that as "do not ingest".
+ */
+export function classifyHearingToCategories(title: string, text?: string | null): string[] {
+  const searchText = `${title} ${(text || '').slice(0, HEARING_CLASSIFY_TEXT_CAP)}`.toLowerCase();
+  const matched = new Set<string>();
+
+  for (const [category, terms] of Object.entries(TOPIC_ROUTING_TERMS)) {
+    for (const term of terms) {
+      if (matchesTerm(searchText, term)) {
+        matched.add(category);
+        break;
+      }
+    }
+  }
+
+  return Array.from(matched);
+}
+
+/**
  * Route a JUDICIAL OPINION to zero or more monitoring categories (issue #528).
  *
  * Differs from classifyCrecToCategories in two speech-vs-opinion calibrations:
