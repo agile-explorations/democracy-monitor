@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { CLASS_MULTIPLIERS } from '@/lib/methodology/scoring-config';
 import { classifyDocument } from '@/lib/services/document-classifier';
 import type { ContentItem } from '@/lib/types';
 
@@ -168,5 +169,13 @@ describe('classifyDocument', () => {
       const item: ContentItem = {};
       expect(classifyDocument(item)).toBe('unknown');
     });
+  });
+});
+
+describe('hearing_transcript class (#609)', () => {
+  it('classifies hearing transcripts as hearing with a damped multiplier', () => {
+    const cls = classifyDocument({ type: 'hearing_transcript', title: 'Oversight Hearing' });
+    expect(cls).toBe('hearing');
+    expect(CLASS_MULTIPLIERS[cls]).toBeLessThan(CLASS_MULTIPLIERS.press_release);
   });
 });

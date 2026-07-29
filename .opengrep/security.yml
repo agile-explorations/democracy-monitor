@@ -99,6 +99,9 @@ rules:
         - lib/cron/backfill-content.ts
         - lib/cron/backfill-layer2.ts
         - lib/cron/legiscan-bulk.ts
+        # Library module with no CLI entry: invoked only from backfill.ts and
+        # snapshot.ts, whose entry points call loadEnvConfig() before dispatch.
+        - lib/cron/backfill-chrg.ts
 
   # WHY: FR signal URLs with `term=` but no `agency=` or `type=` param will
   # search ALL federal agencies, pulling thousands of irrelevant documents.

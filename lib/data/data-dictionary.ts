@@ -498,7 +498,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_origin',
     type: 'varchar|null',
     description:
-      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, oig, fec, legiscan. Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
+      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, chrg (congressional hearing transcripts, routed by title + opening-statement topic classification), oig, fec, legiscan. Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
   },
   {
     name: 'content_type',

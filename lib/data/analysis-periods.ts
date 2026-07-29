@@ -75,6 +75,7 @@ export const ACTIVE_SOURCES: ReadonlySet<string> = new Set([
   'legiscan',
   'oig',
   'crec',
+  'chrg',
 ]);
 
 /**

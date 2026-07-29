@@ -73,6 +73,15 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
     retroactive: true,
     affectsConcernStatuses: false,
   },
+  {
+    date: '2026-08-03',
+    label:
+      'Congressional hearing transcripts were added as a source and backfilled to January 2017, so all periods, past and present, include them. Transcripts publish months after hearings, so recent weeks gain hearing documents as transcripts become available.',
+    // Routed by subject across many categories (CREC-style fan-out); uniform
+    // backfill across every era — no before/after seam in the series.
+    retroactive: true,
+    affectsConcernStatuses: false,
+  },
 ];
 
 /**

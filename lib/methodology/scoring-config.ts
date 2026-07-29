@@ -22,6 +22,9 @@ export const CLASS_MULTIPLIERS: Record<DocumentClass, number> = {
   court_opinion: 1.3,
   report: 1.2,
   press_release: 0.7,
+  // Hearing transcripts are commentary about actions, and their length makes
+  // linear keyword counts run hot — damped below press releases (#609).
+  hearing: 0.6,
   unknown: 1.0,
 };
 

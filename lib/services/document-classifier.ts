@@ -49,6 +49,7 @@ export function classifyDocument(item: ContentItem): DocumentClass {
   if (item.type === 'court_opinion' || item.type === 'judicial_opinion') return 'court_opinion';
   if (item.type === 'press_release') return 'press_release';
   if (item.type === 'gao_report' || item.type === 'congressional_report') return 'report';
+  if (item.type === 'hearing_transcript') return 'hearing';
   if (item.type === 'advisory_opinion' || item.type === 'enforcement_action') return 'report';
   if (item.type === 'admin_fine') return 'report';
 
