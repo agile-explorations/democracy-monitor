@@ -432,6 +432,26 @@ export default function SearchPage() {
         </div>
       </form>
 
+      <details className="mb-4 -mt-2">
+        <summary className="text-xs text-dm-muted cursor-pointer hover:text-dm-text-secondary">
+          Tips for questions that get good results
+        </summary>
+        <ul className="mt-1.5 ml-4 space-y-0.5 text-xs text-dm-text-secondary list-disc">
+          <li>
+            Ask for documents, not abstractions: name the kind and a subject — &ldquo;court opinions
+            on removal power&rdquo; beats &ldquo;documents about judicial review&rdquo;.
+          </li>
+          <li>
+            Name the administrations you want compared (&ldquo;under Biden vs the second Trump
+            administration&rdquo;) — results are then retrieved evenly from each era.
+          </li>
+          <li>
+            &ldquo;Since January 2025&rdquo; and similar phrases set the date range automatically —
+            or use the Period control for exact dates.
+          </li>
+        </ul>
+      </details>
+
       {mode === 'explore' && (
         <ExploreFilters
           {...{

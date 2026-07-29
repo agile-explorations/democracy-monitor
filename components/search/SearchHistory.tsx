@@ -3,14 +3,18 @@ import { useLocalStorage } from '@/lib/hooks/useLocalStorage';
 const MAX_HISTORY = 20;
 const STORAGE_KEY = 'dm_search_history';
 
+// Curated examples double as question-writing guidance: each models a
+// pattern that measurably improves retrieval (document kind + subject;
+// named administrations -> era-stratified comparison; "since [Month] [Year]"
+// -> auto-applied date floor).
 const CURATED_SEARCHES = [
-  'What executive orders has the administration issued on federal workforce restructuring?',
-  'Has the administration changed inspector general independence or oversight?',
-  'What actions has the government taken on immigration enforcement?',
-  'How has the federal rulemaking process changed under the current administration?',
-  'What court cases have challenged executive authority?',
-  'What has the government done about federal agency funding and spending?',
-  'Has the administration taken steps affecting press access or media freedom?',
+  'What executive orders has the administration issued on federal workforce restructuring since January 2025?',
+  'What court opinions address the President\u2019s power to remove independent agency officials?',
+  'How has immigration enforcement compared across the Biden and Trump administrations?',
+  'What firings or removals of inspectors general have occurred, and what congressional responses followed?',
+  'What congressional floor speeches have addressed federal employee reclassification?',
+  'How did detention-related rulemaking compare across administrations?',
+  'What DOJ press releases about civil rights enforcement have been issued since 2025?',
   'What changes have been made to election administration or voting procedures?',
 ];
 
