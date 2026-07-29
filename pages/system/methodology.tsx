@@ -197,7 +197,7 @@ function DetailedContent() {
             ],
             [
               'Inspector General (OIG)',
-              'Audit reports and investigations from HHS, DOJ, and SSA Inspectors General',
+              'Audit reports and investigations from HHS, DOJ, SSA, and DHS Inspectors General',
               'Every few days',
             ],
             ['LegiScan', 'Federal legislative bill tracking via bulk datasets', 'Periodic'],

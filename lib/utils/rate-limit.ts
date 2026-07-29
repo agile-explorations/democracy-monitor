@@ -71,8 +71,3 @@ function startCleanup() {
 }
 
 startCleanup();
-
-/** Reset all rate limit state (for testing). */
-export function _resetRateLimiter(): void {
-  requestLog.clear();
-}

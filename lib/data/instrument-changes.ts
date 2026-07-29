@@ -64,6 +64,15 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
     retroactive: true,
     affectsConcernStatuses: false,
   },
+  {
+    date: '2026-07-27',
+    label:
+      'DHS Inspector General reports were added as a source and backfilled to January 2017, so all periods, past and present, include them.',
+    categories: ['executiveOversight', 'immigrationEnforcement'],
+    // Uniform backfill across every era — no before/after seam in the series.
+    retroactive: true,
+    affectsConcernStatuses: false,
+  },
 ];
 
 /**

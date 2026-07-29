@@ -14,7 +14,7 @@ Democracy Monitor ingests documents from multiple source types, covering differe
 | **GovInfo**                 | Congressional reports, public laws, presidential documents (CPD collection)                      | Every few days |
 | **CourtListener**           | Federal court opinions, docket entries, RECAP archive (civil rights, enforcement, habeas corpus) | Every few days |
 | **DOJ Press Releases**      | Department of Justice press releases across divisions (Criminal, Civil Rights, etc.)             | Every few days |
-| **Inspector General (OIG)** | Audit reports and investigations from HHS, DOJ, and SSA Inspectors General                       | Every few days |
+| **Inspector General (OIG)** | Audit reports and investigations from HHS, DOJ, SSA, and DHS Inspectors General                  | Every few days |
 | **LegiScan**                | State and federal legislative bill tracking via bulk datasets                                    | Periodic       |
 | **FEC**                     | Federal Election Commission advisory opinions and Matters Under Review (MURs)                    | Weekly         |
 

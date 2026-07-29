@@ -36,7 +36,7 @@ function SummaryContent() {
           government documents: the Federal Register (executive orders, rules), GovInfo
           (presidential documents via CPD, congressional reports, public laws), Congressional Record
           (CREC floor speeches), CourtListener (federal courts), DOJ press releases, Inspector
-          General reports (HHS, DOJ, SSA), LegiScan (federal legislation), and FEC filings.
+          General reports (HHS, DOJ, SSA, DHS), LegiScan (federal legislation), and FEC filings.
         </p>
       </Section>
 
@@ -173,7 +173,11 @@ function DetailedContent() {
               'Federal legislative bill tracking via bulk datasets',
               'legiscan-fetcher.ts',
             ],
-            ['OIG', 'Inspector General reports (HHS, DOJ, SSA)', 'hhs/doj/ssa-oig-fetcher.ts'],
+            [
+              'OIG',
+              'Inspector General reports (HHS, DOJ, SSA, DHS)',
+              'hhs/doj/ssa/dhs-oig-fetcher.ts',
+            ],
           ]}
         />
         <p>

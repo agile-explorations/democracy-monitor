@@ -936,7 +936,7 @@ export const DATA_DICTIONARY: DictionaryArtifact[] = [
     key: 'table_documents',
     title: 'documents (dump)',
     description:
-      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe.',
+      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. The one derived routing subset: DHS OIG reports also appear under Immigration Enforcement when the report title matches ICE, CBP, or USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g) (case-insensitive).',
     entries: TABLE_DOCUMENTS,
   },
   {
