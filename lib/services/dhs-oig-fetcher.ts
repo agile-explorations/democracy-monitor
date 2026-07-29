@@ -25,7 +25,7 @@ const LISTINGS: ReadonlyArray<{ path: string; reportType: string }> = [
  */
 export const DHS_IMMIGRATION_ACRONYM_PATTERN = /\b(ICE|CBP|USCIS)\b/;
 export const DHS_IMMIGRATION_TERM_PATTERN =
-  /border|immigra|detention|detainee|deportation|asylum|287\(g\)/i;
+  /border|immigra|detention|detainee|deportation|asylum|287\(g\)|migrant|unaccompanied|correctional facilit|processing center|ports? of entry|\balien\b|expedited removal/i;
 
 /** True when a DHS OIG report title concerns an immigration component or subject. */
 export function isImmigrationRelatedTitle(title: string): boolean {
@@ -144,6 +144,25 @@ async function fetchListingRange(
   return inRange;
 }
 
+/**
+ * Collapse cross-listed reports: the same report (same OIG number) appears in
+ * both the audits and management-alerts listings under DIFFERENT PDF paths
+ * (e.g. assets/2019-05/OIG-19-46-May19.pdf vs assets/Mga/2019/oig-19-46-…),
+ * so URL-keyed storage cannot dedupe them. First listing wins; reports
+ * without a number (whistleblower ROIs) fall back to URL identity.
+ */
+export function dedupeByReportNumber(reports: DhsOigReport[]): DhsOigReport[] {
+  const seen = new Set<string>();
+  const unique: DhsOigReport[] = [];
+  for (const report of reports) {
+    const key = report.reportNumber.toUpperCase() || report.url;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(report);
+  }
+  return unique;
+}
+
 /** Fetch historical DHS OIG reports across all listings for the backfill pipeline. */
 export async function fetchDhsOigHistorical(params: {
   dateFrom: string;
@@ -161,11 +180,14 @@ export async function fetchDhsOigHistorical(params: {
     await sleep(POLITENESS_DELAY_MS);
   }
 
+  const unique = dedupeByReportNumber(all);
   const filtered =
     params.components === 'immigration'
-      ? all.filter((r) => isImmigrationRelatedTitle(r.title))
-      : all;
+      ? unique.filter((r) => isImmigrationRelatedTitle(r.title))
+      : unique;
 
-  console.log(`  [dhs-oig] ${filtered.length} reports total (${all.length} before filtering)`);
+  console.log(
+    `  [dhs-oig] ${filtered.length} reports total (${all.length} fetched, ${all.length - unique.length} cross-listed dupes)`,
+  );
   return filtered.map(toContentItem);
 }

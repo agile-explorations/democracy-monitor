@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import {
+  dedupeByReportNumber,
   isImmigrationRelatedTitle,
   parseDhsOigParams,
   parseReportRow,
@@ -102,6 +103,12 @@ describe('isImmigrationRelatedTitle', () => {
     'Results of an Unannounced Inspection of a Detention Facility',
     'DHS Oversight of Border Security Technology',
     'Review of 287(g) Agreements with Local Law Enforcement',
+    // 2019 rehearsal misses — component not named, subject unmistakable:
+    'Management Alert - DHS Needs to Address Dangerous Overcrowding Among Single Adults at El Paso Del Norte Processing Center',
+    'Issues Requiring Action at the Essex County Correctional Facility in Newark, New Jersey',
+    'DHS Lacked Technology Needed to Successfully Account for Separated Migrant Families',
+    'Capping Report: Observations of Unannounced Inspections of Ports of Entry',
+    'Care of Unaccompanied Children in DHS Custody',
   ])('matches immigration-related title: %s', (title) => {
     expect(isImmigrationRelatedTitle(title)).toBe(true);
   });
@@ -113,6 +120,42 @@ describe('isImmigrationRelatedTitle', () => {
     'Evaluation of DHS Compliance with Federal Information Security Modernization Act Requirements',
   ])('does not match non-immigration title: %s', (title) => {
     expect(isImmigrationRelatedTitle(title)).toBe(false);
+  });
+});
+
+describe('dedupeByReportNumber', () => {
+  const report = (reportNumber: string, url: string) => ({
+    title: 'T',
+    url,
+    publishedAt: '2019-05-30T12:00:00.000Z',
+    reportType: 'Audit/Inspection',
+    reportNumber,
+  });
+
+  it('collapses the same report number across listings, first listing wins', () => {
+    const audits = report(
+      'OIG-19-46',
+      'https://www.oig.dhs.gov/sites/default/files/assets/2019-05/OIG-19-46-May19.pdf',
+    );
+    const alert = report(
+      'oig-19-46',
+      'https://www.oig.dhs.gov/sites/default/files/assets/Mga/2019/oig-19-46-may19-mgmtalert.pdf',
+    );
+    const result = dedupeByReportNumber([audits, alert]);
+    expect(result).toEqual([audits]);
+  });
+
+  it('keeps distinct report numbers', () => {
+    const a = report('OIG-19-46', 'https://example.com/a.pdf');
+    const b = report('OIG-19-47', 'https://example.com/b.pdf');
+    expect(dedupeByReportNumber([a, b])).toHaveLength(2);
+  });
+
+  it('falls back to URL identity when the report number is empty', () => {
+    const a = report('', 'https://example.com/roi-1.pdf');
+    const b = report('', 'https://example.com/roi-2.pdf');
+    const aDup = report('', 'https://example.com/roi-1.pdf');
+    expect(dedupeByReportNumber([a, b, aDup])).toHaveLength(2);
   });
 });
 

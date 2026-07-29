@@ -200,7 +200,7 @@ const OIG_CONTENT_MAX_ATTEMPTS = 3;
 const OIG_CONTENT_RETRY_DELAY_MS = 5_000;
 
 /** Fill content for OIG items by scraping detail pages or extracting PDFs. */
-async function fillOigContent(items: ContentItem[]): Promise<void> {
+export async function fillOigContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
     // The enrichment chain (detail-page scrape → PDF extraction) is
