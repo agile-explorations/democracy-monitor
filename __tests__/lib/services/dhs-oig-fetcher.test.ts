@@ -1,8 +1,10 @@
 import * as cheerio from 'cheerio';
 import { describe, expect, it } from 'vitest';
 import {
-  dedupeByReportNumber,
+  isImmigrationContentItem,
   isImmigrationRelatedTitle,
+  isImmigrationReport,
+  mergeReportWalks,
   parseDhsOigParams,
   parseReportRow,
   toContentItem,
@@ -26,6 +28,18 @@ function loadRow(html: string) {
   return $('tbody tr').first();
 }
 
+function report(overrides: Partial<DhsOigReport>): DhsOigReport {
+  return {
+    title: 'T',
+    url: 'https://www.oig.dhs.gov/sites/default/files/a.pdf',
+    publishedAt: '2019-05-30T12:00:00.000Z',
+    reportType: 'Audit/Inspection',
+    reportNumber: 'OIG-19-01',
+    components: [],
+    ...overrides,
+  };
+}
+
 describe('parseDhsOigParams', () => {
   it('returns empty params for the bare signal URL', () => {
     expect(parseDhsOigParams('oig://dhs')).toEqual({});
@@ -44,18 +58,19 @@ describe('parseDhsOigParams', () => {
 
 describe('parseReportRow', () => {
   it('extracts all fields from a listing row', () => {
-    const report = parseReportRow(loadRow(SAMPLE_ROW_HTML), 'Audit/Inspection');
+    const parsed = parseReportRow(loadRow(SAMPLE_ROW_HTML), 'Audit/Inspection');
 
-    expect(report).not.toBeNull();
-    expect(report!.title).toBe(
+    expect(parsed).not.toBeNull();
+    expect(parsed!.title).toBe(
       "ICE's Electronic Health Record System Does Not Fully Address Capability Needs",
     );
-    expect(report!.url).toBe(
+    expect(parsed!.url).toBe(
       'https://www.oig.dhs.gov/sites/default/files/assets/2026-07/OIG-26-18-Jul26.pdf',
     );
-    expect(report!.publishedAt).toBe('2026-07-23T12:00:00.000Z');
-    expect(report!.reportType).toBe('Audit/Inspection');
-    expect(report!.reportNumber).toBe('OIG-26-18');
+    expect(parsed!.publishedAt).toBe('2026-07-23T12:00:00.000Z');
+    expect(parsed!.reportType).toBe('Audit/Inspection');
+    expect(parsed!.reportNumber).toBe('OIG-26-18');
+    expect(parsed!.components).toEqual([]);
   });
 
   it('returns null when the datetime attribute is missing', () => {
@@ -80,8 +95,8 @@ describe('parseReportRow', () => {
       <td class="views-field views-field-title"><a href="https://example.com/report.pdf">External</a></td>
       <td class="views-field views-field-field-issue-date"><time datetime="2026-01-01T00:00:00Z" class="datetime">01/01/2026</time></td>
     </tr></tbody></table>`;
-    const report = parseReportRow(loadRow(html), 'Management Alert');
-    expect(report!.url).toBe('https://example.com/report.pdf');
+    const parsed = parseReportRow(loadRow(html), 'Management Alert');
+    expect(parsed!.url).toBe('https://example.com/report.pdf');
   });
 
   it('tolerates a missing report-number cell', () => {
@@ -89,9 +104,9 @@ describe('parseReportRow', () => {
       <td class="views-field views-field-title"><a href="/sites/default/files/roi.pdf">Whistleblower ROI</a></td>
       <td class="views-field views-field-field-issue-date"><time datetime="2019-09-24T12:00:00Z" class="datetime">09/24/2019</time></td>
     </tr></tbody></table>`;
-    const report = parseReportRow(loadRow(html), 'Whistleblower Retaliation Investigation');
-    expect(report).not.toBeNull();
-    expect(report!.reportNumber).toBe('');
+    const parsed = parseReportRow(loadRow(html), 'Whistleblower Retaliation Investigation');
+    expect(parsed).not.toBeNull();
+    expect(parsed!.reportNumber).toBe('');
   });
 });
 
@@ -109,6 +124,7 @@ describe('isImmigrationRelatedTitle', () => {
     'DHS Lacked Technology Needed to Successfully Account for Separated Migrant Families',
     'Capping Report: Observations of Unannounced Inspections of Ports of Entry',
     'Care of Unaccompanied Children in DHS Custody',
+    'Results of an Unannounced Inspection of Winn Correctional Center in Winnfield, Louisiana',
   ])('matches immigration-related title: %s', (title) => {
     expect(isImmigrationRelatedTitle(title)).toBe(true);
   });
@@ -123,53 +139,92 @@ describe('isImmigrationRelatedTitle', () => {
   });
 });
 
-describe('dedupeByReportNumber', () => {
-  const report = (reportNumber: string, url: string) => ({
-    title: 'T',
-    url,
-    publishedAt: '2019-05-30T12:00:00.000Z',
-    reportType: 'Audit/Inspection',
-    reportNumber,
+describe('isImmigrationReport (union routing rule)', () => {
+  it('routes by official component tag even when the title never names one', () => {
+    const winn = report({
+      title: 'Results of an Unannounced Inspection of a County Jail in Springfield',
+      components: ['ICE'],
+    });
+    expect(isImmigrationReport(winn)).toBe(true);
   });
 
-  it('collapses the same report number across listings, first listing wins', () => {
-    const audits = report(
-      'OIG-19-46',
-      'https://www.oig.dhs.gov/sites/default/files/assets/2019-05/OIG-19-46-May19.pdf',
-    );
-    const alert = report(
-      'oig-19-46',
-      'https://www.oig.dhs.gov/sites/default/files/assets/Mga/2019/oig-19-46-may19-mgmtalert.pdf',
-    );
-    const result = dedupeByReportNumber([audits, alert]);
-    expect(result).toEqual([audits]);
+  it('routes cross-component immigration subjects by title when tags miss', () => {
+    const migrants = report({
+      title: 'DHS Does Not Have Assurance That All Migrants Can be Located Once Released',
+      components: ['MGMT'],
+    });
+    expect(isImmigrationReport(migrants)).toBe(true);
   });
 
-  it('keeps distinct report numbers', () => {
-    const a = report('OIG-19-46', 'https://example.com/a.pdf');
-    const b = report('OIG-19-47', 'https://example.com/b.pdf');
-    expect(dedupeByReportNumber([a, b])).toHaveLength(2);
+  it('does not route reports with neither tag nor subject match', () => {
+    const fema = report({
+      title: 'FEMA Did Not Properly Review a Public Assistance Grant Request',
+      components: ['FEMA'],
+    });
+    expect(isImmigrationReport(fema)).toBe(false);
+  });
+});
+
+describe('mergeReportWalks', () => {
+  it('unions component tags for the same report across walks', () => {
+    const base = report({ reportNumber: 'OIG-19-46' });
+    const merged = mergeReportWalks([
+      { component: null, reports: [base] },
+      { component: 'ICE', reports: [report({ reportNumber: 'OIG-19-46' })] },
+      { component: 'CBP', reports: [report({ reportNumber: 'oig-19-46' })] },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].components).toEqual(['ICE', 'CBP']);
+  });
+
+  it('collapses cross-listed reports with different PDF paths, first occurrence wins', () => {
+    const audits = report({
+      reportNumber: 'OIG-19-46',
+      url: 'https://www.oig.dhs.gov/sites/default/files/assets/2019-05/OIG-19-46-May19.pdf',
+    });
+    const alert = report({
+      reportNumber: 'OIG-19-46',
+      url: 'https://www.oig.dhs.gov/sites/default/files/assets/Mga/2019/oig-19-46-may19-mgmtalert.pdf',
+      reportType: 'Management Alert',
+    });
+    const merged = mergeReportWalks([
+      { component: null, reports: [audits] },
+      { component: null, reports: [alert] },
+    ]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].url).toBe(audits.url);
+  });
+
+  it('keeps reports found only in a filtered view (unfiltered coverage hole)', () => {
+    const holeReport = report({ reportNumber: 'OIG-20-80', title: 'Joint Task Forces' });
+    const merged = mergeReportWalks([
+      { component: null, reports: [report({ reportNumber: 'OIG-20-79' })] },
+      { component: 'ICE', reports: [holeReport] },
+    ]);
+    expect(merged).toHaveLength(2);
+    expect(merged.find((r) => r.reportNumber === 'OIG-20-80')!.components).toEqual(['ICE']);
   });
 
   it('falls back to URL identity when the report number is empty', () => {
-    const a = report('', 'https://example.com/roi-1.pdf');
-    const b = report('', 'https://example.com/roi-2.pdf');
-    const aDup = report('', 'https://example.com/roi-1.pdf');
-    expect(dedupeByReportNumber([a, b, aDup])).toHaveLength(2);
+    const a = report({ reportNumber: '', url: 'https://example.com/roi-1.pdf' });
+    const b = report({ reportNumber: '', url: 'https://example.com/roi-2.pdf' });
+    const aDup = report({ reportNumber: '', url: 'https://example.com/roi-1.pdf' });
+    const merged = mergeReportWalks([{ component: null, reports: [a, b, aDup] }]);
+    expect(merged).toHaveLength(2);
   });
 });
 
 describe('toContentItem', () => {
-  it('converts a DhsOigReport to a ContentItem', () => {
-    const report: DhsOigReport = {
-      title: 'Test Audit Report',
-      url: 'https://www.oig.dhs.gov/sites/default/files/assets/2026-01/OIG-26-01.pdf',
-      publishedAt: '2026-01-15T12:00:00.000Z',
-      reportType: 'Audit/Inspection',
-      reportNumber: 'OIG-26-01',
-    };
-
-    const item = toContentItem(report);
+  it('converts a DhsOigReport to a ContentItem with component metadata', () => {
+    const item = toContentItem(
+      report({
+        title: 'Test Audit Report',
+        url: 'https://www.oig.dhs.gov/sites/default/files/assets/2026-01/OIG-26-01.pdf',
+        publishedAt: '2026-01-15T12:00:00.000Z',
+        reportNumber: 'OIG-26-01',
+        components: ['ICE', 'MGMT'],
+      }),
+    );
 
     expect(item.title).toBe('Test Audit Report');
     expect(item.link).toBe(
@@ -180,5 +235,23 @@ describe('toContentItem', () => {
     expect(item.content).toBe('Audit/Inspection — OIG-26-01');
     expect(item.type).toBe('ig_report');
     expect(item.sourceOrigin).toBe('oig');
+    expect(item.metadata).toEqual({ dhsComponents: ['ICE', 'MGMT'] });
+  });
+});
+
+describe('isImmigrationContentItem', () => {
+  it('reads component tags from item metadata', () => {
+    const item = toContentItem(report({ title: 'Generic Facility Report', components: ['ICE'] }));
+    expect(isImmigrationContentItem(item)).toBe(true);
+  });
+
+  it('falls back to the title rule when metadata has no immigration tag', () => {
+    const item = toContentItem(report({ title: 'Border Technology Review', components: ['MGMT'] }));
+    expect(isImmigrationContentItem(item)).toBe(true);
+  });
+
+  it('rejects items with neither signal', () => {
+    const item = toContentItem(report({ title: 'FEMA Grant Audit', components: ['FEMA'] }));
+    expect(isImmigrationContentItem(item)).toBe(false);
   });
 });

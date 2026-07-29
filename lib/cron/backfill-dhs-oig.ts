@@ -13,7 +13,7 @@
  */
 
 import { fillOigContent } from '@/lib/cron/backfill-fetchers';
-import { fetchDhsOigHistorical, isImmigrationRelatedTitle } from '@/lib/services/dhs-oig-fetcher';
+import { fetchDhsOigHistorical, isImmigrationContentItem } from '@/lib/services/dhs-oig-fetcher';
 import { storeDocuments } from '@/lib/services/document-store';
 import { recordFetchResult } from '@/lib/services/fetch-log-store';
 import type { ContentItem } from '@/lib/types';
@@ -99,7 +99,7 @@ async function runDhsOigBackfill(opts: DhsBackfillOptions): Promise<void> {
   );
 
   const items = await fetchDhsOigHistorical({ dateFrom: opts.from, dateTo: opts.to });
-  const immigrationItems = items.filter((i) => isImmigrationRelatedTitle(i.title ?? ''));
+  const immigrationItems = items.filter(isImmigrationContentItem);
   console.log(
     `\n[dhs-oig] Fetched ${items.length} reports (${immigrationItems.length} immigration-related):`,
   );
