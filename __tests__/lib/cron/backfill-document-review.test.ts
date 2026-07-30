@@ -10,6 +10,8 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({
     select: mockSelect,
     delete: mockDelete,
+    // end-of-run P2 gap summary (#612) queries via raw execute
+    execute: vi.fn().mockResolvedValue({ rows: [] }),
   })),
 }));
 

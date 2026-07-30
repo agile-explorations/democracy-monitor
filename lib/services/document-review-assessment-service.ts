@@ -119,6 +119,74 @@ export async function assessPass1(
 }
 
 /**
+ * Parse failures are deterministic for a given doc+prompt, so silent nulls
+ * become permanently stuck flagged-without-P2 docs (#612) — always log the
+ * doc and a bounded head of the unparseable response.
+ */
+function warnUnparseablePass2(doc: ContentItem, raw: string): void {
+  console.warn(
+    `[layer2] Pass 2 UNPARSEABLE for ${doc.link ?? doc.title}: ` +
+      `"${raw.slice(0, 200).replace(/\s+/g, ' ')}"`,
+  );
+}
+
+/**
+ * Complete a Pass 2 prompt, retrying once at a warmer temperature when the
+ * temp-0 response is unparseable — the same deterministic-failure escape
+ * Pass 1 has had since #528; its absence here left 32 flagged docs
+ * permanently without a verdict (#612).
+ */
+async function completePass2WithParseRetry(
+  provider: AIProvider,
+  prompt: string,
+  model: string | undefined,
+  docLabel: string,
+) {
+  recordAiCall();
+  let result = await provider.complete(prompt, {
+    systemPrompt: PASS2_SYSTEM_PROMPT,
+    temperature: 0,
+    model,
+    maxTokens: 2048,
+  });
+  let parsed = parsePass2Response(result.content);
+  if (!parsed) {
+    console.warn(`[layer2] Pass 2 unparseable at temp 0 for ${docLabel}, retrying`);
+    recordAiCall();
+    result = await provider.complete(prompt, {
+      systemPrompt: PASS2_SYSTEM_PROMPT,
+      temperature: PARSE_RETRY_TEMPERATURE,
+      model,
+      maxTokens: 2048,
+    });
+    parsed = parsePass2Response(result.content);
+  }
+  return { result, parsed };
+}
+
+/** Assemble the stored Pass 2 result from a parsed response + call metadata. */
+function toPass2Result(
+  doc: ContentItem,
+  parsed: Pass2Response,
+  result: { model: string; tokensUsed: { input: number; output: number }; latencyMs: number },
+  providerName: string,
+  isAuditSample: boolean,
+): Pass2Result {
+  return {
+    url: doc.link ?? doc.title ?? 'unknown',
+    response: parsed,
+    meta: {
+      model: result.model,
+      provider: providerName,
+      tokensInput: result.tokensUsed.input,
+      tokensOutput: result.tokensUsed.output,
+      latencyMs: result.latencyMs,
+    },
+    isAuditSample,
+  };
+}
+
+/**
  * Run Pass 2 deep analysis on a flagged (or audit sample) document.
  * Returns null if AI call fails or response cannot be parsed.
  */
@@ -146,29 +214,13 @@ export async function assessPass2(
   );
 
   try {
-    recordAiCall();
-    const result = await provider.complete(prompt, {
-      systemPrompt: PASS2_SYSTEM_PROMPT,
-      temperature: 0,
-      model,
-      maxTokens: 2048,
-    });
-
-    const parsed = parsePass2Response(result.content);
-    if (!parsed) return null;
-
-    return {
-      url: doc.link ?? doc.title ?? 'unknown',
-      response: parsed,
-      meta: {
-        model: result.model,
-        provider: provider.name,
-        tokensInput: result.tokensUsed.input,
-        tokensOutput: result.tokensUsed.output,
-        latencyMs: result.latencyMs,
-      },
-      isAuditSample,
-    };
+    const docLabel = doc.link ?? doc.title ?? 'unknown';
+    const { result, parsed } = await completePass2WithParseRetry(provider, prompt, model, docLabel);
+    if (!parsed) {
+      warnUnparseablePass2(doc, result.content);
+      return null;
+    }
+    return toPass2Result(doc, parsed, result, provider.name, isAuditSample);
   } catch (err) {
     console.warn(`[layer2] Pass 2 failed for ${doc.link ?? doc.title}:`, (err as Error).message);
     return null;
