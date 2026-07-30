@@ -9,6 +9,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod/v4';
 import { createSubscriber } from '@/lib/services/subscriber-service';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const SubscribeSchema = z.object({
   email: z.email('Invalid email address'),
@@ -16,6 +17,7 @@ const SubscribeSchema = z.object({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'POST')) return;
+  if (!(await enforceRateLimit(req, res, RATE_LIMITS.email))) return;
   if (!requireDb(res)) return;
 
   const parsed = SubscribeSchema.safeParse(req.body);

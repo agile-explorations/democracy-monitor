@@ -18,6 +18,7 @@ import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
 const RESEARCH_CONTEXT_DOCS = 30; // docs sent to LLM
@@ -35,6 +36,7 @@ function hashQuery(q: string): string {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
+  if (!(await enforceRateLimit(req, res, RATE_LIMITS.search))) return;
   if (!requireDb(res)) return;
 
   const query = (req.query.q as string)?.trim();

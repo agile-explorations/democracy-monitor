@@ -10,6 +10,7 @@ import { getDb } from '@/lib/db';
 import { feedback } from '@/lib/db/schema';
 import { requireDb } from '@/lib/utils/api-helpers';
 import { attachResponses } from '@/lib/utils/feedback-responses';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const VALID_TYPES = ['suggestion', 'data-issue', 'question', 'other'] as const;
 
@@ -28,6 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleGet(res);
   }
   if (req.method === 'POST') {
+    if (!(await enforceRateLimit(req, res, RATE_LIMITS.email))) return;
     return handlePost(req, res);
   }
   res.status(405).json({ error: 'Method not allowed' });
