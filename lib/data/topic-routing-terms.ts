@@ -477,3 +477,25 @@ export const OPINION_TERM_ADDITIONS: Record<string, string[]> = {
   executiveActions: ['birthright citizenship', 'presidential proclamation'],
   fiscal: ['withholding of funds', 'withhold appropriated', 'Antideficiency Act'],
 };
+
+/**
+ * Hearing-only term EXCLUDES (#610 rehearsal calibration): committee-opening
+ * boilerplate ("this oversight hearing of the committee…") routed 60% of all
+ * 2019-Q2 hearings into executiveOversight, including SBA loan-program and
+ * veteran-suicide hearings. The specific terms (inspector general, subpoena,
+ * whistleblower, executive privilege…) stay. Kept separate so shared
+ * CREC/LegiScan routing is unaffected — same pattern as OPINION_TERM_EXCLUDES.
+ */
+export const HEARING_TERM_EXCLUDES: Record<string, string[]> = {
+  executiveOversight: ['oversight', 'oversight hearing', 'oversight committee'],
+};
+
+/**
+ * Hearing-only routing terms ADDED on top of TOPIC_ROUTING_TERMS: hearing
+ * subjects congressional floor speech rarely names directly. From the 2019-Q2
+ * recall audit ("The Federal Judiciary in the 21st Century: Ideas for
+ * Promoting Ethics, Accountability…" routed nowhere).
+ */
+export const HEARING_TERM_ADDITIONS: Record<string, string[]> = {
+  judicialIndependence: ['federal judiciary', 'judicial ethics', 'judicial accountability'],
+};

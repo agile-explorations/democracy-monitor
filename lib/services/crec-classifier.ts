@@ -8,6 +8,8 @@
  */
 
 import {
+  HEARING_TERM_ADDITIONS,
+  HEARING_TERM_EXCLUDES,
   OPINION_TERM_ADDITIONS,
   OPINION_TERM_EXCLUDES,
   TOPIC_ROUTING_TERMS,
@@ -98,9 +100,11 @@ export const HEARING_CLASSIFY_TEXT_CAP = 6000;
 
 /**
  * Route a CONGRESSIONAL HEARING TRANSCRIPT to zero or more monitoring
- * categories (#608). Uses the shared TOPIC_ROUTING_TERMS without the opinion
- * excludes/additions — those are judicial-boilerplate calibrations. Committee
- * is deliberately NOT a routing input (a Judiciary hearing may belong to
+ * categories (#608). Uses TOPIC_ROUTING_TERMS with hearing-specific
+ * calibrations (HEARING_TERM_EXCLUDES strips committee-opening boilerplate
+ * like the bare "oversight"; HEARING_TERM_ADDITIONS adds hearing-subject
+ * vocabulary — both from the 2019-Q2 rehearsal audit, #610). Committee is
+ * deliberately NOT a routing input (a Judiciary hearing may belong to
  * judicialIndependence, lawEnforcement, or civilLiberties by subject);
  * committee tags serve as the independent cross-check in rehearsal audits.
  * Returns [] for off-topic hearings — callers treat that as "do not ingest".
@@ -109,7 +113,12 @@ export function classifyHearingToCategories(title: string, text?: string | null)
   const searchText = `${title} ${(text || '').slice(0, HEARING_CLASSIFY_TEXT_CAP)}`.toLowerCase();
   const matched = new Set<string>();
 
-  for (const [category, terms] of Object.entries(TOPIC_ROUTING_TERMS)) {
+  for (const category of Object.keys(TOPIC_ROUTING_TERMS)) {
+    const excluded = new Set((HEARING_TERM_EXCLUDES[category] ?? []).map((t) => t.toLowerCase()));
+    const terms = [
+      ...(TOPIC_ROUTING_TERMS[category] ?? []).filter((t) => !excluded.has(t.toLowerCase())),
+      ...(HEARING_TERM_ADDITIONS[category] ?? []),
+    ];
     for (const term of terms) {
       if (matchesTerm(searchText, term)) {
         matched.add(category);
