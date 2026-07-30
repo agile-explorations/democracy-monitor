@@ -18,20 +18,27 @@ import { formatError, requireMethod } from '@/lib/utils/api-helpers';
 const DUMP_DIR = '/var/data';
 const DUMP_TEMP = `${DUMP_DIR}/database.pgdump.tmp`;
 const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
-const B2_RESULT_FILE = `${DUMP_DIR}/b2-result.json`;
 const LOG_FILE = `${DUMP_DIR}/dump.log`;
 const LOG_TAIL_LINES = 30;
 
-/** Read the last off-site backup result (#617), if any. */
-function readOffsiteResult(): Record<string, unknown> | null {
-  if (!existsSync(B2_RESULT_FILE)) return null;
+function readB2Result(label: string): Record<string, unknown> | null {
+  const file = `${DUMP_DIR}/b2-result-${label}.json`;
+  if (!existsSync(file)) return null;
   try {
-    return JSON.parse(readFileSync(B2_RESULT_FILE, 'utf8')) as Record<string, unknown>;
+    return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
   } catch {
     // nosemgrep: opengrep.no-silent-catch — a corrupt off-site marker must not
-    // break the dump-status read; absence/corruption reports as null offsite.
+    // break the dump-status read; absence/corruption reports as null.
     return null;
   }
+}
+
+/**
+ * The off-site backup is two objects (#617): the PII-free corpus dump and a
+ * small subscribers+feedback dump. Both must succeed for a complete backup.
+ */
+function readOffsiteResult(): Record<string, unknown> {
+  return { database: readB2Result('database'), piiTables: readB2Result('pii-tables') };
 }
 
 type ResultPayload = Record<string, unknown> & { status: string };

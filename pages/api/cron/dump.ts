@@ -22,6 +22,10 @@ import { requireMethod } from '@/lib/utils/api-helpers';
 const DUMP_DIR = '/var/data';
 const DUMP_FILE = `${DUMP_DIR}/database.pgdump`;
 const DUMP_TEMP = `${DUMP_FILE}.tmp`;
+// Small companion dump of ONLY the PII tables, excluded from DUMP_FILE (#616)
+// so the public download carries no emails. Uploaded to B2 only (never served)
+// so the off-site backup is a COMPLETE, restorable image (#617 completeness).
+const PII_FILE = `${DUMP_DIR}/pii-tables.pgdump`;
 const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
 const LOG_FILE = `${DUMP_DIR}/dump.log`;
 // Off-site backup uploader (#617), invoked from the runner after a good dump.
@@ -51,9 +55,18 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   write_result "$(printf '{"status":"complete","sizeBytes":%s,"durationS":%s,"startedAt":"%s","completedAt":"%s"}' "$SIZE_BYTES" "$DURATION" "$START_ISO" "$END_ISO")"
   # Off-site backup (#617): verify the archive is readable, then upload to B2.
   # Best-effort — a good local dump is not blocked by an upload failure, but the
-  # uploader always writes b2-result.json so the failure is visible in status.
+  # uploader always writes b2-result-<label>.json so the failure is visible in status.
   if pg_restore -l "$DUMP_FILE" >/dev/null 2>>"$LOG_FILE"; then
-    npx tsx "$UPLOAD_SCRIPT" "$DUMP_FILE" >>"$LOG_FILE" 2>&1 || echo "[dump] B2 upload failed (see b2-result.json)" >>"$LOG_FILE"
+    npx tsx "$UPLOAD_SCRIPT" "$DUMP_FILE" database >>"$LOG_FILE" 2>&1 || echo "[dump] B2 corpus upload failed (see b2-result-database.json)" >>"$LOG_FILE"
+    # Companion PII-tables dump → B2 only, so the backup is complete. Tiny
+    # (emails + messages); fits the disk alongside the main dump. Removed after
+    # upload so no PII lingers on the persistent disk.
+    if pg_dump -Fc --no-owner --no-privileges --table=subscribers --table=feedback -f "$PII_FILE" "$DATABASE_URL" 2>>"$LOG_FILE"; then
+      npx tsx "$UPLOAD_SCRIPT" "$PII_FILE" pii-tables >>"$LOG_FILE" 2>&1 || echo "[dump] B2 PII upload failed (see b2-result-pii-tables.json)" >>"$LOG_FILE"
+      rm -f "$PII_FILE"
+    else
+      echo "[dump] PII-tables dump failed — off-site backup is incomplete" >>"$LOG_FILE"
+    fi
   else
     echo "[dump] integrity check failed (pg_restore -l) — skipping B2 upload" >>"$LOG_FILE"
   fi
@@ -110,6 +123,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
       DUMP_DIR,
       DUMP_FILE,
       DUMP_TEMP,
+      PII_FILE,
       RESULT_FILE,
       LOG_FILE,
       UPLOAD_SCRIPT,

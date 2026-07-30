@@ -43,9 +43,9 @@ export function parseB2Region(endpoint: string): string {
 }
 
 /** Dated, prefixed object key for a backup, e.g. db-backups/database-2026-07-30.pgdump */
-export function backupObjectKey(now: Date, prefix = 'db-backups'): string {
+export function backupObjectKey(now: Date, basename = 'database', prefix = 'db-backups'): string {
   const date = now.toISOString().slice(0, 10);
-  return `${prefix}/database-${date}.pgdump`;
+  return `${prefix}/${basename}-${date}.pgdump`;
 }
 
 /**
@@ -75,9 +75,10 @@ export interface B2UploadResult {
 export async function uploadFileToB2(
   filePath: string,
   config: B2Config,
-  now: Date = new Date(),
+  opts: { now?: Date; basename?: string } = {},
 ): Promise<B2UploadResult> {
-  const key = backupObjectKey(now);
+  const now = opts.now ?? new Date();
+  const key = backupObjectKey(now, opts.basename);
   const sizeBytes = statSync(filePath).size;
 
   const client = new S3Client({

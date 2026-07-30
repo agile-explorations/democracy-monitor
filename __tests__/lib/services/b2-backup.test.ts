@@ -16,14 +16,20 @@ describe('parseB2Region', () => {
 });
 
 describe('backupObjectKey', () => {
-  it('builds a dated, prefixed key', () => {
+  it('builds a dated key with the default basename', () => {
     expect(backupObjectKey(new Date('2026-07-30T05:00:00Z'))).toBe(
       'db-backups/database-2026-07-30.pgdump',
     );
   });
 
+  it('honors a custom basename (the PII companion dump)', () => {
+    expect(backupObjectKey(new Date('2026-07-30T05:00:00Z'), 'pii-tables')).toBe(
+      'db-backups/pii-tables-2026-07-30.pgdump',
+    );
+  });
+
   it('honors a custom prefix', () => {
-    expect(backupObjectKey(new Date('2026-01-05T00:00:00Z'), 'weekly')).toBe(
+    expect(backupObjectKey(new Date('2026-01-05T00:00:00Z'), 'database', 'weekly')).toBe(
       'weekly/database-2026-01-05.pgdump',
     );
   });
