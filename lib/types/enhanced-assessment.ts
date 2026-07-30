@@ -10,12 +10,6 @@ export interface EvidenceItem {
   source?: string;
 }
 
-export interface KeywordMatchContext {
-  keyword: string;
-  tier: 'capture' | 'drift' | 'warning';
-  matchedIn: string;
-}
-
 export interface EnhancedAssessment {
   category: string;
   status: StatusLevel;

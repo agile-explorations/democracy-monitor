@@ -281,10 +281,6 @@ function DetailedContent() {
             Federal Register API proxy
           </li>
           <li>
-            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">/api/assess-status</code> —
-            Assessment status endpoint delegating to the assessment service
-          </li>
-          <li>
             <code className="text-xs bg-dm-card px-1 py-0.5 rounded">/api/methodology</code> — JSON
             endpoint exposing scoring thresholds and configuration constants
           </li>

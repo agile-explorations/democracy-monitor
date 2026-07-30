@@ -1,14 +1,3 @@
-export interface KeywordTrend {
-  keyword: string;
-  category: string;
-  currentCount: number;
-  baselineAvg: number;
-  ratio: number; // currentCount / baselineAvg
-  isAnomaly: boolean;
-  periodStart: string;
-  periodEnd: string;
-}
-
 export interface TrendAnomaly {
   keyword: string;
   category: string;

@@ -4,9 +4,6 @@ export const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 /** One week in milliseconds. */
 export const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 
-/** Six months (180 days) in milliseconds. */
-export const SIX_MONTHS_MS = 180 * ONE_DAY_MS;
-
 /** Extract YYYY-MM-DD from a Date object. */
 export function toDateString(date: Date): string {
   return date.toISOString().split('T')[0];

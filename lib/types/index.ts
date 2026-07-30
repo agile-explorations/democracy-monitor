@@ -42,8 +42,7 @@ export type {
   InformationAvailabilityStatus,
 } from './resilience';
 export type { DebateRole, DebateMessage, DebateVerdict, DebateResult } from './debate';
-export type { LegalDocument, LegalCitation, LegalAnalysisResult } from './legal';
-export type { KeywordTrend, TrendAnomaly, SemanticCluster } from './trends';
+export type { TrendAnomaly, SemanticCluster } from './trends';
 export type {
   InfrastructureTheme,
   ConvergenceLevel,
@@ -70,7 +69,8 @@ export type {
   WeekMetadata,
   BaselineDistribution,
 } from './structural';
-export type { EvidenceItem, KeywordMatchContext, EnhancedAssessment } from './enhanced-assessment';
+export type { EvidenceItem, EnhancedAssessment } from './enhanced-assessment';
+export type { LegalCitation, LegalAnalysisResult } from './legal';
 export type { HeatmapRow, StatusTimelineEntry, SynchronyPoint, OverviewSummary } from './overview';
 export type {
   TierBreakdown,
