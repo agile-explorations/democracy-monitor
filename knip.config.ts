@@ -6,6 +6,8 @@ const config: KnipConfig = {
     'pages/**/*.{ts,tsx}',
     'lib/cron/uptime-check.ts',
     'lib/cron/weekly-clustering.ts',
+    // Invoked from the dump shell script (pages/api/cron/dump.ts), not imported.
+    'lib/cron/upload-backup.ts',
     'scripts/**/*.ts',
   ],
 

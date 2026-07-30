@@ -18,8 +18,21 @@ import { formatError, requireMethod } from '@/lib/utils/api-helpers';
 const DUMP_DIR = '/var/data';
 const DUMP_TEMP = `${DUMP_DIR}/database.pgdump.tmp`;
 const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
+const B2_RESULT_FILE = `${DUMP_DIR}/b2-result.json`;
 const LOG_FILE = `${DUMP_DIR}/dump.log`;
 const LOG_TAIL_LINES = 30;
+
+/** Read the last off-site backup result (#617), if any. */
+function readOffsiteResult(): Record<string, unknown> | null {
+  if (!existsSync(B2_RESULT_FILE)) return null;
+  try {
+    return JSON.parse(readFileSync(B2_RESULT_FILE, 'utf8')) as Record<string, unknown>;
+  } catch {
+    // nosemgrep: opengrep.no-silent-catch — a corrupt off-site marker must not
+    // break the dump-status read; absence/corruption reports as null offsite.
+    return null;
+  }
+}
 
 type ResultPayload = Record<string, unknown> & { status: string };
 
@@ -67,6 +80,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
       const log = readFileSync(LOG_FILE, 'utf8');
       parsed.logTail = log.split('\n').slice(-LOG_TAIL_LINES).join('\n');
     }
+    parsed.offsite = readOffsiteResult();
     res.status(200).json(parsed);
     return;
   }
