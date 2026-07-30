@@ -181,6 +181,21 @@ export const CATEGORIES: Category[] = [
           expectedMinWeeklyDocs: 1,
         },
       },
+      {
+        id: 'oig_dhs',
+        name: 'DHS Inspector General',
+        url: 'oig://dhs',
+        type: 'oig_html',
+        note: 'DHS OIG audit/inspection reports, management alerts, and whistleblower retaliation ROIs via HTML scraping (oig.dhs.gov); listings link directly to report PDFs',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // DHS OIG publishes ~0.7 reports/week recently; a 14-day silence
+          // window (DOJ's setting) would false-alarm on normal gaps.
+          maxSilentDays: 30,
+          expectedMinWeeklyDocs: 1,
+        },
+      },
     ],
   },
   {
@@ -564,6 +579,21 @@ export const CATEGORIES: Category[] = [
         url: '/api/federal-register?agency=u-s-customs-and-border-protection&term=detention+|+removal+|+deportation+|+%22expedited+removal%22+|+%22border+wall%22+|+apprehension+|+enforcement',
         type: 'federal_register',
         note: 'CBP enforcement-related Federal Register documents',
+      },
+      {
+        id: 'oig_dhs_immigration',
+        name: 'DHS Inspector General: Immigration Components',
+        url: 'oig://dhs?components=immigration',
+        type: 'oig_html',
+        note: 'DHS OIG reports about ICE/CBP/USCIS, detention, and border enforcement (title-keyword subset of oig://dhs; filter documented in the data dictionary)',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // ~43% of DHS OIG output is immigration-related (~0.3/week);
+          // silence alone is not anomalous for a month.
+          maxSilentDays: 30,
+          expectedMinWeeklyDocs: 1,
+        },
       },
     ],
   },

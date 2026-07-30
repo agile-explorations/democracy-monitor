@@ -83,3 +83,10 @@ describe('labelForSourceType', () => {
     expect(labelForSourceType(null)).toBe('Document');
   });
 });
+
+describe('hearing_transcript tier (#609)', () => {
+  it('maps hearing transcripts to the discussion tier with a label', () => {
+    expect(tierForSourceType('hearing_transcript')).toBe('discussion');
+    expect(labelForSourceType('hearing_transcript')).toBe('Hearing Transcript');
+  });
+});

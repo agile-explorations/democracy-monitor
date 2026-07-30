@@ -13,6 +13,7 @@ export type DocumentClass =
   | 'court_opinion'
   | 'report'
   | 'press_release'
+  | 'hearing'
   | 'unknown';
 
 /** A single keyword match with context. */

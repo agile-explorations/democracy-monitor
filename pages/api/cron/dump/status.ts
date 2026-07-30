@@ -21,6 +21,26 @@ const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
 const LOG_FILE = `${DUMP_DIR}/dump.log`;
 const LOG_TAIL_LINES = 30;
 
+function readB2Result(label: string): Record<string, unknown> | null {
+  const file = `${DUMP_DIR}/b2-result-${label}.json`;
+  if (!existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>;
+  } catch {
+    // nosemgrep: opengrep.no-silent-catch — a corrupt off-site marker must not
+    // break the dump-status read; absence/corruption reports as null.
+    return null;
+  }
+}
+
+/**
+ * The off-site backup is two objects (#617): the PII-free corpus dump and a
+ * small subscribers+feedback dump. Both must succeed for a complete backup.
+ */
+function readOffsiteResult(): Record<string, unknown> {
+  return { database: readB2Result('database'), piiTables: readB2Result('pii-tables') };
+}
+
 type ResultPayload = Record<string, unknown> & { status: string };
 
 export default function handler(req: NextApiRequest, res: NextApiResponse): void {
@@ -67,6 +87,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
       const log = readFileSync(LOG_FILE, 'utf8');
       parsed.logTail = log.split('\n').slice(-LOG_TAIL_LINES).join('\n');
     }
+    parsed.offsite = readOffsiteResult();
     res.status(200).json(parsed);
     return;
   }

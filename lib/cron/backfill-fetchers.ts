@@ -7,6 +7,7 @@ import {
   buildOpinionContentItem,
   RATE_LIMIT_DELAY_MS,
 } from '@/lib/services/courtlistener-fetcher';
+import { fetchDhsOigHistorical } from '@/lib/services/dhs-oig-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchDojOigHistorical, fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
@@ -179,6 +180,7 @@ const FEC_RATE_LIMIT_MS = 4_000;
 const HHS_OIG_CRAWL_DELAY_MS = 10_000;
 const DOJ_OIG_CRAWL_DELAY_MS = 5_000;
 const SSA_OIG_RATE_LIMIT_MS = 2_000;
+const DHS_OIG_CRAWL_DELAY_MS = 5_000;
 
 /** Enrich FEC items with full structured data + PDF text extraction. */
 async function fillFecContent(items: ContentItem[]): Promise<void> {
@@ -198,7 +200,7 @@ const OIG_CONTENT_MAX_ATTEMPTS = 3;
 const OIG_CONTENT_RETRY_DELAY_MS = 5_000;
 
 /** Fill content for OIG items by scraping detail pages or extracting PDFs. */
-async function fillOigContent(items: ContentItem[]): Promise<void> {
+export async function fillOigContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
     // The enrichment chain (detail-page scrape → PDF extraction) is
@@ -225,6 +227,12 @@ async function fetchOigItemContent(
   if (url.includes('oig.hhs.gov')) {
     const content = await fetchHhsOigReportContent(url);
     return { content, delayMs: HHS_OIG_CRAWL_DELAY_MS };
+  }
+  // DHS listings link straight to PDFs; branch before the generic .pdf
+  // (SSA) case so DHS gets its own crawl delay.
+  if (url.includes('oig.dhs.gov')) {
+    const content = await extractPdfText(url);
+    return { content, delayMs: DHS_OIG_CRAWL_DELAY_MS };
   }
   if (url.endsWith('.pdf')) {
     const content = await extractPdfText(url);
@@ -397,6 +405,9 @@ const OIG_FETCHERS: Record<
   'oig://doj': (p) => fetchDojOigHistorical(p),
   'oig://hhs': (p) => fetchHhsOigHistorical(p),
   'oig://ssa': (p) => fetchSsaOigHistorical(p),
+  'oig://dhs': (p) => fetchDhsOigHistorical(p),
+  'oig://dhs?components=immigration': (p) =>
+    fetchDhsOigHistorical({ ...p, components: 'immigration' }),
 };
 
 export async function fetchWeekItemsOig(

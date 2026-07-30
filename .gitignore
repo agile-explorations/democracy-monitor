@@ -52,3 +52,4 @@ data/cl-bulk/
 
 # Playwright
 test-results/
+prod-status-snapshot-*.json

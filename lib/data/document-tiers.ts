@@ -21,6 +21,7 @@ export const DISCUSSION_SOURCE_TYPES: ReadonlySet<string> = new Set([
   'nomination',
   'presidential_remarks',
   'presidential_interview',
+  'hearing_transcript',
 ]);
 
 export function tierForSourceType(sourceType: string | null | undefined): DocumentTier {
@@ -46,6 +47,7 @@ export const SOURCE_TYPE_LABELS: Record<string, string> = {
   ig_report: 'IG Report',
   congressional_report: 'Congressional Report',
   floor_speech: 'Floor Speech',
+  hearing_transcript: 'Hearing Transcript',
   nomination: 'Nomination Debate',
   legislative_action: 'Legislative Action',
   bill: 'Bill',

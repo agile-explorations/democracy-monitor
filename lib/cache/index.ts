@@ -73,3 +73,22 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
     expiresAt: Date.now() + ttlSeconds * 1000,
   });
 }
+
+/**
+ * Atomically increment a fixed-window counter and return the new count, or
+ * null when Redis is unavailable (caller falls back to a per-process limiter).
+ * EXPIRE is set on the first hit of a window so the counter self-resets;
+ * shared across web instances, unlike the in-memory limiter (#615).
+ */
+export async function rateLimitHit(key: string, windowSeconds: number): Promise<number | null> {
+  const client = getRedis();
+  if (!client) return null;
+  try {
+    const count = await client.incr(key);
+    if (count === 1) await client.expire(key, windowSeconds);
+    return count;
+  } catch (err) {
+    console.warn('Redis rate-limit INCR failed, falling back:', err);
+    return null;
+  }
+}

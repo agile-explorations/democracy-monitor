@@ -1,4 +1,5 @@
 import { and, sql } from 'drizzle-orm';
+import { backfillChrg } from '@/lib/cron/backfill-chrg';
 import { backfillCpd } from '@/lib/cron/backfill-cpd';
 import { backfillCrec } from '@/lib/cron/backfill-crec';
 import { fetchWeekDocuments } from '@/lib/cron/backfill-fetchers';
@@ -48,7 +49,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   oig: 'oig_html',
 };
 
-const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd', 'crec']);
+const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd', 'crec', 'chrg']);
 const ALL_VALID_SOURCES = [...Object.keys(SOURCE_TO_SIGNAL_TYPE), ...SPECIAL_SOURCES];
 
 type Signal = { url: string; type: string };
@@ -368,6 +369,12 @@ export async function runBackfill(options: BackfillOptions = {}): Promise<void> 
   // CREC backfill: runs when no source filter, or when source is crec
   if ((!options.source || options.source === 'crec') && !options.category) {
     totalDocs += await backfillCrec(weeks, dryRun);
+  }
+
+  // CHRG backfill: one windowed pass (hearing transcripts publish months
+  // after dateIssued, so per-week fetching would miss late arrivals)
+  if ((!options.source || options.source === 'chrg') && !options.category) {
+    totalDocs += await backfillChrg(from, to, dryRun);
   }
 
   // LegiScan backfill: runs when no source filter, or when source is legiscan

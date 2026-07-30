@@ -1,3 +1,4 @@
+import { snapshotChrgWindow } from '@/lib/cron/backfill-chrg';
 import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
@@ -418,6 +419,7 @@ async function assessStoredWeek(weekOf: string, errors: string[]): Promise<numbe
 async function ingestAndAssessSecondarySources(errors: string[]): Promise<number> {
   await snapshotCpd();
   await snapshotCrec();
+  await snapshotChrgWindow();
   await snapshotRhetoric();
 
   // Opinion-first CL pass: find opinions issued this week for ANY matching docket.

@@ -31,5 +31,6 @@ export function getAllowedHosts(): string[] {
     'www.fec.gov',
     'oig.hhs.gov',
     'oig.justice.gov',
+    'www.oig.dhs.gov',
   ];
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   classifyCrecToCategories,
+  classifyHearingToCategories,
   classifyOpinionToCategories,
 } from '@/lib/services/crec-classifier';
 
@@ -190,5 +191,50 @@ describe('classifyOpinionToCategories', () => {
     // CREC classifier is untouched by opinion additions/excludes:
     const crecCats = classifyCrecToCategories('A v. B', 'The court order and injunction issued.');
     expect(crecCats).toContain('judicialIndependence');
+  });
+});
+
+describe('classifyHearingToCategories', () => {
+  it('routes an oversight hearing to executiveOversight via title alone', () => {
+    const cats = classifyHearingToCategories(
+      'Oversight of the Department of Justice Office of the Inspector General',
+    );
+    expect(cats).toContain('executiveOversight');
+  });
+
+  it('routes an immigration hearing by title + opening statement', () => {
+    const cats = classifyHearingToCategories(
+      'E-Verify: Ensuring Lawful Employment in America',
+      'The subcommittee will examine immigration enforcement in the workplace and the ' +
+        'role of ICE worksite investigations in unlawful employment of aliens.',
+    );
+    expect(cats).toContain('immigrationEnforcement');
+  });
+
+  it('only classifies against the capped head of the transcript', () => {
+    const padding = 'procedural matters and scheduling remarks. '.repeat(200); // > 6,000 chars
+    const cats = classifyHearingToCategories(
+      'Member Day',
+      padding + ' The committee then turned to inspector general independence.',
+    );
+    expect(cats).toEqual([]);
+  });
+
+  it('returns empty for off-topic hearings (caller drops + ledgers them)', () => {
+    const cats = classifyHearingToCategories(
+      'The Future of Rural Broadband Deployment',
+      'Witnesses discussed fiber optic infrastructure grants for underserved counties.',
+    );
+    expect(cats).toEqual([]);
+  });
+
+  it('fans out multi-topic hearings to multiple categories', () => {
+    const cats = classifyHearingToCategories(
+      'Executive Overreach: Inspector General Removals and the Federal Workforce',
+      'The hearing examined the removal of inspectors general and Schedule F ' +
+        'reclassification of civil service employees.',
+    );
+    expect(cats).toContain('executiveOversight');
+    expect(cats).toContain('civilService');
   });
 });

@@ -73,6 +73,21 @@ function stripCrecTitleRepetition(content: string, title: string): string {
 }
 
 /**
+ * Strip CHRG hearing-transcript front matter.
+ *
+ * Pattern (live-observed): "- TITLE IN CAPS [House Hearing, 116 Congress]
+ * [From the U.S. Government Publishing Office]" before the transcript body.
+ * The title is passed separately to P1/P2, so the leading repetition and
+ * bracketed GPO metadata waste assessment tokens.
+ */
+function stripChrgFrontMatter(content: string): string {
+  return content.replace(
+    /^[-\s]*[^[]{0,300}?\[(?:House|Senate|Joint) Hearing[^\]]*\]\s*(?:\[From the U\.S\. Government Publishing Office\])?\s*/i,
+    '',
+  );
+}
+
+/**
  * Strip source-specific boilerplate from document content.
  *
  * @param content - Raw document content from database
@@ -108,6 +123,9 @@ export function stripBoilerplate(
 
     case 'crec':
       return stripCrecTitleRepetition(content, title ?? '');
+
+    case 'chrg':
+      return stripChrgFrontMatter(content);
 
     default:
       return content;

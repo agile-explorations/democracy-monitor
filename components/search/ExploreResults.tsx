@@ -161,6 +161,7 @@ export function ExploreFilters({
         <option value="legiscan">LegiScan</option>
         <option value="oig">OIG</option>
         <option value="crec">CREC</option>
+        <option value="chrg">Hearings</option>
       </select>
       <select
         value={filterSort}

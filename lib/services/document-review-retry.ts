@@ -101,8 +101,12 @@ async function retryGap(
   if (result && !opts.dryRun) {
     await storePass2Assessment(result, opts.categoryKey, opts.weekOf);
   }
-  if (!result && opts.verbose) {
-    console.warn(`[layer2] Pass 2 retry failed for ${gap.url}`);
+  if (!result) {
+    // Unconditional: retry failures are rare, actionable, and previously
+    // invisible without --verbose (#612). assessPass2 logs the cause.
+    console.warn(
+      `[layer2] Pass 2 retry failed for ${gap.url} (${opts.categoryKey} / ${opts.weekOf})`,
+    );
   }
   return result ? 1 : 0;
 }

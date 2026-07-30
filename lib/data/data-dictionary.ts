@@ -498,7 +498,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_origin',
     type: 'varchar|null',
     description:
-      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, oig, fec, legiscan. Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
+      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, chrg (congressional hearing transcripts, routed by title + opening-statement topic classification), oig, fec, legiscan. Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
   },
   {
     name: 'content_type',
@@ -936,7 +936,7 @@ export const DATA_DICTIONARY: DictionaryArtifact[] = [
     key: 'table_documents',
     title: 'documents (dump)',
     description:
-      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe.',
+      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested.',
     entries: TABLE_DOCUMENTS,
   },
   {

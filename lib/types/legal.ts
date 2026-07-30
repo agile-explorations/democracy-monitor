@@ -1,13 +1,3 @@
-export interface LegalDocument {
-  id?: number;
-  title: string;
-  type: 'statute' | 'case' | 'regulation' | 'constitutional';
-  citation: string;
-  content: string;
-  relevantCategories: string[];
-  embedding?: number[];
-}
-
 export interface LegalCitation {
   title: string;
   citation: string;

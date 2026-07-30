@@ -65,13 +65,35 @@ Live production database. Render provides automatic daily backups (point-in-time
 
 In order of preference:
 
-1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans.
+1. **Render automatic backups** — Daily PostgreSQL backups with point-in-time recovery. Fastest option, no data loss on paid plans. Only survives if the Render account is intact.
 
-2. **Persistent disk dump** — The latest `pg_dump` on the web service's persistent disk. Re-create the Render database and restore from `GET /api/data/dump`. Loses data since the last weekly dump.
+2. **Persistent disk dump** — The latest `pg_dump` on the web service's persistent disk. Re-create the Render database and restore from `GET /api/data/dump`. Loses data since the last weekly dump. Also tied to the Render account.
 
-3. **GitHub Release bootstrap** — Delete and recreate the Render database; the next deploy auto-restores from the GitHub Release. May be older than the persistent disk dump.
+3. **Backblaze B2 off-site backup** — The only copy that survives losing the entire Render account (billing lapse, compromise, deletion). See the step-by-step below. Backups are retained ~360 days; the most recent ~30 days are Object-Lock immutable and cannot be deleted even with a compromised key.
 
-4. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
+4. **GitHub Release bootstrap** — Delete and recreate the Render database; the next deploy auto-restores from the GitHub Release. May be months stale — bootstrap only.
+
+5. **Re-run pipelines from scratch** — Last resort. Run baseline and backfill pipelines to rebuild data. AI re-assessment costs ~$80+.
+
+### Restoring from Backblaze B2 (off-site — read this first if you are a successor)
+
+If Democracy Monitor's operator is unavailable and the Render account is gone, the durable copy lives in a Backblaze B2 bucket. **A complete restore needs BOTH objects** for each date: `database-YYYY-MM-DD.pgdump` (the full corpus and analysis, no PII) **and** `pii-tables-YYYY-MM-DD.pgdump` (the subscriber list and feedback). Restoring only the first brings the site back but loses the newsletter audience.
+
+**Credentials required** (in the operator's password manager / emergency access, and mirrored as `B2_*` in the Render dashboard): the B2 bucket name and either the B2 account login or an application key (`B2_KEY_ID` + `B2_APP_KEY`), plus the S3 endpoint (`B2_ENDPOINT`, e.g. `https://s3.us-west-004.backblazeb2.com`).
+
+**Steps:**
+
+1. Download the newest pair from the bucket's `db-backups/` prefix — via the B2 web UI, or any S3 client pointed at `B2_ENDPOINT` with the key (e.g. `aws s3 --endpoint-url "$B2_ENDPOINT" cp s3://<bucket>/db-backups/database-<date>.pgdump .` and the matching `pii-tables-<date>.pgdump`).
+2. Create a fresh PostgreSQL 17 database (Render or anywhere) and enable pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`
+3. Restore the corpus (creates all tables, including empty `subscribers`/`feedback`), then load the PII data into them (the companion dump is data-only):
+   ```
+   pg_restore --clean --if-exists --no-owner --no-privileges -d "$DATABASE_URL" database-<date>.pgdump
+   pg_restore --data-only --no-owner --no-privileges -d "$DATABASE_URL" pii-tables-<date>.pgdump
+   ```
+4. Apply any newer migrations: `pnpm db:migrate` (see the destructive-migration gate note under Ongoing Operations).
+5. Point a new deploy at the restored database.
+
+**Succession note:** this runbook is only usable if a successor can reach the B2 and Render credentials. Keep them in the password manager's emergency-access feature (or a sealed document) so recovery is possible within the ~360-day retention window.
 
 ## Cron Jobs
 

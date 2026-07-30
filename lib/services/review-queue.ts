@@ -2,38 +2,7 @@ import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { alerts } from '@/lib/db/schema';
 import type { ReviewFeedback } from '@/lib/seed/review-decisions';
-import type { StatusLevel, EnhancedAssessment } from '@/lib/types';
-
-export async function flagForReview(assessment: EnhancedAssessment): Promise<void> {
-  if (!isDbAvailable()) {
-    console.warn('DB unavailable — skipping review queue insert');
-    return;
-  }
-
-  const db = getDb();
-  await db.insert(alerts).values({
-    type: 'review',
-    category: assessment.category,
-    severity: assessment.keywordResult.status,
-    message: `AI recommends ${assessment.recommendedStatus ?? assessment.status} vs keyword ${assessment.keywordResult.status}`,
-    metadata: {
-      keywordStatus: assessment.keywordResult.status,
-      keywordReason: assessment.keywordResult.reason,
-      keywordMatches: assessment.keywordResult.matches,
-      documentCount: assessment.keywordResult.detail?.itemsReviewed,
-      insufficientData: assessment.keywordResult.detail?.insufficientData,
-      aiRecommendedStatus: assessment.recommendedStatus,
-      aiConfidence: assessment.aiResult?.confidence,
-      aiReasoning: assessment.aiResult?.reasoning,
-      keywordReview: assessment.keywordReview,
-      evidenceFor: assessment.evidenceFor?.slice(0, 5),
-      evidenceAgainst: assessment.evidenceAgainst?.slice(0, 5),
-      reviewedDocuments: assessment.reviewedDocuments,
-      whatWouldChangeMind: assessment.whatWouldChangeMind,
-      assessedAt: assessment.assessedAt,
-    },
-  });
-}
+import type { StatusLevel } from '@/lib/types';
 
 export async function getPendingReviews() {
   if (!isDbAvailable()) return [];

@@ -106,3 +106,19 @@ describe('stripBoilerplate', () => {
     });
   });
 });
+
+describe('chrg front matter (#609)', () => {
+  it('strips the GPO hearing header down to the transcript body', () => {
+    const raw =
+      '- ENFORCEMENT OF THE VOTING RIGHTS ACT IN THE STATE OF TEXAS ' +
+      '[House Hearing, 116 Congress] [From the U.S. Government Publishing Office] ' +
+      'The subcommittee met, pursuant to call, at 9:30 a.m.';
+    const cleaned = stripBoilerplate(raw, 'chrg');
+    expect(cleaned).toBe('The subcommittee met, pursuant to call, at 9:30 a.m.');
+  });
+
+  it('leaves content without the header untouched', () => {
+    const raw = 'The subcommittee met, pursuant to call, at 9:30 a.m.';
+    expect(stripBoilerplate(raw, 'chrg')).toBe(raw);
+  });
+});

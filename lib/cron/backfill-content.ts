@@ -35,6 +35,7 @@ const DOJ_POLITENESS_DELAY_MS = 2_000;
 const DOJ_OIG_CRAWL_DELAY_MS = 5_000; // robots.txt: Crawl-delay: 5
 const HHS_OIG_CRAWL_DELAY_MS = 10_000; // robots.txt: Crawl-delay: 10
 const SSA_OIG_RATE_LIMIT_MS = 2_000; // no robots.txt crawl-delay, be polite
+const DHS_OIG_CRAWL_DELAY_MS = 5_000; // no robots.txt crawl-delay, match DOJ
 const FEC_RATE_LIMIT_MS = 4_000; // FEC allows ~1,000 req/hr
 const DOJ_SHORT_CONTENT_THRESHOLD = 1_000; // DOJ teasers are ~800 chars
 
@@ -193,6 +194,13 @@ async function fetchOigContent(url: string): Promise<{ content: string | null; d
   if (url.includes('oig.hhs.gov')) {
     const content = await fetchHhsOigReportContent(url);
     return { content, delayMs: HHS_OIG_CRAWL_DELAY_MS };
+  }
+
+  // DHS OIG: URL is already a PDF; branch before the generic .pdf (SSA)
+  // case so DHS gets its own crawl delay
+  if (url.includes('oig.dhs.gov')) {
+    const content = await extractPdfText(url);
+    return { content, delayMs: DHS_OIG_CRAWL_DELAY_MS };
   }
 
   // SSA OIG: URL is already a PDF

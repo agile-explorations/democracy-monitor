@@ -42,6 +42,7 @@
     "db:push-prod": "./scripts/db-push-prod.sh",
     "snapshot": "tsx lib/cron/snapshot.ts",
     "backfill": "tsx lib/cron/backfill.ts",
+    "backfill:dhs-oig": "tsx lib/cron/backfill-dhs-oig.ts",
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
     "scores:recompute": "tsx lib/cron/recompute-scores.ts",
     "scores:backfill": "tsx lib/cron/backfill-scores.ts",
@@ -90,6 +91,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",
+    "@aws-sdk/client-s3": "^3.1098.0",
+    "@aws-sdk/lib-storage": "^3.1098.0",
     "adm-zip": "^0.5.16",
     "cheerio": "^1.1.2",
     "domhandler": "5",

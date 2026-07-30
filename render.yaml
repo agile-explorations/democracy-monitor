@@ -40,6 +40,17 @@ services:
         sync: false
       - key: CRON_SECRET
         sync: false
+      # Off-provider backup to Backblaze B2 (#617). Values set in the dashboard.
+      # The bucket has Object Lock (Compliance, ~30-day retention); a Lifecycle
+      # Rule reclaims objects after they age out. Key is write/list, bucket-scoped.
+      - key: B2_ENDPOINT
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APP_KEY
+        sync: false
 
   - type: keyvalue
     name: epd-redis

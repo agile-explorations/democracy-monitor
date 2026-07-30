@@ -18,6 +18,9 @@ const DISCUSSION_PATTERNS: RegExp[] = [
   /spoke[n]? .{0,30}on the floor/i,
   /(congressional|senate|house) debates?/i,
   /remarks (on|about|by)/i,
+  /(committee|congressional|oversight) hearings?/i,
+  /hearing (transcript|testimony)/i,
+  /testif(y|ied|ying)|witness(es)? told/i,
 ];
 
 const ACTION_PATTERNS: RegExp[] = [

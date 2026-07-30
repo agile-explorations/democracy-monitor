@@ -267,6 +267,23 @@ export async function runBackfillLayer2(args: BackfillArgs): Promise<void> {
       (skipped > 0 ? `, ${skipped} skipped (already processed)` : '') +
       (p2Retried > 0 ? `, ${p2Retried} Pass 2 retried` : ''),
   );
+  await reportRemainingP2Gaps(args.category);
+}
+
+/**
+ * The processed-week cache hides P2 gaps from normal-mode runs (#612): a week
+ * whose P2 calls failed still reads as done. Always end with the authoritative
+ * gap count so silence can't masquerade as completeness.
+ */
+async function reportRemainingP2Gaps(category?: string): Promise<void> {
+  const gapWeeks = await findPass2GapWeeks(category);
+  const gaps = gapWeeks.reduce((s, g) => s + g.gapCount, 0);
+  if (gaps > 0) {
+    console.warn(
+      `[backfill-l2] ${gaps} P2 gaps remain across ${gapWeeks.length} ` +
+        `category-weeks — run with --retry-p2 to address them`,
+    );
+  }
 }
 
 async function runRetryP2(args: BackfillArgs): Promise<void> {

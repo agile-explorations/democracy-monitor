@@ -16,6 +16,7 @@ import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearch } from '@/lib/services/search-service';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const SINGLE_PASS_MODEL = 'claude-sonnet-4-6';
 const CONTEXT_DOCS = 30;
@@ -99,6 +100,7 @@ async function streamCompletion(
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
+  if (!(await enforceRateLimit(req, res, RATE_LIMITS.search))) return;
   if (!requireDb(res)) return;
 
   const query = (req.query.q as string)?.trim();
