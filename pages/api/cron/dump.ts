@@ -59,9 +59,11 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   if pg_restore -l "$DUMP_FILE" >/dev/null 2>>"$LOG_FILE"; then
     npx tsx "$UPLOAD_SCRIPT" "$DUMP_FILE" database >>"$LOG_FILE" 2>&1 || echo "[dump] B2 corpus upload failed (see b2-result-database.json)" >>"$LOG_FILE"
     # Companion PII-tables dump → B2 only, so the backup is complete. Tiny
-    # (emails + messages); fits the disk alongside the main dump. Removed after
-    # upload so no PII lingers on the persistent disk.
-    if pg_dump -Fc --no-owner --no-privileges --table=subscribers --table=feedback -f "$PII_FILE" "$DATABASE_URL" 2>>"$LOG_FILE"; then
+    # (emails + messages); fits the disk alongside the main dump. --data-only:
+    # the main dump already carries the subscribers/feedback SCHEMA (just not
+    # their data), so this loads cleanly into the restored empty tables.
+    # Removed after upload so no PII lingers on the persistent disk.
+    if pg_dump -Fc --no-owner --no-privileges --data-only --table=subscribers --table=feedback -f "$PII_FILE" "$DATABASE_URL" 2>>"$LOG_FILE"; then
       npx tsx "$UPLOAD_SCRIPT" "$PII_FILE" pii-tables >>"$LOG_FILE" 2>&1 || echo "[dump] B2 PII upload failed (see b2-result-pii-tables.json)" >>"$LOG_FILE"
       rm -f "$PII_FILE"
     else

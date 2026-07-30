@@ -85,10 +85,10 @@ If Democracy Monitor's operator is unavailable and the Render account is gone, t
 
 1. Download the newest pair from the bucket's `db-backups/` prefix — via the B2 web UI, or any S3 client pointed at `B2_ENDPOINT` with the key (e.g. `aws s3 --endpoint-url "$B2_ENDPOINT" cp s3://<bucket>/db-backups/database-<date>.pgdump .` and the matching `pii-tables-<date>.pgdump`).
 2. Create a fresh PostgreSQL 17 database (Render or anywhere) and enable pgvector: `CREATE EXTENSION IF NOT EXISTS vector;`
-3. Restore the corpus, then the PII tables:
+3. Restore the corpus (creates all tables, including empty `subscribers`/`feedback`), then load the PII data into them (the companion dump is data-only):
    ```
    pg_restore --clean --if-exists --no-owner --no-privileges -d "$DATABASE_URL" database-<date>.pgdump
-   pg_restore --no-owner --no-privileges -d "$DATABASE_URL" pii-tables-<date>.pgdump
+   pg_restore --data-only --no-owner --no-privileges -d "$DATABASE_URL" pii-tables-<date>.pgdump
    ```
 4. Apply any newer migrations: `pnpm db:migrate` (see the destructive-migration gate note under Ongoing Operations).
 5. Point a new deploy at the restored database.
