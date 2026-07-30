@@ -44,7 +44,13 @@ describe('getClientIp', () => {
   const req = (headers: Record<string, unknown>, remoteAddress?: string) =>
     ({ headers, socket: { remoteAddress } }) as unknown as NextApiRequest;
 
-  it('prefers the first x-forwarded-for hop', () => {
+  it('prefers CF-Connecting-IP over x-forwarded-for when behind Cloudflare', () => {
+    expect(
+      getClientIp(req({ 'cf-connecting-ip': '198.51.100.42', 'x-forwarded-for': '172.16.0.1' })),
+    ).toBe('198.51.100.42');
+  });
+
+  it('prefers the first x-forwarded-for hop when no CF header', () => {
     expect(getClientIp(req({ 'x-forwarded-for': '203.0.113.9, 10.0.0.1' }))).toBe('203.0.113.9');
   });
 

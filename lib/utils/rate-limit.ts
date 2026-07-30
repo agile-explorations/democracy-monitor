@@ -47,8 +47,14 @@ export function checkRateLimit(
   return { allowed: true, retryAfterMs: 0 };
 }
 
-/** Extract client IP from a Next.js API request. */
+/**
+ * Extract the client IP. Behind Cloudflare the true client IP is in
+ * CF-Connecting-IP; x-forwarded-for's first hop would otherwise be a
+ * Cloudflare edge IP, collapsing every visitor into one rate-limit bucket.
+ */
 export function getClientIp(req: NextApiRequest): string {
+  const cf = req.headers['cf-connecting-ip'];
+  if (typeof cf === 'string' && cf.trim()) return cf.trim();
   const forwarded = req.headers['x-forwarded-for'];
   if (typeof forwarded === 'string') {
     return forwarded.split(',')[0].trim();
