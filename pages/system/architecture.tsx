@@ -32,11 +32,12 @@ function SummaryContent() {
 
       <Section title="Data Sources" id="data-sources">
         <p>
-          Eight source types provide coverage of different government activities, all of them
+          Nine source types provide coverage of different government activities, all of them
           government documents: the Federal Register (executive orders, rules), GovInfo
           (presidential documents via CPD, congressional reports, public laws), Congressional Record
-          (CREC floor speeches), CourtListener (federal courts), DOJ press releases, Inspector
-          General reports (HHS, DOJ, SSA, DHS), LegiScan (federal legislation), and FEC filings.
+          (CREC floor speeches), congressional hearing transcripts (CHRG), CourtListener (federal
+          courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA, DHS), LegiScan
+          (federal legislation), and FEC filings.
         </p>
       </Section>
 
@@ -168,6 +169,11 @@ function DetailedContent() {
             ],
             ['FEC', 'Advisory opinions and Matters Under Review (MURs)', 'fec-fetcher.ts'],
             ['CREC', 'Congressional Record floor speeches (Senate + House)', 'crec-fetcher.ts'],
+            [
+              'CHRG',
+              'Congressional hearing transcripts (7 committees, subject-routed)',
+              'chrg-fetcher.ts',
+            ],
             [
               'LegiScan',
               'Federal legislative bill tracking via bulk datasets',

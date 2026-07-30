@@ -196,6 +196,11 @@ function DetailedContent() {
               'Daily when in session',
             ],
             [
+              'Congressional Hearings (CHRG)',
+              'Committee hearing transcripts from seven committees (Judiciary, Oversight, Homeland Security, Appropriations, Armed Services, Administration, Intelligence)',
+              'Weekly; transcripts publish months after hearings, so past weeks gain documents as transcripts become available',
+            ],
+            [
               'Inspector General (OIG)',
               'Audit reports and investigations from HHS, DOJ, SSA, and DHS Inspectors General',
               'Every few days',
