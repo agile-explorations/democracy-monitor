@@ -31,15 +31,18 @@ Set these secrets in the Render dashboard:
 
 ### Cloudflare origin protection (#620)
 
-The origin (Render) is directly reachable by IP + Host header, which would bypass Cloudflare's WAF/rate-limiting. `middleware.ts` rejects any request lacking the `x-dm-origin` header when `NODE_ENV=production` and `ORIGIN_SHARED_SECRET` is set (it fails **open** if the secret is unset, so a misconfigured deploy can't self-outage). `/api/health/live`, `/api/cron/*`, and `/api/csp-report` are allowlisted.
+The origin (Render) is directly reachable by IP + Host header, which would bypass Cloudflare's WAF/rate-limiting. `middleware.ts` rejects requests lacking the Cloudflare-injected `x-dm-origin` header — but **only once enforcement is explicitly enabled** (#622). Two independent safety gates mean a deploy can never take the site down: it's inert unless `NODE_ENV=production` AND `ORIGIN_SHARED_SECRET` is set, and even then it only **logs** mismatches until `ORIGIN_ENFORCE=true`. `/api/health/live`, `/api/cron/*`, and `/api/csp-report` are allowlisted.
 
-**Rollout order is load-bearing — do these in sequence or you 403 all live traffic:**
+**Two-stage rollout (deploying is always safe; enforcement is a deliberate switch):**
 
-1. Set `ORIGIN_SHARED_SECRET` in the Render dashboard (web service). `openssl rand -hex 32`.
-2. Cloudflare → Rules → Transform Rules → Modify Request Header → **Set** `x-dm-origin` = `<secret>` on all incoming requests.
-3. **Then** deploy the middleware (merge to `main`). If it deploys before step 2, Cloudflare-proxied traffic has no header → 403.
+1. Cloudflare → Rules → Transform Rules → Modify Request Header → **Set** `x-dm-origin` = `<secret>` on all incoming requests.
+2. Set `ORIGIN_SHARED_SECRET` (same value) in the Render dashboard. `openssl rand -hex 32`. **Leave `ORIGIN_ENFORCE` unset.**
+3. Deploy. The guard runs in **log-only** mode: watch the logs — `[origin-guard] log-only: x-dm-origin missing/mismatch …` warnings mean Cloudflare's header isn't matching yet. Quiet logs (with real traffic flowing) mean it matches.
+4. **Only after the logs are quiet**, set `ORIGIN_ENFORCE=true` in Render. Now direct-to-origin hits get 403. Verify: a request to the Render origin IP without the header → 403; normal Cloudflare traffic → 200.
 
-Rotate the secret on the same cadence as `CRON_SECRET` (update Render + the Transform Rule together).
+> A prior version fail-closed the instant the secret was set; a value mismatch 403'd all traffic on deploy (2026-07-31). The log-only stage removes that failure mode — never set `ORIGIN_ENFORCE=true` before the logs confirm a match.
+
+Rotate the secret on the same cadence as `CRON_SECRET` (update Render + the Transform Rule together; the log-only stage re-confirms the match after a rotation).
 
 ### 3. First build auto-restores
 

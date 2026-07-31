@@ -1,46 +1,43 @@
 /**
- * Origin↔Cloudflare shared-secret gate (#620).
+ * Origin↔Cloudflare shared-secret gate (#620, #622).
  *
  * With production behind Cloudflare, the Render origin is still directly
- * reachable by IP + Host header, which would bypass Cloudflare's WAF and rate
- * limiting. Cloudflare injects a secret request header (`x-dm-origin`) on every
- * request it proxies; this middleware rejects any request that lacks it.
+ * reachable by IP + Host header, bypassing Cloudflare's WAF/rate-limiting.
+ * Cloudflare injects a secret request header (`x-dm-origin`); this rejects any
+ * request that lacks it — but ONLY once enforcement is explicitly enabled.
  *
- * Fail-open safety: enforce ONLY in production AND when ORIGIN_SHARED_SECRET is
- * set. A deploy that forgets the env, or local/dev without Cloudflare, is never
- * blocked — so this can't cause a self-inflicted outage. Rollout order matters:
- * set the Render env + the Cloudflare Transform Rule BEFORE deploying this.
+ * Two-stage rollout (see lib/utils/origin-guard.ts): with the secret set but
+ * `ORIGIN_ENFORCE !== 'true'`, a missing/mismatched header is logged (sampled)
+ * but ALLOWED. Deploy → confirm the logs are quiet (header matches) → set
+ * `ORIGIN_ENFORCE=true`. This makes it impossible for a secret mismatch to take
+ * the site down as a side effect of deploying (it did, 2026-07-31).
  */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { ORIGIN_HEADER, evaluateOrigin } from '@/lib/utils/origin-guard';
 
-const ORIGIN_HEADER = 'x-dm-origin';
-
-// Paths that legitimately reach the origin without transiting Cloudflare (Render
-// health probe) or are independently authenticated (cron endpoints via
-// CRON_SECRET), plus the CSP report sink — never block these.
-const ALLOWLIST_PREFIXES = ['/api/health/', '/api/cron/', '/api/csp-report'];
-
-/** Constant-time compare — crypto.timingSafeEqual is unavailable in the Edge runtime. */
-function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
+const LOG_SAMPLE_RATE = 0.02;
 
 export function middleware(req: NextRequest): NextResponse {
-  const secret = process.env.ORIGIN_SHARED_SECRET;
-  if (process.env.NODE_ENV !== 'production' || !secret) return NextResponse.next();
+  const decision = evaluateOrigin({
+    isProduction: process.env.NODE_ENV === 'production',
+    secret: process.env.ORIGIN_SHARED_SECRET,
+    enforce: process.env.ORIGIN_ENFORCE === 'true',
+    pathname: req.nextUrl.pathname,
+    header: req.headers.get(ORIGIN_HEADER),
+  });
 
-  const { pathname } = req.nextUrl;
-  if (ALLOWLIST_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
-
-  const header = req.headers.get(ORIGIN_HEADER);
-  if (header && safeEqual(header, secret)) return NextResponse.next();
-
-  return new NextResponse('Forbidden', { status: 403 });
+  if (decision.action === 'block') {
+    return new NextResponse('Forbidden', { status: 403 });
+  }
+  if (decision.action === 'log' && Math.random() < LOG_SAMPLE_RATE) {
+    console.warn(
+      `[origin-guard] log-only: x-dm-origin ${decision.reason} on ${req.nextUrl.pathname} ` +
+        '— fix the secret match before setting ORIGIN_ENFORCE=true',
+    );
+  }
+  return NextResponse.next();
 }
 
 export const config = {
