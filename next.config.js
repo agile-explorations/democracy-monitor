@@ -18,11 +18,13 @@ const SECURITY_HEADERS = [
 // not fight `next dev` (HMR uses eval/inline).
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // Google Analytics/Tag Manager (surfaced by the CSP report sink): gtag.js is
+  // an external script and GTM uses eval, so both are allowlisted (#619 tune).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
