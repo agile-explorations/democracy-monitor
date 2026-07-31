@@ -111,6 +111,32 @@ export async function tryStoreDataReport(errors: string[]): Promise<void> {
 }
 
 /**
+ * Post-run per-source funnel check (#547). Runs after the snapshot's writes so
+ * it sees the final state; error-tier stage collapses (a source with real
+ * retrieved volume but ~nothing surviving relevance/P1, vs its category
+ * siblings) are appended to the cron error channel — which the snapshot funnels
+ * into the ops-alert email — so a contamination like #524 pages the owner
+ * automatically. Non-fatal: it never fails the snapshot.
+ */
+export async function tryValidateFunnel(errors: string[]): Promise<number> {
+  try {
+    const { runFunnelValidation } = await import('@/lib/services/funnel-validation-service');
+    const { collapses } = await runFunnelValidation();
+    const failed = collapses.filter((c) => c.severity === 'error');
+    for (const c of failed) {
+      errors.push(`validate:funnel ${c.id} — ${c.reason}`);
+    }
+    console.log(
+      `[snapshot] validate:funnel: ${failed.length === 0 ? 'no source collapses' : `${failed.length} COLLAPSE(S)`}`,
+    );
+    return failed.length;
+  } catch (err) {
+    errors.push(`validate:funnel failed to run: ${formatError(err)}`);
+    return 1;
+  }
+}
+
+/**
  * Send the digest only when the run's quality signals are clean — ingest
  * failures can yield an internally consistent but grossly wrong narrative.
  * A held digest is released with `pnpm digest:send --week <date>` after
