@@ -29,8 +29,12 @@ const UNSCOPED_CROSS_AGENCY = new Set([
   'fr_ig_personnel',
   'fr_foia',
   'fr_open_data',
-  'fr_press_foia',
-  'fr_foia_compliance',
+  'fr_foia_regulations',
+  'fr_foia_fees',
+  'fr_press_credentials',
+  'fr_press_freedom',
+  'fr_shield_law',
+  'fr_prepublication_review',
 ]);
 
 interface FrApiDocument {

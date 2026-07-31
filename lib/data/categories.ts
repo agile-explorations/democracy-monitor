@@ -450,21 +450,60 @@ export const CATEGORIES: Category[] = [
     expertDescription:
       "Press freedom is a prerequisite for informed public participation in democracy. Restricting press credentials, retaliating against outlets, weakening FOIA, or using FCC licensing as political leverage degrades the fourth estate's watchdog function over government power.",
     signals: [
+      // FR full-text search matches the FOIA/public-records boilerplate present
+      // in nearly every notice's body, so broad terms ("FOIA", "freedom of
+      // information", "public records") retrieved ~576 docs/90d of which the
+      // #524 filter dropped 99.5% (R-FUNNEL finding). FR's `conditions[term]`
+      // has no working OR (`|`/`OR`/space all fail) and no title-scoped search,
+      // so each genuinely-specific phrase is its own quoted single-phrase signal
+      // — verified against the live FR API to be low-noise and on-topic.
       {
-        id: 'fr_press_foia',
-        name: 'Press & FOIA Rules',
-        // nosemgrep: opengrep.unscoped-fr-signal — FOIA/press access applies cross-agency
-        url: '/api/federal-register?term=%22freedom+of+information%22+|+%22press+credentials%22',
+        id: 'fr_foia_regulations',
+        name: 'FOIA Regulations',
+        // nosemgrep: opengrep.unscoped-fr-signal — FOIA policy applies cross-agency
+        url: '/api/federal-register?term=%22FOIA+regulations%22',
         type: 'federal_register',
-        note: 'Rules about press access and freedom of information',
+        note: 'Agency rules amending Freedom of Information Act regulations',
       },
       {
-        id: 'fr_foia_compliance',
-        name: 'FOIA Compliance',
-        // nosemgrep: opengrep.unscoped-fr-signal — FOIA compliance applies cross-agency
-        url: '/api/federal-register?term=FOIA+|+%22FOIA+compliance%22+|+%22public+records%22',
+        id: 'fr_foia_fees',
+        name: 'FOIA Fees',
+        // nosemgrep: opengrep.unscoped-fr-signal — FOIA policy applies cross-agency
+        url: '/api/federal-register?term=%22FOIA+fees%22',
         type: 'federal_register',
-        note: 'Rules about government transparency and public records access',
+        note: 'FOIA fee schedules/changes that can raise access barriers',
+      },
+      {
+        id: 'fr_press_credentials',
+        name: 'Press Credentials',
+        // nosemgrep: opengrep.unscoped-fr-signal — press access applies cross-agency
+        url: '/api/federal-register?term=%22press+credentials%22',
+        type: 'federal_register',
+        note: 'Rules affecting press credentialing and access',
+      },
+      {
+        id: 'fr_press_freedom',
+        name: 'Press Freedom',
+        // nosemgrep: opengrep.unscoped-fr-signal — press freedom applies cross-agency
+        url: '/api/federal-register?term=%22press+freedom%22',
+        type: 'federal_register',
+        note: 'Rules referencing press freedom',
+      },
+      {
+        id: 'fr_shield_law',
+        name: 'Shield Law',
+        // nosemgrep: opengrep.unscoped-fr-signal — reporter protection applies cross-agency
+        url: '/api/federal-register?term=%22shield+law%22',
+        type: 'federal_register',
+        note: "Rules touching reporter's-privilege / shield-law protections",
+      },
+      {
+        id: 'fr_prepublication_review',
+        name: 'Prepublication Review',
+        // nosemgrep: opengrep.unscoped-fr-signal — classification policy applies cross-agency
+        url: '/api/federal-register?term=%22prepublication+review%22',
+        type: 'federal_register',
+        note: 'Rules on prepublication review / classification of information',
       },
     ],
   },

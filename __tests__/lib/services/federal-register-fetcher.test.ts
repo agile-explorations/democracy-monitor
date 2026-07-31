@@ -232,8 +232,12 @@ describe('signal URL regression', () => {
       'executiveOversight/fr_ig_personnel',
       'infoAvailability/fr_foia',
       'infoAvailability/fr_open_data',
-      'mediaFreedom/fr_press_foia',
-      'mediaFreedom/fr_foia_compliance',
+      'mediaFreedom/fr_foia_regulations',
+      'mediaFreedom/fr_foia_fees',
+      'mediaFreedom/fr_press_credentials',
+      'mediaFreedom/fr_press_freedom',
+      'mediaFreedom/fr_shield_law',
+      'mediaFreedom/fr_prepublication_review',
     ]);
     const unexpected = unscoped.filter((id) => !allowedUnscoped.has(id));
     expect(unexpected).toEqual([]);
