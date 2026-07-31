@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import { serializeJsonLd } from '@/lib/utils/json-ld';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
 
@@ -37,7 +38,7 @@ export function BreadcrumbJsonLd({ items }: { items: BreadcrumbItem[] }) {
     <Head>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
       />
     </Head>
   );
@@ -88,7 +89,7 @@ export function ArticleJsonLd({
     <Head>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
       />
     </Head>
   );
@@ -145,7 +146,7 @@ export function CollectionJsonLd({
     <Head>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
       />
     </Head>
   );
@@ -170,7 +171,7 @@ export function WebSiteJsonLd() {
     <Head>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
       />
     </Head>
   );
@@ -202,7 +203,7 @@ export function ArchiveItemListJsonLd({ items }: { items: ArchiveItem[] }) {
     <Head>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
       />
     </Head>
   );

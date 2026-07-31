@@ -15,7 +15,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { tryStoreDataReport, tryValidateGraph } from '@/lib/cron/snapshot-poststeps';
-import { requireMethod } from '@/lib/utils/api-helpers';
+import { requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 let inFlight = false;
 
@@ -43,7 +43,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
     return;
   }
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token !== secret) {
+  if (!token || !safeEqual(token, secret)) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }

@@ -13,7 +13,7 @@
 
 import { existsSync, readFileSync, statSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { formatError, requireMethod } from '@/lib/utils/api-helpers';
+import { formatError, requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 const DUMP_DIR = '/var/data';
 const DUMP_TEMP = `${DUMP_DIR}/database.pgdump.tmp`;
@@ -53,7 +53,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
   }
 
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token !== secret) {
+  if (!token || !safeEqual(token, secret)) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }

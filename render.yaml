@@ -5,6 +5,9 @@ services:
     plan: standard
     buildCommand: pnpm install && pnpm db:init && pnpm build
     startCommand: pnpm start
+    # Liveness probe hits the origin directly (bypasses Cloudflare); allowlisted
+    # in the origin-secret middleware (#620).
+    healthCheckPath: /api/health/live
     disk:
       name: data-disk
       mountPath: /var/data
@@ -39,6 +42,11 @@ services:
       - key: LEGISCAN_API_KEY
         sync: false
       - key: CRON_SECRET
+        sync: false
+      # Shared secret Cloudflare injects as the `x-dm-origin` request header so
+      # the origin rejects traffic that didn't transit Cloudflare (#620). Set in
+      # the dashboard; add the matching Cloudflare Transform Rule before deploy.
+      - key: ORIGIN_SHARED_SECRET
         sync: false
       # Off-provider backup to Backblaze B2 (#617). Values set in the dashboard.
       # The bucket has Object Lock (Compliance, ~30-day retention); a Lifecycle

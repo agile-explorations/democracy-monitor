@@ -38,15 +38,19 @@ describe('requireAdmin', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('accepts the HMAC-derived session cookie', () => {
+  it('accepts a fresh, valid session cookie', () => {
     process.env.ADMIN_PASSWORD = 'pw';
     const res = buildRes();
-    expect(requireAdmin(reqWith({ dm_admin_session: makeAdminToken('pw') }), res)).toBe(true);
+    const cookie = makeAdminToken('pw', Date.now() + 60_000);
+    expect(requireAdmin(reqWith({ dm_admin_session: cookie }), res)).toBe(true);
     expect(res.statusCode).toBe(0);
   });
 
-  it('derives a stable token from the password', () => {
-    expect(makeAdminToken('pw')).toBe(makeAdminToken('pw'));
-    expect(makeAdminToken('pw')).not.toBe(makeAdminToken('other'));
+  it('rejects an expired session cookie', () => {
+    process.env.ADMIN_PASSWORD = 'pw';
+    const res = buildRes();
+    const expired = makeAdminToken('pw', Date.now() - 1000);
+    expect(requireAdmin(reqWith({ dm_admin_session: expired }), res)).toBe(false);
+    expect(res.statusCode).toBe(401);
   });
 });
