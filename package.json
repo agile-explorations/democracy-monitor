@@ -83,6 +83,7 @@
     "structural:distributions": "tsx lib/cron/structural-distributions.ts",
     "validate:narratives": "tsx scripts/validate-narratives.ts",
     "validate:mf-drops": "tsx lib/cron/validate-mf-drops.ts",
+    "validate:funnel": "tsx lib/cron/validate-funnel.ts",
     "narratives:retry": "tsx lib/cron/retry-narratives.ts",
     "narratives:accept-stale": "tsx lib/cron/accept-stale-narratives.ts",
     "narratives:regenerate": "tsx scripts/narratives-regenerate.ts",

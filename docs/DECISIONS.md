@@ -12,6 +12,58 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-FUNNEL: per-source funnel diagnostic with collapse alerting (#547, milestone 97) — ✅ complete 2026-07-30
+
+**Origin**: Top of the #524 follow-on list. The mediaFreedom contamination ran for years — thousands of FR docs retrieved into the category, ~0% ever flagged — invisible because nothing watched the _shape_ of the pipeline per source. Converts that from "a bug we fixed" to "a class of bug we detect."
+
+**Shipped**: `pnpm validate:funnel` — per (category × source_origin), the drop-off across RETRIEVED → RELEVANCE → P1 → P2, with collapse alerting. Wired into the weekly snapshot post-steps (`tryValidateFunnel`): error-tier collapses append to the cron error channel, which the snapshot already funnels into the ops-alert email — so a future contamination auto-pages. Pure collapse logic (`funnel-collapse-checks.ts`, 14 boundary tests) separated from windowed I/O queries (`funnel-validation-queries.ts`) and assembly (`funnel-validation-service.ts`, 9 DB-mocked tests). Exit 2 on error-tier collapse.
+
+**Key decisions:**
+
+- **Granularity = (category × source_origin), not per-signal** (owner). No stored row carries a signal id — it's dropped at storage in `document-store.ts`. Per-signal would need a column + store-time change + full backfill; the coarser view still catches the mediaFreedom case. Filed as future work.
+- **Leave-one-out sibling baseline + thin-baseline guard.** A source alerts only when its stage-retention is below _both_ an absolute floor _and_ its category siblings' pooled baseline. This is the false-positive guard: a category that legitimately flags rarely has a low sibling baseline too, so nothing looks anomalous. When siblings are too sparse to trust (< 500 pooled), severity caps at warn.
+- **FR live-drop ledger folded into RETRIEVED via anti-join.** Post-#524, contaminated FR docs are live-dropped into `fr_drop_ledger` and never stored as documents; without them RETRIEVED would miss the exact future contamination the diagnostic exists to catch. The `NOT EXISTS` anti-join avoids double-counting the historical-annotation drops that ARE stored.
+- **Automated alerting in scope for v1** (owner) — errors auto-page via the existing ops-alert; warns are manual-CLI-only. The catastrophic-absolute rule for sparse-sibling categories (so mediaFreedom-shaped contamination also pages) is filed as **#621**, to be tuned from real warns first.
+
+**Findings from the first prod run**: no error-tier collapses (correct — post-#524 nothing is contaminated); the diagnostic correctly surfaces mediaFreedom/federal_register as a relevance warn (576 retrieved / 90d, 0.5% pass — the FR signal query is broad and #524's filter catches it). Thresholds validated as reasonable; no false positives.
+
+**Lessons learned:**
+
+- **Detoast discipline is a query-design constraint, not an afterthought** — `length(documents.content)` in an unbounded aggregate hangs on the ~6GB TOASTed column; the funnel's mandatory window keeps it in the same safe envelope the L2 queries use. Named the rule in the file header so the next author doesn't reintroduce it.
+- **A diagnostic's severity model is a product decision, not a threshold tweak** — whether mediaFreedom-shaped contamination pages or merely warns turns on the thin-baseline guard, and that's the owner's alert-fatigue call. Surfaced it as such rather than picking silently.
+
+---
+
+## Sprint R-DHS-OIG + R-CHRG + R-HARDEN: source expansion + pre-launch security hardening (milestones 94/95/96) — ✅ deployed 2026-07-30 (main @ 1c0b0b0)
+
+**Origin**: Pre-launch push for journalist/subscriber outreach. Two new corpus sources to deepen oversight coverage (DHS OIG reports, Congressional hearing transcripts), plus a catastrophic-first security sprint on the premise that a public civic-tech site will be probed and attacked.
+
+**Shipped — R-DHS-OIG (#600–603, #607)**: DHS OIG as a new document source. **Union routing** = official DHS component tags (server-side `field_dhs_agency_target_id` facet) ∪ title-keyword matches, deduped by report number, tags stored on `metadata.dhsComponents`; immigration subset = ICE/CBP/USCIS. 687 unique reports (2017→now) backfilled to prod, full-text, scored + embedded. #607 bounded-memory PDF extractor (page-capped `pdf-parse`, streamed download, injectable parse seam) so oversized oversight PDFs can't exhaust memory.
+
+**Shipped — R-CHRG (#608–611)**: Congressional hearing transcripts as a **special source** on the CREC pattern (single fetch → content-classified fan-out to categories, stored per url×category). 7 committees, 2,661 unique hearings backfilled. `dateIssued` = hearing _held_ date with a 540-day trailing-window weekly re-query (transcripts publish months late); hearing document class ×0.6, discussion tier; classifier calibrated from a 2019-Q2 rehearsal audit (6k text cap, bare-"oversight" boilerplate excluded). L2 fleet confirmed 23% hearing P2 rate; **101 baseline-era status flips owner-accepted** (mission-correct, e.g. 2018 family-separation week → ConfirmedConcern), NC 6/6 pass, 93% known-event AI coverage.
+
+**Shipped — R-HARDEN (#614–618)**: catastrophic-first blockers only. R1–R3 deleted dead unauthenticated endpoints that wrote the corpus / spent paid AI (verified zero callers); R4/R6 Redis-backed rate limiter (search 20/5min, email 5/hr) with in-memory fallback; R5 excluded subscriber/feedback PII from the public dump; R7/R8 Backblaze B2 off-site backup (compliance-mode Object Lock, ~360-day retention, complete = corpus + PII-tables pair); R9 destructive-migration gate (blocks DROP/TRUNCATE in prod without `CONFIRM_DESTRUCTIVE_MIGRATION`). Fast-follows #619 (headers/admin/SSRF/dep bumps) and #620 (origin↔Cloudflare shared-secret) filed, not built.
+
+**Deploy & owner ops**: develop→main merge `1c0b0b0` (merged tree **byte-identical** to develop — the two "main-only" commits carried already-identical content), pushed after all four pre-push gates ran green on develop; Render cut over clean (one ~5s 502), all deleted routes 404, live endpoints healthy, migration gate a verified no-op (applied-count 48 = journal 48). #613 accept-stale run (1,281 narratives acknowledged, G4h→0, $0). B2 lifecycle 360d set; DB inbound-IP locked to the owner's dedicated VPN IP/32 (prod unaffected — all services connect over Render's internal network); 2FA enabled across every catastrophic + paid account. Cloudflare nameserver switch in-flight at close.
+
+**Key decisions:**
+
+- **Union routing for both sources** — routing correctness was the standing rework risk; official component tags give ground truth, title keywords catch the untagged tail. Validated against DHS component facets before the fetch.
+- **Catastrophic-first scoping (owner).** Blockers = the two catastrophe axes only: integrity+cost (unauth corpus-write/paid-AI endpoints, which were also dead code) and data loss (single-account backup blast radius, ungated auto-migrations). Headers/admin-hardening/SSRF are real but recoverable → fast-follow.
+- **B2 in compliance-mode Object Lock** — recent backups are immutable even with a stolen key; ~360-day retention is the succession runway. A complete restore needs both objects (PII-free corpus + PII-tables).
+- **Public-repo disclosure discipline** — the origin-bypass fast-follow (#620) is filed as non-actionable defense-in-depth, no exploit recipe, because the repo is public.
+
+**Incidents & lessons learned:**
+
+- **`ai_document_assessments.relevant` is Pass-1-only (NULL on P2 rows); P2 verdicts live in `assessment`.** Reported "0 hearing confirmations" wrong for hours until an impossible all-zeros table exposed it. The column semantics are now in the db-operations reference.
+- **Never resume `review:backfill` after another prod op has landed documents** — the pass P1-sweeps every unassessed doc in the weeks it visits; a resume swept freshly-landed CHRG docs (cap contained it; it became accidental hearing calibration). Re-scope explicitly instead.
+- **No filter pipe between a gated command and its exit check** — `cmd | grep >> log` makes `$?` the grep's, which masked a mid-run `EADDRNOTAVAIL` crash as exit 0. Redirect unfiltered, capture `$?` directly.
+- **Marathon laptop→prod jobs need kill-tolerant, year-chunked drivers** — long single connections die on `ETIMEDOUT` / ephemeral-port exhaustion; detached `caffeinate` drivers with per-chunk retry survive.
+- **Credential-presence shell checks must use length/`:+` and never echo the value** — a `${VAR:-MISSING}` check printed a real B2 app key (rotated same day). Presence checks only, permanently.
+- **Merge via a throwaway git worktree when the dev server is running** (branch-switching corrupts the webpack pack cache) and verify the merged tree is byte-identical to source before pushing to production.
+
+---
+
 ## Sprint R-RETRIEVAL: research retrieval quality for journalist outreach (#592–598, milestone 93) — ✅ deployed 2026-07-28
 
 **Origin**: live testing of the outreach plan's 12 sample research questions (probes + 3 syntheses, ~$0.50). Findings drove six issues; owner approved all, including a standing per-query re-rank cost.
@@ -72,100 +124,5 @@ Also: significant weeks reframed (inauguration = `monitoring_began`, score 20), 
 - **File the teardown with the workaround.** Interim measures documented as a checklist on the fixing issue, keyed to one flag, with tests that will fail loudly on the flip.
 
 **Tuesday runbook (combined with R-STRUCT/R-DRIFT):** verify Monday green → merge develop→main → deploy → `pipeline:repair --from 2025-01-20 --to <last Monday>` (zero-flip gate; re-derives structural + thematic) → `recomputeSignificantWeeks` one-off → saturation + thematic distribution before/afters to #574 → close #573–586, milestones 88–90.
-
----
-
-## Sprint R-DRIFT: light up the thematic drift heatmaps (#578–583) — ✅ code complete, deploys Tue 7/28
-
-**Planned vs built** (2026-07-25, develop; rides Tuesday's single deploy + re-derivation with R-STRUCT):
-
-- #578 novelty/variance wiring — as planned, plus empirical threshold calibration (see decisions).
-- #579 small-N masking — as planned (`THEMATIC_MIN_DOC_COUNT = 5`, distance tabs only).
-- #580 legibility ports — as planned, via generalization rather than copying (`scanStandoutRuns`, shared `buildMarkersByWeek`).
-- #581 verification — caught a live defect (see decisions).
-- #582/#583 (unplanned, owner feedback on the live panel) — spike detection over static runs; AI theme labels on shifts; methodology-text alignment; comparison basis moved to the panel header.
-
-**Key decisions:**
-
-- **The metrics were never wired, not miscalibrated.** `detectNovelDocuments` and `computeVarianceRatio` existed as exported, unit-tested pure functions in the same file whose result builders hardcoded 0/1 — 100% of 1,042 current-term weeks displayed literal constants. The enabler: the centroid path already fetched every needed embedding and discarded it.
-- **Novelty threshold 0.5 = p90, empirically.** The dormant 0.3 default sat at the _median_ of real doc-to-centroid distances and would have flagged half of all documents. Post-calibration: novel rate mean 0.109 / median 0.049 — discriminating.
-- **Instrument suppression is direction-dependent per metric family.** Verification caught the CL ingest rework reading as z=+44 _upward_ thematic drift (doc-mix changes move the centroid), while structural volume metrics only lose signal _downward_ — `scanStandoutRuns` takes `suppressDirections` ('below' structural, 'both' thematic).
-- **Rolling-window drift z mean-reverts ⇒ spikes, not runs, are the thematic headline.** The window absorbs a real shift within ~2 weeks, so upward drift can't sustain a 3-week run; the first panel render filled with "thematically static" items until spike detection (z ≥ 4) was added and ranked first.
-- **Panel = AI headline, tooltip = raw evidence** (owner decision). The hover term lists (TF-IDF, deterministic, auditable) carry _more_ information than the AI phrase; replacing them would have made the detail surface less detailed. Left as complementary layers.
-- **Methodology text now matches the computation**: the z denominator is typical _consecutive week-to-week_ centroid movement, not deviations of the distance-from-mean itself, and the current week is never in its own window — /data/thematic, /system/methodology, and ASSESSMENT_METHODOLOGY.md all corrected (the imprecise wording had propagated from the page into the owner's own understanding).
-
-**Lessons learned:**
-
-- **A spec'd field that ships with a constant is worse than an unshipped field** — it renders as a working display. Distribution checks (stddev = 0, value = constant) on stored JSONB fields are one query and would have caught this the week it shipped.
-- **Verify suppression logic against each metric's failure direction** — the same instrument change reads downward in counts and upward in centroids.
-- **Owner-facing surfaces earn feedback that diagnostics can't** — both #582 issues (static-domination, comparison-basis clarity) came from the owner reading the live panel, minutes after it rendered.
-
-**Prod runbook (Tuesday, with R-STRUCT):** single `pipeline:repair --from 2025-01-20 --to <last Monday>` re-derives structural + thematic; thematic distribution before/after (novel-rate no longer all-zero, variance std > 0) added to #574's gate comment; zero-flip gate unchanged.
-
----
-
-## Sprint R-STRUCT: make the structural heatmaps carry their weight (#573–577) — ✅ code complete, deploys Tue 7/28
-
-**Planned vs built** (2026-07-25, develop, unpushed; deploy + prod re-derivation ride together after the Monday checkpoint per owner decision):
-
-- #573 empirical JSD baseline stats — as planned. `buildBaselineDistribution` computes each baseline week's JSD against the aggregate distribution; scoring uses the empirical mean/std (floor 0.01) with the old constants as documented, effectively-unreachable fallback.
-- #575 "What stands out" panel — as planned (|z| ≥ 2.5 for ≥3 weeks, ranked duration × magnitude, top 8, plain sentences).
-- #576 legibility — directional legend, methodology-change tick marks, recent-heat row ordering; owner approved the 3-entry instrument-change registry as-is.
-- #577 provenance check — verdict: **instrument drift**. civilLiberties CL rows fell ~1,100→~100/month across the CL rework while non-CL sources rose 66→~200/month. Wired into code, not just prose: below-baseline standout runs ending after a registered change for their category are suppressed.
-- #574 prod re-derivation — pending Tuesday (with deploy), zero-flip gate + NC diff + detection + graph; saturation before/after to the issue.
-
-**Key decisions:**
-
-- **Instrument changes are regime shifts, not point events.** First cut suppressed only runs _spanning_ a change date; a test exposed that the post-change regime is exactly the artifact case. Suppression now covers any below-baseline run ending after the change; above-baseline runs are never suppressed (this period's ingest changes only removed volume).
-- **Marker registry is code, owner-approved** (`lib/data/instrument-changes.ts`) — one source of truth for both the visual ticks and the findings suppression.
-- Standout sentences are composed server-side so the API serves display-ready findings (review finding 2, accepted).
-
-**Diagnostic that drove it** (2026-07-25 prod): agency z saturated >+4 in 76.1% of current-term weeks (mean 6.49), type 40.4% — z divided by hardcoded `JSD_BASELINE_MEAN=0 / STDDEV=0.05`, never calibrated; small-sample weeks always diverge from an aggregate distribution. Local verify after fix (blitz window): agency 76.1%→7.2%, type 40.4%→1.2%, and the story _sharpened_ — civilService tempo z 14.6 with agency correctly ~0–2.
-
-**Lessons learned:**
-
-- **A dimension that alarms every week alarms never.** Constant-red is indistinguishable from broken; saturation percentage is a cheap standing metric for any z-scored display (candidate for a future validate:data check).
-- **Never z-score against assumed moments when the empirical ones are already in memory.** The baseline docs were grouped by week in the same function that used hardcoded stats.
-- **Before presenting a "quiet period" as signal, check whether the instrument changed.** The most striking pattern in the heatmap (the 2026 CL blue band) was our own pipeline; one month-by-origin query settled it.
-
-## Sprint R-GRAPH: derivation-graph contract + repair orchestrator (#568–572) — ✅ code complete, deploy held
-
-**Planned vs built** (2026-07-25, develop only; rides to main after the Monday 7/27 checkpoint):
-
-- #572 derivation-graph doc — as planned, extended with the edge-contract section after #569 landed.
-- #568 `enriched_at` lineage column — column + upsert stamp as planned; **the prod initialization was dropped** (see decisions).
-- #569 `validate:graph` — 9 invariants (planned ~7): G4 split into current-week error / historical warn, G3 gained the G3L legacy warning.
-- #570 `pipeline:repair` — as planned (stages via the stage CLIs, gates in-process); `scores:backfill` gained `--to` so scope stays exact.
-- #571 cron + Health wiring — as planned except the digest mention (see deviations).
-
-**Key decisions:**
-
-- **`enriched_at` is forward-only.** The planned `enriched_at := computed_at` initialization was tried locally and produced 313 false narrative-staleness flags — count-only upserts bump `computed_at`, so the stamp claimed enrichments that never ran. Legacy rows keep NULL (G3L warning, shrinks naturally). Bonus: the owner-gated baseline write disappears from the deploy runbook.
-- **Narrative freshness is measured against assessment data, not enrichment timestamps.** First cut compared `generated_at < enriched_at`; the pipeline:repair smoke run then failed its own gate because a no-op re-enrich bumps `enriched_at`. A narrative is stale when _assessments newer than it_ exist in its week. Error tier = current completed week only; historical regeneration stays a per-repair owner decision (G4h warn).
-- **Severity tiers (error/warn)** keep the gate usable: a hard-fail invariant that flags 2,000+ accepted-policy rows is a gate nobody runs.
-- Graph violations are **not** injected into the subscriber digest (#571 spec deviation) — that email is public narrative content, not an ops channel. Health page + cron error channel instead.
-
-**The validator paid for itself before it was committed:**
-
-- 77 orphan score rows in prod (stub-marking ran after the #566 purge — cross-tool ordering gap).
-- 120 assessments for noise-purged documents, silently skewing weekly flag-rate denominators.
-- 1 stale aggregate (executiveOversight 2026-06-29, agg=28 vs 39 scores).
-- A live bug: `scores:recompute` bypassed the #566 content floor (called `scoreDocument` directly, skipping `scoreDocumentBatch`'s filter) — caught when G1b flagged 4 fresh stub scores minutes after a recompute.
-
-**Lessons learned:**
-
-- Every repair tool that re-derives state must share ONE eligibility predicate. Three tools each restated "eligible document" and one drifted. `validate:graph`'s `ELIGIBLE_DOC` is now the reference; a follow-up could extract it into a shared query fragment.
-- Freshness invariants need the _data_ dependency, not the _process_ timestamp — processes re-run harmlessly; data changes are what invalidate derived artifacts.
-- Grid queries over weekly data must be Monday-anchored (2017-01-20 is a Friday); `generate_series` from an inauguration date matches zero aggregate rows and reads as 6,930 violations.
-
-**Prod runbook (deploy day, after Monday checkpoint):** `pnpm db:migrate` (additive 0044) → `pnpm scores:purge-stubs` (77 score rows + 120 orphan assessments; baseline rows included — **owner approval**) → `pnpm pipeline:repair --from 2026-06-29 --to 2026-07-05` (stale eO aggregate; analysis period) → `pnpm validate:graph` expecting all errors green, G3L/G4h warnings expected.
-
-## Sprint R-CL-DEPTH: trump_2017/2018 CL depth + substantive-only counts (#565, #566) — ✅ complete
-
-**Status: Complete (2026-07-23).** Milestone 86. Owner decisions: full repair, immediate start (promotion timing inverted the wait-for-Monday default), adjudication sample waived (volume-only change), option B for count semantics (deflate all eras to substantive-only rather than inflating 2017–2018 to the stub-counting basis).
-
-**Planned vs built:** planned as a ~120k-row, $150–250, 2–3 day repair of the audit's last finding. Under measurement the finding decomposed into (a) substantive opinions — already repaired by #556's base branch, unnoticed until execution; (b) 4,285 genuinely missing rows — copied for **$0.02** (47 P1 calls); (c) the dominant cause, **era-inconsistent scoring policy** — the 2019-era pipeline scored every docket stub into weekly counts (503/wk) while current rules don't (75/wk). Fixed by #566: scoring floor (100-char L2 eligibility) enforced at every score site, 119,298 stub/orphan score rows purged, 1,647 category-weeks re-aggregated, 8 baselines recomputed, 6,899 weeks re-enriched. **Outcome: lawEnforcement 50/103/76/89 avg docs/wk across eras** — the 6.7x artifact gone; residual spread is the source archives' own coverage (publicly disclosed). **Zero status flips in both repairs**, verified by pre/post snapshot; 6/6 NCs; 39/39 events; total sprint AI spend $0.02 vs ~$40 protocol budget.
-
-**Deviations & lessons:** four sizing passes fell $220→$0.02 → **three-numbers rule** (source-matched / net-new after anti-join against prod / assessable after eligibility) now in CLAUDE.md's spend protocol; **sibling audit findings sharing substrate must be re-sized after any one is repaired**; **count asymmetries can be scoring-policy artifacts, not data gaps** — check what each era scored before proposing ingestion. One false-alarm chain stop (`--load-opinions` confusion; 20 min, $0) — the 90-second-completion tell was read as a bug when it was dedup working. R-PARITY's machinery (Option-A rehearsal, zero-flip invariant, detached chains, caps/sentinel) ran twice more without modification and caught nothing because there was nothing to catch — which is the point.
 
 ---
