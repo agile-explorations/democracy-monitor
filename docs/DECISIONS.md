@@ -12,6 +12,27 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-HARDEN-FF: security fast-follows (#619 R10–R14, #620, milestone 98) — ✅ complete 2026-07-31
+
+**Origin**: Post-launch, with Cloudflare live in front of prod. Closes the R-HARDEN threat register's non-catastrophic items, filed as #619/#620 when the blockers shipped. The origin-bypass was confirmed reachable (Render IP `216.24.57.1` + Host header → 200).
+
+**Shipped**: R10 static security headers (HSTS/X-Frame/nosniff/Referrer/Permissions) + a pragmatic enforcing CSP (production-only) + `/api/csp-report` sink + `serializeJsonLd()` escaping the `</script>` breakout in the JSON-LD SEO blocks; R11 admin login per-IP rate limit + constant-time password compare + HMAC-authenticated session expiry; R12 proxy https-only + `redirect:'manual'` with a re-validated single hop + dropped `ACAO:*` + generic error; R13 `next` 14.2.5→14.2.35 + CI OpenGrep pinned to v1.26.0 + sha256 checksum; R14 shared timing-safe `safeEqual()` across the CRON_SECRET checks + admin cookie/password; #620 `middleware.ts` origin-secret gate + `/api/health/live` + render.yaml `ORIGIN_SHARED_SECRET`/`healthCheckPath` + DEPLOYMENT.md rollout runbook.
+
+**Key decisions:**
+
+- **CSP = pragmatic-enforcing + JSON-LD escaping + reporting, not strict-nonce** (owner). An injection-sink audit found exactly one real XSS vector — `JSON.stringify` into `<script type="application/ld+json">` doesn't escape `</script>`, and ingested titles / AI headlines flow into that `data`. Fixing it directly with output-escaping (`serializeJsonLd`) closes the actual hole and reframes a nonce-strict CSP as defense against _future_ sinks — not worth the Pages-Router nonce plumbing + breakage risk on a live site. The pragmatic policy is strict on frame-ancestors/object-src/base-uri/form-action and permissive (`unsafe-inline`) on script/style; `report-uri`→`/api/csp-report` gathers telemetry to inform a later strict migration. Applied production-only so it doesn't fight `next dev`.
+- **#620 fails OPEN, not closed** — enforces only when `NODE_ENV=production` AND `ORIGIN_SHARED_SECRET` is set, so a forgotten env (or dev/local without Cloudflare) can never self-outage. The Edge runtime lacks `crypto.timingSafeEqual`, so the middleware carries its own manual constant-time compare (a deliberate second `safeEqual` alongside the Node one). Rollout order is load-bearing: Cloudflare Transform Rule (inject `x-dm-origin`) → set the Render env → deploy. Owner completed the CF rule + env; enforcement activates on the next `develop→main` deploy.
+- **Session token now carries an HMAC-authenticated expiry** (`<expiresAtMs>.<HMAC>`) — the previous token was static (identical every login, no real expiry). Tamper-evident: extending the expiry breaks the HMAC.
+
+**Lessons learned:**
+
+- **Ground a CSP decision in the actual sink inventory, not generic threat theory.** Strict-vs-pragmatic looked like a big call until the audit showed one escapable sink; fixing it directly made the low-risk pragmatic option correct and deferred the expensive nonce work to defense-in-depth.
+- **A security control's severity and rollout are product decisions.** #620's fail-open design + the documented CF-before-env ordering are what make an origin-lockdown deployable without an outage — the safety lives in the sequencing, not just the code.
+- **`JSON.stringify` into a `<script>` is an XSS sink even for `application/ld+json`** (it doesn't escape `</script>`). Any `dangerouslySetInnerHTML` carrying serialized, externally-influenced data needs output-escaping regardless of CSP.
+- **Origin-secret defense is a shared secret, not obscurity** — the mechanism is public (open-source middleware); security rests on a 256-bit value that never appears in browser-visible responses (a request header injected on the encrypted CF→origin hop). It holds only as long as the value stays unlogged and unreflected.
+
+---
+
 ## Sprint R-FUNNEL: per-source funnel diagnostic with collapse alerting (#547, milestone 97) — ✅ complete 2026-07-30
 
 **Origin**: Top of the #524 follow-on list. The mediaFreedom contamination ran for years — thousands of FR docs retrieved into the category, ~0% ever flagged — invisible because nothing watched the _shape_ of the pipeline per source. Converts that from "a bug we fixed" to "a class of bug we detect."
@@ -100,29 +121,5 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **Rehearse the re-derivation, not just the code.** Both real bugs (dead FA stream, stub contamination) were invisible to unit tests and code review; they surfaced only when the full chain ran against a prod copy and the numbers were compared to expectations.
 - **Consistency-by-construction beats fidelity.** The classifier recalls only 54% of what CL's analyzer matched for the exec layer — and it doesn't matter, because both sides of every seam are measured by the same rule. Chasing analyzer fidelity would have been unfalsifiable.
 - **Long prod operations need kill-tolerant drivers.** Harness background tasks died repeatedly mid-enrichment; the fix was a detached, stale-aware driver whose every restart resumes from a freshness predicate rather than from zero.
-
----
-
-## Sprint R-OVERVIEW: landing-page integrity + the CL-seam honesty arc (#584–587) — ✅ code complete, deploys Tue 7/28
-
-**Planned vs built** (2026-07-25/26, develop): planned as a half-day (markers, significant-weeks reframe, dead component). Owner feedback drove five substantive escalations, each catching something analysis had settled too early:
-
-1. Caption legibility → plain-language copy.
-2. **Retroactive vs non-retroactive changes**: two of three registry entries were reprocessed across all history — no seam exists; markers now claim discontinuity only where one is real (`retroactive` flag; time-axis markers + suppression consult it).
-3. **Per-surface marker semantics**: the concern chart/status timeline are status-derived and verified comparable across the CL seam (confirmed/month 5/10/6/4/7/7/7 — content-based detection + zero-flip gates); status surfaces mark only `affectsConcernStatuses` changes (currently none). Volume surfaces keep the marker.
-4. **Mask scope measured, not assumed**: across the seam (new scoring, control categories flat) volume +0.84→−1.17, tempo +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21, functional +0.19→+0.86, composite 1.01→1.58; only convergence clean (−0.12→−0.10). Mask widened to all baseline-relative dims incl. Composite; numbers recorded in the code comment and as #587 acceptance criteria.
-5. **Fix the data, not just the display** (#587 filed): method-consistent counting population — L2 evidence population untouched so statuses can't flip and re-derivation costs $0 AI; teardown checklist of every interim measure posted to the issue, keyed to the single `retroactive: true` flip.
-
-Also: significant weeks reframed (inauguration = `monitoring_began`, score 20), Concern Score displayed per entry (exact chart formula, `STATUS_WEIGHT` exported as single source), then re-sorted recent-first with event badges when the visible score exposed that the ranking was event-based and undecodable; thematic tooltip fixed to fixed-position below-cell top-z; dead `CategoryDriftHeatmap` removed (kept alive only by its own test — knip counts tests as entries); Data-page downloader caveat added (comment-tagged for #587 removal).
-
-**Lessons learned:**
-
-- **A marker on a time axis is a factual claim** — "before and after are measured differently." Retroactively-applied rule changes make that claim false; only genuine collection seams may mark, and only on the surfaces they actually break.
-- **"Compensated" must mean the surface a user is looking at.** Findings suppression protected the panel while the cells still showed the artifact; each rendering surface needs its own honesty treatment.
-- **Measure mask scope; don't reason it.** "Count-derived dims only" missed that proportions shift when one source collapses — agency hit +5.2σ through metadata sparsity, and Composite inherited everything.
-- **Displaying a number next to a ranking it doesn't drive invites (correct) distrust** — either rank by the visible number or drop the ranking claim.
-- **File the teardown with the workaround.** Interim measures documented as a checklist on the fixing issue, keyed to one flag, with tests that will fail loudly on the flip.
-
-**Tuesday runbook (combined with R-STRUCT/R-DRIFT):** verify Monday green → merge develop→main → deploy → `pipeline:repair --from 2025-01-20 --to <last Monday>` (zero-flip gate; re-derives structural + thematic) → `recomputeSignificantWeeks` one-off → saturation + thematic distribution before/afters to #574 → close #573–586, milestones 88–90.
 
 ---
