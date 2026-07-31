@@ -4,6 +4,32 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-OVERVIEW: landing-page integrity + the CL-seam honesty arc (#584–587) — ✅ code complete, deploys Tue 7/28
+
+**Planned vs built** (2026-07-25/26, develop): planned as a half-day (markers, significant-weeks reframe, dead component). Owner feedback drove five substantive escalations, each catching something analysis had settled too early:
+
+1. Caption legibility → plain-language copy.
+2. **Retroactive vs non-retroactive changes**: two of three registry entries were reprocessed across all history — no seam exists; markers now claim discontinuity only where one is real (`retroactive` flag; time-axis markers + suppression consult it).
+3. **Per-surface marker semantics**: the concern chart/status timeline are status-derived and verified comparable across the CL seam (confirmed/month 5/10/6/4/7/7/7 — content-based detection + zero-flip gates); status surfaces mark only `affectsConcernStatuses` changes (currently none). Volume surfaces keep the marker.
+4. **Mask scope measured, not assumed**: across the seam (new scoring, control categories flat) volume +0.84→−1.17, tempo +1.43→−1.18, type −0.14→+1.39, agency +1.38→+5.21, functional +0.19→+0.86, composite 1.01→1.58; only convergence clean (−0.12→−0.10). Mask widened to all baseline-relative dims incl. Composite; numbers recorded in the code comment and as #587 acceptance criteria.
+5. **Fix the data, not just the display** (#587 filed): method-consistent counting population — L2 evidence population untouched so statuses can't flip and re-derivation costs $0 AI; teardown checklist of every interim measure posted to the issue, keyed to the single `retroactive: true` flip.
+
+Also: significant weeks reframed (inauguration = `monitoring_began`, score 20), Concern Score displayed per entry (exact chart formula, `STATUS_WEIGHT` exported as single source), then re-sorted recent-first with event badges when the visible score exposed that the ranking was event-based and undecodable; thematic tooltip fixed to fixed-position below-cell top-z; dead `CategoryDriftHeatmap` removed (kept alive only by its own test — knip counts tests as entries); Data-page downloader caveat added (comment-tagged for #587 removal).
+
+**Lessons learned:**
+
+- **A marker on a time axis is a factual claim** — "before and after are measured differently." Retroactively-applied rule changes make that claim false; only genuine collection seams may mark, and only on the surfaces they actually break.
+- **"Compensated" must mean the surface a user is looking at.** Findings suppression protected the panel while the cells still showed the artifact; each rendering surface needs its own honesty treatment.
+- **Measure mask scope; don't reason it.** "Count-derived dims only" missed that proportions shift when one source collapses — agency hit +5.2σ through metadata sparsity, and Composite inherited everything.
+- **Displaying a number next to a ranking it doesn't drive invites (correct) distrust** — either rank by the visible number or drop the ranking claim.
+- **File the teardown with the workaround.** Interim measures documented as a checklist on the fixing issue, keyed to one flag, with tests that will fail loudly on the flip.
+
+**Tuesday runbook (combined with R-STRUCT/R-DRIFT):** verify Monday green → merge develop→main → deploy → `pipeline:repair --from 2025-01-20 --to <last Monday>` (zero-flip gate; re-derives structural + thematic) → `recomputeSignificantWeeks` one-off → saturation + thematic distribution before/afters to #574 → close #573–586, milestones 88–90.
+
+---
+
+---
+
 ## Sprint R-DRIFT: light up the thematic drift heatmaps (#578–583) — ✅ code complete, deploys Tue 7/28
 
 **Planned vs built** (2026-07-25, develop; rides Tuesday's single deploy + re-derivation with R-STRUCT):

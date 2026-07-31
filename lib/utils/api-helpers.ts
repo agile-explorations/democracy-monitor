@@ -61,9 +61,25 @@ export function tryStoredResponse(
 
 const ADMIN_COOKIE = 'dm_admin_session';
 
+/** Admin session lifetime (also the cookie Max-Age). */
+const ADMIN_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
- * Returns true if the request has a valid admin session cookie; sends 401 otherwise.
- * The cookie value must match a HMAC of "authenticated" using ADMIN_PASSWORD as the key.
+ * Constant-time string equality for secrets/tokens. Length-guarded: a length
+ * mismatch returns false without calling timingSafeEqual (which throws on
+ * unequal-length buffers) and without leaking the comparison via early exit.
+ */
+export function safeEqual(a: string, b: string): boolean {
+  const { timingSafeEqual } = require('crypto') as typeof import('crypto');
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+/**
+ * Returns true if the request has a valid, unexpired admin session cookie;
+ * sends 401 otherwise. The token carries its own HMAC-authenticated expiry.
  */
 export function requireAdmin(req: NextApiRequest, res: NextApiResponse): boolean {
   const password = process.env.ADMIN_PASSWORD;
@@ -71,21 +87,36 @@ export function requireAdmin(req: NextApiRequest, res: NextApiResponse): boolean
     res.status(503).json({ error: 'ADMIN_PASSWORD not configured' });
     return false;
   }
-  const cookie = req.cookies[ADMIN_COOKIE];
-  if (!cookie || cookie !== makeAdminToken(password)) {
+  if (!verifyAdminToken(password, req.cookies[ADMIN_COOKIE])) {
     res.status(401).json({ error: 'Unauthorized' });
     return false;
   }
   return true;
 }
 
-/** Derive a session token from the admin password using HMAC-SHA256. */
-export function makeAdminToken(password: string): string {
+/**
+ * Session token = `<expiresAtMs>.<HMAC>` where the HMAC (keyed by the admin
+ * password) authenticates the expiry, so it can't be extended by tampering.
+ */
+export function makeAdminToken(password: string, expiresAtMs: number): string {
   const { createHmac } = require('crypto') as typeof import('crypto');
-  return createHmac('sha256', password).update('dm-admin-session').digest('hex');
+  const mac = createHmac('sha256', password)
+    .update(`dm-admin-session:${expiresAtMs}`)
+    .digest('hex');
+  return `${expiresAtMs}.${mac}`;
 }
 
-export { ADMIN_COOKIE };
+/** Validate a presented token: well-formed, not expired, HMAC matches (constant-time). */
+export function verifyAdminToken(password: string, token: string | undefined): boolean {
+  if (!token) return false;
+  const dot = token.indexOf('.');
+  if (dot < 1) return false;
+  const expiresAtMs = Number(token.slice(0, dot));
+  if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) return false;
+  return safeEqual(token, makeAdminToken(password, expiresAtMs));
+}
+
+export { ADMIN_COOKIE, ADMIN_SESSION_TTL_MS };
 
 /** Send a JSON response with 1-hour CDN cache headers. */
 export function sendCached(res: NextApiResponse, body: object): void {

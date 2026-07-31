@@ -17,7 +17,7 @@
 import { spawn } from 'child_process';
 import { closeSync, existsSync, openSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { requireMethod } from '@/lib/utils/api-helpers';
+import { requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 const DUMP_DIR = '/var/data';
 const DUMP_FILE = `${DUMP_DIR}/database.pgdump`;
@@ -90,7 +90,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
   }
 
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token !== secret) {
+  if (!token || !safeEqual(token, secret)) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }

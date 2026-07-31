@@ -27,6 +27,19 @@ Set these secrets in the Render dashboard:
 
 - `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` — Layer 2 AI assessment
 - `CRON_SECRET` — shared between the web service and dump cron job (generate with `openssl rand -hex 32`)
+- `ORIGIN_SHARED_SECRET` — origin↔Cloudflare shared secret (#620); see below
+
+### Cloudflare origin protection (#620)
+
+The origin (Render) is directly reachable by IP + Host header, which would bypass Cloudflare's WAF/rate-limiting. `middleware.ts` rejects any request lacking the `x-dm-origin` header when `NODE_ENV=production` and `ORIGIN_SHARED_SECRET` is set (it fails **open** if the secret is unset, so a misconfigured deploy can't self-outage). `/api/health/live`, `/api/cron/*`, and `/api/csp-report` are allowlisted.
+
+**Rollout order is load-bearing — do these in sequence or you 403 all live traffic:**
+
+1. Set `ORIGIN_SHARED_SECRET` in the Render dashboard (web service). `openssl rand -hex 32`.
+2. Cloudflare → Rules → Transform Rules → Modify Request Header → **Set** `x-dm-origin` = `<secret>` on all incoming requests.
+3. **Then** deploy the middleware (merge to `main`). If it deploys before step 2, Cloudflare-proxied traffic has no header → 403.
+
+Rotate the secret on the same cadence as `CRON_SECRET` (update Render + the Transform Rule together).
 
 ### 3. First build auto-restores
 
