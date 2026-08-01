@@ -16,7 +16,6 @@ import { documents, documentScores, weeklyAggregates, baselines } from '@/lib/db
 import {
   getLayer2Completeness,
   getLayerScorePopulation,
-  getMetadataOnlyClassification,
   getNarrativeCoverage,
 } from './data-validation-queries';
 
@@ -67,15 +66,6 @@ export interface LayerScorePeriodStats {
   withAllLayers: number;
 }
 
-export interface MetadataOnlyStats {
-  population: string;
-  sourceFilter: { column: string; value: string };
-  total: number;
-  markedMetadataOnly: number;
-  unmarked: number;
-  pass: boolean;
-}
-
 export interface NarrativeCoverage {
   elevatedWeeks: number;
   narrativeWeeks: number;
@@ -95,18 +85,12 @@ export interface DataReport {
   baselineCompleteness: BaselineCompleteness[];
   layer2Completeness: Layer2Completeness;
   layerScorePopulation: LayerScorePeriodStats[];
-  metadataOnlyClassification: MetadataOnlyStats[];
   narrativeCoverage: NarrativeCoverage;
   warnings: string[];
 }
 
 // Re-export query functions for consumers
-export {
-  getLayer2Completeness,
-  getLayerScorePopulation,
-  getMetadataOnlyClassification,
-  getNarrativeCoverage,
-};
+export { getLayer2Completeness, getLayerScorePopulation, getNarrativeCoverage };
 
 // ---------------------------------------------------------------------------
 // Stage completeness queries
@@ -297,10 +281,8 @@ export function collectWarnings(report: DataReport): string[] {
     }
   }
 
-  for (const m of report.metadataOnlyClassification) {
-    if (!m.pass)
-      warnings.push(`${m.population}: ${m.unmarked} of ${m.total} not marked metadata_only`);
-  }
+  // Metadata-only classification moved to Ingest Health in #648 (acquisition
+  // classification, not a Data Readiness backlog concern).
 
   warnings.push(...checkNarrativeCoverage(report.narrativeCoverage));
 
@@ -318,28 +300,20 @@ export function collectWarnings(report: DataReport): string[] {
 export async function runDataValidation(category?: string): Promise<DataReport> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
 
-  const [
-    stageCompleteness,
-    baselineCompleteness,
-    layer2Completeness,
-    layerScores,
-    metadataOnly,
-    narrativeCov,
-  ] = await Promise.all([
-    getStageCompleteness(category),
-    getBaselineCompleteness(),
-    getLayer2Completeness(category),
-    getLayerScorePopulation(category),
-    getMetadataOnlyClassification(),
-    getNarrativeCoverage(category),
-  ]);
+  const [stageCompleteness, baselineCompleteness, layer2Completeness, layerScores, narrativeCov] =
+    await Promise.all([
+      getStageCompleteness(category),
+      getBaselineCompleteness(),
+      getLayer2Completeness(category),
+      getLayerScorePopulation(category),
+      getNarrativeCoverage(category),
+    ]);
 
   const report: DataReport = {
     stageCompleteness,
     baselineCompleteness,
     layer2Completeness,
     layerScorePopulation: layerScores,
-    metadataOnlyClassification: metadataOnly,
     narrativeCoverage: narrativeCov,
     warnings: [],
   };

@@ -12,6 +12,7 @@ import type {
   DocumentCoverage,
   FetchErrorSummary,
   IngestReport,
+  MetadataOnlyStats,
   SignalCoverageGap,
   SourcePeriodCoverage,
   SourcePeriodGap,
@@ -212,6 +213,19 @@ function printSourcePeriodCoverage(coverage: SourcePeriodGap[]): void {
   }
 }
 
+function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
+  if (stats.length === 0) return;
+  console.log('\n=== Metadata-Only Classification ===');
+  for (const m of stats) {
+    const mark = m.pass ? '✓' : '✗';
+    const detail =
+      m.total > 0
+        ? `${m.markedMetadataOnly}/${m.total} marked (${m.unmarked} unmarked)`
+        : 'no documents';
+    console.log(`  ${mark} ${m.population.padEnd(35)} ${detail}`);
+  }
+}
+
 function printReport(report: IngestReport, categoryFilter?: string): void {
   const cats = categoryFilter ? CATEGORIES.filter((c) => c.key === categoryFilter) : CATEGORIES;
   printDocumentCoverage(report.documentCoverage);
@@ -223,6 +237,7 @@ function printReport(report: IngestReport, categoryFilter?: string): void {
   printCpdPeriodCoverage(report.cpdPeriodCoverage, cats);
   printSignalCoverage(report.signalCoverageGaps);
   printFetchErrors(report.fetchErrors);
+  printMetadataOnlyClassification(report.metadataOnlyClassification);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getLayer2Completeness,
   getLayerScorePopulation,
-  getMetadataOnlyClassification,
 } from '@/lib/services/data-validation-queries';
 import {
   getStageCompleteness,
@@ -111,7 +110,6 @@ describe('data-validation-service', () => {
     expect(await getBaselineCompleteness()).toEqual([]);
     expect(await getLayer2Completeness()).toEqual([]);
     expect(await getLayerScorePopulation()).toEqual([]);
-    expect(await getMetadataOnlyClassification()).toEqual([]);
   });
 
   describe('getStageCompleteness', () => {
@@ -269,66 +267,6 @@ describe('data-validation-service', () => {
       });
     });
   });
-
-  describe('getMetadataOnlyClassification', () => {
-    it('returns pass when all populations are correctly classified', async () => {
-      const { isDbAvailable } = await import('@/lib/db');
-      vi.mocked(isDbAvailable).mockReturnValue(true);
-
-      // Two select calls: CL stubs, then GDELT
-      const results = [
-        [{ total: '164000', marked: '164000' }],
-        [{ total: '60000', marked: '60000' }],
-      ];
-      let callIdx = 0;
-      const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable(results[callIdx++] || []);
-      });
-
-      const { getDb } = await import('@/lib/db');
-      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
-
-      const result = await getMetadataOnlyClassification();
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        population: 'CourtListener docket stubs',
-        total: 164000,
-        markedMetadataOnly: 164000,
-        unmarked: 0,
-        pass: true,
-      });
-      expect(result[1]).toMatchObject({
-        population: 'GDELT rhetoric documents',
-        total: 60000,
-        markedMetadataOnly: 60000,
-        unmarked: 0,
-        pass: true,
-      });
-    });
-
-    it('returns fail when documents are not classified', async () => {
-      const { isDbAvailable } = await import('@/lib/db');
-      vi.mocked(isDbAvailable).mockReturnValue(true);
-
-      const results = [
-        [{ total: '164000', marked: '100000' }],
-        [{ total: '60000', marked: '60000' }],
-      ];
-      let callIdx = 0;
-      const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable(results[callIdx++] || []);
-      });
-
-      const { getDb } = await import('@/lib/db');
-      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
-
-      const result = await getMetadataOnlyClassification();
-      expect(result[0]).toMatchObject({
-        pass: false,
-        unmarked: 64000,
-      });
-    });
-  });
 });
 
 describe('runDataValidation', () => {
@@ -356,7 +294,6 @@ describe('collectWarnings', () => {
       baselineCompleteness: [],
       layer2Completeness: [],
       layerScorePopulation: [],
-      metadataOnlyClassification: [],
       narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
       warnings: [],
       ...overrides,
@@ -377,24 +314,6 @@ describe('collectWarnings', () => {
     });
     const warnings = collectWarnings(report);
     expect(warnings).toContainEqual(expect.stringContaining('15 documents need scores'));
-  });
-
-  it('warns for incomplete metadata_only classification', () => {
-    const report = emptyReport({
-      metadataOnlyClassification: [
-        {
-          population: 'CourtListener docket stubs',
-          sourceFilter: { column: 'source_type', value: 'court_opinion' },
-          total: 164000,
-          markedMetadataOnly: 100000,
-          unmarked: 64000,
-          pass: false,
-        },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('CourtListener docket stubs'));
-    expect(warnings).toContainEqual(expect.stringContaining('64000'));
   });
 
   it('warns when no weeks have all layer scores', () => {
@@ -623,23 +542,6 @@ describe('collectWarnings', () => {
   // resurrection) moved to the Derivation Graph in #647; Data Readiness no
   // longer carries a dataIntegrity section. Orphan-category coverage now lives
   // in validate-graph.test.ts (findOrphanCategories / G6).
-
-  it('warns for passing metadata_only classification (skipped)', () => {
-    const report = emptyReport({
-      metadataOnlyClassification: [
-        {
-          population: 'GDELT rhetoric documents',
-          sourceFilter: { column: 'source_origin', value: 'gdelt' },
-          total: 5000,
-          markedMetadataOnly: 5000,
-          unmarked: 0,
-          pass: true,
-        },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings.filter((w) => w.includes('GDELT'))).toEqual([]);
-  });
 
   it('combines multiple warning sources simultaneously', () => {
     const report = emptyReport({

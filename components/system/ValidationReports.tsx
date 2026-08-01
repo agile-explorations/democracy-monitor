@@ -210,6 +210,25 @@ export function renderIngest(data: any) {
           />
         </>
       )}
+      {data.metadataOnlyClassification?.length > 0 && (
+        <>
+          <SubsectionHeading
+            title="Metadata-Only Classification"
+            description="Whether metadata-only documents (e.g., docket stubs, rhetoric cross-feed) are correctly flagged at ingestion."
+          />
+          <DataTable
+            headers={['Population', 'Filter', 'Total', 'Marked', 'Unmarked', 'Result']}
+            rows={data.metadataOnlyClassification.map((r: any) => [
+              r.population,
+              r.sourceFilter ? `${r.sourceFilter.column}=${r.sourceFilter.value}` : '—',
+              String(r.total ?? 0),
+              String(r.markedMetadataOnly ?? 0),
+              String(r.unmarked ?? 0),
+              r.pass ? 'PASS' : 'FAIL',
+            ])}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -321,25 +340,6 @@ export function renderDataReport(data: any) {
               String(r.withThematic),
               String(r.withConvergence),
               String(r.withAllLayers ?? 0),
-            ])}
-          />
-        </>
-      )}
-      {data.metadataOnlyClassification?.length > 0 && (
-        <>
-          <SubsectionHeading
-            title="Metadata-Only Classification"
-            description="Whether metadata-only documents (e.g., docket stubs, rhetoric cross-feed) are correctly flagged."
-          />
-          <DataTable
-            headers={['Population', 'Filter', 'Total', 'Marked', 'Unmarked', 'Result']}
-            rows={data.metadataOnlyClassification.map((r: any) => [
-              r.population,
-              r.sourceFilter ? `${r.sourceFilter.column}=${r.sourceFilter.value}` : '—',
-              String(r.total ?? 0),
-              String(r.markedMetadataOnly ?? 0),
-              String(r.unmarked ?? 0),
-              r.pass ? 'PASS' : 'FAIL',
             ])}
           />
         </>

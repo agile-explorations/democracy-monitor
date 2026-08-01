@@ -22,6 +22,7 @@ import {
   getClOpinionCoverage,
   getSourcePeriodCoverage,
   getSourceCoverageByCategory,
+  getMetadataOnlyClassification,
   checkSignalCoverage,
 } from './ingest-validation-queries';
 import type {
@@ -80,6 +81,20 @@ export interface FetchErrorSummary {
   allBaseline: boolean;
 }
 
+/**
+ * Whether an acquired population is correctly classified metadata_only (#648:
+ * moved here from Data Readiness — it's an acquisition-classification concern,
+ * "did we capture the content nature of what we fetched", not a processing backlog).
+ */
+export interface MetadataOnlyStats {
+  population: string;
+  sourceFilter: { column: string; value: string };
+  total: number;
+  markedMetadataOnly: number;
+  unmarked: number;
+  pass: boolean;
+}
+
 export interface IngestReport {
   documentCoverage: DocumentCoverage[];
   contentCompleteness: ContentCompleteness[];
@@ -90,6 +105,7 @@ export interface IngestReport {
   sourcePeriodCoverage: SourcePeriodGap[];
   clOpinionCoverage: ClOpinionCoverage | null;
   signalCoverageGaps: SignalCoverageGap[];
+  metadataOnlyClassification: MetadataOnlyStats[];
   fetchErrors: FetchErrorSummary[];
   warnings: string[];
   /** Same warnings with severity: 'action' = has a remediation, 'limitation' = documented coverage fact (#feedback 2026-07-25). */
@@ -110,6 +126,7 @@ export {
   getClOpinionCoverage,
   getSourcePeriodCoverage,
   getSourceCoverageByCategory,
+  getMetadataOnlyClassification,
   checkSignalCoverage,
 };
 
@@ -175,6 +192,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     clOpinions,
     sourceCoverage,
     incompleteWeeks,
+    metadataOnlyClassification,
   ] = await Promise.all([
     getDocumentCoverage(category),
     getContentCompleteness(category),
@@ -186,6 +204,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     getClOpinionCoverage(),
     getSourceCoverageByCategory(),
     getIncompleteWeeks(),
+    getMetadataOnlyClassification(),
   ]);
 
   const cats = category ? CATEGORIES.filter((c) => c.key === category) : CATEGORIES;
@@ -202,6 +221,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     sourcePeriodCoverage: sourcePeriod,
     clOpinionCoverage: clOpinions,
     signalCoverageGaps,
+    metadataOnlyClassification,
     fetchErrors,
     warnings: [],
     warningDetails: [],

@@ -12,7 +12,6 @@ import type {
   DataReport,
   Layer2PeriodStats,
   LayerScorePeriodStats,
-  MetadataOnlyStats,
   NarrativeCoverage,
 } from '@/lib/services/data-validation-service';
 import { runDataValidation } from '@/lib/services/data-validation-service';
@@ -122,18 +121,6 @@ function printLayerScorePopulation(periods: LayerScorePeriodStats[]): void {
   }
 }
 
-function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
-  console.log('\n=== metadata_only Classification ===');
-  for (const m of stats) {
-    const mark = m.pass ? PASS : FAIL;
-    const detail =
-      m.total > 0
-        ? `${m.markedMetadataOnly}/${m.total} marked (${m.unmarked} unmarked)`
-        : 'no documents';
-    console.log(`  ${mark} ${m.population.padEnd(35)} ${detail}`);
-  }
-}
-
 function printNarrativeCoverage(nc: NarrativeCoverage): void {
   console.log('\n=== Narrative Coverage ===');
   const covPct =
@@ -166,7 +153,6 @@ function printReport(report: DataReport): void {
   printBaselineCompleteness(report);
   printLayer2Completeness(report.layer2Completeness);
   printLayerScorePopulation(report.layerScorePopulation);
-  printMetadataOnlyClassification(report.metadataOnlyClassification);
   printNarrativeCoverage(report.narrativeCoverage);
 
   if (report.warnings.length > 0) {

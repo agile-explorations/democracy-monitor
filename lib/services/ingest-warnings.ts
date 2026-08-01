@@ -199,5 +199,16 @@ export function collectWarningDetails(
     });
   }
 
+  // Metadata-only classification (#648: moved from Data Readiness). Mislabeled
+  // stubs are remediable via docs:mark-stubs, so 'action'.
+  for (const m of report.metadataOnlyClassification ?? []) {
+    if (!m.pass) {
+      warnings.push({
+        severity: 'action',
+        text: `${m.population}: ${m.unmarked} of ${m.total} not marked metadata_only (run: pnpm docs:mark-stubs)`,
+      });
+    }
+  }
+
   return warnings;
 }
