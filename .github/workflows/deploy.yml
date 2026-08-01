@@ -78,7 +78,10 @@ jobs:
       - name: Trigger Render deploy (pinned to the tagged commit)
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          RENDER_SERVICE_IDS: ${{ vars.RENDER_SERVICE_IDS }}
+          # Service IDs are non-sensitive config — a repo variable is idiomatic
+          # (and keeps them readable in logs), but a secret works too. Accept
+          # either: prefer the variable, fall back to the secret.
+          RENDER_SERVICE_IDS: ${{ vars.RENDER_SERVICE_IDS || secrets.RENDER_SERVICE_IDS }}
           SHA: ${{ github.sha }}
         run: |
           set -uo pipefail

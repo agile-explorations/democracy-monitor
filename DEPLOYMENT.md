@@ -131,7 +131,7 @@ A raw `git push origin main` builds nothing in prod. Only the tag deploys, and o
 **One-time setup** (owner, GitHub → repo Settings → Secrets and variables → Actions):
 
 1. **Secret `RENDER_API_KEY`** — a Render API key (Render dashboard → Account Settings → API Keys).
-2. **Variable `RENDER_SERVICE_IDS`** — comma-separated Render service IDs to deploy: the web service **and** all three crons (find each `srv-…`/`crn-…` ID in the service's dashboard URL), e.g. `srv-web,crn-dump,crn-snapshot,crn-legiscan`. Omitting a cron means it never picks up new code — include all of them.
+2. **`RENDER_SERVICE_IDS`** (repo **variable** preferred, or a secret — the Action accepts either) — comma-separated Render service IDs to deploy: the web service **and** all three crons (find each `srv-…`/`crn-…` ID in the service's dashboard URL), e.g. `srv-web,crn-dump,crn-snapshot,crn-legiscan`. Omitting a cron means it never picks up new code — include all of them. A variable keeps the IDs readable in Action logs; a secret masks them (harmless, just harder to eyeball).
 3. Confirm **auto-deploy is off** for each service in the Render dashboard (the `render.yaml` blueprint sets it, but verify after the next blueprint sync).
 4. Verify on first tag: push a `v0.0.1`-style tag, watch the Action gate on CI then deploy, and confirm all services show a new deploy of the tagged commit in Render. (First-tag note: confirm Render honors the `commitId` field; if not, it deploys `main` HEAD, which equals the tag when you tag HEAD.)
 
