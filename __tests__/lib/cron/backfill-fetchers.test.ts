@@ -40,6 +40,12 @@ vi.mock('@/lib/services/ssa-oig-fetcher', () => ({
   fetchSsaOigHistorical: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('@/lib/services/oversight-gov-fetcher', () => ({
+  fetchOversightGovHistorical: vi.fn().mockResolvedValue([]),
+  fetchOversightGovPdfUrl: vi.fn().mockResolvedValue(null),
+  parseOversightGovParams: vi.fn().mockReturnValue({ oigs: [283] }),
+}));
+
 vi.mock('@/lib/services/fec-content', () => ({
   fetchFecEnrichedContent: vi.fn().mockResolvedValue(null),
 }));
@@ -382,6 +388,86 @@ describe('fetchWeekDocuments', () => {
     );
 
     expect(result.items[0].content).toBe('Extracted DOJ OIG investigation report text');
+  });
+
+  it('fills oversight.gov content from metadata.pdfUrl without a detail re-scrape', async () => {
+    const { fetchOversightGovHistorical, fetchOversightGovPdfUrl } =
+      await import('@/lib/services/oversight-gov-fetcher');
+    const { extractPdfText } = await import('@/lib/utils/pdf-extractor');
+
+    vi.mocked(fetchOversightGovHistorical).mockResolvedValue([
+      {
+        title: 'OPM OIG Audit',
+        link: 'https://www.oversight.gov/reports/audit/opm-example',
+        content: 'Audit — 2025-A-001',
+        type: 'ig_report',
+        sourceOrigin: 'oig',
+        metadata: {
+          pdfUrl: 'https://www.oversight.gov/sites/default/files/documents/reports/x.pdf',
+        },
+      },
+    ]);
+    // Distinct texts per PDF path: the stored content proves which route ran.
+    vi.mocked(fetchOversightGovPdfUrl).mockResolvedValue(
+      'https://www.oversight.gov/sites/default/files/documents/reports/detail-scraped.pdf',
+    );
+    vi.mocked(extractPdfText).mockImplementation(async (url) =>
+      url.endsWith('/x.pdf') ? 'Text from the metadata PDF' : 'Text from the detail-scraped PDF',
+    );
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [],
+        oig: [{ url: 'oig://oversight?oigs=283', type: 'oig_html' }],
+      },
+      'civilService',
+    );
+
+    expect(result.items[0].content).toBe('Text from the metadata PDF');
+  });
+
+  it('falls back to the detail scrape when an oversight.gov item lacks metadata.pdfUrl', async () => {
+    const { fetchOversightGovHistorical, fetchOversightGovPdfUrl } =
+      await import('@/lib/services/oversight-gov-fetcher');
+    const { extractPdfText } = await import('@/lib/utils/pdf-extractor');
+
+    vi.mocked(fetchOversightGovHistorical).mockResolvedValue([
+      {
+        title: 'OPM OIG Audit',
+        link: 'https://www.oversight.gov/reports/audit/opm-legacy',
+        content: 'Audit — legacy',
+        type: 'ig_report',
+        sourceOrigin: 'oig',
+      },
+    ]);
+    vi.mocked(fetchOversightGovPdfUrl).mockResolvedValue(
+      'https://www.oversight.gov/sites/default/files/documents/reports/legacy.pdf',
+    );
+    vi.mocked(extractPdfText).mockImplementation(async (url) =>
+      url.endsWith('/legacy.pdf') ? 'Text from the legacy PDF' : 'Wrong PDF fetched',
+    );
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [],
+        cl: [],
+        doj: [],
+        gi: [],
+        fec: [],
+        oig: [{ url: 'oig://oversight?oigs=283', type: 'oig_html' }],
+      },
+      'civilService',
+    );
+
+    expect(result.items[0].content).toBe('Text from the legacy PDF');
   });
 
   it('deduplicates items across sources by URL', async () => {

@@ -50,6 +50,21 @@ export const CATEGORIES: Category[] = [
         type: 'federal_register',
         note: 'Structural changes to federal agencies and workforce',
       },
+      {
+        id: 'oig_oversight_opm',
+        name: 'OPM Inspector General',
+        url: 'oig://oversight?oigs=283',
+        type: 'oig_html',
+        note: 'OPM OIG reports via the Oversight.gov (CIGIE) aggregator; coverage depends on OIG self-submission to CIGIE',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // OPM OIG publishes ~0.5 reports/week (38 reports over the ~80-week
+          // current term, measured 2026-08-01).
+          maxSilentDays: 45,
+          expectedMinWeeklyDocs: 1,
+        },
+      },
     ],
   },
   {
@@ -87,6 +102,21 @@ export const CATEGORIES: Category[] = [
         url: '/api/federal-register?term=%22spending+freeze%22+|+%22funding+pause%22+|+%22program+termination%22+|+%22agency+closure%22+|+%22grant+suspension%22&agency=management-and-budget-office,executive-office-of-the-president,treasury-department',
         type: 'federal_register',
         note: 'Operational fiscal actions including freezes, pauses, and suspensions',
+      },
+      {
+        id: 'oig_oversight_fiscal',
+        name: 'Treasury & TIGTA Inspectors General',
+        url: 'oig://oversight?oigs=225,313',
+        type: 'oig_html',
+        note: 'Treasury OIG and Treasury IG for Tax Administration reports via the Oversight.gov (CIGIE) aggregator; coverage depends on OIG self-submission to CIGIE',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // Treasury ~1.3/wk + TIGTA ~1.6/wk (228 reports combined over the
+          // ~80-week current term, measured 2026-08-01).
+          maxSilentDays: 14,
+          expectedMinWeeklyDocs: 1,
+        },
       },
     ],
   },
@@ -193,6 +223,36 @@ export const CATEGORIES: Category[] = [
           // DHS OIG publishes ~0.7 reports/week recently; a 14-day silence
           // window (DOJ's setting) would false-alarm on normal gaps.
           maxSilentDays: 30,
+          expectedMinWeeklyDocs: 1,
+        },
+      },
+      {
+        id: 'oig_oversight_state',
+        name: 'State Department Inspector General',
+        url: 'oig://oversight?oigs=223',
+        type: 'oig_html',
+        note: 'State OIG reports via the Oversight.gov (CIGIE) aggregator — the only path to State OIG (direct site blocks fetchers); coverage depends on OIG self-submission to CIGIE',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // State OIG publishes ~1/week (76 reports over the ~80-week current
+          // term, measured 2026-08-01).
+          maxSilentDays: 30,
+          expectedMinWeeklyDocs: 1,
+        },
+      },
+      {
+        id: 'oig_oversight_icig',
+        name: 'Intelligence Community Inspector General',
+        url: 'oig://oversight?oigs=284',
+        type: 'oig_html',
+        note: 'IC IG reports via the Oversight.gov (CIGIE) aggregator — the only path to the IC IG; sparse but mission-critical (IG independence)',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // ICIG publishes ~1/quarter (2 reports over the ~80-week current
+          // term, measured 2026-08-01) — long silence is its normal cadence.
+          maxSilentDays: 180,
           expectedMinWeeklyDocs: 1,
         },
       },
@@ -439,6 +499,21 @@ export const CATEGORIES: Category[] = [
         url: 'fec://enforcement?type=murs',
         type: 'fec_json',
         note: 'FEC Matters Under Review — enforcement actions and commissioner deadlock tracking (~2-4/week)',
+      },
+      {
+        id: 'oig_oversight_elections',
+        name: 'EAC & FEC Inspectors General',
+        url: 'oig://oversight?oigs=229,236',
+        type: 'oig_html',
+        note: 'Election Assistance Commission and FEC OIG reports via the Oversight.gov (CIGIE) aggregator; coverage depends on OIG self-submission to CIGIE',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'weekly',
+          // EAC ~0.26/wk + FEC ~0.15/wk (33 reports combined over the ~80-week
+          // current term, measured 2026-08-01) — sparse by nature.
+          maxSilentDays: 60,
+          expectedMinWeeklyDocs: 1,
+        },
       },
     ],
   },
