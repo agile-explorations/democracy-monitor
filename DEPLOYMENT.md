@@ -27,22 +27,10 @@ Set these secrets in the Render dashboard:
 
 - `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` — Layer 2 AI assessment
 - `CRON_SECRET` — shared between the web service and dump cron job (generate with `openssl rand -hex 32`)
-- `ORIGIN_SHARED_SECRET` — origin↔Cloudflare shared secret (#620); see below
 
-### Cloudflare origin protection (#620)
+### Direct-origin reachability (not solved in-app — see #623)
 
-The origin (Render) is directly reachable by IP + Host header, which would bypass Cloudflare's WAF/rate-limiting. `middleware.ts` rejects requests lacking the Cloudflare-injected `x-dm-origin` header — but **only once enforcement is explicitly enabled** (#622). Two independent safety gates mean a deploy can never take the site down: it's inert unless `NODE_ENV=production` AND `ORIGIN_SHARED_SECRET` is set, and even then it only **logs** mismatches until `ORIGIN_ENFORCE=true`. `/api/health/live`, `/api/cron/*`, and `/api/csp-report` are allowlisted.
-
-**Two-stage rollout (deploying is always safe; enforcement is a deliberate switch):**
-
-1. Cloudflare → Rules → Transform Rules → Modify Request Header → **Set** `x-dm-origin` = `<secret>` on all incoming requests.
-2. Set `ORIGIN_SHARED_SECRET` (same value) in the Render dashboard. `openssl rand -hex 32`. **Leave `ORIGIN_ENFORCE` unset.**
-3. Deploy. The guard runs in **log-only** mode: watch the logs — `[origin-guard] log-only: x-dm-origin missing/mismatch …` warnings mean Cloudflare's header isn't matching yet. Quiet logs (with real traffic flowing) mean it matches.
-4. **Only after the logs are quiet**, set `ORIGIN_ENFORCE=true` in Render. Now direct-to-origin hits get 403. Verify: a request to the Render origin IP without the header → 403; normal Cloudflare traffic → 200.
-
-> A prior version fail-closed the instant the secret was set; a value mismatch 403'd all traffic on deploy (2026-07-31). The log-only stage removes that failure mode — never set `ORIGIN_ENFORCE=true` before the logs confirm a match.
-
-Rotate the secret on the same cadence as `CRON_SECRET` (update Render + the Transform Rule together; the log-only stage re-confirms the match after a rotation).
+The Render origin is reachable by shared IP + `Host` header, which bypasses Cloudflare's WAF/rate-limiting. A shared-secret header approach (`x-dm-origin` injected by a Cloudflare Transform Rule, checked in `middleware.ts`) was built and **removed** (2026-07-31): Render fronts every service with _its own_ Cloudflare, so requests arrive orange-to-orange and that second Cloudflare strips custom request headers before they reach the app — the injected header never survives, making the check unenforceable. Do not re-implement it. The real fix is a **Cloudflare Tunnel** (#623), which removes the origin's public ingress entirely so there is no bypass to guard against. Until then, the residual risk is bounded by in-app rate-limiting and Render's own edge; the origin has no un-authenticated write paths.
 
 ### 3. First build auto-restores
 
