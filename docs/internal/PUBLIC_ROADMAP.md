@@ -88,4 +88,4 @@ Significant threats to democratic governance originate at state legislatures, st
 
 ---
 
-_Democracy Monitor is an open-source project maintained by [Michael Kelly](https://linkedin.com/in/yourprofile) and sponsored by [Agile Explorations](https://agile-explorations.com). Questions, feedback, and collaboration inquiries: [contact email]_
+_Democracy Monitor is an open-source project maintained by [Michael Kelly](https://linkedin.com/in/yourprofile) and sponsored by [Agile Explorations](https://agile-explorations.com). Questions, feedback, and collaboration inquiries: democracymonitor.support@agileexplorations.com_
