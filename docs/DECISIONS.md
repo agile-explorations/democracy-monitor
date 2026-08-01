@@ -12,6 +12,34 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-VALIDATION-RECONCILE: rationalize the validation surface (#646–650, milestone 102) — ✅ deployed 2026-08-01 (v1.4.0, main @ 1c006c0)
+
+**Origin**: while triaging Data Readiness warnings, the owner noticed its "745 stale narratives" flatly contradicted the Derivation Graph's G4h=0, and that the reports overlapped and drifted out of sync. The reframe: stop patching individual warnings and rationalize the whole validation surface so each report answers one distinct question with no duplicated (or contradictory) checks.
+
+**The phantom**: `validate:data` measured narrative staleness against `weekly_aggregates.computed_at` and ignored acceptance, so a _no-op re-derivation_ (R-\* sprints bumped `computed_at` without changing the assessments a narrative describes) flagged 741. G4h measures against the newest `ai_document_assessments.assessed_at` **and** honors `staleness_accepted_at`, so it correctly reported 0. Empirically: 741 (vs computed_at) → 382 (vs assessed_at) → 0 (unaccepted). This drove ~$5 of narrative regen (R-DATA-READINESS #101) before the G4h analysis caught that the regen was cosmetic — the lesson that motivated this sprint.
+
+**Planned vs built**: 5 issues filed, all 5 shipped.
+
+- **#646** boundary map (design gate) — one question per report (Ingest=acquisition, Data Readiness=processing backlog + reference sufficiency, Derivation Graph=derived-vs-inputs correctness, Detection=efficacy now, Backtest=historical efficacy); committed as `docs/internal/VALIDATION-SURFACE-BOUNDARY.md`, approved before any implementation.
+- **#647** DR ↔ Graph — deleted the `computed_at` staleness phantom (staleness now solely G4/G4h); moved integrity checks to the Graph, finding 3 of 4 were already covered (non-Monday=G2c, aggregate-presence=G2a, #544-resurrection=G1b+G5) so only orphan-categories needed a new invariant (**G6**); deleted `data-integrity-queries.ts`.
+- **#648** metadata classification → Ingest (acquisition concern); signal-coverage vs stage-completeness were already distinct, so no dedup needed there.
+- **#649** `action`/`limitation` severity split (mirroring Ingest's IngestWarning) + known-issues rendering via the existing SeverityWarnings; baseline L2 gaps / audit-recall / steady-state coverage → `limitation`; CLI exits non-zero only on `action`. Added one-question name+description headers per report.
+- **#650** split graph invariants into live (G2/G3/G4/G4h — cheap joins, run on each request) vs cached heavy (G1a/G1b/G5/G6 — doc/score scans); freshness signals are now up-to-the-minute. As-of stamp + Refresh button on every panel.
+
+**Key decisions:**
+
+- **Missing vs stale narratives split**: missing = a processing backlog → stays Data Readiness; stale = a freshness/correctness concern → Graph (G4/G4h). Cleaner than "all narrative coverage → Graph" (G4/G4h only check freshness of existing narratives).
+- **Refresh = client refetch, not a server-regen button**: `/system/health` is public, so a button triggering the 1–3 min `refresh-reports` job is a DoS surface. The client refetch instantly re-runs the _live_ invariants (the freshness signals that matter); cache regeneration stays with the weekly cron / owner-triggered `refresh-reports`. Filed as an optional rate-limited fast-follow.
+- **Live/cached invariant tiering by cost**: the freshness invariants the owner cares about (G3/G4/G4h) are the cheap ones, so "live" was achievable without touching the heavy scans.
+
+**Lessons learned:**
+
+- **A staleness metric is only as good as its reference timestamp.** Two overlapping validators with inconsistent definitions produced a phantom that drove real, nearly-wasted work. The fix was architectural (delete the inferior check), not data (regen/accept-stale).
+- **When consolidating checks, look for existing coverage first** — 3 of 4 "integrity moves" were deletions, not ports, because the Graph already covered them.
+- **Tests aren't tsc-checked** (vitest uses esbuild), so an incomplete report fixture surfaced only at runtime ("not iterable") — completed the fixtures + added a defensive guard.
+
+**Spec deviations**: none against the approved #646 boundary map; the missing/stale narrative split above is a refinement noted in the boundary doc.
+
 ## Sprint R-CODE-PROTECT: code-side resilience + repo/account hardening (#624–631, milestone 99) — ✅ 7 of 8 complete 2026-07-31
 
 **Origin**: after the database gained off-site immutable backups (B2, #617), the owner asked "what protects the _code_?" The reframe drove the sprint — code and data have different threat models. Data is expensive-to-recreate and lives in two places, so off-site copies are the whole game; code is distributed by git (every clone is full history), so the real risks are **integrity/tampering** (a credential pushing code that auto-deploys) and **canonical-host loss**, not data loss. Issues were ranked by likelihood × blast-radius ÷ effort, which put the free secret-scanning toggle and the live push→prod hole above the high-effort origin Tunnel.
@@ -140,24 +168,3 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 - **Marathon laptop→prod jobs need kill-tolerant, year-chunked drivers** — long single connections die on `ETIMEDOUT` / ephemeral-port exhaustion; detached `caffeinate` drivers with per-chunk retry survive.
 - **Credential-presence shell checks must use length/`:+` and never echo the value** — a `${VAR:-MISSING}` check printed a real B2 app key (rotated same day). Presence checks only, permanently.
 - **Merge via a throwaway git worktree when the dev server is running** (branch-switching corrupts the webpack pack cache) and verify the merged tree is byte-identical to source before pushing to production.
-
----
-
-## Sprint R-RETRIEVAL: research retrieval quality for journalist outreach (#592–598, milestone 93) — ✅ deployed 2026-07-28
-
-**Origin**: live testing of the outreach plan's 12 sample research questions (probes + 3 syntheses, ~$0.50). Findings drove six issues; owner approved all, including a standing per-query re-rank cost.
-
-**Shipped**: #593 procedural-CREC title demotion (0.12 combined-score penalty, conservative genre list + TS twin); #592 era-stratified retrieval (deterministic era extraction onto the baselines' term windows — named pairs 2×15 slots, across-admins 3×10; user dates intersect windows with surfaced conflicts; removable comparison chips; era-labeled synthesis prompt); #595 attributed provenance + tier legend; #598 query failures throw instead of returning empty; #594 bearing-on-question re-rank (overfetch 2×, gpt-4o-mini, ~$0.0008/query, strict fallback to vector order); #596 conservative tier suggestion (suggest, never override).
-
-**Acceptance (prod re-runs)**: Schedule-F comparison 0→12 docs from 2020 (EO 13957 at #2, 15/15 strata); IM4 T1-vs-T2 gained 14 first-term docs; boilerplate out of every top-5; IG-firings top-10 noise 4→0 with 2.1s docs-phase latency.
-
-**Incident en route**: the #593 deploy broke research search for ~15 min — drizzle sends numeric params as text and `CASE WHEN … THEN $1 ELSE 0` failed, swallowed into empty results. Hotfixed with ::numeric; follow-ups #597 (OpenGrep cast rule) and #598 (fixed in-sprint).
-
-**Lessons learned:**
-
-- **Behavioral verification before deploy applies to ranking changes, not just data ops.** The broken SQL passed unit tests (they covered the TS twin, not the query); only executing against a real DB would have caught it — and did, for every subsequent change in the sprint.
-- **Drizzle `${}` params are text: any use inside SQL arithmetic/CASE/comparison needs an explicit cast.** Two incidents from one class (#597 files the lint rule).
-- **Empty-on-error is the worst failure mode for a research tool** — a broken query rendered as "the corpus lacks documents," precisely the credibility failure the outreach plan warns about. Errors must look like errors.
-- **Deterministic beats clever for query understanding**: regex era-extraction is reproducible from the question text alone, testable against the real outreach questions, and free — the model is reserved for judgment (re-rank), with a fallback that can only improve on baseline.
-
----
