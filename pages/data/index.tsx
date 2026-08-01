@@ -1,8 +1,46 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
+import { formatDumpDate, formatDumpSize } from '@/lib/services/dump-info';
+import type { DumpInfo } from '@/lib/services/dump-info';
 
 const GITHUB_REPO = 'https://github.com/agile-explorations/democracy-monitor';
+
+/**
+ * Freshness stamp for the served database dump (#641). Fetched client-side so the
+ * page stays static; renders nothing until (and unless) the metadata loads, so a
+ * slow or failed fetch leaves the "Updated weekly" copy as the graceful fallback.
+ */
+function DumpFreshness() {
+  const [info, setInfo] = useState<DumpInfo | null>(null);
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      try {
+        const res = await fetch('/api/data/dump-info');
+        if (!res.ok) return;
+        const data = (await res.json()) as DumpInfo;
+        if (active) setInfo(data);
+      } catch {
+        /* freshness is best-effort; the static "Updated weekly" copy stands in */
+      }
+    }
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (!info?.lastModified) return null;
+  const size = info.sizeBytes ? ` · ${formatDumpSize(info.sizeBytes)}` : '';
+  return (
+    <p className="text-xs text-dm-text-secondary mt-2">
+      Last updated: {formatDumpDate(info.lastModified)}
+      {size}
+    </p>
+  );
+}
 
 function DownloadCard({
   title,
@@ -97,6 +135,7 @@ export default function DataPage() {
             >
               Download PostgreSQL dump
             </a>
+            <DumpFreshness />
           </div>
 
           <h3 className="text-sm font-semibold text-dm-text-primary mt-4 mb-2">
