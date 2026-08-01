@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
 import { Pool } from 'pg';
+import { resolveDbSsl } from './ssl';
 
 loadEnvConfig(process.cwd());
 
@@ -19,7 +20,7 @@ const ARCHIVE_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}
 const EMBEDDINGS_URL = `https://github.com/${REPO}/releases/download/${RELEASE_TAG}/${EMBEDDINGS_FILENAME}`;
 
 async function isDatabaseEmpty(connectionString: string): Promise<boolean> {
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString, ssl: resolveDbSsl(connectionString) });
   try {
     const result = await pool.query(
       `SELECT EXISTS (

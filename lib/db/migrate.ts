@@ -7,6 +7,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import type { JournalEntry } from './migration-safety';
 import { pendingDestructiveMigrations, shouldBlockMigration } from './migration-safety';
+import { resolveDbSsl } from './ssl';
 
 loadEnvConfig(process.cwd());
 
@@ -62,7 +63,7 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({ connectionString, ssl: resolveDbSsl(connectionString) });
   const db = drizzle(pool);
 
   await guardDestructiveMigrations(pool);
