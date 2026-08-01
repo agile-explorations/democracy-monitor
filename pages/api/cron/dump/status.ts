@@ -35,11 +35,18 @@ function readB2Result(label: string): Record<string, unknown> | null {
 }
 
 /**
- * The off-site backup is two objects (#617): the PII-free corpus dump and a
- * small subscribers+feedback dump. Both must succeed for a complete backup.
+ * Off-site upload results. The backup is two objects (#617): the PII-free corpus
+ * dump and a small subscribers+feedback dump — both must succeed for a complete
+ * backup. `download` is the public corpus copy in the download bucket (#636);
+ * surfacing it here means a failed download upload (e.g. a wrong bucket name)
+ * is visible in status instead of silent (#640).
  */
 function readOffsiteResult(): Record<string, unknown> {
-  return { database: readB2Result('database'), piiTables: readB2Result('pii-tables') };
+  return {
+    database: readB2Result('database'),
+    piiTables: readB2Result('pii-tables'),
+    download: readB2Result('download'),
+  };
 }
 
 type ResultPayload = Record<string, unknown> & { status: string };
