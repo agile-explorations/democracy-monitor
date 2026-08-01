@@ -13,6 +13,7 @@
 
 import { existsSync, readFileSync, statSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { isDumpTempStale } from '@/lib/cron/dump-config';
 import { formatError, requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 const DUMP_DIR = '/var/data';
@@ -62,11 +63,13 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
 
   if (existsSync(DUMP_TEMP)) {
     const stat = statSync(DUMP_TEMP);
-    const ageS = Math.round((Date.now() - stat.mtime.getTime()) / 1000);
+    // A live pg_dump writes continuously; an idle temp past the threshold means
+    // the process died (e.g. instance recycled). Report `stale` so it's not
+    // mistaken for a healthy in-flight dump; the next trigger reclaims it (#639).
     res.status(200).json({
-      status: 'running',
+      status: isDumpTempStale(stat.mtime.getTime()) ? 'stale' : 'running',
       tempMtime: stat.mtime.toISOString(),
-      ageS,
+      ageS: Math.round((Date.now() - stat.mtime.getTime()) / 1000),
     });
     return;
   }
