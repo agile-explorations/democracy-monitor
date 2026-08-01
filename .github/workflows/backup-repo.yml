@@ -1,0 +1,67 @@
+name: Off-site repo backup
+
+# Weekly off-platform git backup to Backblaze B2 (#624) — the code-side analogue
+# to the DB backup (#617). A full-history `git bundle --all` (all branches + tags)
+# is uploaded to the same B2 bucket under `code-backups/`. The bucket's Object
+# Lock makes it immutable for the retention window, so the repo survives losing
+# the GitHub org entirely (billing lapse, compromise-and-deletion, ban).
+# Restore: download the newest bundle and `git clone repo-<date>.bundle`.
+#
+# One-time setup (see DEPLOYMENT.md → "Off-site repo backup"): add the B2
+# credentials as repo Actions secrets — B2_ENDPOINT, B2_BUCKET, B2_KEY_ID,
+# B2_APP_KEY (the same values already set on Render for the DB backup).
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC, after the weekly DB dump (05:00 UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup-repo
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror-clone and bundle full history
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y-%m-%d)
+          BUNDLE="repo-${DATE}.bundle"
+          # --mirror captures every ref (all branches + tags) exactly, so the
+          # bundle is a complete, restorable copy of the repository.
+          git clone --mirror \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo-mirror.git
+          git -C repo-mirror.git bundle create "../${BUNDLE}" --all
+          # Verify the bundle is self-contained and restorable before uploading.
+          git -C repo-mirror.git bundle verify "../${BUNDLE}"
+          echo "BUNDLE=${BUNDLE}" >> "$GITHUB_ENV"
+          ls -lh "${BUNDLE}"
+
+      - name: Upload to Backblaze B2
+        env:
+          B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+          B2_BUCKET: ${{ secrets.B2_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APP_KEY }}
+        run: |
+          set -euo pipefail
+          for v in B2_ENDPOINT B2_BUCKET AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!v:-}" ]; then
+              echo "::error::$v is not set — see DEPLOYMENT.md (#624 setup)."
+              exit 1
+            fi
+          done
+          # B2's S3 endpoint embeds the region (s3.<region>.backblazeb2.com); the
+          # AWS CLI requires it explicitly, so derive it rather than add an env var.
+          AWS_DEFAULT_REGION=$(printf '%s' "$B2_ENDPOINT" | sed -E 's#^https?://s3\.([^.]+)\..*#\1#')
+          export AWS_DEFAULT_REGION
+          aws s3 cp "$BUNDLE" "s3://${B2_BUCKET}/code-backups/${BUNDLE}" \
+            --endpoint-url "$B2_ENDPOINT"
+          echo "Uploaded code-backups/${BUNDLE} (region ${AWS_DEFAULT_REGION})"
