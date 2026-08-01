@@ -22,6 +22,9 @@ export const RATE_LIMITS = {
   dataDump: { windowMs: 60 * 60_000, maxRequests: 10, keyPrefix: 'rl:dump' },
   // CSP violation reports: generous cap so a spammer/extension can't flood logs (#619 R10).
   cspReport: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:csp' },
+  // Dump freshness metadata (#641): a cheap cached HEAD; generous cap just to
+  // keep any single IP from scripting it, well above real page-load volume.
+  dumpInfo: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:dump-info' },
 } as const;
 
 type RateLimitPolicy = { windowMs: number; maxRequests: number; keyPrefix: string };
