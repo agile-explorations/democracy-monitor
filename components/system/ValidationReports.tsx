@@ -247,6 +247,7 @@ export function renderDataReport(data: any) {
   const sc = data.stageCompleteness;
   return (
     <div className="space-y-5 max-h-[600px] overflow-y-auto">
+      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
       {sc && (
         <>
           <SubsectionHeading
@@ -369,7 +370,6 @@ export function renderDataReport(data: any) {
           />
         </>
       )}
-      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
     </div>
   );
 }
