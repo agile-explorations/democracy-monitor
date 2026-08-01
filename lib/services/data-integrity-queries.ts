@@ -8,8 +8,19 @@ import type { DataIntegrityCheck } from './data-validation-service';
 
 const VALID_CATEGORY_KEYS = new Set(CATEGORIES.map((c) => c.key));
 
-function buildOrphanCheck(tableName: string, rows: { category: string }[]): DataIntegrityCheck {
-  const orphans = rows.map((r) => r.category).filter((c) => !VALID_CATEGORY_KEYS.has(c));
+// `intent` is the presidential-intent pseudo-category: rhetoric/proclamations are
+// stored in `documents` under this key for the intent feature, deliberately
+// outside the 14 detection categories and excluded from scoring/aggregation
+// everywhere (`category != 'intent'`). It is a legitimate value, not an orphan.
+const ALLOWED_NON_DETECTION_KEYS = new Set(['intent']);
+
+export function buildOrphanCheck(
+  tableName: string,
+  rows: { category: string }[],
+): DataIntegrityCheck {
+  const orphans = rows
+    .map((r) => r.category)
+    .filter((c) => !VALID_CATEGORY_KEYS.has(c) && !ALLOWED_NON_DETECTION_KEYS.has(c));
   return {
     name: `Orphan categories in ${tableName}`,
     count: orphans.length,
