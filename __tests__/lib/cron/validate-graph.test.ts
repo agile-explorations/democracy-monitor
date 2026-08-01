@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { findOrphanCategories, runGraphValidation } from '@/lib/cron/validate-graph';
+import {
+  findOrphanCategories,
+  LIVE_INVARIANT_IDS,
+  runGraphValidation,
+  runLiveInvariants,
+} from '@/lib/cron/validate-graph';
 
 const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
 vi.mock('@/lib/db', () => ({
@@ -33,5 +38,17 @@ describe('runGraphValidation', () => {
     expect(results.every((r) => r.pass && r.violations === 0)).toBe(true);
     // Each result carries a severity for gating.
     expect(results.every((r) => r.severity === 'error' || r.severity === 'warn')).toBe(true);
+  });
+});
+
+describe('runLiveInvariants (#650)', () => {
+  it('runs only the cheap live-tier invariants (no heavy doc/score scans)', async () => {
+    const results = await runLiveInvariants();
+    const ids = results.map((r) => r.id).sort();
+    expect(ids).toEqual([...LIVE_INVARIANT_IDS].sort());
+    // Heavy invariants (G1a/G1b/G5/G6) are NOT run live.
+    expect(ids).not.toContain('G1a');
+    expect(ids).not.toContain('G6');
+    expect(results.every((r) => r.pass && r.violations === 0)).toBe(true);
   });
 });

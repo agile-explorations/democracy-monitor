@@ -303,11 +303,16 @@ async function g6OrphanCategories(): Promise<GraphInvariantResult> {
   };
 }
 
-export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
+/**
+ * Cheap invariants — joins over the small aggregates/narratives/assessments
+ * tables. Fast enough to run live on a health-page request (#650), so the
+ * freshness signals (G3/G4/G4h) are up-to-the-minute, not last-snapshot.
+ */
+export const LIVE_INVARIANT_IDS = ['G2a', 'G2b', 'G2c', 'G3', 'G3L', 'G4', 'G4h'];
+
+export async function runLiveInvariants(): Promise<GraphInvariantResult[]> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   return [
-    await g1aEligibleDocsScored(),
-    await g1bNoOrphanOrStubScores(),
     await g2aAggregatePresence(),
     await g2bCountParity(),
     await g2cMondayAnchors(),
@@ -315,9 +320,26 @@ export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
     await g3EnrichmentFreshness(true),
     await g4NarrativeFreshness(true),
     await g4NarrativeFreshness(false),
+  ];
+}
+
+/**
+ * Heavy invariants — full documents × scores / assessments scans that exceed
+ * the web-request timeout, so they're computed by the cron and read from cache.
+ */
+async function runHeavyInvariants(): Promise<GraphInvariantResult[]> {
+  return [
+    await g1aEligibleDocsScored(),
+    await g1bNoOrphanOrStubScores(),
     await g5AssessmentReferential(),
     await g6OrphanCategories(),
   ];
+}
+
+export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
+  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
+  const [heavy, live] = await Promise.all([runHeavyInvariants(), runLiveInvariants()]);
+  return [...heavy, ...live];
 }
 
 function printResults(results: GraphInvariantResult[]): void {
