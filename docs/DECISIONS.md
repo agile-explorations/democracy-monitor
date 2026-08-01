@@ -12,7 +12,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-HARDEN-FF: security fast-follows (#619 R10–R14, #620, milestone 98) — ✅ complete 2026-07-31
+## Sprint R-HARDEN-FF: security fast-follows (#619 R10–R14, #620, milestone 98) — ✅ complete 2026-07-31 (⚠️ #620 origin gate later reverted — see follow-up below)
 
 **Origin**: Post-launch, with Cloudflare live in front of prod. Closes the R-HARDEN threat register's non-catastrophic items, filed as #619/#620 when the blockers shipped. The origin-bypass was confirmed reachable (Render IP `216.24.57.1` + Host header → 200).
 
@@ -30,6 +30,27 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **A security control's severity and rollout are product decisions.** #620's fail-open design + the documented CF-before-env ordering are what make an origin-lockdown deployable without an outage — the safety lives in the sequencing, not just the code.
 - **`JSON.stringify` into a `<script>` is an XSS sink even for `application/ld+json`** (it doesn't escape `</script>`). Any `dangerouslySetInnerHTML` carrying serialized, externally-influenced data needs output-escaping regardless of CSP.
 - **Origin-secret defense is a shared secret, not obscurity** — the mechanism is public (open-source middleware); security rests on a 256-bit value that never appears in browser-visible responses (a request header injected on the encrypted CF→origin hop). It holds only as long as the value stays unlogged and unreflected.
+
+### Follow-up: the #620 origin gate was reverted and fully removed (2026-07-31)
+
+The origin-secret portion of this sprint did **not** hold up. Recorded here in full because the failure — and why the mechanism was never viable on this platform — is the real lesson.
+
+**What happened, in order:**
+
+1. **First enforcing deploy caused a total outage.** The `main@b7abc34` deploy ran the middleware fail-**closed** the instant `ORIGIN_SHARED_SECRET` was set; the running instance's secret didn't match Cloudflare's injected header (Render env changes need a redeploy to take effect, and the value never reconciled), so every request 403'd. It couldn't fail-open because the fix required a redeploy — and **Render deploys were simultaneously broken** ("Access to Git repository denied"). Recovered via Render **Rollback** (Git-independent; replays a cached image).
+2. **Root cause of the broken deploy pipeline**: enabling GitHub org "Require 2FA for everyone" removed the non-2FA collaborator Render used for git access. Disabling that requirement restored deploys. (Re-enable only after moving Render to the 2FA-exempt GitHub App.)
+3. **Rebuilt fail-safe** (#622): a log-only→enforce two-stage guard (enforces only when `ORIGIN_ENFORCE=true`, after logs confirm the header matches) so a deploy can never self-outage again. Redeployed in log-only mode.
+4. **Then proved the mechanism is unenforceable on Render at all.** A temporary `/api/origin-debug` probe through Cloudflare returned `hasOriginHeader:false` while `cf-ray` + `cdn-loop` + Render's `rndr-id`/`render-proxy-ttl` were all present — i.e. **orange-to-orange**: our Cloudflare → Render's _own_ Cloudflare → app. The second (Render-owned) Cloudflare strips the custom `x-dm-origin` header before it reaches the app. The Transform Rule fires correctly; the header simply never survives the hop. mTLS / Authenticated Origin Pulls / inbound-IP firewall are all unavailable on a public Render web service, and the bypass (shared IP `216.24.57.1` + `Host` header) is inherent to the platform.
+5. **Removed all of it** (commit `244461d` → merged `0021e86`, deployed + verified 2026-07-31): `middleware.ts`, `lib/utils/origin-guard.ts` + tests, `pages/api/origin-debug.ts`, `pages/api/health/live.ts`, and the `render.yaml` `ORIGIN_SHARED_SECRET`/`ORIGIN_ENFORCE`/`healthCheckPath`. Owner deleted the matching Render env vars + Cloudflare Transform Rule. **All R10–R14 hardening was kept and re-verified live** (headers, CSP + report sink, admin, proxy, dep pin). `DEPLOYMENT.md` now documents why direct-origin protection is deferred, so nobody re-implements the dead approach.
+
+**The real fix — deferred**: **#623 (Cloudflare Tunnel)**. A Tunnel gives the origin no public ingress at all, closing the bypass _by construction_ — which also means no in-app header check is ever needed. Until then the bypass stays open by design; residual risk is bounded by in-app rate-limiting + Render's edge (no unauthenticated write paths on the origin).
+
+**Lessons learned (this arc):**
+
+- **Never deploy a fail-closed guard at the HTTP edge.** A single wrong/if-absent secret 403'd 100% of traffic, and the remedy (redeploy) was itself blocked. Any edge auth must fail-**open** and gate enforcement behind an explicit, separately-flipped switch that only activates after logs confirm the happy path.
+- **Verify the deployment platform's proxy topology _before_ designing header-injection auth.** Render fronts every service with its own Cloudflare; the orange-to-orange hop strips custom request headers, so a CF→origin shared-header scheme can't work here. One `dig`/header probe up front would have killed the design before it shipped an outage. (Render's own Cloudflare also _spoofs_ the "behind CF" signal — `server: cloudflare`/`cf-ray` on responses does not mean your zone is in-path; verify with `dig +short NS` + the CF dashboard "Active" state.)
+- **Org-wide 2FA enforcement can sever platform integrations.** "Require 2FA for everyone" silently removed Render's git collaborator and broke deploys. Migrate CI/CD integrations to 2FA-exempt app installs _before_ enforcing.
+- **When a control is provably unenforceable, remove it — don't park it.** Leaving dead middleware "just in case" carries real complexity and a leaked-secret liability; the correct end state was deletion + a documented pointer to the actual fix.
 
 ---
 
