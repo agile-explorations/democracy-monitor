@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { backupObjectKey, parseB2Region, readB2Config } from '@/lib/services/b2-backup';
+import {
+  backupObjectKey,
+  downloadPublicUrl,
+  parseB2Region,
+  readB2Config,
+  readB2DownloadConfig,
+} from '@/lib/services/b2-backup';
 
 describe('parseB2Region', () => {
   it.each([
@@ -60,4 +66,45 @@ describe('readB2Config', () => {
       expect(readB2Config(env)).toBeNull();
     },
   );
+});
+
+describe('readB2DownloadConfig (#636)', () => {
+  const full = {
+    B2_ENDPOINT: 'https://s3.us-east-005.backblazeb2.com',
+    B2_DOWNLOAD_BUCKET: 'dm-public-downloads',
+    B2_DOWNLOAD_KEY_ID: 'dkid',
+    B2_DOWNLOAD_APP_KEY: 'dsecret',
+  };
+
+  it('reads the download bucket vars + shared endpoint/region', () => {
+    expect(readB2DownloadConfig(full)).toEqual({
+      endpoint: full.B2_ENDPOINT,
+      region: 'us-east-005',
+      bucket: 'dm-public-downloads',
+      keyId: 'dkid',
+      appKey: 'dsecret',
+    });
+  });
+
+  it.each(['B2_ENDPOINT', 'B2_DOWNLOAD_BUCKET', 'B2_DOWNLOAD_KEY_ID', 'B2_DOWNLOAD_APP_KEY'])(
+    'returns null (falls back to local file) when %s is missing',
+    (missing) => {
+      expect(readB2DownloadConfig({ ...full, [missing]: undefined })).toBeNull();
+    },
+  );
+});
+
+describe('downloadPublicUrl', () => {
+  it('builds the public S3-style URL', () => {
+    const config = {
+      endpoint: 'https://s3.us-east-005.backblazeb2.com',
+      region: 'us-east-005',
+      bucket: 'dm-public-downloads',
+      keyId: 'k',
+      appKey: 's',
+    };
+    expect(downloadPublicUrl(config, 'database.pgdump')).toBe(
+      'https://dm-public-downloads.s3.us-east-005.backblazeb2.com/database.pgdump',
+    );
+  });
 });
