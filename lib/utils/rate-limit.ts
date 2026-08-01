@@ -17,8 +17,6 @@ export const RATE_LIMITS = {
   search: { windowMs: 5 * 60_000, maxRequests: 20, keyPrefix: 'rl:search' },
   // Email-send endpoints: block confirmation-spam / quota exhaustion.
   email: { windowMs: 60 * 60_000, maxRequests: 5, keyPrefix: 'rl:email' },
-  // Admin login: brute-force throttle (#619 R11).
-  adminLogin: { windowMs: 15 * 60_000, maxRequests: 5, keyPrefix: 'rl:admin' },
   // CSP violation reports: generous cap so a spammer/extension can't flood logs (#619 R10).
   cspReport: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:csp' },
 } as const;
