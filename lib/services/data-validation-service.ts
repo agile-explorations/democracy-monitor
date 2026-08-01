@@ -74,6 +74,12 @@ export interface NarrativeCoverage {
   elevatedWeeks: number;
   narrativeWeeks: number;
   missingWeeks: number;
+  /**
+   * Of missingWeeks, how many are baseline periods (before 2025-01-20). Baseline
+   * narratives are not shown to users (pending product decision #651), so these
+   * are a known limitation, not an actionable backlog (#649 follow-up).
+   */
+  missingWeeksBaseline: number;
   /** Weeks that have at least one elevated category-week narrative. */
   weeksWithNarratives: number;
   /** Weeks that have a weekly summary (_overview). */
@@ -237,23 +243,33 @@ function checkBaselineCompleteness(baselines: BaselineCompleteness[]): string[] 
   return warnings;
 }
 
-function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
-  const warnings: string[] = [];
-  if (nc.missingWeeks > 0) {
-    warnings.push(
-      `${nc.missingWeeks} elevated category-weeks missing narratives (run: pnpm scores:enrich --narratives)`,
-    );
+function checkNarrativeCoverage(nc: NarrativeCoverage): DataWarning[] {
+  const warnings: DataWarning[] = [];
+  // Only CURRENT-TERM missing narratives are actionable. Baseline-period
+  // narratives are not shown to users (pending product decision #651), so
+  // reporting them as "needs attention" is wrong — they are a known limitation.
+  const currentMissing = nc.missingWeeks - nc.missingWeeksBaseline;
+  if (currentMissing > 0) {
+    warnings.push({
+      severity: 'action',
+      text: `${currentMissing} elevated current-term category-weeks missing narratives (run: pnpm scores:enrich --narratives)`,
+    });
+  }
+  if (nc.missingWeeksBaseline > 0) {
+    warnings.push({
+      severity: 'limitation',
+      text: `${nc.missingWeeksBaseline} elevated baseline category-weeks have no narrative — baseline narratives are not shown to users pending a product decision (#651)`,
+    });
   }
   if (nc.missingSummaryWeeks > 0) {
-    warnings.push(
-      `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm scores:enrich --narratives)`,
-    );
+    warnings.push({
+      severity: 'action',
+      text: `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm scores:enrich --narratives)`,
+    });
   }
-  // Narrative *staleness* is owned by the Derivation Graph (G4/G4h), which measures
-  // it against the newest assessment (`assessed_at`) and honors owner acceptance.
-  // Data Readiness previously flagged it against `weekly_aggregates.computed_at`,
-  // which a no-op re-derivation bumps — a phantom (741 here vs 0 in G4h). Removed in
-  // R-VALIDATION-RECONCILE (#647); missing narratives stay here as a backlog signal.
+  // Narrative *staleness* is owned by the Derivation Graph (G4/G4h): measured
+  // against the newest assessment (`assessed_at`) and acceptance-aware. Data
+  // Readiness's old computed_at check was a phantom (741 vs 0), removed in #647.
   return warnings;
 }
 
@@ -330,7 +346,7 @@ export function collectWarningDetails(report: DataReport): DataWarning[] {
   // Metadata-only classification moved to Ingest Health in #648; data-integrity
   // checks moved to the Derivation Graph in #647.
 
-  for (const t of checkNarrativeCoverage(report.narrativeCoverage)) push('action', t);
+  warnings.push(...checkNarrativeCoverage(report.narrativeCoverage));
 
   return warnings;
 }
