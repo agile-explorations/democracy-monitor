@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SourceHealthTimeline } from '@/components/overview/SourceHealthTimeline';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { HealthSummary } from '@/components/system/HealthSummary';
@@ -69,16 +69,58 @@ function FreshnessBar({
   );
 }
 
+/** Amber banner while a server-side report regeneration is in flight (#650 follow-up). */
+function RefreshBanner({
+  status,
+  onTrigger,
+}: {
+  status: { inFlight: boolean; startedAt: string | null };
+  onTrigger: () => void;
+}) {
+  const [secs, setSecs] = useState(0);
+  const { inFlight, startedAt } = status;
+  useEffect(() => {
+    if (!inFlight || !startedAt) return;
+    const compute = () =>
+      setSecs(Math.max(0, Math.round((Date.now() - new Date(startedAt).getTime()) / 1000)));
+    compute();
+    const id = setInterval(compute, 1000);
+    return () => clearInterval(id);
+  }, [inFlight, startedAt]);
+
+  if (inFlight) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+        <span className="inline-block animate-spin">⟳</span>
+        Regenerating reports… (running {secs}s, ~1–3 min). They&rsquo;ll update automatically when
+        done.
+      </div>
+    );
+  }
+  return (
+    <div className="flex justify-end">
+      <button
+        onClick={onTrigger}
+        className="rounded border border-dm-border px-2 py-1 text-xs text-dm-muted hover:bg-dm-border/20 transition-colors"
+      >
+        Regenerate reports
+      </button>
+    </div>
+  );
+}
+
 function ValidationPanel({
   title,
   description,
   endpoint,
   renderReport,
+  reloadSignal,
 }: {
   title: string;
   description: string;
   endpoint: string;
   renderReport: (data: any) => React.ReactNode;
+  reloadSignal: number;
 }) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -101,7 +143,7 @@ function ValidationPanel({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadSignal]);
 
   return (
     <div className="rounded-lg border border-dm-border bg-dm-card">
@@ -164,6 +206,51 @@ export default function HealthPage() {
     [fetchTimeline],
   );
 
+  // Poll the server-side report-refresh status so we can show an in-flight
+  // indicator (for any trigger — button, cron, or CLI) and auto-reload the
+  // panels when a regeneration completes (#650 follow-up).
+  const [refreshStatus, setRefreshStatus] = useState<{
+    inFlight: boolean;
+    startedAt: string | null;
+  }>({ inFlight: false, startedAt: null });
+  const [reloadSignal, setReloadSignal] = useState(0);
+  const wasInFlight = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/health/refresh');
+        if (!res.ok || !active) return;
+        const s = await res.json();
+        setRefreshStatus(s);
+        if (wasInFlight.current && !s.inFlight) setReloadSignal((n) => n + 1);
+        wasInFlight.current = s.inFlight;
+      } catch {
+        /* status is best-effort */
+      }
+    };
+    void poll();
+    const id = setInterval(poll, 12000);
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const triggerRefresh = useCallback(async () => {
+    try {
+      await fetch('/api/health/refresh', { method: 'POST' });
+      wasInFlight.current = true;
+      setRefreshStatus((s) => ({
+        inFlight: true,
+        startedAt: s.startedAt ?? new Date().toISOString(),
+      }));
+    } catch {
+      /* best-effort */
+    }
+  }, []);
+
   return (
     <>
       <SEOHead
@@ -190,6 +277,8 @@ export default function HealthPage() {
           )}
         </section>
 
+        <RefreshBanner status={refreshStatus} onTrigger={triggerRefresh} />
+
         {readingLevel === 'summary' ? (
           <HealthSummary />
         ) : (
@@ -199,30 +288,35 @@ export default function HealthPage() {
               description="Did we acquire the expected inputs, with complete content? — Source/document coverage, content completeness, pagination, period coverage, metadata classification, and fetch errors."
               endpoint="/api/health/validate-ingest"
               renderReport={renderIngest}
+              reloadSignal={reloadSignal}
             />
             <ValidationPanel
               title="Data Readiness"
               description="Of the data we have, what's the processing backlog and do we have enough reference data? — Scoring/embedding backlog, baseline presence, and L2 assessment coverage."
               endpoint="/api/health/validate-data"
               renderReport={renderDataReport}
+              reloadSignal={reloadSignal}
             />
             <ValidationPanel
               title="Detection Correctness"
               description="Does detection catch known events and reject negative controls? — Known-event recall, negative controls, and layer attribution."
               endpoint="/api/health/validate-detection"
               renderReport={renderDetection}
+              reloadSignal={reloadSignal}
             />
             <ValidationPanel
               title="Derivation Graph"
               description="Is every derived artifact consistent with and fresh against its inputs? — Edge-contract invariants (G1a–G6): eligible docs scored, aggregates present with matching counts, enrichment/narratives fresh, no orphan categories."
               endpoint="/api/health/validate-graph"
               renderReport={renderGraph}
+              reloadSignal={reloadSignal}
             />
             <ValidationPanel
               title="Historical Backtest"
               description="Does detection hold up on historical data? — Per-category precision and noise against Trump T1 (2017–2018) known events."
               endpoint="/api/health/backtest"
               renderReport={renderBacktest}
+              reloadSignal={reloadSignal}
             />
           </>
         )}

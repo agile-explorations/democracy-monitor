@@ -25,6 +25,9 @@ export const RATE_LIMITS = {
   // Dump freshness metadata (#641): a cheap cached HEAD; generous cap just to
   // keep any single IP from scripting it, well above real page-load volume.
   dumpInfo: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:dump-info' },
+  // Manual report refresh (#650 follow-up): a heavy 1-3 min regen, coalesced to
+  // one at a time — cap per IP so the public health page can't be used to spam it.
+  reportRefresh: { windowMs: 10 * 60_000, maxRequests: 4, keyPrefix: 'rl:report-refresh' },
 } as const;
 
 type RateLimitPolicy = { windowMs: number; maxRequests: number; keyPrefix: string };
