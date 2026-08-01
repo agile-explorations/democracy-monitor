@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { startReportRefresh } from '@/lib/services/report-refresh';
 import handler from '@/pages/api/cron/refresh-reports';
 
-vi.mock('@/lib/cron/snapshot-poststeps', () => ({
-  tryValidateGraph: vi.fn(async () => 0),
-  tryStoreDataReport: vi.fn(async () => undefined),
+vi.mock('@/lib/services/report-refresh', () => ({
+  startReportRefresh: vi.fn(async () => ({ started: true, startedAt: '2026-01-01T00:00:00.000Z' })),
 }));
 
 function buildRes() {
@@ -41,31 +41,44 @@ describe('POST /api/cron/refresh-reports', () => {
     process.env.CRON_SECRET = 'test-secret';
   });
 
-  it('rejects non-POST methods', () => {
+  it('rejects non-POST methods', async () => {
     const res = buildRes();
-    handler(buildReq('GET', 'test-secret'), res);
+    await handler(buildReq('GET', 'test-secret'), res);
     expect(res.statusCode).toBe(405);
   });
 
-  it('rejects a missing or wrong bearer token', () => {
+  it('rejects a missing or wrong bearer token', async () => {
     const res = buildRes();
-    handler(buildReq('POST', 'wrong'), res);
+    await handler(buildReq('POST', 'wrong'), res);
     expect(res.statusCode).toBe(401);
   });
 
-  it('is unavailable when CRON_SECRET is not configured', () => {
+  it('is unavailable when CRON_SECRET is not configured', async () => {
     delete process.env.CRON_SECRET;
     const res = buildRes();
-    handler(buildReq('POST'), res);
+    await handler(buildReq('POST'), res);
     expect(res.statusCode).toBe(503);
   });
 
-  it('accepts a valid token and starts the refresh in the background', async () => {
+  it('accepts a valid token and starts the refresh', async () => {
+    vi.mocked(startReportRefresh).mockResolvedValueOnce({
+      started: true,
+      startedAt: '2026-01-01T00:00:00.000Z',
+    });
     const res = buildRes();
-    handler(buildReq('POST', 'test-secret'), res);
+    await handler(buildReq('POST', 'test-secret'), res);
     expect(res.statusCode).toBe(202);
     expect(res.body.status).toBe('started');
-    // Let the fire-and-forget refresh settle so inFlight resets for other tests.
-    await new Promise((r) => setTimeout(r, 0));
+  });
+
+  it('returns 409 in_progress when a refresh is already running', async () => {
+    vi.mocked(startReportRefresh).mockResolvedValueOnce({
+      started: false,
+      startedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const res = buildRes();
+    await handler(buildReq('POST', 'test-secret'), res);
+    expect(res.statusCode).toBe(409);
+    expect(res.body.status).toBe('in_progress');
   });
 });
