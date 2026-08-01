@@ -3,6 +3,12 @@ services:
     name: democracy-monitor
     runtime: node
     plan: standard
+    # Tag-gated deploys (#628): a push to main does NOT auto-deploy. Production
+    # deploys only via .github/workflows/deploy.yml, which fires on a `v*` tag
+    # and refuses to ship unless the tagged commit's CI is green. A raw push (or
+    # a compromised credential) therefore can't reach prod without a deliberate,
+    # CI-verified tag. Rollback (Render dashboard) is unaffected.
+    autoDeploy: false
     buildCommand: pnpm install && pnpm db:init && pnpm build
     startCommand: pnpm start
     disk:
@@ -62,6 +68,7 @@ services:
     name: weekly-dump
     runtime: node
     plan: starter
+    autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 5 * * 1'
     buildCommand: echo "trigger only"
     startCommand: ./scripts/weekly-dump.sh
@@ -74,6 +81,7 @@ services:
   - type: cron
     name: weekly-snapshot
     runtime: node
+    autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 3 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/snapshot.ts
@@ -107,6 +115,7 @@ services:
   - type: cron
     name: weekly-legiscan
     runtime: node
+    autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 1 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/legiscan-bulk.ts
