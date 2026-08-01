@@ -357,7 +357,7 @@ describe('collectWarnings', () => {
       layer2Completeness: [],
       layerScorePopulation: [],
       metadataOnlyClassification: [],
-      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0, staleWeeks: 0 },
+      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
       dataIntegrity: [],
       warnings: [],
       ...overrides,
@@ -600,7 +600,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 10,
         narrativeWeeks: 7,
         missingWeeks: 3,
-        staleWeeks: 0,
         weeksWithNarratives: 7,
         weeksWithSummary: 7,
         termSummaryFresh: false,
@@ -619,7 +618,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 5,
         narrativeWeeks: 5,
         missingWeeks: 0,
-        staleWeeks: 0,
         weeksWithNarratives: 5,
         weeksWithSummary: 3,
         termSummaryFresh: false,
@@ -632,22 +630,8 @@ describe('collectWarnings', () => {
     );
   });
 
-  it('warns for stale narratives', () => {
-    const report = emptyReport({
-      narrativeCoverage: {
-        elevatedWeeks: 5,
-        narrativeWeeks: 5,
-        missingWeeks: 0,
-        staleWeeks: 4,
-        weeksWithNarratives: 5,
-        weeksWithSummary: 5,
-        termSummaryFresh: false,
-        missingSummaryWeeks: 0,
-      },
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('4 narratives are stale'));
-  });
+  // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647; Data
+  // Readiness no longer emits a stale-narrative warning (it was a computed_at phantom).
 
   it('warns for failed data integrity checks with detail', () => {
     const report = emptyReport({
@@ -712,7 +696,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 10,
         narrativeWeeks: 8,
         missingWeeks: 2,
-        staleWeeks: 1,
         weeksWithNarratives: 8,
         weeksWithSummary: 7,
         termSummaryFresh: false,
@@ -726,7 +709,6 @@ describe('collectWarnings', () => {
     );
     expect(warnings).toContainEqual(expect.stringContaining('2 weeks need aggregates'));
     expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
-    expect(warnings).toContainEqual(expect.stringContaining('1 narratives are stale'));
     expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
   });
 });

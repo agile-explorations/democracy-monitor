@@ -159,10 +159,7 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
   console.log(
     `  ${termMark} Term:     living term summary is ${nc.termSummaryFresh ? 'fresh' : 'stale or missing (regenerates at next snapshot; or run: pnpm narratives:regenerate --type term)'}`,
   );
-  const staleMark = nc.staleWeeks === 0 ? PASS : WARN;
-  console.log(
-    `  ${staleMark} Stale:    ${nc.staleWeeks} narratives generated before layer recomputation`,
-  );
+  // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647.
 }
 
 function printDataIntegrity(checks: DataIntegrityCheck[]): void {

@@ -88,7 +88,6 @@ export interface NarrativeCoverage {
   elevatedWeeks: number;
   narrativeWeeks: number;
   missingWeeks: number;
-  staleWeeks: number;
   /** Weeks that have at least one elevated category-week narrative. */
   weeksWithNarratives: number;
   /** Weeks that have a weekly summary (_overview). */
@@ -259,11 +258,11 @@ function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
       `${nc.missingSummaryWeeks} narrated weeks missing weekly summaries (run: pnpm scores:enrich --narratives)`,
     );
   }
-  if (nc.staleWeeks > 0) {
-    warnings.push(
-      `${nc.staleWeeks} narratives are stale (generated before latest layer recomputation)`,
-    );
-  }
+  // Narrative *staleness* is owned by the Derivation Graph (G4/G4h), which measures
+  // it against the newest assessment (`assessed_at`) and honors owner acceptance.
+  // Data Readiness previously flagged it against `weekly_aggregates.computed_at`,
+  // which a no-op re-derivation bumps — a phantom (741 here vs 0 in G4h). Removed in
+  // R-VALIDATION-RECONCILE (#647); missing narratives stay here as a backlog signal.
   return warnings;
 }
 

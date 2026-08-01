@@ -334,7 +334,6 @@ const EMPTY_NARRATIVE_COVERAGE: NarrativeCoverage = {
   elevatedWeeks: 0,
   narrativeWeeks: 0,
   missingWeeks: 0,
-  staleWeeks: 0,
   weeksWithNarratives: 0,
   weeksWithSummary: 0,
   termSummaryFresh: false,
@@ -349,7 +348,6 @@ function toNarrativeCoverage(
     elevatedWeeks: Number(row.elevated_weeks ?? 0),
     narrativeWeeks: Number(row.narrative_weeks ?? 0),
     missingWeeks: Number(row.missing_weeks ?? 0),
-    staleWeeks: Number(row.stale_weeks ?? 0),
     weeksWithNarratives: Number(row.weeks_with_narratives ?? 0),
     weeksWithSummary: Number(row.weeks_with_summary ?? 0),
     termSummaryFresh,
@@ -391,8 +389,6 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
             THEN (e.category, e.week_of) END)::int AS narrative_weeks,
       count(DISTINCT CASE WHEN n.week_of IS NULL
             THEN (e.category, e.week_of) END)::int AS missing_weeks,
-      count(DISTINCT CASE WHEN n.latest_generated < e.computed_at
-            THEN (e.category, e.week_of) END)::int AS stale_weeks,
       (SELECT count(*)::int FROM narrated_weeks) AS weeks_with_narratives,
       (SELECT count(*)::int FROM summary_weeks) AS weeks_with_summary,
       (SELECT count(*)::int FROM narrated_weeks nw
