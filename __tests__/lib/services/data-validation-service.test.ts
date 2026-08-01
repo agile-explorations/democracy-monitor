@@ -295,7 +295,12 @@ describe('collectWarnings', () => {
       baselineCompleteness: [],
       layer2Completeness: [],
       layerScorePopulation: [],
-      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
+      narrativeCoverage: {
+        elevatedWeeks: 0,
+        narrativeWeeks: 0,
+        missingWeeks: 0,
+        missingWeeksBaseline: 0,
+      },
       warnings: [],
       ...overrides,
     };
@@ -500,22 +505,45 @@ describe('collectWarnings', () => {
     expect(warnings.filter((w) => w.includes('layer scores'))).toEqual([]);
   });
 
-  it('warns for missing narratives', () => {
+  it('warns (action) for missing CURRENT-TERM narratives', () => {
     const report = emptyReport({
       narrativeCoverage: {
         elevatedWeeks: 10,
         narrativeWeeks: 7,
         missingWeeks: 3,
+        missingWeeksBaseline: 0,
         weeksWithNarratives: 7,
         weeksWithSummary: 7,
         termSummaryFresh: false,
         missingSummaryWeeks: 0,
       },
     });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(
-      expect.stringContaining('3 elevated category-weeks missing narratives'),
-    );
+    const details = collectWarningDetails(report);
+    const w = details.find((d) => d.text.includes('missing narratives'));
+    expect(w?.severity).toBe('action');
+    expect(w?.text).toContain('3 elevated current-term category-weeks missing narratives');
+  });
+
+  it('tags missing BASELINE narratives as a limitation, not action (#651)', () => {
+    const report = emptyReport({
+      narrativeCoverage: {
+        elevatedWeeks: 1300,
+        narrativeWeeks: 58,
+        missingWeeks: 1242,
+        missingWeeksBaseline: 1242, // all baseline
+        weeksWithNarratives: 58,
+        weeksWithSummary: 58,
+        termSummaryFresh: false,
+        missingSummaryWeeks: 0,
+      },
+    });
+    const details = collectWarningDetails(report);
+    const w = details.find((d) => d.text.includes('baseline category-weeks have no narrative'));
+    expect(w?.severity).toBe('limitation');
+    // No current-term missing → no action-level narrative warning.
+    expect(
+      details.some((d) => d.severity === 'action' && d.text.includes('missing narratives')),
+    ).toBe(false);
   });
 
   it('warns for missing weekly summaries', () => {
@@ -524,6 +552,7 @@ describe('collectWarnings', () => {
         elevatedWeeks: 5,
         narrativeWeeks: 5,
         missingWeeks: 0,
+        missingWeeksBaseline: 0,
         weeksWithNarratives: 5,
         weeksWithSummary: 3,
         termSummaryFresh: false,
@@ -559,6 +588,7 @@ describe('collectWarnings', () => {
         elevatedWeeks: 10,
         narrativeWeeks: 8,
         missingWeeks: 2,
+        missingWeeksBaseline: 0,
         weeksWithNarratives: 8,
         weeksWithSummary: 7,
         termSummaryFresh: false,
@@ -570,7 +600,9 @@ describe('collectWarnings', () => {
     expect(warnings).toContainEqual(
       expect.stringContaining('3 detection documents need embedding'),
     );
-    expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
+    expect(warnings).toContainEqual(
+      expect.stringContaining('2 elevated current-term category-weeks missing'),
+    );
     expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
   });
 });
@@ -590,7 +622,12 @@ describe('collectWarningDetails severity (#649)', () => {
       baselineCompleteness: [],
       layer2Completeness: [],
       layerScorePopulation: [],
-      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
+      narrativeCoverage: {
+        elevatedWeeks: 0,
+        narrativeWeeks: 0,
+        missingWeeks: 0,
+        missingWeeksBaseline: 0,
+      },
       warnings: [],
       warningDetails: [],
       ...overrides,

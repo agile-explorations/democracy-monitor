@@ -19,6 +19,17 @@ header so a reader can tell them apart at a glance.
 Boundary rule for content: content **absent/null** → Ingest; content **present but
 unprocessed** → Data Readiness.
 
+## Severity principle (applies to every report)
+
+Every finding is `action` (has a remediation worth running) or `limitation` (a
+documented fact no command should run against). **Baseline-period gaps (before
+2025-01-20) are `limitation`, not `action`** — baselines are calibrated reference,
+baseline writes need approval, and **baseline narratives are not shown to users**
+(pending product decision #651). We do not tell the operator that baseline weeks
+"need attention." Only current-term (trump_t2) gaps are actionable. This holds
+across Data Readiness (L2 gaps, missing narratives), Ingest (period coverage), and
+anywhere else a per-period gap is reported.
+
 ## Ownership
 
 ### Ingest Health
