@@ -50,7 +50,10 @@ const nextConfig = {
   },
 
   async rewrites() {
-    return [{ source: '/robots.txt', destination: '/api/robots' }];
+    return [
+      { source: '/robots.txt', destination: '/api/robots' },
+      { source: '/.well-known/security.txt', destination: '/api/security-txt' },
+    ];
   },
 
   async redirects() {

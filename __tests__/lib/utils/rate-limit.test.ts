@@ -58,6 +58,23 @@ describe('getClientIp', () => {
     expect(getClientIp(req({}, '198.51.100.7'))).toBe('198.51.100.7');
     expect(getClientIp(req({}))).toBe('unknown');
   });
+
+  it('ignores x-forwarded-for in production — keys on the unspoofable socket address (#633)', () => {
+    const prev = process.env.NODE_ENV;
+    try {
+      (process.env as Record<string, string>).NODE_ENV = 'production';
+      // A spoofed XFF must NOT create a fresh rate-limit bucket in production.
+      expect(getClientIp(req({ 'x-forwarded-for': '1.2.3.4' }, '198.51.100.7'))).toBe(
+        '198.51.100.7',
+      );
+      // cf-connecting-ip (set by Cloudflare, unspoofable) still wins.
+      expect(
+        getClientIp(req({ 'cf-connecting-ip': '198.51.100.42', 'x-forwarded-for': '1.2.3.4' })),
+      ).toBe('198.51.100.42');
+    } finally {
+      (process.env as Record<string, string>).NODE_ENV = prev as string;
+    }
+  });
 });
 
 describe('checkRateLimitShared (Redis-backed, #615)', () => {
