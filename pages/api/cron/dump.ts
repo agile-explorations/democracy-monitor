@@ -15,8 +15,9 @@
  */
 
 import { spawn } from 'child_process';
-import { closeSync, existsSync, openSync } from 'fs';
+import { closeSync, existsSync, openSync, statSync, unlinkSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { isDumpTempStale } from '@/lib/cron/dump-config';
 import { requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 const DUMP_DIR = '/var/data';
@@ -87,6 +88,25 @@ else
 fi
 `;
 
+/**
+ * Concurrency guard. Returns true (and sends 409) when a dump is genuinely in
+ * progress; reclaims a stale orphan (a crashed/killed dump's leftover .tmp) and
+ * returns false so a fresh dump can proceed, so one crash can't block the weekly
+ * cron indefinitely (#639).
+ */
+function rejectIfDumpInProgress(res: NextApiResponse): boolean {
+  if (!existsSync(DUMP_TEMP)) return false;
+  const stat = statSync(DUMP_TEMP);
+  if (!isDumpTempStale(stat.mtime.getTime())) {
+    res.status(409).json({ error: 'Dump already in progress', status: 'in_progress' });
+    return true;
+  }
+  const idleS = Math.round((Date.now() - stat.mtime.getTime()) / 1000);
+  console.warn(`[cron/dump] Reclaiming stale dump temp (idle ${idleS}s)`);
+  unlinkSync(DUMP_TEMP);
+  return false;
+}
+
 export default function handler(req: NextApiRequest, res: NextApiResponse): void {
   if (!requireMethod(req, res, 'POST')) return;
 
@@ -113,10 +133,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
     return;
   }
 
-  if (existsSync(DUMP_TEMP)) {
-    res.status(409).json({ error: 'Dump already in progress', status: 'in_progress' });
-    return;
-  }
+  // 409 if a dump is genuinely in progress; reclaim a stale orphan otherwise.
+  if (rejectIfDumpInProgress(res)) return;
 
   // Reserve the .tmp marker synchronously so the status endpoint reports
   // "running" immediately, before the spawned pg_dump opens its output file.
