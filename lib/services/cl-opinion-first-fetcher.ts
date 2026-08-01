@@ -30,6 +30,7 @@ import {
   buildOpinionDataFromSubOpinions,
   CL_API_V4,
   CL_BACKFILL_MAX_PAGES,
+  CL_BASE_URL,
   FETCH_TIMEOUT_MS,
   getAuthHeaders,
   RATE_LIMIT_DELAY_MS,
@@ -38,6 +39,7 @@ import { classifyOpinionToCategories } from '@/lib/services/crec-classifier';
 import { storeDocuments } from '@/lib/services/document-store';
 import { sleep } from '@/lib/utils/async';
 import { fetchWithRetry } from '@/lib/utils/fetch-retry';
+import { isSameHostHttps } from '@/lib/utils/pagination';
 
 export interface OpinionFirstResult {
   docketsFound: number;
@@ -118,7 +120,12 @@ async function fetchOpinionSearchResults(
     }
     const data: ClOpinionSearchResponse = await res.json();
     rows.push(...(data.results ?? []));
-    next = data.next ?? null;
+    // Follow the API-supplied next URL only if it stays on the CourtListener
+    // host over https (#630).
+    next = data.next && isSameHostHttps(data.next, CL_BASE_URL) ? data.next : null;
+    if (data.next && !next) {
+      console.warn(`[cl-opinion-first] pagination halted — next URL off-host: ${data.next}`);
+    }
     page++;
     if (next) await sleep(RATE_LIMIT_DELAY_MS);
   }

@@ -2,6 +2,7 @@ import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
+import { isSameHostHttps } from '@/lib/utils/pagination';
 
 const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const RATE_LIMIT_DELAY_MS = 200;
@@ -265,6 +266,12 @@ async function fetchDayGranules(
     allGranules.push(...(data.granules || []));
 
     if (!data.nextPage || (data.granules || []).length < GRANULES_PAGE_SIZE) break;
+    // Validate the API-supplied nextPage host BEFORE appending our API key (#630)
+    // — never send the key to an off-host URL from a tampered response.
+    if (!isSameHostHttps(data.nextPage, GOVINFO_API_BASE)) {
+      console.warn(`[crec] pagination halted — nextPage off-host: ${data.nextPage}`);
+      break;
+    }
     url = `${data.nextPage}&api_key=${apiKey}`;
     await sleep(RATE_LIMIT_DELAY_MS);
   }
