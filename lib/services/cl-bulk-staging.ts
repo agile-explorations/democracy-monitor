@@ -15,6 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Pool } from 'pg';
 import { CIRCUIT_COURT_IDS, EXEC_POWER_PHRASES } from '@/lib/data/court-queries';
+import { resolveDbSsl } from '@/lib/db/ssl';
 import { findBulkFiles, routeDocket, yearsToDateRanges } from '@/lib/services/cl-bulk-pipeline';
 import type { BulkPipelineResult } from '@/lib/services/cl-bulk-pipeline';
 import {
@@ -92,7 +93,7 @@ function getPool(): Pool {
   if (!_pool) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error('DATABASE_URL not set');
-    _pool = new Pool({ connectionString: url });
+    _pool = new Pool({ connectionString: url, ssl: resolveDbSsl(url) });
   }
   return _pool;
 }

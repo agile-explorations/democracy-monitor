@@ -14,6 +14,7 @@
 import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { Client } from 'pg';
+import { resolveDbSsl } from '../lib/db/ssl';
 
 interface ManifestData {
   [table: string]: { where: string };
@@ -60,8 +61,8 @@ async function main(): Promise<void> {
   console.log(`Mode: ${DRY_RUN ? 'DRY RUN' : 'LIVE'}`);
   console.log('');
 
-  const dev = new Client({ connectionString: devUrl });
-  const prod = new Client({ connectionString: prodUrl });
+  const dev = new Client({ connectionString: devUrl, ssl: resolveDbSsl(devUrl) });
+  const prod = new Client({ connectionString: prodUrl, ssl: resolveDbSsl(prodUrl) });
   await dev.connect();
   await prod.connect();
 

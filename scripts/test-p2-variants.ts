@@ -21,6 +21,7 @@ import { PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass2';
 import { getProvider } from '@/lib/ai/provider';
 import { parsePass2Response } from '@/lib/ai/schemas/document-review-response';
 import { CATEGORIES } from '@/lib/data/categories';
+import { resolveDbSsl } from '@/lib/db/ssl';
 import type { AIProvider } from '@/lib/types';
 import { mapConcurrent } from '@/lib/utils/async';
 import { ALL_KNOWN_EVENTS } from '@/lib/validation/known-events';
@@ -32,9 +33,7 @@ function getPool(): Pool {
   }
   return new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL.includes('render.com')
-      ? { rejectUnauthorized: false }
-      : undefined,
+    ssl: resolveDbSsl(process.env.DATABASE_URL),
   });
 }
 

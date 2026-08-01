@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema';
+import { resolveDbSsl } from './ssl';
 
 let pool: Pool | null = null;
 let db: ReturnType<typeof drizzle<typeof schema>> | null = null;
@@ -13,7 +14,7 @@ export function getDb() {
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  pool = new Pool({ connectionString });
+  pool = new Pool({ connectionString, ssl: resolveDbSsl(connectionString) });
   db = drizzle(pool, { schema });
   return db;
 }

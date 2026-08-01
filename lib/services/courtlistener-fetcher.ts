@@ -1,6 +1,7 @@
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { fetchWithRetry } from '@/lib/utils/fetch-retry';
+import { isSameHostHttps } from '@/lib/utils/pagination';
 
 export const CL_BASE_URL = 'https://www.courtlistener.com';
 export const CL_API_V4 = `${CL_BASE_URL}/api/rest/v4`;
@@ -355,7 +356,12 @@ async function fetchPaginatedSearch(baseUrl: string, maxPages: number): Promise<
 
     const data: ClSearchResult = await response.json();
     items.push(...(data.results || []).map(toContentItem));
-    url = data.next || null;
+    // Only follow the API-supplied next URL if it stays on the CourtListener
+    // host over https (#630) — a tampered response can't redirect pagination.
+    url = data.next && isSameHostHttps(data.next, CL_BASE_URL) ? data.next : null;
+    if (data.next && !url) {
+      console.warn(`[courtlistener] pagination halted — next URL off-host: ${data.next}`);
+    }
     page++;
 
     if (url) await sleep(RATE_LIMIT_DELAY_MS);

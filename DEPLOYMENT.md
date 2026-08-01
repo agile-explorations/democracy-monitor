@@ -99,6 +99,21 @@ If Democracy Monitor's operator is unavailable and the Render account is gone, t
 
 **Succession note:** this runbook is only usable if a successor can reach the B2 and Render credentials. Keep them in the password manager's emergency-access feature (or a sealed document) so recovery is possible within the ~360-day retention window.
 
+### Off-site repo backup — the code (#624)
+
+The **code** has its own off-platform backup, parallel to the database's. The `Off-site repo backup` GitHub Action (`.github/workflows/backup-repo.yml`) runs weekly (Mondays 06:00 UTC) and on manual dispatch: it `--mirror` clones the repo, creates a full-history `git bundle --all` (every branch + tag), and uploads it to the **same B2 bucket** under `code-backups/repo-<date>.bundle`. Object Lock makes it immutable for the retention window, so the repository survives losing the GitHub org entirely.
+
+**One-time setup** — add the B2 credentials as repo **Actions secrets** (GitHub → Settings → Secrets and variables → Actions): `B2_ENDPOINT`, `B2_BUCKET`, `B2_KEY_ID`, `B2_APP_KEY` (the same values already on Render for the DB backup). Confirm the bucket's Object-Lock / lifecycle rules are bucket-wide (or also cover the `code-backups/` prefix). The Action fails loudly if a secret is missing.
+
+**Restore** — download the newest bundle from B2 and clone it; no GitHub required:
+
+```
+aws s3 --endpoint-url "$B2_ENDPOINT" cp s3://<bucket>/code-backups/repo-<date>.bundle .
+git clone repo-<date>.bundle democracy-monitor   # working repo (main checked out)
+# or, to re-seed a new remote exactly:
+git clone --mirror repo-<date>.bundle democracy-monitor.git
+```
+
 ## Cron Jobs
 
 | Job               | Schedule         | Purpose                                               |
