@@ -112,6 +112,33 @@ If Democracy Monitor's operator is unavailable and the Render account is gone, t
 - **Adding schema changes** — Modify `lib/db/schema.ts`, run `pnpm db:generate`, commit the migration. It applies automatically on next deploy.
 - **Updating the bootstrap dump** — Only needed if the persistent disk is lost and you need to redeploy from scratch. Run `pg_dump -Fc` and upload to a new GitHub Release.
 
+### Tag-gated production deploys (#628)
+
+Production **does not auto-deploy on push to `main`** (`autoDeploy: false` in `render.yaml` for the web service and all crons). A push to `main` — or a compromised credential that lands code there — cannot reach production on its own. Instead, `.github/workflows/deploy.yml` fires on a **`v*` tag**, verifies the tagged commit's CI (`lint`/`build`/`test`) is green, and only then triggers a Render deploy pinned to that commit. Shipping is a deliberate, CI-verified act.
+
+> The `develop` → dev-environment auto-deploy is unaffected — that runs from `render-dev.yaml` (a separate blueprint). This gate applies to **production only**.
+
+**Ship a release:**
+
+```bash
+# after merging develop → main (CI runs on the push):
+git tag v1.4.0          # semantic version; annotate/sign if desired (#627)
+git push origin v1.4.0  # → deploy.yml waits for green CI, then deploys prod
+```
+
+A raw `git push origin main` builds nothing in prod. Only the tag deploys, and only if CI passed on that commit (a red build is refused).
+
+**One-time setup** (owner, GitHub → repo Settings → Secrets and variables → Actions):
+
+1. **Secret `RENDER_API_KEY`** — a Render API key (Render dashboard → Account Settings → API Keys).
+2. **Variable `RENDER_SERVICE_IDS`** — comma-separated Render service IDs to deploy: the web service **and** all three crons (find each `srv-…`/`crn-…` ID in the service's dashboard URL), e.g. `srv-web,crn-dump,crn-snapshot,crn-legiscan`. Omitting a cron means it never picks up new code — include all of them.
+3. Confirm **auto-deploy is off** for each service in the Render dashboard (the `render.yaml` blueprint sets it, but verify after the next blueprint sync).
+4. Verify on first tag: push a `v0.0.1`-style tag, watch the Action gate on CI then deploy, and confirm all services show a new deploy of the tagged commit in Render. (First-tag note: confirm Render honors the `commitId` field; if not, it deploys `main` HEAD, which equals the tag when you tag HEAD.)
+
+**Hotfix lane:** same flow — commit the fix to `main`, tag it (`v1.4.1`), push the tag. For an emergency where CI is the problem, use the Render dashboard's **Rollback** to the last-good deploy (Git-independent, unaffected by this gate) while you sort the fix.
+
+**Rollback:** unchanged — Render dashboard → the service → Rollback to a prior deploy. This replays a cached image and does not depend on `main` or the deploy Action.
+
 ## Dev Environment
 
 The `develop` branch deploys to a separate Render environment for database-intensive work (backfills, new source ingestion, re-scoring). See `render-dev.yaml` for the service configuration (created manually in the Render dashboard, not via Blueprint).

@@ -1,0 +1,111 @@
+name: Deploy to production
+
+# Tag-gated production deploy (#628). Fires ONLY on a `v*` tag — a push to main
+# never deploys on its own. Refuses to ship unless the tagged commit's required
+# CI checks (lint/build/test) are green, then triggers a Render deploy pinned to
+# the tagged commit. Net effect: reaching production requires a deliberate,
+# CI-verified version tag, so a raw push (or a compromised credential that lands
+# code on main) cannot silently deploy. Rollback stays a Render-dashboard action.
+#
+# One-time setup (see DEPLOYMENT.md → "Tag-gated production deploys"):
+#   - secret  RENDER_API_KEY       — a Render API key (Account Settings → API Keys)
+#   - variable RENDER_SERVICE_IDS  — comma-separated Render service IDs to deploy
+#                                    (the web service + the three crons)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require green CI on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          REQUIRED="lint build test"
+          echo "Gating deploy of $SHA on required checks: $REQUIRED"
+          deadline=$(( SECONDS + 900 ))   # wait up to 15 min for CI to finish
+          while :; do
+            runs=$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" 2>/dev/null)
+            if [ -z "$runs" ]; then
+              echo "check-runs query failed; will retry"
+            else
+              pending=0
+              failed=""
+              for name in $REQUIRED; do
+                latest=$(printf '%s' "$runs" | jq -r --arg n "$name" '
+                  [.check_runs[] | select(.name == $n)]
+                  | sort_by(.started_at) | last
+                  | if . == null then "absent"
+                    else "\(.status):\(.conclusion // "none")" end')
+                case "$latest" in
+                  completed:success) ;;
+                  completed:*) failed="$failed $name(${latest#completed:})" ;;
+                  *) pending=$(( pending + 1 )) ;;
+                esac
+              done
+              if [ -n "$failed" ]; then
+                echo "::error::Required check(s) not passing on $SHA:$failed — refusing to deploy."
+                exit 1
+              fi
+              if [ "$pending" -eq 0 ]; then
+                echo "All required checks green on $SHA."
+                exit 0
+              fi
+              echo "$pending required check(s) still pending on $SHA; waiting 30s..."
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::Timed out after 15m waiting for CI ($REQUIRED) on $SHA."
+              exit 1
+            fi
+            sleep 30
+          done
+
+      - name: Trigger Render deploy (pinned to the tagged commit)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_IDS: ${{ vars.RENDER_SERVICE_IDS }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          if [ -z "${RENDER_API_KEY:-}" ]; then
+            echo "::error::RENDER_API_KEY secret is not set — see DEPLOYMENT.md (#628 setup)."
+            exit 1
+          fi
+          if [ -z "${RENDER_SERVICE_IDS:-}" ]; then
+            echo "::error::RENDER_SERVICE_IDS variable is not set — see DEPLOYMENT.md (#628 setup)."
+            exit 1
+          fi
+          IFS=',' read -ra IDS <<< "$RENDER_SERVICE_IDS"
+          fail=0
+          for raw in "${IDS[@]}"; do
+            id=$(printf '%s' "$raw" | tr -d '[:space:]')
+            [ -n "$id" ] || continue
+            echo "→ Deploying $id @ $SHA"
+            code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X POST \
+              "https://api.render.com/v1/services/$id/deploys" \
+              -H "Authorization: Bearer $RENDER_API_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"commitId\":\"$SHA\",\"clearCache\":\"do_not_clear\"}") || code="000"
+            if [ "${code#2}" != "$code" ]; then
+              echo "  OK ($code): $(jq -r '.id // "deploy queued"' /tmp/resp.json 2>/dev/null || echo queued)"
+            else
+              echo "::error::Render deploy failed for $id (HTTP $code): $(cat /tmp/resp.json 2>/dev/null)"
+              fail=1
+            fi
+          done
+          exit $fail
