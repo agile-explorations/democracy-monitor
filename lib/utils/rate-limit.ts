@@ -17,6 +17,9 @@ export const RATE_LIMITS = {
   search: { windowMs: 5 * 60_000, maxRequests: 20, keyPrefix: 'rl:search' },
   // Email-send endpoints: block confirmation-spam / quota exhaustion.
   email: { windowMs: 60 * 60_000, maxRequests: 5, keyPrefix: 'rl:email' },
+  // Public DB-dump download (#636): now a cheap 302 to B2, but cap per-IP so the
+  // redirect (and downstream B2 egress) can't be scripted into abuse.
+  dataDump: { windowMs: 60 * 60_000, maxRequests: 10, keyPrefix: 'rl:dump' },
   // CSP violation reports: generous cap so a spammer/extension can't flood logs (#619 R10).
   cspReport: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:csp' },
 } as const;

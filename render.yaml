@@ -57,6 +57,15 @@ services:
         sync: false
       - key: B2_APP_KEY
         sync: false
+      # Public download bucket (#636): a SEPARATE public, non-Object-Locked
+      # bucket with its own write-only key (can't read the backup bucket's PII).
+      # The dump cron overwrites database.pgdump here; /api/data/dump 302s to it.
+      - key: B2_DOWNLOAD_BUCKET
+        sync: false
+      - key: B2_DOWNLOAD_KEY_ID
+        sync: false
+      - key: B2_DOWNLOAD_APP_KEY
+        sync: false
 
   - type: keyvalue
     name: epd-redis

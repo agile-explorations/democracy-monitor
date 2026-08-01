@@ -30,6 +30,9 @@ const RESULT_FILE = `${DUMP_DIR}/dump-result.json`;
 const LOG_FILE = `${DUMP_DIR}/dump.log`;
 // Off-site backup uploader (#617), invoked from the runner after a good dump.
 const UPLOAD_SCRIPT = 'lib/cron/upload-backup.ts';
+// Public download-copy uploader (#636): pushes the corpus dump to a PUBLIC B2
+// bucket under a stable key so /api/data/dump can 302-redirect there.
+const DOWNLOAD_UPLOAD_SCRIPT = 'lib/cron/upload-download.ts';
 
 // Shell script that performs the dump and writes a result file atomically.
 // Reads its inputs from env vars set by the spawning Node process — no user
@@ -58,6 +61,10 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   # uploader always writes b2-result-<label>.json so the failure is visible in status.
   if pg_restore -l "$DUMP_FILE" >/dev/null 2>>"$LOG_FILE"; then
     npx tsx "$UPLOAD_SCRIPT" "$DUMP_FILE" database >>"$LOG_FILE" 2>&1 || echo "[dump] B2 corpus upload failed (see b2-result-database.json)" >>"$LOG_FILE"
+    # Public download copy (#636): corpus dump → PUBLIC download bucket (stable
+    # key) so /api/data/dump 302-redirects there and the origin egresses nothing.
+    # Best-effort — a failure never blocks the dump or the off-site backup.
+    npx tsx "$DOWNLOAD_UPLOAD_SCRIPT" "$DUMP_FILE" >>"$LOG_FILE" 2>&1 || echo "[dump] B2 download-bucket upload failed (see b2-result-download.json)" >>"$LOG_FILE"
     # Companion PII-tables dump → B2 only, so the backup is complete. Tiny
     # (emails + messages); fits the disk alongside the main dump. --data-only:
     # the main dump already carries the subscribers/feedback SCHEMA (just not
@@ -129,6 +136,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
       RESULT_FILE,
       LOG_FILE,
       UPLOAD_SCRIPT,
+      DOWNLOAD_UPLOAD_SCRIPT,
     },
   });
   child.unref();

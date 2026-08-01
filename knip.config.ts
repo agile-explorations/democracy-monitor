@@ -8,6 +8,7 @@ const config: KnipConfig = {
     'lib/cron/weekly-clustering.ts',
     // Invoked from the dump shell script (pages/api/cron/dump.ts), not imported.
     'lib/cron/upload-backup.ts',
+    'lib/cron/upload-download.ts',
     'scripts/**/*.ts',
   ],
 

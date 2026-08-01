@@ -55,7 +55,9 @@ Check that the app loads with historical data, the dump is downloadable at `/api
 
 ### Persistent disk — Weekly dumps
 
-The web service has a persistent disk mounted at `/var/data` (must hold one full dump — ~6.2 GB and growing; the previous dump is deleted before each new one is written, so peak usage is a single dump). Every Monday at 05:00 UTC, the dump cron triggers `POST /api/cron/dump`, which runs `pg_dump -Fc` (single file, includes all tables and embeddings) and saves it to the disk. The file is served at `GET /api/data/dump` for public download.
+The web service has a persistent disk mounted at `/var/data` (must hold one full dump — ~6.2 GB and growing; the previous dump is deleted before each new one is written, so peak usage is a single dump). Every Monday at 05:00 UTC, the dump cron triggers `POST /api/cron/dump`, which runs `pg_dump -Fc` (single file, includes all tables and embeddings) and saves it to the disk.
+
+The dump is served at `GET /api/data/dump`. To keep 6.2 GB of egress off the origin (#636), the cron also uploads the corpus dump to a **public B2 download bucket** (a separate bucket from the backup one, public-read, no Object Lock, stable key `database.pgdump`, its own write-only key that can't read the PII backups), and `/api/data/dump` **302-redirects** there when the object exists — falling back to streaming the local file if the B2 copy isn't configured or present yet. Env: `B2_DOWNLOAD_BUCKET`, `B2_DOWNLOAD_KEY_ID`, `B2_DOWNLOAD_APP_KEY` (dashboard).
 
 ### GitHub Releases — Bootstrap fallback
 
