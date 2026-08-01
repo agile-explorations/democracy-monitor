@@ -4,6 +4,26 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-POPULATION: method-consistent court-category counting (#587, milestone 91) — ✅ deployed 2026-07-28
+
+**Planned vs built**: plan approved as Option D — a local deterministic opinion-scope classifier mirroring the pipeline's collection criteria, applied uniformly to all eras, so counting is method-consistent _by construction_. Built as planned with two mid-sprint discoveries that changed the data definition:
+
+1. **The classifier's first-amendment branch was dropped** (owner decision point flagged on #587): prod diagnostics showed the NOS-docket stream (~1,000/mo) and the FA-search stream (~15/mo matching) both stopped delivering ~April 2026; only the court-queries opinion layer (#528/#556) is steady across every seam. The plan's own principle — counting mirrors current collection — forces v1 = SCOTUS unconditional + circuits/D.D.C. × EXEC_POWER_PHRASES. Any FA branch re-imports the cliff.
+2. **Docket stubs contaminated every distribution surface in every era**: the first re-derivation rehearsal made structural scores _worse_ (agency z peaked 11.6σ), exposing that `metadata_only` docket stubs (3,134 in baseline Q1-2022 civilLiberties; 118k embedded corpus-wide) sat inside structural distributions, silence source counts, drift embeddings, theme labels, and baseline centroids. They are `court_opinion` rows, unreachable by the opinion stamp — fixed with a shared `countingEligible()` predicate (stubs + retrieval + counting scope) threaded through all seven query sites. Likely a root cause of the artifacts R-DRIFT had to suppress.
+
+**Key mechanisms**: `documents.counting_scope` flag (migration 0045, NULL = in scope, stamped at ingest + `pnpm scope:backfill` with self-verifying TS↔SQL sample, exit 2 on mismatch); classifier versioned (v1) and documented on the Data page as part of the public data dictionary; `scores:purge-stubs` extended as the purge mechanism; L2 evidence population untouched by construction.
+
+**Prod acceptance** (runbook on #587, four owner-approved baseline writes, $0 AI): 0 status flips across 6,958; 39/39 detection + 6/6 NC; civLib weekly counts continuous across both break dates; mean |agency z| 2.38 pre-seam vs 1.70 post (pre-fix jump +1.38→+5.21); the 2026-03-02 thematic artifact now −1.37 (was +44). Teardown deployed same day: CL registry entry `retroactive: true` (single-switch design from the #587 checklist worked as intended), masks/caveat removed, suppression machinery kept with fixture-based tests.
+
+**Lessons learned:**
+
+- **Counting population ≠ collection population ≠ evidence population.** Naming the three separately dissolved the "can't fix history" problem: history can't be re-collected, but a documented counting rule evaluable from stored fields can be applied to all of it.
+- **Rehearse the re-derivation, not just the code.** Both real bugs (dead FA stream, stub contamination) were invisible to unit tests and code review; they surfaced only when the full chain ran against a prod copy and the numbers were compared to expectations.
+- **Consistency-by-construction beats fidelity.** The classifier recalls only 54% of what CL's analyzer matched for the exec layer — and it doesn't matter, because both sides of every seam are measured by the same rule. Chasing analyzer fidelity would have been unfalsifiable.
+- **Long prod operations need kill-tolerant drivers.** Harness background tasks died repeatedly mid-enrichment; the fix was a detached, stale-aware driver whose every restart resumes from a freshness predicate rather than from zero.
+
+---
+
 ## Sprint R-OVERVIEW: landing-page integrity + the CL-seam honesty arc (#584–587) — ✅ code complete, deploys Tue 7/28
 
 **Planned vs built** (2026-07-25/26, develop): planned as a half-day (markers, significant-weeks reframe, dead component). Owner feedback drove five substantive escalations, each catching something analysis had settled too early:

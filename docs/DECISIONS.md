@@ -12,6 +12,43 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CODE-PROTECT: code-side resilience + repo/account hardening (#624–631, milestone 99) — ✅ 7 of 8 complete 2026-07-31
+
+**Origin**: after the database gained off-site immutable backups (B2, #617), the owner asked "what protects the _code_?" The reframe drove the sprint — code and data have different threat models. Data is expensive-to-recreate and lives in two places, so off-site copies are the whole game; code is distributed by git (every clone is full history), so the real risks are **integrity/tampering** (a credential pushing code that auto-deploys) and **canonical-host loss**, not data loss. Issues were ranked by likelihood × blast-radius ÷ effort, which put the free secret-scanning toggle and the live push→prod hole above the high-effort origin Tunnel.
+
+**Planned vs built**: filed 8 issues, **shipped 7**, parked 1.
+
+- **#625** secret scanning + push protection (public repo, free) — enabled; historical scan clean.
+- **#628** tag-gated prod deploys — `autoDeploy:false` + a `v*`-tag Action that verifies the tagged commit's CI is green, then deploys via the Render API (shipped as v1.0.0).
+- **#631** DB TLS pinned to explicit verification for external Render endpoints, durable against pg's upcoming `sslmode=require` default change (v1.1.0).
+- **#630** pagination host guard — `isSameHostHttps` on the `next`/`nextPage` follow in three fetchers; CREC validates before appending the API key (v1.1.0).
+- **#624** weekly off-site repo backup — a scheduled Action `--mirror` clones + `git bundle --all` → B2 `code-backups/`; verified end-to-end (33 MB bundle, "records a complete history") (v1.1.0).
+- **#629** org 2FA required (secure methods only), verified with a live Render deploy.
+- **#626** branch protection — one clean ruleset (`deletion` + `non_fast_forward`, no bypass) on `main` + `develop`, replacing the old bypassed PR/checks rules.
+- **#627** signed commits — **parked**: marginal value for a solo committer given the above, and recurring signing friction on every push environment.
+
+**Key decisions:**
+
+- **CI gate at deploy, not merge (no PRs).** The owner works fully solo + AI-reviewed, so PR-as-human-review adds nothing, and required status checks on `main` would _force_ a PR-and-wait flow. Instead the tag Action refuses to ship a commit whose CI isn't green — a red commit can sit on `main` but can never reach prod.
+- **Deploy pinned per-commit; crons can't be.** The Render API accepts `commitId` for web services but rejects it for cron jobs ("cannot deploy cron job service by commit reference ID") — found during rollout; the Action omits it for `crn-*` (crons deploy branch HEAD, which equals the tag).
+- **Repo backup on GitHub Actions, not a Render cron** — Actions gives full history via `--mirror`; a Render cron's shallow build clone can't produce a complete bundle.
+- **DB TLS fixed in code, not the connection string** — an explicit `ssl:{rejectUnauthorized:true}` for `*postgres.render.com` survives a pg major bump; internal/local return `undefined` (unchanged), so prod runtime is untouched.
+- **Ruleset rebuilt, not patched** — the old "Core Rules" ruleset wasn't editable via the repo API token (org-governed); a new repo-level ruleset was created and the old one deleted, reaching the target state directly.
+
+**Corrections / deviations:**
+
+- **The 2FA-broke-Render root cause was misdiagnosed twice** before #629 landed. "Render's outside collaborator was removed" and "migrate Render to the 2FA-exempt GitHub App" were both wrong — the App was installed and correct throughout. Render's git rides the **`BabyYoda-AE` org _member_ account**, which lacked 2FA; org-wide 2FA-require restricted it. Fix: secure 2FA on that account, verified via the People 2FA-disabled filter + a real deploy. Retro and memory corrected.
+- **The #620 origin-secret enforcement stayed removed** (from R-HARDEN-FF) — proven unenforceable on Render; #623 (Cloudflare Tunnel) is the only real fix, deferred as a standalone infra project.
+
+**Lessons learned:**
+
+- **Rank hardening by likelihood × blast-radius ÷ effort, not intuition.** It surfaced that a free toggle (secret scanning) and the tag-gate outrank the expensive Tunnel, and that a latent-but-cheap DB-link MITM outranks code-loss insurance.
+- **Verify security controls empirically before calling them done.** The 2FA fix was only real after a Render deploy cloned _under_ the requirement — two confident prior explanations were wrong. Likewise the deploy Action: two live bugs (var-or-secret, cron `commitId`) surfaced only when a real tag ran the pipeline.
+- **Integration auth can ride a human member account, not just an App.** "The App is installed" is not evidence an org-wide policy is safe — check which _account_ the integration authenticates as.
+- **A provably-unenforceable control should be deleted, not parked** (the origin secret) — dead middleware carries complexity and a leaked-secret liability.
+
+---
+
 ## Sprint R-HARDEN-FF: security fast-follows (#619 R10–R14, #620, milestone 98) — ✅ complete 2026-07-31 (⚠️ #620 origin gate later reverted — see follow-up below)
 
 **Origin**: Post-launch, with Cloudflare live in front of prod. Closes the R-HARDEN threat register's non-catastrophic items, filed as #619/#620 when the blockers shipped. The origin-bypass was confirmed reachable (Render IP `216.24.57.1` + Host header → 200).
@@ -38,7 +75,7 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 **What happened, in order:**
 
 1. **First enforcing deploy caused a total outage.** The `main@b7abc34` deploy ran the middleware fail-**closed** the instant `ORIGIN_SHARED_SECRET` was set; the running instance's secret didn't match Cloudflare's injected header (Render env changes need a redeploy to take effect, and the value never reconciled), so every request 403'd. It couldn't fail-open because the fix required a redeploy — and **Render deploys were simultaneously broken** ("Access to Git repository denied"). Recovered via Render **Rollback** (Git-independent; replays a cached image).
-2. **Root cause of the broken deploy pipeline**: enabling GitHub org "Require 2FA for everyone" removed the non-2FA collaborator Render used for git access. Disabling that requirement restored deploys. (Re-enable only after moving Render to the 2FA-exempt GitHub App.)
+2. **Root cause of the broken deploy pipeline**: enabling GitHub org "Require 2FA for everyone" restricted the **`BabyYoda-AE` org member account** that Render's git access rides on, because that account lacked 2FA. Disabling the requirement restored deploys. (Corrected 2026-07-31, #629 — the initial "Render's outside collaborator / migrate to the GitHub App" theory was wrong: the App was installed and correct all along; the clone authenticates via the connecting member account, so the fix was enabling secure 2FA on `BabyYoda-AE`, then re-enabling the requirement and verifying a real deploy.)
 3. **Rebuilt fail-safe** (#622): a log-only→enforce two-stage guard (enforces only when `ORIGIN_ENFORCE=true`, after logs confirm the header matches) so a deploy can never self-outage again. Redeployed in log-only mode.
 4. **Then proved the mechanism is unenforceable on Render at all.** A temporary `/api/origin-debug` probe through Cloudflare returned `hasOriginHeader:false` while `cf-ray` + `cdn-loop` + Render's `rndr-id`/`render-proxy-ttl` were all present — i.e. **orange-to-orange**: our Cloudflare → Render's _own_ Cloudflare → app. The second (Render-owned) Cloudflare strips the custom `x-dm-origin` header before it reaches the app. The Transform Rule fires correctly; the header simply never survives the hop. mTLS / Authenticated Origin Pulls / inbound-IP firewall are all unavailable on a public Render web service, and the bypass (shared IP `216.24.57.1` + `Host` header) is inherent to the platform.
 5. **Removed all of it** (commit `244461d` → merged `0021e86`, deployed + verified 2026-07-31): `middleware.ts`, `lib/utils/origin-guard.ts` + tests, `pages/api/origin-debug.ts`, `pages/api/health/live.ts`, and the `render.yaml` `ORIGIN_SHARED_SECRET`/`ORIGIN_ENFORCE`/`healthCheckPath`. Owner deleted the matching Render env vars + Cloudflare Transform Rule. **All R10–R14 hardening was kept and re-verified live** (headers, CSP + report sink, admin, proxy, dep pin). `DEPLOYMENT.md` now documents why direct-origin protection is deferred, so nobody re-implements the dead approach.
@@ -49,7 +86,7 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 
 - **Never deploy a fail-closed guard at the HTTP edge.** A single wrong/if-absent secret 403'd 100% of traffic, and the remedy (redeploy) was itself blocked. Any edge auth must fail-**open** and gate enforcement behind an explicit, separately-flipped switch that only activates after logs confirm the happy path.
 - **Verify the deployment platform's proxy topology _before_ designing header-injection auth.** Render fronts every service with its own Cloudflare; the orange-to-orange hop strips custom request headers, so a CF→origin shared-header scheme can't work here. One `dig`/header probe up front would have killed the design before it shipped an outage. (Render's own Cloudflare also _spoofs_ the "behind CF" signal — `server: cloudflare`/`cf-ray` on responses does not mean your zone is in-path; verify with `dig +short NS` + the CF dashboard "Active" state.)
-- **Org-wide 2FA enforcement can sever platform integrations.** "Require 2FA for everyone" silently removed Render's git collaborator and broke deploys. Migrate CI/CD integrations to 2FA-exempt app installs _before_ enforcing.
+- **Org-wide 2FA enforcement can sever platform integrations — via the member account they authenticate as, not the App.** "Require 2FA for everyone" broke Render because Render's git rides the `BabyYoda-AE` org member account, which lacked 2FA; the installed GitHub App was a red herring. Before enforcing org-wide 2FA, ensure **every member account any integration connects as** has a _secure_ 2FA method — verify with org People → the 2FA-disabled filter, then confirm with a real deploy. Don't reason from "the App is installed."
 - **When a control is provably unenforceable, remove it — don't park it.** Leaving dead middleware "just in case" carries real complexity and a leaked-secret liability; the correct end state was deletion + a documented pointer to the actual fix.
 
 ---
@@ -122,25 +159,5 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 - **Drizzle `${}` params are text: any use inside SQL arithmetic/CASE/comparison needs an explicit cast.** Two incidents from one class (#597 files the lint rule).
 - **Empty-on-error is the worst failure mode for a research tool** — a broken query rendered as "the corpus lacks documents," precisely the credibility failure the outreach plan warns about. Errors must look like errors.
 - **Deterministic beats clever for query understanding**: regex era-extraction is reproducible from the question text alone, testable against the real outreach questions, and free — the model is reserved for judgment (re-rank), with a fallback that can only improve on baseline.
-
----
-
-## Sprint R-POPULATION: method-consistent court-category counting (#587, milestone 91) — ✅ deployed 2026-07-28
-
-**Planned vs built**: plan approved as Option D — a local deterministic opinion-scope classifier mirroring the pipeline's collection criteria, applied uniformly to all eras, so counting is method-consistent _by construction_. Built as planned with two mid-sprint discoveries that changed the data definition:
-
-1. **The classifier's first-amendment branch was dropped** (owner decision point flagged on #587): prod diagnostics showed the NOS-docket stream (~1,000/mo) and the FA-search stream (~15/mo matching) both stopped delivering ~April 2026; only the court-queries opinion layer (#528/#556) is steady across every seam. The plan's own principle — counting mirrors current collection — forces v1 = SCOTUS unconditional + circuits/D.D.C. × EXEC_POWER_PHRASES. Any FA branch re-imports the cliff.
-2. **Docket stubs contaminated every distribution surface in every era**: the first re-derivation rehearsal made structural scores _worse_ (agency z peaked 11.6σ), exposing that `metadata_only` docket stubs (3,134 in baseline Q1-2022 civilLiberties; 118k embedded corpus-wide) sat inside structural distributions, silence source counts, drift embeddings, theme labels, and baseline centroids. They are `court_opinion` rows, unreachable by the opinion stamp — fixed with a shared `countingEligible()` predicate (stubs + retrieval + counting scope) threaded through all seven query sites. Likely a root cause of the artifacts R-DRIFT had to suppress.
-
-**Key mechanisms**: `documents.counting_scope` flag (migration 0045, NULL = in scope, stamped at ingest + `pnpm scope:backfill` with self-verifying TS↔SQL sample, exit 2 on mismatch); classifier versioned (v1) and documented on the Data page as part of the public data dictionary; `scores:purge-stubs` extended as the purge mechanism; L2 evidence population untouched by construction.
-
-**Prod acceptance** (runbook on #587, four owner-approved baseline writes, $0 AI): 0 status flips across 6,958; 39/39 detection + 6/6 NC; civLib weekly counts continuous across both break dates; mean |agency z| 2.38 pre-seam vs 1.70 post (pre-fix jump +1.38→+5.21); the 2026-03-02 thematic artifact now −1.37 (was +44). Teardown deployed same day: CL registry entry `retroactive: true` (single-switch design from the #587 checklist worked as intended), masks/caveat removed, suppression machinery kept with fixture-based tests.
-
-**Lessons learned:**
-
-- **Counting population ≠ collection population ≠ evidence population.** Naming the three separately dissolved the "can't fix history" problem: history can't be re-collected, but a documented counting rule evaluable from stored fields can be applied to all of it.
-- **Rehearse the re-derivation, not just the code.** Both real bugs (dead FA stream, stub contamination) were invisible to unit tests and code review; they surfaced only when the full chain ran against a prod copy and the numbers were compared to expectations.
-- **Consistency-by-construction beats fidelity.** The classifier recalls only 54% of what CL's analyzer matched for the exec layer — and it doesn't matter, because both sides of every seam are measured by the same rule. Chasing analyzer fidelity would have been unfalsifiable.
-- **Long prod operations need kill-tolerant drivers.** Harness background tasks died repeatedly mid-enrichment; the fix was a detached, stale-aware driver whose every restart resumes from a freshness predicate rather than from zero.
 
 ---
