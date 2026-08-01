@@ -98,12 +98,20 @@ jobs:
           for raw in "${IDS[@]}"; do
             id=$(printf '%s' "$raw" | tr -d '[:space:]')
             [ -n "$id" ] || continue
+            # Render rejects `commitId` for cron jobs ("cannot deploy cron job
+            # service by commit reference ID"). Web/other services pin the exact
+            # tagged commit; crons deploy their connected-branch HEAD — which is
+            # the tagged commit, since releases tag main HEAD.
+            case "$id" in
+              crn-*) payload='{}' ;;
+              *) payload="{\"commitId\":\"$SHA\",\"clearCache\":\"do_not_clear\"}" ;;
+            esac
             echo "→ Deploying $id @ $SHA"
             code=$(curl -sS -o /tmp/resp.json -w '%{http_code}' -X POST \
               "https://api.render.com/v1/services/$id/deploys" \
               -H "Authorization: Bearer $RENDER_API_KEY" \
               -H "Content-Type: application/json" \
-              -d "{\"commitId\":\"$SHA\",\"clearCache\":\"do_not_clear\"}") || code="000"
+              -d "$payload") || code="000"
             if [ "${code#2}" != "$code" ]; then
               echo "  OK ($code): $(jq -r '.id // "deploy queued"' /tmp/resp.json 2>/dev/null || echo queued)"
             else
