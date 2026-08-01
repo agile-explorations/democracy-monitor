@@ -14,27 +14,10 @@
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { tryStoreDataReport, tryValidateGraph } from '@/lib/cron/snapshot-poststeps';
+import { startReportRefresh } from '@/lib/services/report-refresh';
 import { requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
-let inFlight = false;
-
-async function refresh(): Promise<void> {
-  const errors: string[] = [];
-  try {
-    await tryValidateGraph(errors);
-    await tryStoreDataReport(errors);
-  } finally {
-    inFlight = false;
-  }
-  if (errors.length > 0) {
-    console.error('[refresh-reports] completed with errors:', errors);
-  } else {
-    console.log('[refresh-reports] stored reports refreshed');
-  }
-}
-
-export default function handler(req: NextApiRequest, res: NextApiResponse): void {
+export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'POST')) return;
 
   const secret = process.env.CRON_SECRET;
@@ -48,19 +31,14 @@ export default function handler(req: NextApiRequest, res: NextApiResponse): void
     return;
   }
 
-  if (inFlight) {
-    res.status(409).json({ status: 'in_progress' });
+  const { started, startedAt } = await startReportRefresh();
+  if (!started) {
+    res.status(409).json({ status: 'in_progress', startedAt });
     return;
   }
-  inFlight = true;
-
-  // Fire-and-forget by design: the validations outlive the HTTP response
-  // (Render runs a persistent Node server, not serverless). Failures are
-  // logged and leave the previous stored reports in place.
-  void refresh();
-
   res.status(202).json({
     status: 'started',
+    startedAt,
     note: 'Stored reports update in ~1-3 minutes; check generatedAt on /api/health/validate-graph and /api/health/validate-data.',
   });
 }

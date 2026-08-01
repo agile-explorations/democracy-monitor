@@ -17,5 +17,6 @@ export const CacheKeys = {
   documentCount: () => 'stats:doc-count:v2',
   validateGraph: () => 'health:validate-graph:v1',
   validateData: () => 'health:validate-data:v1',
+  reportRefresh: () => 'health:report-refresh:status',
   themeLabel: (category: string, week: string) => `theme-label:${category}:${week}`,
 } as const;
