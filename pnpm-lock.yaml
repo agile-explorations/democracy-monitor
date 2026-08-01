@@ -27,8 +27,8 @@ importers:
         specifier: '5'
         version: 5.0.3
       drizzle-orm:
-        specifier: ^0.45.1
-        version: 0.45.1(@types/pg@8.16.0)(pg@8.18.0)
+        specifier: ^0.45.2
+        version: 0.45.2(@types/pg@8.16.0)(pg@8.18.0)
       ioredis:
         specifier: ^5.9.2
         version: 5.9.2
@@ -2105,8 +2105,8 @@ packages:
     resolution: {integrity: sha512-O9EC/miwdnRDY10qRxM8P3Pg8hXe3LyU4ZipReKOgTwn4OqANmftj8XJz1UPUAS6NMHf0E2htjsbQujUTkncCg==}
     hasBin: true
 
-  drizzle-orm@0.45.1:
-    resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
+  drizzle-orm@0.45.2:
+    resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -6071,7 +6071,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.45.1(@types/pg@8.16.0)(pg@8.18.0):
+  drizzle-orm@0.45.2(@types/pg@8.16.0)(pg@8.18.0):
     optionalDependencies:
       '@types/pg': 8.16.0
       pg: 8.18.0

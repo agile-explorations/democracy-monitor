@@ -10,5 +10,13 @@ export const SCRAPE_CACHE_TTL_S = 3600;
 /** 6-hour TTL for AI-powered assessment caches. */
 export const AI_CACHE_TTL_S = 6 * 60 * 60;
 
+/**
+ * Backtest results are a heavy DB+compute pass over a fixed historical year and
+ * are effectively static (only change when baseline data is re-derived), so
+ * memoize aggressively — this protects the origin (incl. the bypass) from the
+ * per-request cost of `/api/health/backtest` (#632).
+ */
+export const BACKTEST_CACHE_TTL_S = 24 * 60 * 60;
+
 /** Maximum rows returned by export endpoints. */
 export const MAX_EXPORT_ROWS = 10_000;

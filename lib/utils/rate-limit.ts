@@ -50,16 +50,25 @@ export function checkRateLimit(
 }
 
 /**
- * Extract the client IP. Behind Cloudflare the true client IP is in
- * CF-Connecting-IP; x-forwarded-for's first hop would otherwise be a
- * Cloudflare edge IP, collapsing every visitor into one rate-limit bucket.
+ * Extract the client IP for rate-limit keying. Cloudflare sets CF-Connecting-IP
+ * to the true client IP and rejects any client-supplied one (403), so it's the
+ * trustworthy source in production — all legitimate traffic, including the
+ * direct-origin path, transits Cloudflare (which populates it).
+ *
+ * `x-forwarded-for` is client-controllable if a request ever reaches us without
+ * Cloudflare in front, so in production we do NOT trust it (a spoofed first-hop
+ * would otherwise let an attacker rotate rate-limit buckets); we fall back to
+ * the real socket address, which can't be forged. Outside production (local dev
+ * has no Cloudflare) we still honour XFF for convenience. (#633)
  */
 export function getClientIp(req: NextApiRequest): string {
   const cf = req.headers['cf-connecting-ip'];
   if (typeof cf === 'string' && cf.trim()) return cf.trim();
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string') {
-    return forwarded.split(',')[0].trim();
+  if (process.env.NODE_ENV !== 'production') {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded.trim()) {
+      return forwarded.split(',')[0].trim();
+    }
   }
   return req.socket?.remoteAddress ?? 'unknown';
 }
