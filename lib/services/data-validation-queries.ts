@@ -11,7 +11,6 @@ import type {
   Layer2Completeness,
   Layer2PeriodStats,
   LayerScorePeriodStats,
-  MetadataOnlyStats,
   NarrativeCoverage,
 } from './data-validation-service';
 import { getTermSummaryFreshness } from './term-summary-queries';
@@ -277,56 +276,6 @@ export async function getLayerScorePopulation(category?: string): Promise<LayerS
 }
 
 // ---------------------------------------------------------------------------
-// metadata_only classification check
-// ---------------------------------------------------------------------------
-
-export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats[]> {
-  if (!isDbAvailable()) return [];
-  const db = getDb();
-  const results: MetadataOnlyStats[] = [];
-
-  const [clStats] = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      marked: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
-    })
-    .from(documents)
-    .where(eq(documents.sourceType, 'court_opinion'));
-
-  const clTotal = Number(clStats.total);
-  const clMarked = Number(clStats.marked);
-  results.push({
-    population: 'CourtListener docket stubs',
-    sourceFilter: { column: 'source_type', value: 'court_opinion' },
-    total: clTotal,
-    markedMetadataOnly: clMarked,
-    unmarked: clTotal - clMarked,
-    pass: clTotal === 0 || clMarked === clTotal,
-  });
-
-  const [gdeltStats] = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      marked: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
-    })
-    .from(documents)
-    .where(eq(documents.sourceOrigin, 'gdelt'));
-
-  const gdeltTotal = Number(gdeltStats.total);
-  const gdeltMarked = Number(gdeltStats.marked);
-  results.push({
-    population: 'GDELT rhetoric documents',
-    sourceFilter: { column: 'source_origin', value: 'gdelt' },
-    total: gdeltTotal,
-    markedMetadataOnly: gdeltMarked,
-    unmarked: gdeltTotal - gdeltMarked,
-    pass: gdeltTotal === 0 || gdeltMarked === gdeltTotal,
-  });
-
-  return results;
-}
-
-// ---------------------------------------------------------------------------
 // Narrative coverage
 // ---------------------------------------------------------------------------
 
@@ -334,7 +283,6 @@ const EMPTY_NARRATIVE_COVERAGE: NarrativeCoverage = {
   elevatedWeeks: 0,
   narrativeWeeks: 0,
   missingWeeks: 0,
-  staleWeeks: 0,
   weeksWithNarratives: 0,
   weeksWithSummary: 0,
   termSummaryFresh: false,
@@ -349,7 +297,6 @@ function toNarrativeCoverage(
     elevatedWeeks: Number(row.elevated_weeks ?? 0),
     narrativeWeeks: Number(row.narrative_weeks ?? 0),
     missingWeeks: Number(row.missing_weeks ?? 0),
-    staleWeeks: Number(row.stale_weeks ?? 0),
     weeksWithNarratives: Number(row.weeks_with_narratives ?? 0),
     weeksWithSummary: Number(row.weeks_with_summary ?? 0),
     termSummaryFresh,
@@ -391,8 +338,6 @@ export async function getNarrativeCoverage(category?: string): Promise<Narrative
             THEN (e.category, e.week_of) END)::int AS narrative_weeks,
       count(DISTINCT CASE WHEN n.week_of IS NULL
             THEN (e.category, e.week_of) END)::int AS missing_weeks,
-      count(DISTINCT CASE WHEN n.latest_generated < e.computed_at
-            THEN (e.category, e.week_of) END)::int AS stale_weeks,
       (SELECT count(*)::int FROM narrated_weeks) AS weeks_with_narratives,
       (SELECT count(*)::int FROM summary_weeks) AS weeks_with_summary,
       (SELECT count(*)::int FROM narrated_weeks nw

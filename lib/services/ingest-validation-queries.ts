@@ -7,6 +7,7 @@ import type { Category } from '@/lib/types';
 import type {
   ContentCompleteness,
   DocumentCoverage,
+  MetadataOnlyStats,
   PaginationFitness,
   SourcePeriodCoverage,
   ClOpinionCoverage,
@@ -379,4 +380,48 @@ export function checkSignalCoverage(
   }
 
   return gaps;
+}
+
+/**
+ * Whether docket-stub / rhetoric populations are correctly marked metadata_only
+ * (#648: moved from Data Readiness). Uses raw execute to match the ingest style.
+ */
+export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats[]> {
+  if (!isDbAvailable()) return [];
+  const db = getDb();
+
+  const populations: {
+    population: string;
+    column: 'source_type' | 'source_origin';
+    value: string;
+  }[] = [
+    { population: 'CourtListener docket stubs', column: 'source_type', value: 'court_opinion' },
+    { population: 'GDELT rhetoric documents', column: 'source_origin', value: 'gdelt' },
+  ];
+
+  const results: MetadataOnlyStats[] = [];
+  for (const p of populations) {
+    const filter =
+      p.column === 'source_type'
+        ? sql`${documents.sourceType} = ${p.value}`
+        : sql`${documents.sourceOrigin} = ${p.value}`;
+    const [row] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        marked: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
+      })
+      .from(documents)
+      .where(filter);
+    const total = Number(row?.total ?? 0);
+    const marked = Number(row?.marked ?? 0);
+    results.push({
+      population: p.population,
+      sourceFilter: { column: p.column, value: p.value },
+      total,
+      markedMetadataOnly: marked,
+      unmarked: total - marked,
+      pass: total === 0 || marked === total,
+    });
+  }
+  return results;
 }

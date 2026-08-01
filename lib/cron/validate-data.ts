@@ -9,11 +9,9 @@
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
-  DataIntegrityCheck,
   DataReport,
   Layer2PeriodStats,
   LayerScorePeriodStats,
-  MetadataOnlyStats,
   NarrativeCoverage,
 } from '@/lib/services/data-validation-service';
 import { runDataValidation } from '@/lib/services/data-validation-service';
@@ -123,18 +121,6 @@ function printLayerScorePopulation(periods: LayerScorePeriodStats[]): void {
   }
 }
 
-function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
-  console.log('\n=== metadata_only Classification ===');
-  for (const m of stats) {
-    const mark = m.pass ? PASS : FAIL;
-    const detail =
-      m.total > 0
-        ? `${m.markedMetadataOnly}/${m.total} marked (${m.unmarked} unmarked)`
-        : 'no documents';
-    console.log(`  ${mark} ${m.population.padEnd(35)} ${detail}`);
-  }
-}
-
 function printNarrativeCoverage(nc: NarrativeCoverage): void {
   console.log('\n=== Narrative Coverage ===');
   const covPct =
@@ -159,19 +145,7 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
   console.log(
     `  ${termMark} Term:     living term summary is ${nc.termSummaryFresh ? 'fresh' : 'stale or missing (regenerates at next snapshot; or run: pnpm narratives:regenerate --type term)'}`,
   );
-  const staleMark = nc.staleWeeks === 0 ? PASS : WARN;
-  console.log(
-    `  ${staleMark} Stale:    ${nc.staleWeeks} narratives generated before layer recomputation`,
-  );
-}
-
-function printDataIntegrity(checks: DataIntegrityCheck[]): void {
-  console.log('\n=== Data Integrity ===');
-  for (const check of checks) {
-    const mark = check.pass ? PASS : FAIL;
-    const detail = check.pass ? '' : ` (${check.count}${check.detail ? ': ' + check.detail : ''})`;
-    console.log(`  ${mark} ${check.name}${detail}`);
-  }
+  // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647.
 }
 
 function printReport(report: DataReport): void {
@@ -179,9 +153,7 @@ function printReport(report: DataReport): void {
   printBaselineCompleteness(report);
   printLayer2Completeness(report.layer2Completeness);
   printLayerScorePopulation(report.layerScorePopulation);
-  printMetadataOnlyClassification(report.metadataOnlyClassification);
   printNarrativeCoverage(report.narrativeCoverage);
-  printDataIntegrity(report.dataIntegrity);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');
@@ -226,7 +198,9 @@ Options:
   runDataValidation(options.category)
     .then((report) => {
       printReport(report);
-      process.exit(report.warnings.length > 0 ? 1 : 0);
+      // Exit non-zero only on actionable findings; accepted `limitation`
+      // known-issues don't fail the check (#649).
+      process.exit(report.warningDetails.some((w) => w.severity === 'action') ? 1 : 0);
     })
     .catch((err) => {
       console.error('[validate:data] Fatal error:', err);

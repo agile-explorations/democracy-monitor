@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getLayer2Completeness,
   getLayerScorePopulation,
-  getMetadataOnlyClassification,
 } from '@/lib/services/data-validation-queries';
 import {
   getStageCompleteness,
   getBaselineCompleteness,
   collectWarnings,
+  collectWarningDetails,
 } from '@/lib/services/data-validation-service';
 import type { DataReport } from '@/lib/services/data-validation-service';
 
@@ -111,7 +111,6 @@ describe('data-validation-service', () => {
     expect(await getBaselineCompleteness()).toEqual([]);
     expect(await getLayer2Completeness()).toEqual([]);
     expect(await getLayerScorePopulation()).toEqual([]);
-    expect(await getMetadataOnlyClassification()).toEqual([]);
   });
 
   describe('getStageCompleteness', () => {
@@ -269,66 +268,6 @@ describe('data-validation-service', () => {
       });
     });
   });
-
-  describe('getMetadataOnlyClassification', () => {
-    it('returns pass when all populations are correctly classified', async () => {
-      const { isDbAvailable } = await import('@/lib/db');
-      vi.mocked(isDbAvailable).mockReturnValue(true);
-
-      // Two select calls: CL stubs, then GDELT
-      const results = [
-        [{ total: '164000', marked: '164000' }],
-        [{ total: '60000', marked: '60000' }],
-      ];
-      let callIdx = 0;
-      const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable(results[callIdx++] || []);
-      });
-
-      const { getDb } = await import('@/lib/db');
-      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
-
-      const result = await getMetadataOnlyClassification();
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        population: 'CourtListener docket stubs',
-        total: 164000,
-        markedMetadataOnly: 164000,
-        unmarked: 0,
-        pass: true,
-      });
-      expect(result[1]).toMatchObject({
-        population: 'GDELT rhetoric documents',
-        total: 60000,
-        markedMetadataOnly: 60000,
-        unmarked: 0,
-        pass: true,
-      });
-    });
-
-    it('returns fail when documents are not classified', async () => {
-      const { isDbAvailable } = await import('@/lib/db');
-      vi.mocked(isDbAvailable).mockReturnValue(true);
-
-      const results = [
-        [{ total: '164000', marked: '100000' }],
-        [{ total: '60000', marked: '60000' }],
-      ];
-      let callIdx = 0;
-      const selectFn = vi.fn().mockImplementation(() => {
-        return createChainable(results[callIdx++] || []);
-      });
-
-      const { getDb } = await import('@/lib/db');
-      vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
-
-      const result = await getMetadataOnlyClassification();
-      expect(result[0]).toMatchObject({
-        pass: false,
-        unmarked: 64000,
-      });
-    });
-  });
 });
 
 describe('runDataValidation', () => {
@@ -356,9 +295,7 @@ describe('collectWarnings', () => {
       baselineCompleteness: [],
       layer2Completeness: [],
       layerScorePopulation: [],
-      metadataOnlyClassification: [],
-      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0, staleWeeks: 0 },
-      dataIntegrity: [],
+      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
       warnings: [],
       ...overrides,
     };
@@ -378,24 +315,6 @@ describe('collectWarnings', () => {
     });
     const warnings = collectWarnings(report);
     expect(warnings).toContainEqual(expect.stringContaining('15 documents need scores'));
-  });
-
-  it('warns for incomplete metadata_only classification', () => {
-    const report = emptyReport({
-      metadataOnlyClassification: [
-        {
-          population: 'CourtListener docket stubs',
-          sourceFilter: { column: 'source_type', value: 'court_opinion' },
-          total: 164000,
-          markedMetadataOnly: 100000,
-          unmarked: 64000,
-          pass: false,
-        },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('CourtListener docket stubs'));
-    expect(warnings).toContainEqual(expect.stringContaining('64000'));
   });
 
   it('warns when no weeks have all layer scores', () => {
@@ -447,21 +366,8 @@ describe('collectWarnings', () => {
     );
   });
 
-  it('warns for missing aggregates', () => {
-    const report = emptyReport({
-      stageCompleteness: {
-        totalDocuments: 100,
-        missingScores: 0,
-        missingEmbeddings: 0,
-        missingEmbeddingsIntent: 0,
-        metadataOnlyCount: 0,
-        totalWeeks: 20,
-        missingAggregates: 3,
-      },
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('3 weeks need aggregates'));
-  });
+  // Aggregate presence moved to the Derivation Graph (G2a) in #647; Data
+  // Readiness no longer emits a "weeks need aggregates" warning.
 
   it('warns for layer2 missing pass1 docs', () => {
     const report = emptyReport({
@@ -600,7 +506,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 10,
         narrativeWeeks: 7,
         missingWeeks: 3,
-        staleWeeks: 0,
         weeksWithNarratives: 7,
         weeksWithSummary: 7,
         termSummaryFresh: false,
@@ -619,7 +524,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 5,
         narrativeWeeks: 5,
         missingWeeks: 0,
-        staleWeeks: 0,
         weeksWithNarratives: 5,
         weeksWithSummary: 3,
         termSummaryFresh: false,
@@ -632,70 +536,13 @@ describe('collectWarnings', () => {
     );
   });
 
-  it('warns for stale narratives', () => {
-    const report = emptyReport({
-      narrativeCoverage: {
-        elevatedWeeks: 5,
-        narrativeWeeks: 5,
-        missingWeeks: 0,
-        staleWeeks: 4,
-        weeksWithNarratives: 5,
-        weeksWithSummary: 5,
-        termSummaryFresh: false,
-        missingSummaryWeeks: 0,
-      },
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('4 narratives are stale'));
-  });
+  // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647; Data
+  // Readiness no longer emits a stale-narrative warning (it was a computed_at phantom).
 
-  it('warns for failed data integrity checks with detail', () => {
-    const report = emptyReport({
-      dataIntegrity: [
-        { name: 'Non-Monday week_of', count: 5, detail: 'sample detail', pass: false },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(
-      expect.stringContaining('Non-Monday week_of (5: sample detail)'),
-    );
-  });
-
-  it('warns for failed data integrity checks without detail', () => {
-    const report = emptyReport({
-      dataIntegrity: [{ name: 'Orphan categories', count: 2, pass: false }],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('Orphan categories (2)'));
-  });
-
-  it('does not warn for passing data integrity checks', () => {
-    const report = emptyReport({
-      dataIntegrity: [
-        { name: 'Non-Monday week_of', count: 0, pass: true },
-        { name: 'Orphan categories', count: 0, pass: true },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings.filter((w) => w.includes('Non-Monday') || w.includes('Orphan'))).toEqual([]);
-  });
-
-  it('warns for passing metadata_only classification (skipped)', () => {
-    const report = emptyReport({
-      metadataOnlyClassification: [
-        {
-          population: 'GDELT rhetoric documents',
-          sourceFilter: { column: 'source_origin', value: 'gdelt' },
-          total: 5000,
-          markedMetadataOnly: 5000,
-          unmarked: 0,
-          pass: true,
-        },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings.filter((w) => w.includes('GDELT'))).toEqual([]);
-  });
+  // Data-integrity checks (non-Monday anchors, orphan categories, #544
+  // resurrection) moved to the Derivation Graph in #647; Data Readiness no
+  // longer carries a dataIntegrity section. Orphan-category coverage now lives
+  // in validate-graph.test.ts (findOrphanCategories / G6).
 
   it('combines multiple warning sources simultaneously', () => {
     const report = emptyReport({
@@ -712,7 +559,6 @@ describe('collectWarnings', () => {
         elevatedWeeks: 10,
         narrativeWeeks: 8,
         missingWeeks: 2,
-        staleWeeks: 1,
         weeksWithNarratives: 8,
         weeksWithSummary: 7,
         termSummaryFresh: false,
@@ -724,9 +570,105 @@ describe('collectWarnings', () => {
     expect(warnings).toContainEqual(
       expect.stringContaining('3 detection documents need embedding'),
     );
-    expect(warnings).toContainEqual(expect.stringContaining('2 weeks need aggregates'));
     expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
-    expect(warnings).toContainEqual(expect.stringContaining('1 narratives are stale'));
     expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
+  });
+});
+
+describe('collectWarningDetails severity (#649)', () => {
+  function baseReport(overrides: Partial<DataReport> = {}): DataReport {
+    return {
+      stageCompleteness: {
+        totalDocuments: 100,
+        missingScores: 0,
+        missingEmbeddings: 0,
+        missingEmbeddingsIntent: 0,
+        metadataOnlyCount: 0,
+        totalWeeks: 20,
+        missingAggregates: 0,
+      },
+      baselineCompleteness: [],
+      layer2Completeness: [],
+      layerScorePopulation: [],
+      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
+      warnings: [],
+      warningDetails: [],
+      ...overrides,
+    };
+  }
+  const l2 = (period: string, over: Record<string, number> = {}) => ({
+    period,
+    label: period,
+    totalDocuments: 100,
+    pass1Assessed: 100,
+    missingPass1: 0,
+    pass1Flagged: 10,
+    pass2Assessed: 10,
+    missingPass2: 0,
+    pass2Flagged: 2,
+    auditSampled: 50,
+    auditFalseNegatives: 0,
+    ...over,
+  });
+
+  it('tags baseline-period L2 gaps as limitation, current-term as action', () => {
+    const details = collectWarningDetails(
+      baseReport({
+        layer2Completeness: [
+          l2('biden_2022', { missingPass2: 3 }),
+          l2('trump_t2', { missingPass2: 5 }),
+        ],
+      }),
+    );
+    expect(
+      details.find((w) => w.text.includes('biden_2022') && w.text.includes('Pass 2'))?.severity,
+    ).toBe('limitation');
+    expect(
+      details.find((w) => w.text.includes('trump_t2') && w.text.includes('Pass 2'))?.severity,
+    ).toBe('action');
+  });
+
+  it('tags audit false-negative rates as limitation', () => {
+    const details = collectWarningDetails(
+      baseReport({ layer2Completeness: [l2('trump_t2', { auditFalseNegatives: 5 })] }),
+    );
+    expect(details.find((w) => w.text.includes('audit false negatives'))?.severity).toBe(
+      'limitation',
+    );
+  });
+
+  it('tags partial layer coverage as limitation but zero coverage as action', () => {
+    const mk = (period: string, withAllLayers: number) => ({
+      period,
+      label: period,
+      totalWeeks: 100,
+      withStructural: withAllLayers,
+      withAi: withAllLayers,
+      withThematic: withAllLayers,
+      withConvergence: withAllLayers,
+      withAllLayers,
+    });
+    const details = collectWarningDetails(
+      baseReport({ layerScorePopulation: [mk('trump_t2', 93), mk('biden_2022', 0)] }),
+    );
+    expect(details.find((w) => w.text.includes('93/100'))?.severity).toBe('limitation');
+    expect(details.find((w) => w.text.includes('no weeks have all'))?.severity).toBe('action');
+  });
+
+  it('tags stage backlog (missing scores) as action', () => {
+    const details = collectWarningDetails(
+      baseReport({
+        stageCompleteness: {
+          totalDocuments: 100,
+          missingScores: 5,
+          missingEmbeddings: 0,
+          missingEmbeddingsIntent: 0,
+          metadataOnlyCount: 0,
+          totalWeeks: 20,
+          missingAggregates: 0,
+        },
+      }),
+    );
+    expect(details.find((w) => w.text.includes('need scores'))?.severity).toBe('action');
   });
 });

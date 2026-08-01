@@ -6,6 +6,7 @@ import {
 import {
   getDocumentCoverage,
   getContentCompleteness,
+  getMetadataOnlyClassification,
 } from '@/lib/services/ingest-validation-service';
 import type { IngestReport } from '@/lib/services/ingest-validation-service';
 import { collectWarningDetails } from '@/lib/services/ingest-warnings';
@@ -163,12 +164,35 @@ describe('collectWarningDetails', () => {
       sourcePeriodCoverage: [],
       clOpinionCoverage: null,
       signalCoverageGaps: [],
+      metadataOnlyClassification: [],
       fetchErrors: [],
       warnings: [],
       warningDetails: [],
       ...overrides,
     };
   }
+
+  it('warns (action) for populations not fully marked metadata_only (#648)', () => {
+    const report = emptyReport({
+      metadataOnlyClassification: [
+        {
+          population: 'CourtListener docket stubs',
+          sourceFilter: { column: 'source_type', value: 'court_opinion' },
+          total: 164000,
+          markedMetadataOnly: 100000,
+          unmarked: 64000,
+          pass: false,
+        },
+      ],
+    });
+    const warnings = collectWarningDetails(report);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        severity: 'action',
+        text: expect.stringContaining('CourtListener docket stubs: 64000 of 164000 not marked'),
+      }),
+    );
+  });
 
   it('warns when CL pagination cap is hit', () => {
     const report = emptyReport({
@@ -262,5 +286,38 @@ describe('fetch-error warning scope (#588 clarity)', () => {
     );
     const fe = warnings.find((w) => w.text.includes('incomplete fetch'))!;
     expect(fe.text).not.toContain('baseline periods');
+  });
+});
+
+describe('getMetadataOnlyClassification (#648)', () => {
+  it('classifies CL-stub and GDELT populations by metadata_only marking', async () => {
+    const { isDbAvailable, getDb } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+    const results = [
+      [{ total: '164000', marked: '100000' }], // CL stubs: under-marked → fail
+      [{ total: '60000', marked: '60000' }], // GDELT: fully marked → pass
+    ];
+    let i = 0;
+    const selectFn = vi.fn(() => createChainable(results[i++] || []));
+    vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
+
+    const result = await getMetadataOnlyClassification();
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      population: 'CourtListener docket stubs',
+      unmarked: 64000,
+      pass: false,
+    });
+    expect(result[1]).toMatchObject({
+      population: 'GDELT rhetoric documents',
+      unmarked: 0,
+      pass: true,
+    });
+  });
+
+  it('returns empty when the DB is unavailable', async () => {
+    const { isDbAvailable } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(false);
+    expect(await getMetadataOnlyClassification()).toEqual([]);
   });
 });

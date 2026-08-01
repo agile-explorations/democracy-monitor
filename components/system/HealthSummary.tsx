@@ -96,17 +96,7 @@ function DataSummary({ data }: { data: any }) {
           ]}
         />
       )}
-      {data.dataIntegrity?.some((c: any) => !c.pass) && (
-        <div className="mt-2">
-          <DataTable
-            headers={['Check', 'Count', 'Result']}
-            rows={data.dataIntegrity
-              .filter((r: any) => !r.pass)
-              .map((r: any) => [r.name, String(r.count ?? 0), 'FAIL'])}
-          />
-        </div>
-      )}
-      <WarningsList warnings={data.warnings} />
+      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
     </>
   );
 }

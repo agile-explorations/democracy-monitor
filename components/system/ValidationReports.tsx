@@ -210,6 +210,25 @@ export function renderIngest(data: any) {
           />
         </>
       )}
+      {data.metadataOnlyClassification?.length > 0 && (
+        <>
+          <SubsectionHeading
+            title="Metadata-Only Classification"
+            description="Whether metadata-only documents (e.g., docket stubs, rhetoric cross-feed) are correctly flagged at ingestion."
+          />
+          <DataTable
+            headers={['Population', 'Filter', 'Total', 'Marked', 'Unmarked', 'Result']}
+            rows={data.metadataOnlyClassification.map((r: any) => [
+              r.population,
+              r.sourceFilter ? `${r.sourceFilter.column}=${r.sourceFilter.value}` : '—',
+              String(r.total ?? 0),
+              String(r.markedMetadataOnly ?? 0),
+              String(r.unmarked ?? 0),
+              r.pass ? 'PASS' : 'FAIL',
+            ])}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -325,25 +344,6 @@ export function renderDataReport(data: any) {
           />
         </>
       )}
-      {data.metadataOnlyClassification?.length > 0 && (
-        <>
-          <SubsectionHeading
-            title="Metadata-Only Classification"
-            description="Whether metadata-only documents (e.g., docket stubs, rhetoric cross-feed) are correctly flagged."
-          />
-          <DataTable
-            headers={['Population', 'Filter', 'Total', 'Marked', 'Unmarked', 'Result']}
-            rows={data.metadataOnlyClassification.map((r: any) => [
-              r.population,
-              r.sourceFilter ? `${r.sourceFilter.column}=${r.sourceFilter.value}` : '—',
-              String(r.total ?? 0),
-              String(r.markedMetadataOnly ?? 0),
-              String(r.unmarked ?? 0),
-              r.pass ? 'PASS' : 'FAIL',
-            ])}
-          />
-        </>
-      )}
       {data.narrativeCoverage && (
         <>
           <SubsectionHeading
@@ -362,7 +362,6 @@ export function renderDataReport(data: any) {
                 ),
               ],
               ['Missing narratives', String(data.narrativeCoverage.missingWeeks)],
-              ['Stale narratives', String(data.narrativeCoverage.staleWeeks ?? 0)],
               ['With weekly summary', String(data.narrativeCoverage.weeksWithSummary)],
               ['Term summary', data.narrativeCoverage.termSummaryFresh ? 'Fresh' : 'Stale'],
               ['Missing summaries', String(data.narrativeCoverage.missingSummaryWeeks ?? 0)],
@@ -370,24 +369,7 @@ export function renderDataReport(data: any) {
           />
         </>
       )}
-      {data.dataIntegrity?.length > 0 && (
-        <>
-          <SubsectionHeading
-            title="Data Integrity"
-            description="Checks for schema violations like non-Monday week dates and orphan category references."
-          />
-          <DataTable
-            headers={['Check', 'Count', 'Detail', 'Result']}
-            rows={data.dataIntegrity.map((r: any) => [
-              r.name,
-              String(r.count ?? 0),
-              r.detail ?? '—',
-              r.pass ? 'PASS' : 'FAIL',
-            ])}
-          />
-        </>
-      )}
-      <WarningsList warnings={data.warnings} />
+      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
     </div>
   );
 }
