@@ -198,7 +198,9 @@ Options:
   runDataValidation(options.category)
     .then((report) => {
       printReport(report);
-      process.exit(report.warnings.length > 0 ? 1 : 0);
+      // Exit non-zero only on actionable findings; accepted `limitation`
+      // known-issues don't fail the check (#649).
+      process.exit(report.warningDetails.some((w) => w.severity === 'action') ? 1 : 0);
     })
     .catch((err) => {
       console.error('[validate:data] Fatal error:', err);

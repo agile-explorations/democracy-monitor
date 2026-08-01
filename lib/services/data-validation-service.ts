@@ -1,11 +1,15 @@
 /**
- * Data validation service — "Is the data ready for analysis?"
+ * Data validation service — "What's the processing backlog, and do we have
+ * enough reference data?" (the Data Readiness report).
  *
- * Checks stage completeness (scores, embeddings, aggregates),
- * baseline completeness, Layer 2 assessment coverage, layer score
- * population in weekly_aggregates, and metadata_only classification.
+ * Checks stage completeness (scores, embeddings), baseline completeness, Layer 2
+ * assessment coverage, and layer score population. Each finding is tagged
+ * `action` (a remediable backlog item) or `limitation` (a documented fact no
+ * command fixes — e.g. baseline gaps, audit-recall rates), mirroring Ingest
+ * Health (#649). Derivation correctness lives in the Derivation Graph; metadata
+ * classification lives in Ingest Health.
  *
- * Layer 2 / layer score / metadata queries: data-validation-queries.ts
+ * Layer 2 / layer score queries: data-validation-queries.ts
  */
 
 import { eq, sql, isNull, and } from 'drizzle-orm';
@@ -80,6 +84,17 @@ export interface NarrativeCoverage {
   missingSummaryWeeks: number;
 }
 
+/**
+ * A Data Readiness finding tagged by severity (#649, mirrors IngestWarning):
+ * `action` has a remediation worth running; `limitation` is a documented fact
+ * no command fixes (baseline-period gaps, audit-recall rates, steady-state
+ * layer-coverage) — a known issue, not a call to act.
+ */
+export interface DataWarning {
+  severity: 'action' | 'limitation';
+  text: string;
+}
+
 export interface DataReport {
   stageCompleteness: StageCompleteness;
   baselineCompleteness: BaselineCompleteness[];
@@ -87,6 +102,8 @@ export interface DataReport {
   layerScorePopulation: LayerScorePeriodStats[];
   narrativeCoverage: NarrativeCoverage;
   warnings: string[];
+  /** Same findings tagged action/limitation for the known-issues split (#649). */
+  warningDetails: DataWarning[];
 }
 
 // Re-export query functions for consumers
@@ -240,15 +257,37 @@ function checkNarrativeCoverage(nc: NarrativeCoverage): string[] {
   return warnings;
 }
 
-export function collectWarnings(report: DataReport): string[] {
-  const warnings: string[] = [];
+// Baseline periods (before the current term): gaps here are documented facts we
+// deliberately don't backfill (calibrated reference; baseline writes need
+// approval), so they classify as `limitation` rather than `action` (#649).
+const BASELINE_PERIODS = new Set([
+  'trump_2017',
+  'trump_2018',
+  'trump_2019',
+  'trump_2020',
+  'biden_2021',
+  'biden_2022',
+  'biden_2023',
+  'biden_2024',
+]);
+
+function periodSeverity(period: string): DataWarning['severity'] {
+  return BASELINE_PERIODS.has(period) ? 'limitation' : 'action';
+}
+
+export function collectWarningDetails(report: DataReport): DataWarning[] {
+  const warnings: DataWarning[] = [];
+  const push = (severity: DataWarning['severity'], text: string) =>
+    warnings.push({ severity, text });
   const s = report.stageCompleteness;
 
+  // Processing backlog — remediable work.
   if (s.missingScores > 0) {
-    warnings.push(`${s.missingScores} documents need scores (run: pnpm scores:recompute)`);
+    push('action', `${s.missingScores} documents need scores (run: pnpm scores:recompute)`);
   }
   if (s.missingEmbeddings > 0) {
-    warnings.push(
+    push(
+      'action',
       `${s.missingEmbeddings} detection documents need embedding (run: pnpm embeddings:backfill)`,
     );
   }
@@ -256,15 +295,19 @@ export function collectWarnings(report: DataReport): string[] {
   // stage-completeness table still shows the count as backlog, but the concern
   // (a scored week lacking its aggregate) is the Graph's invariant, not a DR warning.
 
-  warnings.push(...checkBaselineCompleteness(report.baselineCompleteness));
+  for (const t of checkBaselineCompleteness(report.baselineCompleteness)) push('action', t);
 
   for (const p of report.layer2Completeness) {
-    if (p.missingPass1 > 0) warnings.push(`${p.period}: ${p.missingPass1} docs missing L2 Pass 1`);
+    // L2 gaps: actionable in the current term, an accepted limitation in baselines.
+    const sev = periodSeverity(p.period);
+    if (p.missingPass1 > 0) push(sev, `${p.period}: ${p.missingPass1} docs missing L2 Pass 1`);
     if (p.missingPass2 > 0)
-      warnings.push(`${p.period}: ${p.missingPass2} flagged docs missing L2 Pass 2`);
+      push(sev, `${p.period}: ${p.missingPass2} flagged docs missing L2 Pass 2`);
+    // Audit false-negative rate is a recall metric no command clears — a limitation.
     if (p.auditFalseNegatives > 0) {
       const rate = ((p.auditFalseNegatives / p.auditSampled) * 100).toFixed(1);
-      warnings.push(
+      push(
+        'limitation',
         `${p.period}: ${p.auditFalseNegatives}/${p.auditSampled} audit false negatives (${rate}%)`,
       );
     }
@@ -272,25 +315,28 @@ export function collectWarnings(report: DataReport): string[] {
 
   for (const p of report.layerScorePopulation) {
     if (p.totalWeeks > 0 && p.withAllLayers === 0) {
-      warnings.push(`${p.period}: no weeks have all three layer scores (run: pnpm scores:enrich)`);
+      // Zero coverage is a real break, not steady state — actionable.
+      push('action', `${p.period}: no weeks have all three layer scores (run: pnpm scores:enrich)`);
     } else if (p.totalWeeks > 0 && p.withAllLayers < p.totalWeeks) {
+      // 93–96% is the steady state (zero-doc weeks / weeks lacking a layer) — a limitation.
       const pct = ((p.withAllLayers / p.totalWeeks) * 100).toFixed(0);
-      warnings.push(
+      push(
+        'limitation',
         `${p.period}: ${p.withAllLayers}/${p.totalWeeks} weeks have all layer scores (${pct}%)`,
       );
     }
   }
 
-  // Metadata-only classification moved to Ingest Health in #648 (acquisition
-  // classification, not a Data Readiness backlog concern).
+  // Metadata-only classification moved to Ingest Health in #648; data-integrity
+  // checks moved to the Derivation Graph in #647.
 
-  warnings.push(...checkNarrativeCoverage(report.narrativeCoverage));
-
-  // Data-integrity checks (orphan categories, Monday anchors, #544 resurrection)
-  // moved to the Derivation Graph in #647 — it is the sole authority on
-  // derived-vs-inputs consistency.
+  for (const t of checkNarrativeCoverage(report.narrativeCoverage)) push('action', t);
 
   return warnings;
+}
+
+export function collectWarnings(report: DataReport): string[] {
+  return collectWarningDetails(report).map((w) => w.text);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,8 +362,10 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layerScorePopulation: layerScores,
     narrativeCoverage: narrativeCov,
     warnings: [],
+    warningDetails: [],
   };
-  report.warnings = collectWarnings(report);
+  report.warningDetails = collectWarningDetails(report);
+  report.warnings = report.warningDetails.map((w) => w.text);
 
   return report;
 }

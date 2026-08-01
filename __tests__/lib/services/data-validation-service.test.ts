@@ -7,6 +7,7 @@ import {
   getStageCompleteness,
   getBaselineCompleteness,
   collectWarnings,
+  collectWarningDetails,
 } from '@/lib/services/data-validation-service';
 import type { DataReport } from '@/lib/services/data-validation-service';
 
@@ -571,5 +572,103 @@ describe('collectWarnings', () => {
     );
     expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
     expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
+  });
+});
+
+describe('collectWarningDetails severity (#649)', () => {
+  function baseReport(overrides: Partial<DataReport> = {}): DataReport {
+    return {
+      stageCompleteness: {
+        totalDocuments: 100,
+        missingScores: 0,
+        missingEmbeddings: 0,
+        missingEmbeddingsIntent: 0,
+        metadataOnlyCount: 0,
+        totalWeeks: 20,
+        missingAggregates: 0,
+      },
+      baselineCompleteness: [],
+      layer2Completeness: [],
+      layerScorePopulation: [],
+      narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
+      warnings: [],
+      warningDetails: [],
+      ...overrides,
+    };
+  }
+  const l2 = (period: string, over: Record<string, number> = {}) => ({
+    period,
+    label: period,
+    totalDocuments: 100,
+    pass1Assessed: 100,
+    missingPass1: 0,
+    pass1Flagged: 10,
+    pass2Assessed: 10,
+    missingPass2: 0,
+    pass2Flagged: 2,
+    auditSampled: 50,
+    auditFalseNegatives: 0,
+    ...over,
+  });
+
+  it('tags baseline-period L2 gaps as limitation, current-term as action', () => {
+    const details = collectWarningDetails(
+      baseReport({
+        layer2Completeness: [
+          l2('biden_2022', { missingPass2: 3 }),
+          l2('trump_t2', { missingPass2: 5 }),
+        ],
+      }),
+    );
+    expect(
+      details.find((w) => w.text.includes('biden_2022') && w.text.includes('Pass 2'))?.severity,
+    ).toBe('limitation');
+    expect(
+      details.find((w) => w.text.includes('trump_t2') && w.text.includes('Pass 2'))?.severity,
+    ).toBe('action');
+  });
+
+  it('tags audit false-negative rates as limitation', () => {
+    const details = collectWarningDetails(
+      baseReport({ layer2Completeness: [l2('trump_t2', { auditFalseNegatives: 5 })] }),
+    );
+    expect(details.find((w) => w.text.includes('audit false negatives'))?.severity).toBe(
+      'limitation',
+    );
+  });
+
+  it('tags partial layer coverage as limitation but zero coverage as action', () => {
+    const mk = (period: string, withAllLayers: number) => ({
+      period,
+      label: period,
+      totalWeeks: 100,
+      withStructural: withAllLayers,
+      withAi: withAllLayers,
+      withThematic: withAllLayers,
+      withConvergence: withAllLayers,
+      withAllLayers,
+    });
+    const details = collectWarningDetails(
+      baseReport({ layerScorePopulation: [mk('trump_t2', 93), mk('biden_2022', 0)] }),
+    );
+    expect(details.find((w) => w.text.includes('93/100'))?.severity).toBe('limitation');
+    expect(details.find((w) => w.text.includes('no weeks have all'))?.severity).toBe('action');
+  });
+
+  it('tags stage backlog (missing scores) as action', () => {
+    const details = collectWarningDetails(
+      baseReport({
+        stageCompleteness: {
+          totalDocuments: 100,
+          missingScores: 5,
+          missingEmbeddings: 0,
+          missingEmbeddingsIntent: 0,
+          metadataOnlyCount: 0,
+          totalWeeks: 20,
+          missingAggregates: 0,
+        },
+      }),
+    );
+    expect(details.find((w) => w.text.includes('need scores'))?.severity).toBe('action');
   });
 });

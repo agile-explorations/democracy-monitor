@@ -369,7 +369,7 @@ export function renderDataReport(data: any) {
           />
         </>
       )}
-      <WarningsList warnings={data.warnings} />
+      <SeverityWarnings details={data.warningDetails} fallback={data.warnings} />
     </div>
   );
 }

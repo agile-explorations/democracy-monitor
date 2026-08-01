@@ -140,31 +140,31 @@ export default function HealthPage() {
           <>
             <ValidationPanel
               title="Ingest Health"
-              description="Source coverage, content completeness, and fetch error rates across all data sources."
+              description="Did we acquire the expected inputs, with complete content? — Source/document coverage, content completeness, pagination, period coverage, metadata classification, and fetch errors."
               endpoint="/api/health/validate-ingest"
               renderReport={renderIngest}
             />
             <ValidationPanel
               title="Data Readiness"
-              description="Pipeline completeness across scoring, embedding, aggregation, and AI assessment stages."
+              description="Of the data we have, what's the processing backlog and do we have enough reference data? — Scoring/embedding backlog, baseline presence, and L2 assessment coverage."
               endpoint="/api/health/validate-data"
               renderReport={renderDataReport}
             />
             <ValidationPanel
               title="Detection Correctness"
-              description="Validates the system correctly detects known events and does not over-flag during calm baseline periods."
+              description="Does detection catch known events and reject negative controls? — Known-event recall, negative controls, and layer attribution."
               endpoint="/api/health/validate-detection"
               renderReport={renderDetection}
             />
             <ValidationPanel
               title="Derivation Graph"
-              description="Edge-contract invariants across the derivation pipeline: every eligible document scored, aggregates present with matching counts, enrichment and narratives fresh."
+              description="Is every derived artifact consistent with and fresh against its inputs? — Edge-contract invariants (G1a–G6): eligible docs scored, aggregates present with matching counts, enrichment/narratives fresh, no orphan categories."
               endpoint="/api/health/validate-graph"
               renderReport={renderGraph}
             />
             <ValidationPanel
               title="Historical Backtest"
-              description="Tests detection accuracy against Trump T1 (2017-2018) known events with per-category precision and noise metrics."
+              description="Does detection hold up on historical data? — Per-category precision and noise against Trump T1 (2017–2018) known events."
               endpoint="/api/health/backtest"
               renderReport={renderBacktest}
             />
