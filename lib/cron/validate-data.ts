@@ -9,7 +9,6 @@
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import type {
-  DataIntegrityCheck,
   DataReport,
   Layer2PeriodStats,
   LayerScorePeriodStats,
@@ -162,15 +161,6 @@ function printNarrativeCoverage(nc: NarrativeCoverage): void {
   // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647.
 }
 
-function printDataIntegrity(checks: DataIntegrityCheck[]): void {
-  console.log('\n=== Data Integrity ===');
-  for (const check of checks) {
-    const mark = check.pass ? PASS : FAIL;
-    const detail = check.pass ? '' : ` (${check.count}${check.detail ? ': ' + check.detail : ''})`;
-    console.log(`  ${mark} ${check.name}${detail}`);
-  }
-}
-
 function printReport(report: DataReport): void {
   printStageCompleteness(report);
   printBaselineCompleteness(report);
@@ -178,7 +168,6 @@ function printReport(report: DataReport): void {
   printLayerScorePopulation(report.layerScorePopulation);
   printMetadataOnlyClassification(report.metadataOnlyClassification);
   printNarrativeCoverage(report.narrativeCoverage);
-  printDataIntegrity(report.dataIntegrity);
 
   if (report.warnings.length > 0) {
     console.log('\n=== Warnings ===');

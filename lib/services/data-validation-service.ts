@@ -13,7 +13,6 @@ import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents, documentScores, weeklyAggregates, baselines } from '@/lib/db/schema';
-import { getDataIntegrityChecks } from './data-integrity-queries';
 import {
   getLayer2Completeness,
   getLayerScorePopulation,
@@ -77,13 +76,6 @@ export interface MetadataOnlyStats {
   pass: boolean;
 }
 
-export interface DataIntegrityCheck {
-  name: string;
-  count: number;
-  detail?: string;
-  pass: boolean;
-}
-
 export interface NarrativeCoverage {
   elevatedWeeks: number;
   narrativeWeeks: number;
@@ -105,12 +97,10 @@ export interface DataReport {
   layerScorePopulation: LayerScorePeriodStats[];
   metadataOnlyClassification: MetadataOnlyStats[];
   narrativeCoverage: NarrativeCoverage;
-  dataIntegrity: DataIntegrityCheck[];
   warnings: string[];
 }
 
 // Re-export query functions for consumers
-export { getDataIntegrityChecks } from './data-integrity-queries';
 export {
   getLayer2Completeness,
   getLayerScorePopulation,
@@ -278,9 +268,9 @@ export function collectWarnings(report: DataReport): string[] {
       `${s.missingEmbeddings} detection documents need embedding (run: pnpm embeddings:backfill)`,
     );
   }
-  if (s.missingAggregates > 0) {
-    warnings.push(`${s.missingAggregates} weeks need aggregates (run: pnpm backfill)`);
-  }
+  // Aggregate presence is owned by the Derivation Graph (G2a) as of #647; the
+  // stage-completeness table still shows the count as backlog, but the concern
+  // (a scored week lacking its aggregate) is the Graph's invariant, not a DR warning.
 
   warnings.push(...checkBaselineCompleteness(report.baselineCompleteness));
 
@@ -314,12 +304,9 @@ export function collectWarnings(report: DataReport): string[] {
 
   warnings.push(...checkNarrativeCoverage(report.narrativeCoverage));
 
-  for (const check of report.dataIntegrity) {
-    if (!check.pass) {
-      const detail = check.detail ? `: ${check.detail}` : '';
-      warnings.push(`${check.name} (${check.count}${detail})`);
-    }
-  }
+  // Data-integrity checks (orphan categories, Monday anchors, #544 resurrection)
+  // moved to the Derivation Graph in #647 — it is the sole authority on
+  // derived-vs-inputs consistency.
 
   return warnings;
 }
@@ -338,7 +325,6 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layerScores,
     metadataOnly,
     narrativeCov,
-    dataIntegrity,
   ] = await Promise.all([
     getStageCompleteness(category),
     getBaselineCompleteness(),
@@ -346,7 +332,6 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     getLayerScorePopulation(category),
     getMetadataOnlyClassification(),
     getNarrativeCoverage(category),
-    getDataIntegrityChecks(),
   ]);
 
   const report: DataReport = {
@@ -356,7 +341,6 @@ export async function runDataValidation(category?: string): Promise<DataReport> 
     layerScorePopulation: layerScores,
     metadataOnlyClassification: metadataOnly,
     narrativeCoverage: narrativeCov,
-    dataIntegrity,
     warnings: [],
   };
   report.warnings = collectWarnings(report);

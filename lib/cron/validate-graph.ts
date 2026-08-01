@@ -24,6 +24,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { checkHelp } from '@/lib/utils/cli-help';
 
@@ -264,6 +265,44 @@ async function g5AssessmentReferential(): Promise<GraphInvariantResult> {
   };
 }
 
+const VALID_CATEGORY_KEYS = new Set(CATEGORIES.map((c) => c.key));
+// `intent` is the presidential-intent pseudo-category — stored in `documents`
+// for the intent feature, deliberately outside the 14 detection categories and
+// excluded from scoring/aggregation everywhere. A legitimate value, not an orphan.
+const ALLOWED_NON_DETECTION_KEYS = new Set(['intent']);
+
+/** Category values that belong to no known detection category (intent allowlisted). Pure — unit-tested. */
+export function findOrphanCategories(categories: string[]): string[] {
+  return categories.filter(
+    (c) => !VALID_CATEGORY_KEYS.has(c) && !ALLOWED_NON_DETECTION_KEYS.has(c),
+  );
+}
+
+/**
+ * G6 — no derived rows under a category outside the detection taxonomy (moved
+ * from Data Readiness's Data Integrity section in #647). The Graph is the sole
+ * authority on derived-vs-inputs consistency; an orphan category means some code
+ * path wrote scores/aggregates/baselines under an unknown key.
+ */
+async function g6OrphanCategories(): Promise<GraphInvariantResult> {
+  const rows = await q(sql`
+    SELECT DISTINCT category FROM (
+      SELECT category FROM documents
+      UNION SELECT category FROM document_scores
+      UNION SELECT category FROM weekly_aggregates
+      UNION SELECT category FROM baselines
+    ) t`);
+  const orphans = findOrphanCategories(rows.map((r) => String(r.category)));
+  return {
+    id: 'G6',
+    severity: 'error',
+    description: 'no derived rows under an unknown category (intent allowlisted)',
+    violations: orphans.length,
+    pass: orphans.length === 0,
+    sample: orphans.length ? orphans : undefined,
+  };
+}
+
 export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   return [
@@ -277,6 +316,7 @@ export async function runGraphValidation(): Promise<GraphInvariantResult[]> {
     await g4NarrativeFreshness(true),
     await g4NarrativeFreshness(false),
     await g5AssessmentReferential(),
+    await g6OrphanCategories(),
   ];
 }
 

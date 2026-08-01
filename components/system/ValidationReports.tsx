@@ -369,23 +369,6 @@ export function renderDataReport(data: any) {
           />
         </>
       )}
-      {data.dataIntegrity?.length > 0 && (
-        <>
-          <SubsectionHeading
-            title="Data Integrity"
-            description="Checks for schema violations like non-Monday week dates and orphan category references."
-          />
-          <DataTable
-            headers={['Check', 'Count', 'Detail', 'Result']}
-            rows={data.dataIntegrity.map((r: any) => [
-              r.name,
-              String(r.count ?? 0),
-              r.detail ?? '—',
-              r.pass ? 'PASS' : 'FAIL',
-            ])}
-          />
-        </>
-      )}
       <WarningsList warnings={data.warnings} />
     </div>
   );

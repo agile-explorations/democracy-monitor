@@ -358,7 +358,6 @@ describe('collectWarnings', () => {
       layerScorePopulation: [],
       metadataOnlyClassification: [],
       narrativeCoverage: { elevatedWeeks: 0, narrativeWeeks: 0, missingWeeks: 0 },
-      dataIntegrity: [],
       warnings: [],
       ...overrides,
     };
@@ -447,21 +446,8 @@ describe('collectWarnings', () => {
     );
   });
 
-  it('warns for missing aggregates', () => {
-    const report = emptyReport({
-      stageCompleteness: {
-        totalDocuments: 100,
-        missingScores: 0,
-        missingEmbeddings: 0,
-        missingEmbeddingsIntent: 0,
-        metadataOnlyCount: 0,
-        totalWeeks: 20,
-        missingAggregates: 3,
-      },
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('3 weeks need aggregates'));
-  });
+  // Aggregate presence moved to the Derivation Graph (G2a) in #647; Data
+  // Readiness no longer emits a "weeks need aggregates" warning.
 
   it('warns for layer2 missing pass1 docs', () => {
     const report = emptyReport({
@@ -633,36 +619,10 @@ describe('collectWarnings', () => {
   // Narrative staleness moved to the Derivation Graph (G4/G4h) in #647; Data
   // Readiness no longer emits a stale-narrative warning (it was a computed_at phantom).
 
-  it('warns for failed data integrity checks with detail', () => {
-    const report = emptyReport({
-      dataIntegrity: [
-        { name: 'Non-Monday week_of', count: 5, detail: 'sample detail', pass: false },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(
-      expect.stringContaining('Non-Monday week_of (5: sample detail)'),
-    );
-  });
-
-  it('warns for failed data integrity checks without detail', () => {
-    const report = emptyReport({
-      dataIntegrity: [{ name: 'Orphan categories', count: 2, pass: false }],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings).toContainEqual(expect.stringContaining('Orphan categories (2)'));
-  });
-
-  it('does not warn for passing data integrity checks', () => {
-    const report = emptyReport({
-      dataIntegrity: [
-        { name: 'Non-Monday week_of', count: 0, pass: true },
-        { name: 'Orphan categories', count: 0, pass: true },
-      ],
-    });
-    const warnings = collectWarnings(report);
-    expect(warnings.filter((w) => w.includes('Non-Monday') || w.includes('Orphan'))).toEqual([]);
-  });
+  // Data-integrity checks (non-Monday anchors, orphan categories, #544
+  // resurrection) moved to the Derivation Graph in #647; Data Readiness no
+  // longer carries a dataIntegrity section. Orphan-category coverage now lives
+  // in validate-graph.test.ts (findOrphanCategories / G6).
 
   it('warns for passing metadata_only classification (skipped)', () => {
     const report = emptyReport({
@@ -707,7 +667,6 @@ describe('collectWarnings', () => {
     expect(warnings).toContainEqual(
       expect.stringContaining('3 detection documents need embedding'),
     );
-    expect(warnings).toContainEqual(expect.stringContaining('2 weeks need aggregates'));
     expect(warnings).toContainEqual(expect.stringContaining('2 elevated category-weeks missing'));
     expect(warnings).toContainEqual(expect.stringContaining('1 narrated weeks missing'));
   });
