@@ -16,6 +16,7 @@ export const CacheKeys = {
   searchResearch: (queryHash: string) => `search:research:${queryHash}`,
   documentCount: () => 'stats:doc-count:v2',
   validateGraph: () => 'health:validate-graph:v1',
+  validateGraphLive: () => 'health:validate-graph:live:v1',
   validateData: () => 'health:validate-data:v1',
   reportRefresh: () => 'health:report-refresh:status',
   themeLabel: (category: string, week: string) => `theme-label:${category}:${week}`,

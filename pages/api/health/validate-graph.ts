@@ -9,7 +9,16 @@ interface StoredGraphReport {
   generatedAt: string;
 }
 
+interface LiveGraphCache {
+  results: GraphInvariantResult[];
+  at: string;
+}
+
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
+// The live invariants run per request (public, uncached endpoint); a short cache
+// keeps repeated loads / the Refresh button from re-querying the DB every time,
+// while staying comfortably "live" (#650 follow-up).
+const LIVE_TTL_SECONDS = 30;
 
 /**
  * Serves the derivation-graph contract report. The heavy invariants (G1a/G1b/G5/G6)
@@ -20,6 +29,24 @@ const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
  * last snapshot. `generatedAt` = when the heavy part was computed; `liveAt` = now.
  * ?fresh=1 forces a full inline run (local development).
  */
+/** Live invariants, served from a ~30s cache; null if they fail (fall back to cached report). */
+async function getCachedLive(): Promise<LiveGraphCache | null> {
+  try {
+    const cached = await cacheGet<LiveGraphCache>(CacheKeys.validateGraphLive());
+    if (cached) return cached;
+    const { runLiveInvariants } = await import('@/lib/cron/validate-graph');
+    const fresh: LiveGraphCache = {
+      results: await runLiveInvariants(),
+      at: new Date().toISOString(),
+    };
+    await cacheSet(CacheKeys.validateGraphLive(), fresh, LIVE_TTL_SECONDS);
+    return fresh;
+  } catch (liveErr) {
+    console.warn('[api/health/validate-graph] live invariants failed:', liveErr);
+    return null;
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!requireMethod(req, res, 'GET')) return;
   if (!requireDb(res)) return;
@@ -37,17 +64,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const stored = await cacheGet<StoredGraphReport>(CacheKeys.validateGraph());
 
-    // Run the cheap invariants live so freshness is current (#650). If the live
-    // run fails, fall back to the fully-cached report.
-    let live: GraphInvariantResult[] | null = null;
-    let liveAt: string | null = null;
-    try {
-      const { runLiveInvariants } = await import('@/lib/cron/validate-graph');
-      live = await runLiveInvariants();
-      liveAt = new Date().toISOString();
-    } catch (liveErr) {
-      console.warn('[api/health/validate-graph] live invariants failed:', liveErr);
-    }
+    // Cheap invariants run live for current freshness (#650), served from a short
+    // (~30s) cache so repeated loads / the Refresh button don't re-query the DB.
+    const liveCache = await getCachedLive();
+    const live = liveCache?.results ?? null;
+    const liveAt = liveCache?.at ?? null;
 
     if (stored?.results) {
       const liveIds = new Set(live?.map((r) => r.id) ?? []);
