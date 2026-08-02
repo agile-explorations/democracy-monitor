@@ -209,6 +209,9 @@ const OIG_CONTENT_RETRY_DELAY_MS = 5_000;
 export async function fillOigContent(items: ContentItem[]): Promise<void> {
   for (const item of items) {
     if (!item.link) continue;
+    // Known metadata-only reports (detail scrape confirmed no retrievable
+    // body) — content is unobtainable; retrying would just burn backoff time.
+    if (item.metadata && 'pdfUrl' in item.metadata && item.metadata.pdfUrl === null) continue;
     // The enrichment chain (detail-page scrape → PDF extraction) is
     // per-document network work; single-shot, one transient failure stored
     // thin listing content for good (#588's 23-char DOJ-OIG regression).
@@ -243,7 +246,12 @@ async function fetchOigItemContent(
   }
   // oversight.gov items carry metadata.pdfUrl from the fetch-time detail
   // scrape; the detail re-scrape is only a fallback (e.g. legacy rows).
+  // An explicit null pdfUrl means the scrape confirmed no hosted PDF exists
+  // (metadata-only report, e.g. State OIG) — don't re-scrape or retry.
   if (url.includes('oversight.gov')) {
+    if (metadata && 'pdfUrl' in metadata && metadata.pdfUrl === null) {
+      return { content: null, delayMs: 0 };
+    }
     const pdfUrl = (metadata?.pdfUrl as string | undefined) ?? (await fetchOversightGovPdfUrl(url));
     if (!pdfUrl) return { content: null, delayMs: OVERSIGHT_GOV_CRAWL_DELAY_MS };
     const content = await extractPdfText(pdfUrl);

@@ -40,7 +40,10 @@ export interface OversightGovReport {
   submittingOig?: string;
   reportNumber?: string;
   numRecs?: number;
+  /** undefined = detail page not scraped; null = scraped and no hosted PDF exists. */
   pdfUrl?: string | null;
+  /** The OIG's own site link ("External Link" field) — the only report access when pdfUrl is null. */
+  externalUrl?: string | null;
 }
 
 /**
@@ -120,6 +123,7 @@ export function parseDetailPage(html: string): {
   dateIssued: string | null;
   numRecs: number | null;
   pdfUrl: string | null;
+  externalUrl: string | null;
 } {
   const $ = cheerio.load(html);
 
@@ -144,6 +148,7 @@ export function parseDetailPage(html: string): {
     dateIssued: datetime ? new Date(datetime).toISOString() : null,
     numRecs: numRecsText ? parseInt(numRecsText, 10) : null,
     pdfUrl: pdfHref ? (pdfHref.startsWith('http') ? pdfHref : `${BASE_URL}${pdfHref}`) : null,
+    externalUrl: $('.field--name-field-report-link .field__item a').first().attr('href') ?? null,
   };
 }
 
@@ -184,6 +189,11 @@ export function toContentItem(report: OversightGovReport): ContentItem {
     content: `${report.reportType} — ${report.reportNumber || report.title}`.trim(),
     type: 'ig_report',
     sourceOrigin: 'oig',
+    // pdfUrl === null means the detail page was scraped and no hosted PDF
+    // exists (e.g. State OIG links externally to its 403-walled site since
+    // 2025) — the report body is unobtainable, so mark metadata_only at
+    // ingest rather than storing a full_text-labeled stub (#645 pattern).
+    contentType: report.pdfUrl === null ? 'metadata_only' : undefined,
     metadata: {
       submittingOig: report.submittingOig ?? null,
       reportNumber: report.reportNumber ?? null,
@@ -191,6 +201,7 @@ export function toContentItem(report: OversightGovReport): ContentItem {
       agencyReviewed: report.agencyReviewed,
       numRecs: report.numRecs ?? null,
       pdfUrl: report.pdfUrl ?? null,
+      externalUrl: report.externalUrl ?? null,
     },
   };
 }
@@ -203,6 +214,7 @@ async function enrichFromDetailPage(report: OversightGovReport): Promise<void> {
     report.submittingOig = detail.submittingOig;
     report.numRecs = detail.numRecs ?? undefined;
     report.pdfUrl = detail.pdfUrl;
+    report.externalUrl = detail.externalUrl;
     if (detail.reportType) report.reportType = detail.reportType;
     if (detail.agencyReviewed) report.agencyReviewed = detail.agencyReviewed;
   } catch (err) {

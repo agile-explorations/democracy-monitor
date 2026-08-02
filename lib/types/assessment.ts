@@ -16,6 +16,13 @@ export interface ContentItem {
   caseId?: string;
   isError?: boolean;
   isWarning?: boolean;
+  /**
+   * Storage content classification. Set 'metadata_only' when the source can
+   * only provide listing/detail metadata (no retrievable body) so the document
+   * is excluded from scoring/assessment eligibility at ingest instead of being
+   * mislabeled full_text with stub content (the #645 LegiScan defect).
+   */
+  contentType?: 'full_text' | 'metadata_only';
   /** Extra metadata to store alongside the document (merged with auto-extracted fields). */
   metadata?: Record<string, unknown>;
 }

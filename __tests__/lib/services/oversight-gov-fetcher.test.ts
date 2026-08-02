@@ -63,6 +63,22 @@ const SAMPLE_DETAIL_HTML = `
   <div class="field__item">12</div>
 </div>`;
 
+// State-OIG-style detail fixture (captured 2026-08-01): no hosted PDF, only an
+// "External Link" field to the OIG's own (403-walled) site.
+const STATE_DETAIL_HTML = `
+<div class="field field--name-field-report-submitting-oig field--type-entity-reference field--label-above">
+  <div class="title">Submitting OIG</div>
+  <div class="field__item">Department of State OIG</div>
+</div>
+<div class="field field--name-field-report-number field--type-string field--label-above">
+  <div class="title">Report Number</div>
+  <div class="field__item">ISP-I-26-12</div>
+</div>
+<div class="field field--name-field-report-link field--type-link field--label-above">
+  <div class="title">External Link</div>
+  <div class="field__item"><a href="https://www.stateoig.gov/report/isp-i-26-12">https://www.stateoig.gov/report/isp-i-26-12</a></div>
+</div>`;
+
 function loadRow(html: string) {
   const $ = cheerio.load(html);
   return $('tr.listing-table__row').first();
@@ -213,6 +229,14 @@ describe('parseDetailPage', () => {
     expect(parseDetailPage(html).pdfUrl).toBeNull();
   });
 
+  it('extracts the External Link and null pdfUrl from a State-style page', () => {
+    const detail = parseDetailPage(STATE_DETAIL_HTML);
+    expect(detail.pdfUrl).toBeNull();
+    expect(detail.externalUrl).toBe('https://www.stateoig.gov/report/isp-i-26-12');
+    expect(detail.submittingOig).toBe('Department of State OIG');
+    expect(detail.reportNumber).toBe('ISP-I-26-12');
+  });
+
   it('returns empty strings and nulls for absent fields', () => {
     const detail = parseDetailPage('<div>bare page</div>');
     expect(detail.reportNumber).toBe('');
@@ -220,6 +244,7 @@ describe('parseDetailPage', () => {
     expect(detail.numRecs).toBeNull();
     expect(detail.dateIssued).toBeNull();
     expect(detail.pdfUrl).toBeNull();
+    expect(detail.externalUrl).toBeNull();
   });
 });
 
@@ -239,6 +264,7 @@ describe('toContentItem', () => {
     expect(item.agency).toBe('Office of Personnel Management OIG (via Oversight.gov)');
     expect(item.link).toBe('https://www.oversight.gov/reports/audit/example');
     expect(item.content).toBe('Audit — 2025-OEI-001');
+    expect(item.contentType).toBeUndefined();
     expect(item.metadata).toEqual({
       submittingOig: 'Office of Personnel Management OIG',
       reportNumber: '2025-OEI-001',
@@ -246,6 +272,7 @@ describe('toContentItem', () => {
       agencyReviewed: 'Office of Personnel Management',
       numRecs: 12,
       pdfUrl: 'https://www.oversight.gov/sites/default/files/documents/reports/x.pdf',
+      externalUrl: null,
     });
   });
 
@@ -254,5 +281,20 @@ describe('toContentItem', () => {
     expect(item.agency).toBe('Federal Inspector General (via Oversight.gov)');
     expect(item.content).toBe('Audit — Some Audit Title');
     expect(item.metadata?.reportNumber).toBeNull();
+    // pdfUrl undefined = detail not scraped yet — must NOT be marked metadata_only.
+    expect(item.contentType).toBeUndefined();
+  });
+
+  it('marks a report metadata_only when the scrape confirmed no hosted PDF', () => {
+    const item = toContentItem(
+      report({
+        submittingOig: 'Department of State OIG',
+        pdfUrl: null,
+        externalUrl: 'https://www.stateoig.gov/report/isp-i-26-12',
+      }),
+    );
+    expect(item.contentType).toBe('metadata_only');
+    expect(item.metadata?.pdfUrl).toBeNull();
+    expect(item.metadata?.externalUrl).toBe('https://www.stateoig.gov/report/isp-i-26-12');
   });
 });
