@@ -74,7 +74,10 @@ function buildDocumentRow(item: ContentItem, category: string) {
     // separate judicial_opinion docs) — mark at ingest so search,
     // embeddings, and corpus counts exclude them without periodic
     // SQL sweeps. Historical sweep: mark-docket-stubs (2026-07-25).
-    contentType: item.type === 'court_opinion' ? 'metadata_only' : 'full_text',
+    // Fetchers may declare contentType directly (e.g. oversight.gov State OIG
+    // reports whose full text is unobtainable — external-link-only since 2025).
+    contentType:
+      item.contentType ?? (item.type === 'court_opinion' ? 'metadata_only' : 'full_text'),
     countingScope: itemCountingScope(item, category),
   };
 }

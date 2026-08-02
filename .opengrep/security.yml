@@ -98,6 +98,7 @@ rules:
         # function boundaries — these files correctly load env before calling exported functions.
         - lib/cron/backfill-content.ts
         - lib/cron/backfill-layer2.ts
+        - lib/cron/backfill-oversight-gov.ts
         - lib/cron/legiscan-bulk.ts
         # Library module with no CLI entry: invoked only from backfill.ts and
         # snapshot.ts, whose entry points call loadEnvConfig() before dispatch.

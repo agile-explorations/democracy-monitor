@@ -12,6 +12,30 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-OVERSIGHT-GOV: oversight.gov (CIGIE) multi-OIG source (#652–655, milestone 103) — ✅ complete 2026-08-02
+
+**Origin**: #606 research (sequenced after CHRG/press-releases at the 7/29 review; owner re-prioritized it 8/1 as the one completable overnight — all unknowns pre-resolved, DHS-OIG machinery reusable end-to-end).
+
+**Planned vs built**: plan executed nearly verbatim; all 4 issues shipped. One fetcher (`oversight-gov-fetcher.ts`) covering 7 OIGs via server-side date-range + submitting-OIG facet queries; 5 signals (OPM→civilService, Treasury+TIGTA→fiscal, State+ICIG→executiveOversight, EAC+FEC→elections); dedicated quarterly-chunk backfill driver with SQL three-numbers precheck and a fetch_log allowlist (never executiveOversight — DOJ/HHS/SSA/DHS own those ledger rows). **2,823 reports 2017→now** (live-verified counts reconciled exactly at dry-run, fetch, and store: 377/1,184/1,262), 95.0% full-text (matching the assessable estimate), scored, assessed (2,680 P1 / 208 flags 7.8% / 215 P2 / 71 concerning), embedded. **31 status flips owner-accepted** (all upward; per-era fairness verified — OIG confirmation rates T1 2.01% / Biden 1.49% / T2 9.63%, differential preserved, NC-4 holds). Completeness spot-checks beat the DHS 75–80% prior: TIGTA FY2025 and OPM FY2024 both 100% parity.
+
+**Key decisions:**
+
+- **State OIG discovery → `ContentItem.contentType`**: State stopped depositing PDFs with CIGIE in **July 2024** (dated to the month from our own corpus; six months pre-transition — attribution matters). Its site 403s us, so those reports are body-unobtainable. Rather than repeat #645 (full_text-labeled stubs), fetchers can now declare `metadata_only` at ingest and document-store honors it; External-Link URLs stored for provenance. 137 rows marked (incl. 32 fiscal). Filed **#656** (per-OIG availability/silence/removal surface — the discontinuity itself is an institutional signal) and **#657** (umbrella: sub-signal publication-discontinuity detection across all sources).
+- **NC-3 12% → 14%** (owner-approved): attribution of the new concerning docs put Biden-2022 executiveOversight at 13.5% — 7/52 fed-exec-elevating weeks, every one verified substantive (tipping doc: State OIG NEA `noncompliance_refusal`, ~2,000-day-open recommendations). Raise trajectory (5→8→12→14) recorded on #419 as recalibration evidence. NC-1 elections now 19.9%/20% — calibration watch.
+- **Genre disclosure** (owner direction): methodology now states that recurring statutory oversight genres always raise concerns to different degrees at different times, with the cross-era differential (1.5–2% vs ~10%) as evidence content drives classification.
+- **Narratives regenerated for flipped T2 weeks only** (12 weeks); baseline flips accept-staled (350) — baseline narratives aren't user-visible.
+
+**Incident (#658, p0)**: `review:backfill --dry-run` makes real AI calls (only the store is gated), blinds itself to existing assessments (assesses MORE than a real run), and its "assessed" summary over-reports even in real runs. A 70-minute elections "preview" burned ≈$20–25 with zero rows. Contained by --category scope; ground-truth reconciliation moved to `ai_document_assessments` row counts. **Total sprint AI spend ≈ $45–55 vs $100 authorization** (legit ≈ $17 vs $15–25 precheck ✓).
+
+**Lessons learned:**
+
+- **A dry-run flag is only a preview if it gates the spend call, not just the store call.** Precheck call-modeling must come from SQL against the eligibility predicate; never trust a tool's --dry-run until its cost path is read.
+- **Harness-tracked background tasks were killed three separate times mid-run**; every long prod step now runs `nohup`+`disown`+`caffeinate` with DONE/FAILED marker files and a Monitor covering markers _and_ process-disappearance. Per-unit-idempotent designs (per-week, per-signal-chunk) made every resume clean.
+- **Aggregators need per-member availability checks, not just presence checks** — a member OIG can silently stop depositing content while listings continue. Now permanently visible in our own corpus via content_type per submittingOig over time.
+- **Uniform instrument + preserved differential = cross-term fairness.** Baselines are a calibrated reference, not a fixed floor; 19 baseline-era upward flips were accepted because the same pipeline moved every era and T2's signal rate (9.63%/doc) stayed 5–6× baselines.
+
+**Spec deviations**: none vs the approved plan; scope additions mid-sprint (contentType plumbing, NC-3 recalibration, #656–658) were each owner-approved or filed as issues.
+
 ## Sprint R-VALIDATION-RECONCILE: rationalize the validation surface (#646–650, milestone 102) — ✅ deployed 2026-08-01 (v1.4.0, main @ 1c006c0)
 
 **Origin**: while triaging Data Readiness warnings, the owner noticed its "745 stale narratives" flatly contradicted the Derivation Graph's G4h=0, and that the reports overlapped and drifted out of sync. The reframe: stop patching individual warnings and rationalize the whole validation surface so each report answers one distinct question with no duplicated (or contradictory) checks.
