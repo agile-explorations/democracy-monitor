@@ -145,8 +145,13 @@ const NC3_THIN_CATEGORY_DOC_THRESHOLD = 20;
  * liberties events). The routing also means civilLiberties receives routine
  * immigration docs that create baseline noise. Verified all elevated weeks
  * contain genuine content — Title 42, NDAA, patronage prevention.)
+ * (Raised 12% → 14% after R-OVERSIGHT-GOV, owner-approved 2026-08-02:
+ * oversight.gov IG corpus put executiveOversight at 13.5% — 7/52 Biden-2022
+ * weeks, each verified substantive (e.g. State OIG NEA noncompliance_refusal:
+ * ~2,000-day-open recommendations, ignored compliance inquiries). The raise
+ * trajectory itself is an argument for #419's deeper threshold recalibration.)
  */
-const NC3_STANDARD_RATE = 0.12;
+const NC3_STANDARD_RATE = 0.14;
 
 /**
  * Elevated+ rate limit for categories with <20 avg docs/week.
@@ -193,7 +198,7 @@ export function evaluateNc3BidenElevatedWeeks(
     actual: worst
       ? `worst: ${worst.category} at ${(worst.value * 100).toFixed(1)}%${coverage}`
       : `no data${coverage}`,
-    threshold: '≤12% (≥20 docs/week) or ≤15% (<20 docs/week); 0 unattributed',
+    threshold: `≤${NC3_STANDARD_RATE * 100}% (≥${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week) or ≤${NC3_THIN_RATE * 100}% (<${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week); 0 unattributed`,
     details,
   };
 }
