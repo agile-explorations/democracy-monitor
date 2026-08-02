@@ -61,6 +61,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
+/**
+ * Embed the query with timing; on failure respond 503 and return null. An
+ * embedding failure means retrieval never ran — surfaced as an outage, not an
+ * empty result set (#598 errors-not-empty); provider blips are transient so
+ * retrying almost always succeeds.
+ */
+async function timedEmbedOrFail(
+  res: NextApiResponse,
+  query: string,
+  queryHash: string,
+): Promise<number[] | null> {
+  const embedStart = Date.now();
+  const embedding = await embedText(query);
+  const embedMs = Date.now() - embedStart;
+  if (!embedding) {
+    console.error(`[api/search] embed failed q=${queryHash} after ${embedMs}ms`);
+    res
+      .status(503)
+      .json({ error: 'Search is temporarily unavailable. Please try the search again.' });
+    return null;
+  }
+  console.log(`[api/search] timings q=${queryHash} embed=${embedMs}ms`);
+  return embedding;
+}
+
 function emptyResearchResponse(docsOnly: boolean) {
   return {
     documents: [],
@@ -174,13 +199,16 @@ async function handleResearch(
   const docsOnly = req.query.docsOnly === 'true';
   const queryHash = hashQuery(query);
 
-  const embedding = await embedText(query);
-  if (!embedding) {
-    res.status(200).json(emptyResearchResponse(docsOnly));
-    return;
-  }
+  const embedding = await timedEmbedOrFail(res, query, queryHash);
+  if (!embedding) return;
 
+  const retrieveStart = Date.now();
   const { docs: allDocs, strata, inferredFrom } = await retrieveResearchDocs(req, query, embedding);
+  // Phase-timing line for cold-cache diagnosis (post-dump HNSW evictions can
+  // multiply retrieval time; CF cuts requests at ~100s since 2026-07-31).
+  console.log(
+    `[api/search] timings q=${queryHash} retrieve=${Date.now() - retrieveStart}ms docs=${allDocs.length} docsOnly=${docsOnly}`,
+  );
   if (allDocs.length === 0) {
     res.status(200).json(emptyResearchResponse(docsOnly));
     return;
@@ -203,7 +231,9 @@ async function handleResearch(
     return;
   }
 
+  const statsStart = Date.now();
   const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
+  console.log(`[api/search] timings q=${queryHash} stats=${Date.now() - statsStart}ms`);
 
   const cached = await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
   if (cached) {

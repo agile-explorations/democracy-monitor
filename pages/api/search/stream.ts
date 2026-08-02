@@ -52,9 +52,16 @@ async function retrieveDocuments(
   }
 
   const embedding = await embedText(query);
-  if (!embedding) return null;
+  // Distinguish an embedding outage from a genuinely empty result: the
+  // client shows "no documents" for null, which is wrong for a provider blip.
+  if (!embedding)
+    throw new Error('Search is temporarily unavailable. Please try the search again.');
 
+  const retrieveStart = Date.now();
   const allDocs = await searchResearch(query, CONTEXT_DOCS, embedding, dateFrom, dateTo, tier);
+  console.log(
+    `[api/search/stream] timings retrieve=${Date.now() - retrieveStart}ms docs=${allDocs.length}`,
+  );
   if (allDocs.length === 0) return null;
 
   // Skip corpus stats — scanning 164K embeddings takes 15-20s and delays

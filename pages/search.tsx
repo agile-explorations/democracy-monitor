@@ -14,6 +14,15 @@ import { suggestTierFromQuestion } from '@/lib/services/tier-hint';
 
 type TierFilterValue = 'all' | 'action' | 'discussion';
 
+/** A completed synthesis stream whose text had no parseable sections — model
+ *  nondeterminism, retried once silently before surfacing an error. */
+class UnparseableSynthesisError extends Error {
+  constructor() {
+    super('The answer could not be generated from the response. Please try the search again.');
+    this.name = 'UnparseableSynthesisError';
+  }
+}
+
 export default function SearchPage() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
@@ -188,68 +197,82 @@ export default function SearchPage() {
         .map((d) => d.id)
         .filter((id): id is number => typeof id === 'number');
       if (docIds.length > 0) streamParams.set('ids', docIds.join(','));
-      const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
-      activeStream.current = eventSource;
-      let accumulated = '';
 
-      await new Promise<void>((resolve, reject) => {
-        eventSource.onmessage = (event) => {
-          if (!isCurrent()) {
-            eventSource.close();
-            resolve();
-            return;
-          }
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'chunk') {
-            accumulated += data.text;
-            const parsed = parseStreamingSections(accumulated);
-            setResearchResult((prev) =>
-              prev ? { ...prev, answer: { expert: parsed.expert, public: parsed.public } } : prev,
-            );
-          } else if (data.type === 'done') {
-            eventSource.close();
-            const final = parseStreamingSections(accumulated);
-            if (!final.expert && !final.public) {
-              // #598 spirit: a completed stream with no parseable answer is a
-              // failure, not an empty page. Keep the documents visible.
-              console.error(
-                '[search] synthesis completed without parseable sections:',
-                accumulated.slice(0, 300),
-              );
-              reject(
-                new Error(
-                  'The answer could not be generated from the response. Please try the search again.',
-                ),
-              );
-              return;
-            }
-            setResearchResult((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    answer: { expert: final.expert, public: final.public },
-                    relatedQuestions: final.relatedQuestions,
-                  }
-                : prev,
-            );
-            resolve();
-          } else if (data.type === 'error') {
-            eventSource.close();
-            reject(new Error(data.message));
-          }
-        };
-
-        eventSource.onerror = () => {
-          eventSource.close();
-          reject(new Error('Stream connection lost'));
-        };
-      });
+      // An unparseable completed stream is model nondeterminism — one silent
+      // retry (same doc ids, so no redundant vector search) resolves nearly
+      // all of them. Only the second failure surfaces to the user.
+      const MAX_SYNTHESIS_ATTEMPTS = 2;
+      for (let attempt = 1; attempt <= MAX_SYNTHESIS_ATTEMPTS; attempt++) {
+        try {
+          await attemptSynthesisStream(streamParams, isCurrent);
+          break;
+        } catch (err) {
+          const retryable = err instanceof UnparseableSynthesisError;
+          if (!retryable || attempt === MAX_SYNTHESIS_ATTEMPTS || !isCurrent()) throw err;
+          console.warn(`[search] synthesis unparseable — retrying (attempt ${attempt + 1})`);
+        }
+      }
     } catch (err) {
       if (isCurrent()) setError(err instanceof Error ? err.message : 'Answer generation failed');
     } finally {
       if (isCurrent()) setSynthesizing(false);
     }
+  };
+
+  const attemptSynthesisStream = (streamParams: URLSearchParams, isCurrent: () => boolean) => {
+    const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
+    activeStream.current = eventSource;
+    let accumulated = '';
+
+    return new Promise<void>((resolve, reject) => {
+      eventSource.onmessage = (event) => {
+        if (!isCurrent()) {
+          eventSource.close();
+          resolve();
+          return;
+        }
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'chunk') {
+          accumulated += data.text;
+          const parsed = parseStreamingSections(accumulated);
+          setResearchResult((prev) =>
+            prev ? { ...prev, answer: { expert: parsed.expert, public: parsed.public } } : prev,
+          );
+        } else if (data.type === 'done') {
+          eventSource.close();
+          const final = parseStreamingSections(accumulated);
+          if (!final.expert && !final.public) {
+            // #598 spirit: a completed stream with no parseable answer is a
+            // failure, not an empty page. Keep the documents visible.
+            console.error(
+              '[search] synthesis completed without parseable sections:',
+              accumulated.slice(0, 300),
+            );
+            reject(new UnparseableSynthesisError());
+            return;
+          }
+          setResearchResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  answer: { expert: final.expert, public: final.public },
+                  relatedQuestions: final.relatedQuestions,
+                }
+              : prev,
+          );
+          resolve();
+        } else if (data.type === 'error') {
+          eventSource.close();
+          reject(new Error(data.message));
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        reject(new Error('Stream connection lost'));
+      };
+    });
   };
 
   // Sync URL → state once router.query is populated
