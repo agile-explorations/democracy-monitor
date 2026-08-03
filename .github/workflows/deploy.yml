@@ -138,7 +138,12 @@ jobs:
           # build genuinely exceeding this is itself worth surfacing.
           deadline=$(( SECONDS + 1500 ))
           while :; do
-            running=$(curl -sS -m 15 "$SITE/api/version" 2>/dev/null | jq -r '.commit // empty')
+            # GitHub runs this step with `bash -e`, so the curl|jq pipeline MUST
+            # NOT be allowed to fail the script: during the build the old code
+            # 404s and the cutover 502s, and jq parse-errors on that non-JSON
+            # (this false-failed v1.5.5 in 81s). `|| true` keeps a transient
+            # non-JSON response an empty string, not a step failure.
+            running=$(curl -sS -m 15 "$SITE/api/version" 2>/dev/null | jq -r '.commit // empty' 2>/dev/null || true)
             # Match if the running commit is a prefix of the tagged SHA (or
             # equal) — tolerant of Render reporting a short vs full hash.
             # Empty/'unknown' never matches (prefix removal leaves SHA unchanged).
@@ -147,14 +152,14 @@ jobs:
               # Non-fatal: warn if package.json version wasn't bumped to match the
               # tag, so the Architecture-page version doesn't silently lag. The
               # commit match above is the deploy gate; this only flags the label.
-              ver=$(curl -sS -m 15 "$SITE/api/version" 2>/dev/null | jq -r '.version // empty')
+              ver=$(curl -sS -m 15 "$SITE/api/version" 2>/dev/null | jq -r '.version // empty' 2>/dev/null || true)
               if [ -n "$ver" ] && [ "v$ver" != "$REF_NAME" ]; then
                 echo "::warning::/api/version reports v$ver but the tag is $REF_NAME — bump package.json version before tagging (see DEPLOYMENT.md)."
               fi
               exit 0
             fi
             if [ "$SECONDS" -ge "$deadline" ]; then
-              echo "::error::Timed out after 10m — $SITE still serving '${running:-unreachable}', expected $SHA. The Render build likely failed; prod is on OLD code."
+              echo "::error::Timed out after 25m — $SITE still serving '${running:-unreachable}', expected $SHA. The Render build likely failed; prod is on OLD code."
               exit 1
             fi
             echo "  running='${running:-unreachable}' (want $SHA); waiting 20s..."
