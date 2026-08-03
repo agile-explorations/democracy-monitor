@@ -23,6 +23,14 @@ export interface ContentItem {
    * mislabeled full_text with stub content (the #645 LegiScan defect).
    */
   contentType?: 'full_text' | 'metadata_only';
+  /**
+   * Persisted counting-scope, threaded when an item is rebuilt from a stored
+   * row. When present it is authoritative: it was computed at ingest from the
+   * FULL content, whereas a re-classification of the sweep's truncated copy can
+   * flip an in-scope opinion to out-of-scope and skip its score row (#667).
+   * Undefined on freshly-fetched items → classify from full content.
+   */
+  countingScope?: boolean | null;
   /** Extra metadata to store alongside the document (merged with auto-extracted fields). */
   metadata?: Record<string, unknown>;
 }

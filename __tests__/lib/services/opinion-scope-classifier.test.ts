@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { classifyCourtName } from '@/lib/data/court-queries';
-import { isInCountingScope } from '@/lib/services/opinion-scope-classifier';
+import { isInCountingScope, itemCountingScope } from '@/lib/services/opinion-scope-classifier';
+import type { ContentItem } from '@/lib/types/assessment';
 
 describe('classifyCourtName', () => {
   it('maps SCOTUS exactly', () => {
@@ -75,5 +76,41 @@ describe('isInCountingScope', () => {
   it('excludes first-amendment-only matches — that stream is no longer collected', () => {
     expect(isInCountingScope(CA9, 'X v. Y', 'First Amendment retaliation claim')).toBe(false);
     expect(isInCountingScope(OTHER_DISTRICT, 'X v. Y', 'first amendment challenge')).toBe(false);
+  });
+});
+
+describe('itemCountingScope — persisted-scope precedence (#667)', () => {
+  const opinion = (over: Partial<ContentItem>): ContentItem => ({
+    type: 'judicial_opinion',
+    title: 'X v. Y',
+    agency: 'Court of Appeals for the Ninth Circuit',
+    content: 'ordinary sentencing appeal', // would re-classify to FALSE
+    ...over,
+  });
+
+  it('trusts a persisted true scope even when the (truncated) content would re-classify false', () => {
+    // The exact #667 bug: a circuit opinion whose executive-power language sat
+    // past the 16k slice. Stored counting_scope=true must win over the lossy
+    // re-classification so the scorer does not skip its score row.
+    expect(itemCountingScope(opinion({ countingScope: true }), 'civilLiberties')).toBe(true);
+  });
+
+  it('trusts a persisted false scope', () => {
+    const inScopeContent = opinion({
+      countingScope: false,
+      content: 'the Executive Order at issue',
+    });
+    expect(itemCountingScope(inScopeContent, 'civilLiberties')).toBe(false);
+  });
+
+  it('passes a persisted null through (non-scope opinions stay counted)', () => {
+    expect(itemCountingScope(opinion({ countingScope: null }), 'civilLiberties')).toBeNull();
+  });
+
+  it('re-classifies from content when no scope is persisted (fresh-fetch path)', () => {
+    expect(itemCountingScope(opinion({}), 'civilLiberties')).toBe(false);
+    expect(
+      itemCountingScope(opinion({ content: 'the Executive Order at issue' }), 'civilLiberties'),
+    ).toBe(true);
   });
 });
