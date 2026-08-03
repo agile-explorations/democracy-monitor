@@ -135,6 +135,11 @@ export function evaluateNc2BidenP2ConfirmRate(rate: number): NegativeControlResu
   };
 }
 
+/** Format a 0–1 rate as a clean percentage string, dropping float noise (0.14 → "14", not "14.000000000000002"). */
+function asPercent(rate: number): string {
+  return String(+(rate * 100).toFixed(2));
+}
+
 /** Avg docs/week threshold below which a category uses the relaxed NC-3 limit. */
 const NC3_THIN_CATEGORY_DOC_THRESHOLD = 20;
 
@@ -198,7 +203,7 @@ export function evaluateNc3BidenElevatedWeeks(
     actual: worst
       ? `worst: ${worst.category} at ${(worst.value * 100).toFixed(1)}%${coverage}`
       : `no data${coverage}`,
-    threshold: `≤${NC3_STANDARD_RATE * 100}% (≥${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week) or ≤${NC3_THIN_RATE * 100}% (<${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week); 0 unattributed`,
+    threshold: `≤${asPercent(NC3_STANDARD_RATE)}% (≥${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week) or ≤${asPercent(NC3_THIN_RATE)}% (<${NC3_THIN_CATEGORY_DOC_THRESHOLD} docs/week); 0 unattributed`,
     details,
   };
 }
