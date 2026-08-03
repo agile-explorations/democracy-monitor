@@ -64,6 +64,13 @@ export function isInCountingScope(
  * items and non-court categories carry no flag and are always counted.
  */
 export function itemCountingScope(item: ContentItem, category: string): boolean | null {
+  // Trust the persisted scope when the item came from a stored row (#667): it
+  // was computed at ingest from full content, so it never disagrees with the
+  // counting_scope column that G1a checks. Re-classifying here would use the
+  // sweep's 16k-truncated content and could flip a circuit/D.D.C. opinion whose
+  // executive-power language sits past the cut — skipping its score row while
+  // the stored column still marks it in-scope.
+  if (item.countingScope !== undefined) return item.countingScope;
   if (item.type !== 'judicial_opinion' || !COUNTING_SCOPE_CATEGORIES.has(category)) return null;
   const court = (item.metadata?.agency as string | undefined) ?? item.agency;
   return isInCountingScope(court, item.title ?? '', item.content);
