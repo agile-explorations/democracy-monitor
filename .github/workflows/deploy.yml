@@ -120,3 +120,65 @@ jobs:
             fi
           done
           exit $fail
+
+      # Close the async gap (#664): triggering a Render deploy only queues it.
+      # Poll /api/version until the web service reports the tagged commit, so
+      # "workflow green" means the new code is confirmed serving — not merely
+      # queued. A timeout here fails the workflow, which pages ops (#665).
+      - name: Verify new code is live
+        env:
+          SHA: ${{ github.sha }}
+          SITE: https://democracymonitor.us
+        run: |
+          set -uo pipefail
+          echo "Waiting for $SITE/api/version to report commit $SHA ..."
+          deadline=$(( SECONDS + 600 ))   # Render build + cutover, up to 10 min
+          while :; do
+            running=$(curl -sS -m 15 "$SITE/api/version" 2>/dev/null | jq -r '.commit // empty')
+            # Match if the running commit is a prefix of the tagged SHA (or
+            # equal) — tolerant of Render reporting a short vs full hash.
+            # Empty/'unknown' never matches (prefix removal leaves SHA unchanged).
+            if [ -n "$running" ] && [ "$running" != "unknown" ] && [ "${SHA#"$running"}" != "$SHA" ]; then
+              echo "Verified: $SITE is serving $running (matches $SHA)."
+              exit 0
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::Timed out after 10m — $SITE still serving '${running:-unreachable}', expected $SHA. The Render build likely failed; prod is on OLD code."
+              exit 1
+            fi
+            echo "  running='${running:-unreachable}' (want $SHA); waiting 20s..."
+            sleep 20
+          done
+
+  # Page the ops inbox on ANY deploy-job failure (#665): CI-gate red, Render
+  # trigger failure, or the verify-live timeout above. Runs in Actions so it
+  # works even if prod is down. No-ops with a log line if the Resend secrets
+  # are unset, so an unconfigured repo never fails the notify job itself.
+  notify-failure:
+    needs: deploy
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Email ops on deploy failure
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPS_ALERT_EMAIL: ${{ secrets.OPS_ALERT_EMAIL }}
+          FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL || 'Democracy Monitor <updates@democracymonitor.us>' }}
+          REF_NAME: ${{ github.ref_name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -uo pipefail
+          if [ -z "${RESEND_API_KEY:-}" ] || [ -z "${OPS_ALERT_EMAIL:-}" ]; then
+            echo "::warning::RESEND_API_KEY or OPS_ALERT_EMAIL not set — skipping deploy-failure email (see DEPLOYMENT.md)."
+            exit 0
+          fi
+          html="<h2 style=\"font-family:sans-serif\">Deploy FAILED: ${REF_NAME}</h2><p style=\"font-family:sans-serif\">The tag-gated production deploy did not complete. Production is on the PREVIOUS release. Investigate before assuming the release is live.</p><p style=\"font-family:sans-serif\"><a href=\"${RUN_URL}\">View the failed run</a></p>"
+          payload=$(jq -n --arg from "$FROM_EMAIL" --arg to "$OPS_ALERT_EMAIL" --arg subj "Deploy FAILED: ${REF_NAME}" --arg html "$html" \
+            '{from:$from, to:[$to], subject:$subj, html:$html}')
+          code=$(curl -sS -o /tmp/resend.json -w '%{http_code}' -X POST "https://api.resend.com/emails" \
+            -H "Authorization: Bearer $RESEND_API_KEY" -H "Content-Type: application/json" -d "$payload") || code="000"
+          if [ "${code#2}" = "$code" ]; then
+            echo "::error::Resend send failed (HTTP $code): $(cat /tmp/resend.json 2>/dev/null)"
+            exit 1
+          fi
+          echo "Deploy-failure email sent to ops inbox (HTTP $code)."

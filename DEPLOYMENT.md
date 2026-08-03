@@ -149,8 +149,15 @@ A raw `git push origin main` builds nothing in prod. Only the tag deploys, and o
 
 1. **Secret `RENDER_API_KEY`** — a Render API key (Render dashboard → Account Settings → API Keys).
 2. **`RENDER_SERVICE_IDS`** (repo **variable** preferred, or a secret — the Action accepts either) — comma-separated Render service IDs to deploy: the web service **and** all three crons (find each `srv-…`/`crn-…` ID in the service's dashboard URL), e.g. `srv-web,crn-dump,crn-snapshot,crn-legiscan`. Omitting a cron means it never picks up new code — include all of them. A variable keeps the IDs readable in Action logs; a secret masks them (harmless, just harder to eyeball).
-3. Confirm **auto-deploy is off** for each service in the Render dashboard (the `render.yaml` blueprint sets it, but verify after the next blueprint sync).
-4. Verify on first tag: push a `v0.0.1`-style tag, watch the Action gate on CI then deploy, and confirm all services show a new deploy of the tagged commit in Render. (First-tag note: confirm Render honors the `commitId` field; if not, it deploys `main` HEAD, which equals the tag when you tag HEAD.)
+3. **Secrets `RESEND_API_KEY` + `OPS_ALERT_EMAIL`** (#665) — used by the `notify-failure` job to email the ops inbox when a deploy fails. Same values as the app's Resend key and cron ops-alert address. Until both are set, the notify job logs a warning and no-ops (it never fails the workflow itself). Optional `RESEND_FROM_EMAIL` overrides the default `updates@democracymonitor.us` sender.
+4. Confirm **auto-deploy is off** for each service in the Render dashboard (the `render.yaml` blueprint sets it, but verify after the next blueprint sync).
+5. Verify on first tag: push a `v0.0.1`-style tag, watch the Action gate on CI then deploy, and confirm all services show a new deploy of the tagged commit in Render. (First-tag note: confirm Render honors the `commitId` field; if not, it deploys `main` HEAD, which equals the tag when you tag HEAD.)
+
+### Deploy definition-of-done (#664/#666)
+
+A release is **not "deployed" until confirmed live**, not when the tag is pushed. The `Deploy to production` workflow now enforces this itself: after triggering the Render deploy it **polls `/api/version`** (which returns the running commit from `RENDER_GIT_COMMIT`) until the web service reports the tagged SHA, timing out after 10 minutes. So a green workflow means the new code is confirmed serving; a Render build failure after the trigger now **fails the workflow** (and pages ops via #665) instead of silently leaving prod on old code — the v1.5.0 incident (coverage-gate red → 3h on stale code, unnoticed).
+
+**Never `git push --no-verify`.** The `.husky/pre-push` hook runs the exact CI suite (`format:check`, `tsc`, `lint:unused`, **`test:coverage`**); bypassing it is what let v1.5.0's coverage failure reach a tag. If the hook itself errors, **fix the hook, don't bypass it.** (Known limitation: inside a Task-agent git _worktree_, husky can fail on symlinked-`node_modules` bin resolution — that is isolated to agent worktrees; the main working copy is unaffected, and the hook must not be auto-skipped there or the gate silently disappears.)
 
 **Hotfix lane:** same flow — commit the fix to `main`, tag it (`v1.4.1`), push the tag. For an emergency where CI is the problem, use the Render dashboard's **Rollback** to the last-good deploy (Git-independent, unaffected by this gate) while you sort the fix.
 
