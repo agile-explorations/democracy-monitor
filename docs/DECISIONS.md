@@ -12,6 +12,26 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DEPLOY-HARDEN: self-verifying deploys + failure alerting (#664–666, milestone 104) — ✅ deployed 2026-08-03 (v1.5.4, main @ 74a7fe4)
+
+**Origin**: the v1.5.0 deploy failed silently (CI coverage gate red → Render never deployed → prod on stale code ~3h, unnoticed) because "deployed" was claimed on tag-push, the deploy workflow is async (triggers Render and exits without confirming the new code came up), there was no failure alert, and the pre-push CI-mirror gate had been bypassed with `--no-verify`.
+
+**Planned vs built**: all 3 shipped.
+
+- **#664** `pages/api/version.ts` returns the running commit from `RENDER_GIT_COMMIT` (confirmed populated with the full SHA); `deploy.yml` polls it after triggering Render and only goes green once the web service serves the tagged SHA (prefix-tolerant match). "Workflow green" now means "confirmed live," not "queued."
+- **#665** `notify-failure` job emails the ops inbox via Resend on any deploy-job failure — CI-gate, Render-trigger, or the #664 verify timeout. Safe no-op (warn + skip) when the GitHub Actions secrets `RESEND_API_KEY`/`OPS_ALERT_EMAIL` are unset.
+- **#666** DEPLOYMENT.md deploy definition-of-done: never `git push --no-verify` (the hook runs the exact CI suite incl. `test:coverage`); worktree husky symlink error documented as Task-agent-only, must not auto-skip.
+
+**Key decision**: the verify step is fatal (a post-trigger build failure fails the workflow) rather than advisory — that is the whole point of closing the silent-stale class.
+
+**Lessons learned:**
+
+- **Deploy-verification timeouts must be calibrated to real platform build time.** The first run (v1.5.4) false-failed: Render's build+cutover took ~13 min but the verify timeout was 10, so the step gave up ~3 min before the _successful_ deploy finished. A too-tight verify is worse than none — it cries wolf on good deploys. Raised to 25 min. Measured Render build ≈ 13 min.
+- **The false failure validated the feature end-to-end** — verify-live correctly detected "not yet serving the SHA," and notify-failure correctly ran (no-op, since the alert secrets weren't set yet). Enabling alerting _after_ fixing the timeout means a slow-but-successful build won't false-alarm.
+- **Config lives where the consumer runs**: the alert secrets are GitHub Actions secrets (the workflow runs there), not Render env vars — easy to put in the wrong place.
+
+**Spec deviations**: none. Owner sets `RESEND_API_KEY`/`OPS_ALERT_EMAIL` as Actions secrets to activate alerting (done post-sprint); the next release will exercise the clean green self-verifying path.
+
 ## Sprint R-OVERSIGHT-GOV: oversight.gov (CIGIE) multi-OIG source (#652–655, milestone 103) — ✅ complete 2026-08-02
 
 **Origin**: #606 research (sequenced after CHRG/press-releases at the 7/29 review; owner re-prioritized it 8/1 as the one completable overnight — all unknowns pre-resolved, DHS-OIG machinery reusable end-to-end).
@@ -162,33 +182,3 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 
 - **Detoast discipline is a query-design constraint, not an afterthought** — `length(documents.content)` in an unbounded aggregate hangs on the ~6GB TOASTed column; the funnel's mandatory window keeps it in the same safe envelope the L2 queries use. Named the rule in the file header so the next author doesn't reintroduce it.
 - **A diagnostic's severity model is a product decision, not a threshold tweak** — whether mediaFreedom-shaped contamination pages or merely warns turns on the thin-baseline guard, and that's the owner's alert-fatigue call. Surfaced it as such rather than picking silently.
-
----
-
-## Sprint R-DHS-OIG + R-CHRG + R-HARDEN: source expansion + pre-launch security hardening (milestones 94/95/96) — ✅ deployed 2026-07-30 (main @ 1c0b0b0)
-
-**Origin**: Pre-launch push for journalist/subscriber outreach. Two new corpus sources to deepen oversight coverage (DHS OIG reports, Congressional hearing transcripts), plus a catastrophic-first security sprint on the premise that a public civic-tech site will be probed and attacked.
-
-**Shipped — R-DHS-OIG (#600–603, #607)**: DHS OIG as a new document source. **Union routing** = official DHS component tags (server-side `field_dhs_agency_target_id` facet) ∪ title-keyword matches, deduped by report number, tags stored on `metadata.dhsComponents`; immigration subset = ICE/CBP/USCIS. 687 unique reports (2017→now) backfilled to prod, full-text, scored + embedded. #607 bounded-memory PDF extractor (page-capped `pdf-parse`, streamed download, injectable parse seam) so oversized oversight PDFs can't exhaust memory.
-
-**Shipped — R-CHRG (#608–611)**: Congressional hearing transcripts as a **special source** on the CREC pattern (single fetch → content-classified fan-out to categories, stored per url×category). 7 committees, 2,661 unique hearings backfilled. `dateIssued` = hearing _held_ date with a 540-day trailing-window weekly re-query (transcripts publish months late); hearing document class ×0.6, discussion tier; classifier calibrated from a 2019-Q2 rehearsal audit (6k text cap, bare-"oversight" boilerplate excluded). L2 fleet confirmed 23% hearing P2 rate; **101 baseline-era status flips owner-accepted** (mission-correct, e.g. 2018 family-separation week → ConfirmedConcern), NC 6/6 pass, 93% known-event AI coverage.
-
-**Shipped — R-HARDEN (#614–618)**: catastrophic-first blockers only. R1–R3 deleted dead unauthenticated endpoints that wrote the corpus / spent paid AI (verified zero callers); R4/R6 Redis-backed rate limiter (search 20/5min, email 5/hr) with in-memory fallback; R5 excluded subscriber/feedback PII from the public dump; R7/R8 Backblaze B2 off-site backup (compliance-mode Object Lock, ~360-day retention, complete = corpus + PII-tables pair); R9 destructive-migration gate (blocks DROP/TRUNCATE in prod without `CONFIRM_DESTRUCTIVE_MIGRATION`). Fast-follows #619 (headers/admin/SSRF/dep bumps) and #620 (origin↔Cloudflare shared-secret) filed, not built.
-
-**Deploy & owner ops**: develop→main merge `1c0b0b0` (merged tree **byte-identical** to develop — the two "main-only" commits carried already-identical content), pushed after all four pre-push gates ran green on develop; Render cut over clean (one ~5s 502), all deleted routes 404, live endpoints healthy, migration gate a verified no-op (applied-count 48 = journal 48). #613 accept-stale run (1,281 narratives acknowledged, G4h→0, $0). B2 lifecycle 360d set; DB inbound-IP locked to the owner's dedicated VPN IP/32 (prod unaffected — all services connect over Render's internal network); 2FA enabled across every catastrophic + paid account. Cloudflare nameserver switch in-flight at close.
-
-**Key decisions:**
-
-- **Union routing for both sources** — routing correctness was the standing rework risk; official component tags give ground truth, title keywords catch the untagged tail. Validated against DHS component facets before the fetch.
-- **Catastrophic-first scoping (owner).** Blockers = the two catastrophe axes only: integrity+cost (unauth corpus-write/paid-AI endpoints, which were also dead code) and data loss (single-account backup blast radius, ungated auto-migrations). Headers/admin-hardening/SSRF are real but recoverable → fast-follow.
-- **B2 in compliance-mode Object Lock** — recent backups are immutable even with a stolen key; ~360-day retention is the succession runway. A complete restore needs both objects (PII-free corpus + PII-tables).
-- **Public-repo disclosure discipline** — the origin-bypass fast-follow (#620) is filed as non-actionable defense-in-depth, no exploit recipe, because the repo is public.
-
-**Incidents & lessons learned:**
-
-- **`ai_document_assessments.relevant` is Pass-1-only (NULL on P2 rows); P2 verdicts live in `assessment`.** Reported "0 hearing confirmations" wrong for hours until an impossible all-zeros table exposed it. The column semantics are now in the db-operations reference.
-- **Never resume `review:backfill` after another prod op has landed documents** — the pass P1-sweeps every unassessed doc in the weeks it visits; a resume swept freshly-landed CHRG docs (cap contained it; it became accidental hearing calibration). Re-scope explicitly instead.
-- **No filter pipe between a gated command and its exit check** — `cmd | grep >> log` makes `$?` the grep's, which masked a mid-run `EADDRNOTAVAIL` crash as exit 0. Redirect unfiltered, capture `$?` directly.
-- **Marathon laptop→prod jobs need kill-tolerant, year-chunked drivers** — long single connections die on `ETIMEDOUT` / ephemeral-port exhaustion; detached `caffeinate` drivers with per-chunk retry survive.
-- **Credential-presence shell checks must use length/`:+` and never echo the value** — a `${VAR:-MISSING}` check printed a real B2 app key (rotated same day). Presence checks only, permanently.
-- **Merge via a throwaway git worktree when the dev server is running** (branch-switching corrupts the webpack pack cache) and verify the merged tree is byte-identical to source before pushing to production.
