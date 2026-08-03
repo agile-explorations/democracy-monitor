@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { afterEach, describe, expect, it } from 'vitest';
+import pkg from '@/package.json';
 import handler from '@/pages/api/version';
 
 function buildRes() {
@@ -40,14 +41,14 @@ describe('/api/version (#664)', () => {
     const res = buildRes();
     handler(req('GET'), res);
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ commit: 'abc123def456', branch: 'main' });
+    expect(res.body).toEqual({ version: pkg.version, commit: 'abc123def456', branch: 'main' });
     expect(res.headers['Cache-Control']).toBe('no-store');
   });
 
-  it("reports 'unknown' when RENDER_GIT_COMMIT is unset (local/dev)", () => {
+  it("reports 'unknown' commit when RENDER_GIT_COMMIT is unset, still returns the version", () => {
     const res = buildRes();
     handler(req('GET'), res);
-    expect(res.body).toEqual({ commit: 'unknown', branch: null });
+    expect(res.body).toEqual({ version: pkg.version, commit: 'unknown', branch: null });
   });
 
   it('rejects non-GET methods', () => {

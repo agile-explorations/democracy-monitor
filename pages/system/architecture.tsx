@@ -1,7 +1,41 @@
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+
+/** Live running-version badge — the deployed release tag + short commit, read
+ *  from /api/version (version baked from package.json, commit from Render). */
+function RunningVersion() {
+  const [info, setInfo] = useState<{ version?: string; commit?: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/version');
+        if (res.ok && !cancelled) setInfo(await res.json());
+      } catch {
+        // Version badge is non-essential — stay hidden on failure.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (!info?.version) return null;
+  const short = info.commit && info.commit !== 'unknown' ? info.commit.slice(0, 7) : null;
+  return (
+    <p className="text-xs text-dm-muted mt-1">
+      Running <span className="font-mono">v{info.version}</span>
+      {short && (
+        <>
+          {' · '}
+          <span className="font-mono">{short}</span>
+        </>
+      )}
+    </p>
+  );
+}
 
 function SummaryContent() {
   return (
@@ -328,7 +362,9 @@ export default function ArchitecturePage() {
         &larr; Back to overview
       </Link>
 
-      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">System Architecture</h1>
+      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-1">System Architecture</h1>
+      <RunningVersion />
+      <div className="mb-6" />
 
       <div className="max-w-3xl space-y-2">
         {readingLevel === 'summary' ? <SummaryContent /> : <DetailedContent />}
