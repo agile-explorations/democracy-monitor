@@ -584,6 +584,10 @@ export const feedback = pgTable(
     type: varchar('type', { length: 20 }).notNull(),
     message: text('message').notNull(),
     pageUrl: text('page_url'),
+    // Moderation gate (#668): new submissions default to unapproved and are
+    // hidden from the public GET until a moderator approves via the CLI. The
+    // grandfather step in the migration sets existing rows to true.
+    approved: boolean('approved').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [index('idx_feedback_created_at').on(table.createdAt)],

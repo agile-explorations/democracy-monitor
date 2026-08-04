@@ -20,11 +20,14 @@ const CSP = [
   "default-src 'self'",
   // Google Analytics/Tag Manager (surfaced by the CSP report sink): gtag.js is
   // an external script and GTM uses eval, so both are allowlisted (#619 tune).
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
+  // Cloudflare Turnstile (feedback bot check) loads its api.js + widget iframe
+  // from challenges.cloudflare.com (#670).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com",
+  "connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://challenges.cloudflare.com",
+  'frame-src https://challenges.cloudflare.com',
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
