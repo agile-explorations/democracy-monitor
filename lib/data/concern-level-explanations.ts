@@ -17,3 +17,16 @@ export const CONCERN_LEVEL_EXPLANATIONS: Record<ConcernLevel, string> = {
   ConfirmedConcern:
     'AI content assessment elevated with high P2 concern rate. Warrants close examination.',
 };
+
+/**
+ * Plain-language derivation of each weekly status from Pass 2 document counts —
+ * the actual calculation, shown in the methodology page's Concern Synthesis
+ * section. Single source of truth for the threshold copy so the numbers don't
+ * drift across the places they appear. Divergent is a retired status and has no
+ * live threshold.
+ */
+export const CONCERN_LEVEL_THRESHOLDS: Record<Exclude<ConcernLevel, 'Divergent'>, string> = {
+  Stable: '0 clearly-concerning documents and at most 1 potentially-concerning',
+  Elevated: '≥1 clearly-concerning, or ≥2 potentially-concerning documents',
+  ConfirmedConcern: '≥2 clearly-concerning, or ≥3 concerning documents with a >20% concern rate',
+};
