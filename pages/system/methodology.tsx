@@ -3,16 +3,19 @@ import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { PromptTransparency } from '@/components/system/PromptTransparency';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { CONCERN_LEVEL_THRESHOLDS } from '@/lib/data/concern-level-explanations';
 
 function ConcernLevel({
   color,
   label,
   description,
+  threshold,
   className,
 }: {
   color?: string;
   label: string;
   description: string;
+  threshold?: string;
   className?: string;
 }) {
   return (
@@ -23,12 +26,17 @@ function ConcernLevel({
       />
       <div>
         <strong>{label}</strong> — {description}
+        {threshold && (
+          <div className="text-dm-muted text-sm">
+            <em>Set when:</em> {threshold}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function SummaryContent() {
+export function SummaryContent() {
   return (
     <>
       {/* Overview */}
@@ -94,21 +102,28 @@ function SummaryContent() {
           AI document review is the primary active detection method driving concern status.
           Structural anomaly, silence detection, and thematic drift provide descriptive context.
         </p>
+        <p>
+          A category&apos;s weekly status is set by counting how the Pass 2 review classified that
+          week&apos;s documents:
+        </p>
         <div className="space-y-2 ml-2">
           <ConcernLevel
             className="bg-dm-border"
             label="Stable"
             description="AI content assessment within baseline range. No concerns detected."
+            threshold={CONCERN_LEVEL_THRESHOLDS.Stable}
           />
           <ConcernLevel
             className="bg-dm-accent"
             label="Elevated"
             description="AI two-pass review flags anomalous content with Pass 2 corroboration."
+            threshold={CONCERN_LEVEL_THRESHOLDS.Elevated}
           />
           <ConcernLevel
             className="bg-status-capture"
             label="Confirmed Concern"
             description="AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination."
+            threshold={CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern}
           />
         </div>
       </Section>
@@ -142,7 +157,7 @@ function SummaryContent() {
   );
 }
 
-function DetailedContent() {
+export function DetailedContent() {
   return (
     <>
       {/* Overview */}
@@ -464,13 +479,22 @@ function DetailedContent() {
           not influence the status.
         </p>
         <DataTable
-          headers={['Status', 'Meaning']}
+          headers={['Status', 'Meaning', "How it's set (Pass 2 counts)"]}
           rows={[
-            ['Stable', 'AI content assessment within baseline range. No concerns detected.'],
-            ['Elevated', 'AI two-pass review flags anomalous content with Pass 2 corroboration.'],
+            [
+              'Stable',
+              'AI content assessment within baseline range. No concerns detected.',
+              CONCERN_LEVEL_THRESHOLDS.Stable,
+            ],
+            [
+              'Elevated',
+              'AI two-pass review flags anomalous content with Pass 2 corroboration.',
+              CONCERN_LEVEL_THRESHOLDS.Elevated,
+            ],
             [
               'Confirmed Concern',
               'AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination.',
+              CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern,
             ],
           ]}
         />
