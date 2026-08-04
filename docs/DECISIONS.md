@@ -12,6 +12,26 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-LINKIFY-RESPONSES: clickable URLs in feedback responses (#675, milestone 109) — ✅ deployed 2026-08-04 (v1.5.10, main @ 5a40b43)
+
+**Origin**: the owner's feedback responses render as escaped plain text, so links (e.g. the methodology URL) weren't clickable. Wanted them clickable without opening an XSS hole.
+
+**Planned vs built**: shipped as planned; responses-only, links open in a new tab (owner decisions).
+
+- `lib/utils/linkify.ts` — pure `splitLinkified(text)` → ordered text/link segments. `http(s)://` only; trailing sentence punctuation trimmed off the URL; `javascript:`, `data:`, and bare `www.` stay plain text (scheme allowlist by construction).
+- `components/ui/Linkified.tsx` — maps segments to React `<a target="_blank" rel="noopener noreferrer">` elements. **No `dangerouslySetInnerHTML`** anywhere, so untrusted input can neither inject markup nor produce an unsafe scheme.
+- Wire-in: `pages/feedback.tsx` response line only; user-submitted feedback stays plain text.
+- Tests: 9 util + 4 component, incl. the security guarantees (`javascript:`/`data:` never linked; raw HTML renders inert).
+
+**Key decisions (owner):** responses-only (authored by us — no "link launchpad" exposure that linkifying arbitrary user feedback would carry); open in a new tab; a narrow autolink helper over pulling the react-markdown `Markdown` component into the feedback page (less surface).
+
+**Lessons learned:**
+
+- **Autolink safely by construction, not by sanitization.** Building React `<a>` elements from parsed segments with an http(s)-only allowlist means there is no HTML-injection path to sanitize away — the escaping guarantee is preserved and the unsafe-scheme class is excluded by the regex. Verified by tests asserting no anchor for `javascript:`/`data:` and inert rendering of `<img onerror=…>`.
+- **Keep the fiddly logic pure.** URL boundary detection + trailing-punctuation trimming live in a unit-tested function; the component is a thin map — the risky part is fully covered.
+
+**Spec deviations**: none. Display-only; user feedback unchanged.
+
 ## Sprint R-FEEDBACK-PASTE-FIX: interactive --respond dropped pasted reply lines (#674, milestone 108) — ✅ deployed 2026-08-04 (v1.5.9, main @ 5019998)
 
 **Origin**: the owner responded to a real feedback item and the published reply was missing its main line (a methodology link). Diagnostic (data-first): the _stored_ `feedback_responses.message` was already truncated — "Here are the pages…:" followed by nothing, then the closing sentence — so the loss was at **input time**, not display. The truncated text had also been emailed to the submitter.
