@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildFeedbackNotificationHtml } from '@/lib/services/feedback-notify';
+import {
+  buildFeedbackNotificationHtml,
+  buildSubmitterResponseHtml,
+} from '@/lib/services/feedback-notify';
 
 describe('buildFeedbackNotificationHtml', () => {
   const base = { id: 5, type: 'question', category: null as string | null, message: 'Is X true?' };
@@ -24,5 +27,21 @@ describe('buildFeedbackNotificationHtml', () => {
   it('truncates a long message', () => {
     const html = buildFeedbackNotificationHtml({ ...base, message: 'y'.repeat(600) });
     expect(html).toContain('…');
+  });
+});
+
+describe('buildSubmitterResponseHtml', () => {
+  it('includes both the original message and the reply', () => {
+    const html = buildSubmitterResponseHtml('the original question', 'the answer');
+    expect(html).toContain('the original question');
+    expect(html).toContain('the answer');
+  });
+
+  it('escapes HTML in both the original and the reply', () => {
+    const html = buildSubmitterResponseHtml('<i>orig</i>', '<script>alert(1)</script>');
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).not.toContain('<i>orig</i>');
+    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(html).toContain('&lt;i&gt;orig&lt;/i&gt;');
   });
 });

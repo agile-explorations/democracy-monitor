@@ -45,3 +45,32 @@ export async function notifyNewFeedback(fb: NewFeedback): Promise<void> {
     console.error('[feedback-notify] send failed:', err);
   }
 }
+
+/** The reply email sent to a submitter who left an address (#672). */
+export function buildSubmitterResponseHtml(original: string, reply: string): string {
+  return (
+    `<h2 style="font-family:sans-serif">Response to your Democracy Monitor feedback</h2>` +
+    `<p style="font-family:sans-serif">You wrote:</p>` +
+    `<blockquote style="font-family:sans-serif;color:#555;border-left:3px solid #ccc;margin:0;padding:4px 12px;white-space:pre-wrap">${escapeHtml(original)}</blockquote>` +
+    `<p style="font-family:sans-serif">Our response:</p>` +
+    `<p style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(reply)}</p>` +
+    `<p style="font-family:sans-serif;font-size:12px;color:#666">This response also appears on the public feedback page at democracymonitor.us/feedback.</p>`
+  );
+}
+
+/** Email the submitter our reply. Non-fatal — the response is already stored + published. */
+export async function notifySubmitterOfResponse(
+  to: string,
+  original: string,
+  reply: string,
+): Promise<void> {
+  try {
+    await sendEmail(
+      to,
+      'Response to your Democracy Monitor feedback',
+      buildSubmitterResponseHtml(original, reply),
+    );
+  } catch (err) {
+    console.error('[feedback-notify] submitter response send failed:', err);
+  }
+}
