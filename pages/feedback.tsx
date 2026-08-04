@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
 import { FeedbackForm } from '@/components/shared/FeedbackForm';
 import { SEOHead } from '@/components/shared/SEOHead';
+import { Linkified } from '@/components/ui/Linkified';
 
 interface FeedbackResponse {
   id: number;
@@ -122,7 +123,9 @@ function FeedbackEntry({ item }: { item: FeedbackItem }) {
                 year: 'numeric',
               })}
             </p>
-            <p className="text-xs text-dm-text-secondary whitespace-pre-wrap">{r.message}</p>
+            <p className="text-xs text-dm-text-secondary whitespace-pre-wrap">
+              <Linkified text={r.message} />
+            </p>
           </div>
         ))}
     </div>
