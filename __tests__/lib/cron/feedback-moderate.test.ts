@@ -1,5 +1,49 @@
-import { describe, expect, it } from 'vitest';
-import { formatPendingRow, parseModerateArgs } from '@/lib/cron/feedback-moderate';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  formatPendingRow,
+  formatSelectableRow,
+  parseModerateArgs,
+  parseSelection,
+  runModerate,
+} from '@/lib/cron/feedback-moderate';
+
+const { state } = vi.hoisted(() => ({
+  state: {
+    feedbackRow: undefined as { email: string | null; message: string } | undefined,
+    inserted: undefined as { feedbackId: number; message: string } | undefined,
+    approvedId: undefined as number | undefined,
+    emailed: undefined as { to: string; original: string; reply: string } | undefined,
+  },
+}));
+
+vi.mock('@/lib/services/feedback-notify', () => ({
+  notifySubmitterOfResponse: async (to: string, original: string, reply: string) => {
+    state.emailed = { to, original, reply };
+  },
+}));
+
+vi.mock('@/lib/db', () => ({
+  isDbAvailable: () => true,
+  getDb: () => ({
+    select: () => ({
+      from: () => ({
+        where: () => ({ limit: async () => (state.feedbackRow ? [state.feedbackRow] : []) }),
+      }),
+    }),
+    insert: () => ({
+      values: async (v: { feedbackId: number; message: string }) => {
+        state.inserted = v;
+      },
+    }),
+    update: () => ({
+      set: () => ({
+        where: async () => {
+          state.approvedId = 1;
+        },
+      }),
+    }),
+  }),
+}));
 
 describe('parseModerateArgs', () => {
   it('defaults to list when no args', () => {
@@ -14,6 +58,62 @@ describe('parseModerateArgs', () => {
   it('parses --approve <id> and --reject <id>', () => {
     expect(parseModerateArgs(['--approve', '42']).approveId).toBe(42);
     expect(parseModerateArgs(['--reject', '7']).rejectId).toBe(7);
+  });
+
+  it('parses --respond <id> <message>', () => {
+    expect(parseModerateArgs(['--respond', '5', 'here is the answer'])).toMatchObject({
+      respondId: 5,
+      respondMessage: 'here is the answer',
+    });
+  });
+
+  it('treats a bare --respond as interactive (no id consumed)', () => {
+    const args = parseModerateArgs(['--respond']);
+    expect(args.respondInteractive).toBe(true);
+    expect(args.respondId).toBeUndefined();
+  });
+
+  it('treats --respond followed by a non-numeric token as interactive', () => {
+    expect(parseModerateArgs(['--respond', '--list']).respondInteractive).toBe(true);
+  });
+});
+
+describe('parseSelection', () => {
+  it('returns the 1-based number for an in-range choice', () => {
+    expect(parseSelection('3', 5)).toBe(3);
+    expect(parseSelection(' 1 ', 5)).toBe(1);
+  });
+
+  it('returns quit for blank, q, or quit', () => {
+    expect(parseSelection('', 5)).toBe('quit');
+    expect(parseSelection('q', 5)).toBe('quit');
+    expect(parseSelection('QUIT', 5)).toBe('quit');
+  });
+
+  it('returns null for out-of-range or non-numeric input', () => {
+    expect(parseSelection('0', 5)).toBeNull();
+    expect(parseSelection('6', 5)).toBeNull();
+    expect(parseSelection('abc', 5)).toBeNull();
+  });
+});
+
+describe('formatSelectableRow', () => {
+  const base = {
+    id: 12,
+    type: 'question',
+    category: null as string | null,
+    email: 'a@b.com',
+    message: 'A question',
+    createdAt: new Date('2026-08-03T14:30:00Z'),
+  };
+
+  it('prefixes an index and a public/pending status tag', () => {
+    expect(formatSelectableRow(1, { ...base, approved: false })).toContain('[1] pending');
+    expect(formatSelectableRow(2, { ...base, approved: true })).toContain('[2] public');
+  });
+
+  it('includes the underlying row summary', () => {
+    expect(formatSelectableRow(1, { ...base, approved: true })).toContain('#12');
   });
 });
 
@@ -45,5 +145,51 @@ describe('formatPendingRow', () => {
     const out = formatPendingRow({ ...base, message: 'x'.repeat(200) });
     expect(out).toContain('…');
     expect(out).not.toContain('x'.repeat(150));
+  });
+});
+
+describe('runModerate --respond', () => {
+  beforeEach(() => {
+    state.feedbackRow = undefined;
+    state.inserted = undefined;
+    state.approvedId = undefined;
+    state.emailed = undefined;
+  });
+
+  it('stores the reply, publishes the item, and emails a submitter who left an address', async () => {
+    state.feedbackRow = { email: 'user@example.com', message: 'Is X real?' };
+    await runModerate({ list: false, respondId: 5, respondMessage: 'Yes, here is why.' });
+
+    expect(state.inserted).toEqual({ feedbackId: 5, message: 'Yes, here is why.' });
+    expect(state.approvedId).toBe(1);
+    expect(state.emailed).toEqual({
+      to: 'user@example.com',
+      original: 'Is X real?',
+      reply: 'Yes, here is why.',
+    });
+  });
+
+  it('stores and publishes but does not email when no address is on file', async () => {
+    state.feedbackRow = { email: null, message: 'anonymous note' };
+    await runModerate({ list: false, respondId: 8, respondMessage: 'Thanks for the note.' });
+
+    expect(state.inserted).toEqual({ feedbackId: 8, message: 'Thanks for the note.' });
+    expect(state.approvedId).toBe(1);
+    expect(state.emailed).toBeUndefined();
+  });
+
+  it('does nothing when the feedback id is not found', async () => {
+    state.feedbackRow = undefined;
+    await runModerate({ list: false, respondId: 999, respondMessage: 'reply' });
+
+    expect(state.inserted).toBeUndefined();
+    expect(state.approvedId).toBeUndefined();
+    expect(state.emailed).toBeUndefined();
+  });
+
+  it('rejects an empty response message', async () => {
+    await expect(runModerate({ list: false, respondId: 5, respondMessage: '   ' })).rejects.toThrow(
+      /requires a message/,
+    );
   });
 });

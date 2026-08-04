@@ -136,10 +136,16 @@ User feedback is **not shown publicly until approved** — new submissions land 
 **Moderating** (locally or from a Render shell, against prod):
 
 ```bash
-pnpm feedback:moderate                    # list pending submissions
-pnpm feedback:moderate -- --approve <id>  # reveal on the public page
-pnpm feedback:moderate -- --reject <id>   # delete
+pnpm feedback:moderate                          # list pending submissions
+pnpm feedback:moderate -- --approve <id>        # reveal on the public page
+pnpm feedback:moderate -- --reject <id>         # delete
+pnpm feedback:moderate -- --respond <id> "..."  # public reply + publish + email the submitter
+pnpm feedback:moderate -- --respond             # interactive: pick a post, then type a reply
 ```
+
+`--respond` posts a reply that appears under the item on the public feedback page, auto-publishes the item (so the reply is visible), and emails the submitter the reply when they left an address. The email reuses the Resend config.
+
+Run with a bare `--respond` (no id) for an interactive numbered menu of **every** post — pending and already-public, each tagged — so you can find and reply to any item without hunting for its id. Pick a number, then type your reply and finish with a single `.` on its own line. This form needs a real terminal (works in a local shell or the Render web shell); the `--respond <id> "..."` form stays available for scripting.
 
 ## Ongoing Operations
 
