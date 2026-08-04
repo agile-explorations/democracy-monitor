@@ -12,6 +12,29 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-FEEDBACK-MOD: moderated feedback — approval gate + Turnstile + notify + CLI (#668–671, milestone 105) — ✅ deployed 2026-08-04 (v1.5.6, main @ c372f58)
+
+**Origin**: the owner asked whether the feedback path (the only user→DB write) was secure. Audit: the write and display were already safe (Zod-validated, parameterized inserts, rate-limited, email kept out of the public GET, message rendered as escaped plain JSX — no XSS/injection). The real gap was moderation: `GET /api/feedback` displayed the latest 100 submissions publicly and immediately, so spam/abuse could appear until manually removed.
+
+**Planned vs built**: all 4 shipped.
+
+- **#668** `feedback.approved` (default false); the generated migration was augmented with `UPDATE feedback SET approved=true` so existing (already-public) rows are grandfathered atomically — no window where current feedback vanishes. Verified in prod (1/1 grandfathered).
+- **#669** GET filters `approved=true`; POST verifies Cloudflare Turnstile (`turnstile.ts`, skips when `TURNSTILE_SECRET_KEY` unset) then emails `OPS_ALERT_EMAIL` the approve/reject command (`feedback-notify.ts`, user message HTML-escaped).
+- **#670** Turnstile widget on the form (hidden when the site key is absent, so dev is unblocked; submit disabled until the token arrives); CSP adds `challenges.cloudflare.com` to script-src/connect-src/frame-src.
+- **#671** `pnpm feedback:moderate --list/--approve/--reject` — moderation is a CLI, so **DB credentials are the authorization** and the website needs no auth surface.
+
+**Key decisions (owner):** Turnstile over a honeypot (robust, CF-native — the approval gate already stops spam from displaying, so this mainly keeps the moderation queue clean); grandfather existing feedback; moderation via CLI not web-auth.
+
+**Lessons learned:**
+
+- **The `NEXT_PUBLIC_` build-time gotcha**: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is baked at build, so the keys must be in Render before the build for the widget to appear — sequencing the owner needed to know (they're GitHub-Actions-vs-Render-env-easy-to-confuse, like #665's secrets).
+- **A moderation gate shrinks the CAPTCHA's job**: since unapproved feedback never displays, the bot check only reduces queue noise, not public-facing risk — which made the honeypot-vs-Turnstile call a preference, not a security necessity.
+- Augmenting a _generated, journal-registered_ migration with a data `UPDATE` is safe (not the hand-created-SQL trap CLAUDE.md warns about) and the cleanest way to grandfather without a deploy-window gap.
+
+**Also**: v1.5.6 was the first deploy to run the green **self-verifying** path cleanly (R-DEPLOY-HARDEN) after its two false-failures were fixed — workflow went green on its own, `/api/version` confirmed the SHA, no false alert.
+
+**Spec deviations**: none. Owner set the Turnstile keys in Render before deploy (option 1).
+
 ## Sprint R-DEPLOY-HARDEN: self-verifying deploys + failure alerting (#664–666, milestone 104) — ✅ deployed 2026-08-03 (v1.5.4, main @ 74a7fe4)
 
 **Origin**: the v1.5.0 deploy failed silently (CI coverage gate red → Render never deployed → prod on stale code ~3h, unnoticed) because "deployed" was claimed on tag-push, the deploy workflow is async (triggers Render and exits without confirming the new code came up), there was no failure alert, and the pre-push CI-mirror gate had been bypassed with `--no-verify`.
@@ -160,25 +183,3 @@ The origin-secret portion of this sprint did **not** hold up. Recorded here in f
 - **Verify the deployment platform's proxy topology _before_ designing header-injection auth.** Render fronts every service with its own Cloudflare; the orange-to-orange hop strips custom request headers, so a CF→origin shared-header scheme can't work here. One `dig`/header probe up front would have killed the design before it shipped an outage. (Render's own Cloudflare also _spoofs_ the "behind CF" signal — `server: cloudflare`/`cf-ray` on responses does not mean your zone is in-path; verify with `dig +short NS` + the CF dashboard "Active" state.)
 - **Org-wide 2FA enforcement can sever platform integrations — via the member account they authenticate as, not the App.** "Require 2FA for everyone" broke Render because Render's git rides the `BabyYoda-AE` org member account, which lacked 2FA; the installed GitHub App was a red herring. Before enforcing org-wide 2FA, ensure **every member account any integration connects as** has a _secure_ 2FA method — verify with org People → the 2FA-disabled filter, then confirm with a real deploy. Don't reason from "the App is installed."
 - **When a control is provably unenforceable, remove it — don't park it.** Leaving dead middleware "just in case" carries real complexity and a leaked-secret liability; the correct end state was deletion + a documented pointer to the actual fix.
-
----
-
-## Sprint R-FUNNEL: per-source funnel diagnostic with collapse alerting (#547, milestone 97) — ✅ complete 2026-07-30
-
-**Origin**: Top of the #524 follow-on list. The mediaFreedom contamination ran for years — thousands of FR docs retrieved into the category, ~0% ever flagged — invisible because nothing watched the _shape_ of the pipeline per source. Converts that from "a bug we fixed" to "a class of bug we detect."
-
-**Shipped**: `pnpm validate:funnel` — per (category × source_origin), the drop-off across RETRIEVED → RELEVANCE → P1 → P2, with collapse alerting. Wired into the weekly snapshot post-steps (`tryValidateFunnel`): error-tier collapses append to the cron error channel, which the snapshot already funnels into the ops-alert email — so a future contamination auto-pages. Pure collapse logic (`funnel-collapse-checks.ts`, 14 boundary tests) separated from windowed I/O queries (`funnel-validation-queries.ts`) and assembly (`funnel-validation-service.ts`, 9 DB-mocked tests). Exit 2 on error-tier collapse.
-
-**Key decisions:**
-
-- **Granularity = (category × source_origin), not per-signal** (owner). No stored row carries a signal id — it's dropped at storage in `document-store.ts`. Per-signal would need a column + store-time change + full backfill; the coarser view still catches the mediaFreedom case. Filed as future work.
-- **Leave-one-out sibling baseline + thin-baseline guard.** A source alerts only when its stage-retention is below _both_ an absolute floor _and_ its category siblings' pooled baseline. This is the false-positive guard: a category that legitimately flags rarely has a low sibling baseline too, so nothing looks anomalous. When siblings are too sparse to trust (< 500 pooled), severity caps at warn.
-- **FR live-drop ledger folded into RETRIEVED via anti-join.** Post-#524, contaminated FR docs are live-dropped into `fr_drop_ledger` and never stored as documents; without them RETRIEVED would miss the exact future contamination the diagnostic exists to catch. The `NOT EXISTS` anti-join avoids double-counting the historical-annotation drops that ARE stored.
-- **Automated alerting in scope for v1** (owner) — errors auto-page via the existing ops-alert; warns are manual-CLI-only. The catastrophic-absolute rule for sparse-sibling categories (so mediaFreedom-shaped contamination also pages) is filed as **#621**, to be tuned from real warns first.
-
-**Findings from the first prod run**: no error-tier collapses (correct — post-#524 nothing is contaminated); the diagnostic correctly surfaces mediaFreedom/federal_register as a relevance warn (576 retrieved / 90d, 0.5% pass — the FR signal query is broad and #524's filter catches it). Thresholds validated as reasonable; no false positives.
-
-**Lessons learned:**
-
-- **Detoast discipline is a query-design constraint, not an afterthought** — `length(documents.content)` in an unbounded aggregate hangs on the ~6GB TOASTed column; the funnel's mandatory window keeps it in the same safe envelope the L2 queries use. Named the rule in the file header so the next author doesn't reintroduce it.
-- **A diagnostic's severity model is a product decision, not a threshold tweak** — whether mediaFreedom-shaped contamination pages or merely warns turns on the thin-baseline guard, and that's the owner's alert-fatigue call. Surfaced it as such rather than picking silently.
