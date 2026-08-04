@@ -38,6 +38,7 @@ export default defineConfig({
         'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
         'lib/cron/backfill-oversight-gov.ts',
+        'lib/cron/feedback-moderate.ts',
         // CL bulk staging — DB COPY ops, execSync pipes, not unit-testable
         'lib/services/cl-bulk-staging.ts',
       ],

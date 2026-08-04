@@ -3,14 +3,16 @@
  * GET  /api/feedback — list public feedback (no emails).
  */
 
-import { desc } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { z } from 'zod/v4';
 import { getDb } from '@/lib/db';
 import { feedback } from '@/lib/db/schema';
+import { notifyNewFeedback } from '@/lib/services/feedback-notify';
+import { verifyTurnstile } from '@/lib/services/turnstile';
 import { requireDb } from '@/lib/utils/api-helpers';
 import { attachResponses } from '@/lib/utils/feedback-responses';
-import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
+import { enforceRateLimit, getClientIp, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const VALID_TYPES = ['suggestion', 'data-issue', 'question', 'other'] as const;
 
@@ -20,6 +22,9 @@ const FeedbackSchema = z.object({
   type: z.enum(VALID_TYPES),
   message: z.string().min(1, 'Message is required').max(5000, 'Message too long (max 5000 chars)'),
   pageUrl: z.string().max(500).optional(),
+  // Cloudflare Turnstile token; optional here because dev/local runs without
+  // keys — verifyTurnstile enforces it whenever TURNSTILE_SECRET_KEY is set.
+  turnstileToken: z.string().optional(),
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
@@ -47,6 +52,7 @@ async function handleGet(res: NextApiResponse): Promise<void> {
         createdAt: feedback.createdAt,
       })
       .from(feedback)
+      .where(eq(feedback.approved, true))
       .orderBy(desc(feedback.createdAt))
       .limit(100);
 
@@ -64,14 +70,32 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse): Promise<vo
     return;
   }
 
+  if (!(await verifyTurnstile(parsed.data.turnstileToken, getClientIp(req)))) {
+    res.status(400).json({ error: 'Bot check failed — please retry.' });
+    return;
+  }
+
   try {
     const db = getDb();
-    await db.insert(feedback).values({
-      email: parsed.data.email || null,
-      category: parsed.data.category || null,
+    // approved defaults to false — hidden from the public GET until a moderator
+    // approves via `pnpm feedback:moderate --approve <id>` (#668/#671).
+    const [row] = await db
+      .insert(feedback)
+      .values({
+        email: parsed.data.email || null,
+        category: parsed.data.category || null,
+        type: parsed.data.type,
+        message: parsed.data.message,
+        pageUrl: parsed.data.pageUrl || null,
+      })
+      .returning({ id: feedback.id });
+
+    // Non-fatal: a notification failure must not fail the submission.
+    await notifyNewFeedback({
+      id: row.id,
       type: parsed.data.type,
+      category: parsed.data.category || null,
       message: parsed.data.message,
-      pageUrl: parsed.data.pageUrl || null,
     });
 
     res.status(200).json({ success: true });

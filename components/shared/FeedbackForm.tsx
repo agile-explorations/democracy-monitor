@@ -1,9 +1,31 @@
-import { useState } from 'react';
+import Script from 'next/script';
+import { useEffect, useRef, useState } from 'react';
 
 interface FeedbackFormProps {
   initialCategory?: string;
   initialPageUrl?: string;
   onSubmitted?: () => void;
+}
+
+/** Public Turnstile site key; absent in dev/local, where the check is skipped. */
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+interface TurnstileApi {
+  render: (
+    el: HTMLElement,
+    opts: {
+      sitekey: string;
+      callback: (token: string) => void;
+      'expired-callback'?: () => void;
+      'error-callback'?: () => void;
+    },
+  ) => string;
+  reset: (id?: string) => void;
+}
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
 }
 
 const FEEDBACK_TYPES = [
@@ -19,6 +41,26 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  function renderTurnstile() {
+    if (!TURNSTILE_SITE_KEY || !widgetRef.current || !window.turnstile || widgetIdRef.current)
+      return;
+    widgetIdRef.current = window.turnstile.render(widgetRef.current, {
+      sitekey: TURNSTILE_SITE_KEY,
+      callback: (token) => setTurnstileToken(token),
+      'expired-callback': () => setTurnstileToken(''),
+      'error-callback': () => setTurnstileToken(''),
+    });
+  }
+
+  // The api.js may already be loaded (e.g. re-mount) — try rendering on mount too.
+  useEffect(() => {
+    renderTurnstile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +77,7 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
           email: email.trim() || undefined,
           category: initialCategory || undefined,
           pageUrl: initialPageUrl || undefined,
+          turnstileToken: turnstileToken || undefined,
         }),
       });
       if (res.ok) {
@@ -44,10 +87,19 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
         const data = await res.json();
         setStatus('error');
         setErrorMessage(data.error || 'Something went wrong');
+        // Turnstile tokens are single-use — reset so a retry gets a fresh one.
+        if (widgetIdRef.current && window.turnstile) {
+          window.turnstile.reset(widgetIdRef.current);
+          setTurnstileToken('');
+        }
       }
     } catch {
       setStatus('error');
       setErrorMessage('Network error — please try again');
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.reset(widgetIdRef.current);
+        setTurnstileToken('');
+      }
     }
   }
 
@@ -133,9 +185,24 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
 
       {status === 'error' && <p className="text-xs text-red-400">{errorMessage}</p>}
 
+      {TURNSTILE_SITE_KEY && (
+        <>
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="afterInteractive"
+            onLoad={renderTurnstile}
+          />
+          <div ref={widgetRef} />
+        </>
+      )}
+
       <button
         type="submit"
-        disabled={status === 'loading' || !message.trim()}
+        disabled={
+          status === 'loading' ||
+          !message.trim() ||
+          (Boolean(TURNSTILE_SITE_KEY) && !turnstileToken)
+        }
         className="px-4 py-1.5 text-xs font-medium rounded-md bg-dm-accent text-white hover:bg-dm-accent/90 transition-colors disabled:opacity-50"
       >
         {status === 'loading' ? 'Submitting...' : 'Submit feedback'}

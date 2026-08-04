@@ -124,6 +124,23 @@ git clone --mirror repo-<date>.bundle democracy-monitor.git
 | `weekly-snapshot` | Monday 03:00 UTC | Fetch sources, AI assessment, aggregation, narratives |
 | `weekly-dump`     | Monday 05:00 UTC | Trigger `pg_dump` on web service → persistent disk    |
 
+### Feedback moderation (#668–671)
+
+User feedback is **not shown publicly until approved** — new submissions land with `approved=false`, gated out of `GET /api/feedback`. The feedback form is protected by **Cloudflare Turnstile**, and each submission emails `OPS_ALERT_EMAIL` with the approve/reject command. Moderation is a **CLI** — no web auth surface; **DB credentials are the authorization**.
+
+**One-time setup:**
+
+1. **Cloudflare dashboard → Turnstile** → add a widget for `democracymonitor.us`; copy the **site key** and **secret key**.
+2. **Render env**: `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (public, build-time) and `TURNSTILE_SECRET_KEY` (secret). Without them, the widget hides and server verification is skipped (fine for dev; do set them in prod). `OPS_ALERT_EMAIL` is reused from the ops-alert config.
+
+**Moderating** (locally or from a Render shell, against prod):
+
+```bash
+pnpm feedback:moderate                    # list pending submissions
+pnpm feedback:moderate -- --approve <id>  # reveal on the public page
+pnpm feedback:moderate -- --reject <id>   # delete
+```
+
 ## Ongoing Operations
 
 - **Adding schema changes** — Modify `lib/db/schema.ts`, run `pnpm db:generate`, commit the migration. It applies automatically on next deploy.
