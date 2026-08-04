@@ -138,22 +138,30 @@ async function respond(id: number, message: string): Promise<void> {
   }
 }
 
-/** Read reply lines until a line containing only `.`, joined and trimmed. */
-async function readMultilineReply(rl: ReturnType<typeof createInterface>): Promise<string> {
-  console.log('\nEnter your reply. Finish with a single "." on its own line:');
-  const lines: string[] = [];
+/**
+ * Read reply lines from a line iterator until a line containing only `.`,
+ * joined and trimmed. Takes an async line iterator (not repeated
+ * `rl.question()` calls) so that pasted multi-line input is never dropped —
+ * the question-per-line loop discards lines that arrive between prompts (#674).
+ */
+export async function readMultilineReply(lines: AsyncIterator<string>): Promise<string> {
+  const collected: string[] = [];
   for (;;) {
-    const line = await rl.question('');
-    if (line.trim() === '.') break;
-    lines.push(line);
+    const { value, done } = await lines.next();
+    if (done || value.trim() === '.') break;
+    collected.push(value);
   }
-  return lines.join('\n').trim();
+  return collected.join('\n').trim();
 }
 
 /**
  * Interactive `--respond`: list every post (pending + public) as a numbered
  * menu, let the moderator pick one, then collect a multi-line reply and hand it
  * to `respond`. Requires a terminal; the scriptable form is `--respond <id>`.
+ *
+ * Reads both the selection and the reply from a single async line iterator so
+ * no pasted line is dropped (a repeated `rl.question()` loop loses buffered
+ * lines — see #674).
  */
 async function promptInteractiveRespond(): Promise<void> {
   if (!process.stdin.isTTY) {
@@ -171,14 +179,15 @@ async function promptInteractiveRespond(): Promise<void> {
 
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const choice = parseSelection(
-      await rl.question('\nSelect a post number (q to quit): '),
-      rows.length,
-    );
+    const lineIter = rl[Symbol.asyncIterator]();
+    process.stdout.write('\nSelect a post number (q to quit): ');
+    const selection = await lineIter.next();
+    const choice = parseSelection(selection.done ? '' : selection.value, rows.length);
     if (choice !== 'quit' && choice !== null) {
       const selected = rows[choice - 1];
       console.log(`\nResponding to #${selected.id} (${selected.approved ? 'public' : 'pending'}).`);
-      const message = await readMultilineReply(rl);
+      console.log('Enter your reply. Finish with a single "." on its own line:');
+      const message = await readMultilineReply(lineIter);
       if (message) await respond(selected.id, message);
       else console.log('[feedback] Empty reply — aborted.');
     } else {

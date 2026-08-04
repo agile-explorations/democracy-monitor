@@ -4,8 +4,20 @@ import {
   formatSelectableRow,
   parseModerateArgs,
   parseSelection,
+  readMultilineReply,
   runModerate,
 } from '@/lib/cron/feedback-moderate';
+
+/** A fake async line iterator that yields all lines up front — models a paste. */
+function lineIteratorOf(lines: string[]): AsyncIterator<string> {
+  let i = 0;
+  return {
+    next: async () =>
+      i < lines.length
+        ? { value: lines[i++], done: false }
+        : { value: undefined as unknown as string, done: true },
+  };
+}
 
 const { state } = vi.hoisted(() => ({
   state: {
@@ -94,6 +106,28 @@ describe('parseSelection', () => {
     expect(parseSelection('0', 5)).toBeNull();
     expect(parseSelection('6', 5)).toBeNull();
     expect(parseSelection('abc', 5)).toBeNull();
+  });
+});
+
+describe('readMultilineReply', () => {
+  it('joins every line up to the "." terminator (no lines dropped on paste)', async () => {
+    // The whole reply arrives at once, as with a clipboard paste (#674).
+    const reply = await readMultilineReply(
+      lineIteratorOf(['Line ONE', 'https://example.com/methodology', 'Line THREE', '.', 'ignored']),
+    );
+    expect(reply).toBe('Line ONE\nhttps://example.com/methodology\nLine THREE');
+  });
+
+  it('stops at the terminator and ignores anything after it', async () => {
+    expect(await readMultilineReply(lineIteratorOf(['only line', '.']))).toBe('only line');
+  });
+
+  it('returns an empty string when the reply is just the terminator', async () => {
+    expect(await readMultilineReply(lineIteratorOf(['.']))).toBe('');
+  });
+
+  it('stops cleanly if the input ends without a terminator', async () => {
+    expect(await readMultilineReply(lineIteratorOf(['a', 'b']))).toBe('a\nb');
   });
 });
 
