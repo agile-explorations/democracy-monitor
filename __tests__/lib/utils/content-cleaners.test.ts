@@ -122,3 +122,34 @@ describe('chrg front matter (#609)', () => {
     expect(stripBoilerplate(raw, 'chrg')).toBe(raw);
   });
 });
+
+describe('dhs_press trailing boilerplate (#678)', () => {
+  const substance =
+    'GALVESTON, Texas – Ten alleged MS-13 gang members were indicted Aug. 24 by a federal ' +
+    'grand jury for various crimes including racketeering conspiracy and murder. ' +
+    'The indictment alleges the defendants conspired to murder rival gang members.';
+
+  it('strips a trailing social-media block', () => {
+    const raw = `${substance} Follow CBP on X @CBPChicago and @DFOChicago.`;
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(substance.trimEnd());
+  });
+
+  it('strips a trailing HSI mission paragraph', () => {
+    const raw = `${substance} HSI is the principal investigative arm of the Department of Homeland Security.`;
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(substance.trimEnd());
+  });
+
+  it('strips a ### terminator tail', () => {
+    const raw = `${substance} ### For media inquiries contact ICE.`;
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(substance.trimEnd());
+  });
+
+  it('ignores marker text early in the body', () => {
+    const raw = `For media inquiries note: ${substance}`;
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(raw);
+  });
+
+  it('leaves clean content untouched', () => {
+    expect(stripBoilerplate(substance, 'dhs_press')).toBe(substance);
+  });
+});

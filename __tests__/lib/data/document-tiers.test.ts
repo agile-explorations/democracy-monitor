@@ -82,6 +82,12 @@ describe('labelForSourceType', () => {
     expect(labelForSourceType('some_new_type')).toBe('some new type');
     expect(labelForSourceType(null)).toBe('Document');
   });
+
+  it('labels press releases by origin (DOJ API vs DHS newsrooms)', () => {
+    expect(labelForSourceType('press_release', 'doj')).toBe('DOJ Release');
+    expect(labelForSourceType('press_release', 'dhs_press')).toBe('DHS Release');
+    expect(labelForSourceType('press_release')).toBe('Press Release');
+  });
 });
 
 describe('hearing_transcript tier (#609)', () => {

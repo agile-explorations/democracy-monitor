@@ -16,6 +16,7 @@ const SIGNAL_TYPE_TO_SOURCE: Record<string, string> = {
   govinfo: 'govinfo',
   fec_json: 'fec',
   oig_html: 'oig',
+  dhs_press: 'dhs_press',
 };
 
 interface FetchResultParams {

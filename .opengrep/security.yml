@@ -97,6 +97,7 @@ rules:
         # at the bottom, but getDb() appears in function bodies above. Rule can't trace across
         # function boundaries — these files correctly load env before calling exported functions.
         - lib/cron/backfill-content.ts
+        - lib/cron/backfill-dhs-press.ts
         - lib/cron/backfill-layer2.ts
         - lib/cron/backfill-oversight-gov.ts
         - lib/cron/feedback-moderate.ts

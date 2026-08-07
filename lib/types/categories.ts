@@ -8,7 +8,8 @@ export type SignalType =
   | 'doj_json'
   | 'govinfo'
   | 'fec_json'
-  | 'oig_html';
+  | 'oig_html'
+  | 'dhs_press';
 
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 

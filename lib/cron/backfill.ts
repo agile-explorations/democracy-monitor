@@ -47,6 +47,7 @@ const SOURCE_TO_SIGNAL_TYPE: Record<string, string> = {
   fec: 'fec_json',
   fr: 'federal_register',
   oig: 'oig_html',
+  'dhs-press': 'dhs_press',
 };
 
 const SPECIAL_SOURCES: ReadonlySet<string> = new Set(['legiscan', 'cpd', 'crec', 'chrg']);
@@ -60,6 +61,7 @@ type SignalGroups = {
   gi: Signal[];
   fec: Signal[];
   oig: Signal[];
+  dhspress: Signal[];
 };
 
 const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
@@ -69,6 +71,7 @@ const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
   fec_json: 'fec',
   federal_register: 'fr',
   oig_html: 'oig',
+  dhs_press: 'dhspress',
 };
 
 /** Fetch, store, score, aggregate, and embed a week's documents. */
@@ -130,6 +133,7 @@ function buildSignalGroups(
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
     oig: signals.filter((s) => s.type === 'oig_html'),
+    dhspress: signals.filter((s) => s.type === 'dhs_press'),
   };
   if (sourceSignalType) {
     const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];

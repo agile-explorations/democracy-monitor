@@ -166,6 +166,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [],
+        dhspress: [],
       },
       'lawEnforcement',
     );
@@ -198,6 +199,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [],
+        dhspress: [],
       },
       'lawEnforcement',
     );
@@ -212,7 +214,7 @@ describe('fetchWeekDocuments', () => {
     const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
     const result = await fetchWeekDocuments(
       week,
-      { fr: [], cl: [], doj: [], gi: [], fec: [], oig: [] },
+      { fr: [], cl: [], doj: [], gi: [], fec: [], oig: [], dhspress: [] },
       'executiveAuthority',
     );
 
@@ -246,6 +248,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [{ url: 'fec://mur', type: 'fec_json' }],
         oig: [],
+        dhspress: [],
       },
       'elections',
     );
@@ -279,6 +282,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [{ url: 'fec://mur', type: 'fec_json' }],
         oig: [],
+        dhspress: [],
       },
       'elections',
     );
@@ -313,6 +317,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [{ url: 'oig://hhs', type: 'oig_json' }],
+        dhspress: [],
       },
       'executiveOversight',
     );
@@ -347,6 +352,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [{ url: 'oig://ssa', type: 'oig_json' }],
+        dhspress: [],
       },
       'executiveOversight',
     );
@@ -383,6 +389,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [{ url: 'oig://doj', type: 'oig_json' }],
+        dhspress: [],
       },
       'executiveOversight',
     );
@@ -425,6 +432,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [{ url: 'oig://oversight?oigs=283', type: 'oig_html' }],
+        dhspress: [],
       },
       'civilService',
     );
@@ -463,6 +471,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [{ url: 'oig://oversight?oigs=283', type: 'oig_html' }],
+        dhspress: [],
       },
       'civilService',
     );
@@ -491,6 +500,7 @@ describe('fetchWeekDocuments', () => {
         gi: [],
         fec: [],
         oig: [],
+        dhspress: [],
       },
       'lawEnforcement',
     );

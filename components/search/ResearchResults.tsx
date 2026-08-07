@@ -114,7 +114,7 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
                   : 'Primary source: a government action'
               }
             >
-              {labelForSourceType(doc.sourceType)}
+              {labelForSourceType(doc.sourceType, doc.sourceOrigin)}
             </span>
           </div>
         </div>
