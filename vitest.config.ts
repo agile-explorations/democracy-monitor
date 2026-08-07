@@ -15,6 +15,10 @@ export default defineConfig({
         // I/O-heavy fetcher modules: pure conversion functions are tested,
         // but fetch/pagination logic is integration code (not unit-testable)
         'lib/services/courtlistener-fetcher.ts',
+        // dhs-press: pure parsing lives in dhs-press-parsers.ts (fully covered);
+        // these two carry the listing-walk / sitemap / CDX fetch I/O
+        'lib/services/dhs-press-fetcher.ts',
+        'lib/services/dhs-press-archive.ts',
         'lib/services/doj-fetcher.ts',
         'lib/services/fec-fetcher.ts',
         'lib/services/federal-register-fetcher.ts',
