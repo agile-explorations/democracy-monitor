@@ -46,6 +46,7 @@ import { getWeekRanges } from '@/lib/utils/date-utils';
 const HOSTS: PressHost[] = ['dhs', 'ice', 'cbp'];
 const CANARY_SAMPLE_SIZE = 50;
 const CONTENT_FLOOR_CHARS = 100;
+const BULK_WALK_MAX_PAGES = 600;
 
 interface PressBackfillOptions {
   hosts: PressHost[];
@@ -102,7 +103,11 @@ async function enumerateHost(host: PressHost, opts: PressBackfillOptions) {
   }
   if (opts.to >= T2_INAUGURATION) {
     const liveFrom = opts.from >= T2_INAUGURATION ? opts.from : T2_INAUGURATION;
-    const live = await walkListingRange(host, liveFrom, opts.to);
+    // The fetcher's default walk cap (50 pages) suits weekly incremental runs;
+    // a bulk span must walk the whole live listing (DHS ~119pp, CBP ~107pp —
+    // live-caught 2026-08-07 when the T2 dry-run returned exactly 50×pageSize
+    // for DHS). 600 comfortably exceeds any listing depth.
+    const live = await walkListingRange(host, liveFrom, opts.to, BULK_WALK_MAX_PAGES);
     items.push(
       ...(host === 'cbp' ? live.filter((i) => i.urlClass !== 'local-media-release') : live),
     );
