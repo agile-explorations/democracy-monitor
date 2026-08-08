@@ -252,6 +252,21 @@ export function DetailedContent() {
           ingest run.
         </p>
         <p>
+          <strong>What counts as a document:</strong> the corpus has two tiers. Full-text documents
+          (roughly three-fifths of stored rows) carry a complete body and are what document counts,
+          search, and AI assessment operate on. The rest are metadata-only records — chiefly federal
+          court docket entries, where each row records that a filing <em>happened</em> (case, date,
+          filing type) even though most filing texts sit behind the PACER paywall. These event
+          records power case-activity tracking and tell the pipeline which entries have retrievable
+          opinions, but they are excluded from document counts, search results, and all detection
+          layers so a body-less row can never masquerade as a substantive document. A small number
+          of metadata-only rows record documents whose bodies are unobtainable (for example, reports
+          an agency stopped publishing openly), and a legacy set of media-metadata rows from a
+          retired source remains in the public database dump but is excluded from all analysis.
+          Anyone loading the downloadable dump will therefore see more rows than the searchable
+          document count — the difference is these event and metadata records.
+        </p>
+        <p>
           Source ingestion is health-checked on every weekly run. A source that fails to fetch is
           marked unavailable; one that succeeds but returns zero documents for two consecutive
           checks is marked silent. Unhealthy sources surface as alerts on the System pages and roll
