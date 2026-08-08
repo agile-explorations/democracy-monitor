@@ -46,7 +46,13 @@ interface DhsBaselineRow {
 async function fetchWaybackHtml(url: string): Promise<{ html: string; captureUrl: string } | null> {
   // web/2026id_/ redirects to the nearest capture at-or-before 2026; id_ serves
   // the original bytes without replay chrome.
-  for (const target of [url, toOriginalNewsUrl(url)].filter(Boolean) as string[]) {
+  //
+  // Provenance-strength order (owner discussion 2026-08-08): prefer captures of
+  // the ORIGINAL pre-purge /news/ URL — archived contemporaneously while the
+  // page was openly published and robots-permitted — over captures of the
+  // post-move /archive/news page (which IA may hold under its post-2017
+  // policy of not honoring robots.txt for archival crawls).
+  for (const target of [toOriginalNewsUrl(url), url].filter(Boolean) as string[]) {
     const replayUrl = `https://web.archive.org/web/2026id_/${target}`;
     try {
       const response = await fetch(replayUrl, {
