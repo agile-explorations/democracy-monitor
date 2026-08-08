@@ -29,8 +29,10 @@ export const CDX_BUFFER_DAYS = 60;
 
 export const DHS_ARCHIVE_PRESS_PATH = '/archive/news?field_news_type_target_id=436';
 
-const FETCH_MAX_ATTEMPTS = 3;
-const FETCH_RETRY_BASE_MS = 5_000;
+// 5 attempts with linear backoff: Wayback's CDX gateway sheds load with 503s
+// during sustained resume-key pagination and needs patience, not speed.
+const FETCH_MAX_ATTEMPTS = 5;
+const FETCH_RETRY_BASE_MS = 8_000;
 
 /** Fetch with linear-backoff retries — enumeration endpoints throw transient
  * connect timeouts (observed live: undici UND_ERR_CONNECT_TIMEOUT on a host

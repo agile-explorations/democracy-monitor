@@ -549,6 +549,27 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<Snaps
 
   const cronRunId = await startCronRun('snapshot');
   const start = Date.now();
+
+  // Robots-compliance gate (owner directive 2026-08-08): audit every consumed
+  // host's robots.txt on every weekly run. Violations alert ops and are
+  // recorded as run errors; the snapshot itself proceeds (a robots change
+  // mid-week should page a human, not silently blank the week's data).
+  try {
+    const { auditRobotsCompliance, reportRobotsAudit } =
+      await import('@/lib/services/robots-compliance');
+    const robots = await auditRobotsCompliance();
+    reportRobotsAudit(robots, 'snapshot');
+    if (robots.violations.length > 0) {
+      const { sendOpsAlert } = await import('@/lib/services/ops-alert-service');
+      await sendOpsAlert(
+        `Robots.txt violation detected (${robots.violations.length} path(s))`,
+        robots.violations.map((v) => `${v.host}${v.path} — ${v.matchedRule} [${v.status}]`),
+      );
+    }
+  } catch (err) {
+    console.error(`[snapshot] robots audit failed: ${err}`);
+  }
+
   const cats = options.category ? CATEGORIES.filter((c) => c.key === options.category) : CATEGORIES;
   if (options.category && cats.length === 0) {
     throw new Error(`Category "${options.category}" not found`);

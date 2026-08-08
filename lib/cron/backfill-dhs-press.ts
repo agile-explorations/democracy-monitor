@@ -61,7 +61,10 @@ interface PressBackfillOptions {
 const CDX_PREFIXES: Record<PressHost, string> = {
   dhs: 'dhs.gov/news/',
   ice: 'ice.gov/news/releases/',
-  cbp: 'cbp.gov/newsroom/',
+  // National class only — the bare /newsroom/ prefix drags the huge
+  // local-media-release capture set through CDX pagination, where sustained
+  // resume-key walks hit Wayback 503 load-shedding (live-observed 2026-08-07).
+  cbp: 'cbp.gov/newsroom/national-media-release/',
 };
 
 const urlStub = (url: string, host: PressHost): PressListingItem => ({
