@@ -246,8 +246,10 @@ export function DetailedContent() {
           component original. Every captured release is stored with its full text and screened by
           the AI document-review layer downstream — relevance triage happens in assessment, never at
           ingest. Because the agencies&apos; live newsroom listings only reach back to January 20,
-          2025, earlier releases are recovered from the agencies&apos; own archive pages and
-          sitemaps, where the documents remain published.
+          2025, earlier releases are recovered from the agencies&apos; own sitemaps where their
+          robots.txt policies permit, and from the Internet Archive&apos;s Wayback Machine where
+          they do not; every source&apos;s robots.txt is re-verified programmatically on each weekly
+          ingest run.
         </p>
         <p>
           Source ingestion is health-checked on every weekly run. A source that fails to fetch is

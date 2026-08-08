@@ -81,6 +81,7 @@
     "headlines:backfill": "tsx lib/cron/backfill-week-headlines.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
     "validate:graph": "tsx lib/cron/validate-graph.ts",
+    "dhs:resource-wayback": "tsx lib/cron/resource-dhs-wayback.ts",
     "validate:robots": "tsx lib/cron/validate-robots.ts",
     "pipeline:repair": "tsx lib/cron/pipeline-repair.ts",
     "digest:send": "tsx lib/cron/send-digest.ts",
