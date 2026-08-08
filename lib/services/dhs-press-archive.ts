@@ -69,11 +69,17 @@ export function filterIcePressUrls(urls: string[]): string[] {
   return urls.filter((u) => /^https:\/\/www\.ice\.gov\/news\/releases\/[^/?#]+$/.test(u));
 }
 
-/** CBP press-release URLs (national scope drops local-media-release) (pure). */
+/**
+ * CBP press-release URLs (national scope drops local-media-release) (pure).
+ * Only media-release classes are kept — speeches-and-statements is excluded so
+ * the baseline (sitemap) scope matches the live listing walk, which reads the
+ * /newsroom/media-releases view (era-scope parity, owner decision 2026-08-07).
+ */
 export function filterCbpPressUrls(urls: string[], scope?: 'national'): string[] {
   return urls.filter((u) => {
     if (!u.startsWith('https://www.cbp.gov/')) return false;
-    if (cbpUrlClass(u) === null) return false;
+    const urlClass = cbpUrlClass(u);
+    if (urlClass === null || !urlClass.endsWith('media-release')) return false;
     return scope === 'national' ? !isLocalMediaRelease(u) : true;
   });
 }

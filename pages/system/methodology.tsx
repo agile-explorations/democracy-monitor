@@ -206,6 +206,11 @@ export function DetailedContent() {
               'Every few days',
             ],
             [
+              'DHS/ICE/CBP Press Releases',
+              'Operational press releases from DHS headquarters, ICE (full newsroom, including local enforcement operations), and CBP (national media releases)',
+              'Weekly',
+            ],
+            [
               'Congressional Record (CREC)',
               'Senate and House floor speeches with speaker attribution',
               'Daily when in session',
@@ -228,6 +233,22 @@ export function DetailedContent() {
             ],
           ]}
         />
+        <p>
+          <strong>DHS/ICE/CBP capture scope:</strong> the homeland-security press corpus is captured
+          in full within a deliberate scope, with no keyword or relevance filtering at ingest. From
+          DHS headquarters, only the Press Releases news type is collected (speeches, testimony,
+          fact sheets, and blog posts are not). From ICE, every newsroom release is collected,
+          including local enforcement-operation announcements — often the most detection-relevant
+          content. From CBP, national media releases are collected while port-level local media
+          releases (routine seizure and trade notices) are excluded by their URL class. Other DHS
+          component newsrooms (USCIS, TSA, FEMA, Secret Service) are not monitored. Releases
+          cross-posted by DHS headquarters and a component newsroom are deduplicated to the
+          component original. Every captured release is stored with its full text and screened by
+          the AI document-review layer downstream — relevance triage happens in assessment, never at
+          ingest. Because the agencies&apos; live newsroom listings only reach back to January 20,
+          2025, earlier releases are recovered from the agencies&apos; own archive pages and
+          sitemaps, where the documents remain published.
+        </p>
         <p>
           Source ingestion is health-checked on every weekly run. A source that fails to fetch is
           marked unavailable; one that succeeds but returns zero documents for two consecutive

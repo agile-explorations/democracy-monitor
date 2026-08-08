@@ -32,7 +32,7 @@ describe('sitemap URL filters', () => {
     ).toEqual(['https://www.ice.gov/news/releases/ten-indicted']);
   });
 
-  it('keeps CBP newsroom releases, dropping local class under national scope', () => {
+  it('keeps only CBP media-release classes, dropping local under national scope', () => {
     const urls = [
       'https://www.cbp.gov/newsroom/national-media-release/watches',
       'https://www.cbp.gov/newsroom/local-media-release/port-roundup',
@@ -41,9 +41,13 @@ describe('sitemap URL filters', () => {
     ];
     expect(filterCbpPressUrls(urls, 'national')).toEqual([
       'https://www.cbp.gov/newsroom/national-media-release/watches',
-      'https://www.cbp.gov/newsroom/speeches-and-statements/remarks',
     ]);
-    expect(filterCbpPressUrls(urls)).toHaveLength(3);
+    // Unscoped keeps local but never speeches — the live listing walk reads the
+    // media-releases view, and baseline scope must match it.
+    expect(filterCbpPressUrls(urls)).toEqual([
+      'https://www.cbp.gov/newsroom/national-media-release/watches',
+      'https://www.cbp.gov/newsroom/local-media-release/port-roundup',
+    ]);
   });
 });
 
