@@ -28,12 +28,22 @@ export interface RobotsVerdict {
   status: RobotsRegistryEntry['status'];
 }
 
+export interface RobotsHostRecord {
+  host: string;
+  /** HTTP status of the robots.txt fetch (null = network failure). */
+  fetchStatus: number | null;
+  /** Raw robots.txt body observed at check time (null when unreachable). */
+  robotsTxt: string | null;
+}
+
 export interface RobotsAuditResult {
   verdicts: RobotsVerdict[];
   /** Disallowed paths on crawl-kind hosts — the actionable violations. */
   violations: RobotsVerdict[];
   /** Hosts whose robots.txt could not be fetched (audited as default-allow). */
   unreachableHosts: string[];
+  /** Raw per-host evidence for the persisted audit trail. */
+  hostRecords: RobotsHostRecord[];
 }
 
 /** Parse robots.txt into per-rule lists for the group governing our UA (pure). */
@@ -97,7 +107,9 @@ export function isPathAllowed(
   };
 }
 
-async function fetchRobotsTxt(host: string): Promise<string | null> {
+async function fetchRobotsTxt(
+  host: string,
+): Promise<{ text: string | null; status: number | null }> {
   try {
     const response = await fetch(`https://${host}/robots.txt`, {
       headers: { 'User-Agent': 'DemocracyMonitor/1.0 (civic monitoring)' },
@@ -105,11 +117,13 @@ async function fetchRobotsTxt(host: string): Promise<string | null> {
       redirect: 'follow',
     });
     // 4xx (incl. 404 "no robots") ⇒ unrestricted per RFC 9309 §2.3.1.2.
-    if (!response.ok) return response.status >= 500 ? null : '';
-    return response.text();
+    if (!response.ok) {
+      return { text: response.status >= 500 ? null : '', status: response.status };
+    }
+    return { text: await response.text(), status: response.status };
   } catch (err) {
     console.warn(`[robots-compliance] robots.txt fetch failed for ${host}: ${err}`);
-    return null;
+    return { text: null, status: null };
   }
 }
 
@@ -123,13 +137,15 @@ export async function auditRobotsCompliance(
 ): Promise<RobotsAuditResult> {
   const verdicts: RobotsVerdict[] = [];
   const unreachableHosts: string[] = [];
+  const hostRecords: RobotsHostRecord[] = [];
   const byHost = new Map<string, RobotsRegistryEntry[]>();
   for (const entry of registry) {
     byHost.set(entry.host, [...(byHost.get(entry.host) ?? []), entry]);
   }
 
   for (const [host, entries] of byHost) {
-    const text = await fetchRobotsTxt(host);
+    const { text, status } = await fetchRobotsTxt(host);
+    hostRecords.push({ host, fetchStatus: status, robotsTxt: text });
     if (text === null) {
       unreachableHosts.push(host);
       continue;
@@ -144,7 +160,42 @@ export async function auditRobotsCompliance(
   }
 
   const violations = verdicts.filter((v) => !v.allowed && v.kind === 'crawl');
-  return { verdicts, violations, unreachableHosts };
+  return { verdicts, violations, unreachableHosts, hostRecords };
+}
+
+/**
+ * Persist an audit to the robots_audit trail — one row per host with the raw
+ * robots.txt observed and that host's verdicts. The evidentiary record behind
+ * "we were compliant when we retrieved these documents".
+ */
+export async function persistRobotsAudit(
+  result: RobotsAuditResult,
+  trigger: 'snapshot' | 'manual' | 'retrospective',
+  note?: string,
+  robotsSource: 'live' | 'wayback' = 'live',
+): Promise<number> {
+  const { isDbAvailable, getDb } = await import('@/lib/db');
+  if (!isDbAvailable()) {
+    console.warn('[robots-compliance] DB unavailable — audit NOT persisted');
+    return 0;
+  }
+  const { robotsAudit } = await import('@/lib/db/schema');
+  const rows = result.hostRecords.map((record) => {
+    const hostVerdicts = result.verdicts.filter((v) => v.host === record.host);
+    return {
+      trigger,
+      host: record.host,
+      fetchStatus: record.fetchStatus,
+      robotsTxt: record.robotsTxt,
+      robotsSource,
+      verdicts: hostVerdicts,
+      violationCount: hostVerdicts.filter((v) => !v.allowed && v.kind === 'crawl').length,
+      note: note ?? null,
+    };
+  });
+  if (rows.length === 0) return 0;
+  await getDb().insert(robotsAudit).values(rows);
+  return rows.length;
 }
 
 /** Console-log an audit result in the pipeline's standard format. */

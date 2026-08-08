@@ -7,12 +7,18 @@
  * can gate on it.
  */
 
-import { auditRobotsCompliance, reportRobotsAudit } from '@/lib/services/robots-compliance';
+import {
+  auditRobotsCompliance,
+  persistRobotsAudit,
+  reportRobotsAudit,
+} from '@/lib/services/robots-compliance';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 async function main(): Promise<void> {
   const result = await auditRobotsCompliance();
   reportRobotsAudit(result, 'validate-robots');
+  const persisted = await persistRobotsAudit(result, 'manual', 'validate:robots CLI');
+  console.log(`[validate-robots] audit trail: ${persisted} host rows persisted`);
   for (const v of result.verdicts) {
     const flag = v.allowed ? '✓' : '✗';
     console.log(

@@ -555,10 +555,11 @@ export async function runSnapshots(options: SnapshotOptions = {}): Promise<Snaps
   // recorded as run errors; the snapshot itself proceeds (a robots change
   // mid-week should page a human, not silently blank the week's data).
   try {
-    const { auditRobotsCompliance, reportRobotsAudit } =
+    const { auditRobotsCompliance, persistRobotsAudit, reportRobotsAudit } =
       await import('@/lib/services/robots-compliance');
     const robots = await auditRobotsCompliance();
     reportRobotsAudit(robots, 'snapshot');
+    await persistRobotsAudit(robots, 'snapshot', 'weekly snapshot gate');
     if (robots.violations.length > 0) {
       const { sendOpsAlert } = await import('@/lib/services/ops-alert-service');
       await sendOpsAlert(

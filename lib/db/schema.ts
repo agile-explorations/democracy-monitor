@@ -682,3 +682,32 @@ export const chrgSeenLedger = pgTable(
   },
   (table) => [unique('uq_chrg_seen_ledger_package_id').on(table.packageId)],
 );
+
+/**
+ * Robots.txt compliance audit trail (#685, owner directive 2026-08-08).
+ * One row per host per audit run, carrying the RAW robots.txt text observed at
+ * check time plus the per-path verdicts — the evidentiary record that lets us
+ * report the pipeline was compliant when documents were retrieved.
+ * Trigger values: snapshot (weekly gate) | manual (validate:robots) |
+ * retrospective (Wayback-evidenced attestation for a past fetch window).
+ */
+export const robotsAudit = pgTable(
+  'robots_audit',
+  {
+    id: serial('id').primaryKey(),
+    auditedAt: timestamp('audited_at', { withTimezone: true }).defaultNow().notNull(),
+    trigger: varchar('trigger', { length: 20 }).notNull(),
+    host: varchar('host', { length: 120 }).notNull(),
+    /** HTTP status of the robots.txt fetch (null = network failure). */
+    fetchStatus: integer('fetch_status'),
+    /** Raw robots.txt body observed at check time (null when unreachable). */
+    robotsTxt: text('robots_txt'),
+    /** Where the robots text came from: live | wayback (retrospective rows). */
+    robotsSource: varchar('robots_source', { length: 20 }).notNull().default('live'),
+    /** Per-path verdicts: [{path, allowed, matchedRule, kind, status}]. */
+    verdicts: jsonb('verdicts').notNull(),
+    violationCount: integer('violation_count').notNull().default(0),
+    note: text('note'),
+  },
+  (table) => [index('idx_robots_audit_host_time').on(table.host, table.auditedAt)],
+);
