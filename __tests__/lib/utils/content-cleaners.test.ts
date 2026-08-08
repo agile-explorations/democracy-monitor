@@ -153,3 +153,19 @@ describe('dhs_press trailing boilerplate (#678)', () => {
     expect(stripBoilerplate(substance, 'dhs_press')).toBe(substance);
   });
 });
+
+describe('dhs_press Wayback-era press header (#685)', () => {
+  it('strips the For Immediate Release header block', () => {
+    const raw =
+      'For Immediate ReleaseOffice of the Press SecretaryContact: 202-282-8010' +
+      'WASHINGTON – Today, the Secretary announced a new directive affecting enforcement priorities nationwide.';
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(
+      'WASHINGTON – Today, the Secretary announced a new directive affecting enforcement priorities nationwide.',
+    );
+  });
+
+  it('leaves modern-template bodies without the header untouched', () => {
+    const raw = 'WASHINGTON – Today, the Secretary announced a new directive.';
+    expect(stripBoilerplate(raw, 'dhs_press')).toBe(raw);
+  });
+});
