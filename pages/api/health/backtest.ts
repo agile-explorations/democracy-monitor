@@ -34,6 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const totalEvents = totalDetected + totalLatency + totalMissed;
 
     const payload = {
+      // Stamped at compute time so cached copies report their true age.
+      generatedAt: new Date().toISOString(),
       period: `${DEFAULT_FROM} → ${DEFAULT_TO}`,
       totalEvents,
       detected: totalDetected,

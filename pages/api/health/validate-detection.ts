@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!requireDb(res)) return;
 
   try {
-    const report = await runValidation();
+    const report = { ...(await runValidation()), generatedAt: new Date().toISOString() };
     return res.status(200).json(report);
   } catch (err) {
     console.error('[api/health/validate-detection] Error:', err);

@@ -7,7 +7,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!requireDb(res)) return;
 
   try {
-    const report = await runIngestValidation();
+    // Live compute — stamp generatedAt so the freshness bar shows "as of <now>"
+    // instead of "not yet computed (stale)" for an always-fresh report.
+    const report = { ...(await runIngestValidation()), generatedAt: new Date().toISOString() };
     return res.status(200).json(report);
   } catch (err) {
     console.error('[api/health/validate-ingest] Error:', err);
