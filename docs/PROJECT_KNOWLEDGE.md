@@ -62,15 +62,15 @@ baselines ──(feeds 5)──> enrichment (structural z-scores need baseline s
 enrichment + assessments ──(7)──> narratives / week_headlines / term summary
 ```
 
-| Edge                  | Owning tool(s)                                                                                         | Eligibility rule                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| (1) score             | weekly: `scoreDocumentBatch` at store sites + `assessStoredWeek`; repair: `scores:backfill`            | content ≥ 100 chars, not metadata_only (`SCORING_MIN_CONTENT_CHARS`)        |
-| (2) count aggregation | `computeWeeklyAggregate` + `storeWeeklyAggregate` (count-preserving); gaps: `aggregates:backfill-gaps` | every completed category-week gets a row, even 0-doc (#567)                 |
-| (3) assessment        | weekly: `assessStoredWeek`; repair: `review:backfill` (capped, per #564)                               | content ≥ 100 chars, not metadata_only, retrieval-relevant                  |
-| (4) embedding         | `embeddings:backfill` / snapshot post-step                                                             | same eligibility as (3)                                                     |
-| (5) enrichment        | weekly: `runLayersAndAggregate`; repair: `scores:enrich --from --to` (never bare)                      | consumes (2)+(3)+baselines; bare row stored even if enrichment fails (#567) |
-| (6) baselines         | `baselines:compute --baseline X`                                                                       | after any (1)/(2) change inside that baseline period                        |
-| (7) narratives        | snapshot narrative cascade; `narratives:regenerate`                                                    | term summary regenerates on staleness vs newest aggregate                   |
+| Edge                  | Owning tool(s)                                                                                         | Eligibility rule                                                                                                                                                                                                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (1) score             | weekly: `scoreDocumentBatch` at store sites + `assessStoredWeek`; repair: `scores:backfill`            | content ≥ 100 chars, not metadata_only (`SCORING_MIN_CONTENT_CHARS`)                                                                                                                                                                                                                      |
+| (2) count aggregation | `computeWeeklyAggregate` + `storeWeeklyAggregate` (count-preserving); gaps: `aggregates:backfill-gaps` | every completed category-week gets a row, even 0-doc (#567)                                                                                                                                                                                                                               |
+| (3) assessment        | weekly: `assessStoredWeek`; repair: `review:backfill` (capped, per #564)                               | content ≥ 100 chars, not metadata_only, retrieval-relevant                                                                                                                                                                                                                                |
+| (4) embedding         | `embeddings:backfill` / snapshot post-step                                                             | same eligibility as (3)                                                                                                                                                                                                                                                                   |
+| (5) enrichment        | weekly: `runLayersAndAggregate`; repair: `scores:enrich --from --to` (never bare)                      | consumes (2)+(3)+baselines; bare row stored even if enrichment fails (#567)                                                                                                                                                                                                               |
+| (6) baselines         | `baselines:compute --baseline X`                                                                       | after any (1)/(2) change inside that baseline period                                                                                                                                                                                                                                      |
+| (7) narratives        | snapshot narrative cascade; `narratives:regenerate`                                                    | TWO classes: per-category narratives (5 audience versions; regenerate via `--category`) and the cross-category weekly summary (`--type weekly`) — `--type weekly` does NOT touch per-category narratives (trap hit 2026-08-09); term summary regenerates on staleness vs newest aggregate |
 
 ### Invalidation rules (if X changes → re-run, in order)
 
@@ -78,6 +78,10 @@ enrichment + assessments ──(7)──> narratives / week_headlines / term sum
   re-aggregation (removals; see `scores:purge-stubs` pattern) → (6) `baselines:compute` for any
   touched baseline period → (5) `scores:enrich` over the touched range → flip-gate + `nc:margins`
   diff → (7) narratives only if statuses/labels changed.
+- **document content replaced in place (provenance re-source, e.g. #685 Wayback)** → for each doc
+  whose body actually changed: purge its (1) score row and (3) assessment rows → re-run (1)+(3)
+  scoped → (5) enrich touched weeks; docs whose re-sourced body matches byte-for-normalized-byte
+  need only a metadata/provenance stamp (no derived-row churn).
 - **assessments added (review:backfill)** → (5) enrich over the touched range (statuses may
   legitimately move — Option-A rehearsal or prod canary REQUIRED for doc-adding baseline repairs,
   per the R-PARITY retro rule) → (7) term-summary staleness handles itself.
