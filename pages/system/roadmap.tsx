@@ -161,6 +161,63 @@ export default function RoadmapPage() {
           </ol>
         </Section>
 
+        <Section title="Following the Money" id="following-the-money">
+          <p className="italic text-dm-muted text-xs mb-2">
+            Under consideration — tell us if this matters to you
+          </p>
+          <p>
+            Documents show what the government says it will do. Budget and spending data show what
+            it actually does. Federal sources make both sides public: the President&apos;s Budget
+            (per-agency request documents and account-level budget tables back to 1962) and the
+            Treasury&apos;s monthly outlay data (actual spending per agency, back to 1980) — which
+            together support a programmatic <strong>budget-vs-actual</strong> comparison for every
+            agency.
+          </p>
+          <p>We&apos;re considering building, in stages:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>
+              <strong>Budget documents in search</strong> — agency budget requests become searchable
+              and citable in Research mode, so questions about funding get outcome-grounded answers
+            </li>
+            <li>
+              <strong>A budget-vs-actual view</strong> — per-agency spending trendlines against
+              plan, surfacing divergences like appropriated funds that stop flowing (the core
+              question of our Fiscal Independence category, today visible only through litigation)
+              or enforcement spending that surges past what Congress budgeted
+            </li>
+            <li>
+              <strong>Claims vs. spending</strong> — placing agency press releases (which we now
+              archive comprehensively for DHS, ICE, and CBP) next to the money that did or
+              didn&apos;t follow them
+            </li>
+          </ol>
+          <p>
+            This would touch several other items on this page: it adds the funding backbone that{' '}
+            <a href="#authoritarian-infrastructure" className="text-dm-accent hover:underline">
+              Authoritarian Infrastructure Monitoring
+            </a>{' '}
+            needs (tracking whether enforcement capacity is being <em>funded</em>, not just
+            announced); it gives{' '}
+            <a href="#rhetoric-action" className="text-dm-accent hover:underline">
+              Rhetoric vs. Action Analysis
+            </a>{' '}
+            its hardest form of &ldquo;action&rdquo; (money moving); and it would expand the{' '}
+            <a href="#current-state" className="text-dm-accent hover:underline">
+              current corpus
+            </a>{' '}
+            with its first structured-data sources alongside documents. Spending anomalies would
+            appear as descriptive context first — they would not drive concern statuses unless that
+            proves warranted and is adopted as an explicit methodology change.
+          </p>
+          <p>
+            If budget-vs-actual visibility would be useful to your work, we&apos;d like to hear it —{' '}
+            <a href="/feedback" className="text-dm-accent hover:underline">
+              send us feedback
+            </a>
+            . Demand helps us prioritize this against other roadmap items.
+          </p>
+        </Section>
+
         <Section title="Democracy Index Evidence Mapping" id="democracy-index-mapping">
           <p>
             V-Dem and Freedom House produce the most widely cited assessments of democratic health
