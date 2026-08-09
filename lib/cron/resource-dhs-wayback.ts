@@ -32,6 +32,8 @@ const T2_INAUGURATION = '2025-01-20';
 interface ResourceOptions {
   confirm: boolean;
   limit?: number;
+  /** Retry only rows without wayback provenance (prior-run failures). */
+  onlyMissing?: boolean;
 }
 
 interface DhsBaselineRow {
@@ -78,7 +80,16 @@ export function toOriginalNewsUrl(url: string): string | null {
 
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim();
 
-async function loadDhsBaselineRows(limit?: number): Promise<DhsBaselineRow[]> {
+async function loadDhsBaselineRows(
+  limit?: number,
+  onlyMissing?: boolean,
+): Promise<DhsBaselineRow[]> {
+  const conditions = [
+    eq(documents.sourceOrigin, 'dhs_press'),
+    sql`${documents.metadata}->>'host' = 'dhs'`,
+    lt(documents.publishedAt, new Date(T2_INAUGURATION)),
+  ];
+  if (onlyMissing) conditions.push(sql`${documents.metadata}->>'retrievedVia' IS NULL`);
   const rows = await getDb()
     .select({
       id: documents.id,
@@ -89,13 +100,7 @@ async function loadDhsBaselineRows(limit?: number): Promise<DhsBaselineRow[]> {
       metadata: documents.metadata,
     })
     .from(documents)
-    .where(
-      and(
-        eq(documents.sourceOrigin, 'dhs_press'),
-        sql`${documents.metadata}->>'host' = 'dhs'`,
-        lt(documents.publishedAt, new Date(T2_INAUGURATION)),
-      ),
-    )
+    .where(and(...conditions))
     .orderBy(documents.publishedAt);
   return (limit ? rows.slice(0, limit) : rows) as DhsBaselineRow[];
 }
@@ -159,7 +164,7 @@ async function resourceRow(
 
 async function run(opts: ResourceOptions): Promise<void> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
-  const rows = await loadDhsBaselineRows(opts.limit);
+  const rows = await loadDhsBaselineRows(opts.limit, opts.onlyMissing);
   console.log(
     `[dhs-wayback] ${rows.length} DHS baseline docs to re-source${opts.confirm ? '' : ' (dry-run: fetches Wayback, writes nothing)'}`,
   );
@@ -188,6 +193,7 @@ function parseCliArgs(args: string[]): ResourceOptions {
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--confirm') opts.confirm = true;
     else if (args[i] === '--limit') opts.limit = parseInt(args[++i], 10);
+    else if (args[i] === '--only-missing') opts.onlyMissing = true;
   }
   return opts;
 }
@@ -198,7 +204,7 @@ if (require.main === module) {
   const argv = process.argv.slice(2);
   checkHelp(
     argv,
-    `Usage: pnpm dhs:resource-wayback [--confirm] [--limit N]
+    `Usage: pnpm dhs:resource-wayback [--confirm] [--limit N] [--only-missing]
 
 Re-source DHS-host baseline press-release content from the Wayback Machine
 (#685 robots remediation). Dry-run by default; --confirm writes. Matching
