@@ -462,7 +462,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_type',
     type: 'varchar',
     description:
-      'Kind of document as ingested: e.g. judicial_opinion, court_opinion (docket entry stub), press_release, bill, floor_speech, or a Federal Register type like Rule / Notice.',
+      'Kind of document as ingested: e.g. judicial_opinion, court_opinion (docket entry stub), press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice.',
   },
   { name: 'category', type: 'varchar', description: CATEGORY_DESC },
   { name: 'title', type: 'text', description: 'Document title as published by the source.' },
@@ -498,7 +498,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_origin',
     type: 'varchar|null',
     description:
-      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, chrg (congressional hearing transcripts, routed by title + opening-statement topic classification), oig, fec, legiscan. Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
+      'Ingestion pipeline that produced the row: federal_register, courtlistener, doj, govinfo, govinfo_cpd, crec, chrg (congressional hearing transcripts, routed by title + opening-statement topic classification), oig, fec, legiscan, dhs_press (DHS/ICE/CBP newsroom scrape; CBP restricted to national media releases — the port-level local-media-release URL class is excluded at fetch, owner decision 2026-08-07; cross-host HQ mirrors deduped by normalized title + day with ICE > CBP > DHS precedence; the ICE HSI criminal-investigation subset also stores to lawEnforcement). Legacy origins (whitehouse, gdelt) remain stored but are excluded from all analysis.',
   },
   {
     name: 'content_type',

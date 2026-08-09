@@ -11,6 +11,7 @@ import {
   fetchWeekItemsGovInfo,
   fetchWeekItemsFec,
   fetchWeekItemsOig,
+  fetchWeekItemsDhsPress,
 } from '@/lib/cron/backfill-fetchers';
 import type { SourceFetchResult } from '@/lib/cron/backfill-fetchers';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
@@ -31,6 +32,7 @@ type GroupedSignals = {
   gi: Signal[];
   fec: Signal[];
   oig: Signal[];
+  dhspress: Signal[];
 };
 
 /** Maps fetcher group keys to document source_origin values in the DB. */
@@ -41,6 +43,7 @@ const GROUP_TO_SOURCE_ORIGIN: Record<string, string> = {
   gi: 'govinfo',
   fec: 'fec',
   oig: 'oig',
+  dhspress: 'dhs_press',
 };
 
 function groupSignals(signals: Signal[]): GroupedSignals {
@@ -51,6 +54,7 @@ function groupSignals(signals: Signal[]): GroupedSignals {
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
     oig: signals.filter((s) => s.type === 'oig_html'),
+    dhspress: signals.filter((s) => s.type === 'dhs_press'),
   };
 }
 
@@ -100,6 +104,7 @@ export async function fetchCategoryIncremental(
     { key: 'gi', fn: fetchWeekItemsGovInfo },
     { key: 'fec', fn: fetchWeekItemsFec },
     { key: 'oig', fn: fetchWeekItemsOig },
+    { key: 'dhspress', fn: fetchWeekItemsDhsPress },
   ];
 
   for (const { key, fn } of fetchers) {

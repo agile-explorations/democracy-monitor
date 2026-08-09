@@ -330,6 +330,7 @@ const SIGNAL_TYPE_TO_ORIGIN: Record<string, string> = {
   govinfo: 'govinfo',
   fec_json: 'fec',
   oig_html: 'oig',
+  dhs_press: 'dhs_press',
 };
 
 /** Sources that reach categories via pipeline routing, not signal definitions. */

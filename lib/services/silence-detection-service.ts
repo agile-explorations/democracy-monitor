@@ -19,7 +19,14 @@ import { documents } from '@/lib/db/schema';
  * (Presidential Documents) is separate and correctly classified as
  * government-controlled.
  */
-export const GOVERNMENT_SOURCES = new Set(['federal_register', 'doj', 'govinfo_cpd', 'oig', 'fec']);
+export const GOVERNMENT_SOURCES = new Set([
+  'federal_register',
+  'doj',
+  'govinfo_cpd',
+  'oig',
+  'fec',
+  'dhs_press',
+]);
 
 export const INDEPENDENT_SOURCES = new Set(['courtlistener', 'crec', 'legiscan', 'govinfo']);
 

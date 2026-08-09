@@ -88,6 +88,41 @@ function stripChrgFrontMatter(content: string): string {
 }
 
 /**
+ * Strip DHS/ICE/CBP press-release trailing boilerplate.
+ *
+ * The fetcher's body-node extraction already excludes nav chrome and contact
+ * blocks; what remains (live-observed 2026-08-07) is a trailing block of
+ * social-media pointers ("Follow CBP on X @CBPChicago"), media-inquiry
+ * contacts, standing mission paragraphs ("HSI is the principal investigative
+ * arm…"), or a "###" terminator. Strip from the earliest such marker in the
+ * final third of the content so a mid-body mention never truncates substance.
+ */
+const DHS_PRESS_TAIL_PATTERN =
+  /(?:###|Follow (?:us|CBP|ICE|HSI|DHS)\b[^.]*\bon\b|For media inquiries\b|Members of the public may report\b|HSI is (?:the principal|a directorate)\b|Learn more about (?:ICE|CBP|DHS)'s mission\b)/;
+
+/**
+ * Strip the DHS press-header prefix present in Wayback-era captures
+ * ("For Immediate ReleaseOffice of the Press SecretaryContact: 202-282-8010")
+ * — the contemporaneous 2017–2020 template carried it; the modern archive
+ * rendering does not. Assessment-time only, like every stripper here.
+ */
+const DHS_PRESS_HEAD_PATTERN =
+  /^For Immediate Release\s*(?:Office of the Press Secretary\s*)?(?:Contact:\s*[\d\s().–-]+)?/;
+
+function stripDhsPressHead(content: string): string {
+  const stripped = content.replace(DHS_PRESS_HEAD_PATTERN, '').trimStart();
+  return stripped.length > 0 ? stripped : content;
+}
+
+function stripDhsPressTail(content: string): string {
+  const tailStart = Math.floor(content.length * (2 / 3));
+  const match = DHS_PRESS_TAIL_PATTERN.exec(content.slice(tailStart));
+  if (!match) return content;
+  const stripped = content.slice(0, tailStart + match.index).trimEnd();
+  return stripped.length > 0 ? stripped : content;
+}
+
+/**
  * Strip source-specific boilerplate from document content.
  *
  * @param content - Raw document content from database
@@ -126,6 +161,9 @@ export function stripBoilerplate(
 
     case 'chrg':
       return stripChrgFrontMatter(content);
+
+    case 'dhs_press':
+      return stripDhsPressTail(stripDhsPressHead(content));
 
     default:
       return content;

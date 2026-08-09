@@ -206,6 +206,11 @@ export function DetailedContent() {
               'Every few days',
             ],
             [
+              'DHS/ICE/CBP Press Releases',
+              'Operational press releases from DHS headquarters, ICE (full newsroom, including local enforcement operations), and CBP (national media releases)',
+              'Weekly',
+            ],
+            [
               'Congressional Record (CREC)',
               'Senate and House floor speeches with speaker attribution',
               'Daily when in session',
@@ -228,6 +233,39 @@ export function DetailedContent() {
             ],
           ]}
         />
+        <p>
+          <strong>DHS/ICE/CBP capture scope:</strong> the homeland-security press corpus is captured
+          in full within a deliberate scope, with no keyword or relevance filtering at ingest. From
+          DHS headquarters, only the Press Releases news type is collected (speeches, testimony,
+          fact sheets, and blog posts are not). From ICE, every newsroom release is collected,
+          including local enforcement-operation announcements — often the most detection-relevant
+          content. From CBP, national media releases are collected while port-level local media
+          releases (routine seizure and trade notices) are excluded by their URL class. Other DHS
+          component newsrooms (USCIS, TSA, FEMA, Secret Service) are not monitored. Releases
+          cross-posted by DHS headquarters and a component newsroom are deduplicated to the
+          component original. Every captured release is stored with its full text and screened by
+          the AI document-review layer downstream — relevance triage happens in assessment, never at
+          ingest. Because the agencies&apos; live newsroom listings only reach back to January 20,
+          2025, earlier releases are recovered from the agencies&apos; own sitemaps where their
+          robots.txt policies permit, and from the Internet Archive&apos;s Wayback Machine where
+          they do not; every source&apos;s robots.txt is re-verified programmatically on each weekly
+          ingest run.
+        </p>
+        <p>
+          <strong>What counts as a document:</strong> the corpus has two tiers. Full-text documents
+          (roughly three-fifths of stored rows) carry a complete body and are what document counts,
+          search, and AI assessment operate on. The rest are metadata-only records — chiefly federal
+          court docket entries, where each row records that a filing <em>happened</em> (case, date,
+          filing type) even though most filing texts sit behind the PACER paywall. These event
+          records power case-activity tracking and tell the pipeline which entries have retrievable
+          opinions, but they are excluded from document counts, search results, and all detection
+          layers so a body-less row can never masquerade as a substantive document. A small number
+          of metadata-only rows record documents whose bodies are unobtainable (for example, reports
+          an agency stopped publishing openly), and a legacy set of media-metadata rows from a
+          retired source remains in the public database dump but is excluded from all analysis.
+          Anyone loading the downloadable dump will therefore see more rows than the searchable
+          document count — the difference is these event and metadata records.
+        </p>
         <p>
           Source ingestion is health-checked on every weekly run. A source that fails to fetch is
           marked unavailable; one that succeeds but returns zero documents for two consecutive

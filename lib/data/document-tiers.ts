@@ -43,7 +43,7 @@ export const SOURCE_TYPE_LABELS: Record<string, string> = {
   presidential_letter: 'Presidential Letter',
   presidential_remarks: 'Remarks',
   presidential_interview: 'Interview',
-  press_release: 'DOJ Release',
+  press_release: 'Press Release',
   ig_report: 'IG Report',
   congressional_report: 'Congressional Report',
   floor_speech: 'Floor Speech',
@@ -55,8 +55,20 @@ export const SOURCE_TYPE_LABELS: Record<string, string> = {
   advisory_opinion: 'FEC Advisory Opinion',
 };
 
-export function labelForSourceType(sourceType: string | null | undefined): string {
+/** press_release is multi-origin (DOJ API + DHS newsrooms); the origin picks the label. */
+const PRESS_RELEASE_ORIGIN_LABELS: Record<string, string> = {
+  doj: 'DOJ Release',
+  dhs_press: 'DHS Release',
+};
+
+export function labelForSourceType(
+  sourceType: string | null | undefined,
+  sourceOrigin?: string | null,
+): string {
   if (!sourceType) return 'Document';
+  if (sourceType === 'press_release' && sourceOrigin && PRESS_RELEASE_ORIGIN_LABELS[sourceOrigin]) {
+    return PRESS_RELEASE_ORIGIN_LABELS[sourceOrigin];
+  }
   return SOURCE_TYPE_LABELS[sourceType] ?? sourceType.replace(/_/g, ' ');
 }
 

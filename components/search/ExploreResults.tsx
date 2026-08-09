@@ -162,6 +162,7 @@ export function ExploreFilters({
         <option value="oig">OIG</option>
         <option value="crec">CREC</option>
         <option value="chrg">Hearings</option>
+        <option value="dhs_press">DHS Press</option>
       </select>
       <select
         value={filterSort}

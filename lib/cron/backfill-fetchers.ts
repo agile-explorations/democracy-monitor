@@ -8,6 +8,11 @@ import {
   RATE_LIMIT_DELAY_MS,
 } from '@/lib/services/courtlistener-fetcher';
 import { fetchDhsOigHistorical } from '@/lib/services/dhs-oig-fetcher';
+import {
+  dedupeCrossHostContentItems,
+  fetchDhsPressHistorical,
+  parseDhsPressParams,
+} from '@/lib/services/dhs-press-fetcher';
 import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchDojOigHistorical, fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
@@ -45,6 +50,7 @@ type SignalGroups = {
   gi: Signal[];
   fec: Signal[];
   oig: Signal[];
+  dhspress: Signal[];
 };
 
 interface WeekRange {
@@ -77,6 +83,7 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
   gi: 'govinfo',
   fec: 'fec',
   oig: 'oig',
+  dhspress: 'dhs_press',
 };
 
 const SIGNAL_MAX_RETRIES = 4;
@@ -476,6 +483,38 @@ export async function fetchWeekItemsOig(
   return { items, errors, contentGaps };
 }
 
+export async function fetchWeekItemsDhsPress(
+  signals: Array<{ url: string; type: string }>,
+  week: WeekRange,
+  categoryKey: string,
+): Promise<SourceFetchResult> {
+  const items: ContentItem[] = [];
+  const errors: string[] = [];
+
+  for (const signal of signals) {
+    const params = parseDhsPressParams(signal.url);
+    const result = await fetchSignalWithRetry(
+      () => fetchDhsPressHistorical({ ...params, dateFrom: week.start, dateTo: week.end }),
+      signal.url,
+      categoryKey,
+      week.start,
+    );
+    items.push(...result.items);
+    if (result.error) errors.push(result.error);
+  }
+
+  // A release cross-posted by DHS HQ and a component newsroom in the same week
+  // would otherwise store twice into this category.
+  const unique = dedupeCrossHostContentItems(items);
+
+  const nullCount = unique.filter((i) => !i.content).length;
+  const shortCount = unique.filter((i) => i.contentType === 'metadata_only').length;
+  const contentGaps: ContentGaps | undefined =
+    nullCount > 0 || shortCount > 0 ? { source: 'DHS Press', nullCount, shortCount } : undefined;
+
+  return { items: unique, errors, contentGaps };
+}
+
 type FetchFn = (
   signals: Signal[],
   week: WeekRange,
@@ -489,6 +528,7 @@ const GROUP_FETCHERS: Array<{ key: keyof SignalGroups; fn: FetchFn }> = [
   { key: 'gi', fn: fetchWeekItemsGovInfo },
   { key: 'fec', fn: fetchWeekItemsFec },
   { key: 'oig', fn: fetchWeekItemsOig },
+  { key: 'dhspress', fn: fetchWeekItemsDhsPress },
 ];
 
 export async function fetchWeekDocuments(
