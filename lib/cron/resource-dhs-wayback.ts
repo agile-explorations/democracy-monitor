@@ -45,6 +45,48 @@ interface DhsBaselineRow {
   metadata: Record<string, unknown> | null;
 }
 
+async function fetchReplay(
+  replayUrl: string,
+): Promise<{ html: string; captureUrl: string } | null> {
+  try {
+    const response = await fetch(replayUrl, {
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (civic monitoring)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      redirect: 'follow',
+    });
+    if (response.ok) return { html: await response.text(), captureUrl: response.url };
+    console.warn(`[dhs-wayback] ${response.status} for ${replayUrl}`);
+  } catch (err) {
+    console.warn(`[dhs-wayback] fetch failed for ${replayUrl}: ${err}`);
+  }
+  return null;
+}
+
+/** CDX-exact fallback: ask for the newest 200-status capture timestamp, then
+ * replay that exact snapshot — the 2026id_ nearest-capture shortcut 404s when
+ * the nearest capture is a redirect snapshot (live-observed on the retry). */
+async function fetchViaCdxTimestamp(
+  target: string,
+): Promise<{ html: string; captureUrl: string } | null> {
+  try {
+    const cdxUrl = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(
+      target.replace(/^https?:\/\//, ''),
+    )}&filter=statuscode:200&fl=timestamp&limit=-1`;
+    const response = await fetch(cdxUrl, {
+      headers: { 'User-Agent': 'DemocracyMonitor/1.0 (civic monitoring)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!response.ok) return null;
+    const ts = (await response.text()).trim().split('\n').pop()?.trim();
+    if (!ts || !/^\d{14}$/.test(ts)) return null;
+    await sleep(WAYBACK_DELAY_MS);
+    return fetchReplay(`https://web.archive.org/web/${ts}id_/${target}`);
+  } catch (err) {
+    console.warn(`[dhs-wayback] CDX lookup failed for ${target}: ${err}`);
+    return null;
+  }
+}
+
 async function fetchWaybackHtml(url: string): Promise<{ html: string; captureUrl: string } | null> {
   // web/2026id_/ redirects to the nearest capture at-or-before 2026; id_ serves
   // the original bytes without replay chrome.
@@ -54,19 +96,15 @@ async function fetchWaybackHtml(url: string): Promise<{ html: string; captureUrl
   // page was openly published and robots-permitted — over captures of the
   // post-move /archive/news page (which IA may hold under its post-2017
   // policy of not honoring robots.txt for archival crawls).
-  for (const target of [toOriginalNewsUrl(url), url].filter(Boolean) as string[]) {
-    const replayUrl = `https://web.archive.org/web/2026id_/${target}`;
-    try {
-      const response = await fetch(replayUrl, {
-        headers: { 'User-Agent': 'DemocracyMonitor/1.0 (civic monitoring)' },
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        redirect: 'follow',
-      });
-      if (response.ok) return { html: await response.text(), captureUrl: response.url };
-      console.warn(`[dhs-wayback] ${response.status} for ${replayUrl}`);
-    } catch (err) {
-      console.warn(`[dhs-wayback] fetch failed for ${replayUrl}: ${err}`);
-    }
+  const targets = [toOriginalNewsUrl(url), url].filter(Boolean) as string[];
+  for (const target of targets) {
+    const result = await fetchReplay(`https://web.archive.org/web/2026id_/${target}`);
+    if (result) return result;
+    await sleep(WAYBACK_DELAY_MS);
+  }
+  for (const target of targets) {
+    const result = await fetchViaCdxTimestamp(target);
+    if (result) return result;
     await sleep(WAYBACK_DELAY_MS);
   }
   return null;
