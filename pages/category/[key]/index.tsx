@@ -250,9 +250,6 @@ export default function CategoryDetailPage({
             </div>
           )}
 
-          {/* Tracked litigation for this category */}
-          {categoryKey && <LitigationPanel categoryKey={categoryKey} />}
-
           {/* Week detail — shown when a week is selected */}
           {selectedWeek && categoryKey && (
             <div className="mt-8 pt-6 border-t border-dm-border">
@@ -276,6 +273,9 @@ export default function CategoryDetailPage({
               />
             </div>
           )}
+
+          {/* Tracked litigation — below the week detail (owner request 2026-08-10) */}
+          {categoryKey && <LitigationPanel categoryKey={categoryKey} />}
         </>
       )}
 
