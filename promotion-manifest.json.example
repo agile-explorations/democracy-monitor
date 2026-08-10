@@ -15,6 +15,9 @@
     },
     "narratives": {
       "where": "week_of >= '2019-01-01' AND week_of < '2021-01-01'"
+    },
+    "tracked_cases": {
+      "where": "true"
     }
   },
   "updates": {}
