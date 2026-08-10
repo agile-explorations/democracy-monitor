@@ -8,6 +8,7 @@ import {
   documentScores,
   narratives,
   weeklyAggregates,
+  trackedCases,
 } from '@/lib/db/schema';
 import { flattenScoresRow, flattenWeeklyRow } from '@/lib/utils/csv-flatten';
 
@@ -25,6 +26,7 @@ const DB_ONLY_COLUMNS: Record<string, string[]> = {
 
 const TABLES = {
   table_documents: documents,
+  table_tracked_cases: trackedCases,
   table_document_scores: documentScores,
   table_weekly_aggregates: weeklyAggregates,
   table_ai_document_assessments: aiDocumentAssessments,

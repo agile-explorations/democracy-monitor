@@ -351,6 +351,13 @@
       "when": 1786184158660,
       "tag": "0049_fantastic_namorita",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786323676368,
+      "tag": "0050_fluffy_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }
