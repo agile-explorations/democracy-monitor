@@ -31,6 +31,7 @@ export interface TrackedCaseListItem {
   dateLastFiling: string | null;
   status: string;
   posture: { line: string; asOf: string } | null;
+  caseSummary: string | null;
 }
 
 interface CasesPayload {
@@ -49,7 +50,8 @@ async function queryCases(key: string, status: string, page: number): Promise<Ca
   const rows = (
     await db.execute(sql`
       SELECT case_id, categories, case_name, court_name, docket_number, nature_of_suit,
-        date_filed::text, date_terminated::text, date_last_filing::text, status, posture
+        date_filed::text, date_terminated::text, date_last_filing::text, status, posture,
+        case_summary
       FROM tracked_cases
       WHERE ${categoryCond} ${statusCond}
       ORDER BY date_last_filing DESC NULLS LAST, case_id
@@ -75,6 +77,7 @@ async function queryCases(key: string, status: string, page: number): Promise<Ca
         dateLastFiling: (r.date_last_filing as string) ?? null,
         status: r.status as string,
         posture: (r.posture as { line: string; asOf: string }) ?? null,
+        caseSummary: (r.case_summary as string) ?? null,
       }),
     ),
     openCount: Number(counts.open),

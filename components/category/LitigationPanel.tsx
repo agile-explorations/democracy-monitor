@@ -65,6 +65,11 @@ function CaseCard({
           ))}
         </div>
       )}
+      {item.caseSummary && (
+        <p className="mt-1 text-xs text-dm-text-secondary line-clamp-2">
+          <span className="text-dm-muted">AI review:</span> {item.caseSummary}
+        </p>
+      )}
       {item.posture && <p className="mt-1 text-xs text-dm-muted italic">{item.posture.line}</p>}
       <CaseContext caseId={item.caseId} />
     </div>

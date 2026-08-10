@@ -994,6 +994,12 @@ const TABLE_TRACKED_CASES: DictionaryEntry[] = [
       'Cached one-line case posture from the live docket-timeline fetch: { line, eventType, date, asOf }. asOf is the CourtListener fetch time — the data age.',
   },
   {
+    name: 'case_summary',
+    type: 'text|null',
+    description:
+      'Plain-language description of what the case is about, copied from the latest Pass-2 AI review reasoning of an opinion in this case (ai_document_assessments.reasoning) — AI-generated analysis, not a finding of fact. Present only for cases with an AI-assessed opinion (~4% of cases, concentrated on erosion-relevant litigation); synced weekly.',
+  },
+  {
     name: 'cluster_disposition',
     type: 'text|null',
     description: "Latest opinion cluster's disposition text (bulk-sourced).",
