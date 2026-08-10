@@ -2,7 +2,7 @@
 
 This file captures what was planned vs what was built, spec deviations, key decisions, and lessons learned for each sprint. Read this alongside relevant spec sections before starting a new sprint.
 
-**Older sprints archived in `DECISIONS-ARCHIVE.md`** (R-FEEDBACK-MOD and earlier).
+**Older sprints archived in `DECISIONS-ARCHIVE.md`** (R-FEEDBACK-RESPOND and earlier).
 
 **Spec documents referenced:**
 
@@ -11,6 +11,28 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - `ASSESSMENT_METHODOLOGY.md`
 
 ---
+
+## Sprint R-DOCKET-CONTEXT: opinion docket timelines + posture lines + glossary (#686–#692, milestone 111) — ✅ built 2026-08-09, ships v1.7.0
+
+**Origin**: owner discussion of the 283k metadata-only CL docket stubs' value. Pre-roadmap investigation found stored stubs CANNOT power timelines (median 1 query-matched entry/case, caption-only titles) — but every opinion's `case_id = cl:<docketId>` is a live gateway to CourtListener's v4 docket-entries API, whose entry descriptions are rich procedural text (live-probed before planning). Also settled en route: the stubs' real forward value is as the case-universe index for the future posture tracker, not as content; and the homepage corpus figure was a leftover (stubs counted in the hero number after R-POPULATION removed them from all analytics) — owner decided the hero cites only searchable full-text.
+
+**Built (zero AI spend — fully deterministic)**:
+
+- `lib/services/docket-timeline.ts` — pure keyword classifier (10 event types, ordered precedence) + posture derivation + one-page CL fetch. `pages/api/case/timeline` — validated (`^cl:\d{1,10}$`), rate-limited (30/min), Redis-cached 24h with **asOf captured at CL-fetch time** so the staleness stamp reports data age across cache hits; CL failure → 502, never cached.
+- `useCaseTimeline` (module cache + in-flight dedupe + concurrency-3 queue) + `CaseContext` (EditorialPanel-pattern disclosure). Rendered on all three opinion surfaces; research citations auto-load the posture line (owner decision — visibility is the point; ~5–10 opinion cites/answer vs CL's 5k/hr budget).
+- caseId plumbed through both search query paths, research formatDocList whitelist (optional field — 24h-cached payloads predate it), and the week-detail explanation query (+sourceType).
+- **Glossary tooltips** (owner request mid-review): `lib/data/docket-glossary.ts` — 10 event-type tips + ~30 legal terms of art ("per curiam", R&R, habeas, en banc…), longest-phrase-first matching, composed into native title tooltips per the ASSESSMENT_TIPS precedent. Touch-device limitation matches every existing tooltip in the app.
+- case_id join documented for dump consumers (dictionary entry + table-level note); hero count now full-text-only.
+
+**Key decisions (owner)**: auto-load posture on research; all three surfaces at once; hero shows ~270k searchable full-text only (the ~470k records figure was an unrevisited leftover — recorded as such); glossary added.
+
+**Lessons learned**:
+
+- **A test can bless a bug.** The classifier initially marked "Order on Motion for Summary Judgment" as terminal `judgment` — and the fixture I wrote asserted exactly that. Caught only on re-reading the fixtures as legal facts rather than expected outputs. Fixture review is domain review.
+- **The no-negative-mock-assertions OpenGrep rule earned its keep**: restructuring "cacheSet not called" into "a later request retries successfully" produced a strictly better test (real cache map, observable behavior).
+- **Probe before roadmap**: the docket-stub investigation (1-entry medians, caption titles) killed the naive display-join design before anything was planned around it; the CL API probe then settled classifier feasibility with real descriptions. Both took minutes and reshaped the feature.
+
+**Spec deviations**: none; UI-only + one cached proxy endpoint. Detection untouched (post-opinion activity surfaces as displayed context only — any status-driving use remains an explicit future methodology decision).
 
 ## Sprint R-DHS-PRESS: DHS/ICE/CBP press releases as a corpus source (#676–#683, milestone 110) — ✅ built + locally verified 2026-08-07
 
@@ -99,23 +121,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - Exporting page-internal content components for a behavior render-test is an acceptable encapsulation trade vs. driving the whole page through the `ReadingLevelProvider` and toggling (heavier, more brittle); knip counts the test import as usage.
 
 **Spec deviations**: none. Display copy only; no data/pipeline touch.
-
-## Sprint R-FEEDBACK-RESPOND: reply to feedback — CLI response + publish + email submitter (#672, milestone 106) — ✅ deployed 2026-08-04 (v1.5.7, main @ 88c47c7)
-
-**Origin**: R-FEEDBACK-MOD gave approve/reject but no way to _reply_. The owner needed to answer questions and acknowledge feedback. The display half already existed — the `feedback_responses` table, `attachResponses` join, and the public "Response from Democracy Monitor" block (escaped JSX). Only the write path was missing.
-
-**Planned vs built**: shipped as planned, plus an interactive picker the owner asked for mid-sprint.
-
-- `pnpm feedback:moderate -- --respond <id> "msg"` — insert a `feedback_responses` row, set `approved=true` (auto-publish so the reply is visible), and email the submitter the reply when they left an address. Scriptable / non-interactive.
-- `pnpm feedback:moderate -- --respond` (no id) — **interactive numbered menu** of _every_ post (pending + public, each status-tagged), pick a number, then a **multi-line** reply terminated by a lone `.`. This closed a real gap: `--list` shows pending only, so an already-public post had no convenient id source. The menu makes any post reachable without id-hunting.
-- `buildSubmitterResponseHtml` / `notifySubmitterOfResponse` (escaped both original + reply, non-fatal send); pure `parseSelection` + `formatSelectableRow` (unit-tested).
-
-**Key decisions (owner):** responding auto-publishes the item (a reply implies it's been vetted); email the submitter when an address is present; **numbered menu over an arrow-key TUI** — the deciding factor was the Render browser shell, where raw-mode TUIs misbehave and a readline numbered menu works identically to a local terminal (and adds no dependency); multi-line replies (real answers need paragraphs).
-
-**Lessons learned:**
-
-- **Match the interaction model to the worst runtime, not the best.** The owner runs moderation from a Render web shell; that alone ruled out a raw-mode arrow-key picker in favor of a dependency-free readline numbered menu. The "nicer" local UX would have been the fragile one where it actually runs.
-- **Interactive CLIs must guard `!process.stdin.isTTY`** and fail with a clear message instead of hanging — verified via a piped run (clean error, exit 1) and a real-TTY run through a Python `pty` harness (menu → select → two-line reply stored with the newline preserved → item published).
-- Assert on **observable state, not mock calls** — the OpenGrep `no-mock-call-assertions` / `no-negative-mock-assertions` rules tripped my first `toHaveBeenCalledWith`/`.not.toHaveBeenCalled()` draft; captured the email effect into a state object and asserted on that instead (the project's own house rule, re-learned).
-
-**Spec deviations**: none. Reused the existing Resend config; no new owner actions.

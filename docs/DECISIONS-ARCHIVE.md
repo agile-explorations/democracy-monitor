@@ -4,6 +4,26 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-FEEDBACK-RESPOND: reply to feedback — CLI response + publish + email submitter (#672, milestone 106) — ✅ deployed 2026-08-04 (v1.5.7, main @ 88c47c7)
+
+**Origin**: R-FEEDBACK-MOD gave approve/reject but no way to _reply_. The owner needed to answer questions and acknowledge feedback. The display half already existed — the `feedback_responses` table, `attachResponses` join, and the public "Response from Democracy Monitor" block (escaped JSX). Only the write path was missing.
+
+**Planned vs built**: shipped as planned, plus an interactive picker the owner asked for mid-sprint.
+
+- `pnpm feedback:moderate -- --respond <id> "msg"` — insert a `feedback_responses` row, set `approved=true` (auto-publish so the reply is visible), and email the submitter the reply when they left an address. Scriptable / non-interactive.
+- `pnpm feedback:moderate -- --respond` (no id) — **interactive numbered menu** of _every_ post (pending + public, each status-tagged), pick a number, then a **multi-line** reply terminated by a lone `.`. This closed a real gap: `--list` shows pending only, so an already-public post had no convenient id source. The menu makes any post reachable without id-hunting.
+- `buildSubmitterResponseHtml` / `notifySubmitterOfResponse` (escaped both original + reply, non-fatal send); pure `parseSelection` + `formatSelectableRow` (unit-tested).
+
+**Key decisions (owner):** responding auto-publishes the item (a reply implies it's been vetted); email the submitter when an address is present; **numbered menu over an arrow-key TUI** — the deciding factor was the Render browser shell, where raw-mode TUIs misbehave and a readline numbered menu works identically to a local terminal (and adds no dependency); multi-line replies (real answers need paragraphs).
+
+**Lessons learned:**
+
+- **Match the interaction model to the worst runtime, not the best.** The owner runs moderation from a Render web shell; that alone ruled out a raw-mode arrow-key picker in favor of a dependency-free readline numbered menu. The "nicer" local UX would have been the fragile one where it actually runs.
+- **Interactive CLIs must guard `!process.stdin.isTTY`** and fail with a clear message instead of hanging — verified via a piped run (clean error, exit 1) and a real-TTY run through a Python `pty` harness (menu → select → two-line reply stored with the newline preserved → item published).
+- Assert on **observable state, not mock calls** — the OpenGrep `no-mock-call-assertions` / `no-negative-mock-assertions` rules tripped my first `toHaveBeenCalledWith`/`.not.toHaveBeenCalled()` draft; captured the email effect into a state object and asserted on that instead (the project's own house rule, re-learned).
+
+**Spec deviations**: none. Reused the existing Resend config; no new owner actions.
+
 ## Sprint R-FEEDBACK-MOD: moderated feedback — approval gate + Turnstile + notify + CLI (#668–671, milestone 105) — ✅ deployed 2026-08-04 (v1.5.6, main @ c372f58)
 
 **Origin**: the owner asked whether the feedback path (the only user→DB write) was secure. Audit: the write and display were already safe (Zod-validated, parameterized inserts, rate-limited, email kept out of the public GET, message rendered as escaped plain JSX — no XSS/injection). The real gap was moderation: `GET /api/feedback` displayed the latest 100 submissions publicly and immediately, so spam/abuse could appear until manually removed.
