@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import { CategoryChartCard } from '@/components/category/CategoryChartCard';
+import { LitigationPanel } from '@/components/category/LitigationPanel';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { WhyThisMattersLine } from '@/components/category/WhyThisMattersLine';
@@ -248,6 +249,9 @@ export default function CategoryDetailPage({
               />
             </div>
           )}
+
+          {/* Tracked litigation for this category */}
+          {categoryKey && <LitigationPanel categoryKey={categoryKey} />}
 
           {/* Week detail — shown when a week is selected */}
           {selectedWeek && categoryKey && (

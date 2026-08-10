@@ -5,6 +5,7 @@ import { StructuralSignaturePanel } from '@/components/category/StructuralSignat
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { Chevron } from '@/components/ui/Chevron';
+import { CollapsiblePanel } from '@/components/ui/CollapsiblePanel';
 import { DocumentTable } from '@/components/week/DocumentTable';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import type { EditorialRecord } from '@/lib/types';
@@ -45,35 +46,6 @@ export interface WeekDetailPanelProps {
   readingLevel: ReadingLevel;
   loading: boolean;
   onClose: () => void;
-}
-
-function CollapsiblePanel({
-  title,
-  children,
-  defaultOpen,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen ?? false);
-
-  return (
-    <div className="rounded-lg border border-dm-border bg-dm-card">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-dm-border/20 transition-colors"
-      >
-        <span className="text-xs font-semibold uppercase tracking-wider text-dm-text-secondary">
-          {title}
-        </span>
-        <span className="text-dm-muted">
-          <Chevron open={open} />
-        </span>
-      </button>
-      {open && <div className="px-5 pb-5">{children}</div>}
-    </div>
-  );
 }
 
 function WeekDetailSkeleton() {
