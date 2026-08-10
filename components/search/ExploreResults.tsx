@@ -13,6 +13,7 @@ interface GroupedDoc {
   caseId: string | null;
   snippet: string | null;
   cosineSimilarity: number | null;
+  aiReasoning: string | null;
   categories: ExploreDocResult[];
 }
 
@@ -27,6 +28,7 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
       if (doc.cosineSimilarity != null && (existing.cosineSimilarity ?? 0) < doc.cosineSimilarity) {
         existing.cosineSimilarity = doc.cosineSimilarity;
       }
+      if (!existing.aiReasoning && doc.aiReasoning) existing.aiReasoning = doc.aiReasoning;
     } else {
       map.set(key, {
         url: doc.url,
@@ -37,6 +39,7 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
         caseId: doc.caseId ?? null,
         snippet: doc.snippet,
         cosineSimilarity: doc.cosineSimilarity,
+        aiReasoning: doc.aiReasoning ?? null,
         categories: [doc],
       });
     }
@@ -114,6 +117,12 @@ function GroupedDocCard({ group }: { group: GroupedDoc }) {
       {group.snippet && (
         <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
           &ldquo;{group.snippet.trim()}&rdquo;
+        </p>
+      )}
+
+      {group.aiReasoning && (
+        <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2">
+          <span className="text-dm-muted">AI review:</span> {group.aiReasoning}
         </p>
       )}
 

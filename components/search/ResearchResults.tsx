@@ -118,6 +118,11 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
               {labelForSourceType(doc.sourceType, doc.sourceOrigin)}
             </span>
           </div>
+          {doc.p2Summary && (
+            <p className="mt-1 text-xs text-dm-text-secondary line-clamp-2">
+              <span className="text-dm-muted">AI review:</span> {doc.p2Summary}
+            </p>
+          )}
           <CaseContext caseId={doc.caseId} autoPosture />
         </div>
       </div>

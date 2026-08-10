@@ -43,6 +43,8 @@ export interface ResearchDocResult {
   cosineSimilarity: number;
   finalScore: number | null;
   documentClass: string | null;
+  /** P2 review reasoning excerpt (optional: cached payloads may predate it). */
+  p2Summary?: string | null;
 }
 
 export interface ExploreResult {
@@ -76,4 +78,6 @@ export interface ExploreDocResult {
   aiAssessment: string | null;
   aiConfidence: number | null;
   aiErosionType: string | null;
+  /** P2 review reasoning — the "what this document is about" line (optional: cached payloads may predate it). */
+  aiReasoning?: string | null;
 }
