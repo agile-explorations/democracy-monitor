@@ -94,6 +94,7 @@
     "narratives:accept-stale": "tsx lib/cron/accept-stale-narratives.ts",
     "narratives:regenerate": "tsx scripts/narratives-regenerate.ts",
     "cases:seed": "tsx lib/cron/seed-tracked-cases.ts",
+    "crec:rehearse-split": "tsx lib/cron/rehearse-crec-split.ts",
     "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky"
   },
