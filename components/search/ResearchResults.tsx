@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
+import { CaseContext } from '@/components/shared/CaseContext';
 import { EditorialPanel } from '@/components/shared/EditorialPanel';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { labelForSourceType } from '@/lib/data/document-tiers';
@@ -117,6 +118,7 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
               {labelForSourceType(doc.sourceType, doc.sourceOrigin)}
             </span>
           </div>
+          <CaseContext caseId={doc.caseId} autoPosture />
         </div>
       </div>
     </div>

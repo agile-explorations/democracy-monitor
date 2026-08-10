@@ -28,6 +28,8 @@ export const RATE_LIMITS = {
   // Manual report refresh (#650 follow-up): a heavy 1-3 min regen, coalesced to
   // one at a time — cap per IP so the public health page can't be used to spam it.
   reportRefresh: { windowMs: 10 * 60_000, maxRequests: 4, keyPrefix: 'rl:report-refresh' },
+  /** Cheap cached CL docket-timeline proxy; cap covers one research page of opinion cites with headroom. */
+  caseTimeline: { windowMs: 60_000, maxRequests: 30, keyPrefix: 'rl:case' },
 } as const;
 
 type RateLimitPolicy = { windowMs: number; maxRequests: number; keyPrefix: string };

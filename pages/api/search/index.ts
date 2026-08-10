@@ -276,6 +276,7 @@ function formatDocList(docs: ResearchDocument[]) {
     publishedAt: doc.publishedAt,
     sourceType: doc.sourceType,
     sourceOrigin: doc.sourceOrigin,
+    caseId: doc.caseId ?? null,
     category: doc.category,
     cosineSimilarity: doc.cosineSimilarity,
     finalScore: doc.finalScore,

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CaseContext } from '@/components/shared/CaseContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { categoryLabel, formatDate } from './helpers';
 import type { ExploreDocResult, ExploreResult } from './types';
@@ -9,6 +10,7 @@ interface GroupedDoc {
   publishedAt: string | null;
   sourceType: string;
   sourceOrigin: string | null;
+  caseId: string | null;
   snippet: string | null;
   cosineSimilarity: number | null;
   categories: ExploreDocResult[];
@@ -32,6 +34,7 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
         publishedAt: doc.publishedAt,
         sourceType: doc.sourceType,
         sourceOrigin: doc.sourceOrigin,
+        caseId: doc.caseId ?? null,
         snippet: doc.snippet,
         cosineSimilarity: doc.cosineSimilarity,
         categories: [doc],
@@ -113,6 +116,8 @@ function GroupedDocCard({ group }: { group: GroupedDoc }) {
           &ldquo;{group.snippet.trim()}&rdquo;
         </p>
       )}
+
+      <CaseContext caseId={group.caseId} />
     </div>
   );
 }

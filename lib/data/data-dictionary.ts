@@ -510,7 +510,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'case_id',
     type: 'varchar|null',
     description:
-      'Court-case identifier (cl:<docketId> for CourtListener) used to group filings and dedupe case-level counting.',
+      'Court-case identifier used to group filings and dedupe case-level counting. For CourtListener rows the format is cl:<docketId>, where <docketId> is the CourtListener docket primary key — joinable to https://www.courtlistener.com/docket/<docketId>/ and the v4 API (/api/rest/v4/docket-entries/?docket=<docketId>). Within the dump it groups a full-text opinion row with its metadata-only docket-entry stub rows (see content_type); every CourtListener opinion carries case_id even when no stub rows exist locally.',
   },
   {
     name: 'speaker',
@@ -936,7 +936,7 @@ export const DATA_DICTIONARY: DictionaryArtifact[] = [
     key: 'table_documents',
     title: 'documents (dump)',
     description:
-      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested.',
+      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested. Opinion rows and their docket-entry stub rows share a case_id (cl:<docketId>, the CourtListener docket key) — the join that reconstructs case groupings.',
     entries: TABLE_DOCUMENTS,
   },
   {

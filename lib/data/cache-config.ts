@@ -20,3 +20,6 @@ export const BACKTEST_CACHE_TTL_S = 24 * 60 * 60;
 
 /** Maximum rows returned by export endpoints. */
 export const MAX_EXPORT_ROWS = 10_000;
+
+/** 24-hour TTL for the CourtListener docket-timeline proxy (data age surfaced via payload asOf). */
+export const CASE_TIMELINE_CACHE_TTL_S = 24 * 60 * 60;

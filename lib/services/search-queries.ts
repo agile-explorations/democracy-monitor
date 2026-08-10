@@ -67,6 +67,7 @@ export function mapToSearchResult(row: Record<string, unknown>): SearchResultDoc
     publishedAt: row.published_at ? String(row.published_at) : null,
     sourceType: row.source_type as string,
     sourceOrigin: row.source_origin as string | null,
+    caseId: row.case_id as string | null,
     category: row.category as string,
     snippet: row.snippet as string | null,
     cosineSimilarity: row.cosine_similarity != null ? Number(row.cosine_similarity) : null,
@@ -157,7 +158,7 @@ export async function vectorExplore(
 
   const results = await db.execute(sql`
     SELECT * FROM (
-      SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
+      SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category, d.case_id,
         LEFT(d.content, 250) as snippet,
         1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
         ${textRankExpr} as text_rank,
@@ -205,7 +206,7 @@ export async function textExplore(
   const totalResults = Number((countResult.rows[0] as { total: string }).total);
 
   const results = await db.execute(sql`
-    SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
+    SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category, d.case_id,
       LEFT(d.content, 250) as snippet, NULL as cosine_similarity, ${textRankCol} as text_rank,
       ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
       ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed

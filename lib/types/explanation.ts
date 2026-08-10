@@ -31,6 +31,9 @@ export interface DocumentExplanation {
   matches: KeywordMatch[];
   suppressed: SuppressedMatch[];
   ai?: DocumentAIAssessment;
+  /** cl:<docketId> for CourtListener docs — powers the docket-context disclosure. */
+  caseId?: string | null;
+  sourceType?: string | null;
 }
 
 /** Snapshot of the scoring configuration used at explanation time. */

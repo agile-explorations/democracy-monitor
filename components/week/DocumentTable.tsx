@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { CaseContext } from '@/components/shared/CaseContext';
 import {
   getAIFlag,
   getAssessment,
@@ -195,6 +196,8 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                     >
                       {doc.title}
                     </a>
+                    {(doc.sourceType === 'judicial_opinion' ||
+                      doc.sourceType === 'court_opinion') && <CaseContext caseId={doc.caseId} />}
                   </td>
                   <td className="px-3 py-2 text-dm-text-secondary hidden sm:table-cell">
                     {doc.documentClass}

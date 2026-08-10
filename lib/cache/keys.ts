@@ -19,5 +19,7 @@ export const CacheKeys = {
   validateGraphLive: () => 'health:validate-graph:live:v1',
   validateData: () => 'health:validate-data:v1',
   reportRefresh: () => 'health:report-refresh:status',
+  /** CourtListener docket-timeline proxy payloads (namespace case:, distinct from cl:). */
+  caseTimeline: (docketId: string | number) => `case:timeline:${docketId}:v1`,
   themeLabel: (category: string, week: string) => `theme-label:${category}:${week}`,
 } as const;

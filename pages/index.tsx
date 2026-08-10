@@ -31,16 +31,8 @@ export default function Home() {
   const router = useRouter();
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
-  const {
-    categories,
-    overview,
-    meta,
-    healthSummary,
-    fetchTimeline,
-    documentCount,
-    fullTextCount,
-    loading,
-  } = useDashboardData();
+  const { categories, overview, meta, healthSummary, fetchTimeline, fullTextCount, loading } =
+    useDashboardData();
 
   const [rangePreset, setRangePreset] = useState<TimeRangePreset>('all');
   const [brushRange, setBrushRange] = useState<{ start: number; end: number } | null>(null);
@@ -211,9 +203,8 @@ export default function Home() {
         <section className="mb-4">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
             AI-assisted analyses of democratic institutional health across 14 categories, grounded
-            in {documentCount ? formatApproxCount(documentCount) : 'over 400,000'} U.S. government
-            records, including {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'}{' '}
-            searchable full-text documents.
+            in {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'} searchable
+            full-text U.S. government documents.
           </p>
           <details className="mt-1 max-w-3xl">
             <summary className="text-xs text-dm-accent cursor-pointer hover:underline">

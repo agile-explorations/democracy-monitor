@@ -128,6 +128,8 @@ export async function getDocumentExplanation(url: string): Promise<DocumentExpla
 interface ScoredDocRow {
   url: string;
   title: string | null;
+  caseId: string | null;
+  sourceType: string | null;
   documentClass: string;
   classMultiplier: number;
   severityScore: number;
@@ -167,6 +169,8 @@ function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
       reasoning: row.p2Reasoning ?? null,
     };
   }
+  explained.caseId = row.caseId ?? null;
+  explained.sourceType = row.sourceType ?? null;
   return explained;
 }
 
@@ -193,6 +197,32 @@ function aiAssessmentPriority(
  * for titles. Ordered by AI-assessment priority, then keyword score, then URL
  * (a stable tie-break across requests).
  */
+type AssessmentAlias = ReturnType<typeof alias<typeof aiDocumentAssessments, string>>;
+
+/** Select map for the top-documents evidence query (extracted for max-lines-per-function). */
+function scoredDocColumns(p1: AssessmentAlias, p2: AssessmentAlias) {
+  return {
+    url: documentScores.url,
+    title: sql<string>`${documents.title}`.as('doc_title'),
+    caseId: documents.caseId,
+    sourceType: documents.sourceType,
+    documentClass: documentScores.documentClass,
+    classMultiplier: documentScores.classMultiplier,
+    severityScore: documentScores.severityScore,
+    finalScore: documentScores.finalScore,
+    captureCount: documentScores.captureCount,
+    driftCount: documentScores.driftCount,
+    warningCount: documentScores.warningCount,
+    matches: documentScores.matches,
+    suppressed: documentScores.suppressed,
+    p1Relevant: p1.relevant,
+    p2Assessment: p2.assessment,
+    p2ErosionType: p2.erosionType,
+    p2ErosionActor: p2.erosionActor,
+    p2Reasoning: p2.reasoning,
+  };
+}
+
 async function fetchTopScoredDocuments(
   category: string,
   weekOf: string,
@@ -201,24 +231,7 @@ async function fetchTopScoredDocuments(
   const db = getDb();
   const [p1, p2] = [alias(aiDocumentAssessments, 'p1'), alias(aiDocumentAssessments, 'p2')];
   const rows = await db
-    .select({
-      url: documentScores.url,
-      title: sql<string>`${documents.title}`.as('doc_title'),
-      documentClass: documentScores.documentClass,
-      classMultiplier: documentScores.classMultiplier,
-      severityScore: documentScores.severityScore,
-      finalScore: documentScores.finalScore,
-      captureCount: documentScores.captureCount,
-      driftCount: documentScores.driftCount,
-      warningCount: documentScores.warningCount,
-      matches: documentScores.matches,
-      suppressed: documentScores.suppressed,
-      p1Relevant: p1.relevant,
-      p2Assessment: p2.assessment,
-      p2ErosionType: p2.erosionType,
-      p2ErosionActor: p2.erosionActor,
-      p2Reasoning: p2.reasoning,
-    })
+    .select(scoredDocColumns(p1, p2))
     .from(documentScores)
     .leftJoin(
       documents,

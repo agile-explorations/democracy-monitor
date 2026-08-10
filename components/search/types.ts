@@ -38,6 +38,7 @@ export interface ResearchDocResult {
   sourceType: string;
   tier?: 'action' | 'discussion';
   sourceOrigin: string | null;
+  caseId?: string | null;
   category: string;
   cosineSimilarity: number;
   finalScore: number | null;
@@ -58,6 +59,7 @@ export interface ExploreDocResult {
   publishedAt: string | null;
   sourceType: string;
   sourceOrigin: string | null;
+  caseId?: string | null;
   category: string;
   snippet: string | null;
   cosineSimilarity: number | null;

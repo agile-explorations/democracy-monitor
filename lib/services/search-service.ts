@@ -45,6 +45,7 @@ export interface SearchResultDocument {
   publishedAt: string | null;
   sourceType: string;
   sourceOrigin: string | null;
+  caseId: string | null;
   category: string;
   snippet: string | null;
   cosineSimilarity: number | null;
@@ -82,6 +83,7 @@ export interface ResearchDocument {
   /** Action/discussion tier (#552) — derived from sourceType at map time. */
   tier: DocumentTier;
   sourceOrigin: string | null;
+  caseId: string | null;
   category: string;
   cosineSimilarity: number;
   finalScore: number | null;
@@ -175,7 +177,7 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
   // each) over the wire measured ~8-10s of the retrieval latency.
   return sql`
     SELECT r.id, d2.title, LEFT(d2.content, 3000) as content, d2.url, d2.published_at, d2.source_type,
-      d2.source_origin, d2.category, r.cosine_similarity, r.final_score, r.document_class,
+      d2.source_origin, d2.case_id, d2.category, r.cosine_similarity, r.final_score, r.document_class,
       ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
     FROM (
@@ -283,6 +285,7 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
     sourceType: row.source_type as string,
     tier: tierForSourceType(row.source_type as string),
     sourceOrigin: row.source_origin as string | null,
+    caseId: row.case_id as string | null,
     category: row.category as string,
     cosineSimilarity: Number(row.cosine_similarity),
     finalScore: row.final_score != null ? Number(row.final_score) : null,

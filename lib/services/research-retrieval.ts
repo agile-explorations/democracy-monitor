@@ -40,7 +40,7 @@ export async function fetchResearchDocRowsByIds(ids: number[]): Promise<Record<s
   try {
     const results = await db.execute(sql`
       SELECT d.id, d.title, LEFT(d.content, 3000) as content, d.url, d.published_at, d.source_type,
-        d.source_origin, d.category,
+        d.source_origin, d.case_id, d.category,
         0 as cosine_similarity, ds.final_score, ds.document_class,
         ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
         ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
