@@ -1,4 +1,10 @@
-# Democracy Monitor — Roadmap
+# Democracy Monitor — Roadmap (ARCHIVED 2026-08-10)
+
+> **⚠️ ARCHIVED — pre-launch planning document, no longer maintained.** The site launched;
+> this file's counts and plans reflect that era (e.g. "8 source types", 4 baselines).
+> Living documents: `FUTURE_ROADMAP.md` (repo root — post-launch feature roadmap),
+> `docs/PROJECT_KNOWLEDGE.md` (sprint log + current state), `docs/DECISIONS.md`
+> (retrospectives), and the public `/system/roadmap` page.
 
 This document tracks what remains to be done before launch. For completed sprint details, see `DECISIONS.md` (retrospectives) and `PROJECT_KNOWLEDGE.md` (sprint log).
 

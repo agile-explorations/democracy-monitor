@@ -66,12 +66,14 @@ function SummaryContent() {
 
       <Section title="Data Sources" id="data-sources">
         <p>
-          Nine source types provide coverage of different government activities, all of them
+          Ten source types provide coverage of different government activities, all of them
           government documents: the Federal Register (executive orders, rules), GovInfo
           (presidential documents via CPD, congressional reports, public laws), Congressional Record
           (CREC floor speeches), congressional hearing transcripts (CHRG), CourtListener (federal
-          courts), DOJ press releases, Inspector General reports (HHS, DOJ, SSA, DHS), LegiScan
-          (federal legislation), and FEC filings.
+          courts), DOJ press releases, DHS/ICE/CBP press releases, Inspector General reports from 11
+          offices (HHS, DOJ, SSA, and DHS directly; OPM, TIGTA, Treasury, State, EAC, FEC, and the
+          Intelligence Community via oversight.gov), LegiScan (federal legislation), and FEC
+          filings.
         </p>
       </Section>
 
@@ -215,8 +217,13 @@ function DetailedContent() {
             ],
             [
               'OIG',
-              'Inspector General reports (HHS, DOJ, SSA, DHS)',
-              'hhs/doj/ssa/dhs-oig-fetcher.ts',
+              'Inspector General reports from 11 offices: HHS, DOJ, SSA, DHS directly; OPM, TIGTA, Treasury, State, EAC, FEC, and the Intelligence Community via oversight.gov',
+              'hhs/doj/ssa/dhs-oig-fetcher.ts, oversight-gov-fetcher.ts',
+            ],
+            [
+              'DHS Press',
+              'Operational press releases from DHS headquarters, ICE (full newsroom), and CBP (national media releases); HSI criminal-investigation releases also route to Federal Law Enforcement',
+              'dhs-press-fetcher.ts',
             ],
           ]}
         />

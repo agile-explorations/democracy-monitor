@@ -222,7 +222,7 @@ export function DetailedContent() {
             ],
             [
               'Inspector General (OIG)',
-              'Audit reports and investigations from HHS, DOJ, SSA, and DHS Inspectors General',
+              'Audit reports and investigations from 11 Inspectors General: HHS, DOJ, SSA, and DHS directly; OPM, TIGTA, Treasury, State, EAC, FEC, and the Intelligence Community via oversight.gov',
               'Every few days',
             ],
             ['LegiScan', 'Federal legislative bill tracking via bulk datasets', 'Periodic'],
