@@ -8,10 +8,21 @@ import type { ExploreSearchResult, SearchFilters, SearchResultDocument } from '.
 
 const VECTOR_CANDIDATE_LIMIT = 500;
 
+/** Origins stored but excluded from all analysis and search (legacy). */
+export const SEARCH_EXCLUDED_ORIGINS = ['gdelt', 'whitehouse'] as const;
+
 export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof sql>[] {
-  // Retrieval-relevance exclusion (#544) is unconditional: annotated off-topic
-  // docs never surface in Explore search.
-  const conditions: ReturnType<typeof sql>[] = [sql`d.retrieval_relevant IS NOT FALSE`];
+  // Unconditional exclusions: annotated off-topic docs (#544), body-less
+  // metadata records, the intent-assessment working set (internal analysis
+  // plumbing under the non-monitored 'intent' category, null source_origin),
+  // and legacy origins — every searchable doc belongs to a listed source.
+  const conditions: ReturnType<typeof sql>[] = [
+    sql`d.retrieval_relevant IS NOT FALSE`,
+    sql`d.content_type != 'metadata_only'`,
+    sql`d.category != 'intent'`,
+    sql`d.source_origin IS NOT NULL`,
+    sql`d.source_origin NOT IN ('gdelt', 'whitehouse')`,
+  ];
 
   if (filters.category) {
     conditions.push(sql`d.category = ${filters.category}`);

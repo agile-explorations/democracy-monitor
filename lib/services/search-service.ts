@@ -18,7 +18,12 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { buildPublishedAtWindow } from '@/lib/utils/date-window';
 import { embedText } from './embedding-service';
 import { executeFilteredVectorQuery, fetchResearchDocRowsByIds } from './research-retrieval';
-import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
+import {
+  mapToSearchResult,
+  SEARCH_EXCLUDED_ORIGINS,
+  textExplore,
+  vectorExplore,
+} from './search-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,6 +166,14 @@ interface ResearchQueryOpts {
 /** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
 /** Combined ranking score: semantic similarity, recency, keyword hit, minus
  *  the procedural-boilerplate penalty (#593). */
+/** Joined list of legacy origins excluded from all search retrieval. */
+function excludedOrigins() {
+  return sql.join(
+    SEARCH_EXCLUDED_ORIGINS.map((o) => sql`${o}`),
+    sql`, `,
+  );
+}
+
 const COMBINED_SCORE = sql`(cosine_similarity * 0.6 + recency * 0.2
   + CASE WHEN keyword_match THEN 0.2 ELSE 0 END
   - CASE WHEN procedural THEN ${PROCEDURAL_TITLE_PENALTY}::numeric ELSE 0 END)`;
@@ -200,7 +213,7 @@ function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQuer
           FROM documents d
           LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
           WHERE d.embedding IS NOT NULL
-            AND d.source_origin NOT IN ('gdelt', 'whitehouse')
+            AND d.source_origin NOT IN (${excludedOrigins()})
             AND d.retrieval_relevant IS NOT FALSE
             AND d.content_type != 'metadata_only'
             ${dateFilter}
