@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CaseContext } from '@/components/shared/CaseContext';
 import { CollapsiblePanel } from '@/components/ui/CollapsiblePanel';
+import { CATEGORIES } from '@/lib/data/categories';
 import type { TrackedCaseListItem } from '@/pages/api/category/cases';
+
+const CATEGORY_TITLES = new Map(CATEGORIES.map((c) => [c.key, c.title]));
 
 /**
  * Category-level tracked-litigation panel (#696): case cards from
@@ -18,7 +21,13 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function CaseCard({ item }: { item: TrackedCaseListItem }) {
+function CaseCard({
+  item,
+  showCategories,
+}: {
+  item: TrackedCaseListItem;
+  showCategories?: boolean;
+}) {
   return (
     <div className="rounded border border-dm-border/60 bg-dm-bg/40 p-3">
       <div className="flex items-start justify-between gap-2">
@@ -44,13 +53,29 @@ function CaseCard({ item }: { item: TrackedCaseListItem }) {
         )}
         {item.natureOfSuit && <span>{item.natureOfSuit}</span>}
       </div>
+      {showCategories && item.categories.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {item.categories.map((key) => (
+            <span
+              key={key}
+              className="px-1.5 py-0 rounded border border-dm-border/60 text-[10px] text-dm-text-secondary"
+            >
+              {CATEGORY_TITLES.get(key) ?? key}
+            </span>
+          ))}
+        </div>
+      )}
       {item.posture && <p className="mt-1 text-xs text-dm-muted italic">{item.posture.line}</p>}
       <CaseContext caseId={item.caseId} />
     </div>
   );
 }
 
-export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
+/** Omit categoryKey (or pass '_all') for the combined cross-category view. */
+export function LitigationPanel({ categoryKey = '_all' }: { categoryKey?: string }) {
+  const combined = categoryKey === '_all';
+  const [categoryFilter, setCategoryFilter] = useState<string>('_all');
+  const effectiveKey = combined ? categoryFilter : categoryKey;
   const [cases, setCases] = useState<TrackedCaseListItem[]>([]);
   const [openCount, setOpenCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -63,7 +88,7 @@ export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
     async (nextPage: number, filter: 'open' | 'all', append: boolean) => {
       try {
         const res = await fetch(
-          `/api/category/cases?key=${encodeURIComponent(categoryKey)}&status=${filter}&page=${nextPage}`,
+          `/api/category/cases?key=${encodeURIComponent(effectiveKey)}&status=${filter}&page=${nextPage}`,
         );
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
@@ -77,7 +102,7 @@ export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
         setState('error');
       }
     },
-    [categoryKey],
+    [effectiveKey],
   );
 
   useEffect(() => {
@@ -88,7 +113,7 @@ export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
   if (state === 'ready' && totalCount === 0) return null;
 
   return (
-    <section className="mb-6">
+    <section className="mt-6 mb-6">
       <CollapsiblePanel
         title={`Litigation${openCount != null ? ` — ${openCount} open case${openCount === 1 ? '' : 's'}` : ''}`}
         defaultOpen={false}
@@ -107,6 +132,21 @@ export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
               {f === 'open' ? 'Open cases' : 'All cases'}
             </button>
           ))}
+          {combined && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-1.5 py-0.5 rounded border border-dm-border bg-dm-card text-[11px] text-dm-text-secondary"
+              aria-label="Filter litigation by category"
+            >
+              <option value="_all">All categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          )}
           {totalCount != null && <span className="text-dm-muted">{totalCount} tracked</span>}
         </div>
         {state === 'loading' && (
@@ -121,7 +161,7 @@ export function LitigationPanel({ categoryKey }: { categoryKey: string }) {
         {cases.length > 0 && (
           <div className="space-y-2">
             {cases.map((item) => (
-              <CaseCard key={item.caseId} item={item} />
+              <CaseCard key={item.caseId} item={item} showCategories={combined} />
             ))}
           </div>
         )}

@@ -98,8 +98,11 @@ async function main(): Promise<void> {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const backupFile = `/tmp/dm-prod-backup-${timestamp}.pgdump`;
       console.log(`\n==> Backing up production to ${backupFile}...`);
+      // 45 min: a full prod pg_dump over the wire passed 10 minutes once the DB
+      // grew past ~6GB (2026-08-10 ETIMEDOUT). Alternative: --skip-backup when
+      // the weekly dump (Mon 05:00 UTC) is fresh enough to serve as the backup.
       execSync(`pg_dump -Fc --no-owner --no-privileges "${prodUrl}" -f "${backupFile}"`, {
-        timeout: 600_000,
+        timeout: 2_700_000,
       });
       console.log('    Backup complete.');
     }

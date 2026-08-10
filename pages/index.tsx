@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useMemo, useState } from 'react';
+import { LitigationPanel } from '@/components/category/LitigationPanel';
 import { CategoryTable } from '@/components/landing/CategoryTable';
 import { DataIntegrityBanner } from '@/components/landing/DataIntegrityBanner';
 import { ThisWeekStrip } from '@/components/landing/ThisWeekStrip';
@@ -309,6 +310,9 @@ export default function Home() {
             />
           </section>
         )}
+
+        {/* Combined cross-category litigation (owner request 2026-08-10) */}
+        <LitigationPanel />
 
         {/* Term-context divider (#533): everything below is term-scale context */}
         <div className="mt-10 mb-6 flex items-center gap-3" aria-hidden>

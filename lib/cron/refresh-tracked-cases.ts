@@ -13,14 +13,14 @@ import { fetchWithRetry } from '@/lib/utils/fetch-retry';
  * Weekly tracked_cases refresh (#695) — snapshot post-step. Two passes, both
  * hard-capped and deterministic:
  * 1. Docket-date sweep: open cases with recent activity (plus never-refreshed
- *    rows) get date_filed/date_terminated/date_last_filing re-read from the CL
- *    v4 dockets endpoint in id__in batches — ≤10 API calls for the cap of 200.
+ *    rows) get date_filed/date_terminated/date_last_filing re-read via
+ *    per-docket GETs (the v4 dockets list endpoint rejects id__in — probed
+ *    2026-08-10) — ≤200 API calls/run at 500ms politeness, ≪ 5k/hr.
  * 2. Tier-B posture: the top open cases per category by last filing get a
  *    docket-entries fetch + derivePosture cached into posture jsonb.
  */
 
 export const REFRESH_CAP = 200;
-const BATCH_SIZE = 20;
 const POSTURE_TOP_PER_CATEGORY = 3;
 export const POSTURE_CALL_CAP = 40;
 const RECENT_WINDOW_MONTHS = 18;
@@ -30,32 +30,25 @@ interface CandidateRow {
   docket_id: string;
 }
 
-async function fetchDocketBatch(docketIds: number[]): Promise<
-  Array<{
-    id: number;
-    date_filed: string | null;
-    date_terminated: string | null;
-    date_last_filing: string | null;
-  }>
-> {
-  const url =
-    `${CL_API_V4}/dockets/?id__in=${docketIds.join(',')}` +
-    `&fields=id,date_filed,date_terminated,date_last_filing&page_size=${BATCH_SIZE}`;
+interface DocketDates {
+  id: number;
+  date_filed: string | null;
+  date_terminated: string | null;
+  date_last_filing: string | null;
+}
+
+/** Fetch one docket's dates; null when CL has no such docket (deleted/sealed). */
+async function fetchDocketDates(docketId: number): Promise<DocketDates | null> {
+  const url = `${CL_API_V4}/dockets/${docketId}/?fields=id,date_filed,date_terminated,date_last_filing`;
   const response = await fetchWithRetry(
     url,
     { headers: getAuthHeaders() },
     { label: 'tracked-cases-refresh', timeoutMs: FETCH_TIMEOUT_MS },
   );
-  if (!response.ok) throw new Error(`[cases:refresh] HTTP ${response.status} for docket batch`);
-  const data = (await response.json()) as {
-    results?: Array<{
-      id: number;
-      date_filed: string | null;
-      date_terminated: string | null;
-      date_last_filing: string | null;
-    }>;
-  };
-  return data.results ?? [];
+  if (response.status === 404) return null;
+  if (!response.ok)
+    throw new Error(`[cases:refresh] HTTP ${response.status} for docket ${docketId}`);
+  return (await response.json()) as DocketDates;
 }
 
 async function refreshDocketDates(): Promise<{ refreshed: number; calls: number }> {
@@ -71,20 +64,17 @@ async function refreshDocketDates(): Promise<{ refreshed: number; calls: number 
 
   let calls = 0;
   let refreshed = 0;
-  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-    const batch = candidates.slice(i, i + BATCH_SIZE);
-    if (i > 0) await sleep(2000);
+  for (const [i, candidate] of candidates.entries()) {
+    if (i > 0) await sleep(500);
     calls++;
-    let results: Awaited<ReturnType<typeof fetchDocketBatch>>;
+    let docket: DocketDates | null;
     try {
-      results = await fetchDocketBatch(batch.map((c) => parseInt(c.docket_id, 10)));
+      docket = await fetchDocketDates(parseInt(candidate.docket_id, 10));
     } catch (err) {
-      console.warn(`[cases:refresh] batch failed (${err}); continuing`);
+      console.warn(`[cases:refresh] ${candidate.case_id} failed (${err}); continuing`);
       continue;
     }
-    const byId = new Map(results.map((r) => [r.id, r]));
-    for (const candidate of batch) {
-      const docket = byId.get(parseInt(candidate.docket_id, 10));
+    {
       // Absent from CL (deleted/sealed): stamp refreshed_at so the queue drains.
       await db.execute(sql`
         UPDATE tracked_cases SET
