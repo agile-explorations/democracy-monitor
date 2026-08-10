@@ -118,9 +118,11 @@ export async function sendWeeklyDigest(weekOf: string): Promise<number> {
     return 0;
   }
 
-  const narrative = await getStoredNarrative('_overview', weekOf, 'public');
+  // Expert version (owner decision 2026-08-10): the subscriber audience is
+  // reporters/academics/legislators — they want the specific, citable text.
+  const narrative = await getStoredNarrative('_overview', weekOf, 'expert');
   if (!narrative) {
-    console.warn(`[subscriber] No public overview narrative for ${weekOf} — skipping digest`);
+    console.warn(`[subscriber] No expert overview narrative for ${weekOf} — skipping digest`);
     return 0;
   }
 
@@ -160,9 +162,9 @@ export async function sendCorrectionDigest(weekOf: string): Promise<number> {
     return 0;
   }
 
-  const narrative = await getStoredNarrative('_overview', weekOf, 'public');
+  const narrative = await getStoredNarrative('_overview', weekOf, 'expert');
   if (!narrative) {
-    console.warn(`[subscriber] No public overview narrative for ${weekOf} — skipping correction`);
+    console.warn(`[subscriber] No expert overview narrative for ${weekOf} — skipping correction`);
     return 0;
   }
 

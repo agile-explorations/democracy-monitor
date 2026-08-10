@@ -10,14 +10,17 @@ interface ReadingLevelContextValue {
 }
 
 const ReadingLevelContext = createContext<ReadingLevelContextValue>({
-  readingLevel: 'summary',
+  readingLevel: 'detailed',
   setReadingLevel: () => {},
 });
 
 export function ReadingLevelProvider({ children }: { children: ReactNode }) {
+  // Detailed is the default (owner decision 2026-08-10): the site's audience —
+  // reporters, academics, legislators — wants specifics; a stored toggle choice
+  // still wins.
   const [readingLevel, setReadingLevel] = useLocalStorage<ReadingLevel>(
     'dm_reading_level',
-    'summary',
+    'detailed',
   );
 
   return (
