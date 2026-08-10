@@ -99,6 +99,7 @@ rules:
         - lib/cron/backfill-content.ts
         - lib/cron/backfill-dhs-press.ts
         - lib/cron/resource-dhs-wayback.ts
+        - lib/cron/seed-tracked-cases.ts
         - lib/cron/attest-robots-window.ts
         - lib/cron/validate-robots.ts
         - lib/cron/backfill-layer2.ts
@@ -108,6 +109,7 @@ rules:
         # Library module with no CLI entry: invoked only from backfill.ts and
         # snapshot.ts, whose entry points call loadEnvConfig() before dispatch.
         - lib/cron/backfill-chrg.ts
+        - lib/cron/refresh-tracked-cases.ts
 
   # WHY: FR signal URLs with `term=` but no `agency=` or `type=` param will
   # search ALL federal agencies, pulling thousands of irrelevant documents.

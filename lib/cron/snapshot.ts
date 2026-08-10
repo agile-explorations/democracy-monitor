@@ -4,8 +4,10 @@ import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import {
   gateAndSendDigest,
+  retryFailedAggregates,
   tryEnsureWeekHeadline,
   tryGenerateNarratives,
+  tryRefreshTrackedCases,
   tryRegenerateTermSummary,
   tryStoreDataReport,
   tryValidateFunnel,
@@ -462,18 +464,7 @@ async function runPostCategorySteps(
   missedWeeksProcessed: number;
   narrativesGenerated: boolean;
 }> {
-  // Retry failed weekly aggregates once (transient DB errors)
-  let aggregateRetries = 0;
-  for (const { category, weekOf } of failedAggregates) {
-    try {
-      const agg = await computeWeeklyAggregate(category, weekOf);
-      await storeWeeklyAggregate(agg);
-      aggregateRetries++;
-      console.log(`[snapshot] Retry succeeded for ${category}/${weekOf}`);
-    } catch (err) {
-      errors.push(`Aggregate retry failed for ${category}/${weekOf}: ${formatError(err)}`);
-    }
-  }
+  const aggregateRetries = await retryFailedAggregates(failedAggregates, errors);
 
   let meta: MetaAssessment | null = null;
   if (allHealthChecks.length > 0) {
@@ -516,6 +507,7 @@ async function runPostCategorySteps(
   // Living term summary: at most one regeneration per run, only if data changed.
   await tryRegenerateTermSummary(errors);
 
+  await tryRefreshTrackedCases(errors);
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);

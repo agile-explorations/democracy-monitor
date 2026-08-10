@@ -5,6 +5,7 @@
  * reports through the shared errors channel.
  */
 
+import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import { evaluateDigestGate } from '@/lib/services/digest-gate';
 import type { DigestGateInput } from '@/lib/services/digest-gate';
 import {
@@ -12,7 +13,27 @@ import {
   regenerateTermSummaryIfStale,
   retryFailedNarratives,
 } from '@/lib/services/narrative-pipeline';
+import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { formatError } from '@/lib/utils/api-helpers';
+
+/** Retry failed weekly aggregates once (transient DB errors). */
+export async function retryFailedAggregates(
+  failedAggregates: AggregateFailure[],
+  errors: string[],
+): Promise<number> {
+  let aggregateRetries = 0;
+  for (const { category, weekOf } of failedAggregates) {
+    try {
+      const agg = await computeWeeklyAggregate(category, weekOf);
+      await storeWeeklyAggregate(agg);
+      aggregateRetries++;
+      console.log(`[snapshot] Retry succeeded for ${category}/${weekOf}`);
+    } catch (err) {
+      errors.push(`Aggregate retry failed for ${category}/${weekOf}: ${formatError(err)}`);
+    }
+  }
+  return aggregateRetries;
+}
 
 /** Regenerate the living term summary if stale (non-fatal — errors appended but don't fail snapshot). */
 /** Current week's one-line event headline (#539) — non-fatal. */
@@ -93,6 +114,19 @@ export async function tryValidateGraph(errors: string[]): Promise<number> {
  * full-scan queries exceed the web proxy timeout, so the page serves this
  * weekly stored copy. Non-fatal — a missing report renders as "pending".
  */
+
+/** Weekly tracked_cases refresh (#695) — non-fatal; the tracker is a display
+ * surface, never a snapshot blocker. */
+export async function tryRefreshTrackedCases(errors: string[]): Promise<void> {
+  try {
+    const { refreshTrackedCases } = await import('@/lib/cron/refresh-tracked-cases');
+    const summary = await refreshTrackedCases();
+    console.log(`[snapshot] tracked_cases refresh — ${summary}`);
+  } catch (err) {
+    errors.push(`tracked_cases refresh failed: ${formatError(err)}`);
+  }
+}
+
 export async function tryStoreDataReport(errors: string[]): Promise<void> {
   try {
     const { runDataValidation } = await import('@/lib/services/data-validation-service');
