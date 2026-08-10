@@ -750,6 +750,8 @@ export const trackedCases = pgTable(
       date: string;
       asOf: string;
     } | null>(),
+    /** Latest P2 AI-review reasoning for an opinion in this case (#700 follow-on) — the "what is this case about" line. */
+    caseSummary: text('case_summary'),
     clusterDisposition: text('cluster_disposition'),
     clusterPrecedential: varchar('cluster_precedential', { length: 50 }),
     clusterCitationCount: integer('cluster_citation_count'),

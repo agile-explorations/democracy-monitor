@@ -22,6 +22,7 @@ function casePayload(overrides: Record<string, unknown> = {}) {
         dateLastFiling: '2026-06-30',
         status: 'open',
         posture: { line: 'PI granted 2026-03-01', asOf: '2026-08-10T00:00:00Z' },
+        caseSummary: 'Challenge to warrantless surveillance program under the Fourth Amendment',
       },
     ],
     openCount: 42,
@@ -61,6 +62,7 @@ describe('LitigationPanel (combined mode)', () => {
       true,
     );
     expect(screen.getByText(/PI granted 2026-03-01/)).toBeTruthy();
+    expect(screen.getByText(/warrantless surveillance program/)).toBeTruthy();
   });
 
   it('offers all categories in the filter and refetches with the chosen key', async () => {

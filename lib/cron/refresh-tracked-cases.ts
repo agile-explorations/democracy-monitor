@@ -133,13 +133,35 @@ async function refreshPostures(): Promise<{ postured: number; calls: number }> {
   return { postured, calls };
 }
 
-/** Run both refresh passes; returns a one-line summary for logs. */
+/**
+ * Copy the latest P2 AI-review reasoning for each case's opinions into
+ * case_summary — the "what is this case about" line on litigation cards.
+ * Deterministic SQL, zero API calls; new assessments flow in weekly.
+ */
+async function syncCaseSummaries(): Promise<number> {
+  const db = getDb();
+  const result = await db.execute(sql`
+    UPDATE tracked_cases t SET case_summary = s.reasoning
+    FROM (
+      SELECT DISTINCT ON (d.case_id) d.case_id, a.reasoning
+      FROM ai_document_assessments a
+      JOIN documents d ON d.url = a.url AND d.category = a.category
+      WHERE a.pass = 2 AND a.reasoning IS NOT NULL AND d.case_id LIKE 'cl:%'
+      ORDER BY d.case_id, a.assessed_at DESC
+    ) s
+    WHERE t.case_id = s.case_id AND t.case_summary IS DISTINCT FROM s.reasoning`);
+  return Number(result.rowCount ?? 0);
+}
+
+/** Run all refresh passes; returns a one-line summary for logs. */
 export async function refreshTrackedCases(): Promise<string> {
   if (!isDbAvailable()) return 'db unavailable — skipped';
   const dates = await refreshDocketDates();
   const postures = await refreshPostures();
+  const summaries = await syncCaseSummaries();
   return (
     `dates: ${dates.refreshed} cases in ${dates.calls} calls; ` +
-    `posture: ${postures.postured} cases in ${postures.calls} calls`
+    `posture: ${postures.postured} cases in ${postures.calls} calls; ` +
+    `summaries: ${summaries} synced`
   );
 }

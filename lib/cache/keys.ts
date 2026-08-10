@@ -23,6 +23,6 @@ export const CacheKeys = {
   caseTimeline: (docketId: string | number) => `case:timeline:${docketId}:v1`,
   /** tracked_cases category listing pages. */
   categoryCases: (category: string, status: string, page: number) =>
-    `case:list:${category}:${status}:${page}:v1`,
+    `case:list:${category}:${status}:${page}:v2`,
   themeLabel: (category: string, week: string) => `theme-label:${category}:${week}`,
 } as const;
