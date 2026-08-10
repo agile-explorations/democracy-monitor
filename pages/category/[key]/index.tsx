@@ -274,8 +274,8 @@ export default function CategoryDetailPage({
             </div>
           )}
 
-          {/* Tracked litigation — below the week detail (owner request 2026-08-10) */}
-          {categoryKey && <LitigationPanel categoryKey={categoryKey} />}
+          {/* Tracked litigation fallback — WeekDetailPanel renders it when a week is selected */}
+          {!selectedWeek && categoryKey && <LitigationPanel categoryKey={categoryKey} />}
         </>
       )}
 

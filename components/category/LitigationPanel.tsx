@@ -74,6 +74,8 @@ function CaseCard({
 /** Omit categoryKey (or pass '_all') for the combined cross-category view. */
 export function LitigationPanel({ categoryKey = '_all' }: { categoryKey?: string }) {
   const combined = categoryKey === '_all';
+  const [categoryFilter, setCategoryFilter] = useState<string>('_all');
+  const effectiveKey = combined ? categoryFilter : categoryKey;
   const [cases, setCases] = useState<TrackedCaseListItem[]>([]);
   const [openCount, setOpenCount] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -86,7 +88,7 @@ export function LitigationPanel({ categoryKey = '_all' }: { categoryKey?: string
     async (nextPage: number, filter: 'open' | 'all', append: boolean) => {
       try {
         const res = await fetch(
-          `/api/category/cases?key=${encodeURIComponent(categoryKey)}&status=${filter}&page=${nextPage}`,
+          `/api/category/cases?key=${encodeURIComponent(effectiveKey)}&status=${filter}&page=${nextPage}`,
         );
         if (!res.ok) throw new Error(String(res.status));
         const data = await res.json();
@@ -100,7 +102,7 @@ export function LitigationPanel({ categoryKey = '_all' }: { categoryKey?: string
         setState('error');
       }
     },
-    [categoryKey],
+    [effectiveKey],
   );
 
   useEffect(() => {
@@ -130,6 +132,21 @@ export function LitigationPanel({ categoryKey = '_all' }: { categoryKey?: string
               {f === 'open' ? 'Open cases' : 'All cases'}
             </button>
           ))}
+          {combined && (
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-1.5 py-0.5 rounded border border-dm-border bg-dm-card text-[11px] text-dm-text-secondary"
+              aria-label="Filter litigation by category"
+            >
+              <option value="_all">All categories</option>
+              {CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          )}
           {totalCount != null && <span className="text-dm-muted">{totalCount} tracked</span>}
         </div>
         {state === 'loading' && (

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AIAssessmentPanel } from '@/components/category/AIAssessmentPanel';
 import { ConcernHeader } from '@/components/category/ConcernHeader';
+import { LitigationPanel } from '@/components/category/LitigationPanel';
 import { StructuralSignaturePanel } from '@/components/category/StructuralSignaturePanel';
 import { ThematicDriftPanel } from '@/components/category/ThematicDriftPanel';
 import { NarrativeSection } from '@/components/shared/NarrativeSection';
@@ -129,6 +130,9 @@ export function WeekDetailPanel({
               weekOf={weekOf}
             />
           </CollapsiblePanel>
+
+          {/* Tracked litigation — just above the documents section (owner request 2026-08-10) */}
+          <LitigationPanel categoryKey={categoryKey} />
 
           {/* Document table */}
           {explanation && (
