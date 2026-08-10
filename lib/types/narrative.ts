@@ -53,6 +53,8 @@ export interface NarrativeBaselineContext {
 /** Trajectory context: where this category has been. */
 export interface NarrativeTrajectory {
   previousWeekStatus: string | null;
+  /** Previous week's document count — grounds week-over-week volume claims (#700). */
+  previousWeekDocCount: number | null;
   consecutiveWeeksAtStatus: number;
 }
 

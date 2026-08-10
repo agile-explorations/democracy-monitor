@@ -72,16 +72,23 @@ describe('tryStoredResponse', () => {
   };
   const pub: StoredNarrative = { content: 'Public text', model: 'test', generatedAt: '2025-01-01' };
 
-  it('returns both versions when no version filter', () => {
+  it('returns both versions plus generatedAt when no version filter', () => {
     expect(tryStoredResponse({ expert, public: pub })).toEqual({
       expert: 'Expert text',
       public: 'Public text',
+      generatedAt: '2025-01-01',
     });
   });
 
-  it('returns single version when filtered', () => {
-    expect(tryStoredResponse({ expert, public: pub }, 'expert')).toEqual({ expert: 'Expert text' });
-    expect(tryStoredResponse({ expert, public: pub }, 'public')).toEqual({ public: 'Public text' });
+  it('returns single version plus generatedAt when filtered', () => {
+    expect(tryStoredResponse({ expert, public: pub }, 'expert')).toEqual({
+      expert: 'Expert text',
+      generatedAt: '2025-01-01',
+    });
+    expect(tryStoredResponse({ expert, public: pub }, 'public')).toEqual({
+      public: 'Public text',
+      generatedAt: '2025-01-01',
+    });
   });
 
   it('returns null when requested version is missing', () => {

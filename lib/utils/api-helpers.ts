@@ -52,9 +52,14 @@ export function tryStoredResponse(
   version?: 'expert' | 'public',
 ): Record<string, string> | null {
   if (version) {
-    if (stored[version]) return { [version]: stored[version]!.content };
+    if (stored[version])
+      return { [version]: stored[version]!.content, generatedAt: stored[version]!.generatedAt };
   } else if (stored.expert && stored.public) {
-    return { expert: stored.expert.content, public: stored.public.content };
+    return {
+      expert: stored.expert.content,
+      public: stored.public.content,
+      generatedAt: stored.expert.generatedAt,
+    };
   }
   return null;
 }

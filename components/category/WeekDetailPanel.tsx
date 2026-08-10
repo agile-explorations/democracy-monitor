@@ -41,7 +41,7 @@ export interface WeekDetailPanelProps {
   categoryKey: string;
   layers: CategoryDetailLatestWeek | null;
   explanation: WeekExplanation | null;
-  narrative: { expert: string; public: string } | null;
+  narrative: { expert: string; public: string; generatedAt?: string } | null;
   editorial: EditorialRecord | null;
   readingLevel: ReadingLevel;
   loading: boolean;
@@ -105,6 +105,7 @@ export function WeekDetailPanel({
               narrative={narrative}
               readingLevel={readingLevel}
               editorial={editorial}
+              dataAsOf={narrative?.generatedAt ?? null}
             />
           </div>
 

@@ -27,6 +27,15 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
     'This is AI-generated analysis, not a finding of fact.',
     'Do not make claims unsupported by the data.',
     '',
+    'NUMBER DISCIPLINE: every count, rate, and document total MUST be copied verbatim from the',
+    'data sections below. Do not derive, sum, or estimate your own figures. Week-over-week',
+    'comparisons may use ONLY the previous-week status and document count provided in the',
+    'TRAJECTORY section — if a figure is not provided, do not compare against it.',
+    'Status scale: Stable → Elevated → ConfirmedConcern. ConfirmedConcern is the HIGHEST level.',
+    'REFERENT DISCIPLINE: never write "the system" to mean U.S. democracy or its institutions —',
+    'on this site, "the system" reads as the monitoring system itself. Say "the constitutional',
+    'system", "American democracy", or "democratic institutions" explicitly.',
+    '',
     'CRITICAL: Your second paragraph in BOTH narratives MUST include a "why this might matter"',
     'sentence connecting the pattern to the specific democratic institution at stake.',
     '',
@@ -69,30 +78,16 @@ function buildConditionalCriteria(data: NarrativeLayerData): string[] {
   return lines;
 }
 
-export function buildFeedbackPrompt(
-  expertDraft: string,
-  publicDraft: string,
-  data: NarrativeLayerData,
-): string {
+function feedbackReviewInstructions(): string[] {
   return [
-    'You are an editorial reviewer for a democratic institution monitoring system.',
-    'Review the following AI-generated narrative drafts against the source data.',
-    '',
-    '--- EXPERT DRAFT ---',
-    expertDraft,
-    '',
-    '--- PUBLIC DRAFT ---',
-    publicDraft,
-    '',
-    formatLayerAssessment(data),
-    '',
-    formatDocumentSection(data),
-    '',
     '--- REVIEW INSTRUCTIONS ---',
     'Review both drafts against the source data. Provide structured feedback:',
     '',
     '(a) FACTUAL ACCURACY — Does the draft correctly represent the layer scores and document',
-    'content? List any specific misstatements.',
+    'content? List any specific misstatements. NUMERIC CHECK: verify that every number in the',
+    'draft (counts, rates, document totals, week-over-week comparisons) appears verbatim in the',
+    'source data above. Flag any number that does not — invented or derived figures are the',
+    'highest-priority factual errors.',
     '',
     '(b) CONFIDENCE CALIBRATION — Does the draft overstate certainty or imply causation from',
     'correlation? Quote specific phrases that need softening.',
@@ -115,6 +110,29 @@ export function buildFeedbackPrompt(
     'or protection at stake? The sentence must use conditional language ("could affect",',
     '"may indicate"). If this sentence is missing from either narrative, flag it as the',
     'highest-priority revision item.',
+  ];
+}
+
+export function buildFeedbackPrompt(
+  expertDraft: string,
+  publicDraft: string,
+  data: NarrativeLayerData,
+): string {
+  return [
+    'You are an editorial reviewer for a democratic institution monitoring system.',
+    'Review the following AI-generated narrative drafts against the source data.',
+    '',
+    '--- EXPERT DRAFT ---',
+    expertDraft,
+    '',
+    '--- PUBLIC DRAFT ---',
+    publicDraft,
+    '',
+    formatLayerAssessment(data),
+    '',
+    formatDocumentSection(data),
+    '',
+    ...feedbackReviewInstructions(),
     ...buildConditionalCriteria(data),
   ].join('\n');
 }
@@ -540,6 +558,10 @@ export function buildWeeklySummaryFeedbackPrompt(
     '(a) FACTUAL ACCURACY — Does the draft correctly state how many categories have zero',
     'documents, how many are Stable with documents, and how many are Elevated or above?',
     'Compare every numerical claim against the FACTUAL DATA section. List any misstatements.',
+    'NUMERIC CHECK: verify that every number in the draft (status counts, the ConfirmedConcern/',
+    'Elevated split, document totals, week-over-week comparisons) appears verbatim in the',
+    'FACTUAL DATA section. Flag any number that does not — invented or derived figures are the',
+    'highest-priority factual errors.',
     'CRITICAL: "Stable" does NOT mean "zero documents". A category can be Stable with hundreds',
     'of documents — it means no erosion signal was detected.',
     '',

@@ -146,6 +146,8 @@ export function formatTrajectorySection(data: NarrativeLayerData): string {
   if (!t) return '';
   const lines = ['--- TRAJECTORY ---'];
   if (t.previousWeekStatus) lines.push(`Previous week: ${t.previousWeekStatus}`);
+  if (t.previousWeekDocCount != null)
+    lines.push(`Previous week document count: ${t.previousWeekDocCount}`);
   lines.push(`Consecutive weeks at current level: ${t.consecutiveWeeksAtStatus}`);
   return lines.join('\n');
 }
