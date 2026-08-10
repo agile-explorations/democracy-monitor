@@ -197,7 +197,7 @@ export function DetailedContent() {
             ],
             [
               'CourtListener',
-              'Federal court opinions, docket entries, RECAP archive',
+              'Federal court opinions, plus case docket metadata (RECAP) feeding the litigation tracker',
               'Every few days',
             ],
             [

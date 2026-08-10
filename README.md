@@ -18,7 +18,7 @@ Assessments are fully transparent: every status traces to specific documents, re
 
 ## How It Works
 
-1. **Data collection** — Weekly cron jobs fetch from 9 source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, Congressional Record, GDELT), storing full documents in PostgreSQL
+1. **Data collection** — Weekly cron jobs fetch from 9 source types (Federal Register, GovInfo/GAO, CourtListener, DOJ, OIG offices, LegiScan, FEC, Congressional Record, GDELT), storing full documents in PostgreSQL. Federal litigation is tracked separately in a case tracker (`tracked_cases`): 200k+ cases with court, filing/termination dates, and procedural posture, refreshed weekly for active cases.
 2. **AI content assessment** (sole active detection) — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document (8K chars, boilerplate-stripped), then Claude evaluates flagged documents with week-level context. Different providers ensure independent evaluation.
 3. **Silence detection** (descriptive context) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active. Provides narrative context but does not drive concern status.
 4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive concern status.
