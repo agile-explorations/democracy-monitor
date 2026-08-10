@@ -89,10 +89,14 @@ export interface FetchErrorSummary {
 export interface MetadataOnlyStats {
   population: string;
   sourceFilter: { column: string; value: string };
+  /** 'all-marked': every row must be metadata_only. 'none-present': zero rows allowed. */
+  mode: 'all-marked' | 'none-present';
   total: number;
   markedMetadataOnly: number;
   unmarked: number;
   pass: boolean;
+  /** Remediation command shown when the check fails. */
+  hint: string;
 }
 
 export interface IngestReport {

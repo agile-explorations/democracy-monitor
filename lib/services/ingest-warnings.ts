@@ -199,13 +199,17 @@ export function collectWarningDetails(
     });
   }
 
-  // Metadata-only classification (#648: moved from Data Readiness). Mislabeled
-  // stubs are remediable via docs:mark-stubs, so 'action'.
+  // Metadata-only classification (#648: moved from Data Readiness). Each
+  // population carries its own remediation hint, so 'action'.
   for (const m of report.metadataOnlyClassification ?? []) {
     if (!m.pass) {
+      const detail =
+        m.mode === 'none-present'
+          ? `${m.total} residual row(s) present (expected 0 — retired to tracked_cases)`
+          : `${m.unmarked} of ${m.total} not marked metadata_only`;
       warnings.push({
         severity: 'action',
-        text: `${m.population}: ${m.unmarked} of ${m.total} not marked metadata_only (run: pnpm docs:mark-stubs)`,
+        text: `${m.population}: ${detail} (run: ${m.hint})`,
       });
     }
   }

@@ -462,7 +462,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_type',
     type: 'varchar',
     description:
-      'Kind of document as ingested: e.g. judicial_opinion, court_opinion (docket entry stub), press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice.',
+      'Kind of document as ingested: e.g. judicial_opinion, press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice. Format change 2026-08: court_opinion (docket-entry stub) rows were retired — the case universe they carried moved to tracked_cases.',
   },
   { name: 'category', type: 'varchar', description: CATEGORY_DESC },
   { name: 'title', type: 'text', description: 'Document title as published by the source.' },
@@ -504,13 +504,13 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'content_type',
     type: 'varchar',
     description:
-      'full_text, or metadata_only for docket-entry stubs that intentionally carry no body — stubs are excluded from counts, statistics, embeddings, and search.',
+      'full_text, or metadata_only for rows that intentionally carry no body (GDELT rhetoric records and unobtainable-body documents) — metadata_only rows are excluded from counts, statistics, embeddings, and search. Format change 2026-08: the largest metadata_only population, docket-entry stubs, was retired to tracked_cases.',
   },
   {
     name: 'case_id',
     type: 'varchar|null',
     description:
-      'Court-case identifier used to group filings and dedupe case-level counting. For CourtListener rows the format is cl:<docketId>, where <docketId> is the CourtListener docket primary key — joinable to https://www.courtlistener.com/docket/<docketId>/ and the v4 API (/api/rest/v4/docket-entries/?docket=<docketId>). Within the dump it groups a full-text opinion row with its metadata-only docket-entry stub rows (see content_type); every CourtListener opinion carries case_id even when no stub rows exist locally.',
+      'Court-case identifier used to group filings and dedupe case-level counting. For CourtListener rows the format is cl:<docketId>, where <docketId> is the CourtListener docket primary key — joinable to https://www.courtlistener.com/docket/<docketId>/, the v4 API (/api/rest/v4/docket-entries/?docket=<docketId>), and tracked_cases.case_id (the case-level record: court, dates, status, posture). Every CourtListener opinion carries case_id.',
   },
   {
     name: 'speaker',
@@ -1062,7 +1062,7 @@ export const DATA_DICTIONARY: DictionaryArtifact[] = [
     key: 'table_documents',
     title: 'documents (dump)',
     description:
-      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested. Opinion rows and their docket-entry stub rows share a case_id (cl:<docketId>, the CourtListener docket key) — the join that reconstructs case groupings.',
+      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested. Opinion rows carry a case_id (cl:<docketId>, the CourtListener docket key) joining them to tracked_cases, which holds case-level metadata. Format change 2026-08: ~283k metadata-only docket-entry stub rows were removed from this table; the case universe they indexed now lives in tracked_cases.',
     entries: TABLE_DOCUMENTS,
   },
   {

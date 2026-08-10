@@ -214,7 +214,7 @@ export function renderIngest(data: any) {
         <>
           <SubsectionHeading
             title="Metadata-Only Classification"
-            description="Whether metadata-only documents (e.g., docket stubs, rhetoric cross-feed) are correctly flagged at ingestion."
+            description="Whether metadata-only documents (e.g., rhetoric cross-feed) are correctly flagged at ingestion, and that no retired docket-stub rows have regrown."
           />
           <DataTable
             headers={['Population', 'Filter', 'Total', 'Marked', 'Unmarked', 'Result']}

@@ -252,19 +252,21 @@ export function DetailedContent() {
           ingest run.
         </p>
         <p>
-          <strong>What counts as a document:</strong> the corpus has two tiers. Full-text documents
-          (roughly three-fifths of stored rows) carry a complete body and are what document counts,
-          search, and AI assessment operate on. The rest are metadata-only records — chiefly federal
-          court docket entries, where each row records that a filing <em>happened</em> (case, date,
-          filing type) even though most filing texts sit behind the PACER paywall. These event
-          records power case-activity tracking and tell the pipeline which entries have retrievable
-          opinions, but they are excluded from document counts, search results, and all detection
-          layers so a body-less row can never masquerade as a substantive document. A small number
-          of metadata-only rows record documents whose bodies are unobtainable (for example, reports
-          an agency stopped publishing openly), and a legacy set of media-metadata rows from a
-          retired source remains in the public database dump but is excluded from all analysis.
-          Anyone loading the downloadable dump will therefore see more rows than the searchable
-          document count — the difference is these event and metadata records.
+          <strong>What counts as a document:</strong> nearly every stored document carries a
+          complete body and is what document counts, search, and AI assessment operate on. Federal
+          litigation is tracked separately: rather than storing a body-less row per docket filing
+          (most filing texts sit behind the PACER paywall), each monitored case lives in a dedicated
+          case-tracker table with its court, filing and termination dates, subject matter, and
+          current posture — sourced from CourtListener&apos;s bulk docket data and refreshed weekly
+          for active cases. Court <em>opinions</em>, which do have retrievable text, remain full
+          documents in the corpus. The remaining metadata-only document rows are news-rhetoric
+          records from the GDELT event database (headline-level signals whose full articles we do
+          not republish) and a small set of documents whose bodies are unobtainable (for example,
+          reports an agency stopped publishing openly); these are excluded from document counts,
+          search results, and all detection layers so a body-less row can never masquerade as a
+          substantive document. Anyone loading the downloadable dump will see the case tracker as
+          its own table (as of August 2026, replacing roughly 283,000 docket-entry stub rows that
+          previously inflated the raw row count) plus these metadata records.
         </p>
         <p>
           Source ingestion is health-checked on every weekly run. A source that fails to fetch is

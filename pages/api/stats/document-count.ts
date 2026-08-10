@@ -2,8 +2,10 @@
  * GET /api/stats/document-count — corpus counts for the dashboard hero
  * (cached 7 days; the weekly ingest cadence refreshes it in practice).
  *
- * Two numbers (#566 count semantics):
- *   total    — every unique retrieval-relevant record, incl. docket stubs
+ * Two numbers (#566 count semantics, revised #697):
+ *   total    — every unique retrieval-relevant record. Docket stubs no
+ *              longer exist in documents (retired to tracked_cases), so
+ *              total ≈ fullText + GDELT metadata-only rhetoric rows.
  *   fullText — searchable full-text documents (the same substantive
  *              eligibility used by scoring, L2, and search: not
  *              metadata-only, ≥100 chars of content)
