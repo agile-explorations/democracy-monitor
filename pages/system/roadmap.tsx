@@ -20,10 +20,11 @@ export default function RoadmapPage() {
       <div className="max-w-3xl">
         <Section title="Current State" id="current-state">
           <p>
-            The system ingests documents from 9 federal sources — the Federal Register,
-            Congressional Record, CourtListener, Compilation of Presidential Documents, GovInfo
-            congressional reports and public laws, DOJ press releases, Inspector General reports,
-            LegiScan federal bills, and FEC advisory opinions — and assesses each across 14
+            The system ingests documents from 10 federal sources — the Federal Register,
+            Congressional Record, congressional hearing transcripts, CourtListener, Compilation of
+            Presidential Documents, GovInfo congressional reports and public laws, DOJ press
+            releases, DHS/ICE/CBP press releases, Inspector General reports from 11 offices, and
+            LegiScan federal bills plus FEC advisory opinions — and assesses each across 14
             categories of democratic institutional health.
           </p>
           <p>

@@ -118,9 +118,9 @@ Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, 
 
 ### Data flow
 
-The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (RSS feeds, JSON APIs, Federal Register queries, CourtListener, DOJ press releases, GovInfo/GAO, FEC filings, GDELT news). The flow is:
+The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (JSON APIs, Federal Register queries, CourtListener, DOJ press releases, DHS/ICE/CBP newsrooms, GovInfo/GAO, OIG reports, FEC filings). The flow is:
 
-1. **Cron/backfill** fetches data from external sources (FR, CourtListener, DOJ, GovInfo/CPD, FEC, CREC, LegiScan, OIG, GDELT) and stores full documents in PostgreSQL
+1. **Cron/backfill** fetches data from external sources (FR, CourtListener, DOJ, DHS/ICE/CBP press, GovInfo/CPD, FEC, CREC, CHRG, LegiScan, OIG incl. oversight.gov) and stores full documents in PostgreSQL
 2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs assessment (structural anomaly + AI two-pass + thematic drift) → convergence synthesis → stores assessment snapshots
 3. **API routes** (`/api/proxy`, `/api/federal-register`, `/api/scrape-tracker`) act as server-side proxies with Redis caching (in-memory fallback)
 4. **UI** reads stored snapshots and documents via API routes; progressive disclosure surfaces assessment details on demand
@@ -166,7 +166,7 @@ __tests__/        # Vitest test files mirroring lib/ structure
 - **`lib/services/narrative-generation-service.ts`** — AI narrative generation (dual-audience: expert + public).
 - **`lib/methodology/scoring-config.ts`** — Tier weights, class multipliers, volume thresholds, named constants.
 - **`lib/cron/snapshot.ts`** — Weekly snapshot pipeline: fetch → assess → concern synthesis → store.
-- **`lib/cron/backfill.ts`** — Historical backfill (FR + WH + GDELT + CourtListener + DOJ + GovInfo + FEC) with AI assessment.
+- **`lib/cron/backfill.ts`** — Historical backfill (FR + CourtListener + DOJ + GovInfo + FEC + DHS press + OIG) with AI assessment.
 - **`lib/cache/index.ts`** — Redis cache with automatic in-memory fallback when Redis is unavailable.
 - **`lib/ai/provider.ts`** — AI provider factory (OpenAI, Anthropic) with availability checks.
 - **`lib/db/schema.ts`** — Drizzle ORM table definitions (documents, assessments, baselines, weekly_aggregates, ai_document_assessments, narratives, etc.).
@@ -203,7 +203,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
 7. **Post-sprint code review** — First run `pnpm lint`, `pnpm lint:patterns`, and `pnpm lint:unused` to catch mechanical violations. Then review all files created or modified in the sprint against the checklist below (focusing on judgment items: naming, SOLID, DRY, testability). Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
 8. **Commit** — Stage, format, and commit only after the review is clean
-9. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Keep only the last ~5 sprints in `docs/DECISIONS.md`; move older entries to `docs/DECISIONS-ARCHIVE.md`. Annotate `docs/ROADMAP.md` for the completed sprint. Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` and promote any reusable lessons to the "Lessons learned" section. The results of the retrospective **MUST** be presented to the user for approval.
+9. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Keep only the last ~5 sprints in `docs/DECISIONS.md`; move older entries to `docs/DECISIONS-ARCHIVE.md`. Annotate `FUTURE_ROADMAP.md` if the sprint delivered one of its items. Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` and promote any reusable lessons to the "Lessons learned" section. The results of the retrospective **MUST** be presented to the user for approval.
 10. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 7–8 first.
 11. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.
 
@@ -250,7 +250,7 @@ The weekly dump cron triggers `POST /api/cron/dump` which runs `pg_dump -Fc` to 
 
 ## Project management
 
-- **`docs/ROADMAP.md`** — Strategic sprint plan with goals, dependencies, cost estimates. Forward-looking; completed sprints get "Actual:" annotations.
+- **`FUTURE_ROADMAP.md`** (repo root) — Post-launch feature roadmap; shipped items get ✅ annotations. (`docs/ROADMAP-ARCHIVE.md` is the retired pre-launch tracker.)
 - **`docs/DECISIONS.md`** — Recent sprint retrospectives (last ~5 sprints). Older sprints archived in `docs/DECISIONS-ARCHIVE.md`.
 - **GitHub Milestones** — One per sprint. Close when all issues in the sprint are done.
 - **GitHub Issues** — Individual work items within a sprint. Reference issue numbers in commit messages (`Fixes #N`).
