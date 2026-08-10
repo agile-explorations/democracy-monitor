@@ -83,16 +83,20 @@ export function renderWeeklyEmail(
   narrativeMarkdown: string,
   weekOf: string,
   unsubscribeToken: string,
+  generatedAt?: Date | string | null,
 ): string {
   const unsubscribeUrl = `${SITE_URL}/api/subscribers/unsubscribe?token=${unsubscribeToken}`;
   const weekUrl = `${SITE_URL}/weekly/${weekOf}`;
 
   // Convert markdown to simple HTML (narratives use: headers, bold, links, paragraphs, lists)
   const narrativeHtml = markdownToEmailHtml(narrativeMarkdown);
+  const asOfLine = generatedAt
+    ? `<p style="color:#8b949e;font-size:11px;margin:12px 0 0">Reflects data as of ${new Date(generatedAt).toISOString().slice(0, 10)} — statuses and counts may be re-derived as late-arriving documents are processed.</p>`
+    : '';
 
   return emailWrapper(
     `<h1 style="${STYLES.heading}">Week of ${weekOf}</h1>
-<div style="${STYLES.text}">${narrativeHtml}</div>
+<div style="${STYLES.text}">${narrativeHtml}</div>${asOfLine}
 <p style="margin:24px 0"><a href="${weekUrl}" style="${STYLES.button}">View full analysis</a></p>`,
     `<p style="color:#8b949e;font-size:12px"><a href="${unsubscribeUrl}" style="color:#8b949e">Unsubscribe</a> from weekly updates</p>`,
   );
