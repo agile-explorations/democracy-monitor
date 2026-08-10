@@ -170,13 +170,13 @@ export function ExploreFilters({
         <option value="courtlistener">CourtListener</option>
         <option value="doj">DOJ</option>
         <option value="govinfo">GovInfo</option>
-        <option value="govinfo_cpd">CPD</option>
+        <option value="govinfo_cpd">Presidential Docs (CPD)</option>
         <option value="fec">FEC</option>
         <option value="legiscan">LegiScan</option>
         <option value="oig">OIG</option>
         <option value="crec">CREC</option>
         <option value="chrg">Hearings</option>
-        <option value="dhs_press">DHS Press</option>
+        <option value="dhs_press">DHS/ICE/CBP Press</option>
       </select>
       <select
         value={filterSort}
