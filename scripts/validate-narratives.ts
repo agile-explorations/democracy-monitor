@@ -21,7 +21,10 @@ import {
   generateMultiPassNarrative,
   generateSinglePassNarrative,
 } from '../lib/services/narrative-multipass';
-import { toNarrativeLayerData } from '../lib/services/narrative-pipeline';
+import {
+  computePreviousWeekTotalDocs,
+  toNarrativeLayerData,
+} from '../lib/services/narrative-pipeline';
 import {
   buildWeeklySummaryPrompt,
   buildTermSummaryPrompt,
@@ -388,6 +391,7 @@ async function validateWeeklySummary(weekOf: string): Promise<CheckResult[]> {
     categoryNarratives,
     failedCategories: [],
     previousWeekSummary,
+    previousWeekTotalDocs: await computePreviousWeekTotalDocs(weekOf),
   };
 
   const elevated = categories.filter((c) => isElevatedStatus(c.convergenceDetail));

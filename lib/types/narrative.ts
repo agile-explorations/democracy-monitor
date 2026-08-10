@@ -157,6 +157,13 @@ export interface WeeklySummaryInput {
   categoryNarratives: Map<string, { expert: string; public: string }>;
   failedCategories: string[];
   previousWeekSummary: { expert: string; public: string } | null;
+  /**
+   * Previous week's document total recomputed from current aggregates at
+   * generation time. Authoritative over any figure quoted inside the
+   * previous-week summary text, which reflects the data as of ITS generation
+   * and goes stale when late documents arrive (#700).
+   */
+  previousWeekTotalDocs: number | null;
 }
 
 /** A notable week grounding the term summary (deterministically ranked). */

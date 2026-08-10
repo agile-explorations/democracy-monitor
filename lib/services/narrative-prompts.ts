@@ -183,6 +183,8 @@ function buildFactualSummary(input: WeeklySummaryInput): string {
   const elevated = input.categories.filter(
     (c) => c.convergenceDetail && c.convergenceDetail.status !== 'Stable',
   );
+  const confirmed = elevated.filter((c) => c.convergenceDetail?.status === 'ConfirmedConcern');
+  const elevatedOnly = elevated.filter((c) => c.convergenceDetail?.status === 'Elevated');
   const stable = input.categories.filter(
     (c) => !c.convergenceDetail || c.convergenceDetail.status === 'Stable',
   );
@@ -192,9 +194,18 @@ function buildFactualSummary(input: WeeklySummaryInput): string {
 
   const lines = [
     '--- FACTUAL DATA (cite these numbers exactly — do not conflate status with document count) ---',
+    'Status scale: Stable → Elevated → ConfirmedConcern. ConfirmedConcern is the HIGHEST level.',
     `Total categories monitored: ${input.categories.length}`,
     `Total documents this week: ${totalDocs.toLocaleString()}`,
+    ...(input.previousWeekTotalDocs != null
+      ? [
+          `Total documents previous week: ${input.previousWeekTotalDocs.toLocaleString()} ` +
+            '(recomputed from current data — authoritative over any document total quoted inside the previous-week summary text)',
+        ]
+      : []),
     `Categories Elevated or above: ${elevated.length} (${elevated.map((c) => c.categoryTitle).join(', ')})`,
+    `  — at ConfirmedConcern: ${confirmed.length}${confirmed.length > 0 ? ` (${confirmed.map((c) => c.categoryTitle).join(', ')})` : ''}`,
+    `  — at Elevated (below ConfirmedConcern): ${elevatedOnly.length}${elevatedOnly.length > 0 ? ` (${elevatedOnly.map((c) => c.categoryTitle).join(', ')})` : ''}`,
     `Categories Stable WITH documents: ${stableWithDocs.length} (${stableWithDocs.map((c) => `${c.categoryTitle}: ${c.totalDocumentCount}`).join(', ')})`,
     `Categories with ZERO documents: ${zeroDocs.length}${zeroDocs.length > 0 ? ` (${zeroDocs.map((c) => c.categoryTitle).join(', ')})` : ''}`,
     `NOTE: "Stable" means no erosion concern was detected. It does NOT mean zero documents.`,
@@ -254,6 +265,13 @@ function weeklyRequirements(version: 'expert' | 'public'): string {
     '--- REQUIREMENTS ---',
     '- SYNTHESIZE, do not recapitulate. The reader has the category narratives — your job is',
     '  cross-category patterns and connections that individual narratives cannot see.',
+    '- NUMBER DISCIPLINE: every count and document total MUST be copied verbatim from the',
+    '  FACTUAL DATA block. Do not derive, sum, or estimate your own figures, and do not reuse',
+    '  numbers quoted inside the previous-week summary text (they go stale when late documents',
+    '  arrive). Week-over-week volume comparisons may use ONLY the two totals provided above.',
+    '- REFERENT DISCIPLINE: never write "the system" to mean U.S. democracy or its institutions —',
+    '  on this site, "the system" reads as the monitoring system itself. Say "the constitutional',
+    '  system", "American democracy", or "democratic institutions" explicitly.',
     '- Summarize how many categories are elevated and which layers are most active.',
     '- Note any synchrony patterns (multiple categories elevated simultaneously).',
     '- Highlight any changes from the previous week.',

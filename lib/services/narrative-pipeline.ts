@@ -136,6 +136,17 @@ export function toNarrativeLayerData(
   };
 }
 
+/**
+ * Previous week's document total recomputed from current aggregates —
+ * authoritative over any figure quoted inside the stored previous-week
+ * summary text, which goes stale when late documents arrive.
+ */
+export async function computePreviousWeekTotalDocs(weekOf: string): Promise<number | null> {
+  const previousWeekCategories = await loadAllLayerData(addDays(weekOf, -7));
+  if (previousWeekCategories.length === 0) return null;
+  return previousWeekCategories.reduce((sum, c) => sum + (c.totalDocumentCount ?? 0), 0);
+}
+
 /** Load layer data for all categories for a given week. */
 export async function loadAllLayerData(weekOf: string): Promise<NarrativeLayerData[]> {
   const db = getDb();
@@ -254,12 +265,14 @@ async function generateSummaries(
   failedCategories: string[],
 ): Promise<void> {
   const previousWeekSummary = await getPreviousWeekNarrative(weekOf);
+  const previousWeekTotalDocs = await computePreviousWeekTotalDocs(weekOf);
   const weeklyInput: WeeklySummaryInput = {
     weekOf,
     categories,
     categoryNarratives,
     failedCategories,
     previousWeekSummary,
+    previousWeekTotalDocs,
   };
   const weeklyResult = await generateWeeklySummary(weeklyInput);
   await storeMultiPassNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);

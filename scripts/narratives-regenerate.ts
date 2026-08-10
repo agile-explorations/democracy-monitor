@@ -152,7 +152,8 @@ async function main(): Promise<void> {
 
 async function regenerateWeek(week: string, args: Args): Promise<void> {
   // Lazy imports to avoid loading AI providers until needed
-  const { loadAllLayerData } = await import('@/lib/services/narrative-pipeline');
+  const { loadAllLayerData, computePreviousWeekTotalDocs } =
+    await import('@/lib/services/narrative-pipeline');
   const { generateMultiPassNarrative, generateMultiPassSummary, generateSinglePassNarrative } =
     await import('@/lib/services/narrative-multipass');
   const { isElevatedStatus, needsMultiPass } =
@@ -242,6 +243,7 @@ async function regenerateWeek(week: string, args: Args): Promise<void> {
     categoryNarratives,
     failedCategories,
     previousWeekSummary,
+    previousWeekTotalDocs: await computePreviousWeekTotalDocs(week),
   };
 
   const result = await generateMultiPassSummary(
