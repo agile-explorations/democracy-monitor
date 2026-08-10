@@ -57,7 +57,7 @@ export interface WeeklyRow {
 interface WeekData {
   layers: CategoryDetailLatestWeek | null;
   explanation: WeekExplanation | null;
-  narrative: { expert: string; public: string } | null;
+  narrative: { expert: string; public: string; generatedAt?: string } | null;
   editorial: EditorialRecord | null;
 }
 

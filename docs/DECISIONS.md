@@ -12,6 +12,35 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CASE-TRACKER: tracked_cases + Litigation panel + stub retirement (#693–#698, milestone 112) — ✅ built + rehearsed 2026-08-09, deploy held for Monday-snapshot review
+
+**Origin**: owner question after R-DOCKET-CONTEXT — "is the case tracker also CL-API-bound, and can the trigger stubs be purged once pulled?" Answer became the architecture: case UNIVERSE from our 283k docket stubs (the only record of case→category routing), case CONTENT from CL bulk dockets (5GB quarterly file verified to carry filing/termination/last-filing dates, NOS, cause, court; NO docket-entries bulk exists — entry-level posture stays on the shipped timeline API), weekly capped v4 refresh for open cases. **Stub retirement is a deliverable**: once tracked_cases verifiably carries the universe, the 283k metadata-only documents rows (−42% of the table) are purged.
+
+**Built ($0 AI spend — fully deterministic)**:
+
+- `tracked_cases` table (jsonb categories + GIN, posture jsonb cache, provenance, refreshed_at-as-queue) + dictionary artifact with dated format-change notes.
+- `pnpm cases:seed` (LOCAL ONLY — the 71M-row staging tables never touch prod): documents-universe aggregation LEFT JOINed with search_docket/search_court/latest search_opinioncluster. **Parity perfect: 202,664 = 202,664, 0 missing, all 14 categories exact**; re-seed from fresh 2026-06-30 bulk cut bulk-miss 2,606 → 349; 156,511 terminated.
+- **The linchpin**: `storeDocuments` now routes court_opinion items to `upsertTrackedCasesFromItems` (category-merge upsert) instead of persisting stubs — without this the stubs regrow. In-memory flow untouched (fillClOpinions still sees the items).
+- Weekly refresh as snapshot post-step: docket-date sweep (cap 200/run, `id__in` batches of 20 ⇒ ≤10 calls) + tier-B posture cache (top 3 open per category, cap 40 calls). CL-absent dockets get refreshed_at stamped so the queue drains.
+- `GET /api/category/cases` (GIN query, Redis 24h) + `LitigationPanel` on category pages (cards, open/all toggle, load-more, CaseContext live-timeline expand); CollapsiblePanel lifted to `components/ui/`.
+- `pnpm docs:purge-stubs`: pre-flight ABORTS unless every stub case is in tracked_cases AND zero score/assessment rows. Local dry-run: 282,521 docs / 191,502 cases, both gates pass. Retirement surface pass: methodology + ASSESSMENT_METHODOLOGY rewrite, ingest stub check flipped all-marked → **none-present** (regrowth detector), doc-count cache v4, mark-docket-stubs retired.
+- DEPLOYMENT.md rollout runbook + promotion-manifest `tracked_cases` entry.
+
+**Key decisions (owner)**: work now, deploy held until after the Monday snapshot review; purge folded into the sprint as a deliverable.
+
+**Rehearsal findings (both fixed pre-commit)**:
+
+- **fetch_log has no per-URL rows** (per source/category/week) — the planned "delete matching fetch_log" would have falsely marked CL weeks unfetched. Purge now leaves fetch_log alone, with the reason printed in the runbook output.
+- **Year-3926 filing dates**: 11 CL bulk rows carry typo'd `date_last_filing`; DESC ordering pinned them atop every case list. Sanitized at both write paths (seed + refresh) and in data.
+
+**Lessons learned**:
+
+- **Rehearse against real data before review**: both defects above were invisible in code review and surfaced only by running the endpoint/purge against the seeded local DB.
+- **The staged-file pre-commit hook runs test-quality OpenGrep rules the full `lint:patterns` scan exempts** — negative-mock and mock-call-argument assertions in new tests fail at commit even after a green full scan. Write tests behaviorally from the start.
+- Retiring a validation's subject flips the check's polarity: "all marked metadata_only" became "none present" — a retired population's check should become its regrowth detector, not be deleted.
+
+**Spec deviations**: none (no spec section; architecture recorded in FUTURE_ROADMAP + c5fcb7d design commit). Detection untouched — tracked_cases is display/research surface only.
+
 ## Sprint R-DOCKET-CONTEXT: opinion docket timelines + posture lines + glossary (#686–#692, milestone 111) — ✅ built 2026-08-09, ships v1.7.0
 
 **Origin**: owner discussion of the 283k metadata-only CL docket stubs' value. Pre-roadmap investigation found stored stubs CANNOT power timelines (median 1 query-matched entry/case, caption-only titles) — but every opinion's `case_id = cl:<docketId>` is a live gateway to CourtListener's v4 docket-entries API, whose entry descriptions are rich procedural text (live-probed before planning). Also settled en route: the stubs' real forward value is as the case-universe index for the future posture tracker, not as content; and the homepage corpus figure was a leftover (stubs counted in the hero number after R-POPULATION removed them from all analytics) — owner decided the hero cites only searchable full-text.
@@ -101,23 +130,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **Interactive glue resists CI, so push the logic out of it.** Reshaping `readMultilineReply` to take an iterator moved the buggy part into a pure, unit-tested function; only the thin readline wiring stays uncovered.
 
 **Spec deviations**: none. Bugfix + one-off prod data repair (feedback response, not baseline data).
-
-## Sprint R-METHODOLOGY-CALC: show concern-status calculation in both methodology views (#673, milestone 107) — ✅ deployed 2026-08-04 (v1.5.8, main @ 56a22ce)
-
-**Origin**: recurring user feedback (the khluerken item #1) asked how a category-week's concern score is calculated. Diagnostic: the site's one methodology page (`/system/methodology`) described the three statuses _qualitatively_ in the Concern Synthesis section of **both** reading levels, but the actual count-based calculation lived only in the detailed view's separate "AI Document Review" section. A reader looking at Concern Synthesis — the section literally about how status is set — found no numbers.
-
-**Planned vs built**: shipped as planned.
-
-- New `CONCERN_LEVEL_THRESHOLDS` in `lib/data/concern-level-explanations.ts` (single source of truth for the count-rule copy; typed `Exclude<ConcernLevel, 'Divergent'>` — the retired status has no live threshold).
-- Summary Concern Synthesis: a per-status "Set when: …" line under each status card. Detailed Concern Synthesis: a third `How it's set (Pass 2 counts)` table column. Both read the shared constant.
-- Render test asserting all three thresholds appear in **both** views (exported `SummaryContent`/`DetailedContent` to test each without the reading-level provider).
-
-**Key framing (product):** the honest answer to "how is the concern _score_ calculated" is that there is no composite numeric score — there's a _status_ (Stable/Elevated/ConfirmedConcern) derived from absolute Pass 2 document counts, with structural/silence/thematic signals deliberately descriptive-only. The copy makes that derivation visible rather than implying a weighted multi-signal score.
-
-**Lessons learned:**
-
-- **Put the "how" where the reader asks the question.** The thresholds already existed on the page — just in a different section from the one titled "Concern Synthesis." Surfacing the calculation _at the definition_ is what closed the feedback, not adding new facts.
-- `ASSESSMENT_METHODOLOGY.md` is a repo-only doc — grep shows zero site references; the public methodology copy is entirely hardcoded in `methodology.tsx`. Worth remembering before editing one and assuming the other updates.
-- Exporting page-internal content components for a behavior render-test is an acceptable encapsulation trade vs. driving the whole page through the `ReadingLevelProvider` and toggling (heavier, more brittle); knip counts the test import as usage.
-
-**Spec deviations**: none. Display copy only; no data/pipeline touch.

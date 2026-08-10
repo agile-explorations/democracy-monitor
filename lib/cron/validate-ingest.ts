@@ -219,9 +219,13 @@ function printMetadataOnlyClassification(stats: MetadataOnlyStats[]): void {
   for (const m of stats) {
     const mark = m.pass ? '✓' : '✗';
     const detail =
-      m.total > 0
-        ? `${m.markedMetadataOnly}/${m.total} marked (${m.unmarked} unmarked)`
-        : 'no documents';
+      m.mode === 'none-present'
+        ? m.total === 0
+          ? 'none present (retired)'
+          : `${m.total} residual rows (expected 0 — run ${m.hint})`
+        : m.total > 0
+          ? `${m.markedMetadataOnly}/${m.total} marked (${m.unmarked} unmarked)`
+          : 'no documents';
     console.log(`  ${mark} ${m.population.padEnd(35)} ${detail}`);
   }
 }

@@ -6,7 +6,8 @@
 > silence, and thematic layers are descriptive context, not scored — the three-layer convergence
 > voting and "Divergent"/"Baseline Invalid" statuses described below were never shipped); there
 > are **8 baseline periods**, not 4; all **14 categories** are operational; CourtListener ingest
-> is opinion-first and court-scoped with docket entries stored as metadata stubs; narratives use
+> is opinion-first and court-scoped with case docket metadata in a dedicated `tracked_cases`
+> litigation tracker (the earlier metadata-stub document rows were retired 2026-08); narratives use
 > a 3-pass draft→feedback→revise pipeline; reproducibility shipped as per-pass `prompt_version`
 > stamping plus enforced AI call budgets rather than bundle hashes.
 > **Current references:** [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md) (public

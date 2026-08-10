@@ -70,16 +70,24 @@ function buildDocumentRow(item: ContentItem, category: string) {
     sourceOrigin: item.sourceOrigin || inferSourceOrigin(item),
     caseId: (item.metadata?.caseId as string) ?? item.caseId ?? null,
     speaker: extractSpeaker(item),
-    // Docket entries are metadata stubs by design (opinions arrive as
-    // separate judicial_opinion docs) — mark at ingest so search,
-    // embeddings, and corpus counts exclude them without periodic
-    // SQL sweeps. Historical sweep: mark-docket-stubs (2026-07-25).
     // Fetchers may declare contentType directly (e.g. oversight.gov State OIG
     // reports whose full text is unobtainable — external-link-only since 2025).
-    contentType:
-      item.contentType ?? (item.type === 'court_opinion' ? 'metadata_only' : 'full_text'),
+    // court_opinion docket items no longer reach this path (#695 — they upsert
+    // tracked_cases instead of persisting as metadata-only stubs).
+    contentType: item.contentType ?? 'full_text',
     countingScope: itemCountingScope(item, category),
   };
+}
+
+// Docket-activity items (court_opinion) no longer persist as metadata-only
+// stub documents (#695 stub retirement) — they upsert the tracked-case
+// universe instead. The in-memory items still flow to fillClOpinions for
+// opinion enrichment; the opinions themselves store as judicial_opinion.
+async function routeDocketItemsToTracker(usable: ContentItem[], category: string): Promise<void> {
+  const docketItems = usable.filter((item) => item.type === 'court_opinion');
+  if (docketItems.length === 0) return;
+  const { upsertTrackedCasesFromItems } = await import('@/lib/services/tracked-case-store');
+  await upsertTrackedCasesFromItems(docketItems, category);
 }
 
 export async function storeDocuments(items: ContentItem[], category: string): Promise<number> {
@@ -89,7 +97,9 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
   let stored = 0;
   let failed = 0;
 
-  const validItems = items.filter((item) => !item.isError && !item.isWarning && item.link);
+  const usable = items.filter((item) => !item.isError && !item.isWarning && item.link);
+  await routeDocketItemsToTracker(usable, category);
+  const validItems = usable.filter((item) => item.type !== 'court_opinion');
 
   for (const item of validItems) {
     try {

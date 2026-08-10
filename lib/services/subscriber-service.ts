@@ -134,7 +134,12 @@ export async function sendWeeklyDigest(weekOf: string): Promise<number> {
   let sent = 0;
 
   for (const sub of subs) {
-    const html = renderWeeklyEmail(narrative.content, weekOf, sub.confirmToken);
+    const html = renderWeeklyEmail(
+      narrative.content,
+      weekOf,
+      sub.confirmToken,
+      narrative.generatedAt,
+    );
     const ok = await sendEmail(sub.email, subject, html);
     if (ok) sent++;
     // Respect Resend free tier rate limits
@@ -171,7 +176,12 @@ export async function sendCorrectionDigest(weekOf: string): Promise<number> {
   let sent = 0;
 
   for (const sub of subs) {
-    const html = renderWeeklyEmail(narrative.content, weekOf, sub.confirmToken);
+    const html = renderWeeklyEmail(
+      narrative.content,
+      weekOf,
+      sub.confirmToken,
+      narrative.generatedAt,
+    );
     const ok = await sendEmail(sub.email, subject, html);
     if (ok) sent++;
     if (sent < subs.length) await sleep(100);

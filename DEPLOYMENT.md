@@ -224,6 +224,16 @@ For new tables, new columns, backfill data. Most common path.
 
 The promote script backs up production before making changes, then upserts rows per the manifest. It does NOT run migrations — those are handled by the deploy.
 
+### Runbook: tracked_cases rollout + docket-stub retirement (R-CASE-TRACKER, 2026-08)
+
+One-time sequence — order matters because the deploy stops new stubs from being minted before the purge removes the old ones:
+
+1. **Deploy first**: merge `develop` → `main`, tag, push. The migration creates the empty `tracked_cases` table and the new ingest routes court_opinion items there instead of persisting stub documents. The Litigation panel shows a clean empty state until step 2.
+2. **Promote the seeded universe**: `tracked_cases: {"where": "true"}` in `promotion-manifest.json`, then `pnpm db:promote` (~202k rows, seeded locally by `pnpm cases:seed` from CL bulk staging — the 71M-row staging tables never touch production). Promote before the next weekly snapshot: the upsert conflicts on `case_id` and overwrites row fields, so any category an ingest run merged in the interim would be replaced by the seed's category set.
+3. **Purge stubs**: `pnpm docs:purge-stubs` (dry run — pre-flight asserts every stub case exists in tracked_cases and no stub carries score/assessment rows), review the printed counts (~283k documents), then `--confirm`. No aggregate repair is needed; stubs were never scored.
+4. **Drop local staging** tables when done (`search_docket`, `search_court`, `search_opinioncluster`).
+5. The next weekly dump ships the new format; the format change is noted in the data dictionary (`table_tracked_cases`, `table_documents`).
+
 **Path 2: Full database push (destructive changes)**
 
 For dropping tables, removing columns, or changes too broad for a manifest.

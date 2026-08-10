@@ -125,7 +125,11 @@ export default function DataPage() {
             available for download. The dump is a single{' '}
             <code className="text-xs bg-dm-card px-1 py-0.5 rounded">pg_dump -Fc</code> file
             including all tables (~6 GB): source documents, AI assessments, weekly aggregates,
-            baselines, narratives, and vector embeddings. Updated weekly.
+            baselines, narratives, vector embeddings, and the tracked federal litigation cases (
+            <code className="text-xs bg-dm-card px-1 py-0.5 rounded">tracked_cases</code> — one row
+            per case with court, filing/termination dates, and category routing; as of August 2026
+            this table replaces the ~283,000 docket-entry stub rows formerly in documents). Updated
+            weekly.
           </p>
 
           <div className="mt-3">
@@ -142,7 +146,7 @@ export default function DataPage() {
             Key tables for researchers
           </h3>
           <p className="text-xs text-dm-text-secondary mb-2">
-            Column-level documentation for all six tables is in the{' '}
+            Column-level documentation for all seven tables is in the{' '}
             <Link href="/data/dictionary" className="text-dm-accent hover:underline">
               data dictionary
             </Link>
@@ -169,6 +173,10 @@ export default function DataPage() {
               ],
               ['narratives', 'AI-generated weekly and term summaries'],
               ['document_scores', 'Per-document keyword assessment scores'],
+              [
+                'tracked_cases',
+                'Federal litigation case tracker: one row per case (cl:<docketId>, joinable to documents.case_id) with court, filing/termination dates, status, posture, and category routing',
+              ],
             ]}
           />
 

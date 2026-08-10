@@ -4,12 +4,14 @@ import {
   text,
   timestamp,
   integer,
+  bigint,
   jsonb,
   boolean,
   varchar,
   real,
   date,
   index,
+  uniqueIndex,
   customType,
   unique,
 } from 'drizzle-orm/pg-core';
@@ -710,4 +712,58 @@ export const robotsAudit = pgTable(
     note: text('note'),
   },
   (table) => [index('idx_robots_audit_host_time').on(table.host, table.auditedAt)],
+);
+
+/**
+ * Case-tracker universe (#693, milestone R-CASE-TRACKER). One row per tracked
+ * federal case: the category routing that previously lived only on the 283k
+ * metadata-only docket-stub document rows, joined with CourtListener bulk
+ * docket metadata (dates, status) and an optional tier-B posture cache from
+ * the live docket-timeline fetch. Seeded locally from bulk staging
+ * (cases:seed), promoted via db:promote, refreshed weekly as a snapshot
+ * post-step, and upserted directly at ingest once stub persistence stops.
+ */
+export const trackedCases = pgTable(
+  'tracked_cases',
+  {
+    id: serial('id').primaryKey(),
+    /** cl:<docketId> — the same join key documents.case_id carries. */
+    caseId: varchar('case_id', { length: 50 }).notNull(),
+    docketId: bigint('docket_id', { mode: 'number' }).notNull(),
+    /** Category routing — the ONLY home of case→category mapping post-retirement. */
+    categories: jsonb('categories').$type<string[]>().notNull(),
+    caseName: text('case_name').notNull(),
+    courtId: varchar('court_id', { length: 30 }),
+    courtName: varchar('court_name', { length: 200 }),
+    docketNumber: varchar('docket_number', { length: 100 }),
+    natureOfSuit: varchar('nature_of_suit', { length: 200 }),
+    cause: varchar('cause', { length: 200 }),
+    dateFiled: date('date_filed'),
+    dateTerminated: date('date_terminated'),
+    dateLastFiling: date('date_last_filing'),
+    /** 'open' | 'terminated' — derived from dateTerminated. */
+    status: varchar('status', { length: 12 }).notNull(),
+    /** Tier-B posture cache from the live docket-timeline fetch (asOf = data age). */
+    posture: jsonb('posture').$type<{
+      line: string;
+      eventType: string;
+      date: string;
+      asOf: string;
+    } | null>(),
+    clusterDisposition: text('cluster_disposition'),
+    clusterPrecedential: varchar('cluster_precedential', { length: 50 }),
+    clusterCitationCount: integer('cluster_citation_count'),
+    /** Query provenance: union of opinion clQueries + 'stub-seed' | 'ingest'. */
+    provenance: jsonb('provenance').$type<string[]>(),
+    firstSeenAt: timestamp('first_seen_at', { withTimezone: true }),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+    /** Last v4 API touch; null = bulk/stub data only (sorts first in refresh queue). */
+    refreshedAt: timestamp('refreshed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('uq_tracked_cases_case_id').on(table.caseId),
+    index('idx_tracked_cases_categories').using('gin', table.categories),
+    index('idx_tracked_cases_status_last_filing').on(table.status, table.dateLastFiling),
+  ],
 );

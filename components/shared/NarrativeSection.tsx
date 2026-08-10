@@ -14,6 +14,20 @@ export interface NarrativeSectionProps {
   placeholder?: string;
   /** Start collapsed, showing a short teaser instead of the full narrative. */
   defaultCollapsed?: boolean;
+  /**
+   * Generation timestamp (ISO). When set, a "reflects data as of" stamp is
+   * shown — statuses and counts cited in prose can be re-derived after
+   * generation as late documents arrive (#700).
+   */
+  dataAsOf?: string | null;
+}
+
+function formatAsOf(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 /** First ~220 chars of narrative body text, markdown markers stripped. */
@@ -45,6 +59,7 @@ export function NarrativeSection({
   editorial,
   placeholder,
   defaultCollapsed = false,
+  dataAsOf,
 }: NarrativeSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
 
@@ -127,6 +142,12 @@ export function NarrativeSection({
           <div className="mt-3 max-h-80 overflow-y-auto">
             <Markdown className="text-sm text-dm-text-primary leading-relaxed">{text}</Markdown>
           </div>
+          {dataAsOf && (
+            <p className="mt-2 text-[10px] text-dm-muted">
+              Reflects data as of {formatAsOf(dataAsOf)} — statuses and counts cited here may have
+              been re-derived since as late-arriving documents are processed.
+            </p>
+          )}
           {editorial && <EditorialPanel editorial={editorial} readingLevel={readingLevel} />}
         </>
       )}

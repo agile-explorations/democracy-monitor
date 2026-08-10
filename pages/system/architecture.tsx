@@ -188,7 +188,7 @@ function DetailedContent() {
             ],
             [
               'CourtListener',
-              'Federal court opinions, docket entries via RECAP archive',
+              'Federal court opinions (stored as documents) and case docket metadata via the RECAP archive (feeds the tracked_cases litigation tracker)',
               'courtlistener-fetcher.ts',
             ],
             [
@@ -247,7 +247,7 @@ function DetailedContent() {
             ],
             [
               'weekly_aggregates',
-              'Per-category weekly rollups (volume, type distribution, agency counts, tier breakdown)',
+              'Per-category weekly rollups (volume, type distribution, agency counts, tier breakdown) plus the AI-driven concern status and descriptive layer scores',
             ],
             [
               'ai_document_assessments',
@@ -258,8 +258,8 @@ function DetailedContent() {
               'Historical baseline statistics per category (mean, stddev, distributions)',
             ],
             [
-              'weekly_aggregates',
-              'Weekly counts plus the AI-driven concern status and descriptive layer scores per category per week',
+              'tracked_cases',
+              'Federal litigation case tracker: one row per case with court, filing/termination dates, status, posture, and category routing (refreshed weekly for open cases)',
             ],
             ['narratives', 'AI-generated expert and public narrative summaries'],
           ]}

@@ -176,12 +176,14 @@ describe('collectWarningDetails', () => {
     const report = emptyReport({
       metadataOnlyClassification: [
         {
-          population: 'CourtListener docket stubs',
-          sourceFilter: { column: 'source_type', value: 'court_opinion' },
+          population: 'GDELT rhetoric documents',
+          sourceFilter: { column: 'source_origin', value: 'gdelt' },
+          mode: 'all-marked' as const,
           total: 164000,
           markedMetadataOnly: 100000,
           unmarked: 64000,
           pass: false,
+          hint: 'investigate GDELT ingest content_type',
         },
       ],
     });
@@ -189,7 +191,31 @@ describe('collectWarningDetails', () => {
     expect(warnings).toContainEqual(
       expect.objectContaining({
         severity: 'action',
-        text: expect.stringContaining('CourtListener docket stubs: 64000 of 164000 not marked'),
+        text: expect.stringContaining('GDELT rhetoric documents: 64000 of 164000 not marked'),
+      }),
+    );
+  });
+
+  it('warns (action) with a regrowth message for retired none-present populations (#697)', () => {
+    const report = emptyReport({
+      metadataOnlyClassification: [
+        {
+          population: 'CourtListener docket stubs (retired)',
+          sourceFilter: { column: 'source_type', value: 'court_opinion' },
+          mode: 'none-present' as const,
+          total: 12,
+          markedMetadataOnly: 12,
+          unmarked: 0,
+          pass: false,
+          hint: 'pnpm docs:purge-stubs',
+        },
+      ],
+    });
+    const warnings = collectWarningDetails(report);
+    expect(warnings).toContainEqual(
+      expect.objectContaining({
+        severity: 'action',
+        text: expect.stringContaining('12 residual row(s) present (expected 0'),
       }),
     );
   });
@@ -290,11 +316,11 @@ describe('fetch-error warning scope (#588 clarity)', () => {
 });
 
 describe('getMetadataOnlyClassification (#648)', () => {
-  it('classifies CL-stub and GDELT populations by metadata_only marking', async () => {
+  it('fails retired CL-stub population on any residual rows; passes marked GDELT (#697)', async () => {
     const { isDbAvailable, getDb } = await import('@/lib/db');
     vi.mocked(isDbAvailable).mockReturnValue(true);
     const results = [
-      [{ total: '164000', marked: '100000' }], // CL stubs: under-marked → fail
+      [{ total: '12', marked: '12' }], // CL stubs retired: any row present → fail
       [{ total: '60000', marked: '60000' }], // GDELT: fully marked → pass
     ];
     let i = 0;
@@ -304,8 +330,9 @@ describe('getMetadataOnlyClassification (#648)', () => {
     const result = await getMetadataOnlyClassification();
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
-      population: 'CourtListener docket stubs',
-      unmarked: 64000,
+      population: 'CourtListener docket stubs (retired)',
+      mode: 'none-present',
+      total: 12,
       pass: false,
     });
     expect(result[1]).toMatchObject({
@@ -313,6 +340,18 @@ describe('getMetadataOnlyClassification (#648)', () => {
       unmarked: 0,
       pass: true,
     });
+  });
+
+  it('passes the retired CL-stub population when zero rows remain (#697)', async () => {
+    const { isDbAvailable, getDb } = await import('@/lib/db');
+    vi.mocked(isDbAvailable).mockReturnValue(true);
+    const results = [[{ total: '0', marked: '0' }], [{ total: '60000', marked: '60000' }]];
+    let i = 0;
+    const selectFn = vi.fn(() => createChainable(results[i++] || []));
+    vi.mocked(getDb).mockReturnValue({ select: selectFn, execute: mockExecute } as never);
+
+    const result = await getMetadataOnlyClassification();
+    expect(result[0]).toMatchObject({ mode: 'none-present', total: 0, pass: true });
   });
 
   it('returns empty when the DB is unavailable', async () => {

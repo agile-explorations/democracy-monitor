@@ -39,6 +39,12 @@ export default function RoadmapPage() {
             terms and the Biden term, with the final stretches of gap-year backfill nearing
             completion. New documents are processed weekly.
           </p>
+          <p>
+            Alongside the document corpus, a federal litigation tracker follows over 200,000 court
+            cases routed to the monitored categories — each with its court, filing and termination
+            dates, and current procedural posture, refreshed weekly for active cases and browsable
+            from every category page.
+          </p>
         </Section>
 
         <h2 className="text-base font-semibold text-dm-text-primary mb-4">What&apos;s Next</h2>

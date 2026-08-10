@@ -30,6 +30,8 @@ export const RATE_LIMITS = {
   reportRefresh: { windowMs: 10 * 60_000, maxRequests: 4, keyPrefix: 'rl:report-refresh' },
   /** Cheap cached CL docket-timeline proxy; cap covers one research page of opinion cites with headroom. */
   caseTimeline: { windowMs: 60_000, maxRequests: 30, keyPrefix: 'rl:case' },
+  /** tracked_cases category listing — DB-only, Redis-cached; generous browse cap. */
+  categoryCases: { windowMs: 60_000, maxRequests: 60, keyPrefix: 'rl:cases' },
 } as const;
 
 type RateLimitPolicy = { windowMs: number; maxRequests: number; keyPrefix: string };

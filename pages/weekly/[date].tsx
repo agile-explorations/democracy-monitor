@@ -125,6 +125,7 @@ export default function WeeklyHubPage({
           narrative={overview}
           readingLevel={readingLevel}
           editorial={overviewEditorial}
+          dataAsOf={publishedAt}
         />
       </section>
 

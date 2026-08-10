@@ -387,21 +387,37 @@ export function checkSignalCoverage(
  * Whether docket-stub / rhetoric populations are correctly marked metadata_only
  * (#648: moved from Data Readiness). Uses raw execute to match the ingest style.
  */
+const METADATA_ONLY_POPULATIONS: {
+  population: string;
+  column: 'source_type' | 'source_origin';
+  value: string;
+  mode: MetadataOnlyStats['mode'];
+  hint: string;
+}[] = [
+  // Docket stubs retired to tracked_cases (#697): any court_opinion row in
+  // documents is stub regrowth, not a marking backlog.
+  {
+    population: 'CourtListener docket stubs (retired)',
+    column: 'source_type',
+    value: 'court_opinion',
+    mode: 'none-present',
+    hint: 'pnpm docs:purge-stubs',
+  },
+  {
+    population: 'GDELT rhetoric documents',
+    column: 'source_origin',
+    value: 'gdelt',
+    mode: 'all-marked',
+    hint: 'investigate GDELT ingest content_type',
+  },
+];
+
 export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats[]> {
   if (!isDbAvailable()) return [];
   const db = getDb();
 
-  const populations: {
-    population: string;
-    column: 'source_type' | 'source_origin';
-    value: string;
-  }[] = [
-    { population: 'CourtListener docket stubs', column: 'source_type', value: 'court_opinion' },
-    { population: 'GDELT rhetoric documents', column: 'source_origin', value: 'gdelt' },
-  ];
-
   const results: MetadataOnlyStats[] = [];
-  for (const p of populations) {
+  for (const p of METADATA_ONLY_POPULATIONS) {
     const filter =
       p.column === 'source_type'
         ? sql`${documents.sourceType} = ${p.value}`
@@ -418,10 +434,12 @@ export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats
     results.push({
       population: p.population,
       sourceFilter: { column: p.column, value: p.value },
+      mode: p.mode,
       total,
       markedMetadataOnly: marked,
       unmarked: total - marked,
-      pass: total === 0 || marked === total,
+      pass: p.mode === 'none-present' ? total === 0 : total === 0 || marked === total,
+      hint: p.hint,
     });
   }
   return results;

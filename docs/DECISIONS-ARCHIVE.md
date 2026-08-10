@@ -4,6 +4,26 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-METHODOLOGY-CALC: show concern-status calculation in both methodology views (#673, milestone 107) — ✅ deployed 2026-08-04 (v1.5.8, main @ 56a22ce)
+
+**Origin**: recurring user feedback (the khluerken item #1) asked how a category-week's concern score is calculated. Diagnostic: the site's one methodology page (`/system/methodology`) described the three statuses _qualitatively_ in the Concern Synthesis section of **both** reading levels, but the actual count-based calculation lived only in the detailed view's separate "AI Document Review" section. A reader looking at Concern Synthesis — the section literally about how status is set — found no numbers.
+
+**Planned vs built**: shipped as planned.
+
+- New `CONCERN_LEVEL_THRESHOLDS` in `lib/data/concern-level-explanations.ts` (single source of truth for the count-rule copy; typed `Exclude<ConcernLevel, 'Divergent'>` — the retired status has no live threshold).
+- Summary Concern Synthesis: a per-status "Set when: …" line under each status card. Detailed Concern Synthesis: a third `How it's set (Pass 2 counts)` table column. Both read the shared constant.
+- Render test asserting all three thresholds appear in **both** views (exported `SummaryContent`/`DetailedContent` to test each without the reading-level provider).
+
+**Key framing (product):** the honest answer to "how is the concern _score_ calculated" is that there is no composite numeric score — there's a _status_ (Stable/Elevated/ConfirmedConcern) derived from absolute Pass 2 document counts, with structural/silence/thematic signals deliberately descriptive-only. The copy makes that derivation visible rather than implying a weighted multi-signal score.
+
+**Lessons learned:**
+
+- **Put the "how" where the reader asks the question.** The thresholds already existed on the page — just in a different section from the one titled "Concern Synthesis." Surfacing the calculation _at the definition_ is what closed the feedback, not adding new facts.
+- `ASSESSMENT_METHODOLOGY.md` is a repo-only doc — grep shows zero site references; the public methodology copy is entirely hardcoded in `methodology.tsx`. Worth remembering before editing one and assuming the other updates.
+- Exporting page-internal content components for a behavior render-test is an acceptable encapsulation trade vs. driving the whole page through the `ReadingLevelProvider` and toggling (heavier, more brittle); knip counts the test import as usage.
+
+**Spec deviations**: none. Display copy only; no data/pipeline touch.
+
 ## Sprint R-FEEDBACK-RESPOND: reply to feedback — CLI response + publish + email submitter (#672, milestone 106) — ✅ deployed 2026-08-04 (v1.5.7, main @ 88c47c7)
 
 **Origin**: R-FEEDBACK-MOD gave approve/reject but no way to _reply_. The owner needed to answer questions and acknowledge feedback. The display half already existed — the `feedback_responses` table, `attachResponses` join, and the public "Response from Democracy Monitor" block (escaped JSX). Only the write path was missing.

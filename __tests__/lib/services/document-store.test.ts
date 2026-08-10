@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildMetadata, inferSourceOrigin } from '@/lib/services/document-store';
 
 describe('buildMetadata', () => {
@@ -76,5 +76,45 @@ describe('inferSourceOrigin', () => {
 
   it('returns null for empty item', () => {
     expect(inferSourceOrigin({})).toBeNull();
+  });
+});
+
+describe('storeDocuments docket routing (#695 stub retirement)', () => {
+  it('routes court_opinion items to tracked_cases and persists only the rest', async () => {
+    vi.resetModules();
+    const upsertTrackedCasesFromItems = vi.fn().mockResolvedValue(1);
+    vi.doMock('@/lib/services/tracked-case-store', () => ({ upsertTrackedCasesFromItems }));
+    const values = vi.fn(() => ({ onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) }));
+    const insert = vi.fn(() => ({ values }));
+    vi.doMock('@/lib/db', () => ({
+      isDbAvailable: () => true,
+      getDb: () => ({ insert }),
+    }));
+
+    const { storeDocuments } = await import('@/lib/services/document-store');
+    const docket = {
+      title: 'Doe v. Agency',
+      link: 'https://www.courtlistener.com/docket/12345/',
+      pubDate: '2026-08-01T00:00:00Z',
+      type: 'court_opinion',
+      metadata: { caseId: 'cl:12345' },
+    };
+    const opinion = {
+      title: 'Opinion in Doe v. Agency',
+      link: 'https://www.courtlistener.com/opinion/99/',
+      pubDate: '2026-08-01T00:00:00Z',
+      type: 'judicial_opinion',
+      content: 'x'.repeat(200),
+    };
+
+    const stored = await storeDocuments([docket, opinion] as never[], 'civilLiberties');
+
+    expect(upsertTrackedCasesFromItems).toHaveBeenCalledTimes(1);
+    expect(stored).toBe(1); // only the opinion persisted as a document
+    expect(insert).toHaveBeenCalledTimes(1);
+
+    vi.doUnmock('@/lib/services/tracked-case-store');
+    vi.doUnmock('@/lib/db');
+    vi.resetModules();
   });
 });

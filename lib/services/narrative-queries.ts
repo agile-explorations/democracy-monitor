@@ -194,7 +194,8 @@ export async function getTrajectory(
   category: string,
   weekOf: string,
 ): Promise<NarrativeTrajectory> {
-  if (!isDbAvailable()) return { previousWeekStatus: null, consecutiveWeeksAtStatus: 0 };
+  if (!isDbAvailable())
+    return { previousWeekStatus: null, previousWeekDocCount: null, consecutiveWeeksAtStatus: 0 };
   const db = getDb();
   const currentRows = await db.execute(sql`
     SELECT convergence_detail->>'status' AS status
@@ -202,7 +203,7 @@ export async function getTrajectory(
   `);
   const currentStatus = (currentRows.rows as Row[])[0]?.status as string | null;
   const historyRows = await db.execute(sql`
-    SELECT convergence_detail->>'status' AS status
+    SELECT convergence_detail->>'status' AS status, document_count
     FROM weekly_aggregates
     WHERE category = ${category} AND week_of < ${weekOf}
     ORDER BY week_of DESC LIMIT 52
@@ -215,8 +216,10 @@ export async function getTrajectory(
       else break;
     }
   }
+  const prev = history[0];
   return {
-    previousWeekStatus: history.length > 0 ? (history[0].status as string | null) : null,
+    previousWeekStatus: prev ? (prev.status as string | null) : null,
+    previousWeekDocCount: prev?.document_count != null ? Number(prev.document_count) : null,
     consecutiveWeeksAtStatus: consecutiveWeeks,
   };
 }

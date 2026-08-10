@@ -462,7 +462,7 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'source_type',
     type: 'varchar',
     description:
-      'Kind of document as ingested: e.g. judicial_opinion, court_opinion (docket entry stub), press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice.',
+      'Kind of document as ingested: e.g. judicial_opinion, press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice. Format change 2026-08: court_opinion (docket-entry stub) rows were retired — the case universe they carried moved to tracked_cases.',
   },
   { name: 'category', type: 'varchar', description: CATEGORY_DESC },
   { name: 'title', type: 'text', description: 'Document title as published by the source.' },
@@ -504,13 +504,13 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'content_type',
     type: 'varchar',
     description:
-      'full_text, or metadata_only for docket-entry stubs that intentionally carry no body — stubs are excluded from counts, statistics, embeddings, and search.',
+      'full_text, or metadata_only for rows that intentionally carry no body (GDELT rhetoric records and unobtainable-body documents) — metadata_only rows are excluded from counts, statistics, embeddings, and search. Format change 2026-08: the largest metadata_only population, docket-entry stubs, was retired to tracked_cases.',
   },
   {
     name: 'case_id',
     type: 'varchar|null',
     description:
-      'Court-case identifier used to group filings and dedupe case-level counting. For CourtListener rows the format is cl:<docketId>, where <docketId> is the CourtListener docket primary key — joinable to https://www.courtlistener.com/docket/<docketId>/ and the v4 API (/api/rest/v4/docket-entries/?docket=<docketId>). Within the dump it groups a full-text opinion row with its metadata-only docket-entry stub rows (see content_type); every CourtListener opinion carries case_id even when no stub rows exist locally.',
+      'Court-case identifier used to group filings and dedupe case-level counting. For CourtListener rows the format is cl:<docketId>, where <docketId> is the CourtListener docket primary key — joinable to https://www.courtlistener.com/docket/<docketId>/, the v4 API (/api/rest/v4/docket-entries/?docket=<docketId>), and tracked_cases.case_id (the case-level record: court, dates, status, posture). Every CourtListener opinion carries case_id.',
   },
   {
     name: 'speaker',
@@ -917,6 +917,125 @@ const TABLE_NARRATIVES: DictionaryEntry[] = [
   },
 ];
 
+/** tracked_cases dump table (#693). */
+const TABLE_TRACKED_CASES: DictionaryEntry[] = [
+  { name: 'id', type: 'serial', description: 'Row id (stable within a single dump only).' },
+  {
+    name: 'case_id',
+    type: 'varchar',
+    description:
+      'cl:<docketId> — the same identifier documents.case_id carries for CourtListener rows; unique here (one row per case).',
+  },
+  {
+    name: 'docket_id',
+    type: 'bigint',
+    description: 'CourtListener docket primary key (numeric form of case_id).',
+  },
+  {
+    name: 'categories',
+    type: 'jsonb',
+    description:
+      'Monitored categories this case is routed to (string array). The authoritative case→category mapping — previously recoverable only from metadata-only docket-stub document rows.',
+  },
+  {
+    name: 'case_name',
+    type: 'text',
+    description: 'Case caption (bulk-authoritative when available, else as first observed).',
+  },
+  {
+    name: 'court_id',
+    type: 'varchar|null',
+    description: 'CourtListener court identifier (e.g. dcd, ca9, scotus).',
+  },
+  {
+    name: 'court_name',
+    type: 'varchar|null',
+    description: 'Human-readable court name for display (from bulk court data).',
+  },
+  {
+    name: 'docket_number',
+    type: 'varchar|null',
+    description: 'Court docket number as assigned by the filing court.',
+  },
+  {
+    name: 'nature_of_suit',
+    type: 'varchar|null',
+    description: 'PACER nature-of-suit string (e.g. "440 Civil rights other").',
+  },
+  {
+    name: 'cause',
+    type: 'varchar|null',
+    description: 'PACER cause-of-action string (statute and claim shorthand).',
+  },
+  {
+    name: 'date_filed',
+    type: 'date|null',
+    description: 'Case filing date per CourtListener bulk data or API refresh.',
+  },
+  {
+    name: 'date_terminated',
+    type: 'date|null',
+    description: 'Docket termination date; null while the case is open.',
+  },
+  {
+    name: 'date_last_filing',
+    type: 'date|null',
+    description: 'Most recent filing date CourtListener has recorded.',
+  },
+  {
+    name: 'status',
+    type: 'varchar',
+    description: "'open' or 'terminated' — derived from date_terminated.",
+  },
+  {
+    name: 'posture',
+    type: 'jsonb|null',
+    description:
+      'Cached one-line case posture from the live docket-timeline fetch: { line, eventType, date, asOf }. asOf is the CourtListener fetch time — the data age.',
+  },
+  {
+    name: 'cluster_disposition',
+    type: 'text|null',
+    description: "Latest opinion cluster's disposition text (bulk-sourced).",
+  },
+  {
+    name: 'cluster_precedential',
+    type: 'varchar|null',
+    description: 'Latest opinion cluster precedential status (published/unpublished).',
+  },
+  {
+    name: 'cluster_citation_count',
+    type: 'integer|null',
+    description: 'Citation count of the latest opinion cluster on this docket.',
+  },
+  {
+    name: 'provenance',
+    type: 'jsonb|null',
+    description:
+      "How the case entered the universe: union of CourtListener query provenance markers (e.g. 'scotus-all', 'circuits-exec', 'dcd-exec') plus 'stub-seed' (historical seed) or 'ingest' (weekly discovery).",
+  },
+  {
+    name: 'first_seen_at',
+    type: 'timestamptz|null',
+    description: 'Earliest ingestion touch across the historical seed rows.',
+  },
+  {
+    name: 'last_seen_at',
+    type: 'timestamptz|null',
+    description: 'Most recent ingestion touch (weekly discovery or seed).',
+  },
+  {
+    name: 'refreshed_at',
+    type: 'timestamptz|null',
+    description: 'Last CourtListener API refresh; null = bulk/seed data only.',
+  },
+  {
+    name: 'created_at',
+    type: 'timestamptz',
+    description: 'When this tracked-case row was first created.',
+  },
+];
+
 export const DATA_DICTIONARY: DictionaryArtifact[] = [
   {
     key: 'csv_weekly',
@@ -933,10 +1052,17 @@ export const DATA_DICTIONARY: DictionaryArtifact[] = [
     entries: CSV_SCORES_ENTRIES,
   },
   {
+    key: 'table_tracked_cases',
+    title: 'tracked_cases (dump)',
+    description:
+      'One row per tracked federal case: the case→category routing universe (191,800 cases) joined with CourtListener docket metadata (filing/termination dates, status) and an optional cached posture line. Seeded from CourtListener bulk docket data plus our historical docket-stub rows; refreshed weekly for open cases. Format change 2026-08: this table replaces the ~283k metadata-only docket-stub rows formerly in documents — the case universe and activity dates now live here.',
+    entries: TABLE_TRACKED_CASES,
+  },
+  {
     key: 'table_documents',
     title: 'documents (dump)',
     description:
-      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested. Opinion rows and their docket-entry stub rows share a case_id (cl:<docketId>, the CourtListener docket key) — the join that reconstructs case groupings.',
+      'Every ingested source document with full text and lineage flags. The flags matter: content_type, retrieval_relevant, and counting_scope define which rows the statistics describe. A document appears once per category that fetched it (url + category is the natural key); routing follows the signal definitions in lib/data/categories.ts. Two sources use derived routing rules: DHS OIG reports also appear under Immigration Enforcement when the component tag assigned by DHS OIG (stored in metadata.dhsComponents) is ICE, CBP, or USCIS, OR when the report title matches ICE/CBP/USCIS (case-sensitive) or border/immigra-/detention/detainee/deportation/asylum/287(g)/migrant/unaccompanied/correctional facility or center/processing center/ports of entry/alien/expedited removal (case-insensitive). Congressional documents (CREC floor speeches, CHRG hearing transcripts) are routed to every category whose topic terms (lib/data/topic-routing-terms.ts) match — hearings classify on the title plus the first 6,000 characters of the transcript, with hearing-specific term calibrations documented in that file; hearings matching no category are recorded in chrg_seen_ledger rather than ingested. Opinion rows carry a case_id (cl:<docketId>, the CourtListener docket key) joining them to tracked_cases, which holds case-level metadata. Format change 2026-08: ~283k metadata-only docket-entry stub rows were removed from this table; the case universe they indexed now lives in tracked_cases.',
     entries: TABLE_DOCUMENTS,
   },
   {
