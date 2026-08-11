@@ -4,9 +4,11 @@
  * routes, and the route file was over the max-lines budget).
  */
 
+import { createHash } from 'crypto';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
+import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument } from '@/lib/services/search-service';
 
 export interface CachedResearchResult {
@@ -91,4 +93,37 @@ export function formatResearchResponse(
   }
 
   return response;
+}
+
+/** docsOnly cache key material: query + every retrieval-affecting parameter. */
+export function hashDocsKey(
+  query: string,
+  params: { dateFrom?: string; dateTo?: string; tier?: string; eras?: string },
+): string {
+  const material = [
+    query.toLowerCase().trim(),
+    params.dateFrom ?? '',
+    params.dateTo ?? '',
+    params.tier ?? '',
+    params.eras ?? '',
+  ].join('|');
+  return createHash('sha256').update(material).digest('hex').slice(0, 16);
+}
+
+/** Assemble the docsOnly response payload (also the cached shape, #705). */
+export function buildDocsOnlyPayload(
+  allDocs: ResearchDocument[],
+  avgSimilarity: number,
+  strata: RetrievalStratum[] | null,
+  inferredFrom: string | null,
+  alsoSearched: string[],
+): Record<string, unknown> {
+  return {
+    documents: formatDocList(allDocs),
+    dateRange: computeDateRange(allDocs),
+    queryConfidence: avgSimilarity,
+    ...(strata ? { strata } : {}),
+    ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
+    ...(alsoSearched.length > 0 ? { alsoSearched } : {}),
+  };
 }
