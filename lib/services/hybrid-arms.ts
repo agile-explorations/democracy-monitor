@@ -21,6 +21,9 @@ type SqlChunk = ReturnType<typeof sql>;
 
 /** FTS candidates fetched per alias arm (canary-validated depth). */
 export const ALIAS_ARM_LIMIT = 40;
+/** Hard bound on rows entering an arm's ts_rank sort — defense in depth
+ *  against stale-cache aliases broader than current validation admits. */
+const ALIAS_ARM_SCAN_LIMIT = 2000;
 /** Headline scans at most this much content per row (perf bound). */
 const HEADLINE_CONTENT_CHARS = 120000;
 /** [[..]] markers instead of HTML tags: the UI renders highlights from the
@@ -41,22 +44,29 @@ export function buildAliasArmQuery(
   candidateFilters: SqlChunk,
 ): SqlChunk {
   const tsquery = quotedPhrase(alias.phrase);
+  // Inner bounded match scan (alias d, so shared filter chunks apply), then
+  // rank-sort only those rows: caps detoast work no matter how common the
+  // alias is (stale-cache aliases can exceed current validation caps).
   return sql`
-    SELECT d.id, d.title, LEFT(d.content, 3000) as content, d.url, d.published_at, d.source_type,
-      d.source_origin, d.case_id, d.category,
-      1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
+    SELECT doc.id, doc.title, LEFT(doc.content, 3000) as content, doc.url, doc.published_at,
+      doc.source_type, doc.source_origin, doc.case_id, doc.category,
+      1 - (doc.embedding <=> ${vectorStr}::vector) as cosine_similarity,
       ds.final_score, ds.document_class,
       ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary,
       ${alias.phrase} as matched_alias
-    FROM documents d
-    LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
+    FROM (
+      SELECT d.id FROM documents d
+      WHERE ${candidateFilters}
+        AND d.search_rank_vector IS NOT NULL
+        AND d.search_vector @@ websearch_to_tsquery('english', ${tsquery})
+      LIMIT ${ALIAS_ARM_SCAN_LIMIT}
+    ) matches
+    JOIN documents doc ON doc.id = matches.id
+    LEFT JOIN document_scores ds ON ds.url = doc.url AND ds.category = doc.category
     LEFT JOIN ai_document_assessments ai
-      ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
-    WHERE ${candidateFilters}
-      AND d.search_rank_vector IS NOT NULL
-      AND d.search_vector @@ websearch_to_tsquery('english', ${tsquery})
-    ORDER BY ts_rank(d.search_rank_vector, websearch_to_tsquery('english', ${tsquery})) DESC
+      ON ai.url = doc.url AND ai.category = doc.category AND ai.pass = 2
+    ORDER BY ts_rank(doc.search_rank_vector, websearch_to_tsquery('english', ${tsquery})) DESC
     LIMIT ${ALIAS_ARM_LIMIT}`;
 }
 
@@ -66,14 +76,19 @@ export function buildAliasArmQuery(
  */
 export function buildExploreAliasArmQuery(alias: ValidatedAlias, whereClause: SqlChunk): SqlChunk {
   const tsquery = quotedPhrase(alias.phrase);
+  // Inner scan keeps aliases d/ds so buildFilterConditions chunks apply.
   return sql`
-    SELECT d.id, ${alias.phrase} as matched_alias
-    FROM documents d
-    LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-    WHERE ${whereClause}
-      AND d.search_rank_vector IS NOT NULL
-      AND d.search_vector @@ websearch_to_tsquery('english', ${tsquery})
-    ORDER BY ts_rank(d.search_rank_vector, websearch_to_tsquery('english', ${tsquery})) DESC
+    SELECT doc.id, ${alias.phrase} as matched_alias
+    FROM (
+      SELECT d.id FROM documents d
+      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
+      WHERE ${whereClause}
+        AND d.search_rank_vector IS NOT NULL
+        AND d.search_vector @@ websearch_to_tsquery('english', ${tsquery})
+      LIMIT ${ALIAS_ARM_SCAN_LIMIT}
+    ) matches
+    JOIN documents doc ON doc.id = matches.id
+    ORDER BY ts_rank(doc.search_rank_vector, websearch_to_tsquery('english', ${tsquery})) DESC
     LIMIT ${ALIAS_ARM_LIMIT}`;
 }
 
