@@ -22,6 +22,13 @@ export function reviewCriteria(hasStats: boolean): string[] {
     '    about missing document types scoped to THIS RETRIEVAL ("in this retrieval"),',
     '    never generalized to "the record", "the corpus", or "the available record"?',
     '    Quote any absence claim that overreaches the retrieved sample.',
+    '',
+    '(h) QUOTE & NUMBER FIDELITY — every quoted string must appear verbatim in the cited',
+    "    document's excerpt (no word-form changes inside quotation marks); numeric labels",
+    '    (gross vs net, range endpoints) must match the source exactly.',
+    '',
+    '(i) PUBLIC DRIFT — flag any quotation, legislative status, or absence claim in the',
+    '    public draft that the expert draft does not contain.',
     ...(hasStats
       ? [
           '',

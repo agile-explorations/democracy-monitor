@@ -117,8 +117,10 @@ export function buildDocsOnlyPayload(
   strata: RetrievalStratum[] | null,
   inferredFrom: string | null,
   alsoSearched: string[],
+  docsKey?: string,
 ): Record<string, unknown> {
   return {
+    ...(docsKey ? { docsKey } : {}),
     documents: formatDocList(allDocs),
     dateRange: computeDateRange(allDocs),
     queryConfidence: avgSimilarity,

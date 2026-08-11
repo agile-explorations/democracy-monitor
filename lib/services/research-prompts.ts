@@ -10,11 +10,21 @@ const QUESTIONS_HEADER = '=== RELATED QUESTIONS ===';
 
 function formatP2Line(doc: ResearchDocument): string {
   if (!doc.p2Assessment) return '';
-  const parts = [`  AI Assessment: ${doc.p2Assessment}`];
+  const parts = [`  AI Assessment (annotation): ${doc.p2Assessment}`];
   if (doc.p2ErosionType) parts[0] += ` (erosion: ${doc.p2ErosionType})`;
   if (doc.p2Confidence != null) parts[0] += ` · confidence: ${doc.p2Confidence.toFixed(2)}`;
-  if (doc.p2Summary) parts.push(`  AI Summary: ${doc.p2Summary}`);
+  if (doc.p2Summary)
+    parts.push(`  AI Review Note (annotation — NOT document text): ${doc.p2Summary}`);
   return parts.join('\n');
+}
+
+/** Matched-passage excerpt line: verbatim document text surfaced by the
+ *  keyword arm — often from deeper in the document than the content excerpt
+ *  reaches (#707 audit: answers denied content their own snippets showed). */
+function formatMatchedPassage(doc: ResearchDocument): string {
+  if (!doc.matchSnippet) return '';
+  const cleaned = doc.matchSnippet.replace(/\[\[|\]\]/g, '');
+  return `  Matched Passage (verbatim excerpt from deeper in this document): "${cleaned}"`;
 }
 
 /**
@@ -46,6 +56,8 @@ function formatDocumentContext(docs: ResearchDocument[]): string {
         `  Date: ${date} · Source: ${doc.sourceType} (${doc.sourceOrigin ?? 'unknown'}) · Category: ${doc.category}${score}`,
       ];
       if (p2Line) lines.push(p2Line);
+      const matchedPassage = formatMatchedPassage(doc);
+      if (matchedPassage) lines.push(matchedPassage);
       lines.push(`  URL: ${doc.url ?? 'N/A'}`, `  Content: ${contentExcerpt}`);
       return lines.join('\n');
     })
@@ -127,17 +139,31 @@ function draftRules(p2Count: number, totalDocs: number): string[] {
     '    documents for reception, characterization, and political response, attributed as such',
     '    ("Senator X characterized...").',
   ];
-  if (p2Count > 0) {
-    rules.push(
-      `11. ${p2Count} of ${totalDocs} documents include classifications from Democracy Monitor's`,
-      '    automated document review. When referencing one, attribute it explicitly and render',
-      '    the label in plain language — write "Democracy Monitor\'s automated review classified',
-      '    this document as clearly concerning (a formal override of existing rules)", never the',
-      '    raw label ("clearly_concerning (formal_override)") and never phrased as the',
-      "    document's own claim or as this answer's judgment.",
-    );
-  }
+  rules.push(
+    '10a. PUBLIC ANSWER discipline: the public answer simplifies the expert answer and',
+    '    must not ADD anything — no quotation, no legislative status (e.g. "passed"),',
+    '    and no absence claim that the expert answer does not contain.',
+  );
+  if (p2Count > 0) rules.push(...annotationRules(p2Count, totalDocs));
   return rules;
+}
+
+/** Rules for documents carrying automated-review annotations (#707 audit). */
+function annotationRules(p2Count: number, totalDocs: number): string[] {
+  return [
+    `11. ${p2Count} of ${totalDocs} documents include classifications from Democracy Monitor's`,
+    '    automated document review. When referencing one, attribute it explicitly and render',
+    '    the label in plain language — write "Democracy Monitor\'s automated review classified',
+    '    this document as clearly concerning (a formal override of existing rules)", never the',
+    '    raw label ("clearly_concerning (formal_override)") and never phrased as the',
+    "    document's own claim or as this answer's judgment.",
+    '12. Lines marked "(annotation)" — AI Assessment and AI Review Note — are machine',
+    '    annotations, NOT document text. Never quote them, never attribute their phrasing',
+    '    or details to the document. Repeat a detail from an annotation only when the',
+    "    document's own excerpt or matched passage supports it; otherwise attribute it",
+    "    explicitly to Democracy Monitor's automated review. Matched Passage lines ARE",
+    '    verbatim document text and are quotable.',
+  ];
 }
 
 /** Shared preamble + documents section for draft and single-pass prompts. */

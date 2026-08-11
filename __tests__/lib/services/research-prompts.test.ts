@@ -143,9 +143,13 @@ describe('buildDraftPrompt', () => {
       p2Summary: 'This case shows erosion patterns.',
     });
     const prompt = buildDraftPrompt('q', [doc]);
-    expect(prompt).toContain('AI Assessment: concerning (erosion: due_process_violation)');
+    expect(prompt).toContain(
+      'AI Assessment (annotation): concerning (erosion: due_process_violation)',
+    );
     expect(prompt).toContain('confidence: 0.85');
-    expect(prompt).toContain('AI Summary: This case shows erosion patterns.');
+    expect(prompt).toContain(
+      'AI Review Note (annotation — NOT document text): This case shows erosion patterns.',
+    );
   });
 
   it('includes institutional implications in expert output format', () => {
