@@ -21,6 +21,12 @@ export interface ResearchResult {
   inferredDateFrom?: string | null;
   /** Corpus-validated alias terms the hybrid arms searched (#702). */
   alsoSearched?: string[];
+  /** Deterministic quote verification vs stored document content (#707). */
+  quoteVerification?: {
+    totalQuotes: number;
+    verifiedCount: number;
+    unverified: Array<{ quote: string; citations: number[] }>;
+  } | null;
   editorial?: {
     expertDraft: string;
     publicDraft: string;

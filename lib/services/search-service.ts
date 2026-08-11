@@ -109,6 +109,10 @@ export interface ResearchDocument {
   matchSnippet?: string;
   /** The corpus-validated alias whose arm surfaced this doc (#702). */
   matchedAlias?: string;
+  /** Query-matched verbatim excerpt for synthesis grounding (#707). */
+  queryExcerpt?: string;
+  /** Ruling-language excerpt for judicial opinions (#707). */
+  dispositionExcerpt?: string;
 }
 
 export interface SimilarDocumentResult {

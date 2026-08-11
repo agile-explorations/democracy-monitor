@@ -64,6 +64,31 @@ function AnswerRenderer({ text, documents }: { text: string; documents: Research
   return <ReactMarkdown components={components}>{prepared}</ReactMarkdown>;
 }
 
+/** Deterministic quote-check result (#707): quotes matched against stored
+ *  source content — a green line when all verify, amber caution otherwise. */
+function QuoteVerificationBadge({
+  verification,
+}: {
+  verification?: ResearchResult['quoteVerification'];
+}) {
+  if (!verification || verification.totalQuotes === 0) return null;
+  if (verification.unverified.length === 0) {
+    return (
+      <p className="mt-3 text-[11px] text-emerald-500">
+        ✓ All {verification.totalQuotes} quoted passage
+        {verification.totalQuotes !== 1 ? 's' : ''} verified verbatim against the source documents.
+      </p>
+    );
+  }
+  return (
+    <p className="mt-3 text-[11px] text-amber-500">
+      ⚠ {verification.unverified.length} of {verification.totalQuotes} quoted passage
+      {verification.totalQuotes !== 1 ? 's' : ''} could not be verified verbatim against the source
+      documents — treat quoted wording with caution.
+    </p>
+  );
+}
+
 function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
   return (
     <div
@@ -219,6 +244,7 @@ export function ResearchResults({
           <div className="text-dm-text-secondary">
             <AnswerRenderer text={answer} documents={result.documents} />
           </div>
+          <QuoteVerificationBadge verification={result.quoteVerification} />
           {editorial && <EditorialPanel editorial={editorial} readingLevel={readingLevel} />}
         </div>
       )}

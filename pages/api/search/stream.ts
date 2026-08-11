@@ -5,6 +5,7 @@
  *
  * Events:
  *   data: {"type":"chunk","text":"..."} — incremental LLM output
+ *   data: {"type":"verification","totalQuotes":N,"verifiedCount":N,"unverified":[...]} — quote check (#707)
  *   data: {"type":"done","model":"...","latencyMs":N,"tokensUsed":{...}} — completion metadata
  *   data: {"type":"error","message":"..."} — error
  */
@@ -14,13 +15,16 @@ import { AnthropicProvider } from '@/lib/ai/anthropic';
 import { cacheGet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
+import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearch } from '@/lib/services/search-service';
+import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const SINGLE_PASS_MODEL = 'claude-sonnet-4-6';
+const SYNTHESIS_TEMPERATURE = 0.2;
 const CONTEXT_DOCS = 30;
 
 const SYSTEM_SINGLE_PASS =
@@ -80,6 +84,7 @@ async function retrieveDocuments(
     const docs = await fetchResearchDocsByIds(ids.slice(0, CONTEXT_DOCS));
     if (docs.length === 0) return null;
     await attachCachedSnippets(docs, docsKey);
+    await enrichDocsForSynthesis(docs, query);
     return { docs, prompt: buildSinglePassPrompt(query, docs, null) };
   }
 
@@ -100,12 +105,14 @@ async function retrieveDocuments(
   // the first streamed byte past EventSource timeout. The synthesis prompt
   // works without corpus stats (they add context but aren't required).
   const contextDocs = allDocs.slice(0, CONTEXT_DOCS);
+  await enrichDocsForSynthesis(contextDocs, query);
   return { docs: contextDocs, prompt: buildSinglePassPrompt(query, contextDocs, null) };
 }
 
 async function streamCompletion(
   provider: AnthropicProvider,
   prompt: string,
+  docs: ResearchDocument[],
   res: NextApiResponse,
   clientGone: () => boolean,
 ) {
@@ -113,8 +120,11 @@ async function streamCompletion(
     model: SINGLE_PASS_MODEL,
     maxTokens: 4096,
     systemPrompt: SYSTEM_SINGLE_PASS,
+    // Low temperature: factual synthesis, not creative writing (#707).
+    temperature: SYNTHESIS_TEMPERATURE,
   });
 
+  let accumulated = '';
   let result = await stream.next();
   while (!result.done) {
     if (clientGone()) {
@@ -124,8 +134,24 @@ async function streamCompletion(
       console.log('[api/search/stream] client disconnected — synthesis aborted');
       return;
     }
+    accumulated += result.value;
     sendEvent(res, { type: 'chunk', text: result.value });
     result = await stream.next();
+  }
+
+  // Deterministic quote verification (#707): every quoted span checked
+  // against its cited document's FULL stored content before 'done'.
+  const verification = await verifyAnswerQuotes(
+    accumulated,
+    docs.map((d, i) => ({ citationIndex: i + 1, id: d.id })),
+  );
+  if (verification) {
+    if (verification.unverified.length > 0) {
+      console.warn(
+        `[api/search/stream] quote verification: ${verification.unverified.length}/${verification.totalQuotes} unverified`,
+      );
+    }
+    sendEvent(res, { type: 'verification', ...verification });
   }
 
   const completion = result.value;
@@ -178,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
       return;
     }
-    await streamCompletion(provider, retrieved.prompt, res, () => disconnected);
+    await streamCompletion(provider, retrieved.prompt, retrieved.docs, res, () => disconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';
     console.error('[api/search/stream] Error:', err);
