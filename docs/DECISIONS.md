@@ -12,7 +12,38 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-CASE-TRACKER: tracked_cases + Litigation panel + stub retirement (#693–#698, milestone 112) — ✅ built + rehearsed 2026-08-09, deploy held for Monday-snapshot review
+## Sprint R-HYBRID / R-CREC-SPLIT: hybrid retrieval + CREC fragments (#702 #704 #705, milestones 113/114) — ✅ deployed v1.9.0–v1.9.2 2026-08-11, verified on prod
+
+**Origin**: owner testing outreach questions — "This search says there are no documents with congressional responses to Schedule F. Shouldn't there be?" Diagnosis found three stacked causes: passage-level entity mentions don't move a document's embedding (vector-only retrieval misses them), old-era CREC granules are whole-day multi-topic blobs, and the 2025 debate doesn't use the literal phrase "Schedule F" (vocabulary drift). One sprint shipped the answer to all three.
+
+**Built**:
+
+- **Terminology expansion** (`query-expansion-service`): gpt-4o-mini proposes short atomic aliases (cached 7d); corpus validation keeps only aliases matching ≥1 doc and ≤5% of the searched window, clamped to [200, 1000] matches, boilerplate stoplist. Hallucinated aliases die at validation. Kill switch `HYBRID_RETRIEVAL_DISABLED=1`.
+- **Per-alias FTS arms** (`hybrid-arms`): match on the full search_vector (GIN), rank on the compact trigger-maintained `search_rank_vector` (migration 0053) so ts_rank never detoasts multi-MB vectors; inner LIMIT 2000 match scan bounds rank-sort cost structurally.
+- **Weighted RRF fusion** (`hybrid-fusion`, k=60): IDF-style arm weights `1/(1+log10(1+n/100))`; post-fusion URL dedupe (alias arms reintroduce same-url multi-category rows the primary arm's DISTINCT ON collapses). Zero alias arms ⇒ exact pre-sprint pure-vector behavior.
+- **Matched-passage snippets**: one batched ts_headline query post-fusion for only the surfaced keyword docs, [[..]] markers rendered as `<mark>` (no raw HTML); "Also searched:" chips in both modes.
+- **CREC fragments (Path A)**: 29,215 retrieval-grade fragment documents split from 508 old-era multi-topic granules (structural line-anchored splitter, re-fetch mode after flattened-content rehearsal showed 25.9% boundary agreement); parent_id lineage, counting_scope=false, excluded from L2 — parents untouched, zero counting/assessment impact. Promoted to prod (420 parent-id identity verified). **Path B (L2 on fragments) declined on canary data**: old-era fragments confirm at ~1/6 the current-term rate ($3 canary killed a projected 4-figure spend).
+- **Prod data**: rank-vector backfill 399,842 rows (keyset, $0 AI); fragments promote (finished manually after the interactive shell's 2-min timeout killed the upsert mid-flight — atomic abort verified, staging table completed the operation).
+
+**Evidence chain**: tuning canary (corrected era-aware ground truth) baseline 88 → 143 with zero per-case regressions; pre-registered holdout on 7 untested journalist questions (matchers frozen before first run) baseline 76 → 86–92 across runs; all 12 verified outreach questions pass their documented properties locally AND on prod (era splits, EO 13957 top-5, named removal-power cases, press-release yield). Biggest single win: collective-bargaining question 6 → 17 relevant docs.
+
+**Key decisions (owner)**: both search modes; latency cost accepted; pre-registered holdout to control over-fitting; re-rank untouched the week of outreach (#705 filed); press-on-to-prod same night. **(Claude)**: RRF over hand-tuned fusion weights; alias admission cap 1,000 aligned with the RRF surfacing threshold (quality-neutral by the weight math AND the perf fix); URL dedupe post-fusion; kill-switch env var.
+
+**Prod-only findings (both fixed same night)**: two 60s-edge-timeout failures invisible on a RAM-warm local DB — (1) unbounded validation `count(*)` over a no-filter window (~400k rows) ate the whole budget (v1.9.1: all counts LIMIT-bounded); (2) one broad alias arm measured 31s cold — ORDER BY ts_rank detoasts a ~20KB rank vector per corpus-wide match (v1.9.2: admission cap + inner-LIMIT scans + validated-alias cache key bump).
+
+**Lessons learned**:
+
+- **Local-warm ≠ prod-cold**: every count and sort inside a request path must be LIMIT-bounded; "milliseconds locally" says nothing about a cold 17GB prod table.
+- **Alias quality is the entire game**: iteration 1's hallucinated aliases produced a −23% regression; atomic-term prompting + corpus validation turned the same architecture into +63%.
+- **Calibrate fusion weights against the RRF cutoff math**: vs a 150-deep primary arm at k=60, an arm needs weight >~0.67 to surface anything — a plausible-looking weight curve silently zeroed every alias arm until recalibrated.
+- **Judge nondeterministic configs on the band, not single runs**: temp-0 expansion still varies; per-case hits move ±3 run to run.
+- **The verified-questions checker earned its keep twice** (Seila URL-dedupe bug, the timeout class) — run it after every search-affecting release.
+
+**Standing caveats**: heaviest era-stratified questions run 37–50s warm, near the 60s edge cut — a fully cold first hit (post-Monday-dump) can fail once before warming (mitigations: #705 re-rank latency, post-cron pre-warm). Occasional tangential-but-validated chips accepted as v1 behavior.
+
+**Spec deviations**: none (no spec section; design recorded on #702/#704).
+
+## Sprint R-CASE-TRACKER: tracked_cases + Litigation panel + stub retirement (#693–#698, milestone 112) — ✅ deployed v1.8.0 2026-08-10 (full prod sequence: promote, purge, milestone closed)
 
 **Origin**: owner question after R-DOCKET-CONTEXT — "is the case tracker also CL-API-bound, and can the trigger stubs be purged once pulled?" Answer became the architecture: case UNIVERSE from our 283k docket stubs (the only record of case→category routing), case CONTENT from CL bulk dockets (5GB quarterly file verified to carry filing/termination/last-filing dates, NOS, cause, court; NO docket-entries bulk exists — entry-level posture stays on the shipped timeline API), weekly capped v4 refresh for open cases. **Stub retirement is a deliverable**: once tracked_cases verifiably carries the universe, the 283k metadata-only documents rows (−42% of the table) are purged.
 
@@ -112,21 +143,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **Keep the fiddly logic pure.** URL boundary detection + trailing-punctuation trimming live in a unit-tested function; the component is a thin map — the risky part is fully covered.
 
 **Spec deviations**: none. Display-only; user feedback unchanged.
-
-## Sprint R-FEEDBACK-PASTE-FIX: interactive --respond dropped pasted reply lines (#674, milestone 108) — ✅ deployed 2026-08-04 (v1.5.9, main @ 5019998)
-
-**Origin**: the owner responded to a real feedback item and the published reply was missing its main line (a methodology link). Diagnostic (data-first): the _stored_ `feedback_responses.message` was already truncated — "Here are the pages…:" followed by nothing, then the closing sentence — so the loss was at **input time**, not display. The truncated text had also been emailed to the submitter.
-
-**Root cause**: the interactive `--respond` reader (v1.5.7) used a per-line `rl.question()` loop. On a multi-line **paste**, lines arrive faster than the loop re-arms; readline discards the ones that land between prompts. A pty repro dropped everything after the first line.
-
-**Fix**: read both the menu selection and the reply from a **single async line iterator** (`rl[Symbol.asyncIterator]()`), which buffers every line. `readMultilineReply` now takes an `AsyncIterator<string>` — which also made it unit-testable without a TTY (4 new cases incl. paste-as-one-batch). Verified: pty repro before = 1 line stored, after = all lines stored.
-
-**Prod repair**: updated the existing feedback #1 response row (no duplicate) with the corrected text and re-emailed the submitter the correction via the app's own `notifySubmitterOfResponse` path. Public API confirmed serving the complete response.
-
-**Lessons learned:**
-
-- **Repeated `rl.question()` is a paste-drop footgun.** Reading N lines by calling `question()` N times loses buffered lines; the drop-free pattern is one persistent line source (async iterator or a single `on('line')`). Applies to any interactive multi-line CLI input.
-- **Diagnose from stored data, not the screenshot.** Comparing the DB value to the rendered output localized the bug to input vs. display in one query — the display was faithful; the data was already wrong.
-- **Interactive glue resists CI, so push the logic out of it.** Reshaping `readMultilineReply` to take an iterator moved the buggy part into a pure, unit-tested function; only the thin readline wiring stays uncovered.
-
-**Spec deviations**: none. Bugfix + one-off prod data repair (feedback response, not baseline data).

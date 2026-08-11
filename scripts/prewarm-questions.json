@@ -1,0 +1,50 @@
+[
+  {
+    "name": "FW1-schedule-f-floor-speakers",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&tier=discussion&q=Which+members+of+Congress+have+spoken+on+the+floor+about+Schedule+F+or+reclassifying+federal+employees%2C+and+what+concerns+did+they+raise%3F"
+  },
+  {
+    "name": "FW2-opm-omb-restructuring",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&dateFrom=2025-01-20&q=What+OPM+and+OMB+actions+have+been+taken+regarding+federal+workforce+restructuring+since+January+2025%3F"
+  },
+  {
+    "name": "FW3-workforce-reduction-ig-oversight",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=What+government+documents+reference+both+federal+workforce+reduction+and+inspector+general+oversight%3F"
+  },
+  {
+    "name": "FW4-schedule-f-2020-vs-2025",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=How+did+congressional+responses+to+the+2020+Schedule+F+executive+order+compare+to+responses+to+the+2025+reinstatement%3F"
+  },
+  {
+    "name": "IM1-287g-floor-speeches",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&tier=discussion&dateFrom=2025-01-20&q=What+congressional+floor+speeches+have+addressed+the+expansion+of+287%28g%29+agreements+between+ICE+and+local+law+enforcement+since+2025%3F"
+  },
+  {
+    "name": "IM2-detention-rulemaking-3-eras",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=How+did+detention-related+rulemaking+under+the+Biden+administration+compare+to+both+Trump+administrations%3F"
+  },
+  {
+    "name": "IM3-enforcement-due-process",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=What+government+documents+reference+both+immigration+enforcement+and+due+process+protections%3F"
+  },
+  {
+    "name": "IM4-responses-t1-vs-t2",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=How+have+congressional+responses+to+immigration+enforcement+actions+differed+between+the+first+and+second+Trump+administrations%3F"
+  },
+  {
+    "name": "DEM1-ig-firings-responses",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=What+firings+or+removals+of+inspectors+general+have+occurred+across+federal+agencies%2C+and+what+congressional+responses+have+there+been%3F"
+  },
+  {
+    "name": "DEM2-removal-power-case-law",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=What+court+opinions+and+executive+branch+documents+address+the+President%27s+power+to+remove+independent+agency+officials%3F"
+  },
+  {
+    "name": "DEM3-eo-agency-independence-eras",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=How+has+the+use+of+executive+orders+and+presidential+memoranda+to+modify+federal+agency+independence+compared+across+administrations+since+2017%3F"
+  },
+  {
+    "name": "DEM4-doj-civil-rights-releases",
+    "url": "https://democracymonitor.us/api/search?mode=research&docsOnly=true&q=How+have+DOJ+press+releases+about+civil+rights+enforcement+differed+across+administrations%3F"
+  }
+]
