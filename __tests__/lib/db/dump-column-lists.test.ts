@@ -13,8 +13,9 @@ import { documents } from '@/lib/db/schema';
 
 const REPO_ROOT = join(__dirname, '..', '..', '..');
 
-/** documents columns the dump intentionally omits (rebuilt separately). */
-const INTENTIONALLY_OMITTED = new Set(['embedding']);
+/** documents columns the dump intentionally omits (rebuilt separately —
+ *  search_rank_vector is derived and recomputed by its trigger on restore). */
+const INTENTIONALLY_OMITTED = new Set(['embedding', 'search_rank_vector']);
 
 function schemaColumnNames(): Set<string> {
   return new Set(

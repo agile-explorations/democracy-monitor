@@ -178,6 +178,7 @@ export default function SearchPage() {
       corpusStats: docsData.corpusStats ?? null,
       strata: docsData.strata ?? null,
       inferredDateFrom: docsData.inferredDateFrom ?? null,
+      alsoSearched: docsData.alsoSearched ?? undefined,
     };
     if (!isCurrent()) return;
     setResearchResult(baseResult);

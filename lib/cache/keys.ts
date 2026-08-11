@@ -14,6 +14,10 @@ export const CacheKeys = {
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
   searchResearch: (queryHash: string) => `search:research:${queryHash}`,
+  /** LLM alias proposals for hybrid retrieval (#702), keyed by query hash. */
+  queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
+  /** Corpus-validated aliases, keyed by (query, window) hash. */
+  queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v1`,
   documentCount: () => 'stats:doc-count:v4',
   validateGraph: () => 'health:validate-graph:v1',
   validateGraphLive: () => 'health:validate-graph:live:v1',

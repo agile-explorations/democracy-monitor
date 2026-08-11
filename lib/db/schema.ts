@@ -16,6 +16,12 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 
+const tsvector = customType<{ data: string; driverParam: string }>({
+  dataType() {
+    return 'tsvector';
+  },
+});
+
 const vector = customType<{ data: number[]; driverParam: string }>({
   dataType() {
     return 'vector(1536)';
@@ -64,6 +70,13 @@ export const documents = pgTable(
      *  assessment; the parent row remains the single source for origin URL
      *  and metadata. */
     parentId: integer('parent_id'),
+    /** Compact FTS ranking vector (#702/#703): title (weight A) + first 20k
+     *  chars of content (weight B). Maintained by a DB trigger (migration
+     *  0053); MATCHING still uses the full generated search_vector — this
+     *  column exists so ts_rank never detoasts multi-MB vectors. Nullable:
+     *  rows await the batched backfill; the hybrid FTS arm ranks only
+     *  non-null rows (graceful pre-backfill degradation). */
+    searchRankVector: tsvector('search_rank_vector'),
     /** NULL = retrieval-relevant (default); false = annotated off-topic by the
      *  retrieval relevance filter (#524/#544) — excluded from assessment,
      *  statistics, search, and exports but kept for auditability. */

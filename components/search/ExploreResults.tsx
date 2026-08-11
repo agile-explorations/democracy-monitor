@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { CaseContext } from '@/components/shared/CaseContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { categoryLabel, formatDate } from './helpers';
+import { AlsoSearchedChips, MatchSnippet } from './MatchSnippet';
 import type { ExploreDocResult, ExploreResult } from './types';
 
 interface GroupedDoc {
@@ -12,6 +13,8 @@ interface GroupedDoc {
   sourceOrigin: string | null;
   caseId: string | null;
   snippet: string | null;
+  matchSnippet: string | null;
+  matchedAlias: string | null;
   cosineSimilarity: number | null;
   aiReasoning: string | null;
   categories: ExploreDocResult[];
@@ -29,6 +32,10 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
         existing.cosineSimilarity = doc.cosineSimilarity;
       }
       if (!existing.aiReasoning && doc.aiReasoning) existing.aiReasoning = doc.aiReasoning;
+      if (!existing.matchSnippet && doc.matchSnippet) {
+        existing.matchSnippet = doc.matchSnippet;
+        existing.matchedAlias = doc.matchedAlias ?? null;
+      }
     } else {
       map.set(key, {
         url: doc.url,
@@ -38,6 +45,8 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
         sourceOrigin: doc.sourceOrigin,
         caseId: doc.caseId ?? null,
         snippet: doc.snippet,
+        matchSnippet: doc.matchSnippet ?? null,
+        matchedAlias: doc.matchedAlias ?? null,
         cosineSimilarity: doc.cosineSimilarity,
         aiReasoning: doc.aiReasoning ?? null,
         categories: [doc],
@@ -114,10 +123,14 @@ function GroupedDocCard({ group }: { group: GroupedDoc }) {
         ))}
       </div>
 
-      {group.snippet && (
-        <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
-          &ldquo;{group.snippet.trim()}&rdquo;
-        </p>
+      {group.matchSnippet ? (
+        <MatchSnippet snippet={group.matchSnippet} alias={group.matchedAlias} />
+      ) : (
+        group.snippet && (
+          <p className="mt-2 text-xs text-dm-text-secondary line-clamp-2 italic">
+            &ldquo;{group.snippet.trim()}&rdquo;
+          </p>
+        )
       )}
 
       {group.aiReasoning && (
@@ -211,6 +224,7 @@ export function ExploreResults({
           <span> ({grouped.length} unique documents)</span>
         )}
       </p>
+      <AlsoSearchedChips phrases={result.alsoSearched} />
       <div className="space-y-2">
         {grouped.map((group) => (
           <GroupedDocCard key={group.url ?? group.categories[0].id} group={group} />

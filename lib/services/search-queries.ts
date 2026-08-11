@@ -81,6 +81,8 @@ export function mapToSearchResult(row: Record<string, unknown>): SearchResultDoc
     caseId: row.case_id as string | null,
     category: row.category as string,
     snippet: row.snippet as string | null,
+    ...(row.match_snippet ? { matchSnippet: row.match_snippet as string } : {}),
+    ...(row.matched_alias ? { matchedAlias: row.matched_alias as string } : {}),
     cosineSimilarity: row.cosine_similarity != null ? Number(row.cosine_similarity) : null,
     textRank: row.text_rank != null ? Number(row.text_rank) : null,
     severityScore: row.severity_score != null ? Number(row.severity_score) : null,

@@ -19,6 +19,8 @@ export interface ResearchResult {
   }> | null;
   /** Date floor inferred from range phrasing in the question (#594). */
   inferredDateFrom?: string | null;
+  /** Corpus-validated alias terms the hybrid arms searched (#702). */
+  alsoSearched?: string[];
   editorial?: {
     expertDraft: string;
     publicDraft: string;
@@ -45,6 +47,10 @@ export interface ResearchDocResult {
   documentClass: string | null;
   /** P2 review reasoning excerpt (optional: cached payloads may predate it). */
   p2Summary?: string | null;
+  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
+  matchSnippet?: string | null;
+  /** The corpus-validated alias whose arm surfaced this doc (#702). */
+  matchedAlias?: string | null;
 }
 
 export interface ExploreResult {
@@ -52,6 +58,8 @@ export interface ExploreResult {
   page: number;
   pageSize: number;
   documents: ExploreDocResult[];
+  /** Corpus-validated alias terms the hybrid arms searched (#702). */
+  alsoSearched?: string[];
 }
 
 export interface ExploreDocResult {
@@ -64,6 +72,10 @@ export interface ExploreDocResult {
   caseId?: string | null;
   category: string;
   snippet: string | null;
+  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
+  matchSnippet?: string | null;
+  /** The corpus-validated alias whose arm surfaced this doc (#702). */
+  matchedAlias?: string | null;
   cosineSimilarity: number | null;
   severityScore: number | null;
   finalScore: number | null;

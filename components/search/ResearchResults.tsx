@@ -7,6 +7,7 @@ import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { labelForSourceType } from '@/lib/data/document-tiers';
 import type { EditorialRecord } from '@/lib/types';
 import { categoryLabel, formatDate, similarityBar } from './helpers';
+import { AlsoSearchedChips, MatchSnippet } from './MatchSnippet';
 import type { ResearchDocResult, ResearchResult } from './types';
 
 function prepareCitations(text: string): string {
@@ -118,6 +119,7 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
               {labelForSourceType(doc.sourceType, doc.sourceOrigin)}
             </span>
           </div>
+          {doc.matchSnippet && <MatchSnippet snippet={doc.matchSnippet} alias={doc.matchedAlias} />}
           {doc.p2Summary && (
             <p className="mt-1 text-xs text-dm-text-secondary line-clamp-2">
               <span className="text-dm-muted">AI review:</span> {doc.p2Summary}
@@ -230,6 +232,7 @@ export function ResearchResults({
           Official government documents
           {hasAnswer ? ' \u2014 the basis for the answer above.' : '.'}
         </p>
+        <AlsoSearchedChips phrases={result.alsoSearched} />
         <div className="space-y-2">
           {result.documents.map((doc) => (
             <ResearchDocCard key={doc.id} doc={doc} />
