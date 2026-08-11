@@ -4,6 +4,24 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-FEEDBACK-PASTE-FIX: interactive --respond dropped pasted reply lines (#674, milestone 108) — ✅ deployed 2026-08-04 (v1.5.9, main @ 5019998)
+
+**Origin**: the owner responded to a real feedback item and the published reply was missing its main line (a methodology link). Diagnostic (data-first): the _stored_ `feedback_responses.message` was already truncated — "Here are the pages…:" followed by nothing, then the closing sentence — so the loss was at **input time**, not display. The truncated text had also been emailed to the submitter.
+
+**Root cause**: the interactive `--respond` reader (v1.5.7) used a per-line `rl.question()` loop. On a multi-line **paste**, lines arrive faster than the loop re-arms; readline discards the ones that land between prompts. A pty repro dropped everything after the first line.
+
+**Fix**: read both the menu selection and the reply from a **single async line iterator** (`rl[Symbol.asyncIterator]()`), which buffers every line. `readMultilineReply` now takes an `AsyncIterator<string>` — which also made it unit-testable without a TTY (4 new cases incl. paste-as-one-batch). Verified: pty repro before = 1 line stored, after = all lines stored.
+
+**Prod repair**: updated the existing feedback #1 response row (no duplicate) with the corrected text and re-emailed the submitter the correction via the app's own `notifySubmitterOfResponse` path. Public API confirmed serving the complete response.
+
+**Lessons learned:**
+
+- **Repeated `rl.question()` is a paste-drop footgun.** Reading N lines by calling `question()` N times loses buffered lines; the drop-free pattern is one persistent line source (async iterator or a single `on('line')`). Applies to any interactive multi-line CLI input.
+- **Diagnose from stored data, not the screenshot.** Comparing the DB value to the rendered output localized the bug to input vs. display in one query — the display was faithful; the data was already wrong.
+- **Interactive glue resists CI, so push the logic out of it.** Reshaping `readMultilineReply` to take an iterator moved the buggy part into a pure, unit-tested function; only the thin readline wiring stays uncovered.
+
+**Spec deviations**: none. Bugfix + one-off prod data repair (feedback response, not baseline data).
+
 ## Sprint R-METHODOLOGY-CALC: show concern-status calculation in both methodology views (#673, milestone 107) — ✅ deployed 2026-08-04 (v1.5.8, main @ 56a22ce)
 
 **Origin**: recurring user feedback (the khluerken item #1) asked how a category-week's concern score is calculated. Diagnostic: the site's one methodology page (`/system/methodology`) described the three statuses _qualitatively_ in the Concern Synthesis section of **both** reading levels, but the actual count-based calculation lived only in the detailed view's separate "AI Document Review" section. A reader looking at Concern Synthesis — the section literally about how status is set — found no numbers.
