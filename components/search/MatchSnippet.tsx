@@ -30,7 +30,10 @@ export function MatchSnippet({ snippet, alias }: { snippet: string; alias?: stri
 export function AlsoSearchedChips({ phrases }: { phrases?: string[] }) {
   if (!phrases || phrases.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-center gap-1.5 mb-4 text-[11px]">
+    <div
+      className="flex flex-wrap items-center gap-1.5 mb-4 text-[11px]"
+      title="Your wording expanded into the record's own terms — only terms verified to appear in the corpus are searched."
+    >
       <span className="text-dm-muted">Also searched:</span>
       {phrases.map((p) => (
         <span

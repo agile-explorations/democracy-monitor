@@ -74,14 +74,20 @@ function QuoteVerificationBadge({
   if (!verification || verification.totalQuotes === 0) return null;
   if (verification.unverified.length === 0) {
     return (
-      <p className="mt-3 text-[11px] text-emerald-500">
+      <p
+        className="mt-3 text-[11px] text-emerald-500"
+        title="Every quoted passage in the answer was string-matched against the full stored text of its cited document."
+      >
         ✓ All {verification.totalQuotes} quoted passage
         {verification.totalQuotes !== 1 ? 's' : ''} verified verbatim against the source documents.
       </p>
     );
   }
   return (
-    <p className="mt-3 text-[11px] text-amber-500">
+    <p
+      className="mt-3 text-[11px] text-amber-500"
+      title="Quoted passages are string-matched against the full stored text of their cited documents; at least one could not be found verbatim."
+    >
       ⚠ {verification.unverified.length} of {verification.totalQuotes} quoted passage
       {verification.totalQuotes !== 1 ? 's' : ''} could not be verified verbatim against the source
       documents — treat quoted wording with caution.

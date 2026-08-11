@@ -49,6 +49,11 @@ pnpm nc:margins        # Capture/diff negative-control margins (--out FILE, --di
 pnpm actor:backfill    # Erosion-actor attribution light pass (--baseline, --dry-run; baseline writes need approval)
 pnpm narratives:regenerate     # Regenerate narratives (--type weekly|term|all, --week)
 pnpm backfill:opinions # Opinion-first CL backfill (bulk staging locally, CL API in prod; --from, --to, --dry-run)
+pnpm search:backfill-rank      # Backfill documents.search_rank_vector (keyset; trigger maintains new rows)
+pnpm audit:annotations         # Sampled P2 annotation-vs-document audit (#711; --confirm, --sample N, --out FILE)
+pnpm crec:build-fragments      # Split multi-topic CREC granules into fragment docs (#704; --confirm, --limit N)
+pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison)
+pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
 ```
 
