@@ -16,6 +16,12 @@ import {
   unique,
 } from 'drizzle-orm/pg-core';
 
+const tsvector = customType<{ data: string; driverParam: string }>({
+  dataType() {
+    return 'tsvector';
+  },
+});
+
 const vector = customType<{ data: number[]; driverParam: string }>({
   dataType() {
     return 'vector(1536)';
@@ -57,6 +63,20 @@ export const documents = pgTable(
     speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+    /** Fragment lineage (#704 Path A): set on rows split out of a multi-topic
+     *  parent granule (points at the parent documents.id). Fragments are
+     *  retrieval-grade — embedded and searchable — but sit outside the
+     *  counting population (counting_scope=false) and are excluded from L2
+     *  assessment; the parent row remains the single source for origin URL
+     *  and metadata. */
+    parentId: integer('parent_id'),
+    /** Compact FTS ranking vector (#702/#703): title (weight A) + first 20k
+     *  chars of content (weight B). Maintained by a DB trigger (migration
+     *  0053); MATCHING still uses the full generated search_vector — this
+     *  column exists so ts_rank never detoasts multi-MB vectors. Nullable:
+     *  rows await the batched backfill; the hybrid FTS arm ranks only
+     *  non-null rows (graceful pre-backfill degradation). */
+    searchRankVector: tsvector('search_rank_vector'),
     /** NULL = retrieval-relevant (default); false = annotated off-topic by the
      *  retrieval relevance filter (#524/#544) — excluded from assessment,
      *  statistics, search, and exports but kept for auditability. */
@@ -70,6 +90,7 @@ export const documents = pgTable(
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),
+    index('idx_documents_parent_id').on(table.parentId),
     index('idx_documents_category').on(table.category),
     index('idx_documents_source_origin').on(table.sourceOrigin),
     index('idx_documents_case_id').on(table.caseId),

@@ -8,22 +8,22 @@
 
 import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
-import {
-  composeTieredResults,
-  DISCUSSION_SOURCE_TYPES,
-  tierForSourceType,
-} from '@/lib/data/document-tiers';
-import { PROCEDURAL_TITLE_PATTERN, PROCEDURAL_TITLE_PENALTY } from '@/lib/data/procedural-titles';
+import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { buildPublishedAtWindow } from '@/lib/utils/date-window';
 import { embedText } from './embedding-service';
-import { executeFilteredVectorQuery, fetchResearchDocRowsByIds } from './research-retrieval';
+import { buildAliasArmQuery, fetchMatchSnippets, runArms } from './hybrid-arms';
+import { hybridVectorExplore } from './hybrid-explore';
+import type { FusionArm } from './hybrid-fusion';
+import { armWeight, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
+import type { ValidatedAlias } from './query-expansion-service';
+import { expandAndValidate } from './query-expansion-service';
 import {
-  mapToSearchResult,
-  SEARCH_EXCLUDED_ORIGINS,
-  textExplore,
-  vectorExplore,
-} from './search-queries';
+  buildResearchQuery,
+  executeFilteredVectorQuery,
+  fetchResearchDocRowsByIds,
+  researchCandidateFilters,
+} from './research-retrieval';
+import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,6 +53,10 @@ export interface SearchResultDocument {
   caseId: string | null;
   category: string;
   snippet: string | null;
+  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
+  matchSnippet?: string | null;
+  /** The corpus-validated alias whose arm surfaced this doc (#702). */
+  matchedAlias?: string | null;
   cosineSimilarity: number | null;
   textRank: number | null;
   severityScore: number | null;
@@ -76,6 +80,9 @@ export interface ExploreSearchResult {
   page: number;
   pageSize: number;
   documents: SearchResultDocument[];
+  /** Corpus-validated alias terms the hybrid arms searched (#702) — for the
+   *  "Also searched:" transparency chips. Absent on pure-vector fallback. */
+  alsoSearched?: string[];
 }
 
 export interface ResearchDocument {
@@ -97,6 +104,10 @@ export interface ResearchDocument {
   p2ErosionType: string | null;
   p2Confidence: number | null;
   p2Summary: string | null;
+  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
+  matchSnippet?: string;
+  /** The corpus-validated alias whose arm surfaced this doc (#702). */
+  matchedAlias?: string;
 }
 
 export interface SimilarDocumentResult {
@@ -126,6 +137,16 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 
   try {
     if (vectorStr) {
+      // Hybrid path (#702): corpus-validated aliases add keyword arms; zero
+      // aliases (no key, LLM failure, nothing validated) → pure vector.
+      const aliases = await expandAndValidate(filters.query, {
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+        category: filters.category,
+      });
+      if (aliases.length > 0) {
+        return await hybridVectorExplore(db, vectorStr, filters, aliases, page, pageSize, offset);
+      }
       return await vectorExplore(db, vectorStr, filters, page, pageSize, offset);
     }
     return await textExplore(db, filters, hasQuery, page, pageSize, offset);
@@ -139,101 +160,58 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 }
 
 // ---------------------------------------------------------------------------
-// Research mode: vector search for government documents
+// Research mode: hybrid vector + validated-alias retrieval (#702)
 // ---------------------------------------------------------------------------
 
-const buildDateFilter = buildPublishedAtWindow;
-
-/** Tier condition for the research candidate scan (#552). */
-function buildTierFilter(tier?: DocumentTier) {
-  if (!tier) return sql``;
-  const types = sql.join(
-    [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),
-    sql`, `,
-  );
-  return tier === 'action'
-    ? sql`AND d.source_type NOT IN (${types})`
-    : sql`AND d.source_type IN (${types})`;
-}
-
-interface ResearchQueryOpts {
-  topK: number;
-  dateFrom?: string;
-  dateTo?: string;
-  tier?: DocumentTier;
-}
-
-/** Build the research vector search SQL (candidates → dedup → re-rank → P2 join). */
-/** Combined ranking score: semantic similarity, recency, keyword hit, minus
- *  the procedural-boilerplate penalty (#593). */
-/** Joined list of legacy origins excluded from all search retrieval. */
-function excludedOrigins() {
-  return sql.join(
-    SEARCH_EXCLUDED_ORIGINS.map((o) => sql`${o}`),
-    sql`, `,
-  );
-}
-
-const COMBINED_SCORE = sql`(cosine_similarity * 0.6 + recency * 0.2
-  + CASE WHEN keyword_match THEN 0.2 ELSE 0 END
-  - CASE WHEN procedural THEN ${PROCEDURAL_TITLE_PENALTY}::numeric ELSE 0 END)`;
-
-function buildResearchQuery(vectorStr: string, query: string, opts: ResearchQueryOpts) {
-  const { topK, dateFrom, dateTo, tier } = opts;
-  const candidateLimit = topK * 5;
-  const dateFilter = buildDateFilter(dateFrom, dateTo);
-  const tierFilter = buildTierFilter(tier);
-
-  // Candidate stages carry only ids + ranking inputs; content is joined back
-  // for the final topK rows only, capped at 3000 chars (the prompt uses at
-  // most ACTION_EXCERPT_CHARS=2200). Shipping full opinion texts (up to ~1MB
-  // each) over the wire measured ~8-10s of the retrieval latency.
-  return sql`
-    SELECT r.id, d2.title, LEFT(d2.content, 3000) as content, d2.url, d2.published_at, d2.source_type,
-      d2.source_origin, d2.case_id, d2.category, r.cosine_similarity, r.final_score, r.document_class,
-      ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
-      ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
-    FROM (
-      SELECT id, url, category, cosine_similarity, final_score, document_class,
-        ${COMBINED_SCORE} as combined_score
-      FROM (
-        SELECT DISTINCT ON (url)
-          id, url, category, cosine_similarity, final_score, document_class, recency, keyword_match,
-          procedural
-        FROM (
-          SELECT d.id, d.url, d.category,
-            1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
-            ds.final_score, ds.document_class,
-            d.title ~* ${PROCEDURAL_TITLE_PATTERN} as procedural,
-            CASE WHEN d.published_at IS NULL THEN 0
-              ELSE GREATEST(0, 1 - EXTRACT(EPOCH FROM (now() - d.published_at))
-                / (365.25 * 86400 * 4))
-            END as recency,
-            (d.search_vector @@ websearch_to_tsquery('english', ${query})) as keyword_match
-          FROM documents d
-          LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-          WHERE d.embedding IS NOT NULL
-            AND d.source_origin NOT IN (${excludedOrigins()})
-            AND d.retrieval_relevant IS NOT FALSE
-            AND d.content_type != 'metadata_only'
-            ${dateFilter}
-            ${tierFilter}
-          ORDER BY d.embedding <=> ${vectorStr}::vector
-          LIMIT ${candidateLimit}
-        ) candidates
-        ORDER BY url, cosine_similarity DESC
-      ) deduped
-      ORDER BY combined_score DESC
-      LIMIT ${topK}
-    ) r
-    JOIN documents d2 ON d2.id = r.id
-    LEFT JOIN ai_document_assessments ai
-      ON ai.url = r.url AND ai.category = r.category AND ai.pass = 2
-    ORDER BY r.combined_score DESC
-  `;
-}
-
 export type ResearchTierFilter = 'all' | DocumentTier;
+
+/**
+ * Run the per-alias FTS arms for a research window and map rows into
+ * weighted fusion arms. Alias failures degrade to empty arms; zero aliases
+ * (no key, LLM failure, nothing validated) means pure-vector retrieval.
+ */
+async function runResearchAliasArms(
+  query: string,
+  vectorStr: string,
+  dateFrom?: string,
+  dateTo?: string,
+  tier?: DocumentTier,
+): Promise<{ aliases: ValidatedAlias[]; arms: FusionArm<ResearchDocument>[] }> {
+  const aliases = await expandAndValidate(query, { dateFrom, dateTo, tier });
+  if (aliases.length === 0) return { aliases, arms: [] };
+  const filters = researchCandidateFilters(dateFrom, dateTo, tier);
+  const rowLists = await runArms(aliases.map((a) => buildAliasArmQuery(a, vectorStr, filters)));
+  const arms = rowLists.map((rows, i) => ({
+    items: rows.map(mapToResearchDoc),
+    weight: armWeight(aliases[i].matches),
+  }));
+  return { aliases, arms };
+}
+
+/**
+ * Batched post-fusion snippet extraction (#702 perf): headlines run only for
+ * the keyword-surfaced docs that made the final list, not every arm candidate.
+ */
+async function attachMatchSnippets(docs: ResearchDocument[]): Promise<ResearchDocument[]> {
+  const pending = docs.filter((d) => d.matchedAlias && !d.matchSnippet);
+  if (pending.length === 0) return docs;
+  const snippets = await fetchMatchSnippets(
+    pending.map((d) => ({ id: d.id, phrase: d.matchedAlias as string })),
+  );
+  for (const d of pending) {
+    const snippet = snippets.get(d.id);
+    if (snippet) d.matchSnippet = snippet;
+  }
+  return docs;
+}
+
+/** Restrict fusion arms to one tier (order-preserving) for the tiered pools. */
+function armsForTier(
+  arms: FusionArm<ResearchDocument>[],
+  tier: DocumentTier,
+): FusionArm<ResearchDocument>[] {
+  return arms.map((a) => ({ items: a.items.filter((d) => d.tier === tier), weight: a.weight }));
+}
 
 export async function searchResearch(
   query: string,
@@ -252,34 +230,63 @@ export async function searchResearch(
 
   try {
     if (tierFilter !== 'all') {
-      const results = await executeFilteredVectorQuery(
-        db,
-        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
-      );
-      return (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
+      const [results, { arms }] = await Promise.all([
+        executeFilteredVectorQuery(
+          db,
+          buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
+        ),
+        runResearchAliasArms(query, vectorStr, dateFrom, dateTo, tierFilter),
+      ]);
+      const primary = (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
+      // Fuse to 2x then URL-dedupe (alias arms reintroduce same-url rows the
+      // primary arm's DISTINCT ON (url) had collapsed) and refill to topK.
+      const fused = dedupeByUrl(fuseWeightedRrf(primary, arms, topK * 2)).slice(0, topK);
+      return attachMatchSnippets(fused);
     }
-    // Per-tier candidate pools: primary sources must not be crowded out of a
-    // shared pool by debate-style text that embeds closer to question phrasing.
-    const [actionRows, discussionRows] = await Promise.all([
-      executeFilteredVectorQuery(
-        db,
-        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
-      ),
-      executeFilteredVectorQuery(
-        db,
-        buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
-      ),
-    ]);
-    return composeTieredResults(
-      (actionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
-      (discussionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
-      topK,
+    return await attachMatchSnippets(
+      await searchResearchAllTiers(db, query, vectorStr, topK, dateFrom, dateTo),
     );
   } catch (err) {
     // #598: throw, never return [] — see searchExplore's catch for rationale.
     console.error('[search] Research search failed:', err);
     throw err;
   }
+}
+
+/**
+ * Per-tier candidate pools: primary sources must not be crowded out of a
+ * shared pool by debate-style text that embeds closer to question phrasing.
+ * Alias arms run once tier-unfiltered, then split by tier so each pool fuses
+ * only with its own tier's keyword hits (#702).
+ */
+async function searchResearchAllTiers(
+  db: ReturnType<typeof getDb>,
+  query: string,
+  vectorStr: string,
+  topK: number,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<ResearchDocument[]> {
+  const [actionRows, discussionRows, { arms }] = await Promise.all([
+    executeFilteredVectorQuery(
+      db,
+      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
+    ),
+    executeFilteredVectorQuery(
+      db,
+      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
+    ),
+    runResearchAliasArms(query, vectorStr, dateFrom, dateTo),
+  ]);
+  const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
+    dedupeByUrl(
+      fuseWeightedRrf(rows.map(mapToResearchDoc), armsForTier(arms, tier), topK * 2),
+    ).slice(0, topK);
+  return composeTieredResults(
+    fusePool(actionRows.rows as Record<string, unknown>[], 'action'),
+    fusePool(discussionRows.rows as Record<string, unknown>[], 'discussion'),
+    topK,
+  );
 }
 
 /** Fetch research documents by id, preserving input order (#552). */
@@ -307,6 +314,8 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
     p2ErosionType: (row.p2_erosion_type as string) ?? null,
     p2Confidence: row.p2_confidence != null ? Number(row.p2_confidence) : null,
     p2Summary: (row.p2_summary as string) ?? null,
+    ...(row.match_snippet ? { matchSnippet: row.match_snippet as string } : {}),
+    ...(row.matched_alias ? { matchedAlias: row.matched_alias as string } : {}),
   };
 }
 

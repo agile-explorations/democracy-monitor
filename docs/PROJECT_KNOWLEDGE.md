@@ -295,6 +295,8 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 
 ### Data pipeline
 
+- **Audit resolution, not just coverage.** A source can have uniform document counts across eras and still be resolution-asymmetric — old-era CREC stored whole days as single granules whose L2 review saw only the first 8k chars, silently under-evidencing baselines while the #557 count-based parity audit reported zero findings. Every parity audit must compare the unit of storage and assessment (granule size distribution, chars-seen-by-L2) per era. (#704)
+
 - **Counting, collection, and evidence populations are three different things.** When a collection method changes irreversibly, define the _counting_ population as a documented classifier over stored fields and apply it uniformly to all eras — consistency by construction, no re-collection needed, and the L2 evidence population can stay untouched so statuses cannot flip. (R-POPULATION)
 - **Rehearse full re-derivations against a prod copy and compare numbers to expectations.** The two real bugs of R-POPULATION (a silently dead ingest stream; docket stubs inside every distribution surface) were invisible to unit tests and code review — only the rehearsed chain plus expected-vs-actual seam metrics exposed them. (R-POPULATION)
 

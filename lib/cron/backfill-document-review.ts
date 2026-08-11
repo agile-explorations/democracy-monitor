@@ -10,7 +10,7 @@
  *   pnpm review:backfill --retry-p2 --category elections  # scoped to one category
  *   pnpm review:backfill --dry-run
  */
-import { and, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import { getAnalysisPeriods } from '@/lib/data/analysis-periods';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
 import { CATEGORIES } from '@/lib/data/categories';
@@ -135,6 +135,10 @@ export async function getDocumentsForCategoryWeek(
     sql`${documents.contentType} != 'metadata_only'`,
     sql`length(${documents.content}) >= 100`,
     retrievalRelevantOnly(),
+    // Fragments (#704 Path A) are retrieval-only: searchable but outside the
+    // L2 evidence population. Assessing them is the explicitly deferred
+    // Path-B decision — never a backfill side effect.
+    isNull(documents.parentId),
   ];
   if (source) conditions.push(eq(documents.sourceOrigin, source));
 

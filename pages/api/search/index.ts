@@ -9,12 +9,18 @@ import {
   extractComparisonEras,
   extractDateFloor,
 } from '@/lib/services/era-extraction';
+import { expandAndValidate } from '@/lib/services/query-expansion-service';
 import { rerankByRelevance } from '@/lib/services/relevance-rerank';
 import { computeDateRange } from '@/lib/services/research-prompts';
-import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import { searchCorpusStats } from '@/lib/services/search-research-queries';
+import type { CachedResearchResult } from '@/lib/services/search-response-format';
+import {
+  emptyResearchResponse,
+  formatDocList,
+  formatResearchResponse,
+} from '@/lib/services/search-response-format';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
@@ -22,13 +28,6 @@ import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
 const RESEARCH_CONTEXT_DOCS = 30; // docs sent to LLM
-
-interface CachedResearchResult {
-  synthesis: ResearchSynthesisResult;
-  documents: ResearchDocument[];
-  queryConfidence: number;
-  corpusStats?: CorpusStats | null;
-}
 
 function hashQuery(q: string): string {
   return createHash('sha256').update(q.toLowerCase().trim()).digest('hex').slice(0, 16);
@@ -86,15 +85,6 @@ async function timedEmbedOrFail(
   return embedding;
 }
 
-function emptyResearchResponse(docsOnly: boolean) {
-  return {
-    documents: [],
-    dateRange: { earliest: 'unknown', latest: 'unknown' },
-    queryConfidence: 0,
-    ...(docsOnly ? {} : { answer: emptyAnswer(), relatedQuestions: [] }),
-  };
-}
-
 /** Compute adaptive corpus stats using the least-similar retrieved doc as threshold. */
 async function adaptiveCorpusStats(
   embedding: number[],
@@ -137,6 +127,25 @@ function intersectEraWindows(eras: EraWindow[], dateFrom?: string, dateTo?: stri
  * compared. User date bounds intersect each era window; an intersection that
  * would be empty falls back to the full era window and is flagged.
  */
+/** Corpus-validated alias phrases for the windows searched (#702) — cache
+ *  hits, since searchResearch already ran the same expansion internally. */
+async function collectAlsoSearched(
+  query: string,
+  windows: Array<{ from?: string; to?: string }>,
+  tier: ResearchTierFilter,
+): Promise<string[]> {
+  const phrases = new Set<string>();
+  for (const w of windows) {
+    const aliases = await expandAndValidate(query, {
+      dateFrom: w.from,
+      dateTo: w.to,
+      tier: tier === 'all' ? undefined : tier,
+    });
+    for (const a of aliases) phrases.add(a.phrase);
+  }
+  return [...phrases];
+}
+
 async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
   // Range phrases in the question ("since January 2025") become a date floor
   // when the user has not set explicit dates; surfaced in the response so
@@ -168,7 +177,12 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
       tier,
     );
     const docs = await rerankByRelevance(query, candidates, RESEARCH_CONTEXT_DOCS);
-    return { docs, strata: null, inferredFrom };
+    const alsoSearched = await collectAlsoSearched(
+      query,
+      [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
+      tier,
+    );
+    return { docs, strata: null, inferredFrom, alsoSearched };
   }
 
   const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
@@ -187,7 +201,8 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
     docCount: perEra[i].length,
     ...(w.dateConflict ? { dateConflict: true } : {}),
   }));
-  return { docs: perEra.flat(), strata, inferredFrom };
+  const alsoSearched = await collectAlsoSearched(query, windows, tier);
+  return { docs: perEra.flat(), strata, inferredFrom, alsoSearched };
 }
 
 async function handleResearch(
@@ -203,7 +218,12 @@ async function handleResearch(
   if (!embedding) return;
 
   const retrieveStart = Date.now();
-  const { docs: allDocs, strata, inferredFrom } = await retrieveResearchDocs(req, query, embedding);
+  const {
+    docs: allDocs,
+    strata,
+    inferredFrom,
+    alsoSearched,
+  } = await retrieveResearchDocs(req, query, embedding);
   // Phase-timing line for cold-cache diagnosis (post-dump HNSW evictions can
   // multiply retrieval time; CF cuts requests at ~100s since 2026-07-31).
   console.log(
@@ -227,6 +247,7 @@ async function handleResearch(
       queryConfidence: avgSimilarity,
       ...(strata ? { strata } : {}),
       ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
+      ...(alsoSearched.length > 0 ? { alsoSearched } : {}),
     });
     return;
   }
@@ -235,87 +256,46 @@ async function handleResearch(
   const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
   console.log(`[api/search] timings q=${queryHash} stats=${Date.now() - statsStart}ms`);
 
+  await synthesizeAndRespond(res, query, queryHash, allDocs, {
+    editorial,
+    alsoSearched,
+    avgSimilarity,
+    corpusStats,
+  });
+}
+
+/** Cache-checked synthesis: serve the cached answer or generate, cache, respond. */
+async function synthesizeAndRespond(
+  res: NextApiResponse,
+  query: string,
+  queryHash: string,
+  allDocs: ResearchDocument[],
+  opts: {
+    editorial: boolean;
+    alsoSearched: string[];
+    avgSimilarity: number;
+    corpusStats: CorpusStats | null;
+  },
+): Promise<void> {
   const cached = await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
   if (cached) {
-    res.status(200).json(formatResearchResponse(cached, allDocs, editorial));
+    res
+      .status(200)
+      .json(formatResearchResponse(cached, allDocs, opts.editorial, opts.alsoSearched));
     return;
   }
 
   const contextDocs = allDocs.slice(0, RESEARCH_CONTEXT_DOCS);
-  const synthesis = await synthesizeResearchAnswer(query, contextDocs, corpusStats);
+  const synthesis = await synthesizeResearchAnswer(query, contextDocs, opts.corpusStats);
   const result: CachedResearchResult = {
     synthesis,
     documents: allDocs,
-    queryConfidence: avgSimilarity,
-    corpusStats,
+    queryConfidence: opts.avgSimilarity,
+    corpusStats: opts.corpusStats,
   };
 
   await cacheSet(CacheKeys.searchResearch(queryHash), result, RESEARCH_CACHE_TTL);
-  res.status(200).json(formatResearchResponse(result, allDocs, editorial));
-}
-
-function emptyAnswer() {
-  return {
-    expert:
-      'The documentary record in our corpus does not contain enough information to answer this question. ' +
-      'This may mean the topic is not reflected in Federal Register publications, court filings, or other ' +
-      'government documents in our collection, or that relevant documents fall outside our current date range.',
-    public:
-      'We could not find enough government documents to answer this question. The topic may not be covered ' +
-      'in the documents we monitor, or relevant documents may fall outside the dates we have on record.',
-  };
-}
-
-function formatDocList(docs: ResearchDocument[]) {
-  return docs.map((doc, i) => ({
-    citationIndex: i + 1,
-    id: doc.id,
-    tier: doc.tier,
-    title: doc.title,
-    url: doc.url,
-    publishedAt: doc.publishedAt,
-    sourceType: doc.sourceType,
-    sourceOrigin: doc.sourceOrigin,
-    caseId: doc.caseId ?? null,
-    category: doc.category,
-    cosineSimilarity: doc.cosineSimilarity,
-    finalScore: doc.finalScore,
-    documentClass: doc.documentClass,
-    p2Assessment: doc.p2Assessment,
-    p2ErosionType: doc.p2ErosionType,
-    p2Summary: doc.p2Summary,
-  }));
-}
-
-function formatResearchResponse(
-  result: CachedResearchResult,
-  allDocs: ResearchDocument[],
-  editorial: boolean,
-) {
-  const { synthesis, queryConfidence, corpusStats: stats } = result;
-  const dateRange = computeDateRange(allDocs);
-
-  const response: Record<string, unknown> = {
-    answer: { expert: synthesis.expert, public: synthesis.public },
-    documents: formatDocList(allDocs),
-    dateRange,
-    queryConfidence,
-    relatedQuestions: synthesis.relatedQuestions,
-    ...(stats ? { corpusStats: stats } : {}),
-  };
-
-  if (editorial) {
-    response.editorial = {
-      expertDraft: synthesis.expertDraft,
-      publicDraft: synthesis.publicDraft,
-      feedback: synthesis.feedback,
-      draftModel: synthesis.draftModel,
-      feedbackModel: synthesis.feedbackModel,
-      finalModel: synthesis.finalModel,
-    };
-  }
-
-  return response;
+  res.status(200).json(formatResearchResponse(result, allDocs, opts.editorial, opts.alsoSearched));
 }
 
 async function handleExplore(

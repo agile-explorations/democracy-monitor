@@ -26,7 +26,35 @@ busier executive-power docket, not a coverage difference — the queries are now
 trump_2018 1,742 / 0; trump_2020 and biden_2023 had 0 LegiScan; biden_2024 had 126; P1
 coverage ranged 98.6–100%. All repaired except trump_2017/2018 general CL depth (below).
 
-## Findings, ranked by surface visibility (status as of 2026-07-22)
+## Findings, ranked by surface visibility (status as of 2026-07-22; item 0 added 2026-08-10)
+
+0. **OPEN — CREC granularity/resolution asymmetry (found 2026-08-10, #704).** This audit's
+   method checked coverage _counts_ per source × period but never granule _resolution_ — and
+   missed that old-era CREC arrives as multi-topic whole-day granules (4,698 candidates >100KB,
+   2.0GB: 58% Trump-1 / 33% Biden / 9% T2) while the current term gets per-speech granules.
+   Consequence: L2 review saw only the first 8k chars of each blob (~0.4% of a 2MB day), so the
+   baselines are systematically under-evidenced relative to T2 — material because floor
+   speeches supply **46% of current-term P2-confirming evidence** (1,963 of ~4,260 docs).
+   Cross-era trend comparisons should read T1/Biden lines as floors until repaired. Repair =
+   #704 Path B (split + assess, full parity ceremony; canary run 2026-08-10 to measure old-era
+   confirmation rates first). Disclosed on the methodology page 2026-08-10.
+
+   **Canary result (2026-08-10, 836 fragments / 10 blobs / 85 category-week cells, ~\$3):**
+   the asymmetry's _status_ impact is far smaller than raw coverage suggested. Old-era
+   fragments P1-flag at 16.3% (vs 32.5% current-term) and P2-confirm at **10.3% vs 62%** —
+   floor speeches earn their 46% current-term evidence share by discussing the sitting
+   administration's contemporaneous actions, which does not transfer to re-reading old
+   debates. Confirming docs appeared in only ~4 of 85 cells (Biden cells ≈ zero — the
+   negative control holds under the instrument change, a calibration win). Bounded read:
+   full Path B would flip perhaps 3–5% of touched Stable cells to Elevated, scattered
+   +1/+2-point weeks on the trend lines, not a broad shift — at a corrected cost of
+   ~\$800–2,300 (realized 16.3% flag rate → ~63k P2 calls). The disclosure stands;
+   the trend lines are floors that sit only modestly below their true values.
+
+   **Process fix adopted:** "granularity/resolution parity" is now a standing audit dimension —
+   for every source, compare not just document counts per era but the _unit of storage and
+   assessment_ (granule size distribution, chars-seen-by-L2 per stored unit). A source can be
+   count-uniform and still resolution-asymmetric.
 
 1. **REPAIRED to source limits (#565 + #566, 2026-07-22→23).** The "3x asymmetry" decomposed
    into three parts once measured properly: (a) missing substantive opinions — already

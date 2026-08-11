@@ -507,6 +507,18 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
       'full_text, or metadata_only for rows that intentionally carry no body (GDELT rhetoric records and unobtainable-body documents) — metadata_only rows are excluded from counts, statistics, embeddings, and search. Format change 2026-08: the largest metadata_only population, docket-entry stubs, was retired to tracked_cases.',
   },
   {
+    name: 'parent_id',
+    type: 'integer|null',
+    description:
+      "Fragment lineage (2026-08): set on rows split out of a multi-topic Congressional Record granule; points at the parent documents.id, which remains the single source for the origin URL and metadata. Fragments are searchable (embedded) but sit outside the counting population (counting_scope=false) and outside AI assessment — see the methodology page's Congressional Record granularity note. NULL for all non-fragment documents.",
+  },
+  {
+    name: 'search_rank_vector',
+    type: 'tsvector|null',
+    description:
+      'Compact full-text ranking vector (2026-08, hybrid retrieval): title (weight A) plus the first 20k characters of content (weight B), maintained by a database trigger. Keyword MATCHING uses the full generated search_vector; this column exists so ts_rank ordering never detoasts multi-megabyte vectors. Derived — omitted from the public dump and rebuilt by the trigger on restore.',
+  },
+  {
     name: 'case_id',
     type: 'varchar|null',
     description:
