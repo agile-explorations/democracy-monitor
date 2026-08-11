@@ -3,14 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
-import type { EraWindow } from '@/lib/services/era-extraction';
-import {
-  ERA_WINDOWS,
-  extractComparisonEras,
-  extractDateFloor,
-} from '@/lib/services/era-extraction';
-import { expandAndValidate } from '@/lib/services/query-expansion-service';
-import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
+import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
@@ -32,7 +25,6 @@ const RESEARCH_CACHE_TTL = 86400; // 24 hours
 /** docsOnly doc lists change only when data does (Monday snapshot); the
  *  pre-warm workflow refreshes them right after (&refresh=true). */
 const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
-const RESEARCH_CONTEXT_DOCS = 30; // docs sent to LLM
 
 function hashQuery(q: string): string {
   return createHash('sha256').update(q.toLowerCase().trim()).digest('hex').slice(0, 16);
@@ -90,6 +82,18 @@ async function timedEmbedOrFail(
   return embedding;
 }
 
+/** adaptiveCorpusStats with the phase-timing log line attached. */
+async function timedCorpusStats(
+  embedding: number[],
+  docs: ResearchDocument[],
+  queryHash: string,
+): Promise<CorpusStats | null> {
+  const statsStart = Date.now();
+  const corpusStats = await adaptiveCorpusStats(embedding, docs);
+  console.log(`[api/search] timings q=${queryHash} stats=${Date.now() - statsStart}ms`);
+  return corpusStats;
+}
+
 /** Compute adaptive corpus stats using the least-similar retrieved doc as threshold. */
 async function adaptiveCorpusStats(
   embedding: number[],
@@ -102,127 +106,19 @@ async function adaptiveCorpusStats(
 
 export type { RetrievalStratum } from '@/lib/services/search-response-types';
 
-/** Intersect user date bounds with each era window; an empty intersection
- *  falls back to the full era and is flagged rather than silently dropped. */
-function intersectEraWindows(eras: EraWindow[], dateFrom?: string, dateTo?: string) {
-  return eras.map((era) => {
-    const from = dateFrom && dateFrom > era.from ? dateFrom : era.from;
-    const to = dateTo && (!era.to || dateTo < era.to) ? dateTo : era.to;
-    const dateConflict = Boolean(to && from > to);
-    return dateConflict
-      ? { era, from: era.from, to: era.to, dateConflict }
-      : { era, from, to, dateConflict };
+/** docsOnly cache refs: the bare hash also travels to the client as
+ *  payload.docsKey so the stream can re-attach phase-1 snippets (#707). */
+function docsCacheRefs(
+  query: string,
+  req: NextApiRequest,
+): { docsHash: string; docsCacheKey: string } {
+  const docsHash = hashDocsKey(query, {
+    dateFrom: req.query.dateFrom as string | undefined,
+    dateTo: req.query.dateTo as string | undefined,
+    tier: req.query.tier as string | undefined,
+    eras: req.query.eras as string | undefined,
   });
-}
-
-/**
- * Run the tiered research retrieval with the request's date + tier params
- * (#552). Comparative questions stratify the context slots across the
- * administrations the question names (#592): each era competes only with
- * itself, so the recency-dense current term cannot crowd out the eras being
- * compared. User date bounds intersect each era window; an intersection that
- * would be empty falls back to the full era window and is flagged.
- */
-/** Corpus-validated alias phrases for the windows searched (#702) — cache
- *  hits, since searchResearch already ran the same expansion internally. */
-async function collectAlsoSearched(
-  query: string,
-  windows: Array<{ from?: string; to?: string }>,
-  tier: ResearchTierFilter,
-): Promise<string[]> {
-  const phrases = new Set<string>();
-  for (const w of windows) {
-    const aliases = await expandAndValidate(query, {
-      dateFrom: w.from,
-      dateTo: w.to,
-      tier: tier === 'all' ? undefined : tier,
-    });
-    for (const a of aliases) phrases.add(a.phrase);
-  }
-  return [...phrases];
-}
-
-/** Tier balance survives the re-rank on mixed-tier retrievals (#707). */
-function rerankForTier(
-  query: string,
-  candidates: ResearchDocument[],
-  keep: number,
-  tier: ResearchTierFilter,
-): Promise<ResearchDocument[]> {
-  return tier === 'all'
-    ? rerankTierBalanced(query, candidates, keep)
-    : rerankByRelevance(query, candidates, keep);
-}
-
-async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
-  // Range phrases in the question ("since January 2025") become a date floor
-  // when the user has not set explicit dates; surfaced in the response so
-  // the page can show what was inferred.
-  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
-  const dateFrom = (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined;
-  const dateTo = req.query.dateTo as string | undefined;
-  const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-
-  // Chips UI override (#592): eras=trump_t1,trump_t2 pins the strata after
-  // the user removes one; a single remaining era degrades to a plain
-  // date-windowed retrieval.
-  const eraParam = req.query.eras as string | undefined;
-  const requested = eraParam
-    ? eraParam
-        .split(',')
-        .map((k) => ERA_WINDOWS[k as keyof typeof ERA_WINDOWS])
-        .filter(Boolean)
-    : null;
-  const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
-  if (!eras || eras.length < 2) {
-    const w = eras?.[0];
-    const candidates = await searchResearch(
-      query,
-      RESEARCH_CONTEXT_DOCS * 2,
-      embedding,
-      w ? w.from : dateFrom,
-      w ? w.to : dateTo,
-      tier,
-    );
-    const docs = await rerankForTier(query, candidates, RESEARCH_CONTEXT_DOCS, tier);
-    const alsoSearched = await collectAlsoSearched(
-      query,
-      [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
-      tier,
-    );
-    return { docs, strata: null, inferredFrom, alsoSearched };
-  }
-
-  const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
-  const windows = intersectEraWindows(eras, dateFrom, dateTo);
-  const perEra = await Promise.all(
-    windows.map(async (w) => {
-      const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
-      return rerankForTier(query, candidates, slots, tier);
-    }),
-  );
-  const strata: RetrievalStratum[] = windows.map((w, i) => ({
-    key: w.era.key,
-    label: w.era.label,
-    from: w.from,
-    to: w.to,
-    docCount: perEra[i].length,
-    ...(w.dateConflict ? { dateConflict: true } : {}),
-  }));
-  const alsoSearched = await collectAlsoSearched(query, windows, tier);
-  return { docs: perEra.flat(), strata, inferredFrom, alsoSearched };
-}
-
-/** docsOnly cache key: query + every retrieval-affecting parameter. */
-function docsCacheKeyFor(query: string, req: NextApiRequest): string {
-  return CacheKeys.searchResearchDocs(
-    hashDocsKey(query, {
-      dateFrom: req.query.dateFrom as string | undefined,
-      dateTo: req.query.dateTo as string | undefined,
-      tier: req.query.tier as string | undefined,
-      eras: req.query.eras as string | undefined,
-    }),
-  );
+  return { docsHash, docsCacheKey: CacheKeys.searchResearchDocs(docsHash) };
 }
 
 /**
@@ -253,7 +149,7 @@ async function handleResearch(
   const docsOnly = req.query.docsOnly === 'true';
   const queryHash = hashQuery(query);
 
-  const docsCacheKey = docsCacheKeyFor(query, req);
+  const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
   if (docsOnly && (await serveCachedDocs(res, req, docsCacheKey))) return;
 
   const embedding = await timedEmbedOrFail(res, query, queryHash);
@@ -289,15 +185,14 @@ async function handleResearch(
       strata,
       inferredFrom,
       alsoSearched,
+      docsHash,
     );
     await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
     res.status(200).json(payload);
     return;
   }
 
-  const statsStart = Date.now();
-  const corpusStats = await adaptiveCorpusStats(embedding, allDocs);
-  console.log(`[api/search] timings q=${queryHash} stats=${Date.now() - statsStart}ms`);
+  const corpusStats = await timedCorpusStats(embedding, allDocs, queryHash);
 
   await synthesizeAndRespond(res, query, queryHash, allDocs, {
     editorial,
