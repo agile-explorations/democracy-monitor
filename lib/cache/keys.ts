@@ -17,7 +17,7 @@ export const CacheKeys = {
   /** LLM alias proposals for hybrid retrieval (#702), keyed by query hash. */
   queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
   /** Corpus-validated aliases, keyed by (query, window) hash. */
-  queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v1`,
+  queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v2`,
   documentCount: () => 'stats:doc-count:v4',
   validateGraph: () => 'health:validate-graph:v1',
   validateGraphLive: () => 'health:validate-graph:live:v1',

@@ -30,6 +30,12 @@ const MAX_ALIASES = 8;
 const MAX_WINDOW_SHARE = 0.05;
 /** Small windows: absolute floor for the match cap. */
 const MIN_MATCH_CAP = 200;
+/** Absolute ceiling for alias admission, aligned with the fusion math: an
+ *  arm's weight (1/(1+log10(1+n/100))) falls below the ~0.67 RRF surfacing
+ *  threshold near n≈1000 — broader aliases cannot surface results but cost
+ *  the most to rank (each match detoasts a ~20KB rank vector; one broad arm
+ *  measured 31s on cold prod cache, 2026-08-11). */
+const MAX_MATCH_CAP = 1000;
 /** Self-referential terms that carry no entity signal in this corpus. */
 const BOILERPLATE_ALIASES =
   /^(congressional record|congress|senate|house|united states|federal government|government|executive order)$/i;
@@ -146,10 +152,9 @@ async function cappedCount(
 
 /**
  * Corpus validation: keep aliases that match at least one document and at
- * most 5% of the searched window (floor 200 for small windows; window size
- * saturates at WINDOW_COUNT_CAP, so the cap tops out at 5,000). All counts
- * are LIMIT-bounded — validation cost stays flat no matter how broad the
- * window or how common an alias.
+ * most 5% of the searched window, clamped to [MIN_MATCH_CAP, MAX_MATCH_CAP].
+ * All counts are LIMIT-bounded — validation cost stays flat no matter how
+ * broad the window or how common an alias.
  */
 export async function validateAliases(
   phrases: string[],
@@ -159,7 +164,10 @@ export async function validateAliases(
   const db = getDb();
   const filters = windowFilters(window);
   const windowTotal = await cappedCount(db, filters, WINDOW_COUNT_CAP);
-  const maxMatches = Math.max(MIN_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE));
+  const maxMatches = Math.max(
+    MIN_MATCH_CAP,
+    Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
+  );
   const candidates = phrases.filter((p) => !isBoilerplateAlias(p));
   // Counts run concurrently — bounded index scans; order is preserved. Each
   // alias is counted only to maxMatches+1: enough to decide the cap, and
