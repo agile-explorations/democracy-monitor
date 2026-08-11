@@ -145,18 +145,19 @@ export async function validateAliases(
     ).n,
   );
   const maxMatches = Math.max(MIN_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE));
-  const kept: ValidatedAlias[] = [];
-  for (const phrase of phrases) {
-    if (isBoilerplateAlias(phrase)) continue;
-    const quoted = `"${phrase.replace(/"/g, '')}"`;
-    const r = await db.execute(sql`
+  const candidates = phrases.filter((p) => !isBoilerplateAlias(p));
+  // Counts run concurrently — independent GIN lookups; order is preserved.
+  const counts = await Promise.all(
+    candidates.map(async (phrase) => {
+      const quoted = `"${phrase.replace(/"/g, '')}"`;
+      const r = await db.execute(sql`
       SELECT count(*) AS n FROM documents d
       WHERE ${filters}
         AND d.search_vector @@ websearch_to_tsquery('english', ${quoted})`);
-    const n = Number((r.rows[0] as { n: string }).n);
-    if (n >= 1 && n <= maxMatches) kept.push({ phrase, matches: n });
-  }
-  return kept;
+      return { phrase, matches: Number((r.rows[0] as { n: string }).n) };
+    }),
+  );
+  return counts.filter((c) => c.matches >= 1 && c.matches <= maxMatches);
 }
 
 /**

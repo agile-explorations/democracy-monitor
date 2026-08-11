@@ -5,9 +5,12 @@
  * full generated search_vector (GIN, fast); ORDER BY ranks on the compact
  * search_rank_vector so ts_rank never detoasts multi-MB vectors — rows
  * awaiting the rank-vector backfill are simply not FTS candidates yet
- * (graceful pre-backfill degradation). ts_headline extracts the matched
- * passage so results show WHY a document matched — essential for large
- * CREC fragments where the mention sits tens of KB deep.
+ * (graceful pre-backfill degradation).
+ *
+ * Matched-passage snippets (ts_headline) are deliberately NOT computed in
+ * the arm queries: arms fetch up to 8×40 candidates and fusion discards most
+ * of them, so headlines run afterwards — one batched query for only the
+ * keyword docs that made the final result (fetchMatchSnippets).
  */
 
 import { sql } from 'drizzle-orm';
@@ -30,8 +33,7 @@ function quotedPhrase(phrase: string): string {
 
 /**
  * Build one alias arm query for research retrieval. Row shape matches the
- * research projection (mapToResearchDoc-compatible) plus match_snippet and
- * matched_alias.
+ * research projection (mapToResearchDoc-compatible) plus matched_alias.
  */
 export function buildAliasArmQuery(
   alias: ValidatedAlias,
@@ -46,8 +48,6 @@ export function buildAliasArmQuery(
       ds.final_score, ds.document_class,
       ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary,
-      ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
-        websearch_to_tsquery('english', ${tsquery}), ${HEADLINE_OPTS}) as match_snippet,
       ${alias.phrase} as matched_alias
     FROM documents d
     LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
@@ -61,16 +61,13 @@ export function buildAliasArmQuery(
 }
 
 /**
- * Build one alias arm query for explore retrieval: ids + snippet only (the
- * page fetch joins full row data afterwards).
+ * Build one alias arm query for explore retrieval: ids + matched alias only
+ * (the page fetch joins full row data, and snippets run post-pagination).
  */
 export function buildExploreAliasArmQuery(alias: ValidatedAlias, whereClause: SqlChunk): SqlChunk {
   const tsquery = quotedPhrase(alias.phrase);
   return sql`
-    SELECT d.id,
-      ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
-        websearch_to_tsquery('english', ${tsquery}), ${HEADLINE_OPTS}) as match_snippet,
-      ${alias.phrase} as matched_alias
+    SELECT d.id, ${alias.phrase} as matched_alias
     FROM documents d
     LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
     WHERE ${whereClause}
@@ -80,17 +77,48 @@ export function buildExploreAliasArmQuery(alias: ValidatedAlias, whereClause: Sq
     LIMIT ${ALIAS_ARM_LIMIT}`;
 }
 
-/** Execute alias arms sequentially, tolerating per-arm failures. */
+/** Execute alias arms concurrently, tolerating per-arm failures. */
 export async function runArms(queries: SqlChunk[]): Promise<Record<string, unknown>[][]> {
   const db = getDb();
-  const results: Record<string, unknown>[][] = [];
-  for (const q of queries) {
-    try {
-      results.push((await db.execute(q)).rows as Record<string, unknown>[]);
-    } catch (err) {
-      console.warn('[hybrid-arms] alias arm failed (skipped):', err);
-      results.push([]);
-    }
+  return Promise.all(
+    queries.map(async (q) => {
+      try {
+        return (await db.execute(q)).rows as Record<string, unknown>[];
+      } catch (err) {
+        console.warn('[hybrid-arms] alias arm failed (skipped):', err);
+        return [];
+      }
+    }),
+  );
+}
+
+/**
+ * Batched matched-passage extraction for the docs that survived fusion: one
+ * ts_headline query for (id, alias) pairs instead of headlining every arm
+ * candidate. Failure-tolerant — snippets are enrichment, not retrieval.
+ */
+export async function fetchMatchSnippets(
+  pairs: Array<{ id: number; phrase: string }>,
+): Promise<Map<number, string>> {
+  if (pairs.length === 0) return new Map();
+  const db = getDb();
+  const values = sql.join(
+    pairs.map((p) => sql`(${p.id}::int, ${quotedPhrase(p.phrase)})`),
+    sql`, `,
+  );
+  try {
+    const rows = await db.execute(sql`
+      SELECT d.id, ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
+        websearch_to_tsquery('english', v.q), ${HEADLINE_OPTS}) as match_snippet
+      FROM (VALUES ${values}) AS v(id, q)
+      JOIN documents d ON d.id = v.id`);
+    return new Map(
+      (rows.rows as Array<{ id: number; match_snippet: string | null }>)
+        .filter((r) => r.match_snippet)
+        .map((r) => [Number(r.id), r.match_snippet as string]),
+    );
+  } catch (err) {
+    console.warn('[hybrid-arms] snippet batch failed (results ship without snippets):', err);
+    return new Map();
   }
-  return results;
 }

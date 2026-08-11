@@ -64,3 +64,19 @@ export function fuseWeightedRrf<T extends FusionCandidate>(
     .sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0))
     .slice(0, topK);
 }
+
+/**
+ * Post-fusion URL dedupe: the primary research arm is DISTINCT ON (url), but
+ * alias arms can reintroduce the same document stored under multiple
+ * categories (same url, different row id). Keeps the highest-fused-rank row
+ * per URL; rows without a URL are kept individually.
+ */
+export function dedupeByUrl<T extends { id: number; url?: string | null }>(docs: T[]): T[] {
+  const seen = new Set<string>();
+  return docs.filter((d) => {
+    const key = d.url ?? `id:${d.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}

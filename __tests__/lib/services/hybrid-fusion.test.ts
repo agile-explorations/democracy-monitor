@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armWeight, fuseWeightedRrf, RRF_K } from '@/lib/services/hybrid-fusion';
+import { armWeight, dedupeByUrl, fuseWeightedRrf, RRF_K } from '@/lib/services/hybrid-fusion';
 
 interface Item {
   id: number;
@@ -75,5 +75,24 @@ describe('fuseWeightedRrf', () => {
 
   it('respects topK', () => {
     expect(fuseWeightedRrf(items(1, 2, 3, 4, 5), [], 2)).toHaveLength(2);
+  });
+});
+
+describe('dedupeByUrl', () => {
+  it('keeps the first (highest-ranked) row per URL', () => {
+    const docs = [
+      { id: 1, url: 'https://a' },
+      { id: 2, url: 'https://b' },
+      { id: 3, url: 'https://a' },
+    ];
+    expect(dedupeByUrl(docs).map((d) => d.id)).toEqual([1, 2]);
+  });
+
+  it('keeps url-less rows individually', () => {
+    const docs = [
+      { id: 1, url: null },
+      { id: 2, url: null },
+    ];
+    expect(dedupeByUrl(docs)).toHaveLength(2);
   });
 });

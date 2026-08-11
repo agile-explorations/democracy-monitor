@@ -11,10 +11,10 @@ import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
-import { buildAliasArmQuery, runArms } from './hybrid-arms';
+import { buildAliasArmQuery, fetchMatchSnippets, runArms } from './hybrid-arms';
 import { hybridVectorExplore } from './hybrid-explore';
 import type { FusionArm } from './hybrid-fusion';
-import { armWeight, fuseWeightedRrf } from './hybrid-fusion';
+import { armWeight, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
 import type { ValidatedAlias } from './query-expansion-service';
 import { expandAndValidate } from './query-expansion-service';
 import {
@@ -188,6 +188,23 @@ async function runResearchAliasArms(
   return { aliases, arms };
 }
 
+/**
+ * Batched post-fusion snippet extraction (#702 perf): headlines run only for
+ * the keyword-surfaced docs that made the final list, not every arm candidate.
+ */
+async function attachMatchSnippets(docs: ResearchDocument[]): Promise<ResearchDocument[]> {
+  const pending = docs.filter((d) => d.matchedAlias && !d.matchSnippet);
+  if (pending.length === 0) return docs;
+  const snippets = await fetchMatchSnippets(
+    pending.map((d) => ({ id: d.id, phrase: d.matchedAlias as string })),
+  );
+  for (const d of pending) {
+    const snippet = snippets.get(d.id);
+    if (snippet) d.matchSnippet = snippet;
+  }
+  return docs;
+}
+
 /** Restrict fusion arms to one tier (order-preserving) for the tiered pools. */
 function armsForTier(
   arms: FusionArm<ResearchDocument>[],
@@ -221,9 +238,14 @@ export async function searchResearch(
         runResearchAliasArms(query, vectorStr, dateFrom, dateTo, tierFilter),
       ]);
       const primary = (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
-      return fuseWeightedRrf(primary, arms, topK);
+      // Fuse to 2x then URL-dedupe (alias arms reintroduce same-url rows the
+      // primary arm's DISTINCT ON (url) had collapsed) and refill to topK.
+      const fused = dedupeByUrl(fuseWeightedRrf(primary, arms, topK * 2)).slice(0, topK);
+      return attachMatchSnippets(fused);
     }
-    return await searchResearchAllTiers(db, query, vectorStr, topK, dateFrom, dateTo);
+    return await attachMatchSnippets(
+      await searchResearchAllTiers(db, query, vectorStr, topK, dateFrom, dateTo),
+    );
   } catch (err) {
     // #598: throw, never return [] — see searchExplore's catch for rationale.
     console.error('[search] Research search failed:', err);
@@ -256,17 +278,13 @@ async function searchResearchAllTiers(
     ),
     runResearchAliasArms(query, vectorStr, dateFrom, dateTo),
   ]);
+  const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
+    dedupeByUrl(
+      fuseWeightedRrf(rows.map(mapToResearchDoc), armsForTier(arms, tier), topK * 2),
+    ).slice(0, topK);
   return composeTieredResults(
-    fuseWeightedRrf(
-      (actionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
-      armsForTier(arms, 'action'),
-      topK,
-    ),
-    fuseWeightedRrf(
-      (discussionRows.rows as Record<string, unknown>[]).map(mapToResearchDoc),
-      armsForTier(arms, 'discussion'),
-      topK,
-    ),
+    fusePool(actionRows.rows as Record<string, unknown>[], 'action'),
+    fusePool(discussionRows.rows as Record<string, unknown>[], 'discussion'),
     topK,
   );
 }

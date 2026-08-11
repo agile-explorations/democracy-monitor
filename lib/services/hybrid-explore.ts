@@ -7,7 +7,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { buildExploreAliasArmQuery, runArms } from '@/lib/services/hybrid-arms';
+import { buildExploreAliasArmQuery, fetchMatchSnippets, runArms } from '@/lib/services/hybrid-arms';
 import type { FusionCandidate } from '@/lib/services/hybrid-fusion';
 import { armWeight, fuseWeightedRrf } from '@/lib/services/hybrid-fusion';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
@@ -84,11 +84,31 @@ function toFusionArms(armRowLists: Record<string, unknown>[][], aliases: Validat
   return armRowLists.map((rows, i) => ({
     items: rows.map((r) => ({
       id: Number(r.id),
-      matchSnippet: (r.match_snippet as string) || undefined,
       matchedAlias: (r.matched_alias as string) || undefined,
     })),
     weight: armWeight(aliases[i].matches),
   }));
+}
+
+/**
+ * Snippets run post-pagination (#702 perf): one batched ts_headline query
+ * for only the visible page's keyword docs.
+ */
+async function attachPageSnippets(
+  rows: Record<string, unknown>[],
+  pageIds: number[],
+  metaById: Map<number, FusionCandidate>,
+): Promise<void> {
+  const snippetPairs = pageIds
+    .map((id) => ({ id, phrase: metaById.get(id)?.matchedAlias }))
+    .filter((p): p is { id: number; phrase: string } => Boolean(p.phrase));
+  const snippets = await fetchMatchSnippets(snippetPairs);
+  for (const row of rows) {
+    const meta = metaById.get(Number(row.id));
+    if (meta?.matchedAlias) row.matched_alias = meta.matchedAlias;
+    const snippet = snippets.get(Number(row.id));
+    if (snippet) row.match_snippet = snippet;
+  }
 }
 
 /**
@@ -133,11 +153,7 @@ export async function hybridVectorExplore(
   const pageIds = orderedIds.slice(offset, offset + pageSize);
 
   const rows = await fetchRowsByIds(db, pageIds, vectorStr, filters.query);
-  for (const row of rows) {
-    const meta = metaById.get(Number(row.id));
-    if (meta?.matchSnippet) row.match_snippet = meta.matchSnippet;
-    if (meta?.matchedAlias) row.matched_alias = meta.matchedAlias;
-  }
+  await attachPageSnippets(rows, pageIds, metaById);
   await enrichWithAiAssessments(db, rows);
   return {
     totalResults,
