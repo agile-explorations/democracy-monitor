@@ -39,6 +39,18 @@ coverage ranged 98.6–100%. All repaired except trump_2017/2018 general CL dept
    #704 Path B (split + assess, full parity ceremony; canary run 2026-08-10 to measure old-era
    confirmation rates first). Disclosed on the methodology page 2026-08-10.
 
+   **Canary result (2026-08-10, 836 fragments / 10 blobs / 85 category-week cells, ~\$3):**
+   the asymmetry's _status_ impact is far smaller than raw coverage suggested. Old-era
+   fragments P1-flag at 16.3% (vs 32.5% current-term) and P2-confirm at **10.3% vs 62%** —
+   floor speeches earn their 46% current-term evidence share by discussing the sitting
+   administration's contemporaneous actions, which does not transfer to re-reading old
+   debates. Confirming docs appeared in only ~4 of 85 cells (Biden cells ≈ zero — the
+   negative control holds under the instrument change, a calibration win). Bounded read:
+   full Path B would flip perhaps 3–5% of touched Stable cells to Elevated, scattered
+   +1/+2-point weeks on the trend lines, not a broad shift — at a corrected cost of
+   ~\$800–2,300 (realized 16.3% flag rate → ~63k P2 calls). The disclosure stands;
+   the trend lines are floors that sit only modestly below their true values.
+
    **Process fix adopted:** "granularity/resolution parity" is now a standing audit dimension —
    for every source, compare not just document counts per era but the _unit of storage and
    assessment_ (granule size distribution, chars-seen-by-L2 per stored unit). A source can be
