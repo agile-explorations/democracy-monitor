@@ -139,7 +139,7 @@ async function main(): Promise<void> {
     try {
       const result = await provider.complete(
         AUDIT_PROMPT(row.reasoning, row.content ?? '', row.content_len > DOC_CONTENT_CHARS),
-        { temperature: 0, model: AUDIT_MODEL, maxTokens: 900 },
+        { temperature: 0, model: AUDIT_MODEL, maxTokens: 2500 },
       );
       const verdict = parseVerdict(result.content, row.id, row.era, row.category);
       if (verdict) {

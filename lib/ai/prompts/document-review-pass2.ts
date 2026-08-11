@@ -4,7 +4,7 @@
  * substantively — it is how cross-vintage confirmation drift is attributed.
  * Current vintage: actor attribution decoupled from P2 (53c761a, #537).
  */
-export const PASS2_PROMPT_VERSION = 'p2-2026-07-10';
+export const PASS2_PROMPT_VERSION = 'p2-2026-08-11';
 
 export const PASS2_SYSTEM_PROMPT = `You are a skeptical policy analyst reviewing flagged government documents.
 An automated classifier flagged this document as potentially relevant to institutional erosion.
@@ -102,6 +102,8 @@ function buildBaselinePrompt(
     textExcerpt,
     '',
     buildErosionFramework(),
+    '',
+    buildReasoningGuidance(),
     '',
     buildResponseSchema(),
   ].join('\n');
@@ -249,6 +251,17 @@ export function buildReasoningGuidance(): string {
     '    performance ratings" not "represents a potential erosion of civil service protections").',
     '  - If other flagged documents this week relate to the same policy action or',
     '    institutional pressure, note the connection in your reasoning.',
+    '  - Your reasoning is displayed as an annotation beside the document (#711).',
+    '    Annotation discipline:',
+    '    (1) Attribute rhetoric and characterizations to their source — "The speaker',
+    '        charges that...", "The resolution asserts..." — never restate a document\'s',
+    '        rhetoric as established fact.',
+    '    (2) Mark real-world knowledge the document does not contain as context —',
+    '        "(context: the Inspector General Act requires 30-day advance notice)" —',
+    '        never present it as something the document states.',
+    '    (3) Credit causal acts to the correct instrument: only attribute to this',
+    '        document the actions its own text performs; related orders or bills acted',
+    '        on their own.',
   ].join('\n');
 }
 
