@@ -243,6 +243,19 @@ export default function SearchPage() {
           setResearchResult((prev) =>
             prev ? { ...prev, answer: { expert: parsed.expert, public: parsed.public } } : prev,
           );
+        } else if (data.type === 'verification') {
+          setResearchResult((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  quoteVerification: {
+                    totalQuotes: data.totalQuotes,
+                    verifiedCount: data.verifiedCount,
+                    unverified: data.unverified ?? [],
+                  },
+                }
+              : prev,
+          );
         } else if (data.type === 'done') {
           eventSource.close();
           const final = parseStreamingSections(accumulated);

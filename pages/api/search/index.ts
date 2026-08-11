@@ -18,6 +18,7 @@ import {
 import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
+import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
@@ -224,6 +225,7 @@ async function synthesizeAndRespond(
   }
 
   const contextDocs = allDocs.slice(0, RESEARCH_CONTEXT_DOCS);
+  await enrichDocsForSynthesis(contextDocs, query);
   const synthesis = await synthesizeResearchAnswer(query, contextDocs, opts.corpusStats);
   const result: CachedResearchResult = {
     synthesis,

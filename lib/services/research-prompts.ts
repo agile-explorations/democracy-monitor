@@ -59,6 +59,17 @@ function formatDocumentContext(docs: ResearchDocument[]): string {
       if (p2Line) lines.push(p2Line);
       const matchedPassage = formatMatchedPassage(doc);
       if (matchedPassage) lines.push(matchedPassage);
+      if (doc.queryExcerpt) {
+        lines.push(
+          `  Relevant Passages (verbatim excerpts matching the question): "${doc.queryExcerpt}"`,
+        );
+      }
+      if (doc.dispositionExcerpt) {
+        lines.push(
+          `  Disposition Passages (verbatim excerpts around ruling language — attribute`,
+          `  holdings only to the parties named here): "${doc.dispositionExcerpt}"`,
+        );
+      }
       lines.push(`  URL: ${doc.url ?? 'N/A'}`, `  Content: ${contentExcerpt}`);
       return lines.join('\n');
     })

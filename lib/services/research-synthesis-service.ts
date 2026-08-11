@@ -166,6 +166,7 @@ export async function synthesizeResearchAnswer(
       claude.complete(revisionPrompt, {
         model: FINAL_MODEL,
         maxTokens: 4096,
+        temperature: SYNTHESIS_TEMPERATURE,
         systemPrompt: SYSTEM_REVISION,
       }),
     'Pass 3 revision',
@@ -196,6 +197,7 @@ async function runDraft(
       provider.complete(buildDraftPrompt(query, docs, stats), {
         model: DRAFT_MODEL,
         maxTokens: 4096,
+        temperature: SYNTHESIS_TEMPERATURE,
         systemPrompt: SYSTEM_DRAFT,
       }),
     'Pass 1 draft',
@@ -214,6 +216,7 @@ async function runFeedback(
       provider.complete(buildFeedbackPrompt(drafts.expert, drafts.public, query, docs, stats), {
         model: FEEDBACK_MODEL,
         maxTokens: 2048,
+        temperature: SYNTHESIS_TEMPERATURE,
         systemPrompt: SYSTEM_FEEDBACK,
       }),
     'Pass 2 feedback',
@@ -223,6 +226,9 @@ async function runFeedback(
 // ---------------------------------------------------------------------------
 // Single-pass synthesis (Claude Sonnet with self-verification)
 // ---------------------------------------------------------------------------
+
+/** Low variance for factual synthesis (#707). */
+const SYNTHESIS_TEMPERATURE = 0.2;
 
 const SYSTEM_SINGLE_PASS =
   'You are a research analyst answering questions about U.S. government actions. ' +

@@ -41,6 +41,9 @@ export class AnthropicProvider implements AIProvider {
       model: options?.model || 'claude-sonnet-4-5-20250929',
       max_tokens: options?.maxTokens || 1024,
       system: options?.systemPrompt || '',
+      // Default temperature (1.0) maximizes draw variance — factual-grounding
+      // callers pass a low value (#707 audit: per-draw precision defects).
+      ...(options?.temperature != null ? { temperature: options.temperature } : {}),
       messages: [{ role: 'user', content: prompt }],
     });
 
