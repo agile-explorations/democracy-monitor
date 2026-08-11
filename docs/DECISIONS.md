@@ -12,6 +12,32 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-ANSWER-QUALITY: search answer validation + error hardening (#707 #709–#711, v1.9.5–v1.9.9) — ✅ deployed + suite-validated 2026-08-11
+
+**Origin**: owner challenged a "Document Coverage Note" on the FW4 showcase that claimed congressional responses to the 2025 Schedule F reinstatement don't exist ("is this accurate for the corpus, or an artifact of the documents retrieved?"). Corpus check: 2/3 of the claim was false (H.R. 2550 + rule + ~25 era-vocabulary floor speeches exist). That one question became a full answer-quality regime: execute the 12-question outreach suite, audit every AI answer claim-by-claim against the corpus (parallel agents, three rounds), fix root causes, re-validate.
+
+**Built (five releases)**:
+
+- v1.9.5 — coverage discipline (absence claims scoped to "this retrieval", corpus characterization only via corpus statistics; feedback criterion audits it) + tier-balanced re-rank (rank all candidates, compose kept slots at the 60/40 action/discussion share — the tier-blind re-rank had returned the 2025 era all-action, which is what misled the synthesis).
+- v1.9.6/7 — annotation discipline (AI Assessment / Review Note lines labeled "(annotation)", never quotable, never attributable to the document) + matched-passage snippets in the synthesis context (docsOnly payload carries its cache hash as docsKey; the UI passes it to the stream as dk; the stream re-attaches phase-1 snippets) + public-answer discipline (simplify, never add) + route slimming (research-doc-retrieval.ts).
+- v1.9.8 — judicial-disposition precision (attribute holdings only to parties the visible text names) + own-framing attribution (synthesis-level connections belong to the answer, not the speaker).
+- v1.9.9 — **temperature 0.2 on all synthesis passes** (root find: AnthropicProvider.completeStream silently dropped the temperature option — every streamed answer ever ran at 1.0); disposition-aware + query-aware ts_headline excerpts for every context doc (synthesis-context-enrichment.ts); **deterministic quote verification** (quote-verification.ts — every quoted span string-matched against the cited document's FULL stored content, SSE verification event, UI badge). Plus scripts/audit-annotations.ts (the #711 sampled audit tool).
+- Data corrections (#711 ledger): two poisoned P2 annotations fixed prod+local — EO 14029 credited with EO 14003's Schedule F revocation; a statutory 30-day IG Act notice attributed to a speaker who said only "as is required by law". Both had re-poisoned regenerated answers THROUGH the prompt rules.
+
+**Audit evidence chain**: Round 1 (12 answers): 5 errors, 9 warns — failure taxonomy: annotation-over-document (worst), synthesis blind to deep content, public-version drift, last-inch precision decay; citation-index integrity perfect throughout. Round 2 (post-rules): 4/5 fixed; discovery that streamed answers redraw per visit — per-draw vetting guarantees nothing. Round 3 (post-hardening, full suite): 9/12 pass with zero quote-fidelity errors (~50 quoted spans verified verbatim); the 2 annotation-driven failures cured at the data source; 1 stochastic attribution slip. Targeted re-check: **12/12 pass**.
+
+**Key decisions (owner)**: rejected answer caching as the fix ("does not help journalists asking ad-hoc questions") — forcing the systematic hardening path; approved the 4-item hardening list; pulled #711 data corrections forward when they kept re-poisoning; ordered the #711 measurement (200-row sampled annotation audit). **(Claude)**: quote verification as CODE not prompts; disposition/query excerpts over bigger excerpt budgets; annotation corrections with guarded WHERE clauses.
+
+**Lessons learned**:
+
+- **Prompt rules lose to confident false annotations.** A wrong "fact" asserted in-context beats an instruction not to trust it — twice, in independent draws. The durable fix is correcting the data; the prompt rule is defense-in-depth.
+- **Per-visit stochastic generation means per-draw vetting is worthless as a guarantee.** Reduce variance (temperature), give the model the right evidence (targeted excerpts), and verify mechanically (quote checker) — those hold for every draw.
+- **Check the temperature.** The provider silently dropped the option; every "prompt-quality" iteration before v1.9.9 was fighting max-entropy sampling.
+- **The public rewrite is the highest-risk transform** — it fabricated the only made-up quote and repeatedly upgraded legislative status. (#709 files the structural fix: derive public from expert text only.)
+- **Scripted repo edits must assert application** (a silent str.replace no-match shipped a dead docsKey); **never git-checkout a file holding uncommitted work** (one recovery from exactly that).
+
+**Spec deviations**: none (no spec section; design recorded on #707/#711).
+
 ## Sprint R-HYBRID / R-CREC-SPLIT: hybrid retrieval + CREC fragments (#702 #704 #705, milestones 113/114) — ✅ deployed v1.9.0–v1.9.2 2026-08-11, verified on prod
 
 **Origin**: owner testing outreach questions — "This search says there are no documents with congressional responses to Schedule F. Shouldn't there be?" Diagnosis found three stacked causes: passage-level entity mentions don't move a document's embedding (vector-only retrieval misses them), old-era CREC granules are whole-day multi-topic blobs, and the 2025 debate doesn't use the literal phrase "Schedule F" (vocabulary drift). One sprint shipped the answer to all three.
@@ -123,23 +149,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **Baseline-period runbook shape matters**: the 8 baseline periods are contiguous; one driver invocation over 2017-01-20→2025-01-19 does one enumeration + one detail pass instead of 8 (and never re-fetches the ~5k date-unknown sitemap URLs per period).
 
 **Spec deviations**: none against V3 (new source class; methodology unchanged — press releases enter the standard L2 review path).
-
-## Sprint R-LINKIFY-RESPONSES: clickable URLs in feedback responses (#675, milestone 109) — ✅ deployed 2026-08-04 (v1.5.10, main @ 5a40b43)
-
-**Origin**: the owner's feedback responses render as escaped plain text, so links (e.g. the methodology URL) weren't clickable. Wanted them clickable without opening an XSS hole.
-
-**Planned vs built**: shipped as planned; responses-only, links open in a new tab (owner decisions).
-
-- `lib/utils/linkify.ts` — pure `splitLinkified(text)` → ordered text/link segments. `http(s)://` only; trailing sentence punctuation trimmed off the URL; `javascript:`, `data:`, and bare `www.` stay plain text (scheme allowlist by construction).
-- `components/ui/Linkified.tsx` — maps segments to React `<a target="_blank" rel="noopener noreferrer">` elements. **No `dangerouslySetInnerHTML`** anywhere, so untrusted input can neither inject markup nor produce an unsafe scheme.
-- Wire-in: `pages/feedback.tsx` response line only; user-submitted feedback stays plain text.
-- Tests: 9 util + 4 component, incl. the security guarantees (`javascript:`/`data:` never linked; raw HTML renders inert).
-
-**Key decisions (owner):** responses-only (authored by us — no "link launchpad" exposure that linkifying arbitrary user feedback would carry); open in a new tab; a narrow autolink helper over pulling the react-markdown `Markdown` component into the feedback page (less surface).
-
-**Lessons learned:**
-
-- **Autolink safely by construction, not by sanitization.** Building React `<a>` elements from parsed segments with an http(s)-only allowlist means there is no HTML-injection path to sanitize away — the escaping guarantee is preserved and the unsafe-scheme class is excluded by the regex. Verified by tests asserting no anchor for `javascript:`/`data:` and inert rendering of `<img onerror=…>`.
-- **Keep the fiddly logic pure.** URL boundary detection + trailing-punctuation trimming live in a unit-tested function; the component is a thin map — the risky part is fully covered.
-
-**Spec deviations**: none. Display-only; user feedback unchanged.
