@@ -11,6 +11,8 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { AnthropicProvider } from '@/lib/ai/anthropic';
+import { cacheGet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -32,12 +34,41 @@ function sendEvent(res: NextApiResponse, data: Record<string, unknown>) {
   res.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
+function parseIdsParam(idsParam?: string): number[] | undefined {
+  if (!idsParam) return undefined;
+  return idsParam
+    .split(',')
+    .map((s) => parseInt(s, 10))
+    .filter((n) => Number.isFinite(n));
+}
+
+/**
+ * Re-attach phase-1 matched-passage snippets (#707 audit): the id-refetch
+ * loses them, and without them the synthesis denies content its own doc
+ * cards display. The client passes the docsOnly cache key (dk); a miss
+ * degrades silently to no snippets.
+ */
+async function attachCachedSnippets(docs: ResearchDocument[], docsKey?: string): Promise<void> {
+  if (!docsKey || !/^[a-f0-9]{16}$/.test(docsKey)) return;
+  const cached = await cacheGet<{ documents?: Array<Record<string, unknown>> }>(
+    CacheKeys.searchResearchDocs(docsKey),
+  );
+  if (!cached?.documents) return;
+  const byId = new Map(cached.documents.map((d) => [Number(d.id), d]));
+  for (const doc of docs) {
+    const meta = byId.get(doc.id);
+    if (meta?.matchSnippet && !doc.matchSnippet) doc.matchSnippet = meta.matchSnippet as string;
+    if (meta?.matchedAlias && !doc.matchedAlias) doc.matchedAlias = meta.matchedAlias as string;
+  }
+}
+
 async function retrieveDocuments(
   query: string,
   dateFrom?: string,
   dateTo?: string,
   ids?: number[],
   tier: ResearchTierFilter = 'all',
+  docsKey?: string,
 ): Promise<{
   docs: ResearchDocument[];
   prompt: string;
@@ -48,6 +79,7 @@ async function retrieveDocuments(
   if (ids && ids.length > 0) {
     const docs = await fetchResearchDocsByIds(ids.slice(0, CONTEXT_DOCS));
     if (docs.length === 0) return null;
+    await attachCachedSnippets(docs, docsKey);
     return { docs, prompt: buildSinglePassPrompt(query, docs, null) };
   }
 
@@ -137,15 +169,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const dateFrom = req.query.dateFrom as string | undefined;
     const dateTo = req.query.dateTo as string | undefined;
-    const idsParam = req.query.ids as string | undefined;
-    const ids = idsParam
-      ? idsParam
-          .split(',')
-          .map((s) => parseInt(s, 10))
-          .filter((n) => Number.isFinite(n))
-      : undefined;
+    const ids = parseIdsParam(req.query.ids as string | undefined);
     const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-    const retrieved = await retrieveDocuments(query, dateFrom, dateTo, ids, tier);
+    const docsKey = req.query.dk as string | undefined;
+    const retrieved = await retrieveDocuments(query, dateFrom, dateTo, ids, tier, docsKey);
     if (!retrieved) {
       sendEvent(res, { type: 'error', message: 'No matching documents found' });
       res.end();

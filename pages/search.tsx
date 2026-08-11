@@ -194,6 +194,9 @@ export default function SearchPage() {
       const dt = urlParams.get('dateTo');
       if (df) streamParams.set('dateFrom', df);
       if (dt) streamParams.set('dateTo', dt);
+      // Phase-1 docs cache key: lets the stream re-attach matched-passage
+      // snippets to the synthesis context (#707 audit).
+      if (docsData.docsKey) streamParams.set('dk', docsData.docsKey);
       const docIds = (docsData.documents as Array<{ id?: number }>)
         .map((d) => d.id)
         .filter((id): id is number => typeof id === 'number');
