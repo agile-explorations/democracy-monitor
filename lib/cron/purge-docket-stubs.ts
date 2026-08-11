@@ -61,10 +61,16 @@ async function preflight(): Promise<PreflightResult> {
       WHERE url IN (SELECT url FROM documents WHERE ${STUB_CONDITION})`)
   ).rows[0] as { n: string };
 
+  // Join by (url, category) — the contract every consumer and the G5 graph
+  // invariant use. The original document_id join matched nothing (the column
+  // is not reliably populated) and let the 2026-08-10 purge orphan 2,847
+  // assessment rows that G5 then caught on prod.
   const assessments = (
     await db.execute(sql`
-      SELECT count(*) AS n FROM ai_document_assessments
-      WHERE document_id IN (SELECT id FROM documents WHERE ${STUB_CONDITION})`)
+      SELECT count(*) AS n FROM ai_document_assessments a
+      WHERE EXISTS (
+        SELECT 1 FROM documents d
+        WHERE ${STUB_CONDITION} AND d.url = a.url AND d.category = a.category)`)
   ).rows[0] as { n: string };
 
   return {

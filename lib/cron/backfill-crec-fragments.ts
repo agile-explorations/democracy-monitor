@@ -106,6 +106,20 @@ async function insertFragments(parent: ParentRow, structuredText: string): Promi
   return inserted;
 }
 
+/** Record that a granule was fragment-assessed — including single-topic
+ *  granules that produced zero fragments — so the ingest-health detector
+ *  (countUnfragmentedCrecGranules) never re-flags it. Set on every
+ *  per-category row of the granule. */
+async function markGranuleAssessed(granuleId: string): Promise<void> {
+  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
+  const db = getDb();
+  await db.execute(sql`
+    UPDATE documents
+    SET metadata = metadata || '{"fragmentsAssessed": true}'::jsonb
+    WHERE source_origin = 'crec' AND parent_id IS NULL
+      AND metadata->>'granuleId' = ${granuleId}`);
+}
+
 async function main(): Promise<void> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const args = process.argv.slice(2);
@@ -132,6 +146,7 @@ async function main(): Promise<void> {
       continue;
     }
     fragments += await insertFragments(parent, text);
+    await markGranuleAssessed(parent.granule_id);
     done++;
     if (done % 100 === 0)
       console.log(

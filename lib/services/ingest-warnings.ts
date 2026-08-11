@@ -153,6 +153,30 @@ function collectContentWarnings(report: IngestReport): IngestWarning[] {
   return warnings;
 }
 
+/** Fetch errors — remediable data loss. Baseline-only backlogs say so:
+ *  the Source Fetch Health bar is current-term-scoped, and an unscoped
+ *  count next to a green bar reads as a contradiction. */
+function fetchErrorWarnings(report: IngestReport): IngestWarning[] {
+  return report.fetchErrors.map((fe) => {
+    const scope = fe.allBaseline
+      ? ` — all in baseline periods (${fe.earliestWeek} to ${fe.latestWeek}), current term clean`
+      : '';
+    return {
+      severity: 'action' as const,
+      text: `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies)${scope} (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
+    };
+  });
+}
+
+/** Whole-day multi-topic CREC granules missing fragment children (#704). */
+function unfragmentedCrecWarning(report: IngestReport): IngestWarning | null {
+  if ((report.unfragmentedCrecGranules ?? 0) === 0) return null;
+  return {
+    severity: 'action',
+    text: `${report.unfragmentedCrecGranules} whole-day multi-topic CREC granule(s) lack fragment children — run: pnpm crec:build-fragments --confirm (idempotent, restores per-speech retrieval granularity, #704)`,
+  };
+}
+
 export function collectWarningDetails(
   report: IngestReport,
   categoryFilter?: string,
@@ -186,18 +210,10 @@ export function collectWarningDetails(
     });
   }
 
-  // Fetch errors — remediable data loss. Baseline-only backlogs say so:
-  // the Source Fetch Health bar is current-term-scoped, and an unscoped
-  // count next to a green bar reads as a contradiction.
-  for (const fe of report.fetchErrors) {
-    const scope = fe.allBaseline
-      ? ` — all in baseline periods (${fe.earliestWeek} to ${fe.latestWeek}), current term clean`
-      : '';
-    warnings.push({
-      severity: 'action',
-      text: `${fe.sourceOrigin}: ${fe.totalIncomplete} incomplete fetch(es) across ${fe.categories} category(ies)${scope} (run: pnpm backfill:gaps --source ${fe.sourceOrigin})`,
-    });
-  }
+  const crecWarning = unfragmentedCrecWarning(report);
+  if (crecWarning) warnings.push(crecWarning);
+
+  warnings.push(...fetchErrorWarnings(report));
 
   // Metadata-only classification (#648: moved from Data Readiness). Each
   // population carries its own remediation hint, so 'action'.

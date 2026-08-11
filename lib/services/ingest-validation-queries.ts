@@ -444,3 +444,43 @@ export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats
   }
   return results;
 }
+
+/** Only granules ingested after Path A completed (2026-08-11) are candidates:
+ *  the historical corpus is fully processed — 420 granules split, the rest
+ *  assessed single-topic — and exempting it avoids marking old rows. */
+const CREC_FRAGMENT_BASELINE_DATE = '2026-08-11';
+
+/** Whole-day multi-topic CREC granules that lack fragment children (#704).
+ *  Current-term CREC arrives at per-speech granularity, so a large parentless
+ *  granule with no children and no fragmentsAssessed marker means
+ *  `pnpm crec:build-fragments` (idempotent) needs a re-run — e.g. a
+ *  conference-report-style record. Childlessness is checked at GRANULE level
+ *  (fragments attach to one representative row; sibling category rows of a
+ *  split granule are legitimately childless). `recentDays` limits the check
+ *  to the weekly incremental window; omit for the standing check. */
+export async function countUnfragmentedCrecGranules(recentDays?: number): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+  const recentFilter = recentDays
+    ? sql`AND p.fetched_at > now() - make_interval(days => ${recentDays})`
+    : sql``;
+  const rows = await db.execute(sql`
+    SELECT count(*) AS n FROM (
+      SELECT p.metadata->>'granuleId' AS gid
+      FROM documents p
+      WHERE p.source_origin = 'crec'
+        AND p.parent_id IS NULL
+        AND length(p.content) > 102400
+        AND p.metadata->>'granuleId' IS NOT NULL
+        AND p.fetched_at > ${CREC_FRAGMENT_BASELINE_DATE}::timestamptz
+        AND NOT (p.metadata ? 'fragmentsAssessed')
+        ${recentFilter}
+      GROUP BY 1
+    ) g
+    WHERE NOT EXISTS (
+      SELECT 1 FROM documents c
+      JOIN documents parent ON c.parent_id = parent.id
+      WHERE parent.metadata->>'granuleId' = g.gid
+    )`);
+  return Number((rows.rows[0] as { n: string }).n);
+}

@@ -171,6 +171,30 @@ export async function tryValidateFunnel(errors: string[]): Promise<number> {
 }
 
 /**
+ * Weekly incremental detector (#704/#706 follow-up): a newly ingested
+ * whole-day multi-topic CREC granule (e.g. a conference-report-style record)
+ * needs `pnpm crec:build-fragments` re-run to restore per-speech retrieval
+ * granularity. Advisory only — reported in the run summary, never gates the
+ * digest. The standing full-corpus twin lives in validate:ingest.
+ */
+export async function tryWarnUnfragmentedCrec(errors: string[]): Promise<void> {
+  try {
+    const { countUnfragmentedCrecGranules } =
+      await import('@/lib/services/ingest-validation-queries');
+    const n = await countUnfragmentedCrecGranules(8);
+    if (n > 0) {
+      const msg =
+        `${n} whole-day multi-topic CREC granule(s) ingested this week — ` +
+        `run: pnpm crec:build-fragments --confirm (idempotent, #704)`;
+      errors.push(msg);
+      console.warn(`[snapshot] ${msg}`);
+    }
+  } catch (err) {
+    errors.push(`unfragmented-CREC check failed to run: ${formatError(err)}`);
+  }
+}
+
+/**
  * Send the digest only when the run's quality signals are clean — ingest
  * failures can yield an internally consistent but grossly wrong narrative.
  * A held digest is released with `pnpm digest:send --week <date>` after
