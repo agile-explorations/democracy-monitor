@@ -40,7 +40,10 @@ jobs:
           echo "Gating deploy of $SHA on required checks: $REQUIRED"
           deadline=$(( SECONDS + 900 ))   # wait up to 15 min for CI to finish
           while :; do
-            runs=$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" 2>/dev/null)
+            # || true: under bash -e a transient API failure would kill the
+            # step on this assignment before the retry branch below can run
+            # (two false-failed deploys on 2026-08-11; v1.5.5 lesson class).
+            runs=$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" 2>/dev/null || true)
             if [ -z "$runs" ]; then
               echo "check-runs query failed; will retry"
             else
@@ -51,7 +54,7 @@ jobs:
                   [.check_runs[] | select(.name == $n)]
                   | sort_by(.started_at) | last
                   | if . == null then "absent"
-                    else "\(.status):\(.conclusion // "none")" end')
+                    else "\(.status):\(.conclusion // "none")" end' 2>/dev/null || echo absent)
                 case "$latest" in
                   completed:success) ;;
                   completed:*) failed="$failed $name(${latest#completed:})" ;;
