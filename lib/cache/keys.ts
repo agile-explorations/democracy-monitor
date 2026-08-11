@@ -13,10 +13,10 @@ export const CacheKeys = {
   doj: (queryKey: string) => `doj:${queryKey}`,
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
-  searchResearch: (queryHash: string) => `search:research:${queryHash}`,
+  searchResearch: (queryHash: string) => `search:research:${queryHash}:v2`,
   /** docsOnly research responses (#705): doc lists are stable within a data
    *  week; refreshed by the Monday pre-warm (&refresh=true bypass). */
-  searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v1`,
+  searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v2`,
   /** LLM alias proposals for hybrid retrieval (#702), keyed by query hash. */
   queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
   /** Corpus-validated aliases, keyed by (query, window) hash. */
