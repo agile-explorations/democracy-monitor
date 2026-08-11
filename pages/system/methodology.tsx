@@ -279,9 +279,15 @@ export function DetailedContent() {
           <strong>Congressional Record granularity (disclosed August 2026):</strong> the
           Congressional Record arrives from GovInfo at finer granularity for the current term
           (individual speeches) than for 2019&ndash;2024 (multi-topic whole-day sections), so AI
-          review has examined proportionally less of the older floor-speech record. Until this is
-          repaired, cross-era comparisons should treat earlier terms&apos; concern levels as floors:
-          adding the missing review coverage could raise them, never lower them.
+          review has examined proportionally less of the older floor-speech record. A measured audit
+          (August 2026) bounds the effect as small: sampled older floor content, when individually
+          reviewed, confirmed as erosion evidence at roughly one-sixth the current-term rate &mdash;
+          floor speeches earn their evidentiary weight by discussing a sitting administration&apos;s
+          contemporaneous actions, which re-reading historical debate does not reproduce. Earlier
+          terms&apos; concern levels are therefore best read as floors sitting modestly below their
+          true values (scattered single-point weeks, not a broad shift). The older record is being
+          made individually searchable; full historical re-review remains a documented, deliberately
+          deferred option.
         </p>
         <p>
           <strong>Coverage parity (July 2026):</strong> historical coverage and counting gaps were

@@ -161,13 +161,18 @@ async function processBatches(
  * Full-length docs are packed into batches up to the API token limit.
  * Oversized docs (>8192 tokens) are truncated and embedded individually.
  */
-/** Embedding eligibility: unembedded, counting-population docs (+ optional filters). */
+/**
+ * Embedding eligibility: unembedded, counting-population docs (+ optional
+ * filters). Fragments (#704 Path A) are the deliberate exception: they sit
+ * outside the counting population (counting_scope=false) but ARE embedded —
+ * retrieval-grade search is their whole purpose.
+ */
 function embeddableConditions(category?: string, dateFilter?: SQL): SQL[] {
   const conditions = [
     isNull(documents.embeddedAt),
     sql`${documents.contentType} != 'metadata_only'`,
     retrievalRelevantOnly(),
-    countingScopeOnly(),
+    sql`(${countingScopeOnly()} OR ${documents.parentId} IS NOT NULL)`,
   ];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);

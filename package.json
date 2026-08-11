@@ -96,6 +96,7 @@
     "cases:seed": "tsx lib/cron/seed-tracked-cases.ts",
     "crec:rehearse-split": "tsx lib/cron/rehearse-crec-split.ts",
     "crec:canary-l2": "tsx lib/cron/canary-crec-split-l2.ts",
+    "crec:build-fragments": "tsx lib/cron/backfill-crec-fragments.ts",
     "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky"
   },
