@@ -13,6 +13,7 @@ import { isDbAvailable } from '@/lib/db';
 import type { Category } from '@/lib/types';
 import { getIncompleteWeeks } from './fetch-log-store';
 import {
+  countUnfragmentedCrecGranules,
   getDocumentCoverage,
   getContentCompleteness,
   getContentCompletenessByOrigin,
@@ -111,6 +112,9 @@ export interface IngestReport {
   signalCoverageGaps: SignalCoverageGap[];
   metadataOnlyClassification: MetadataOnlyStats[];
   fetchErrors: FetchErrorSummary[];
+  /** Whole-day multi-topic CREC granules without fragment children (#704) —
+   *  nonzero means `pnpm crec:build-fragments` needs a re-run. */
+  unfragmentedCrecGranules?: number;
   warnings: string[];
   /** Same warnings with severity: 'action' = has a remediation, 'limitation' = documented coverage fact (#feedback 2026-07-25). */
   warningDetails: IngestWarning[];
@@ -182,9 +186,8 @@ function summarizeFetchErrors(incompleteWeeks: IncompleteWeekRow[]): FetchErrorS
 // Orchestrator
 // ---------------------------------------------------------------------------
 
-export async function runIngestValidation(category?: string): Promise<IngestReport> {
-  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
-
+/** Run every report input query concurrently. */
+async function fetchReportInputs(category?: string) {
   const [
     coverage,
     content,
@@ -197,6 +200,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     sourceCoverage,
     incompleteWeeks,
     metadataOnlyClassification,
+    unfragmentedCrecGranules,
   ] = await Promise.all([
     getDocumentCoverage(category),
     getContentCompleteness(category),
@@ -209,7 +213,41 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     getSourceCoverageByCategory(),
     getIncompleteWeeks(),
     getMetadataOnlyClassification(),
+    countUnfragmentedCrecGranules(),
   ]);
+  return {
+    coverage,
+    content,
+    contentByOrigin,
+    pagination,
+    frPeriod,
+    cpdPeriod,
+    sourcePeriod,
+    clOpinions,
+    sourceCoverage,
+    incompleteWeeks,
+    metadataOnlyClassification,
+    unfragmentedCrecGranules,
+  };
+}
+
+export async function runIngestValidation(category?: string): Promise<IngestReport> {
+  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
+
+  const {
+    coverage,
+    content,
+    contentByOrigin,
+    pagination,
+    frPeriod,
+    cpdPeriod,
+    sourcePeriod,
+    clOpinions,
+    sourceCoverage,
+    incompleteWeeks,
+    metadataOnlyClassification,
+    unfragmentedCrecGranules,
+  } = await fetchReportInputs(category);
 
   const cats = category ? CATEGORIES.filter((c) => c.key === category) : CATEGORIES;
   const signalCoverageGaps = checkSignalCoverage(sourceCoverage, cats);
@@ -227,6 +265,7 @@ export async function runIngestValidation(category?: string): Promise<IngestRepo
     signalCoverageGaps,
     metadataOnlyClassification,
     fetchErrors,
+    unfragmentedCrecGranules,
     warnings: [],
     warningDetails: [],
   };

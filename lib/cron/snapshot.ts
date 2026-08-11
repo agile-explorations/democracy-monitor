@@ -8,6 +8,7 @@ import {
   tryEnsureWeekHeadline,
   tryGenerateNarratives,
   tryRefreshTrackedCases,
+  tryWarnUnfragmentedCrec,
   tryRegenerateTermSummary,
   tryStoreDataReport,
   tryValidateFunnel,
@@ -508,6 +509,7 @@ async function runPostCategorySteps(
   await tryRegenerateTermSummary(errors);
 
   await tryRefreshTrackedCases(errors);
+  await tryWarnUnfragmentedCrec(errors);
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);
