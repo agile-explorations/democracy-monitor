@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { isBoilerplateAlias, parseAliasResponse } from '@/lib/services/query-expansion-service';
+import {
+  expandAndValidate,
+  isBoilerplateAlias,
+  parseAliasResponse,
+  windowFilters,
+} from '@/lib/services/query-expansion-service';
 
 describe('parseAliasResponse', () => {
   it('parses a plain JSON array', () => {
@@ -44,6 +49,32 @@ describe('isBoilerplateAlias', () => {
   it('keeps entity terms, including ones containing boilerplate words', () => {
     for (const term of ['Schedule F', 'Executive Order 13957', 'Senate Judiciary Committee']) {
       expect(isBoilerplateAlias(term)).toBe(false);
+    }
+  });
+});
+
+describe('windowFilters', () => {
+  it('builds a clause for every window shape', () => {
+    for (const w of [
+      {},
+      { dateFrom: '2025-01-20' },
+      { dateTo: '2026-01-01' },
+      { category: 'executiveActions' },
+      { tier: 'action' as const },
+      { tier: 'discussion' as const, dateFrom: '2020-01-01', dateTo: '2021-01-19' },
+    ]) {
+      expect(windowFilters(w)).toBeDefined();
+    }
+  });
+});
+
+describe('expandAndValidate kill switch', () => {
+  it('returns no aliases when HYBRID_RETRIEVAL_DISABLED=1', async () => {
+    process.env.HYBRID_RETRIEVAL_DISABLED = '1';
+    try {
+      await expect(expandAndValidate('any query', {})).resolves.toEqual([]);
+    } finally {
+      delete process.env.HYBRID_RETRIEVAL_DISABLED;
     }
   });
 });

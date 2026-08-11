@@ -98,7 +98,8 @@ export function isBoilerplateAlias(phrase: string): boolean {
   return BOILERPLATE_ALIASES.test(phrase.trim());
 }
 
-function windowFilters(w: ExpansionWindow) {
+/** Window filter clause for validation counts. Exported for tests. */
+export function windowFilters(w: ExpansionWindow) {
   const conditions = [
     sql`d.embedding IS NOT NULL`,
     sql`d.retrieval_relevant IS NOT FALSE`,
