@@ -1,0 +1,50 @@
+# Pre-warm search caches after the Monday dump (#706).
+#
+# The weekly pg_dump (Mon 05:00 UTC) reads the whole database and evicts the
+# hot pages the heaviest research questions depend on; the first cold hit on
+# an era-stratified question can exceed the 60s edge timeout and fail once
+# before server-side warming kicks in. This workflow fires the curated
+# outreach-question set at 06:00 UTC so no human is ever the cold first hit.
+# It also refreshes the 7-day query-expansion caches weekly.
+#
+# Two passes: pass 1 warms (timeouts tolerated — a timed-out request still
+# warms server-side); pass 2 verifies. Every network call is ||-guarded —
+# GitHub runs steps under bash -e, and a transient non-2xx must not kill the
+# loop (lesson from the v1.5.5 deploy-verify false-failure).
+#
+# Pacing: 15s between requests keeps two 12-question passes under the
+# 20-requests-per-5-minutes search rate limit.
+
+name: Pre-warm search caches
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC, after the 05:00 UTC dump
+  workflow_dispatch:
+
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Warm search endpoints (two passes)
+        run: |
+          failures=0
+          for pass in 1 2; do
+            echo "=== pass $pass ==="
+            while read -r row; do
+              name=$(jq -r '.name' <<<"$row")
+              url=$(jq -r '.url' <<<"$row")
+              t0=$(date +%s)
+              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$url" || true)
+              echo "pass$pass ${name}: HTTP ${code:-000} in $(( $(date +%s) - t0 ))s"
+              if [ "$pass" = "2" ] && [ "$code" != "200" ]; then
+                failures=$((failures + 1))
+              fi
+              sleep 15
+            done < <(jq -c '.[]' scripts/prewarm-questions.json)
+          done
+          echo "pass-2 non-200 count: $failures"
+          # Pass-2 failures are reported but do not fail the job: warming
+          # happened either way, and a red run would page nobody actionably.
