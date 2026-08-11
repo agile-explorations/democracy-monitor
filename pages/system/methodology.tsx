@@ -276,6 +276,14 @@ export function DetailedContent() {
           the weekly email digest — no digest is sent for a week whose ingest looks degraded.
         </p>
         <p>
+          <strong>Congressional Record granularity (disclosed August 2026):</strong> the
+          Congressional Record arrives from GovInfo at finer granularity for the current term
+          (individual speeches) than for 2019&ndash;2024 (multi-topic whole-day sections), so AI
+          review has examined proportionally less of the older floor-speech record. Until this is
+          repaired, cross-era comparisons should treat earlier terms&apos; concern levels as floors:
+          adding the missing review coverage could raise them, never lower them.
+        </p>
+        <p>
           <strong>Coverage parity (July 2026):</strong> historical coverage and counting gaps were
           repaired in July 2026 — the court-scoped opinion layer and federal-legislation tracking
           now extend uniformly across all monitored periods (a correction that raised concern
