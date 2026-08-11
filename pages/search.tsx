@@ -490,6 +490,33 @@ export default function SearchPage() {
             or use the Period control for exact dates.
           </li>
         </ul>
+        <p className="mt-2 ml-1 text-xs font-medium text-dm-text-secondary">
+          What you&apos;ll see in results:
+        </p>
+        <ul className="mt-1 ml-4 space-y-0.5 text-xs text-dm-text-secondary list-disc">
+          <li>
+            <strong>&ldquo;Also searched&rdquo; chips</strong> — the search expands your wording
+            into the record&apos;s own terms (order numbers, statutory phrases, era renamings),
+            keeping only terms verified to appear in the corpus. The chips disclose exactly what was
+            searched.
+          </li>
+          <li>
+            <strong>Matched passages</strong> — verbatim excerpts showing where a document matched,
+            even when the match sits deep inside a long record.
+          </li>
+          <li>
+            <strong>Quote verification</strong> — after each answer, every quoted passage is
+            machine-checked verbatim against the stored document text; a caution appears if any
+            quote could not be matched. Details on the{' '}
+            <Link
+              href="/system/methodology#research-answers"
+              className="text-dm-accent hover:underline"
+            >
+              methodology page
+            </Link>
+            .
+          </li>
+        </ul>
       </details>
 
       {mode === 'explore' && (
