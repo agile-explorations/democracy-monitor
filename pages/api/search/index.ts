@@ -17,16 +17,21 @@ import type { CorpusStats } from '@/lib/services/search-research-queries';
 import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { CachedResearchResult } from '@/lib/services/search-response-format';
 import {
+  buildDocsOnlyPayload,
   emptyResearchResponse,
-  formatDocList,
   formatResearchResponse,
+  hashDocsKey,
 } from '@/lib/services/search-response-format';
+import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchExplore, searchResearch } from '@/lib/services/search-service';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
+/** docsOnly doc lists change only when data does (Monday snapshot); the
+ *  pre-warm workflow refreshes them right after (&refresh=true). */
+const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
 const RESEARCH_CONTEXT_DOCS = 30; // docs sent to LLM
 
 function hashQuery(q: string): string {
@@ -95,16 +100,7 @@ async function adaptiveCorpusStats(
   return leastSimilarity > 0 ? searchCorpusStats(embedding, 1 - leastSimilarity) : null;
 }
 
-export interface RetrievalStratum {
-  key: string;
-  label: string;
-  from: string;
-  to?: string;
-  docCount: number;
-  /** True when the user's date range excludes this era entirely; the era
-   *  window itself was searched and the conflict surfaced, not hidden. */
-  dateConflict?: boolean;
-}
+export type { RetrievalStratum } from '@/lib/services/search-response-types';
 
 /** Intersect user date bounds with each era window; an empty intersection
  *  falls back to the full era and is flagged rather than silently dropped. */
@@ -205,6 +201,37 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
   return { docs: perEra.flat(), strata, inferredFrom, alsoSearched };
 }
 
+/** docsOnly cache key: query + every retrieval-affecting parameter. */
+function docsCacheKeyFor(query: string, req: NextApiRequest): string {
+  return CacheKeys.searchResearchDocs(
+    hashDocsKey(query, {
+      dateFrom: req.query.dateFrom as string | undefined,
+      dateTo: req.query.dateTo as string | undefined,
+      tier: req.query.tier as string | undefined,
+      eras: req.query.eras as string | undefined,
+    }),
+  );
+}
+
+/**
+ * Serve the cached docsOnly response if present (#705: the stratified
+ * retrieval + fusion measured 30-50s on prod — a repeat visitor or a
+ * pre-warmed outreach URL should see documents in under a second).
+ * refresh=true bypasses the read (still writes): the Monday pre-warm uses it
+ * to rebuild caches right after new data lands. Returns true when served.
+ */
+async function serveCachedDocs(
+  res: NextApiResponse,
+  req: NextApiRequest,
+  docsCacheKey: string,
+): Promise<boolean> {
+  if (req.query.refresh === 'true') return false;
+  const cachedDocs = await cacheGet<Record<string, unknown>>(docsCacheKey);
+  if (!cachedDocs) return false;
+  res.status(200).json(cachedDocs);
+  return true;
+}
+
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -213,6 +240,9 @@ async function handleResearch(
   const editorial = req.query.editorial === 'true';
   const docsOnly = req.query.docsOnly === 'true';
   const queryHash = hashQuery(query);
+
+  const docsCacheKey = docsCacheKeyFor(query, req);
+  if (docsOnly && (await serveCachedDocs(res, req, docsCacheKey))) return;
 
   const embedding = await timedEmbedOrFail(res, query, queryHash);
   if (!embedding) return;
@@ -241,14 +271,15 @@ async function handleResearch(
   // (corpus stats scan 164K embeddings — ~15-20s). Stats are computed
   // in the streaming synthesis phase instead.
   if (docsOnly) {
-    res.status(200).json({
-      documents: formatDocList(allDocs),
-      dateRange,
-      queryConfidence: avgSimilarity,
-      ...(strata ? { strata } : {}),
-      ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
-      ...(alsoSearched.length > 0 ? { alsoSearched } : {}),
-    });
+    const payload = buildDocsOnlyPayload(
+      allDocs,
+      avgSimilarity,
+      strata,
+      inferredFrom,
+      alsoSearched,
+    );
+    await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
+    res.status(200).json(payload);
     return;
   }
 

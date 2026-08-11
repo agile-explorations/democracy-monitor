@@ -35,26 +35,20 @@ function quotedPhrase(phrase: string): string {
 }
 
 /**
- * Build one alias arm query for research retrieval. Row shape matches the
- * research projection (mapToResearchDoc-compatible) plus matched_alias.
+ * Build one alias arm query for research retrieval — ids + source_type +
+ * matched alias ONLY. Arms must never materialize content or embeddings:
+ * a content prefix on a compressed multi-MB row decompresses the whole row,
+ * and 8 arms x 40 rows of old-era CREC measured ~50s on prod (#705).
+ * Fusion's winners are hydrated once afterwards (fetchResearchDocRowsByIds).
+ * source_type is carried so the all-tier path can split hits per tier pool.
  */
-export function buildAliasArmQuery(
-  alias: ValidatedAlias,
-  vectorStr: string,
-  candidateFilters: SqlChunk,
-): SqlChunk {
+export function buildAliasArmQuery(alias: ValidatedAlias, candidateFilters: SqlChunk): SqlChunk {
   const tsquery = quotedPhrase(alias.phrase);
   // Inner bounded match scan (alias d, so shared filter chunks apply), then
   // rank-sort only those rows: caps detoast work no matter how common the
   // alias is (stale-cache aliases can exceed current validation caps).
   return sql`
-    SELECT doc.id, doc.title, LEFT(doc.content, 3000) as content, doc.url, doc.published_at,
-      doc.source_type, doc.source_origin, doc.case_id, doc.category,
-      1 - (doc.embedding <=> ${vectorStr}::vector) as cosine_similarity,
-      ds.final_score, ds.document_class,
-      ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
-      ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary,
-      ${alias.phrase} as matched_alias
+    SELECT doc.id, doc.source_type, ${alias.phrase} as matched_alias
     FROM (
       SELECT d.id FROM documents d
       WHERE ${candidateFilters}
@@ -63,9 +57,6 @@ export function buildAliasArmQuery(
       LIMIT ${ALIAS_ARM_SCAN_LIMIT}
     ) matches
     JOIN documents doc ON doc.id = matches.id
-    LEFT JOIN document_scores ds ON ds.url = doc.url AND ds.category = doc.category
-    LEFT JOIN ai_document_assessments ai
-      ON ai.url = doc.url AND ai.category = doc.category AND ai.pass = 2
     ORDER BY ts_rank(doc.search_rank_vector, websearch_to_tsquery('english', ${tsquery})) DESC
     LIMIT ${ALIAS_ARM_LIMIT}`;
 }

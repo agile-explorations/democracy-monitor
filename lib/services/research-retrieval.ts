@@ -40,14 +40,18 @@ export async function executeFilteredVectorQuery(db: Db, query: SqlQuery) {
  * ran independent retrievals whose agreement was accidental. Returns raw rows
  * in the research-query column shape; the caller maps them.
  */
-export async function fetchResearchDocRowsByIds(ids: number[]): Promise<Record<string, unknown>[]> {
+export async function fetchResearchDocRowsByIds(
+  ids: number[],
+  vectorStr?: string,
+): Promise<Record<string, unknown>[]> {
   if (!isDbAvailable() || ids.length === 0) return [];
   const db = getDb();
+  const cosineExpr = vectorStr ? sql`1 - (d.embedding <=> ${vectorStr}::vector)` : sql`0`;
   try {
     const results = await db.execute(sql`
       SELECT d.id, d.title, LEFT(d.content, 3000) as content, d.url, d.published_at, d.source_type,
         d.source_origin, d.case_id, d.category,
-        0 as cosine_similarity, ds.final_score, ds.document_class,
+        ${cosineExpr} as cosine_similarity, ds.final_score, ds.document_class,
         ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
         ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
       FROM documents d

@@ -11,17 +11,18 @@ import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { embedText } from './embedding-service';
-import { buildAliasArmQuery, fetchMatchSnippets, runArms } from './hybrid-arms';
 import { hybridVectorExplore } from './hybrid-explore';
-import type { FusionArm } from './hybrid-fusion';
-import { armWeight, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
-import type { ValidatedAlias } from './query-expansion-service';
 import { expandAndValidate } from './query-expansion-service';
+import {
+  armsForTier,
+  attachMatchSnippets,
+  fuseHydrateDedupe,
+  runResearchAliasArms,
+} from './research-fusion';
 import {
   buildResearchQuery,
   executeFilteredVectorQuery,
   fetchResearchDocRowsByIds,
-  researchCandidateFilters,
 } from './research-retrieval';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
 
@@ -165,54 +166,6 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
 
 export type ResearchTierFilter = 'all' | DocumentTier;
 
-/**
- * Run the per-alias FTS arms for a research window and map rows into
- * weighted fusion arms. Alias failures degrade to empty arms; zero aliases
- * (no key, LLM failure, nothing validated) means pure-vector retrieval.
- */
-async function runResearchAliasArms(
-  query: string,
-  vectorStr: string,
-  dateFrom?: string,
-  dateTo?: string,
-  tier?: DocumentTier,
-): Promise<{ aliases: ValidatedAlias[]; arms: FusionArm<ResearchDocument>[] }> {
-  const aliases = await expandAndValidate(query, { dateFrom, dateTo, tier });
-  if (aliases.length === 0) return { aliases, arms: [] };
-  const filters = researchCandidateFilters(dateFrom, dateTo, tier);
-  const rowLists = await runArms(aliases.map((a) => buildAliasArmQuery(a, vectorStr, filters)));
-  const arms = rowLists.map((rows, i) => ({
-    items: rows.map(mapToResearchDoc),
-    weight: armWeight(aliases[i].matches),
-  }));
-  return { aliases, arms };
-}
-
-/**
- * Batched post-fusion snippet extraction (#702 perf): headlines run only for
- * the keyword-surfaced docs that made the final list, not every arm candidate.
- */
-async function attachMatchSnippets(docs: ResearchDocument[]): Promise<ResearchDocument[]> {
-  const pending = docs.filter((d) => d.matchedAlias && !d.matchSnippet);
-  if (pending.length === 0) return docs;
-  const snippets = await fetchMatchSnippets(
-    pending.map((d) => ({ id: d.id, phrase: d.matchedAlias as string })),
-  );
-  for (const d of pending) {
-    const snippet = snippets.get(d.id);
-    if (snippet) d.matchSnippet = snippet;
-  }
-  return docs;
-}
-
-/** Restrict fusion arms to one tier (order-preserving) for the tiered pools. */
-function armsForTier(
-  arms: FusionArm<ResearchDocument>[],
-  tier: DocumentTier,
-): FusionArm<ResearchDocument>[] {
-  return arms.map((a) => ({ items: a.items.filter((d) => d.tier === tier), weight: a.weight }));
-}
-
 export async function searchResearch(
   query: string,
   topK = 30,
@@ -235,13 +188,12 @@ export async function searchResearch(
           db,
           buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
         ),
-        runResearchAliasArms(query, vectorStr, dateFrom, dateTo, tierFilter),
+        runResearchAliasArms(query, dateFrom, dateTo, tierFilter),
       ]);
       const primary = (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
-      // Fuse to 2x then URL-dedupe (alias arms reintroduce same-url rows the
-      // primary arm's DISTINCT ON (url) had collapsed) and refill to topK.
-      const fused = dedupeByUrl(fuseWeightedRrf(primary, arms, topK * 2)).slice(0, topK);
-      return attachMatchSnippets(fused);
+      return attachMatchSnippets(
+        await fuseHydrateDedupe(primary, arms, topK, vectorStr, mapToResearchDoc),
+      );
     }
     return await attachMatchSnippets(
       await searchResearchAllTiers(db, query, vectorStr, topK, dateFrom, dateTo),
@@ -276,17 +228,21 @@ async function searchResearchAllTiers(
       db,
       buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
     ),
-    runResearchAliasArms(query, vectorStr, dateFrom, dateTo),
+    runResearchAliasArms(query, dateFrom, dateTo),
   ]);
   const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
-    dedupeByUrl(
-      fuseWeightedRrf(rows.map(mapToResearchDoc), armsForTier(arms, tier), topK * 2),
-    ).slice(0, topK);
-  return composeTieredResults(
+    fuseHydrateDedupe(
+      rows.map(mapToResearchDoc),
+      armsForTier(arms, tier),
+      topK,
+      vectorStr,
+      mapToResearchDoc,
+    );
+  const [action, discussion] = await Promise.all([
     fusePool(actionRows.rows as Record<string, unknown>[], 'action'),
     fusePool(discussionRows.rows as Record<string, unknown>[], 'discussion'),
-    topK,
-  );
+  ]);
+  return composeTieredResults(action, discussion, topK);
 }
 
 /** Fetch research documents by id, preserving input order (#552). */
