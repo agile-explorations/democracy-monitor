@@ -14,6 +14,7 @@
  */
 
 import { getProvider } from '@/lib/ai/provider';
+import { composeTieredResults } from '@/lib/data/document-tiers';
 import type { ResearchDocument } from '@/lib/services/search-service';
 
 const RERANK_MODEL = 'gpt-4o-mini';
@@ -57,18 +58,10 @@ export function parseRanking(text: string, count: number): number[] | null {
   return unique;
 }
 
-/**
- * Re-rank candidates by bearing-on-question and keep the top `keep`.
- * Falls back to the first `keep` of the original order on any failure.
- */
-export async function rerankByRelevance(
-  question: string,
-  docs: ResearchDocument[],
-  keep: number,
-): Promise<ResearchDocument[]> {
-  if (docs.length <= keep) return docs;
+/** Rank all candidates by bearing-on-question; original order on any failure. */
+async function rankAll(question: string, docs: ResearchDocument[]): Promise<ResearchDocument[]> {
   const provider = getProvider('openai');
-  if (!provider.isAvailable()) return docs.slice(0, keep);
+  if (!provider.isAvailable()) return docs;
 
   const candidates = docs.slice(0, MAX_CANDIDATES);
   try {
@@ -86,14 +79,48 @@ export async function rerankByRelevance(
     const ranking = parseRanking(result.content, candidates.length);
     if (!ranking) {
       console.warn('[rerank] unparseable ranking — falling back to vector order');
-      return docs.slice(0, keep);
+      return docs;
     }
     console.log(
-      `[rerank] ${candidates.length}→${keep} docs · tokens in/out: ${result.tokensUsed?.input ?? '?'}/${result.tokensUsed?.output ?? '?'}`,
+      `[rerank] ranked ${candidates.length} docs · tokens in/out: ${result.tokensUsed?.input ?? '?'}/${result.tokensUsed?.output ?? '?'}`,
     );
-    return ranking.slice(0, keep).map((n) => candidates[n - 1]);
+    return [...ranking.map((n) => candidates[n - 1]), ...docs.slice(MAX_CANDIDATES)];
   } catch (err) {
     console.warn('[rerank] failed — falling back to vector order:', (err as Error).message);
-    return docs.slice(0, keep);
+    return docs;
   }
+}
+
+/**
+ * Re-rank candidates by bearing-on-question and keep the top `keep`.
+ * Falls back to the first `keep` of the original order on any failure.
+ */
+export async function rerankByRelevance(
+  question: string,
+  docs: ResearchDocument[],
+  keep: number,
+): Promise<ResearchDocument[]> {
+  if (docs.length <= keep) return docs;
+  return (await rankAll(question, docs)).slice(0, keep);
+}
+
+/**
+ * Tier-balanced re-rank (#707): rank everything, then compose the kept set
+ * with the standard action/discussion share so the re-rank cannot wipe a
+ * tier out of an era's slots. The FW4 incident: per-era retrieval composed
+ * balanced pools, but the tier-blind re-rank returned the 2025 era's 15
+ * slots as all-action — the synthesis then reported congressional responses
+ * missing that exist in the corpus. Within each tier, re-rank order rules.
+ */
+export async function rerankTierBalanced(
+  question: string,
+  docs: ResearchDocument[],
+  keep: number,
+): Promise<ResearchDocument[]> {
+  const ranked = docs.length <= keep ? docs : await rankAll(question, docs);
+  return composeTieredResults(
+    ranked.filter((d) => d.tier === 'action'),
+    ranked.filter((d) => d.tier === 'discussion'),
+    keep,
+  );
 }

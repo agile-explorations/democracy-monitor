@@ -1,5 +1,6 @@
 /** Prompt builders for the research synthesis pipeline. */
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
+import { reviewCriteria } from './research-review-criteria';
 import type { CorpusStats } from './search-research-queries';
 import type { ResearchDocument } from './search-service';
 
@@ -112,6 +113,14 @@ function draftRules(p2Count: number, totalDocs: number): string[] {
     '9. Explicitly state the date range of retrieved documents in your answer and note that',
     '   documents are weighted toward recent publications. If corpus statistics show many',
     '   matching documents outside the retrieval window, note this.',
+    '9a. COVERAGE DISCIPLINE: any statement about missing document types ("no floor',
+    '    speeches", "no hearings appear") MUST be scoped to this retrieval — write "in',
+    '    this retrieval" or "among these documents", never "the record", "the corpus",',
+    '    or "the available record". You see only a small retrieved sample; absence here',
+    '    is not evidence of absence in the corpus, and different retrieval filters (the',
+    '    Commentary & debate filter, different phrasing) may surface what is missing',
+    '    here. Never characterize overall corpus coverage except by quoting the corpus',
+    '    statistics section when provided.',
     '10. Documents are tagged ACTION (primary sources: what the government did — opinions,',
     '    orders, rules, bills, reports) or DISCUSSION (reactions: floor speeches, remarks,',
     '    debate). Ground claims about government actions in ACTION documents; use DISCUSSION',
@@ -217,26 +226,7 @@ export function buildFeedbackPrompt(
     '--- REVIEW INSTRUCTIONS ---',
     'Review both drafts against the source documents. Provide structured feedback:',
     '',
-    '(a) FACTUAL ACCURACY — Does the draft correctly represent the document content?',
-    '    List any claims not supported by the provided documents.',
-    '',
-    '(b) CITATION ACCURACY — Are [Doc N] citations used correctly?',
-    '',
-    '(c) CONFIDENCE CALIBRATION — Does the draft overstate certainty?',
-    '    Quote specific phrases that need softening.',
-    '',
-    '(d) MISSING COUNTER-ARGUMENTS — Are there plausible alternative explanations?',
-    '',
-    '(e) BALANCE — Does the draft note stated justifications from the documents?',
-    '',
-    '(f) COVERAGE GAPS — Does the answer acknowledge limitations?',
-    ...(corpusStats
-      ? [
-          '',
-          '(g) CORPUS STATISTICS — Does the answer appropriately use the full-corpus statistics?',
-          '    Are claims properly scoped to the retrieved sample vs the full corpus?',
-        ]
-      : []),
+    ...reviewCriteria(!!corpusStats),
   ].join('\n');
 }
 

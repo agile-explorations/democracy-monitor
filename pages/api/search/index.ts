@@ -10,7 +10,7 @@ import {
   extractDateFloor,
 } from '@/lib/services/era-extraction';
 import { expandAndValidate } from '@/lib/services/query-expansion-service';
-import { rerankByRelevance } from '@/lib/services/relevance-rerank';
+import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
@@ -142,6 +142,18 @@ async function collectAlsoSearched(
   return [...phrases];
 }
 
+/** Tier balance survives the re-rank on mixed-tier retrievals (#707). */
+function rerankForTier(
+  query: string,
+  candidates: ResearchDocument[],
+  keep: number,
+  tier: ResearchTierFilter,
+): Promise<ResearchDocument[]> {
+  return tier === 'all'
+    ? rerankTierBalanced(query, candidates, keep)
+    : rerankByRelevance(query, candidates, keep);
+}
+
 async function retrieveResearchDocs(req: NextApiRequest, query: string, embedding: number[]) {
   // Range phrases in the question ("since January 2025") become a date floor
   // when the user has not set explicit dates; surfaced in the response so
@@ -172,7 +184,7 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
       w ? w.to : dateTo,
       tier,
     );
-    const docs = await rerankByRelevance(query, candidates, RESEARCH_CONTEXT_DOCS);
+    const docs = await rerankForTier(query, candidates, RESEARCH_CONTEXT_DOCS, tier);
     const alsoSearched = await collectAlsoSearched(
       query,
       [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
@@ -186,7 +198,7 @@ async function retrieveResearchDocs(req: NextApiRequest, query: string, embeddin
   const perEra = await Promise.all(
     windows.map(async (w) => {
       const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
-      return rerankByRelevance(query, candidates, slots);
+      return rerankForTier(query, candidates, slots, tier);
     }),
   );
   const strata: RetrievalStratum[] = windows.map((w, i) => ({
