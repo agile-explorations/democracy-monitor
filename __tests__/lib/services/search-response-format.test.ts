@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDocsOnlyPayload,
   emptyResearchResponse,
   formatDocList,
   formatResearchResponse,
+  hashDocsKey,
 } from '@/lib/services/search-response-format';
 import type { CachedResearchResult } from '@/lib/services/search-response-format';
 import type { ResearchDocument } from '@/lib/services/search-service';
@@ -95,5 +97,39 @@ describe('formatResearchResponse', () => {
     const res = formatResearchResponse(withStats, [doc()], false, ['Schedule F']);
     expect((res.corpusStats as { totalMatching: number }).totalMatching).toBe(42);
     expect(res.alsoSearched).toEqual(['Schedule F']);
+  });
+});
+
+describe('hashDocsKey', () => {
+  it('is stable for identical query+params and case-insensitive on the query', () => {
+    expect(hashDocsKey('Schedule F', { dateFrom: '2025-01-20' })).toBe(
+      hashDocsKey('  schedule f ', { dateFrom: '2025-01-20' }),
+    );
+  });
+
+  it('varies with each retrieval-affecting parameter', () => {
+    const base = hashDocsKey('q', {});
+    expect(hashDocsKey('q', { dateFrom: '2025-01-20' })).not.toBe(base);
+    expect(hashDocsKey('q', { dateTo: '2026-01-01' })).not.toBe(base);
+    expect(hashDocsKey('q', { tier: 'discussion' })).not.toBe(base);
+    expect(hashDocsKey('q', { eras: 'trump_t1,trump_t2' })).not.toBe(base);
+  });
+});
+
+describe('buildDocsOnlyPayload', () => {
+  it('omits optional sections when absent', () => {
+    const payload = buildDocsOnlyPayload([doc()], 0.5, null, null, []);
+    expect(payload).not.toHaveProperty('strata');
+    expect(payload).not.toHaveProperty('inferredDateFrom');
+    expect(payload).not.toHaveProperty('alsoSearched');
+    expect((payload.documents as unknown[]).length).toBe(1);
+  });
+
+  it('includes strata, inferred floor, and chips when present', () => {
+    const strata = [{ key: 'trump_t1', label: 'Trump 1', from: '2017-01-20', docCount: 5 }];
+    const payload = buildDocsOnlyPayload([doc()], 0.5, strata, '2025-01-20', ['Schedule F']);
+    expect(payload.strata).toEqual(strata);
+    expect(payload.inferredDateFrom).toBe('2025-01-20');
+    expect(payload.alsoSearched).toEqual(['Schedule F']);
   });
 });
