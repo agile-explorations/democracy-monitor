@@ -126,10 +126,30 @@ export function windowFilters(w: ExpansionWindow) {
   return sql.join(conditions, sql` AND `);
 }
 
+/** Window-size counting saturates here: caps validation work on broad
+ *  windows (an unbounded count over a no-filter window scanned ~400k rows —
+ *  the whole 60s edge-timeout budget on a cold prod cache, 2026-08-11). */
+const WINDOW_COUNT_CAP = 100000;
+
+/** Bounded count: scans at most `cap` matching rows instead of the full set. */
+async function cappedCount(
+  db: ReturnType<typeof getDb>,
+  where: ReturnType<typeof sql>,
+  cap: number,
+): Promise<number> {
+  const r = await db.execute(sql`
+    SELECT count(*) AS n FROM (
+      SELECT 1 FROM documents d WHERE ${where} LIMIT ${cap}
+    ) capped`);
+  return Number((r.rows[0] as { n: string }).n);
+}
+
 /**
  * Corpus validation: keep aliases that match at least one document and at
- * most 5% of the searched window (floor 200 for small windows). One GIN
- * count query per alias — milliseconds each.
+ * most 5% of the searched window (floor 200 for small windows; window size
+ * saturates at WINDOW_COUNT_CAP, so the cap tops out at 5,000). All counts
+ * are LIMIT-bounded — validation cost stays flat no matter how broad the
+ * window or how common an alias.
  */
 export async function validateAliases(
   phrases: string[],
@@ -138,24 +158,18 @@ export async function validateAliases(
   if (!isDbAvailable() || phrases.length === 0) return [];
   const db = getDb();
   const filters = windowFilters(window);
-  const windowTotal = Number(
-    (
-      (await db.execute(sql`SELECT count(*) AS n FROM documents d WHERE ${filters}`)).rows[0] as {
-        n: string;
-      }
-    ).n,
-  );
+  const windowTotal = await cappedCount(db, filters, WINDOW_COUNT_CAP);
   const maxMatches = Math.max(MIN_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE));
   const candidates = phrases.filter((p) => !isBoilerplateAlias(p));
-  // Counts run concurrently — independent GIN lookups; order is preserved.
+  // Counts run concurrently — bounded index scans; order is preserved. Each
+  // alias is counted only to maxMatches+1: enough to decide the cap, and
+  // armWeight saturates well below that anyway.
   const counts = await Promise.all(
     candidates.map(async (phrase) => {
       const quoted = `"${phrase.replace(/"/g, '')}"`;
-      const r = await db.execute(sql`
-      SELECT count(*) AS n FROM documents d
-      WHERE ${filters}
-        AND d.search_vector @@ websearch_to_tsquery('english', ${quoted})`);
-      return { phrase, matches: Number((r.rows[0] as { n: string }).n) };
+      const matchFilter = sql`${filters}
+        AND d.search_vector @@ websearch_to_tsquery('english', ${quoted})`;
+      return { phrase, matches: await cappedCount(db, matchFilter, maxMatches + 1) };
     }),
   );
   return counts.filter((c) => c.matches >= 1 && c.matches <= maxMatches);
