@@ -116,6 +116,9 @@ export function parseDraftResponse(response: string): {
       .trim()
       .split('\n')
       .map((line) => line.replace(/^[-·•\d.)\s]+/, '').trim())
+      // The model sometimes emits markdown emphasis around a question; the
+      // UI renders these as plain text, so strip surrounding */_ markers.
+      .map((line) => line.replace(/^[*_]+|[*_]+$/g, '').trim())
       .filter((line) => line.length > 0)
       .slice(0, 3);
   }
