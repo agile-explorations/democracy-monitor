@@ -171,13 +171,16 @@ async function main(): Promise<void> {
 
   const provider = getProvider('anthropic');
   if (!provider.isAvailable()) throw new Error('ANTHROPIC_API_KEY not configured');
+  const concurrency = args.includes('--concurrency')
+    ? Number(args[args.indexOf('--concurrency') + 1])
+    : 6;
   let calls = 0;
   let tp = 0;
   let fp = 0;
-  for (const row of flagged) {
+  const verifyRow = async (row: ScreenedRow) => {
     if (calls >= callCap) throw new Error(`call cap ${callCap} reached — aborting (#563)`);
     const fetched = await fetchRowAndDoc(row.rowId);
-    if (!fetched) continue;
+    if (!fetched) return;
     const flaggedClaims = row.claims
       .filter(
         (c) => c.classification === 'UNSUPPORTED_EXTERNAL' || c.classification === 'CONTRADICTED',
@@ -198,8 +201,12 @@ async function main(): Promise<void> {
     } catch (err) {
       console.warn(`[verify-flags] row ${row.rowId} failed:`, (err as Error).message);
     }
-    if (calls % 25 === 0)
+    if (calls % 100 === 0)
       console.log(`[verify-flags] ${calls}/${flagged.length} (tp=${tp} fp=${fp})...`);
+  };
+  // Bounded worker pool (Sonnet rate limits tolerate ~6 concurrent).
+  for (let i = 0; i < flagged.length; i += concurrency) {
+    await Promise.all(flagged.slice(i, i + concurrency).map(verifyRow));
   }
   console.log(
     `\n=== VERIFY (${calls} calls) === TRUE_POSITIVE ${tp} | FALSE_POSITIVE ${fp} | ledger: ${outFile}`,
