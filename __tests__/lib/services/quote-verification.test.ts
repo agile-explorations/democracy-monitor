@@ -56,3 +56,19 @@ describe('quoteAppearsIn', () => {
     expect(quoteAppearsIn('legally inadequate findings', source)).toBe(false);
   });
 });
+
+describe('hyphenation-artifact tolerance (#712 v1.9.15)', () => {
+  it('matches a quote against source text with a line-break hyphenation gap', () => {
+    const source = normalizeForMatch(
+      'positions of a confidential, policy- determining, policy-making, or policy-advocating character',
+    );
+    expect(quoteAppearsIn('policy-determining, policy-making, or policy-advocating', source)).toBe(
+      true,
+    );
+  });
+
+  it('treats spaced and joined em-dashes identically', () => {
+    const source = normalizeForMatch('the rule — adopted in 2020 — remains in force');
+    expect(quoteAppearsIn('the rule—adopted in 2020—remains in force', source)).toBe(true);
+  });
+});

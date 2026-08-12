@@ -273,7 +273,8 @@ describe('retrieval note (#712)', () => {
     const prompt = buildSinglePassPrompt('q', docs, null, ['287g agreements', 'H.R. 3005']);
     expect(prompt).toContain('Retrieval was hybrid');
     expect(prompt).toContain('287g agreements | H.R. 3005');
-    expect(prompt).toContain('remains scoped to this retrieval');
+    expect(prompt).toContain('remains scoped to this');
+    expect(prompt).toContain('never\n' + 'as vector similarity alone');
     // No contradictory vector-only description may coexist (#712).
     expect(prompt).not.toContain('Note: Retrieval uses vector similarity');
   });
