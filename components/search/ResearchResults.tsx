@@ -6,12 +6,20 @@ import { EditorialPanel } from '@/components/shared/EditorialPanel';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { labelForSourceType } from '@/lib/data/document-tiers';
 import type { EditorialRecord } from '@/lib/types';
+import { CITATION_GROUP_PATTERN, parseDocCitations } from '@/lib/utils/citations';
 import { categoryLabel, formatDate, similarityBar } from './helpers';
 import { AlsoSearchedChips, MatchSnippet } from './MatchSnippet';
 import type { ResearchDocResult, ResearchResult } from './types';
 
 function prepareCitations(text: string): string {
-  return text.replace(/\[Doc (\d+)\]/g, '[[Doc $1]](#cite-$1)');
+  // Every citation group — [Doc 3], [Doc 2, Doc 4], [Docs 1, 3, 5],
+  // [Docs 19-21] — expands to individual linked [N] chips (#712: multi-doc
+  // brackets previously fell through as raw text).
+  return text.replace(CITATION_GROUP_PATTERN, (group) => {
+    const nums = parseDocCitations(group);
+    if (nums.length === 0) return group;
+    return nums.map((n) => `[[Doc ${n}]](#cite-${n})`).join(' ');
+  });
 }
 
 function buildComponents(documents: ResearchDocResult[]): Components {
