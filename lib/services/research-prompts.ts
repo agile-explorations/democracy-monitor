@@ -106,14 +106,35 @@ export function computeDateRange(docs: ResearchDocument[]): { earliest: string; 
   return { earliest: fmt(dates[0]!), latest: fmt(dates[dates.length - 1]!) };
 }
 
-function buildCoverageSection(docs: ResearchDocument[], corpusStats: CorpusStats | null): string {
+function buildCoverageSection(
+  docs: ResearchDocument[],
+  corpusStats: CorpusStats | null,
+  alsoSearched?: string[],
+): string {
   const dateRange = computeDateRange(docs);
+  // ONE description of retrieval — a second, contradictory description made
+  // the model coin-flip between them (#712: answers described retrieval as
+  // vector-only while exact keyword searches had run).
+  const retrievalLines =
+    alsoSearched && alsoSearched.length > 0
+      ? [
+          'Retrieval was hybrid: vector similarity with a recency boost PLUS exact keyword',
+          `search for these corpus-validated terms: ${alsoSearched.join(' | ')}.`,
+          'When characterizing coverage you may cite these searched terms. Absence among',
+          'these documents remains scoped to this retrieval — exact-term search strengthens',
+          'the observation but does not prove absence in the corpus. Older relevant',
+          'documents may still be underrepresented.',
+        ]
+      : [
+          'Note: Retrieval uses vector similarity with a recency boost. Older relevant documents',
+          'may be underrepresented.',
+        ];
   const lines = [
     '--- DOCUMENT COVERAGE ---',
     `Date range of retrieved documents: ${dateRange.earliest} to ${dateRange.latest}`,
-    `Documents retrieved: ${docs.length} (most relevant by semantic similarity, weighted toward recent)`,
-    'Note: Retrieval uses vector similarity with a recency boost. Older relevant documents',
-    'may be underrepresented. The corpus statistics below provide the full-corpus picture.',
+    `Documents retrieved: ${docs.length} (most relevant, weighted toward recent)`,
+    ...retrievalLines,
+    'The corpus statistics below, when present, provide the full-corpus picture.',
   ];
   if (corpusStats) {
     lines.push('', formatCorpusStats(corpusStats));
@@ -122,26 +143,6 @@ function buildCoverageSection(docs: ResearchDocument[], corpusStats: CorpusStats
 }
 
 /** Shared preamble + documents section for draft and single-pass prompts. */
-/** Retrieval-transparency note (#712 follow-up): the synthesis previously
- *  under-described its own retrieval — recommending "keyword-specific
- *  searches" that had in fact already run. Knowing the searched terms lets
- *  coverage statements cite them; the guard clause keeps absence claims
- *  scoped to the retrieval. */
-function retrievalNote(alsoSearched?: string[]): string[] {
-  if (!alsoSearched || alsoSearched.length === 0) return [];
-  return [
-    '',
-    '--- RETRIEVAL NOTE ---',
-    'Retrieval was hybrid: semantic similarity PLUS exact keyword search for these',
-    `corpus-validated terms: ${alsoSearched.join(' | ')}.`,
-    'When characterizing coverage you may cite these searched terms (e.g. "no floor',
-    'speeches appear in this retrieval, which also searched the exact terms ...").',
-    'Do not describe the retrieval as vector/similarity-only. Absence among these',
-    'documents remains scoped to this retrieval — exact-term search strengthens the',
-    'observation but does not prove absence in the corpus.',
-  ];
-}
-
 function buildPromptBody(
   query: string,
   docs: ResearchDocument[],
@@ -159,8 +160,7 @@ function buildPromptBody(
     '--- USER QUESTION ---',
     query,
     '',
-    buildCoverageSection(docs, corpusStats),
-    ...retrievalNote(alsoSearched),
+    buildCoverageSection(docs, corpusStats, alsoSearched),
     '',
     '--- GOVERNMENT DOCUMENTS ---',
     formatDocumentContext(docs),

@@ -27,6 +27,14 @@ describe('extractQuotedClaims', () => {
   it('ignores quotes shorter than the floor and returns [] when none', () => {
     expect(extractQuotedClaims('A "short" quote and no long ones here.')).toHaveLength(0);
   });
+
+  it('extraction keeps uncited quotes (the verifier filters them)', () => {
+    const claims = extractQuotedClaims(
+      'Researchers should try "state and local law enforcement immigration" as a search term.',
+    );
+    expect(claims).toHaveLength(1);
+    expect(claims[0].citations).toEqual([]);
+  });
 });
 
 describe('quoteAppearsIn', () => {
