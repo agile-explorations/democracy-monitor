@@ -73,7 +73,7 @@ If ANY flagged claim is a real defect: verdict TRUE_POSITIVE, and draft the corr
 - Documents that are only a bill title or a one-line summary support almost nothing: strip or context-mark every mechanism/effect claim beyond the title's own words.
 - Preserve the original assessment stance and keep similar length where possible.
 
-Return ONLY JSON:
+Respond with ONLY a single JSON object — no analysis, no preamble, your first character must be "{":
 {"verdict":"TRUE_POSITIVE|FALSE_POSITIVE","evidence":"the document text that settles it (<=300 chars)","correctedReasoning":"full corrected text (TRUE_POSITIVE only)"}`;
 
 function loadFlagged(ledgerPath: string): ScreenedRow[] {
@@ -130,13 +130,24 @@ function parseCorrection(
 ): CorrectionRecord | null {
   try {
     const raw = content.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(raw) as {
+    // The model sometimes prefixes prose analysis despite the format
+    // instruction — extract the outermost JSON object.
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw) as {
       verdict: CorrectionRecord['verdict'];
       evidence: string;
       correctedReasoning?: string;
     };
-    if (parsed.verdict !== 'TRUE_POSITIVE' && parsed.verdict !== 'FALSE_POSITIVE') return null;
-    if (parsed.verdict === 'TRUE_POSITIVE' && !parsed.correctedReasoning) return null;
+    if (parsed.verdict !== 'TRUE_POSITIVE' && parsed.verdict !== 'FALSE_POSITIVE') {
+      console.warn(
+        `[verify-flags] row ${row.rowId}: unexpected verdict ${JSON.stringify(parsed.verdict).slice(0, 60)}`,
+      );
+      return null;
+    }
+    if (parsed.verdict === 'TRUE_POSITIVE' && !parsed.correctedReasoning) {
+      console.warn(`[verify-flags] row ${row.rowId}: TRUE_POSITIVE without correctedReasoning`);
+      return null;
+    }
     return {
       rowId: row.rowId,
       era: row.era,
@@ -147,7 +158,9 @@ function parseCorrection(
       correctedReasoning: parsed.correctedReasoning,
     };
   } catch {
-    console.warn(`[verify-flags] unparseable verdict for row ${row.rowId}`);
+    console.warn(
+      `[verify-flags] unparseable verdict for row ${row.rowId}: ${content.slice(0, 120).replace(/\n/g, ' ')}…[len ${content.length}]`,
+    );
     return null;
   }
 }
