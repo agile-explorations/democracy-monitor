@@ -286,16 +286,20 @@ export function ResearchResults({
             Related Questions
           </h3>
           <ul className="space-y-1.5">
-            {result.relatedQuestions.map((q, i) => (
-              <li key={i}>
-                <button
-                  onClick={() => onRelatedQuestion(q)}
-                  className="text-sm text-dm-accent hover:underline text-left"
-                >
-                  {q}
-                </button>
-              </li>
-            ))}
+            {result.relatedQuestions
+              // Defensive for answers cached before the parser stripped
+              // markdown emphasis: buttons render plain text, not markdown.
+              .map((q) => q.replace(/^[*_]+|[*_]+$/g, '').trim())
+              .map((q, i) => (
+                <li key={i}>
+                  <button
+                    onClick={() => onRelatedQuestion(q)}
+                    className="text-sm text-dm-accent hover:underline text-left"
+                  >
+                    {q}
+                  </button>
+                </li>
+              ))}
           </ul>
         </div>
       )}
