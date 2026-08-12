@@ -10,7 +10,9 @@ export function draftRules(p2Count: number, totalDocs: number): string[] {
   const rules = [
     'Rules:',
     '1. Only make claims supported by the provided documents.',
-    '2. Cite each claim with [Doc N] where N matches the document number below.',
+    '2. Cite each claim with [Doc N] where N matches the document number below. When',
+    '   citing several documents, prefer separate brackets ([Doc 3] [Doc 7]) or the',
+    '   forms [Doc 3, Doc 7] / [Docs 3, 7] — never prose lists inside one bracket.',
     "3. If the documents don't contain enough information to answer, say so explicitly.",
     '4. Note the date range of available documents.',
     '5. If documents suggest conflicting actions, present both sides.',

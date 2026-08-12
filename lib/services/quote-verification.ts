@@ -12,6 +12,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { parseDocCitations } from '@/lib/utils/citations';
 
 /** Quotes shorter than this are too generic to verify meaningfully. */
 const MIN_QUOTE_CHARS = 15;
@@ -51,7 +52,7 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
       .map((m) => m[1].trim())
       .filter((q) => q.length >= MIN_QUOTE_CHARS);
     if (quotes.length === 0) continue;
-    const citations = [...sentence.matchAll(/\[Doc (\d+)\]/g)].map((m) => parseInt(m[1], 10));
+    const citations = parseDocCitations(sentence);
     for (const quote of quotes) results.push({ quote, citations });
   }
   return results;
