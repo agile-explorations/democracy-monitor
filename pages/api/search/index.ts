@@ -226,7 +226,12 @@ async function synthesizeAndRespond(
 
   const contextDocs = allDocs.slice(0, RESEARCH_CONTEXT_DOCS);
   await enrichDocsForSynthesis(contextDocs, query);
-  const synthesis = await synthesizeResearchAnswer(query, contextDocs, opts.corpusStats);
+  const synthesis = await synthesizeResearchAnswer(
+    query,
+    contextDocs,
+    opts.corpusStats,
+    opts.alsoSearched,
+  );
   const result: CachedResearchResult = {
     synthesis,
     documents: allDocs,

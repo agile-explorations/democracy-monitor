@@ -52,18 +52,23 @@ function parseIdsParam(idsParam?: string): number[] | undefined {
  * cards display. The client passes the docsOnly cache key (dk); a miss
  * degrades silently to no snippets.
  */
-async function attachCachedSnippets(docs: ResearchDocument[], docsKey?: string): Promise<void> {
-  if (!docsKey || !/^[a-f0-9]{16}$/.test(docsKey)) return;
-  const cached = await cacheGet<{ documents?: Array<Record<string, unknown>> }>(
-    CacheKeys.searchResearchDocs(docsKey),
-  );
-  if (!cached?.documents) return;
+async function attachCachedSnippets(
+  docs: ResearchDocument[],
+  docsKey?: string,
+): Promise<string[] | undefined> {
+  if (!docsKey || !/^[a-f0-9]{16}$/.test(docsKey)) return undefined;
+  const cached = await cacheGet<{
+    documents?: Array<Record<string, unknown>>;
+    alsoSearched?: string[];
+  }>(CacheKeys.searchResearchDocs(docsKey));
+  if (!cached?.documents) return undefined;
   const byId = new Map(cached.documents.map((d) => [Number(d.id), d]));
   for (const doc of docs) {
     const meta = byId.get(doc.id);
     if (meta?.matchSnippet && !doc.matchSnippet) doc.matchSnippet = meta.matchSnippet as string;
     if (meta?.matchedAlias && !doc.matchedAlias) doc.matchedAlias = meta.matchedAlias as string;
   }
+  return cached.alsoSearched;
 }
 
 async function retrieveDocuments(
@@ -83,9 +88,9 @@ async function retrieveDocuments(
   if (ids && ids.length > 0) {
     const docs = await fetchResearchDocsByIds(ids.slice(0, CONTEXT_DOCS));
     if (docs.length === 0) return null;
-    await attachCachedSnippets(docs, docsKey);
+    const alsoSearched = await attachCachedSnippets(docs, docsKey);
     await enrichDocsForSynthesis(docs, query);
-    return { docs, prompt: buildSinglePassPrompt(query, docs, null) };
+    return { docs, prompt: buildSinglePassPrompt(query, docs, null, alsoSearched) };
   }
 
   const embedding = await embedText(query);
