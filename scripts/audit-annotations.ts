@@ -12,6 +12,7 @@
  *   pnpm audit:annotations --confirm                # 200-row stratified sample
  *   pnpm audit:annotations --confirm --all          # Full corpus (#712 fleet)
  *   pnpm audit:annotations --confirm --category X --era baseline|current
+ *   pnpm audit:annotations --confirm --ids-file IDS.txt      # convergence re-screen
  *   Flags: --sample N, --out FILE, --concurrency N (default 8 for --all/filters)
  */
 
@@ -76,6 +77,8 @@ interface SelectOpts {
   all?: boolean;
   category?: string;
   era?: 'baseline' | 'current';
+  /** Convergence loop (#712): re-screen exactly these assessment row ids. */
+  ids?: number[];
 }
 
 async function selectRows(opts: SelectOpts): Promise<SampleRow[]> {
@@ -95,11 +98,20 @@ async function selectRows(opts: SelectOpts): Promise<SampleRow[]> {
         ${limit ? sql`LIMIT ${limit}` : sql``}`)
     ).rows as unknown as SampleRow[];
   const filters: ReturnType<typeof sql>[] = [sql`TRUE`];
+  if (opts.ids && opts.ids.length > 0) {
+    filters.push(
+      sql`a.id IN (${sql.join(
+        opts.ids.map((i) => sql`${i}`),
+        sql`, `,
+      )})`,
+    );
+  }
   if (opts.category) filters.push(sql`a.category = ${opts.category}`);
   if (opts.era === 'baseline') filters.push(sql`d.published_at < ${T2_START}`);
   if (opts.era === 'current') filters.push(sql`d.published_at >= ${T2_START}`);
   const where = sql.join(filters, sql` AND `);
-  if (opts.all || opts.category || opts.era) return draw(where, null);
+  if (opts.all || opts.category || opts.era || (opts.ids && opts.ids.length > 0))
+    return draw(where, null);
   // Default: era-stratified random sample.
   const n = opts.sample ?? DEFAULT_SAMPLE;
   const perEra = Math.floor(n / 2);
@@ -150,9 +162,18 @@ async function main(): Promise<void> {
     ? args[args.indexOf('--out') + 1]
     : `/tmp/annotation-audit-${sampleN}.jsonl`;
 
+  const idsFile = args.includes('--ids-file') ? args[args.indexOf('--ids-file') + 1] : undefined;
   const opts: SelectOpts = {
     sample: sampleN,
     all: args.includes('--all'),
+    ids: idsFile
+      ? (require('fs') as typeof import('fs'))
+          .readFileSync(idsFile, 'utf8')
+          .split(/[\s,]+/)
+          .filter(Boolean)
+          .map(Number)
+          .filter(Number.isFinite)
+      : undefined,
     category: args.includes('--category') ? args[args.indexOf('--category') + 1] : undefined,
     era: args.includes('--era')
       ? (args[args.indexOf('--era') + 1] as 'baseline' | 'current')
@@ -160,7 +181,7 @@ async function main(): Promise<void> {
   };
   const concurrency = args.includes('--concurrency')
     ? Number(args[args.indexOf('--concurrency') + 1])
-    : opts.all || opts.category || opts.era
+    : opts.all || opts.category || opts.era || opts.ids
       ? 8
       : 1;
   const skip = alreadyJudged(outFile);
