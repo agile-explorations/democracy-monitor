@@ -266,3 +266,18 @@ describe('buildSinglePassPrompt (#552 tier contract)', () => {
     expect(prompt).toContain('=== RELATED QUESTIONS');
   });
 });
+
+describe('retrieval note (#712)', () => {
+  const docs = [makeDoc()];
+  it('cites searched terms and the scoping guard when provided', () => {
+    const prompt = buildSinglePassPrompt('q', docs, null, ['287g agreements', 'H.R. 3005']);
+    expect(prompt).toContain('--- RETRIEVAL NOTE ---');
+    expect(prompt).toContain('287g agreements | H.R. 3005');
+    expect(prompt).toContain('remains scoped to this retrieval');
+  });
+
+  it('omits the note without searched terms', () => {
+    expect(buildSinglePassPrompt('q', docs, null)).not.toContain('RETRIEVAL NOTE');
+    expect(buildSinglePassPrompt('q', docs, null, [])).not.toContain('RETRIEVAL NOTE');
+  });
+});

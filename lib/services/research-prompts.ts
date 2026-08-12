@@ -122,10 +122,31 @@ function buildCoverageSection(docs: ResearchDocument[], corpusStats: CorpusStats
 }
 
 /** Shared preamble + documents section for draft and single-pass prompts. */
+/** Retrieval-transparency note (#712 follow-up): the synthesis previously
+ *  under-described its own retrieval — recommending "keyword-specific
+ *  searches" that had in fact already run. Knowing the searched terms lets
+ *  coverage statements cite them; the guard clause keeps absence claims
+ *  scoped to the retrieval. */
+function retrievalNote(alsoSearched?: string[]): string[] {
+  if (!alsoSearched || alsoSearched.length === 0) return [];
+  return [
+    '',
+    '--- RETRIEVAL NOTE ---',
+    'Retrieval was hybrid: semantic similarity PLUS exact keyword search for these',
+    `corpus-validated terms: ${alsoSearched.join(' | ')}.`,
+    'When characterizing coverage you may cite these searched terms (e.g. "no floor',
+    'speeches appear in this retrieval, which also searched the exact terms ...").',
+    'Do not describe the retrieval as vector/similarity-only. Absence among these',
+    'documents remains scoped to this retrieval — exact-term search strengthens the',
+    'observation but does not prove absence in the corpus.',
+  ];
+}
+
 function buildPromptBody(
   query: string,
   docs: ResearchDocument[],
   corpusStats: CorpusStats | null,
+  alsoSearched?: string[],
 ): string[] {
   const p2Count = docs.filter((d) => d.p2Assessment).length;
   return [
@@ -139,6 +160,7 @@ function buildPromptBody(
     query,
     '',
     buildCoverageSection(docs, corpusStats),
+    ...retrievalNote(alsoSearched),
     '',
     '--- GOVERNMENT DOCUMENTS ---',
     formatDocumentContext(docs),
@@ -174,10 +196,13 @@ export function buildDraftPrompt(
   query: string,
   docs: ResearchDocument[],
   corpusStats?: CorpusStats | null,
+  alsoSearched?: string[],
 ): string {
-  return [...buildPromptBody(query, docs, corpusStats ?? null), '', ...outputFormatSection()].join(
-    '\n',
-  );
+  return [
+    ...buildPromptBody(query, docs, corpusStats ?? null, alsoSearched),
+    '',
+    ...outputFormatSection(),
+  ].join('\n');
 }
 
 export function buildFeedbackPrompt(
@@ -238,10 +263,11 @@ export function buildSinglePassPrompt(
   query: string,
   docs: ResearchDocument[],
   corpusStats?: CorpusStats | null,
+  alsoSearched?: string[],
 ): string {
   const stats = corpusStats ?? null;
   return [
-    ...buildPromptBody(query, docs, stats),
+    ...buildPromptBody(query, docs, stats, alsoSearched),
     ...buildComparativeInstruction(query, docs),
     '',
     ...selfVerificationChecklist(!!stats),

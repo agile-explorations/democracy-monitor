@@ -1,21 +1,19 @@
 /**
- * Sampled annotation-vs-document audit (#711): estimates how often P2 review
- * annotations (ai_document_assessments.reasoning) assert specifics the
- * underlying document does not support. Born from two found poisonings
- * (EO 14029 credited with EO 14003's revocation; a statutory 30-day notice
- * put in a speaker's mouth) that re-poisoned research answers through the
- * synthesis context despite prompt-level guards.
- *
- * Stratified random sample (era x proportional category), one gpt-4o-mini
- * call per row classifying each specific claim against up to 40k chars of
- * stored content: SUPPORTED / UNSUPPORTED_EXTERNAL / CONTRADICTED /
- * UNVERIFIABLE. Read-only against the target database except for nothing —
- * results print as a report plus a JSONL ledger for corrections.
+ * Annotation-vs-document audit (#711/#712): classifies each specific claim
+ * in P2 review annotations (ai_document_assessments.reasoning) against up
+ * to 40k chars of the stored document: SUPPORTED / UNSUPPORTED_EXTERNAL /
+ * CONTRADICTED / UNVERIFIABLE. Read-only; results append to a JSONL ledger
+ * (resumable — rows already in the ledger are skipped). The cheap screener
+ * over-flags ~50%: flagged rows go through verify-annotation-flags.ts
+ * (Sonnet, quote-the-evidence) before any correction is applied.
  *
  * Usage:
- *   pnpm audit:annotations                 # Dry run: sample + cost model only
- *   pnpm audit:annotations --confirm       # Run the audit (default 200 rows)
- *   pnpm audit:annotations --confirm --sample 100 --out FILE.jsonl
+ *   pnpm audit:annotations                          # Dry run: cost model
+ *   pnpm audit:annotations --confirm                # 200-row stratified sample
+ *   pnpm audit:annotations --confirm --all          # Full corpus (#712 fleet)
+ *   pnpm audit:annotations --confirm --category X --era baseline|current
+ *   pnpm audit:annotations --confirm --ids-file IDS.txt      # convergence re-screen
+ *   Flags: --sample N, --out FILE, --concurrency N (default 8 for --all/filters)
  */
 
 import { appendFileSync } from 'fs';
@@ -74,25 +72,70 @@ General characterizations (tone, significance, erosion typing) are NOT specific 
 Return ONLY JSON: {"claims":[{"claim":"...","classification":"...","note":"..."}],"verdict":"clean|minor|poisoned"}
 verdict: "poisoned" if any claim is CONTRADICTED or UNSUPPORTED_EXTERNAL on a load-bearing specific (who did what, which instrument, statutory requirements, quoted words); "minor" for small deviations only (a shortened quote, an approximated number); "clean" otherwise.`;
 
-async function drawSample(n: number): Promise<SampleRow[]> {
+interface SelectOpts {
+  sample?: number;
+  all?: boolean;
+  category?: string;
+  era?: 'baseline' | 'current';
+  /** Convergence loop (#712): re-screen exactly these assessment row ids. */
+  ids?: number[];
+}
+
+async function selectRows(opts: SelectOpts): Promise<SampleRow[]> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
-  const perEra = Math.floor(n / 2);
-  const draw = async (eraCond: ReturnType<typeof sql>, era: string, count: number) =>
+  const eraCase = sql`CASE WHEN d.published_at < ${T2_START} THEN 'baseline' ELSE 'current' END`;
+  const draw = async (where: ReturnType<typeof sql>, limit: number | null) =>
     (
       await db.execute(sql`
-        SELECT a.id, a.category, a.reasoning, d.id AS doc_id, ${era} AS era,
+        SELECT a.id, a.category, a.reasoning, d.id AS doc_id, ${eraCase} AS era,
           LEFT(d.content, ${DOC_CONTENT_CHARS}) AS content, length(d.content) AS content_len
         FROM ai_document_assessments a
         JOIN documents d ON d.url = a.url AND d.category = a.category
         WHERE a.pass = 2 AND length(a.reasoning) > 100 AND d.content IS NOT NULL
-          AND ${eraCond}
+          AND ${where}
         ORDER BY md5(a.id::text || 'audit-711')
-        LIMIT ${count}`)
+        ${limit ? sql`LIMIT ${limit}` : sql``}`)
     ).rows as unknown as SampleRow[];
-  const baseline = await draw(sql`d.published_at < ${T2_START}`, 'baseline', perEra);
-  const current = await draw(sql`d.published_at >= ${T2_START}`, 'current', n - perEra);
-  return [...baseline, ...current];
+  const filters: ReturnType<typeof sql>[] = [sql`TRUE`];
+  if (opts.ids && opts.ids.length > 0) {
+    filters.push(
+      sql`a.id IN (${sql.join(
+        opts.ids.map((i) => sql`${i}`),
+        sql`, `,
+      )})`,
+    );
+  }
+  if (opts.category) filters.push(sql`a.category = ${opts.category}`);
+  if (opts.era === 'baseline') filters.push(sql`d.published_at < ${T2_START}`);
+  if (opts.era === 'current') filters.push(sql`d.published_at >= ${T2_START}`);
+  const where = sql.join(filters, sql` AND `);
+  if (opts.all || opts.category || opts.era || (opts.ids && opts.ids.length > 0))
+    return draw(where, null);
+  // Default: era-stratified random sample.
+  const n = opts.sample ?? DEFAULT_SAMPLE;
+  const perEra = Math.floor(n / 2);
+  const baseline = await draw(sql`d.published_at < ${T2_START}`, perEra);
+  const current = await draw(sql`d.published_at >= ${T2_START}`, n - perEra);
+  return [
+    ...baseline.filter((r) => r.era === 'baseline'),
+    ...current.filter((r) => r.era === 'current'),
+  ].slice(0, n);
+}
+
+/** Ids already judged in an existing ledger (resume support). */
+function alreadyJudged(outFile: string): Set<number> {
+  try {
+    const { readFileSync } = require('fs') as typeof import('fs');
+    return new Set(
+      readFileSync(outFile, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((l) => (JSON.parse(l) as RowVerdict).rowId),
+    );
+  } catch {
+    return new Set();
+  }
 }
 
 function parseVerdict(content: string, rowId: number, era: string, cat: string): RowVerdict | null {
@@ -119,7 +162,31 @@ async function main(): Promise<void> {
     ? args[args.indexOf('--out') + 1]
     : `/tmp/annotation-audit-${sampleN}.jsonl`;
 
-  const rows = await drawSample(sampleN);
+  const idsFile = args.includes('--ids-file') ? args[args.indexOf('--ids-file') + 1] : undefined;
+  const opts: SelectOpts = {
+    sample: sampleN,
+    all: args.includes('--all'),
+    ids: idsFile
+      ? (require('fs') as typeof import('fs'))
+          .readFileSync(idsFile, 'utf8')
+          .split(/[\s,]+/)
+          .filter(Boolean)
+          .map(Number)
+          .filter(Number.isFinite)
+      : undefined,
+    category: args.includes('--category') ? args[args.indexOf('--category') + 1] : undefined,
+    era: args.includes('--era')
+      ? (args[args.indexOf('--era') + 1] as 'baseline' | 'current')
+      : undefined,
+  };
+  const concurrency = args.includes('--concurrency')
+    ? Number(args[args.indexOf('--concurrency') + 1])
+    : opts.all || opts.category || opts.era || opts.ids
+      ? 8
+      : 1;
+  const skip = alreadyJudged(outFile);
+  const rows = (await selectRows(opts)).filter((r) => !skip.has(r.id));
+  if (skip.size > 0) console.log(`[audit-annotations] resume: ${skip.size} rows already judged`);
   const callCap = Math.ceil(rows.length * CALL_CAP_FACTOR);
   console.log(
     `[audit-annotations] sample=${rows.length} (baseline ${rows.filter((r) => r.era === 'baseline').length} / current ${rows.filter((r) => r.era === 'current').length}), call cap=${callCap}, est cost ~$${((rows.length * 10500 * 0.15) / 1e6 + (rows.length * 350 * 0.6) / 1e6).toFixed(2)}`,
@@ -132,24 +199,52 @@ async function main(): Promise<void> {
   const provider = getProvider('openai');
   if (!provider.isAvailable()) throw new Error('OPENAI_API_KEY not configured');
   let calls = 0;
+  let consecutiveFailures = 0;
   const verdicts: RowVerdict[] = [];
-  for (const row of rows) {
+  const completeWithRetry = async (prompt: string) => {
+    // 429s and transient throttles back off instead of failing the row; a
+    // dead account (2026-08-11: 'no credits remaining' burned 44k rows as
+    // no-op failures) trips the circuit breaker below instead.
+    const delays = [5000, 20000, 60000];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await provider.complete(prompt, {
+          temperature: 0,
+          model: AUDIT_MODEL,
+          maxTokens: 2500,
+        });
+      } catch (err) {
+        const msg = (err as Error).message;
+        if (attempt >= delays.length || !/429|rate|overloaded|529/i.test(msg)) throw err;
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+      }
+    }
+  };
+  const judgeRow = async (row: SampleRow) => {
     if (calls >= callCap) throw new Error(`call cap ${callCap} reached — aborting (#563)`);
+    if (consecutiveFailures >= 30) {
+      throw new Error('30 consecutive failures — provider outage or dead account; aborting');
+    }
     calls++;
     try {
-      const result = await provider.complete(
+      const result = await completeWithRetry(
         AUDIT_PROMPT(row.reasoning, row.content ?? '', row.content_len > DOC_CONTENT_CHARS),
-        { temperature: 0, model: AUDIT_MODEL, maxTokens: 2500 },
       );
+      consecutiveFailures = 0;
       const verdict = parseVerdict(result.content, row.id, row.era, row.category);
       if (verdict) {
         verdicts.push(verdict);
         appendFileSync(outFile, JSON.stringify(verdict) + '\n');
       }
     } catch (err) {
+      consecutiveFailures++;
       console.warn(`[audit-annotations] row ${row.id} failed:`, (err as Error).message);
     }
-    if (calls % 25 === 0) console.log(`[audit-annotations] ${calls}/${rows.length}...`);
+    if (calls % 100 === 0) console.log(`[audit-annotations] ${calls}/${rows.length}...`);
+  };
+  // Bounded worker pool.
+  for (let i = 0; i < rows.length; i += concurrency) {
+    await Promise.all(rows.slice(i, i + concurrency).map(judgeRow));
   }
 
   const byVerdict = (v: RowVerdict['verdict']) => verdicts.filter((x) => x.verdict === v);

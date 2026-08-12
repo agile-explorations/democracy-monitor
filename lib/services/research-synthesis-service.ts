@@ -143,6 +143,7 @@ export async function synthesizeResearchAnswer(
   query: string,
   documents: ResearchDocument[],
   corpusStats?: CorpusStats | null,
+  alsoSearched?: string[],
 ): Promise<ResearchSynthesisResult> {
   const claude = getProvider('anthropic');
   const openai = getProvider('openai');
@@ -150,7 +151,7 @@ export async function synthesizeResearchAnswer(
   if (!openai.isAvailable()) throw new Error('OpenAI API key not configured');
 
   const stats = corpusStats ?? null;
-  const draftResult = await runDraft(claude, query, documents, stats);
+  const draftResult = await runDraft(claude, query, documents, stats, alsoSearched);
   const drafts = parseDraftResponse(draftResult.content);
   const feedbackResult = await runFeedback(openai, drafts, query, documents, stats);
   const revisionPrompt = buildRevisionPrompt(
@@ -191,10 +192,11 @@ async function runDraft(
   query: string,
   docs: ResearchDocument[],
   stats: CorpusStats | null,
+  alsoSearched?: string[],
 ) {
   return callWithRetry(
     () =>
-      provider.complete(buildDraftPrompt(query, docs, stats), {
+      provider.complete(buildDraftPrompt(query, docs, stats, alsoSearched), {
         model: DRAFT_MODEL,
         maxTokens: 4096,
         temperature: SYNTHESIS_TEMPERATURE,
