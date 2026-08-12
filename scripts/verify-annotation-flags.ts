@@ -61,12 +61,17 @@ DOCUMENT CONTENT${truncated ? ' (truncated)' : ''}:
 ${content}
 
 For each flagged claim, find the document text that settles it. Rules:
-- If the claim is stated in or directly supported by the document, or the annotation already attributes it properly ("The speaker charges...", "(context: ...)"), the flag is a FALSE_POSITIVE for that claim.
+- A claim is supported ONLY if the document's text states it AND the annotation presents it the way the document does. If the document contains it as someone's RHETORIC but the annotation states it as established fact, that is a REAL DEFECT (rhetoric-as-fact), not a false positive.
 - The annotation's own analytical judgments (significance, routineness, erosion typing) are its job — never defects.
 - Real defects are: rhetoric stated as fact without attribution; real-world knowledge presented as document content; causal acts credited to the wrong instrument; misdescriptions of what the document says.
 
 If EVERY flagged claim is a false positive: verdict FALSE_POSITIVE.
-If ANY flagged claim is a real defect: verdict TRUE_POSITIVE, and draft the corrected annotation — a MINIMAL edit of the original preserving its assessment and framing, fixing only the defect(s) (add attribution "The speaker charges that...", mark external knowledge "(context: ...)", or correct the misdescription). Keep similar length.
+If ANY flagged claim is a real defect: verdict TRUE_POSITIVE, and draft the corrected annotation. Drafting rules:
+- Fix EVERY defect of these classes in the ENTIRE annotation, not just the flagged span — before returning, re-audit your corrected text sentence by sentence against the document to the same standard; a defect surviving in the "corrected" text is a failed correction.
+- NEVER attribute a statement to a named person unless the document shows that person saying it — re-voicing analyst commentary as "Senator X charges..." fabricates a quote. If a claim has no in-document source, either mark it "(context: ...)" as the annotation's own analysis, or delete it.
+- A correction that merely rephrases the same unsupported claim ("is framed by proponents as X" -> "proponents frame it as X") is NOT a fix — remove or context-mark the claim.
+- Documents that are only a bill title or a one-line summary support almost nothing: strip or context-mark every mechanism/effect claim beyond the title's own words.
+- Preserve the original assessment stance and keep similar length where possible.
 
 Return ONLY JSON:
 {"verdict":"TRUE_POSITIVE|FALSE_POSITIVE","evidence":"the document text that settles it (<=300 chars)","correctedReasoning":"full corrected text (TRUE_POSITIVE only)"}`;
