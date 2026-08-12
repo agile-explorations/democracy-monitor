@@ -100,7 +100,11 @@ export async function verifyAnswerQuotes(
   answer: string,
   docs: Array<{ citationIndex: number; id: number }>,
 ): Promise<QuoteVerificationResult | null> {
-  const extracted = extractQuotedClaims(answer);
+  // Only quotes whose sentence carries a [Doc N] citation are verified: an
+  // uncited quoted string is usually the model quoting terminology or
+  // suggested search phrases, not a document — verifying those against
+  // documents produced scary false alarms ("8 of 8 unverified", #712).
+  const extracted = extractQuotedClaims(answer).filter((q) => q.citations.length > 0);
   if (extracted.length === 0) {
     return { totalQuotes: 0, verifiedCount: 0, unverified: [] };
   }
@@ -108,6 +112,9 @@ export async function verifyAnswerQuotes(
   const db = getDb();
   const idByCitation = new Map(docs.map((d) => [d.citationIndex, d.id]));
   const neededIds = collectNeededIds(extracted, docs, idByCitation);
+  if (neededIds.size === 0) {
+    return { totalQuotes: extracted.length, verifiedCount: 0, unverified: [] };
+  }
   try {
     const rows = await db.execute(sql`
       SELECT id, content FROM documents WHERE id IN (${sql.join(
@@ -122,7 +129,7 @@ export async function verifyAnswerQuotes(
     );
     const unverified: QuoteVerificationResult['unverified'] = [];
     for (const q of extracted) {
-      const targets = q.citations.length > 0 ? q.citations : docs.map((d) => d.citationIndex);
+      const targets = q.citations;
       const found = targets.some((c) => {
         const id = idByCitation.get(c);
         const content = id != null ? contentById.get(id) : undefined;
