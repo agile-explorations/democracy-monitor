@@ -13,6 +13,10 @@ export function draftRules(p2Count: number, totalDocs: number): string[] {
     '2. Cite each claim with [Doc N] where N matches the document number below. When',
     '   citing several documents, prefer separate brackets ([Doc 3] [Doc 7]) or the',
     '   forms [Doc 3, Doc 7] / [Docs 3, 7] — never prose lists inside one bracket.',
+    '   Words in quotation marks must appear verbatim in the document cited in the',
+    '   same sentence — before finalizing, re-check each quoted phrase against its',
+    "   cited document's text, and if you cannot confirm which document a phrase",
+    '   came from, paraphrase it without quotation marks instead.',
     "3. If the documents don't contain enough information to answer, say so explicitly.",
     '4. Note the date range of available documents.',
     '5. If documents suggest conflicting actions, present both sides.',
@@ -38,7 +42,14 @@ export function draftRules(p2Count: number, totalDocs: number): string[] {
     '    documents for reception, characterization, and political response, attributed as such',
     '    ("Senator X characterized...").',
   ];
-  rules.push(
+  rules.push(...answerDisciplineRules());
+  if (p2Count > 0) rules.push(...annotationRules(p2Count, totalDocs));
+  return rules;
+}
+
+/** Answer-discipline rules 10a-10c (#707 audit). */
+function answerDisciplineRules(): string[] {
+  return [
     '10a. PUBLIC ANSWER discipline: the public answer simplifies the expert answer and',
     '    must not ADD anything — no quotation, no legislative status (e.g. "passed"),',
     '    and no absence claim that the expert answer does not contain.',
@@ -52,9 +63,7 @@ export function draftRules(p2Count: number, totalDocs: number): string[] {
     '    the documents do not themselves draw belongs to the answer ("taken together,',
     '    these documents suggest..."), not to a speaker or document ("the speech',
     '    explicitly connects...").',
-  );
-  if (p2Count > 0) rules.push(...annotationRules(p2Count, totalDocs));
-  return rules;
+  ];
 }
 
 /** Rules for documents carrying automated-review annotations (#707 audit). */

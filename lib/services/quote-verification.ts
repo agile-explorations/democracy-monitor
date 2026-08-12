@@ -29,13 +29,16 @@ export interface QuoteVerificationResult {
   unverified: Array<{ quote: string; citations: number[] }>;
 }
 
-/** Normalize for matching: curly quotes/apostrophes, whitespace runs, case. */
+/** Normalize for matching: curly quotes/apostrophes, whitespace runs, case.
+ *  Hyphen-whitespace collapse absorbs line-break hyphenation artifacts in
+ *  stored document text ("policy- determining"); symmetric on both sides. */
 export function normalizeForMatch(text: string): string {
   return text
     .replace(/[‘’ʼ]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/[–—]/g, '-')
     .replace(/\[…\]|…|\.\.\./g, ' ')
+    .replace(/\s*-\s*/g, '-')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();

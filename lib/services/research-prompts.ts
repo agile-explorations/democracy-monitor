@@ -120,10 +120,11 @@ function buildCoverageSection(
       ? [
           'Retrieval was hybrid: vector similarity with a recency boost PLUS exact keyword',
           `search for these corpus-validated terms: ${alsoSearched.join(' | ')}.`,
-          'When characterizing coverage you may cite these searched terms. Absence among',
-          'these documents remains scoped to this retrieval — exact-term search strengthens',
-          'the observation but does not prove absence in the corpus. Older relevant',
-          'documents may still be underrepresented.',
+          'When characterizing coverage you may cite these searched terms. If you describe',
+          'the retrieval method anywhere in the answer, describe it as this hybrid — never',
+          'as vector similarity alone. Absence among these documents remains scoped to this',
+          'retrieval — exact-term search strengthens the observation but does not prove',
+          'absence in the corpus. Older relevant documents may still be underrepresented.',
         ]
       : [
           'Note: Retrieval uses vector similarity with a recency boost. Older relevant documents',
