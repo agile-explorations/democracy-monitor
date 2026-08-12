@@ -71,6 +71,7 @@ If ANY flagged claim is a real defect: verdict TRUE_POSITIVE, and draft the corr
 - NEVER attribute a statement to a named person unless the document shows that person saying it — re-voicing analyst commentary as "Senator X charges..." fabricates a quote. If a claim has no in-document source, either mark it "(context: ...)" as the annotation's own analysis, or delete it.
 - A correction that merely rephrases the same unsupported claim ("is framed by proponents as X" -> "proponents frame it as X") is NOT a fix — remove or context-mark the claim.
 - Documents that are only a bill title or a one-line summary support almost nothing: strip or context-mark every mechanism/effect claim beyond the title's own words.
+- Conditional effect/impact claims and superlatives ("would constitute...", "eliminating the capacity...", "unprecedented") must either quote the document or carry a "(context: ...)" marker — apply this to every such phrase in the paragraph, including ones carried over from the original.
 - Preserve the original assessment stance and keep similar length where possible.
 
 Respond with ONLY a single JSON object — no analysis, no preamble, your first character must be "{":
