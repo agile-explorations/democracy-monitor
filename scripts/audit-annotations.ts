@@ -178,21 +178,45 @@ async function main(): Promise<void> {
   const provider = getProvider('openai');
   if (!provider.isAvailable()) throw new Error('OPENAI_API_KEY not configured');
   let calls = 0;
+  let consecutiveFailures = 0;
   const verdicts: RowVerdict[] = [];
+  const completeWithRetry = async (prompt: string) => {
+    // 429s and transient throttles back off instead of failing the row; a
+    // dead account (2026-08-11: 'no credits remaining' burned 44k rows as
+    // no-op failures) trips the circuit breaker below instead.
+    const delays = [5000, 20000, 60000];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await provider.complete(prompt, {
+          temperature: 0,
+          model: AUDIT_MODEL,
+          maxTokens: 2500,
+        });
+      } catch (err) {
+        const msg = (err as Error).message;
+        if (attempt >= delays.length || !/429|rate|overloaded|529/i.test(msg)) throw err;
+        await new Promise((r) => setTimeout(r, delays[attempt]));
+      }
+    }
+  };
   const judgeRow = async (row: SampleRow) => {
     if (calls >= callCap) throw new Error(`call cap ${callCap} reached — aborting (#563)`);
+    if (consecutiveFailures >= 30) {
+      throw new Error('30 consecutive failures — provider outage or dead account; aborting');
+    }
     calls++;
     try {
-      const result = await provider.complete(
+      const result = await completeWithRetry(
         AUDIT_PROMPT(row.reasoning, row.content ?? '', row.content_len > DOC_CONTENT_CHARS),
-        { temperature: 0, model: AUDIT_MODEL, maxTokens: 2500 },
       );
+      consecutiveFailures = 0;
       const verdict = parseVerdict(result.content, row.id, row.era, row.category);
       if (verdict) {
         verdicts.push(verdict);
         appendFileSync(outFile, JSON.stringify(verdict) + '\n');
       }
     } catch (err) {
+      consecutiveFailures++;
       console.warn(`[audit-annotations] row ${row.id} failed:`, (err as Error).message);
     }
     if (calls % 100 === 0) console.log(`[audit-annotations] ${calls}/${rows.length}...`);
