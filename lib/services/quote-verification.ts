@@ -30,21 +30,29 @@ export interface QuoteVerificationResult {
 }
 
 /** Normalize for matching: curly quotes/apostrophes, whitespace runs, case.
- *  Hyphen-whitespace collapse absorbs line-break hyphenation artifacts in
- *  stored document text ("policy- determining"); citation collapse unifies
+ *  Hyphen deletion absorbs line-break hyphenation artifacts in stored
+ *  document text ("de- lineated" = "delineated"); citation collapse unifies
  *  statutory spellings ("287(g)" vs "287g") now that answers quote across
  *  both (#716). All transforms are symmetric on quote and source. */
 export function normalizeForMatch(text: string): string {
-  return text
-    .replace(/[‘’ʼ]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[–—]/g, '-')
-    .replace(/\[…\]|…|\.\.\./g, ' ')
-    .replace(/\s*-\s*/g, '-')
-    .replace(/\b(\d+)\(([a-z])\)/gi, '$1$2')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
+  return (
+    text
+      // Quote characters are deleted (not normalized): documents nest quotes
+      // ("so-called 'independent regulatory agencies'") that answers quote
+      // without the inner marks; contractions stay symmetric (don't -> dont).
+      .replace(/[‘’ʼ'“”"]/g, '')
+      .replace(/[–—]/g, '-')
+      .replace(/\[…\]|…|\.\.\./g, ' ')
+      // Hyphens are deleted outright (not collapsed): stored text hyphenates
+      // plain words at line breaks ("de- lineated" = "delineated"), which no
+      // hyphen-preserving rule can distinguish from a real hyphen. Deletion is
+      // symmetric on quote and source, so genuine hyphens still match.
+      .replace(/\s*-\s*/g, '')
+      .replace(/\b(\d+)\(([a-z])\)/gi, '$1$2')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase()
+  );
 }
 
 /** Extract quoted spans (straight or curly) with the [Doc N] citations that
@@ -65,11 +73,14 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
 }
 
 /** Ellipsis-tolerant containment: every ellipsis-separated fragment of the
- *  quote must appear in order in the source. Pure — unit-tested. */
+ *  quote must appear in order in the source. Boundary punctuation is trimmed
+ *  from fragments (American style tucks commas/periods INSIDE quotation
+ *  marks — "efforts," must match a document that reads "efforts."); interior
+ *  punctuation still matches verbatim. Pure — unit-tested. */
 export function quoteAppearsIn(quote: string, normalizedSource: string): boolean {
   const fragments = quote
     .split(/\[…\]|…|\.\.\./)
-    .map((f) => normalizeForMatch(f))
+    .map((f) => normalizeForMatch(f).replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ''))
     .filter((f) => f.length >= 8);
   if (fragments.length === 0) return true;
   let cursor = 0;
