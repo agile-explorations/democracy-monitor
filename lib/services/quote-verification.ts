@@ -31,7 +31,9 @@ export interface QuoteVerificationResult {
 
 /** Normalize for matching: curly quotes/apostrophes, whitespace runs, case.
  *  Hyphen-whitespace collapse absorbs line-break hyphenation artifacts in
- *  stored document text ("policy- determining"); symmetric on both sides. */
+ *  stored document text ("policy- determining"); citation collapse unifies
+ *  statutory spellings ("287(g)" vs "287g") now that answers quote across
+ *  both (#716). All transforms are symmetric on quote and source. */
 export function normalizeForMatch(text: string): string {
   return text
     .replace(/[‘’ʼ]/g, "'")
@@ -39,6 +41,7 @@ export function normalizeForMatch(text: string): string {
     .replace(/[–—]/g, '-')
     .replace(/\[…\]|…|\.\.\./g, ' ')
     .replace(/\s*-\s*/g, '-')
+    .replace(/\b(\d+)\(([a-z])\)/gi, '$1$2')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
