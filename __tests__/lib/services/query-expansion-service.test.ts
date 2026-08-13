@@ -4,6 +4,7 @@ import {
   isBoilerplateAlias,
   parseAliasResponse,
   windowFilters,
+  citationVariants,
 } from '@/lib/services/query-expansion-service';
 
 describe('parseAliasResponse', () => {
@@ -36,6 +37,25 @@ describe('parseAliasResponse', () => {
     const parsed = parseAliasResponse(twelve);
     expect(parsed).toHaveLength(8);
     expect(parsed[0]).toBe('Term 0');
+  });
+});
+
+describe('citationVariants', () => {
+  it('parenthesizes bare subsection letters (287g -> 287(g))', () => {
+    expect(citationVariants('287g agreements')).toEqual(['287(g) agreements']);
+  });
+
+  it('collapses parenthesized subsections (212(f) -> 212f)', () => {
+    expect(citationVariants('INA 212(f)')).toEqual(['INA 212f']);
+  });
+
+  it('returns [] when no citation pattern is present', () => {
+    expect(citationVariants('Schedule F')).toEqual([]);
+    expect(citationVariants('H.R. 3005')).toEqual([]);
+  });
+
+  it('handles multiple citations in one phrase', () => {
+    expect(citationVariants('287g and 235b')).toEqual(['287(g) and 235(b)']);
   });
 });
 

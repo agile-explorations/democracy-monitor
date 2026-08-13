@@ -104,6 +104,24 @@ export function isBoilerplateAlias(phrase: string): boolean {
   return BOILERPLATE_ALIASES.test(phrase.trim());
 }
 
+/**
+ * Statutory-citation spelling variants (#712): users and models write "287g"
+ * while the record writes "287(g)" — and FTS tokenizes them disjointly
+ * ('287g' vs '287' + 'g'), so the wrong spelling makes the keyword arm blind
+ * to 208 floor speeches (measured 2026-08-12). Generate the alternate
+ * spelling for both directions; corpus validation keeps only forms that
+ * actually match. Exported for tests.
+ */
+export function citationVariants(phrase: string): string[] {
+  const variants = new Set<string>();
+  const parenthesized = phrase.replace(/\b(\d+)([a-z])\b/gi, '$1($2)');
+  if (parenthesized !== phrase) variants.add(parenthesized);
+  const collapsed = phrase.replace(/\b(\d+)\(([a-z])\)/gi, '$1$2');
+  if (collapsed !== phrase) variants.add(collapsed);
+  variants.delete(phrase);
+  return [...variants];
+}
+
 /** Window filter clause for validation counts. Exported for tests. */
 export function windowFilters(w: ExpansionWindow) {
   const conditions = [
@@ -168,7 +186,19 @@ export async function validateAliases(
     MIN_MATCH_CAP,
     Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
   );
-  const candidates = phrases.filter((p) => !isBoilerplateAlias(p));
+  const base = phrases.filter((p) => !isBoilerplateAlias(p));
+  // Statutory-citation variants ride along; validation decides which spelling
+  // the corpus actually uses. Dedupe case-insensitively, originals first.
+  const seen = new Set(base.map((p) => p.toLowerCase()));
+  const candidates = [...base];
+  for (const p of base) {
+    for (const v of citationVariants(p)) {
+      if (!seen.has(v.toLowerCase())) {
+        seen.add(v.toLowerCase());
+        candidates.push(v);
+      }
+    }
+  }
   // Counts run concurrently — bounded index scans; order is preserved. Each
   // alias is counted only to maxMatches+1: enough to decide the cap, and
   // armWeight saturates well below that anyway.
@@ -206,6 +236,7 @@ export async function expandAndValidate(
 
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {
   const material = [
+    'v2', // bumped for citation variants (#712) — invalidates pre-fix caches
     query.toLowerCase().trim(),
     window?.dateFrom ?? '',
     window?.dateTo ?? '',
