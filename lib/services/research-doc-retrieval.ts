@@ -15,6 +15,7 @@ import {
   extractDateFloor,
 } from '@/lib/services/era-extraction';
 import { expandAndValidate } from '@/lib/services/query-expansion-service';
+import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
 import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -36,23 +37,26 @@ function intersectEraWindows(eras: EraWindow[], dateFrom?: string, dateTo?: stri
   });
 }
 
-/** Corpus-validated alias phrases for the windows searched (#702) — cache
- *  hits, since searchResearch already ran the same expansion internally. */
+/** Corpus-validated aliases (phrase + corpus match count) for the windows
+ *  searched (#702, counts #713) — cache hits, since searchResearch already
+ *  ran the same expansion internally. Multi-window merges keep the max count. */
 async function collectAlsoSearched(
   query: string,
   windows: Array<{ from?: string; to?: string }>,
   tier: ResearchTierFilter,
-): Promise<string[]> {
-  const phrases = new Set<string>();
+): Promise<ValidatedAlias[]> {
+  const byPhrase = new Map<string, number>();
   for (const w of windows) {
     const aliases = await expandAndValidate(query, {
       dateFrom: w.from,
       dateTo: w.to,
       tier: tier === 'all' ? undefined : tier,
     });
-    for (const a of aliases) phrases.add(a.phrase);
+    for (const a of aliases) {
+      byPhrase.set(a.phrase, Math.max(byPhrase.get(a.phrase) ?? 0, a.matches));
+    }
   }
-  return [...phrases];
+  return [...byPhrase].map(([phrase, matches]) => ({ phrase, matches }));
 }
 
 /** Tier balance survives the re-rank on mixed-tier retrievals (#707). */
@@ -102,7 +106,7 @@ export async function retrieveResearchDocs(
   docs: ResearchDocument[];
   strata: RetrievalStratum[] | null;
   inferredFrom: string | null;
-  alsoSearched: string[];
+  alsoSearched: ValidatedAlias[];
 }> {
   // Range phrases in the question ("since January 2025") become a date floor
   // when the user has not set explicit dates; surfaced in the response so

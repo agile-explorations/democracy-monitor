@@ -94,9 +94,12 @@ describe('formatResearchResponse', () => {
 
   it('includes corpusStats and alsoSearched when provided', () => {
     const withStats = { ...cachedResult(), corpusStats: { totalMatching: 42 } };
-    const res = formatResearchResponse(withStats, [doc()], false, ['Schedule F']);
+    const res = formatResearchResponse(withStats, [doc()], false, [
+      { phrase: 'Schedule F', matches: 42 },
+    ]);
     expect((res.corpusStats as { totalMatching: number }).totalMatching).toBe(42);
     expect(res.alsoSearched).toEqual(['Schedule F']);
+    expect(res.searchedTerms).toEqual([{ phrase: 'Schedule F', matches: 42 }]);
   });
 });
 
@@ -127,9 +130,12 @@ describe('buildDocsOnlyPayload', () => {
 
   it('includes strata, inferred floor, and chips when present', () => {
     const strata = [{ key: 'trump_t1', label: 'Trump 1', from: '2017-01-20', docCount: 5 }];
-    const payload = buildDocsOnlyPayload([doc()], 0.5, strata, '2025-01-20', ['Schedule F']);
+    const payload = buildDocsOnlyPayload([doc()], 0.5, strata, '2025-01-20', [
+      { phrase: 'Schedule F', matches: 42 },
+    ]);
     expect(payload.strata).toEqual(strata);
     expect(payload.inferredDateFrom).toBe('2025-01-20');
     expect(payload.alsoSearched).toEqual(['Schedule F']);
+    expect(payload.searchedTerms).toEqual([{ phrase: 'Schedule F', matches: 42 }]);
   });
 });

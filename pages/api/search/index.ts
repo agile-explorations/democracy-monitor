@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
+import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
@@ -211,7 +212,7 @@ async function synthesizeAndRespond(
   allDocs: ResearchDocument[],
   opts: {
     editorial: boolean;
-    alsoSearched: string[];
+    alsoSearched: ValidatedAlias[];
     avgSimilarity: number;
     corpusStats: CorpusStats | null;
   },

@@ -7,6 +7,7 @@
  */
 
 import { getProvider } from '@/lib/ai/provider';
+import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import type { AICompletionResult } from '@/lib/types';
 import {
   buildDraftPrompt,
@@ -146,7 +147,7 @@ export async function synthesizeResearchAnswer(
   query: string,
   documents: ResearchDocument[],
   corpusStats?: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ): Promise<ResearchSynthesisResult> {
   const claude = getProvider('anthropic');
   const openai = getProvider('openai');
@@ -195,7 +196,7 @@ async function runDraft(
   query: string,
   docs: ResearchDocument[],
   stats: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ) {
   return callWithRetry(
     () =>
