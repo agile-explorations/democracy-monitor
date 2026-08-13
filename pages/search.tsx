@@ -479,7 +479,9 @@ export default function SearchPage() {
         <ul className="mt-1.5 ml-4 space-y-0.5 text-xs text-dm-text-secondary list-disc">
           <li>
             Ask for documents, not abstractions: name the kind and a subject — &ldquo;court opinions
-            on removal power&rdquo; beats &ldquo;documents about judicial review&rdquo;.
+            on removal power&rdquo; beats &ldquo;documents about judicial review&rdquo;. For floor
+            speeches and hearings, also click Commentary &amp; debate — naming the kind in the
+            question is a hint, the filter is a guarantee.
           </li>
           <li>
             Name the administrations you want compared (&ldquo;under Biden vs the second Trump
