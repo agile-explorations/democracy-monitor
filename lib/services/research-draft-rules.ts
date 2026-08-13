@@ -80,6 +80,9 @@ function annotationRules(p2Count: number, totalDocs: number): string[] {
     '    or details to the document. Repeat a detail from an annotation only when the',
     "    document's own excerpt or matched passage supports it; otherwise attribute it",
     "    explicitly to Democracy Monitor's automated review. Matched Passage lines ARE",
-    '    verbatim document text and are quotable.',
+    '    verbatim document text and are quotable — and binding: NEVER claim a document',
+    '    does not mention or reference a term when its Matched Passage line shows that',
+    "    term; if the passage's mention is incidental or embedded (e.g., appropriations",
+    '    text read into the record), characterize it that way instead of denying it.',
   ];
 }

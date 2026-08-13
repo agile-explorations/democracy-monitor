@@ -118,8 +118,32 @@ export function citationVariants(phrase: string): string[] {
   if (parenthesized !== phrase) variants.add(parenthesized);
   const collapsed = phrase.replace(/\b(\d+)\(([a-z])\)/gi, '$1$2');
   if (collapsed !== phrase) variants.add(collapsed);
+  // Bare citations (#716): "287(g) agreements" as an adjacent phrase matches
+  // 71 docs; the record usually writes bare "287(g)" followed by other words
+  // ("program", "of the INA") — 305 docs, 134 of them floor speeches
+  // (measured 2026-08-13). Emit each citation token alone, in both
+  // spellings; validation and the match cap decide admission.
+  for (const source of [phrase, parenthesized]) {
+    for (const m of source.matchAll(/\b\d+\([a-z]\)|\b\d+[a-z]\b/gi)) {
+      const bare = m[0];
+      if (bare.length >= 3 && bare.toLowerCase() !== phrase.toLowerCase()) {
+        variants.add(bare);
+        for (const v of citationSpellings(bare)) variants.add(v);
+      }
+    }
+  }
   variants.delete(phrase);
   return [...variants];
+}
+
+/** Both spellings of a single citation token (helper for bare extraction). */
+function citationSpellings(token: string): string[] {
+  const out = new Set<string>();
+  const p = token.replace(/\b(\d+)([a-z])\b/gi, '$1($2)');
+  if (p !== token) out.add(p);
+  const c = token.replace(/\b(\d+)\(([a-z])\)/gi, '$1$2');
+  if (c !== token) out.add(c);
+  return [...out];
 }
 
 /** Window filter clause for validation counts. Exported for tests. */
@@ -236,7 +260,7 @@ export async function expandAndValidate(
 
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {
   const material = [
-    'v2', // bumped for citation variants (#712) — invalidates pre-fix caches
+    'v3', // bumped for bare-citation extraction (#716) — invalidates pre-fix caches
     query.toLowerCase().trim(),
     window?.dateFrom ?? '',
     window?.dateTo ?? '',
