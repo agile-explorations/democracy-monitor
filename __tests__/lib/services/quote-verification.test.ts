@@ -81,3 +81,36 @@ describe('citation-spelling tolerance (#716 v1.9.23)', () => {
     expect(quoteAppearsIn('engagement in 287G agreements', source)).toBe(true);
   });
 });
+
+describe('line-break hyphenation of plain words (#716 v1.9.24)', () => {
+  it('matches a quote against a word hyphen-split at a line break', () => {
+    const source = normalizeForMatch(
+      'funding obligations of the 287(g) program, de- lineated by pay and non-pay requirements and funding source; number of law enforce- ment entities',
+    );
+    expect(
+      quoteAppearsIn(
+        'delineated by pay and non-pay requirements and funding source; number of law enforcement entities',
+        source,
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('boundary punctuation inside quotation marks (#716 v1.9.24)', () => {
+  it('matches when the quote carries a trailing comma the document lacks', () => {
+    const source = normalizeForMatch(
+      'have the explicit authority to assist the Federal Government in our immigration enforcement efforts. Basically,',
+    );
+    expect(
+      quoteAppearsIn(
+        'the explicit authority to assist the Federal Government in our immigration enforcement efforts,',
+        source,
+      ),
+    ).toBe(true);
+  });
+
+  it('still requires interior punctuation to match', () => {
+    const source = normalizeForMatch('the court held, without qualification, that the rule stands');
+    expect(quoteAppearsIn('the court held that the rule stands', source)).toBe(false);
+  });
+});
