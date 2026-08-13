@@ -198,7 +198,20 @@ async function main(): Promise<void> {
   let fp = 0;
   const verifyRow = async (row: ScreenedRow) => {
     if (calls >= callCap) throw new Error(`call cap ${callCap} reached — aborting (#563)`);
-    const fetched = await fetchRowAndDoc(row.rowId);
+    let fetched: Awaited<ReturnType<typeof fetchRowAndDoc>>;
+    try {
+      fetched = await fetchRowAndDoc(row.rowId);
+    } catch {
+      // Transient DB errors (connection resets) must not kill the stage —
+      // retry once, then skip the row (ledger-resume picks it up later).
+      await new Promise((r) => setTimeout(r, 5000));
+      try {
+        fetched = await fetchRowAndDoc(row.rowId);
+      } catch (err) {
+        console.warn(`[verify-flags] row ${row.rowId} DB fetch failed twice, skipping:`, err);
+        return;
+      }
+    }
     if (!fetched) return;
     const flaggedClaims = row.claims
       .filter(
