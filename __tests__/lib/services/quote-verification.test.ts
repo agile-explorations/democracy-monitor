@@ -72,3 +72,12 @@ describe('hyphenation-artifact tolerance (#712 v1.9.15)', () => {
     expect(quoteAppearsIn('the rule—adopted in 2020—remains in force', source)).toBe(true);
   });
 });
+
+describe('citation-spelling tolerance (#716 v1.9.23)', () => {
+  it('matches quotes across 287(g)/287g spellings', () => {
+    const source = normalizeForMatch(
+      'ending their engagement in 287(g) agreements with the agency',
+    );
+    expect(quoteAppearsIn('engagement in 287G agreements', source)).toBe(true);
+  });
+});
