@@ -489,6 +489,11 @@ export default function SearchPage() {
             &ldquo;Since January 2025&rdquo; and similar phrases set the date range automatically —
             or use the Period control for exact dates.
           </li>
+          <li>
+            Looking only for official actions, or only for reactions? Use the filters above —
+            Government actions (orders, rules, opinions, bills) or Commentary &amp; debate (floor
+            speeches, hearings, debate).
+          </li>
         </ul>
         <p className="mt-2 ml-1 text-xs font-medium text-dm-text-secondary">
           What you&apos;ll see in results:
