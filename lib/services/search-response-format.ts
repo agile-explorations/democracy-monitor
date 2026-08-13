@@ -5,6 +5,7 @@
  */
 
 import { createHash } from 'crypto';
+import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import type { ResearchSynthesisResult } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
@@ -66,7 +67,7 @@ export function formatResearchResponse(
   result: CachedResearchResult,
   allDocs: ResearchDocument[],
   editorial: boolean,
-  alsoSearched: string[] = [],
+  searchedTerms: ValidatedAlias[] = [],
 ) {
   const { synthesis, queryConfidence, corpusStats: stats } = result;
   const dateRange = computeDateRange(allDocs);
@@ -78,7 +79,11 @@ export function formatResearchResponse(
     queryConfidence,
     relatedQuestions: synthesis.relatedQuestions,
     ...(stats ? { corpusStats: stats } : {}),
-    ...(alsoSearched.length > 0 ? { alsoSearched } : {}),
+    // alsoSearched (bare phrases) is the UI-chip field; searchedTerms adds
+    // corpus match counts for synthesis transparency (#713).
+    ...(searchedTerms.length > 0
+      ? { alsoSearched: searchedTerms.map((t) => t.phrase), searchedTerms }
+      : {}),
   };
 
   if (editorial) {
@@ -116,7 +121,7 @@ export function buildDocsOnlyPayload(
   avgSimilarity: number,
   strata: RetrievalStratum[] | null,
   inferredFrom: string | null,
-  alsoSearched: string[],
+  searchedTerms: ValidatedAlias[],
   docsKey?: string,
 ): Record<string, unknown> {
   return {
@@ -126,6 +131,8 @@ export function buildDocsOnlyPayload(
     queryConfidence: avgSimilarity,
     ...(strata ? { strata } : {}),
     ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
-    ...(alsoSearched.length > 0 ? { alsoSearched } : {}),
+    ...(searchedTerms.length > 0
+      ? { alsoSearched: searchedTerms.map((t) => t.phrase), searchedTerms }
+      : {}),
   };
 }

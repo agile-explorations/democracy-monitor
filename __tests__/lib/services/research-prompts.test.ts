@@ -270,11 +270,14 @@ describe('buildSinglePassPrompt (#552 tier contract)', () => {
 describe('retrieval note (#712)', () => {
   const docs = [makeDoc()];
   it('describes hybrid retrieval with the searched terms and scoping guard', () => {
-    const prompt = buildSinglePassPrompt('q', docs, null, ['287g agreements', 'H.R. 3005']);
+    const prompt = buildSinglePassPrompt('q', docs, null, [
+      { phrase: '287g agreements', matches: 12 },
+      { phrase: 'H.R. 3005', matches: 0 },
+    ]);
     expect(prompt).toContain('Retrieval was hybrid');
-    expect(prompt).toContain('287g agreements | H.R. 3005');
-    expect(prompt).toContain('remains scoped to this');
-    expect(prompt).toContain('never\n' + 'as vector similarity alone');
+    expect(prompt).toContain('287g agreements (12 corpus matches) | H.R. 3005');
+    expect(prompt).toContain('never as absence from the corpus');
+    expect(prompt).toContain('never as vector similarity');
     // No contradictory vector-only description may coexist (#712).
     expect(prompt).not.toContain('Note: Retrieval uses vector similarity');
   });

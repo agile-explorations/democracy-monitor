@@ -1,5 +1,6 @@
 /** Prompt builders for the research synthesis pipeline. */
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
+import type { ValidatedAlias } from './query-expansion-service';
 import { draftRules } from './research-draft-rules';
 import { reviewCriteria } from './research-review-criteria';
 import type { CorpusStats } from './search-research-queries';
@@ -109,22 +110,27 @@ export function computeDateRange(docs: ResearchDocument[]): { earliest: string; 
 function buildCoverageSection(
   docs: ResearchDocument[],
   corpusStats: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ): string {
   const dateRange = computeDateRange(docs);
   // ONE description of retrieval — a second, contradictory description made
   // the model coin-flip between them (#712: answers described retrieval as
   // vector-only while exact keyword searches had run).
+  const termList = (alsoSearched ?? [])
+    .map((t) => (t.matches > 0 ? `${t.phrase} (${t.matches} corpus matches)` : t.phrase))
+    .join(' | ');
   const retrievalLines =
     alsoSearched && alsoSearched.length > 0
       ? [
           'Retrieval was hybrid: vector similarity with a recency boost PLUS exact keyword',
-          `search for these corpus-validated terms: ${alsoSearched.join(' | ')}.`,
-          'When characterizing coverage you may cite these searched terms. If you describe',
-          'the retrieval method anywhere in the answer, describe it as this hybrid — never',
-          'as vector similarity alone. Absence among these documents remains scoped to this',
-          'retrieval — exact-term search strengthens the observation but does not prove',
-          'absence in the corpus. Older relevant documents may still be underrepresented.',
+          `search for these corpus-validated terms: ${termList}.`,
+          'Match counts are corpus-wide (title/lead index) — the retrieval below holds only',
+          'the top-ranked slice, so when a term shows many matches, describe absence as',
+          '"not among the N most relevant documents retrieved of M matching corpus-wide",',
+          'never as absence from the corpus. When characterizing coverage you may cite',
+          'these searched terms and their counts. If you describe the retrieval method',
+          'anywhere in the answer, describe it as this hybrid — never as vector similarity',
+          'alone. Older relevant documents may still be underrepresented.',
         ]
       : [
           'Note: Retrieval uses vector similarity with a recency boost. Older relevant documents',
@@ -148,7 +154,7 @@ function buildPromptBody(
   query: string,
   docs: ResearchDocument[],
   corpusStats: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ): string[] {
   const p2Count = docs.filter((d) => d.p2Assessment).length;
   return [
@@ -197,7 +203,7 @@ export function buildDraftPrompt(
   query: string,
   docs: ResearchDocument[],
   corpusStats?: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ): string {
   return [
     ...buildPromptBody(query, docs, corpusStats ?? null, alsoSearched),
@@ -264,7 +270,7 @@ export function buildSinglePassPrompt(
   query: string,
   docs: ResearchDocument[],
   corpusStats?: CorpusStats | null,
-  alsoSearched?: string[],
+  alsoSearched?: ValidatedAlias[],
 ): string {
   const stats = corpusStats ?? null;
   return [

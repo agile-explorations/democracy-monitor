@@ -55,11 +55,12 @@ function parseIdsParam(idsParam?: string): number[] | undefined {
 async function attachCachedSnippets(
   docs: ResearchDocument[],
   docsKey?: string,
-): Promise<string[] | undefined> {
+): Promise<Array<{ phrase: string; matches: number }> | undefined> {
   if (!docsKey || !/^[a-f0-9]{16}$/.test(docsKey)) return undefined;
   const cached = await cacheGet<{
     documents?: Array<Record<string, unknown>>;
     alsoSearched?: string[];
+    searchedTerms?: Array<{ phrase: string; matches: number }>;
   }>(CacheKeys.searchResearchDocs(docsKey));
   if (!cached?.documents) return undefined;
   const byId = new Map(cached.documents.map((d) => [Number(d.id), d]));
@@ -68,7 +69,7 @@ async function attachCachedSnippets(
     if (meta?.matchSnippet && !doc.matchSnippet) doc.matchSnippet = meta.matchSnippet as string;
     if (meta?.matchedAlias && !doc.matchedAlias) doc.matchedAlias = meta.matchedAlias as string;
   }
-  return cached.alsoSearched;
+  return cached.searchedTerms ?? cached.alsoSearched?.map((phrase) => ({ phrase, matches: 0 }));
 }
 
 async function retrieveDocuments(
