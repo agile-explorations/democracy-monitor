@@ -42,11 +42,11 @@ describe('parseAliasResponse', () => {
 
 describe('citationVariants', () => {
   it('parenthesizes bare subsection letters (287g -> 287(g))', () => {
-    expect(citationVariants('287g agreements')).toEqual(['287(g) agreements']);
+    expect(citationVariants('287g agreements')).toContain('287(g) agreements');
   });
 
   it('collapses parenthesized subsections (212(f) -> 212f)', () => {
-    expect(citationVariants('INA 212(f)')).toEqual(['INA 212f']);
+    expect(citationVariants('INA 212(f)')).toContain('INA 212f');
   });
 
   it('returns [] when no citation pattern is present', () => {
@@ -55,7 +55,20 @@ describe('citationVariants', () => {
   });
 
   it('handles multiple citations in one phrase', () => {
-    expect(citationVariants('287g and 235b')).toEqual(['287(g) and 235(b)']);
+    expect(citationVariants('287g and 235b')).toEqual(
+      expect.arrayContaining(['287(g) and 235(b)', '287g', '287(g)', '235b', '235(b)']),
+    );
+  });
+
+  it('emits bare citation tokens from a longer phrase, both spellings (#716)', () => {
+    const v = citationVariants('287g agreements');
+    expect(v).toEqual(expect.arrayContaining(['287(g) agreements', '287g', '287(g)']));
+    const v2 = citationVariants('INA 212(f)');
+    expect(v2).toEqual(expect.arrayContaining(['INA 212f', '212(f)', '212f']));
+  });
+
+  it('does not re-emit the phrase itself when it IS the bare citation', () => {
+    expect(citationVariants('287(g)')).toEqual(['287g']);
   });
 });
 
