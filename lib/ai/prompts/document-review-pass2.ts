@@ -4,7 +4,7 @@
  * substantively — it is how cross-vintage confirmation drift is attributed.
  * Current vintage: actor attribution decoupled from P2 (53c761a, #537).
  */
-export const PASS2_PROMPT_VERSION = 'p2-2026-08-11';
+export const PASS2_PROMPT_VERSION = 'p2-2026-08-13';
 
 export const PASS2_SYSTEM_PROMPT = `You are a skeptical policy analyst reviewing flagged government documents.
 An automated classifier flagged this document as potentially relevant to institutional erosion.
@@ -262,6 +262,11 @@ export function buildReasoningGuidance(): string {
     '    (3) Credit causal acts to the correct instrument: only attribute to this',
     '        document the actions its own text performs; related orders or bills acted',
     '        on their own.',
+    '    (4) THIN DOCUMENTS: when the document is only a title or a short notice (a',
+    '        few lines), open your reasoning with exactly: "(Note: this document',
+    '        contains only a title or short notice; the assessment below is the',
+    '        automated review\'s own reading of it, not document content.)" — and',
+    "        context-mark every mechanism or effect claim beyond the title's words.",
   ].join('\n');
 }
 
