@@ -168,11 +168,13 @@ describe('abbreviation-proof quote pairing (#718 v1.9.29)', () => {
     expect(claims[1]!.citations).toEqual([19]);
   });
 
-  it('pairs a shared trailing citation with both quotes via the fallback window', () => {
+  it('leaves the first of two quotes uncited when the citation trails the second', () => {
+    // Deliberate: an unbounded fallback attributed other sentences'
+    // citations to quoted named entities — exemption beats false alarms.
     const claims = extractQuotedClaims(
       'The order "suspends all entry immediately" and "revokes existing visas today" [Doc 3].',
     );
-    expect(claims[0]!.citations).toEqual([3]);
+    expect(claims[0]!.citations).toEqual([]);
     expect(claims[1]!.citations).toEqual([3]);
   });
 
