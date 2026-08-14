@@ -135,3 +135,22 @@ describe('extractQuotedClaims branches', () => {
     expect(claims).toEqual([{ quote: 'a quoted passage of real length', citations: [3] }]);
   });
 });
+
+describe('quote parity with short quotations (#718 v1.9.27)', () => {
+  it('does not extract prose between quotes as a phantom quote', () => {
+    const claims = extractQuotedClaims(
+      'The speech occurred "last Friday" (January 24, 2025), describing it as a "midnight massacre of independent watchdogs" [Doc 20].',
+    );
+    expect(claims.map((c) => c.quote)).toEqual(['midnight massacre of independent watchdogs']);
+  });
+
+  it('keeps parity across multiple short and long quotes in one sentence', () => {
+    const claims = extractQuotedClaims(
+      'Described as "acting" and then as having "reported whistleblower allegations to Congress" before "investigating the Secretary of State" [Doc 19].',
+    );
+    expect(claims.map((c) => c.quote)).toEqual([
+      'reported whistleblower allegations to Congress',
+      'investigating the Secretary of State',
+    ]);
+  });
+});
