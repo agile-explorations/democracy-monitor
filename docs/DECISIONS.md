@@ -12,6 +12,33 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DEEP-MATCH: bare-citation retrieval + verifier normalization (#713 #715–#717, milestone 115, v1.9.22–v1.9.24) — ✅ deployed + outreach set re-validated 2026-08-13
+
+**Origin**: owner asked whether the 287(g) query's "no floor speeches appear" was "the best the corpus has to offer" — corpus census: 208 floor speeches contain "287(g)". Owner called the pre-outreach priority ("I want the folks we reach out to to be wowed, not frustrated"), reversing the freeze-retrieval-through-outreach stance. Context: ran immediately after the #712 full-corpus annotation-correction operation (retro on the issue close-out — 47.6k screened, 8,362 corrections applied, thin-doc policy pass, ≈$515).
+
+**Built (three releases)**:
+
+- v1.9.22 — bare-citation alias extraction: citationVariants also emits each citation token alone, both spellings ("287(g) agreements" → +"287(g)", "287g"), corpus-validated like every alias; expansion cache key v3; rule 12 denial guard (never claim a document lacks a term its Matched Passage shows — characterize embedded/incidental mentions instead).
+- v1.9.23 — citation-spelling tolerance in quote verification (answers now quote across 287(g)/287g).
+- v1.9.24 — verifier normalization from how documents are actually typeset: hyphens deleted symmetrically (line-break hyphenation: "de- lineated" = "delineated"), fragment-boundary punctuation trimmed (American style tucks commas inside quotation marks), quote characters deleted (documents nest quotes answers omit). Owner found the class by reading Senate Report 118-85 against an amber badge.
+- Plus: pg_stat_statements enabled in prod (DB-side latency accounting); tip 1 amended (kind-words are hints, the tier filter is the guarantee — v1.9.21); all 12 outreach caches regenerated post-change.
+
+**The diagnostic that changed the sprint**: the planned "two-stage full-content arm" already existed — arms have always MATCHED on the full-content generated search_vector and RANKED on the compact rank vector (migrations 0031/0053). The measured blindness was phrase strictness: '287(g) agreements' as an adjacent websearch phrase = 71 docs; bare '287(g)' = 305 (134 floor speeches); nothing ever proposed the bare citation. ~25 lines fixed what a new retrieval stage would have re-solved. **Elasticsearch decision gate (recorded on #713): trigger NOT met — Postgres stays**; full-content ranking, per-type quotas, pg_ivm remain #713 residuals, post-outreach.
+
+**Acceptance numbers**: unfiltered 287(g) answer "none appear" → opens with directly-addressing floor speeches (2–4 arm-surfaced in top-30, was 0); badge false alarms across the 12 outreach answers 21 → 4 genuine (9 green / 3 amber final); suite 12/12 locally + twice on prod; no latency regression (heaviest cold query 57s, pre-existing #705 edge caveat); sprint spend ~$4.
+
+**Key decisions (owner)**: fix-before-outreach priority call; approved sprint + extension bundle (pg_stat_statements, pg_ivm prototype deferred); ES gate framing. **(Claude)**: diagnostic-before-build; bare-token extraction over phrase-relaxation (precision preserved — validation still gates); symmetric-deletion normalization over lookup tables.
+
+**Lessons learned**:
+
+1. Verify the mechanism story empirically before designing around it — the #713 "title/lead index blindness" narrative was wrong for a day and nearly bought a redundant build; one grep of the arm SQL killed it.
+2. Every retrieval-vocabulary change needs its verifier-normalization twin in the same release, or the badge mints false alarms from the search's own synonyms.
+3. docsOnly caches are blind to expansion changes (keyed on query, not code) — cache regeneration with refresh=true is part of shipping any expansion change.
+4. Verifier normalization must derive from how documents are typeset (line-break hyphenation, nested quotes, punctuation-inside-quotes), not clean-text assumptions — and a human reading one source against one badge found what three automated audit rounds had not.
+5. Killed background watchers must be checked for whether their terminal action fired (a tag push silently missing cost an overnight deploy gap, twice).
+
+---
+
 ## Sprint R-ANSWER-QUALITY: search answer validation + error hardening (#707 #709–#711, v1.9.5–v1.9.9) — ✅ deployed + suite-validated 2026-08-11
 
 **Origin**: owner challenged a "Document Coverage Note" on the FW4 showcase that claimed congressional responses to the 2025 Schedule F reinstatement don't exist ("is this accurate for the corpus, or an artifact of the documents retrieved?"). Corpus check: 2/3 of the claim was false (H.R. 2550 + rule + ~25 era-vocabulary floor speeches exist). That one question became a full answer-quality regime: execute the 12-question outreach suite, audit every AI answer claim-by-claim against the corpus (parallel agents, three rounds), fix root causes, re-validate.
@@ -119,33 +146,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - **Probe before roadmap**: the docket-stub investigation (1-entry medians, caption titles) killed the naive display-join design before anything was planned around it; the CL API probe then settled classifier feasibility with real descriptions. Both took minutes and reshaped the feature.
 
 **Spec deviations**: none; UI-only + one cached proxy endpoint. Detection untouched (post-opinion activity surfaces as displayed context only — any status-driving use remains an explicit future methodology decision).
-
-## Sprint R-DHS-PRESS: DHS/ICE/CBP press releases as a corpus source (#676–#683, milestone 110) — ✅ built + locally verified 2026-08-07
-
-**Origin**: #605 research issue — immigrationEnforcement had ZERO executive-branch operational documents (recent weeks: floor speeches, bills, FR notices only), the twice-named corroboration gap (ICE operational claims uncheckable against our corpus). Sprint was gated on an archive-depth probe.
-
-**The gate fired, then resolved**: all three live newsrooms (dhs.gov/news-releases 119pp, ice.gov/newsroom 41pp, cbp.gov/newsroom 107pp) are purged to inauguration day 2025-01-20/21 — no live baseline series. But recovery paths exist without Wayback content-fetching: DHS has an `/archive/news` subsite with a server-side press-release facet (`field_news_type_target_id=436`, 412pp back to 2008, dates in URL paths); ICE/CBP sitemaps still enumerate delisted-but-live release URLs (canaries: 50/50 per host fetched+dated+full-bodied, incl. 2022-era). Wayback CDX first-capture timestamps serve as date HINTS for the dateless sitemaps (on-page date authoritative post-fetch). The purge itself is filed as infoAvailability research (#683).
-
-**Built**: `dhs-press-parsers.ts` (pure per-host parsers), `dhs-press-fetcher.ts` (standard fetcher module, SignalType `dhs_press`, origin `dhs_press`), `dhs-press-archive.ts` (sitemap/CDX/archive enumeration), `backfill-dhs-press.ts` driver (`--host/--period/--from/--to/--dry-run/--skip-existing/--no-cdx/--canary`), full pipeline wiring (backfill groups, incremental fetcher, ACTIVE_SOURCES, fetch_log, silence detection, validate:ingest, data dictionary, origin-aware press_release labels, `dhs_press` boilerplate stripper). 4 signals: 3 in immigrationEnforcement + `dhspress://ice?filter=hsi-criminal` fan-out in lawEnforcement (signal-level fan-out mirrors `oig://dhs?components=immigration` — the weekly cron dual-stores with zero extra machinery). CBP local-media-release URL class excluded at fetch (owner decision; deterministic → parity-safe). 50 new tests; suite 2,767 green.
-
-**Key decisions (owner, 2026-08-07)**: current-term + historical gated (runbooks #680/#681 separately approved); ICE full + DHS + CBP national-only; immigrationEnforcement primary + HSI-criminal fan-out to lawEnforcement; purge finding → research issue. Constraint amendment signed off: PROJECT_KNOWLEDGE data-source rule now names a probe-gated newsroom-HTML exception list instead of a blanket scraping ban.
-
-**Markup traps (live-capture verified, all regression-tested)**:
-
-- ICE article bodies live in `.nr-body`, NOT the Drupal `.field--name-body` convention — the largest `.field--name-body` on ICE pages is an 807-char standing mission blurb. Naive selection stored boilerplate as content.
-- CBP listing `<time datetime>` is a static template placeholder (same 2020-09-30 value on every row); real dates are in the visible spans, whose month/day classes are mislabeled upstream.
-- `document-store.inferSourceOrigin` maps `press_release` → `'doj'`; the fetcher must set sourceOrigin explicitly (tested + rehearsal-verified 0 mis-origined rows).
-
-**Live-measured infra facts**: Wayback CDX `limit=20000` 504s at the gateway (~60s); `limit=3000` answers in ~25s (10,270 ICE first-captures in ~6 requests). Gov hosts throw transient undici connect timeouts (host answering in <100ms moments later) — enumeration fetches retry 3× with linear backoff; canary hosts are fault-isolated so one host's outage is a result, not a crash.
-
-**Rehearsal (local DB, week 2026-07-27)**: 30 releases stored (DHS 22/ICE 5/CBP-national 3), median body 2.2k chars, 0 stubs; 2 HSI releases fan-out to lawEnforcement, both verified genuinely HSI-criminal; validate:ingest shows the origin with only the expected T2-start warning; generic backfill + weekly group-fetcher paths smoke-tested.
-
-**Deviation from plan**: cross-host title+day dedup found ZERO mirrors in rehearsal — DHS rewrites component headlines rather than reposting, so both versions store as distinct documents (arguably correct: the HQ rewrite is its own rhetoric artifact). The post-backfill residue audit carries the dedup burden. HSI predicate calibrated against live samples (10/10 correct on inspection) instead of the planned 50-release labeled set; formal calibration deferred to #680's canary week.
-
-**Lessons learned**:
-
-- **Purged listings ≠ purged content.** All three newsrooms delisted pre-2025 releases, but the documents remain live at their URLs, enumerable via sitemap/archive side channels. Check sitemaps and /archive subsites before declaring a baseline unrecoverable (or reaching for Wayback content).
-- **Verify parsers against saved live captures before writing tests** — two of three hosts had markup traps (bogus datetime attrs, decoy body nodes) that inline-fixture tests written from assumptions would have enshrined as green.
-- **Baseline-period runbook shape matters**: the 8 baseline periods are contiguous; one driver invocation over 2017-01-20→2025-01-19 does one enumeration + one detail pass instead of 8 (and never re-fetches the ~5k date-unknown sitemap URLs per period).
-
-**Spec deviations**: none against V3 (new source class; methodology unchanged — press releases enter the standard L2 review path).
