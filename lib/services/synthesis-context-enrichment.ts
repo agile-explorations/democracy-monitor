@@ -23,8 +23,14 @@ import type { ResearchDocument } from '@/lib/services/search-service';
 
 /** Headline scans at most this much content per row (perf bound). */
 const HEADLINE_CONTENT_CHARS = 150000;
-const QUERY_HEADLINE_OPTS = 'MaxFragments=2, MaxWords=50, MinWords=15, StartSel=, StopSel=';
-const DISPOSITION_HEADLINE_OPTS = 'MaxFragments=3, MaxWords=60, MinWords=20, StartSel=, StopSel=';
+// StartSel/StopSel are EMPTY (no markers wanted) and MUST stay quoted:
+// unquoted empty values are invalid deflist syntax — this exact string
+// threw on every call from v1.9.9 to v1.9.26, silently disabling
+// enrichment (caught 2026-08-14 via prod logs).
+export const QUERY_HEADLINE_OPTS =
+  'MaxFragments=2, MaxWords=50, MinWords=15, StartSel="", StopSel=""';
+export const DISPOSITION_HEADLINE_OPTS =
+  'MaxFragments=3, MaxWords=60, MinWords=20, StartSel="", StopSel=""';
 /** Ruling-language terms whose surroundings carry the disposition. */
 const DISPOSITION_TSQUERY =
   'granted or denied or dismissed or moot or vacated or affirmed or reversed or remanded';
