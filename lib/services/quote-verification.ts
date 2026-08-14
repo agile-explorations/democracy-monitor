@@ -26,7 +26,13 @@ export interface ExtractedQuote {
 export interface QuoteVerificationResult {
   totalQuotes: number;
   verifiedCount: number;
-  unverified: Array<{ quote: string; citations: number[] }>;
+  unverified: Array<{
+    quote: string;
+    citations: number[];
+    /** Nearest actual document text (raw), when the quote's opening words
+     *  could be anchored in a cited document (#718). */
+    nearest?: { citation: number; text: string };
+  }>;
 }
 
 /** Normalize for matching: curly quotes/apostrophes, whitespace runs, case.
@@ -118,32 +124,70 @@ export function quoteAppearsIn(quote: string, normalizedSource: string): boolean
   return true;
 }
 
-/** On a verification miss, log the AI's quoted version next to the nearest
- *  ACTUAL source text (owner request, 2026-08-14): anchor the quote's first
- *  words in the normalized source and print the surrounding window, so
- *  tense-smoothing and dropped words ("abdicate" -> "abdicated", the
- *  dropped "only") are diagnosable from logs alone. Text shown is
- *  normalized (punctuation/quotes stripped) — offsets do not map to raw. */
-function logMissDetail(
-  q: ExtractedQuote,
+/** Locate the nearest ACTUAL raw document text for a missed quote (#718):
+ *  the quote's first words become a case-insensitive, whitespace/punctuation
+ *  flexible pattern against the RAW content, so the surfaced window reads
+ *  like the document (not the normalized matching form). Shown in the amber
+ *  badge and logged, so tense-smoothing and dropped words ("abdicate" ->
+ *  "abdicated", the dropped "only") are visible to users and in logs.
+ *  Exported for tests. */
+export function findNearestActual(
+  quote: string,
+  citations: number[],
   idByCitation: Map<number, number>,
-  contentById: Map<number, string>,
-): void {
-  const anchorText = normalizeForMatch(q.quote).split(' ').slice(0, 4).join(' ');
-  let nearest = 'no nearby match for the opening words in any cited document';
-  for (const c of q.citations) {
+  rawById: Map<number, string>,
+): { citation: number; text: string } | null {
+  const words = quote
+    .split(/[^A-Za-z0-9()]+/)
+    .filter((w) => w.length > 0)
+    .slice(0, 6);
+  if (words.length < 2) return null;
+  // Sliding 3-word anchors over the opening words: anchoring only on the
+  // FIRST words fails precisely when the first word is the drifted one
+  // ("abdicated" vs the document's "abdicate") — a later trigram still lands.
+  const anchors: string[][] = [];
+  for (let o = 0; o + Math.min(3, words.length) <= words.length && o <= 3; o++) {
+    anchors.push(words.slice(o, o + Math.min(3, words.length)));
+  }
+  for (const c of citations) {
     const id = idByCitation.get(c);
-    const content = id != null ? contentById.get(id) : undefined;
-    if (!content || anchorText.length < 8) continue;
-    const i = content.indexOf(anchorText);
-    if (i >= 0) {
-      nearest = `[Doc ${c}] "${content.slice(Math.max(0, i - 40), i + q.quote.length + 60)}"`;
-      break;
+    const raw = id != null ? rawById.get(id) : undefined;
+    if (!raw) continue;
+    for (const anchor of anchors) {
+      const pattern = new RegExp(
+        anchor.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^A-Za-z0-9]{1,6}'),
+        'i',
+      );
+      const m = pattern.exec(raw);
+      if (m) {
+        const start = Math.max(0, m.index - 60);
+        const text = raw
+          .slice(start, m.index + quote.length + 80)
+          .replace(/\s+/g, ' ')
+          .trim();
+        return { citation: c, text };
+      }
     }
   }
+  return null;
+}
+
+/** Build one unverified entry with its nearest-actual, and log the miss
+ *  (AI's version vs actual source text — owner request, 2026-08-14). */
+function buildMiss(
+  q: ExtractedQuote,
+  idByCitation: Map<number, number>,
+  rawById: Map<number, string>,
+): QuoteVerificationResult['unverified'][number] {
+  const nearest = findNearestActual(q.quote, q.citations, idByCitation, rawById);
   console.warn(
-    `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] actual(normalized): ${nearest}`,
+    `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] actual: ${nearest ? `[Doc ${nearest.citation}] "${nearest.text.slice(0, 200)}"` : 'no nearby match for the opening words'}`,
   );
+  return {
+    quote: q.quote.slice(0, 200),
+    citations: q.citations,
+    ...(nearest ? { nearest: { ...nearest, text: nearest.text.slice(0, 300) } } : {}),
+  };
 }
 
 /** Document ids any extracted quote may need checking against. */
@@ -193,11 +237,10 @@ export async function verifyAnswerQuotes(
         [...neededIds].map((i) => sql`${i}`),
         sql`, `,
       )})`);
+    const docRows = rows.rows as Array<{ id: number; content: string | null }>;
+    const rawById = new Map(docRows.map((r) => [Number(r.id), r.content ?? '']));
     const contentById = new Map(
-      (rows.rows as Array<{ id: number; content: string | null }>).map((r) => [
-        Number(r.id),
-        normalizeForMatch(r.content ?? ''),
-      ]),
+      docRows.map((r) => [Number(r.id), normalizeForMatch(r.content ?? '')]),
     );
     const unverified: QuoteVerificationResult['unverified'] = [];
     for (const q of extracted) {
@@ -207,10 +250,7 @@ export async function verifyAnswerQuotes(
         const content = id != null ? contentById.get(id) : undefined;
         return content ? quoteAppearsIn(q.quote, content) : false;
       });
-      if (!found) {
-        unverified.push({ quote: q.quote.slice(0, 200), citations: q.citations });
-        logMissDetail(q, idByCitation, contentById);
-      }
+      if (!found) unverified.push(buildMiss(q, idByCitation, rawById));
     }
     return {
       totalQuotes: extracted.length,

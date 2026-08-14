@@ -30,10 +30,11 @@ export function QuoteVerificationBadge({
         {verification.totalQuotes !== 1 ? 's' : ''} could not be verified verbatim against the
         source documents — treat quoted wording with caution:
       </p>
-      <ul className="mt-1 space-y-0.5 pl-4">
+      <ul className="mt-1 space-y-1 pl-4">
         {verification.unverified.map((u, i) => (
           <li key={i} className="text-[11px] text-amber-500/90 list-disc">
-            &ldquo;{u.quote.length > 90 ? `${u.quote.slice(0, 90)}…` : u.quote}&rdquo;
+            <span className="text-dm-muted">Answer quotes:</span> &ldquo;
+            {u.quote.length > 120 ? `${u.quote.slice(0, 120)}…` : u.quote}&rdquo;
             {u.citations.map((n) => (
               <a
                 key={n}
@@ -43,6 +44,16 @@ export function QuoteVerificationBadge({
                 [{n}]
               </a>
             ))}
+            {u.nearest && (
+              <span className="block text-dm-text-secondary/90">
+                <span className="text-dm-muted">Document reads:</span> &ldquo;…
+                {u.nearest.text.length > 180 ? `${u.nearest.text.slice(0, 180)}…` : u.nearest.text}
+                …&rdquo;{' '}
+                <a href={`#cite-${u.nearest.citation}`} className="text-dm-accent hover:underline">
+                  see [{u.nearest.citation}]
+                </a>
+              </span>
+            )}
           </li>
         ))}
       </ul>

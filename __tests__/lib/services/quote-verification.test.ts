@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   extractQuotedClaims,
+  findNearestActual,
   normalizeForMatch,
   quoteAppearsIn,
 } from '@/lib/services/quote-verification';
@@ -181,5 +182,50 @@ describe('abbreviation-proof quote pairing (#718 v1.9.29)', () => {
     );
     expect(claims[0]!.citations).toEqual([2]);
     expect(claims[1]!.citations).toEqual([9]);
+  });
+});
+
+describe('findNearestActual (#718 v1.9.31)', () => {
+  const idByCitation = new Map([[17, 101]]);
+
+  it('locates raw document text despite drift in the first word', () => {
+    const rawById = new Map([
+      [
+        101,
+        "under the trump administration, we saw the civil rights division's abdicate its responsibility to enforce many voting rights and other protections",
+      ],
+    ]);
+    const r = findNearestActual(
+      'abdicated its responsibility to enforce many voting rights',
+      [17],
+      idByCitation,
+      rawById,
+    );
+    expect(r?.citation).toBe(17);
+    expect(r?.text).toContain('abdicate its responsibility');
+  });
+
+  it('anchors on the opening words and returns a raw window with citation', () => {
+    const rawById = new Map([
+      [
+        101,
+        'the record shows the only process they are due is the process that Congress has provided. ECF 56',
+      ],
+    ]);
+    const r = findNearestActual(
+      'the process they are due is the process that Congress has provided',
+      [17],
+      idByCitation,
+      rawById,
+    );
+    expect(r?.citation).toBe(17);
+    expect(r?.text).toContain('only process they are due');
+  });
+
+  it('returns null when the opening words are absent', () => {
+    const rawById = new Map([[101, 'entirely unrelated document text goes here']]);
+    expect(
+      findNearestActual('a quote that appears nowhere at all', [17], idByCitation, rawById),
+    ).toBeNull();
   });
 });
