@@ -93,12 +93,16 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
     const nextBound = k < matches.length - 1 ? matches[k + 1]!.index! : answer.length;
     // Right-biased pairing: citations nearly always FOLLOW their quote, so a
     // left-first window would steal the previous quote's trailing citation.
-    // Bounded right first, bounded left second (citation-before-quote style),
-    // extended right last (shared trailing citation: '"A" and "B" [Doc 3]').
+    // Bounded right first, bounded left second (citation-before-quote style).
+    // NO unbounded fallback: reaching past a neighboring quote attributed
+    // OTHER sentences' citations to quoted named entities ("One Big
+    // Beautiful Bill"), flooding the badge with term-of-art false alarms
+    // (first live run on this extractor, 2026-08-14). An unattributed quote
+    // is exempt terminology — the pre-#718 disposition.
     const citations =
       firstCitations(answer.slice(end, Math.min(nextBound, end + CITATION_WINDOW_CHARS))) ??
       firstCitations(answer.slice(Math.max(prevBound, start - CITATION_WINDOW_CHARS), start)) ??
-      parseDocCitations(answer.slice(end, end + CITATION_WINDOW_CHARS));
+      [];
     results.push({ quote, citations });
   }
   return results;
@@ -172,6 +176,22 @@ export function findNearestActual(
   return null;
 }
 
+/** Verification haystacks per document. Titles join the haystack: answers
+ *  legitimately quote document and hearing titles ("Restoring Independence:
+ *  Rebuilding the Federal Offices of Inspectors General"), which
+ *  content-only matching flagged (2026-08-14). */
+function buildHaystacks(
+  docRows: Array<{ id: number; title: string | null; content: string | null }>,
+) {
+  const rawById = new Map(
+    docRows.map((r) => [Number(r.id), `${r.title ?? ''}. ${r.content ?? ''}`]),
+  );
+  const contentById = new Map(
+    docRows.map((r) => [Number(r.id), normalizeForMatch(`${r.title ?? ''}. ${r.content ?? ''}`)]),
+  );
+  return { rawById, contentById };
+}
+
 /** Build one unverified entry with its nearest-actual, and log the miss
  *  (AI's version vs actual source text — owner request, 2026-08-14). */
 function buildMiss(
@@ -233,14 +253,12 @@ export async function verifyAnswerQuotes(
   }
   try {
     const rows = await db.execute(sql`
-      SELECT id, content FROM documents WHERE id IN (${sql.join(
+      SELECT id, title, content FROM documents WHERE id IN (${sql.join(
         [...neededIds].map((i) => sql`${i}`),
         sql`, `,
       )})`);
-    const docRows = rows.rows as Array<{ id: number; content: string | null }>;
-    const rawById = new Map(docRows.map((r) => [Number(r.id), r.content ?? '']));
-    const contentById = new Map(
-      docRows.map((r) => [Number(r.id), normalizeForMatch(r.content ?? '')]),
+    const { rawById, contentById } = buildHaystacks(
+      rows.rows as Array<{ id: number; title: string | null; content: string | null }>,
     );
     const unverified: QuoteVerificationResult['unverified'] = [];
     for (const q of extracted) {
