@@ -210,6 +210,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.end();
       return;
     }
+    // Debug trace (#718): surface the exact synthesis prompt so a captured
+    // search log carries the full context the model saw.
+    if (req.query.debug === '1') {
+      sendEvent(res, { type: 'debug', synthesisPrompt: retrieved.prompt });
+    }
     await streamCompletion(provider, retrieved.prompt, retrieved.docs, res, () => disconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';

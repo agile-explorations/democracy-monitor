@@ -5,6 +5,8 @@ import { DateRangeSelect } from '@/components/search/DateRangeSelect';
 import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
 import { parseStreamingSections } from '@/components/search/helpers';
 import { ResearchResults } from '@/components/search/ResearchResults';
+import { SearchDebugLog } from '@/components/search/SearchDebugLog';
+import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -29,6 +31,8 @@ export default function SearchPage() {
   const [mode, setMode] = useLocalStorage<SearchMode>('dm_search_mode', 'research');
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [debugCapture, setDebugCapture] = useState<SearchDebugCapture | null>(null);
+  const debugRef = useRef<SearchDebugCapture | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [tierHintDismissed, setTierHintDismissed] = useState(false);
@@ -102,6 +106,8 @@ export default function SearchPage() {
       setError(null);
 
       const params = new URLSearchParams({ q, mode: searchMode });
+      const debugMode = router.query.debug === '1';
+      if (debugMode) params.set('debug', '1');
       if (df) params.set('dateFrom', df);
       if (dt) params.set('dateTo', dt);
       if (dp) params.set('datePreset', dp);
@@ -161,6 +167,7 @@ export default function SearchPage() {
     // Phase 1: Fetch documents immediately (fast)
     const docsParams = new URLSearchParams(urlParams);
     docsParams.set('docsOnly', 'true');
+    const debugMode = urlParams.get('debug') === '1';
     const docsRes = await fetch(`/api/search?${docsParams.toString()}`, { signal });
     if (!docsRes.ok) {
       const body = await docsRes.json().catch(() => ({}));
@@ -182,6 +189,18 @@ export default function SearchPage() {
     };
     if (!isCurrent()) return;
     setResearchResult(baseResult);
+    if (debugMode) {
+      debugRef.current = {
+        question: q,
+        requestedAt: new Date().toISOString(),
+        docsPayload: docsData,
+        synthesisPrompt: null,
+        answer: null,
+        quoteVerification: null,
+        relatedQuestions: [],
+      };
+      setDebugCapture(debugRef.current);
+    }
     setLoading(false);
     setSynthesizing(true);
 
@@ -190,6 +209,7 @@ export default function SearchPage() {
     // cards (#552) and the stream skips a redundant vector search.
     try {
       const streamParams = new URLSearchParams({ q });
+      if (debugMode) streamParams.set('debug', '1');
       const df = urlParams.get('dateFrom');
       const dt = urlParams.get('dateTo');
       if (df) streamParams.set('dateFrom', df);
@@ -243,6 +263,11 @@ export default function SearchPage() {
           setResearchResult((prev) =>
             prev ? { ...prev, answer: { expert: parsed.expert, public: parsed.public } } : prev,
           );
+        } else if (data.type === 'debug') {
+          if (debugRef.current) {
+            debugRef.current = { ...debugRef.current, synthesisPrompt: data.synthesisPrompt };
+            setDebugCapture(debugRef.current);
+          }
         } else if (data.type === 'verification') {
           setResearchResult((prev) =>
             prev
@@ -256,6 +281,17 @@ export default function SearchPage() {
                 }
               : prev,
           );
+          if (debugRef.current) {
+            debugRef.current = {
+              ...debugRef.current,
+              quoteVerification: {
+                totalQuotes: data.totalQuotes,
+                verifiedCount: data.verifiedCount,
+                unverified: data.unverified ?? [],
+              },
+            };
+            setDebugCapture(debugRef.current);
+          }
         } else if (data.type === 'done') {
           eventSource.close();
           const final = parseStreamingSections(accumulated);
@@ -278,6 +314,14 @@ export default function SearchPage() {
                 }
               : prev,
           );
+          if (debugRef.current) {
+            debugRef.current = {
+              ...debugRef.current,
+              answer: { expert: final.expert, public: final.public },
+              relatedQuestions: final.relatedQuestions,
+            };
+            setDebugCapture(debugRef.current);
+          }
           resolve();
         } else if (data.type === 'error') {
           eventSource.close();
@@ -634,15 +678,18 @@ export default function SearchPage() {
       )}
 
       {!loading && mode === 'research' && researchResult && (
-        <ResearchResults
-          result={researchResult}
-          readingLevel={readingLevel}
-          synthesizing={synthesizing}
-          onRelatedQuestion={(q) => {
-            setQuery(q);
-            performSearch(q, 'research');
-          }}
-        />
+        <>
+          <SearchDebugLog capture={debugCapture} />
+          <ResearchResults
+            result={researchResult}
+            readingLevel={readingLevel}
+            synthesizing={synthesizing}
+            onRelatedQuestion={(q) => {
+              setQuery(q);
+              performSearch(q, 'research');
+            }}
+          />
+        </>
       )}
 
       {!loading && mode === 'explore' && exploreResult && (
