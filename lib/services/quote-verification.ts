@@ -55,23 +55,45 @@ export function normalizeForMatch(text: string): string {
   );
 }
 
-/** Extract quoted spans (straight or curly) with the [Doc N] citations that
- *  appear in the same sentence. Pure — unit-tested. */
+/** Citation-pairing window on each side of a quote, when no neighboring
+ *  quote bounds it sooner. */
+const CITATION_WINDOW_CHARS = 250;
+
+/** parseDocCitations, but null on empty — for ??-chained window fallbacks. */
+function firstCitations(text: string): number[] | null {
+  const found = parseDocCitations(text);
+  return found.length > 0 ? found : null;
+}
+
+/** Extract quoted spans (straight or curly) with the [Doc N] citations near
+ *  them. Quotes are matched over the WHOLE answer — sentence-splitting
+ *  before matching severed quote pairs at abbreviations ("...led to Mr.
+ *  Trump's..." split inside the quotation), and the orphaned closing mark
+ *  opened a phantom quote in the next fragment (#718, 2026-08-14). Every
+ *  span is matched (even 1 char) and length-filtered afterwards for the
+ *  same parity reason. Citations pair via a window bounded by neighboring
+ *  quotes; a quote with none looks further right as a fallback (covers
+ *  '"A" and "B" [Doc 3]'). Pure — unit-tested. */
 export function extractQuotedClaims(answer: string): ExtractedQuote[] {
   const results: ExtractedQuote[] = [];
-  // Sentence-ish segmentation: quotes and citations usually cohabit one.
-  const sentences = answer.split(/(?<=[.!?])\s+(?=[A-Z*\[#-])/);
-  for (const sentence of sentences) {
-    // Match EVERY quoted span (even 1 char) and length-filter afterwards:
-    // a minimum inside the regex left short quotes ("last Friday")
-    // unconsumed, flipping open/close parity so the prose BETWEEN two real
-    // quotations was extracted as a phantom quote (#718, 2026-08-14).
-    const quotes = [...sentence.matchAll(/[“"]([^“”"]{1,400}?)[”"]/g)]
-      .map((m) => m[1].trim())
-      .filter((q) => q.length >= MIN_QUOTE_CHARS);
-    if (quotes.length === 0) continue;
-    const citations = parseDocCitations(sentence);
-    for (const quote of quotes) results.push({ quote, citations });
+  const matches = [...answer.matchAll(/[“"]([^“”"]{1,400}?)[”"]/g)];
+  for (let k = 0; k < matches.length; k++) {
+    const m = matches[k]!;
+    const quote = m[1]!.trim();
+    if (quote.length < MIN_QUOTE_CHARS) continue;
+    const start = m.index!;
+    const end = start + m[0].length;
+    const prevBound = k > 0 ? matches[k - 1]!.index! + matches[k - 1]![0].length : 0;
+    const nextBound = k < matches.length - 1 ? matches[k + 1]!.index! : answer.length;
+    // Right-biased pairing: citations nearly always FOLLOW their quote, so a
+    // left-first window would steal the previous quote's trailing citation.
+    // Bounded right first, bounded left second (citation-before-quote style),
+    // extended right last (shared trailing citation: '"A" and "B" [Doc 3]').
+    const citations =
+      firstCitations(answer.slice(end, Math.min(nextBound, end + CITATION_WINDOW_CHARS))) ??
+      firstCitations(answer.slice(Math.max(prevBound, start - CITATION_WINDOW_CHARS), start)) ??
+      parseDocCitations(answer.slice(end, end + CITATION_WINDOW_CHARS));
+    results.push({ quote, citations });
   }
   return results;
 }

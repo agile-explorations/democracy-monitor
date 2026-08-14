@@ -154,3 +154,32 @@ describe('quote parity with short quotations (#718 v1.9.27)', () => {
     ]);
   });
 });
+
+describe('abbreviation-proof quote pairing (#718 v1.9.29)', () => {
+  it('does not sever quote pairs at abbreviation sentence breaks', () => {
+    const claims = extractQuotedClaims(
+      'Speakers described Atkinson as having "reported allegations that ultimately led to Mr. Trump’s own impeachment" — and the firing of IG Linick "while investigating the Secretary of State" [Doc 19].',
+    );
+    expect(claims.map((c) => c.quote)).toEqual([
+      'reported allegations that ultimately led to Mr. Trump’s own impeachment',
+      'while investigating the Secretary of State',
+    ]);
+    expect(claims[1]!.citations).toEqual([19]);
+  });
+
+  it('pairs a shared trailing citation with both quotes via the fallback window', () => {
+    const claims = extractQuotedClaims(
+      'The order "suspends all entry immediately" and "revokes existing visas today" [Doc 3].',
+    );
+    expect(claims[0]!.citations).toEqual([3]);
+    expect(claims[1]!.citations).toEqual([3]);
+  });
+
+  it('does not leak citations across a neighboring quote to the left', () => {
+    const claims = extractQuotedClaims(
+      'First "a fully quoted supported passage" [Doc 2]. Later text about other things, then "a second quoted passage entirely" [Doc 9].',
+    );
+    expect(claims[0]!.citations).toEqual([2]);
+    expect(claims[1]!.citations).toEqual([9]);
+  });
+});
