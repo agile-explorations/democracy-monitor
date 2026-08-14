@@ -80,6 +80,7 @@ async function retrieveSingleWindow(
   dateTo: string | undefined,
   tier: ResearchTierFilter,
   inferredFrom: string | null,
+  debug?: boolean,
 ) {
   const candidates = await searchResearch(
     query,
@@ -95,18 +96,51 @@ async function retrieveSingleWindow(
     [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
     tier,
   );
-  return { docs, strata: null as RetrievalStratum[] | null, inferredFrom, alsoSearched };
+  return {
+    docs,
+    strata: null as RetrievalStratum[] | null,
+    inferredFrom,
+    alsoSearched,
+    ...(debug ? { candidates: candidates.map((d) => toCandidateSummary(d)) } : {}),
+  };
+}
+
+/** Light pre-rerank candidate shape for the debug trace (#718). */
+export interface CandidateSummary {
+  id: number;
+  title: string;
+  sourceType: string | null;
+  tier: string;
+  publishedAt: string | null;
+  cosineSimilarity: number;
+  matchedAlias?: string;
+  era?: string;
+}
+
+function toCandidateSummary(d: ResearchDocument, era?: string): CandidateSummary {
+  return {
+    id: d.id,
+    title: d.title,
+    sourceType: d.sourceType,
+    tier: d.tier,
+    publishedAt: d.publishedAt,
+    cosineSimilarity: d.cosineSimilarity,
+    ...(d.matchedAlias ? { matchedAlias: d.matchedAlias } : {}),
+    ...(era ? { era } : {}),
+  };
 }
 
 export async function retrieveResearchDocs(
   req: NextApiRequest,
   query: string,
   embedding: number[],
+  debug?: boolean,
 ): Promise<{
   docs: ResearchDocument[];
   strata: RetrievalStratum[] | null;
   inferredFrom: string | null;
   alsoSearched: ValidatedAlias[];
+  candidates?: CandidateSummary[];
 }> {
   // Range phrases in the question ("since January 2025") become a date floor
   // when the user has not set explicit dates; surfaced in the response so
@@ -128,14 +162,40 @@ export async function retrieveResearchDocs(
     : null;
   const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
   if (!eras || eras.length < 2) {
-    return retrieveSingleWindow(query, embedding, eras?.[0], dateFrom, dateTo, tier, inferredFrom);
+    return retrieveSingleWindow(
+      query,
+      embedding,
+      eras?.[0],
+      dateFrom,
+      dateTo,
+      tier,
+      inferredFrom,
+      debug,
+    );
   }
 
+  return retrieveEraStratified(query, embedding, eras, dateFrom, dateTo, tier, inferredFrom, debug);
+}
+
+/** Comparative path: each era competes only with itself for its slot share. */
+// eslint-disable-next-line max-params
+async function retrieveEraStratified(
+  query: string,
+  embedding: number[],
+  eras: EraWindow[],
+  dateFrom: string | undefined,
+  dateTo: string | undefined,
+  tier: ResearchTierFilter,
+  inferredFrom: string | null,
+  debug?: boolean,
+) {
   const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
   const windows = intersectEraWindows(eras, dateFrom, dateTo);
+  const debugCandidates: CandidateSummary[] = [];
   const perEra = await Promise.all(
     windows.map(async (w) => {
       const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
+      if (debug) debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
       return rerankForTier(query, candidates, slots, tier);
     }),
   );
@@ -148,5 +208,11 @@ export async function retrieveResearchDocs(
     ...(w.dateConflict ? { dateConflict: true } : {}),
   }));
   const alsoSearched = await collectAlsoSearched(query, windows, tier);
-  return { docs: perEra.flat(), strata, inferredFrom, alsoSearched };
+  return {
+    docs: perEra.flat(),
+    strata: strata as RetrievalStratum[] | null,
+    inferredFrom,
+    alsoSearched,
+    ...(debug ? { candidates: debugCandidates } : {}),
+  };
 }

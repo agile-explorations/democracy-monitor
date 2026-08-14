@@ -202,7 +202,30 @@ export async function validateAliases(
   phrases: string[],
   window: ExpansionWindow,
 ): Promise<ValidatedAlias[]> {
-  if (!isDbAvailable() || phrases.length === 0) return [];
+  return (await validateAliasesDiagnostic(phrases, window)).validated;
+}
+
+export interface ExpansionDiagnostic {
+  proposed: string[];
+  validated: ValidatedAlias[];
+  rejected: Array<{ phrase: string; reason: string; matches?: number }>;
+  matchCap: number;
+}
+
+/** validateAliases with the discard reasons retained (#718 debug trace).
+ *  The production path is this function — validateAliases just drops the
+ *  diagnostics — so the trace can never diverge from real behavior. */
+export async function validateAliasesDiagnostic(
+  phrases: string[],
+  window: ExpansionWindow,
+): Promise<ExpansionDiagnostic> {
+  const empty: ExpansionDiagnostic = {
+    proposed: phrases,
+    validated: [],
+    rejected: [],
+    matchCap: 0,
+  };
+  if (!isDbAvailable() || phrases.length === 0) return empty;
   const db = getDb();
   const filters = windowFilters(window);
   const windowTotal = await cappedCount(db, filters, WINDOW_COUNT_CAP);
@@ -210,6 +233,9 @@ export async function validateAliases(
     MIN_MATCH_CAP,
     Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
   );
+  const rejected: ExpansionDiagnostic['rejected'] = phrases
+    .filter((p) => isBoilerplateAlias(p))
+    .map((phrase) => ({ phrase, reason: 'boilerplate' }));
   const base = phrases.filter((p) => !isBoilerplateAlias(p));
   // Statutory-citation variants ride along; validation decides which spelling
   // the corpus actually uses. Dedupe case-insensitively, originals first.
@@ -234,7 +260,14 @@ export async function validateAliases(
       return { phrase, matches: await cappedCount(db, matchFilter, maxMatches + 1) };
     }),
   );
-  return counts.filter((c) => c.matches >= 1 && c.matches <= maxMatches);
+  const validated: ValidatedAlias[] = [];
+  for (const c of counts) {
+    if (c.matches < 1) rejected.push({ phrase: c.phrase, reason: 'zero-matches', matches: 0 });
+    else if (c.matches > maxMatches)
+      rejected.push({ phrase: c.phrase, reason: 'over-match-cap', matches: c.matches });
+    else validated.push(c);
+  }
+  return { proposed: phrases, validated, rejected, matchCap: maxMatches };
 }
 
 /**
@@ -256,6 +289,18 @@ export async function expandAndValidate(
   const validated = await validateAliases(await proposeAliases(query), window);
   await cacheSet(key, validated, EXPANSION_CACHE_TTL);
   return validated;
+}
+
+/** Full expansion with diagnostics for the debug trace (#718) — uncached
+ *  except the LLM proposal, so rejected reasons are always current. */
+export async function expandDiagnostic(
+  query: string,
+  window: ExpansionWindow,
+): Promise<ExpansionDiagnostic> {
+  if (process.env.HYBRID_RETRIEVAL_DISABLED === '1') {
+    return { proposed: [], validated: [], rejected: [], matchCap: 0 };
+  }
+  return validateAliasesDiagnostic(await proposeAliases(query), window);
 }
 
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {

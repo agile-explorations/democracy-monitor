@@ -3,8 +3,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedText } from '@/lib/services/embedding-service';
+import { expandDiagnostic } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
+import type { CandidateSummary } from '@/lib/services/research-doc-retrieval';
 import { computeDateRange } from '@/lib/services/research-prompts';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
@@ -142,6 +144,50 @@ async function serveCachedDocs(
   return true;
 }
 
+/** Assemble the #718 debug trace: settings, expansion diagnostics with
+ *  rejected reasons, and the pre-rerank candidate set. */
+async function buildDebugTrace(
+  req: NextApiRequest,
+  query: string,
+  candidates: CandidateSummary[] | undefined,
+) {
+  const tier = (req.query.tier as string | undefined) ?? 'all';
+  const expansion = await expandDiagnostic(query, {
+    dateFrom: req.query.dateFrom as string | undefined,
+    dateTo: req.query.dateTo as string | undefined,
+    tier: tier === 'all' ? undefined : (tier as 'action' | 'discussion'),
+  });
+  return {
+    capturedAt: new Date().toISOString(),
+    settings: {
+      tier,
+      dateFrom: req.query.dateFrom ?? null,
+      dateTo: req.query.dateTo ?? null,
+      eras: req.query.eras ?? null,
+    },
+    expansion,
+    candidatesPreRerank: candidates ?? [],
+  };
+}
+
+/** docsOnly response: debug runs attach the trace and skip the cache. */
+async function respondDocsOnly(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  query: string,
+  payload: Record<string, unknown>,
+  docsCacheKey: string,
+  debug: boolean,
+  candidates: CandidateSummary[] | undefined,
+): Promise<void> {
+  if (debug) {
+    res.status(200).json({ ...payload, trace: await buildDebugTrace(req, query, candidates) });
+    return;
+  }
+  await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
+  res.status(200).json(payload);
+}
+
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -149,10 +195,13 @@ async function handleResearch(
 ): Promise<void> {
   const editorial = req.query.editorial === 'true';
   const docsOnly = req.query.docsOnly === 'true';
+  // Debug trace (#718): always-fresh diagnostic run — bypasses the docs
+  // cache in both directions so the trace reflects live behavior.
+  const debug = req.query.debug === '1';
   const queryHash = hashQuery(query);
 
   const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
-  if (docsOnly && (await serveCachedDocs(res, req, docsCacheKey))) return;
+  if (docsOnly && !debug && (await serveCachedDocs(res, req, docsCacheKey))) return;
 
   const embedding = await timedEmbedOrFail(res, query, queryHash);
   if (!embedding) return;
@@ -163,7 +212,8 @@ async function handleResearch(
     strata,
     inferredFrom,
     alsoSearched,
-  } = await retrieveResearchDocs(req, query, embedding);
+    candidates,
+  } = await retrieveResearchDocs(req, query, embedding, debug);
   // Phase-timing line for cold-cache diagnosis (post-dump HNSW evictions can
   // multiply retrieval time; CF cuts requests at ~100s since 2026-07-31).
   console.log(
@@ -189,8 +239,7 @@ async function handleResearch(
       alsoSearched,
       docsHash,
     );
-    await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
-    res.status(200).json(payload);
+    await respondDocsOnly(req, res, query, payload, docsCacheKey, debug, candidates);
     return;
   }
 
