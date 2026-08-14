@@ -19,3 +19,19 @@ describe('parseDocCitations (#712)', () => {
     expect(parseDocCitations('[Docs 1-999]')).toEqual([1, 999]);
   });
 });
+
+describe('range guard (#712)', () => {
+  it('refuses descending and oversized ranges', () => {
+    expect(parseDocCitations('[Docs 21-19]')).toEqual([21, 19]);
+    expect(parseDocCitations('[Docs 1-99]')).toEqual([1, 99]);
+  });
+
+  it('expands en- and em-dash ranges', () => {
+    expect(parseDocCitations('[Docs 4–6]')).toEqual([4, 5, 6]);
+    expect(parseDocCitations('[Docs 7—8]')).toEqual([7, 8]);
+  });
+
+  it('returns [] for text with no citation groups', () => {
+    expect(parseDocCitations('no citations here')).toEqual([]);
+  });
+});

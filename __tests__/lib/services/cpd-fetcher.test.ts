@@ -71,3 +71,52 @@ describe('summaryToContentItem', () => {
     ]);
   });
 });
+
+describe('summaryToContentItem branch coverage (#718 gate)', () => {
+  const base = { title: 'T', dateIssued: '2025-01-01' };
+
+  it('falls through download links html -> pdf -> txt -> details', () => {
+    expect(summaryToContentItem('DCPD-1', { ...base, download: { pdfLink: 'pdf' } }).link).toBe(
+      'pdf',
+    );
+    expect(summaryToContentItem('DCPD-1', { ...base, download: { txtLink: 'txt' } }).link).toBe(
+      'txt',
+    );
+    expect(summaryToContentItem('DCPD-1', { ...base }).link).toBe(
+      'https://www.govinfo.gov/app/details/DCPD-1',
+    );
+  });
+
+  it('defaults an untitled document', () => {
+    expect(summaryToContentItem('DCPD-1', { dateIssued: 'd' } as never).title).toBe(
+      '(untitled document)',
+    );
+  });
+
+  it('maps every dcpdCategory level to its source type', () => {
+    const t = (level1: string) =>
+      summaryToContentItem('DCPD-1', { ...base, dcpdCategory: [{ level1 }] }).type;
+    expect(t('Executive Orders')).toBe('executive_order');
+    expect(t('Memorandums')).toBe('presidential_memorandum');
+    expect(t('Proclamations')).toBe('proclamation');
+    expect(t('Letters')).toBe('presidential_letter');
+    expect(t('Statements by the President')).toBe('presidential_statement');
+    expect(t('Remarks')).toBe('presidential_remarks');
+    expect(t('Addresses to the Nation')).toBe('presidential_remarks');
+    expect(t('Interviews')).toBe('presidential_interview');
+    expect(t('Other')).toBe('presidential_document');
+    expect(summaryToContentItem('DCPD-1', { ...base }).type).toBe('presidential_document');
+  });
+
+  it('collects subjects and category metadata', () => {
+    const item = summaryToContentItem('DCPD-1', {
+      ...base,
+      dcpdCategory: [{ level1: 'Remarks' }],
+      subject: [{ level1: 'Immigration' }, { level1: undefined }, { level1: 'Labor' }],
+    } as never);
+    expect(item.metadata).toMatchObject({
+      dcpdCategory: 'Remarks',
+      subjects: ['Immigration', 'Labor'],
+    });
+  });
+});
