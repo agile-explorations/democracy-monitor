@@ -62,7 +62,11 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
   // Sentence-ish segmentation: quotes and citations usually cohabit one.
   const sentences = answer.split(/(?<=[.!?])\s+(?=[A-Z*\[#-])/);
   for (const sentence of sentences) {
-    const quotes = [...sentence.matchAll(/[“"]([^“”"]{15,400}?)[”"]/g)]
+    // Match EVERY quoted span (even 1 char) and length-filter afterwards:
+    // a minimum inside the regex left short quotes ("last Friday")
+    // unconsumed, flipping open/close parity so the prose BETWEEN two real
+    // quotations was extracted as a phantom quote (#718, 2026-08-14).
+    const quotes = [...sentence.matchAll(/[“"]([^“”"]{1,400}?)[”"]/g)]
       .map((m) => m[1].trim())
       .filter((q) => q.length >= MIN_QUOTE_CHARS);
     if (quotes.length === 0) continue;
