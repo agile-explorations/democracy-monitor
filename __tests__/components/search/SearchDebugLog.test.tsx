@@ -36,7 +36,13 @@ describe('SearchDebugLog', () => {
 
     expect(downloaded).not.toBeNull();
     expect(downloaded!.type).toBe('application/json');
-    const body = JSON.parse(await new Response(downloaded!).text());
+    const text = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(downloaded!);
+    });
+    const body = JSON.parse(text);
     expect(body.question).toBe('test question');
     expect(body.synthesisPrompt).toBe('PROMPT');
     click.mockRestore();
