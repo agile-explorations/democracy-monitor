@@ -231,3 +231,14 @@ describe('findNearestActual (#718 v1.9.31)', () => {
     ).toBeNull();
   });
 });
+
+describe('CREC page markers in stored text (#718 v1.9.33)', () => {
+  it('matches quotes across inline [[Page ...]] interruptions', () => {
+    const source = normalizeForMatch(
+      'law enforcement officials have the explicit [[Page S3465]] authority to assist the Federal Government',
+    );
+    expect(quoteAppearsIn('the explicit authority to assist the Federal Government', source)).toBe(
+      true,
+    );
+  });
+});
