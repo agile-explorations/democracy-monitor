@@ -55,3 +55,18 @@ describe('rerankByRelevance', () => {
     expect(await rerankByRelevance('q', docs, 2)).toEqual(docs);
   });
 });
+
+describe('parseRanking fallback shapes (#718, 2026-08-14)', () => {
+  it('accepts a bare digits-and-commas line without brackets', () => {
+    expect(parseRanking('3, 1, 2', 3)).toEqual([3, 1, 2]);
+    expect(parseRanking('Ranking:\n3, 1, 2\n', 3)).toEqual([3, 1, 2]);
+  });
+
+  it('accepts a truncated bracket via the bare-line shape', () => {
+    expect(parseRanking('2, 1, 3,', 3)).toEqual([2, 1, 3]);
+  });
+
+  it('still rejects prose with embedded numbers', () => {
+    expect(parseRanking('Rank 1: doc 3, because it is best', 3)).toBeNull();
+  });
+});
