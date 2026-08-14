@@ -25,7 +25,11 @@ export interface ResearchResult {
   quoteVerification?: {
     totalQuotes: number;
     verifiedCount: number;
-    unverified: Array<{ quote: string; citations: number[] }>;
+    unverified: Array<{
+      quote: string;
+      citations: number[];
+      nearest?: { citation: number; text: string };
+    }>;
   } | null;
   editorial?: {
     expertDraft: string;
