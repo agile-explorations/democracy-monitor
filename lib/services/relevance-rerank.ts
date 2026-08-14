@@ -40,11 +40,16 @@ function buildPrompt(question: string, docs: ResearchDocument[]): string {
 
 /** Parse "[3,1,7]" (possibly wrapped in prose/fences) into a valid permutation, else null. */
 export function parseRanking(text: string, count: number): number[] | null {
-  const match = text.match(/\[[\d,\s]+\]/);
+  // Primary shape: a bracketed array anywhere in the reply. Fallback shape
+  // (~25% of live calls degraded to vector order before this, 2026-08-14):
+  // a bare digits-and-commas line ("3, 1, 7") with the brackets omitted or
+  // truncated. Prose with embedded numbers stays rejected — a bare line
+  // must contain ONLY numbers and separators to qualify.
+  const match = text.match(/\[[\d,\s]+\]/) ?? text.match(/^\s*\d+(?:\s*,\s*\d+)+\s*,?\s*$/m);
   if (!match) return null;
   let parsed: unknown;
   try {
-    parsed = JSON.parse(match[0]);
+    parsed = JSON.parse(`[${match[0].replace(/[[\]]/g, '').replace(/,\s*$/, '')}]`);
     // nosemgrep: opengrep.no-silent-catch — parse probe; the caller logs the fallback with the raw text's disposition
   } catch {
     return null;
@@ -78,7 +83,10 @@ async function rankAll(question: string, docs: ResearchDocument[]): Promise<Rese
     ]);
     const ranking = parseRanking(result.content, candidates.length);
     if (!ranking) {
-      console.warn('[rerank] unparseable ranking — falling back to vector order');
+      console.warn(
+        '[rerank] unparseable ranking — falling back to vector order. Raw head:',
+        JSON.stringify(result.content.slice(0, 200)),
+      );
       return docs;
     }
     console.log(
