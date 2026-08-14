@@ -47,6 +47,10 @@ export function normalizeForMatch(text: string): string {
       // ("so-called 'independent regulatory agencies'") that answers quote
       // without the inner marks; contractions stay symmetric (don't -> dont).
       .replace(/[‘’ʼ'“”"]/g, '')
+      // Congressional Record page markers interrupt sentences mid-word in
+      // stored text ("the explicit [[Page S3465]] authority") — never present
+      // in quotes, so stripping is effectively haystack-side (2026-08-14).
+      .replace(/\[\[Page [^\]]*\]\]/gi, ' ')
       .replace(/[–—]/g, '-')
       .replace(/\[…\]|…|\.\.\./g, ' ')
       // Hyphens are deleted outright (not collapsed): stored text hyphenates
