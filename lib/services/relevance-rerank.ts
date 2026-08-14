@@ -40,12 +40,16 @@ function buildPrompt(question: string, docs: ResearchDocument[]): string {
 
 /** Parse "[3,1,7]" (possibly wrapped in prose/fences) into a valid permutation, else null. */
 export function parseRanking(text: string, count: number): number[] | null {
-  // Primary shape: a bracketed array anywhere in the reply. Fallback shape
-  // (~25% of live calls degraded to vector order before this, 2026-08-14):
-  // a bare digits-and-commas line ("3, 1, 7") with the brackets omitted or
-  // truncated. Prose with embedded numbers stays rejected — a bare line
-  // must contain ONLY numbers and separators to qualify.
-  const match = text.match(/\[[\d,\s]+\]/) ?? text.match(/^\s*\d+(?:\s*,\s*\d+)+\s*,?\s*$/m);
+  // Live failure shapes (raw-head logging, 2026-08-14): a fenced bracketed
+  // TOP-K list ("[3,1,9,2,4]" for 30 docs — intentional signal, previously
+  // rejected by the half-guard); a bracket TRUNCATED by the token cap (no
+  // closing "]"); a bare digits-and-commas line with brackets omitted.
+  // Prose with embedded numbers stays rejected: bracketed shapes accept
+  // any list of >=3, the bare-line shape keeps the half-guard.
+  const stripped = text.replace(/```[a-z]*\n?/gi, '');
+  const bracketed = stripped.match(/\[[\d,\s]+\]/) ?? stripped.match(/\[[\d,\s]+$/m);
+  const bare = bracketed ? null : stripped.match(/^\s*\d+(?:\s*,\s*\d+)+\s*,?\s*$/m);
+  const match = bracketed ?? bare;
   if (!match) return null;
   let parsed: unknown;
   try {
@@ -57,8 +61,11 @@ export function parseRanking(text: string, count: number): number[] | null {
   if (!Array.isArray(parsed)) return null;
   const nums = parsed.filter((n): n is number => Number.isInteger(n) && n >= 1 && n <= count);
   const unique = [...new Set(nums)];
-  // Tolerate omissions (append missing in original order) but not garbage.
-  if (unique.length < Math.ceil(count / 2)) return null;
+  // Bracketed lists are high-confidence format: accept top-k (>=3) and
+  // append the missing numbers in original order. A bare line keeps the
+  // half-guard so scattered prose numbers cannot pass as a ranking.
+  const floor = bracketed ? Math.min(3, count) : Math.ceil(count / 2);
+  if (unique.length < floor) return null;
   for (let i = 1; i <= count; i++) if (!unique.includes(i)) unique.push(i);
   return unique;
 }
@@ -74,7 +81,7 @@ async function rankAll(question: string, docs: ResearchDocument[]): Promise<Rese
       provider.complete(buildPrompt(question, candidates), {
         systemPrompt: SYSTEM_PROMPT,
         temperature: 0,
-        maxTokens: 400,
+        maxTokens: 800,
         model: RERANK_MODEL,
       }),
       new Promise<never>((_, reject) =>

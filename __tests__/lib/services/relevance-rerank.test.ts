@@ -70,3 +70,24 @@ describe('parseRanking fallback shapes (#718, 2026-08-14)', () => {
     expect(parseRanking('Rank 1: doc 3, because it is best', 3)).toBeNull();
   });
 });
+
+describe('parseRanking live failure shapes (#718 raw-head evidence)', () => {
+  it('accepts a fenced top-k bracketed list, appending the rest in order', () => {
+    const r = parseRanking('```json\n[3,1,9,2,4]\n```', 30);
+    expect(r!.slice(0, 5)).toEqual([3, 1, 9, 2, 4]);
+    expect(r).toHaveLength(30);
+    expect(r![5]).toBe(5);
+  });
+
+  it('salvages a bracket truncated by the token cap', () => {
+    const nums = Array.from({ length: 50 }, (_, i) => ((i * 7) % 60) + 1);
+    const truncated = '```json\n[' + nums.join(', ') + ',';
+    const r = parseRanking(truncated, 60);
+    expect(r).toHaveLength(60);
+    expect(r!.slice(0, 5)).toEqual([...new Set(nums)].slice(0, 5));
+  });
+
+  it('rejects a tiny bracketed list below the top-k floor', () => {
+    expect(parseRanking('[1, 2]', 30)).toBeNull();
+  });
+});

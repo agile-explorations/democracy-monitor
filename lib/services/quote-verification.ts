@@ -118,6 +118,34 @@ export function quoteAppearsIn(quote: string, normalizedSource: string): boolean
   return true;
 }
 
+/** On a verification miss, log the AI's quoted version next to the nearest
+ *  ACTUAL source text (owner request, 2026-08-14): anchor the quote's first
+ *  words in the normalized source and print the surrounding window, so
+ *  tense-smoothing and dropped words ("abdicate" -> "abdicated", the
+ *  dropped "only") are diagnosable from logs alone. Text shown is
+ *  normalized (punctuation/quotes stripped) — offsets do not map to raw. */
+function logMissDetail(
+  q: ExtractedQuote,
+  idByCitation: Map<number, number>,
+  contentById: Map<number, string>,
+): void {
+  const anchorText = normalizeForMatch(q.quote).split(' ').slice(0, 4).join(' ');
+  let nearest = 'no nearby match for the opening words in any cited document';
+  for (const c of q.citations) {
+    const id = idByCitation.get(c);
+    const content = id != null ? contentById.get(id) : undefined;
+    if (!content || anchorText.length < 8) continue;
+    const i = content.indexOf(anchorText);
+    if (i >= 0) {
+      nearest = `[Doc ${c}] "${content.slice(Math.max(0, i - 40), i + q.quote.length + 60)}"`;
+      break;
+    }
+  }
+  console.warn(
+    `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] actual(normalized): ${nearest}`,
+  );
+}
+
 /** Document ids any extracted quote may need checking against. */
 function collectNeededIds(
   extracted: ExtractedQuote[],
@@ -179,7 +207,10 @@ export async function verifyAnswerQuotes(
         const content = id != null ? contentById.get(id) : undefined;
         return content ? quoteAppearsIn(q.quote, content) : false;
       });
-      if (!found) unverified.push({ quote: q.quote.slice(0, 200), citations: q.citations });
+      if (!found) {
+        unverified.push({ quote: q.quote.slice(0, 200), citations: q.citations });
+        logMissDetail(q, idByCitation, contentById);
+      }
     }
     return {
       totalQuotes: extracted.length,
