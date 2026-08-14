@@ -114,3 +114,24 @@ describe('boundary punctuation inside quotation marks (#716 v1.9.24)', () => {
     expect(quoteAppearsIn('the court held that the rule stands', source)).toBe(false);
   });
 });
+
+describe('quoteAppearsIn edge branches', () => {
+  it('accepts a quote whose fragments are all below the length floor', () => {
+    expect(quoteAppearsIn('a … b', normalizeForMatch('anything'))).toBe(true);
+  });
+
+  it('requires ellipsis fragments in order', () => {
+    const source = normalizeForMatch('first fragment text then second fragment text');
+    expect(quoteAppearsIn('first fragment … second fragment', source)).toBe(true);
+    expect(quoteAppearsIn('second fragment … first fragment', source)).toBe(false);
+  });
+});
+
+describe('extractQuotedClaims branches', () => {
+  it('skips sentences without quotes and keeps citation pairing', () => {
+    const claims = extractQuotedClaims(
+      'Plain sentence. The order says "a quoted passage of real length" [Doc 3]. Short "tiny" one [Doc 4].',
+    );
+    expect(claims).toEqual([{ quote: 'a quoted passage of real length', citations: [3] }]);
+  });
+});
