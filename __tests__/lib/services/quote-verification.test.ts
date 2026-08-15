@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   extractQuotedClaims,
   findNearestActual,
+  findQuoteElsewhere,
+  isSearchedPhraseQuote,
   normalizeForMatch,
   quoteAppearsIn,
 } from '@/lib/services/quote-verification';
@@ -229,6 +231,56 @@ describe('findNearestActual (#718 v1.9.31)', () => {
     expect(
       findNearestActual('a quote that appears nowhere at all', [17], idByCitation, rawById),
     ).toBeNull();
+  });
+});
+
+describe('searched-phrase exemption (#718)', () => {
+  const chips = ['Schedule F', 'Congressional Response', 'Executive Order 13957'];
+
+  it('exempts a quoted chip despite trailing punctuation and case', () => {
+    expect(isSearchedPhraseQuote('Congressional Response,', chips)).toBe(true);
+    expect(isSearchedPhraseQuote('congressional response', chips)).toBe(true);
+  });
+
+  it('does not exempt real document quotes or chip supersets', () => {
+    expect(isSearchedPhraseQuote('replace a competitive merit system', chips)).toBe(false);
+    expect(isSearchedPhraseQuote('the Congressional Response to Schedule F', chips)).toBe(false);
+  });
+
+  it('never exempts on an empty key or empty chip list', () => {
+    expect(isSearchedPhraseQuote('—', chips)).toBe(false);
+    expect(isSearchedPhraseQuote('Congressional Response', [])).toBe(false);
+  });
+});
+
+describe('findQuoteElsewhere (#718)', () => {
+  const docs = [
+    { citationIndex: 22, id: 101 },
+    { citationIndex: 25, id: 102 },
+  ];
+  const contentById = new Map([
+    [101, normalizeForMatch('An executive order creating Schedule F in the excepted service.')],
+    [
+      102,
+      normalizeForMatch(
+        'We cannot allow the Trump administration to replace a competitive merit system with a political spoils system.',
+      ),
+    ],
+  ]);
+
+  it('finds a mis-cited quote verbatim in another context document', () => {
+    const q = {
+      quote: 'replace a competitive merit system with a political spoils system',
+      citations: [22],
+    };
+    expect(findQuoteElsewhere(q, docs, contentById)).toBe(25);
+  });
+
+  it('skips the quote’s own citations and returns undefined when absent', () => {
+    const inOwnDoc = { quote: 'creating Schedule F in the excepted service', citations: [22] };
+    expect(findQuoteElsewhere(inOwnDoc, docs, contentById)).toBeUndefined();
+    const nowhere = { quote: 'a phrase found in no document at all', citations: [22] };
+    expect(findQuoteElsewhere(nowhere, docs, contentById)).toBeUndefined();
   });
 });
 

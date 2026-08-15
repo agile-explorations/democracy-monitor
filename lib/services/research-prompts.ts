@@ -128,7 +128,10 @@ function buildCoverageSection(
           'the top-ranked slice, so when a term shows many matches, describe absence as',
           '"not among the N most relevant documents retrieved of M matching corpus-wide",',
           'never as absence from the corpus. When characterizing coverage you may cite',
-          'these searched terms and their counts. If you describe the retrieval method',
+          'these searched terms and their counts — but searched terms are retrieval',
+          'inputs, not document text: never attach a [Doc N] citation to a searched',
+          'term itself; [Doc N] belongs only on claims drawn from document content.',
+          'If you describe the retrieval method',
           'anywhere in the answer, describe it as this hybrid — never as vector similarity',
           'alone. Older relevant documents may still be underrepresented.',
         ]

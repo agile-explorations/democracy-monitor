@@ -44,6 +44,18 @@ export function QuoteVerificationBadge({
                 [{n}]
               </a>
             ))}
+            {u.foundIn != null && (
+              <span className="block text-dm-text-secondary/90">
+                <span className="text-dm-muted">
+                  This quote is verbatim from a different source — the citation points to the wrong
+                  document; see
+                </span>{' '}
+                <a href={`#cite-${u.foundIn}`} className="text-dm-accent hover:underline">
+                  [{u.foundIn}]
+                </a>
+                .
+              </span>
+            )}
             {u.nearest && (
               <span className="block text-dm-text-secondary/90">
                 <span className="text-dm-muted">Document reads:</span> &ldquo;…
