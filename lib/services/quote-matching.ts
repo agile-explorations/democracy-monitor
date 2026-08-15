@@ -50,9 +50,45 @@ export function normalizeForMatch(text: string): string {
   );
 }
 
-/** Citation-pairing window on each side of a quote, when no neighboring
- *  quote bounds it sooner. */
+/** Citation-pairing window on each side of a quote. */
 const CITATION_WINDOW_CHARS = 250;
+
+/** Sentence boundary: terminal punctuation, optional closers, whitespace,
+ *  then a plausible sentence opener. Abbreviation false positives ("Mr.",
+ *  "U.S.", "H.R. 8711") only SHORTEN a pairing window — a mild miss, never a
+ *  false alarm — which is why sentence logic is safe here but was not safe
+ *  for quote extraction itself (#718: splitting severed quote pairs). */
+const SENTENCE_BOUNDARY = /[.!?][)\]"'’”]*\s+(?=[A-Z0-9"“])/g;
+
+/** Truncate a left pairing window to text AFTER its last sentence boundary:
+ *  a bracket in a PREVIOUS sentence belongs to that sentence's claim and
+ *  must not be stolen by the next sentence's quote (#721). */
+function afterLastSentenceEnd(text: string): { text: string; cut: number } {
+  let cut = 0;
+  for (const m of text.matchAll(SENTENCE_BOUNDARY)) cut = m.index! + m[0].length;
+  return { text: text.slice(cut), cut };
+}
+
+/** Right pairing window: from the quote's end to the first sentence boundary
+ *  OUTSIDE any quoted span (bounded by CITATION_WINDOW_CHARS). Crossing a
+ *  sibling quote is deliberate — one sentence-final bracket legitimately
+ *  covers '"A" and "B" [Doc 3]' (#721); crossing a sentence boundary is not,
+ *  which is what made the old unbounded fallback dangerous (#718). */
+function rightPairingWindow(
+  answer: string,
+  end: number,
+  quoteSpans: Array<{ start: number; end: number }>,
+): { offset: number; text: string } {
+  const cap = Math.min(answer.length, end + CITATION_WINDOW_CHARS);
+  let limit = cap;
+  for (const m of answer.slice(end, cap).matchAll(SENTENCE_BOUNDARY)) {
+    const abs = end + m.index!;
+    if (quoteSpans.some((s) => abs >= s.start && abs < s.end)) continue;
+    limit = abs + 1;
+    break;
+  }
+  return { offset: end, text: answer.slice(end, limit) };
+}
 
 /** Canonical form for searched-term exemption: normalized with boundary
  *  punctuation stripped, so `"Congressional Response,"` matches the chip
@@ -82,12 +118,17 @@ function firstCitations(text: string): number[] | null {
  *  Trump's..." split inside the quotation), and the orphaned closing mark
  *  opened a phantom quote in the next fragment (#718, 2026-08-14). Every
  *  span is matched (even 1 char) and length-filtered afterwards for the
- *  same parity reason. Citations pair via a window bounded by neighboring
- *  quotes; a quote with none looks further right as a fallback (covers
- *  '"A" and "B" [Doc 3]'). Pure — unit-tested. */
+ *  same parity reason. Citation pairing is SENTENCE-SCOPED (#721): the
+ *  right window runs to the quote's sentence end — past sibling quotes, so
+ *  a sentence-final bracket covers '"A" and "B" [Doc 3]' — and the left
+ *  window (citation-before-quote style) never reaches back past a sentence
+ *  boundary, so a previous sentence's brackets are never stolen. No window
+ *  ever crosses a sentence boundary — the failure mode of the removed
+ *  unbounded fallback (#718). Pure — unit-tested. */
 export function extractQuotedClaims(answer: string): ExtractedQuote[] {
   const results: ExtractedQuote[] = [];
   const matches = [...answer.matchAll(/[“"]([^“”"]{1,400}?)[”"]/g)];
+  const quoteSpans = matches.map((m) => ({ start: m.index!, end: m.index! + m[0].length }));
   for (let k = 0; k < matches.length; k++) {
     const m = matches[k]!;
     const quote = m[1]!.trim();
@@ -95,21 +136,11 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
     const start = m.index!;
     const end = start + m[0].length;
     const prevBound = k > 0 ? matches[k - 1]!.index! + matches[k - 1]![0].length : 0;
-    const nextBound = k < matches.length - 1 ? matches[k + 1]!.index! : answer.length;
-    // Right-biased pairing: citations nearly always FOLLOW their quote, so a
-    // left-first window would steal the previous quote's trailing citation.
-    // Bounded right first, bounded left second (citation-before-quote style).
-    // NO unbounded fallback: reaching past a neighboring quote attributed
-    // OTHER sentences' citations to quoted named entities ("One Big
-    // Beautiful Bill"), flooding the badge with term-of-art false alarms
-    // (first live run on this extractor, 2026-08-14). An unattributed quote
-    // is exempt terminology — the pre-#718 disposition.
-    const right = {
-      offset: end,
-      text: answer.slice(end, Math.min(nextBound, end + CITATION_WINDOW_CHARS)),
-    };
+    const right = rightPairingWindow(answer, end, quoteSpans);
     const leftStart = Math.max(prevBound, start - CITATION_WINDOW_CHARS);
-    const left = { offset: leftStart, text: answer.slice(leftStart, start) };
+    const rawLeft = answer.slice(leftStart, start);
+    const trimmed = afterLastSentenceEnd(rawLeft);
+    const left = { offset: leftStart + trimmed.cut, text: trimmed.text };
     const rightCitations = firstCitations(right.text);
     const leftCitations = rightCitations ? null : firstCitations(left.text);
     const window = rightCitations ? right : leftCitations ? left : null;
