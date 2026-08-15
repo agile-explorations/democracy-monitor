@@ -13,8 +13,10 @@ function CiteLink({ n }: { n: number }) {
   );
 }
 
-/** Citations the verifier rewrote in the displayed answer (#720) — full
- *  disclosure: the quote, its actual source, and what the answer had cited. */
+/** Citation brackets the verifier rewrote in the displayed answer (#720) —
+ *  full disclosure: the quote, its verbatim source(s), and what changed.
+ *  Replacements drop the original citation; expansions keep it for the
+ *  claim it supports. */
 function CorrectionList({
   corrections,
 }: {
@@ -24,12 +26,18 @@ function CorrectionList({
     <ul className="mt-1 space-y-1 pl-4">
       {corrections.map((c, i) => (
         <li key={i} className="text-[11px] text-dm-text-secondary/90 list-disc">
-          <span className="text-dm-muted">Corrected:</span> &ldquo;{clip(c.quote, 120)}&rdquo; is
-          verbatim from
-          <CiteLink n={c.to} />
+          <span className="text-dm-muted">
+            {c.kind === 'expanded' ? 'Citation expanded:' : 'Corrected:'}
+          </span>{' '}
+          &ldquo;{clip(c.quote, 120)}&rdquo; is verbatim in
+          {c.to.map((n) => (
+            <CiteLink key={n} n={n} />
+          ))}
           <span className="text-dm-muted">
             {' '}
-            — the answer originally cited {c.from.map((n) => `[${n}]`).join(' ')}.
+            {c.kind === 'expanded'
+              ? `— the original ${c.from.map((n) => `[${n}]`).join(' ')} was kept for the claim it supports.`
+              : `— the answer originally cited ${c.from.map((n) => `[${n}]`).join(' ')}.`}
           </span>
         </li>
       ))}

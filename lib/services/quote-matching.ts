@@ -205,15 +205,17 @@ export function findNearestActual(
   return null;
 }
 
-/** Rewrite corrected citation brackets in the answer text. Spans are applied
- *  right-to-left so earlier indices stay valid. Pure — unit-tested. */
+/** Rewrite corrected citation brackets in the answer text — each span is
+ *  replaced by a bracket listing `docs` (one for a replacement, several for
+ *  a union expansion, #720). Spans are applied right-to-left so earlier
+ *  indices stay valid. Pure — unit-tested. */
 export function applyCitationCorrections(
   answer: string,
-  fixes: Array<{ span: { start: number; end: number }; to: number }>,
+  fixes: Array<{ span: { start: number; end: number }; docs: number[] }>,
 ): string {
   let out = answer;
   for (const f of [...fixes].sort((a, b) => b.span.start - a.span.start)) {
-    out = `${out.slice(0, f.span.start)}[Doc ${f.to}]${out.slice(f.span.end)}`;
+    out = `${out.slice(0, f.span.start)}[Doc ${f.docs.join(', Doc ')}]${out.slice(f.span.end)}`;
   }
   return out;
 }

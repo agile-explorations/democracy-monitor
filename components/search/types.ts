@@ -25,8 +25,15 @@ export interface ResearchResult {
   quoteVerification?: {
     totalQuotes: number;
     verifiedCount: number;
-    /** Citations the verifier rewrote in the displayed answer (#720). */
-    corrections?: Array<{ quote: string; from: number[]; to: number }>;
+    /** Citation brackets the verifier rewrote in the displayed answer (#720):
+     *  'replaced' = unique verbatim source supplanted the original;
+     *  'expanded' = union of original + verbatim sources. */
+    corrections?: Array<{
+      quote: string;
+      from: number[];
+      to: number[];
+      kind: 'replaced' | 'expanded';
+    }>;
     unverified: Array<{
       quote: string;
       citations: number[];

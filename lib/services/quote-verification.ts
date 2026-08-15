@@ -23,14 +23,18 @@ import {
   quoteAppearsIn,
 } from '@/lib/services/quote-matching';
 
-/** A citation the verifier rewrote: the quote is verbatim in exactly one
- *  context document, and it is not any of the ones the answer cited (#720). */
+/** A citation bracket the verifier rewrote (#720). `replaced`: the quote has
+ *  exactly one verbatim source, which supplants the original citations.
+ *  `expanded`: the quote appears in several non-cited documents — the bracket
+ *  becomes the union (original kept for the claim it supports, verbatim
+ *  sources added). */
 export interface QuoteCorrection {
   quote: string;
   /** Citations the answer originally carried next to the quote. */
   from: number[];
-  /** The document that actually contains the quote verbatim. */
-  to: number;
+  /** The document(s) that actually contain the quote verbatim. */
+  to: number[];
+  kind: 'replaced' | 'expanded';
 }
 
 export interface QuoteVerificationResult {
@@ -160,10 +164,12 @@ function computeMissed(
   );
 }
 
-/** Split misses into auto-corrections (unique verbatim source + a safely
- *  rewritable bracket) and unverified entries (#720). A bracket span is never
- *  rewritten twice — a second quote pairing to the same bracket stays
- *  unverified rather than conflict. */
+/** Split misses into bracket rewrites and unverified entries (#720): a
+ *  unique verbatim source REPLACES the original citations; several sources
+ *  EXPAND the bracket to the union (original kept — it may support the
+ *  sentence's claim even though it lacks the quoted words). A bracket span
+ *  is never rewritten twice — a second quote pairing to the same bracket
+ *  stays unverified rather than conflict. */
 function resolveMisses(
   missed: ExtractedQuote[],
   docs: Array<{ citationIndex: number; id: number }>,
@@ -172,19 +178,21 @@ function resolveMisses(
   rawById: Map<number, string>,
 ) {
   const corrections: QuoteCorrection[] = [];
-  const fixes: Array<{ span: { start: number; end: number }; to: number }> = [];
+  const fixes: Array<{ span: { start: number; end: number }; docs: number[] }> = [];
   const usedSpans = new Set<number>();
   const unverified: QuoteVerificationResult['unverified'] = [];
   for (const q of missed) {
     const containing = findQuoteElsewhere(q, docs, contentById);
     const fixable =
-      containing.length === 1 && q.citationSpan != null && !usedSpans.has(q.citationSpan.start);
+      containing.length >= 1 && q.citationSpan != null && !usedSpans.has(q.citationSpan.start);
     if (fixable) {
       usedSpans.add(q.citationSpan!.start);
-      corrections.push({ quote: q.quote.slice(0, 200), from: q.citations, to: containing[0]! });
-      fixes.push({ span: q.citationSpan!, to: containing[0]! });
+      const kind = containing.length === 1 ? 'replaced' : 'expanded';
+      const bracketDocs = kind === 'replaced' ? containing : [...q.citations, ...containing];
+      corrections.push({ quote: q.quote.slice(0, 200), from: q.citations, to: containing, kind });
+      fixes.push({ span: q.citationSpan!, docs: bracketDocs });
       console.warn(
-        `[quote-verification] CORRECTED ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] -> [Doc ${containing[0]}] (unique verbatim source)`,
+        `[quote-verification] ${kind.toUpperCase()} ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] -> [Doc ${bracketDocs.join(', Doc ')}] (verbatim in ${containing.join(',')})`,
       );
     } else {
       unverified.push(buildMiss(q, containing, idByCitation, rawById));

@@ -171,8 +171,16 @@ describe('applyCitationCorrections (#720)', () => {
   it('replaces a single bracket in place', () => {
     const answer = 'They vowed to fight "the spoils system" [Doc 22]. More text follows.';
     const span = { start: answer.indexOf('[Doc 22]'), end: answer.indexOf('[Doc 22]') + 8 };
-    expect(applyCitationCorrections(answer, [{ span, to: 25 }])).toBe(
+    expect(applyCitationCorrections(answer, [{ span, docs: [25] }])).toBe(
       'They vowed to fight "the spoils system" [Doc 25]. More text follows.',
+    );
+  });
+
+  it('expands a bracket to the union of original and verbatim sources', () => {
+    const answer = 'The memo imposed "Administrative PAYGO," requiring offsets [Doc 4].';
+    const span = { start: answer.indexOf('[Doc 4]'), end: answer.indexOf('[Doc 4]') + 7 };
+    expect(applyCitationCorrections(answer, [{ span, docs: [4, 6, 12] }])).toBe(
+      'The memo imposed "Administrative PAYGO," requiring offsets [Doc 4, Doc 6, Doc 12].',
     );
   });
 
@@ -182,8 +190,8 @@ describe('applyCitationCorrections (#720)', () => {
     const s2 = { start: answer.indexOf('[Docs 2, 3]'), end: answer.indexOf('[Docs 2, 3]') + 11 };
     expect(
       applyCitationCorrections(answer, [
-        { span: s1, to: 9 },
-        { span: s2, to: 12 },
+        { span: s1, docs: [9] },
+        { span: s2, docs: [12] },
       ]),
     ).toBe('A "first quote" [Doc 9] and a "second quote" [Doc 12] close by.');
   });
