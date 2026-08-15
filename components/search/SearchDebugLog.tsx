@@ -9,6 +9,10 @@ export interface SearchDebugCapture {
   docsPayload: Record<string, unknown> | null;
   synthesisPrompt: string | null;
   answer: { expert: string; public: string } | null;
+  /** Raw pre-correction stream text, present only when the verifier rewrote
+   *  citations (#720/#721) — `answer` holds the corrected text, so a wrong
+   *  auto-correction is diagnosable from the capture alone. */
+  answerBeforeCorrections?: string;
   quoteVerification: unknown;
   relatedQuestions: string[];
 }
@@ -31,8 +35,9 @@ export function SearchDebugLog({ capture }: { capture: SearchDebugCapture | null
   return (
     <div className="rounded border border-dashed border-dm-border bg-dm-card/50 p-2 flex items-center justify-between">
       <span className="text-[11px] text-dm-muted">
-        Debug capture active — expansion diagnostics, pre-rerank candidates, and the synthesis
-        prompt are being recorded for this search.
+        Debug capture active — per-window expansion diagnostics, pre-rerank candidates, the
+        synthesis prompt, and quote verification (including any auto-corrections) are being recorded
+        for this search.
       </span>
       <button
         onClick={download}
