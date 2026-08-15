@@ -29,6 +29,10 @@ export interface QuoteVerificationResult {
   unverified: Array<{
     quote: string;
     citations: number[];
+    /** Citation index of a DIFFERENT context document that contains the
+     *  quote verbatim — the quote is real but its citation points at the
+     *  wrong document (#718). */
+    foundIn?: number;
     /** Nearest actual document text (raw), when the quote's opening words
      *  could be anchored in a cited document (#718). */
     nearest?: { citation: number; text: string };
@@ -68,6 +72,22 @@ export function normalizeForMatch(text: string): string {
 /** Citation-pairing window on each side of a quote, when no neighboring
  *  quote bounds it sooner. */
 const CITATION_WINDOW_CHARS = 250;
+
+/** Canonical form for searched-term exemption: normalized with boundary
+ *  punctuation stripped, so `"Congressional Response,"` matches the chip
+ *  phrase `Congressional Response`. */
+function searchedPhraseKey(text: string): string {
+  return normalizeForMatch(text).replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
+}
+
+/** True when the quoted text is one of the hybrid-retrieval searched terms
+ *  (#718): the coverage prompt invites the model to cite the searched terms
+ *  and their counts, so a quoted chip with a [Doc N] in its pairing window
+ *  is a false-alarm class, not a document misquote. Pure — unit-tested. */
+export function isSearchedPhraseQuote(quote: string, searchedPhrases: string[]): boolean {
+  const key = searchedPhraseKey(quote);
+  return key.length > 0 && searchedPhrases.some((p) => searchedPhraseKey(p) === key);
+}
 
 /** parseDocCitations, but null on empty — for ??-chained window fallbacks. */
 function firstCitations(text: string): number[] | null {
@@ -197,21 +217,48 @@ function buildHaystacks(
 }
 
 /** Build one unverified entry with its nearest-actual, and log the miss
- *  (AI's version vs actual source text — owner request, 2026-08-14). */
+ *  (AI's version vs actual source text — owner request, 2026-08-14). When
+ *  the quote was found verbatim in a different context document (#718), the
+ *  nearest-actual comes from THAT document — the badge can then say "wrong
+ *  citation" instead of implying fabrication. */
 function buildMiss(
   q: ExtractedQuote,
+  foundIn: number | undefined,
   idByCitation: Map<number, number>,
   rawById: Map<number, string>,
 ): QuoteVerificationResult['unverified'][number] {
-  const nearest = findNearestActual(q.quote, q.citations, idByCitation, rawById);
+  const nearest = findNearestActual(
+    q.quote,
+    foundIn != null ? [foundIn] : q.citations,
+    idByCitation,
+    rawById,
+  );
+  const foundNote = foundIn != null ? ` found verbatim in [Doc ${foundIn}] (wrong citation);` : '';
   console.warn(
-    `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] actual: ${nearest ? `[Doc ${nearest.citation}] "${nearest.text.slice(0, 200)}"` : 'no nearby match for the opening words'}`,
+    `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}]${foundNote} actual: ${nearest ? `[Doc ${nearest.citation}] "${nearest.text.slice(0, 200)}"` : 'no nearby match for the opening words'}`,
   );
   return {
     quote: q.quote.slice(0, 200),
     citations: q.citations,
+    ...(foundIn != null ? { foundIn } : {}),
     ...(nearest ? { nearest: { ...nearest, text: nearest.text.slice(0, 300) } } : {}),
   };
+}
+
+/** Search every OTHER context document for a missed quote (#718): a hit
+ *  means the quote is real but attributed to the wrong [Doc N]. Pure —
+ *  unit-tested. */
+export function findQuoteElsewhere(
+  q: ExtractedQuote,
+  docs: Array<{ citationIndex: number; id: number }>,
+  contentById: Map<number, string>,
+): number | undefined {
+  for (const d of docs) {
+    if (q.citations.includes(d.citationIndex)) continue;
+    const content = contentById.get(d.id);
+    if (content && quoteAppearsIn(q.quote, content)) return d.citationIndex;
+  }
+  return undefined;
 }
 
 /** Document ids any extracted quote may need checking against. */
@@ -231,20 +278,37 @@ function collectNeededIds(
   return neededIds;
 }
 
+/** Fetch title+content haystacks for a set of document ids. */
+async function loadHaystacks(db: ReturnType<typeof getDb>, ids: number[]) {
+  const rows = await db.execute(sql`
+    SELECT id, title, content FROM documents WHERE id IN (${sql.join(
+      ids.map((i) => sql`${i}`),
+      sql`, `,
+    )})`);
+  return buildHaystacks(
+    rows.rows as Array<{ id: number; title: string | null; content: string | null }>,
+  );
+}
+
 /**
  * Verify every quoted span in the answer against stored document content.
- * `docs` maps citationIndex → documents.id. Failure-tolerant: a DB error
- * returns null (verification unavailable), never a false alarm.
+ * `docs` maps citationIndex → documents.id. `searchedPhrases` are the
+ * hybrid-retrieval chip terms — quotes of those are exempt (#718).
+ * Failure-tolerant: a DB error returns null (verification unavailable),
+ * never a false alarm.
  */
 export async function verifyAnswerQuotes(
   answer: string,
   docs: Array<{ citationIndex: number; id: number }>,
+  searchedPhrases: string[] = [],
 ): Promise<QuoteVerificationResult | null> {
   // Only quotes whose sentence carries a [Doc N] citation are verified: an
   // uncited quoted string is usually the model quoting terminology or
   // suggested search phrases, not a document — verifying those against
   // documents produced scary false alarms ("8 of 8 unverified", #712).
-  const extracted = extractQuotedClaims(answer).filter((q) => q.citations.length > 0);
+  const extracted = extractQuotedClaims(answer).filter(
+    (q) => q.citations.length > 0 && !isSearchedPhraseQuote(q.quote, searchedPhrases),
+  );
   if (extracted.length === 0) {
     return { totalQuotes: 0, verifiedCount: 0, unverified: [] };
   }
@@ -256,24 +320,29 @@ export async function verifyAnswerQuotes(
     return { totalQuotes: extracted.length, verifiedCount: 0, unverified: [] };
   }
   try {
-    const rows = await db.execute(sql`
-      SELECT id, title, content FROM documents WHERE id IN (${sql.join(
-        [...neededIds].map((i) => sql`${i}`),
-        sql`, `,
-      )})`);
-    const { rawById, contentById } = buildHaystacks(
-      rows.rows as Array<{ id: number; title: string | null; content: string | null }>,
+    const { rawById, contentById } = await loadHaystacks(db, [...neededIds]);
+    const missed = extracted.filter(
+      (q) =>
+        !q.citations.some((c) => {
+          const id = idByCitation.get(c);
+          const content = id != null ? contentById.get(id) : undefined;
+          return content ? quoteAppearsIn(q.quote, content) : false;
+        }),
     );
-    const unverified: QuoteVerificationResult['unverified'] = [];
-    for (const q of extracted) {
-      const targets = q.citations;
-      const found = targets.some((c) => {
-        const id = idByCitation.get(c);
-        const content = id != null ? contentById.get(id) : undefined;
-        return content ? quoteAppearsIn(q.quote, content) : false;
-      });
-      if (!found) unverified.push(buildMiss(q, idByCitation, rawById));
+    // Found-elsewhere fallback (#718): only on a miss, load the REST of the
+    // context docs and check whether the quote is real but mis-cited. The
+    // extra fetch is bounded (≤ context size) and rare (misses only).
+    if (missed.length > 0) {
+      const remaining = docs.map((d) => d.id).filter((id) => !contentById.has(id));
+      if (remaining.length > 0) {
+        const extra = await loadHaystacks(db, remaining);
+        extra.rawById.forEach((v, k) => rawById.set(k, v));
+        extra.contentById.forEach((v, k) => contentById.set(k, v));
+      }
     }
+    const unverified = missed.map((q) =>
+      buildMiss(q, findQuoteElsewhere(q, docs, contentById), idByCitation, rawById),
+    );
     return {
       totalQuotes: extracted.length,
       verifiedCount: extracted.length - unverified.length,

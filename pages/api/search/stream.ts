@@ -82,6 +82,8 @@ async function retrieveDocuments(
 ): Promise<{
   docs: ResearchDocument[];
   prompt: string;
+  /** Hybrid-retrieval chip phrases — quote-verification exemptions (#718). */
+  searchedPhrases: string[];
 } | null> {
   // Preferred path (#552): the client passes the exact ordered doc ids from
   // the docsOnly phase, so citations [Doc N] are guaranteed to match the doc
@@ -91,7 +93,11 @@ async function retrieveDocuments(
     if (docs.length === 0) return null;
     const alsoSearched = await attachCachedSnippets(docs, docsKey);
     await enrichDocsForSynthesis(docs, query);
-    return { docs, prompt: buildSinglePassPrompt(query, docs, null, alsoSearched) };
+    return {
+      docs,
+      prompt: buildSinglePassPrompt(query, docs, null, alsoSearched),
+      searchedPhrases: (alsoSearched ?? []).map((t) => t.phrase),
+    };
   }
 
   const embedding = await embedText(query);
@@ -112,16 +118,20 @@ async function retrieveDocuments(
   // works without corpus stats (they add context but aren't required).
   const contextDocs = allDocs.slice(0, CONTEXT_DOCS);
   await enrichDocsForSynthesis(contextDocs, query);
-  return { docs: contextDocs, prompt: buildSinglePassPrompt(query, contextDocs, null) };
+  return {
+    docs: contextDocs,
+    prompt: buildSinglePassPrompt(query, contextDocs, null),
+    searchedPhrases: [],
+  };
 }
 
 async function streamCompletion(
   provider: AnthropicProvider,
-  prompt: string,
-  docs: ResearchDocument[],
+  retrieved: { prompt: string; docs: ResearchDocument[]; searchedPhrases: string[] },
   res: NextApiResponse,
   clientGone: () => boolean,
 ) {
+  const { prompt, docs, searchedPhrases } = retrieved;
   const stream = provider.completeStream(prompt, {
     model: SINGLE_PASS_MODEL,
     maxTokens: 4096,
@@ -150,6 +160,7 @@ async function streamCompletion(
   const verification = await verifyAnswerQuotes(
     accumulated,
     docs.map((d, i) => ({ citationIndex: i + 1, id: d.id })),
+    searchedPhrases,
   );
   if (verification) {
     if (verification.unverified.length > 0) {
@@ -215,7 +226,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.query.debug === '1') {
       sendEvent(res, { type: 'debug', synthesisPrompt: retrieved.prompt });
     }
-    await streamCompletion(provider, retrieved.prompt, retrieved.docs, res, () => disconnected);
+    await streamCompletion(provider, retrieved, res, () => disconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';
     console.error('[api/search/stream] Error:', err);

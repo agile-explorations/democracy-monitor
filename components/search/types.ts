@@ -28,6 +28,9 @@ export interface ResearchResult {
     unverified: Array<{
       quote: string;
       citations: number[];
+      /** Context doc that DOES contain the quote verbatim — mis-citation,
+       *  not fabrication (#718). */
+      foundIn?: number;
       nearest?: { citation: number; text: string };
     }>;
   } | null;
