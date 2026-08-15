@@ -269,27 +269,27 @@ export default function SearchPage() {
             setDebugCapture(debugRef.current);
           }
         } else if (data.type === 'verification') {
-          setResearchResult((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  quoteVerification: {
-                    totalQuotes: data.totalQuotes,
-                    verifiedCount: data.verifiedCount,
-                    unverified: data.unverified ?? [],
-                  },
-                }
-              : prev,
-          );
+          // Auto-corrected citations (#720): swap the accumulated answer for
+          // the corrected text so both the live render and the final 'done'
+          // parse carry the fixed [Doc N] brackets; the badge discloses each.
+          if (data.correctedAnswer) {
+            accumulated = data.correctedAnswer;
+            const corrected = parseStreamingSections(accumulated);
+            setResearchResult((prev) =>
+              prev
+                ? { ...prev, answer: { expert: corrected.expert, public: corrected.public } }
+                : prev,
+            );
+          }
+          const verification = {
+            totalQuotes: data.totalQuotes,
+            verifiedCount: data.verifiedCount,
+            corrections: data.corrections ?? [],
+            unverified: data.unverified ?? [],
+          };
+          setResearchResult((prev) => (prev ? { ...prev, quoteVerification: verification } : prev));
           if (debugRef.current) {
-            debugRef.current = {
-              ...debugRef.current,
-              quoteVerification: {
-                totalQuotes: data.totalQuotes,
-                verifiedCount: data.verifiedCount,
-                unverified: data.unverified ?? [],
-              },
-            };
+            debugRef.current = { ...debugRef.current, quoteVerification: verification };
             setDebugCapture(debugRef.current);
           }
         } else if (data.type === 'done') {

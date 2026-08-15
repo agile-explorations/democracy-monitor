@@ -5,199 +5,59 @@
  * finding it fabricated is the most damaging failure class; this converts
  * it from prompt-discouraged to mechanically caught, on any question.
  *
- * Matching is verbatim after normalization (whitespace runs, curly quotes,
- * case). A quote with [Doc N] citations in its sentence is checked against
- * those documents; an uncited quote is checked against every context doc.
+ * A cited quote that misses its cited doc is re-checked against the other
+ * context docs: a unique verbatim source becomes an auto-corrected citation
+ * (disclosed in the badge, #720); several sources become a term-of-art note.
+ * Pure text primitives live in quote-matching.ts.
  */
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { parseDocCitations } from '@/lib/utils/citations';
+import {
+  ExtractedQuote,
+  applyCitationCorrections,
+  extractQuotedClaims,
+  findNearestActual,
+  isSearchedPhraseQuote,
+  normalizeForMatch,
+  quoteAppearsIn,
+} from '@/lib/services/quote-matching';
 
-/** Quotes shorter than this are too generic to verify meaningfully. */
-const MIN_QUOTE_CHARS = 15;
-
-export interface ExtractedQuote {
+/** A citation bracket the verifier rewrote (#720). `replaced`: the quote has
+ *  exactly one verbatim source, which supplants the original citations.
+ *  `expanded`: the quote appears in several non-cited documents — the bracket
+ *  becomes the union (original kept for the claim it supports, verbatim
+ *  sources added). */
+export interface QuoteCorrection {
   quote: string;
-  /** citationIndex values ([Doc N]) found in the quote's sentence. */
-  citations: number[];
+  /** Citations the answer originally carried next to the quote. */
+  from: number[];
+  /** The document(s) that actually contain the quote verbatim. */
+  to: number[];
+  kind: 'replaced' | 'expanded';
 }
 
 export interface QuoteVerificationResult {
   totalQuotes: number;
   verifiedCount: number;
+  /** Citations rewritten in `correctedAnswer` — disclosed in the badge (#720). */
+  corrections?: QuoteCorrection[];
+  /** The answer with corrected citation brackets, when corrections applied. */
+  correctedAnswer?: string;
   unverified: Array<{
     quote: string;
     citations: number[];
     /** Citation index of a DIFFERENT context document that contains the
      *  quote verbatim — the quote is real but its citation points at the
-     *  wrong document (#718). */
+     *  wrong document (#718). Set only when that document is unique. */
     foundIn?: number;
+    /** Two or more non-cited context documents contain the quote — likely a
+     *  term of art; the citation probably marks the claim's source (#720). */
+    ambiguousIn?: number[];
     /** Nearest actual document text (raw), when the quote's opening words
      *  could be anchored in a cited document (#718). */
     nearest?: { citation: number; text: string };
   }>;
-}
-
-/** Normalize for matching: curly quotes/apostrophes, whitespace runs, case.
- *  Hyphen deletion absorbs line-break hyphenation artifacts in stored
- *  document text ("de- lineated" = "delineated"); citation collapse unifies
- *  statutory spellings ("287(g)" vs "287g") now that answers quote across
- *  both (#716). All transforms are symmetric on quote and source. */
-export function normalizeForMatch(text: string): string {
-  return (
-    text
-      // Quote characters are deleted (not normalized): documents nest quotes
-      // ("so-called 'independent regulatory agencies'") that answers quote
-      // without the inner marks; contractions stay symmetric (don't -> dont).
-      .replace(/[‘’ʼ'“”"]/g, '')
-      // Congressional Record page markers interrupt sentences mid-word in
-      // stored text ("the explicit [[Page S3465]] authority") — never present
-      // in quotes, so stripping is effectively haystack-side (2026-08-14).
-      .replace(/\[\[Page [^\]]*\]\]/gi, ' ')
-      .replace(/[–—]/g, '-')
-      .replace(/\[…\]|…|\.\.\./g, ' ')
-      // Hyphens are deleted outright (not collapsed): stored text hyphenates
-      // plain words at line breaks ("de- lineated" = "delineated"), which no
-      // hyphen-preserving rule can distinguish from a real hyphen. Deletion is
-      // symmetric on quote and source, so genuine hyphens still match.
-      .replace(/\s*-\s*/g, '')
-      .replace(/\b(\d+)\(([a-z])\)/gi, '$1$2')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase()
-  );
-}
-
-/** Citation-pairing window on each side of a quote, when no neighboring
- *  quote bounds it sooner. */
-const CITATION_WINDOW_CHARS = 250;
-
-/** Canonical form for searched-term exemption: normalized with boundary
- *  punctuation stripped, so `"Congressional Response,"` matches the chip
- *  phrase `Congressional Response`. */
-function searchedPhraseKey(text: string): string {
-  return normalizeForMatch(text).replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, '');
-}
-
-/** True when the quoted text is one of the hybrid-retrieval searched terms
- *  (#718): the coverage prompt invites the model to cite the searched terms
- *  and their counts, so a quoted chip with a [Doc N] in its pairing window
- *  is a false-alarm class, not a document misquote. Pure — unit-tested. */
-export function isSearchedPhraseQuote(quote: string, searchedPhrases: string[]): boolean {
-  const key = searchedPhraseKey(quote);
-  return key.length > 0 && searchedPhrases.some((p) => searchedPhraseKey(p) === key);
-}
-
-/** parseDocCitations, but null on empty — for ??-chained window fallbacks. */
-function firstCitations(text: string): number[] | null {
-  const found = parseDocCitations(text);
-  return found.length > 0 ? found : null;
-}
-
-/** Extract quoted spans (straight or curly) with the [Doc N] citations near
- *  them. Quotes are matched over the WHOLE answer — sentence-splitting
- *  before matching severed quote pairs at abbreviations ("...led to Mr.
- *  Trump's..." split inside the quotation), and the orphaned closing mark
- *  opened a phantom quote in the next fragment (#718, 2026-08-14). Every
- *  span is matched (even 1 char) and length-filtered afterwards for the
- *  same parity reason. Citations pair via a window bounded by neighboring
- *  quotes; a quote with none looks further right as a fallback (covers
- *  '"A" and "B" [Doc 3]'). Pure — unit-tested. */
-export function extractQuotedClaims(answer: string): ExtractedQuote[] {
-  const results: ExtractedQuote[] = [];
-  const matches = [...answer.matchAll(/[“"]([^“”"]{1,400}?)[”"]/g)];
-  for (let k = 0; k < matches.length; k++) {
-    const m = matches[k]!;
-    const quote = m[1]!.trim();
-    if (quote.length < MIN_QUOTE_CHARS) continue;
-    const start = m.index!;
-    const end = start + m[0].length;
-    const prevBound = k > 0 ? matches[k - 1]!.index! + matches[k - 1]![0].length : 0;
-    const nextBound = k < matches.length - 1 ? matches[k + 1]!.index! : answer.length;
-    // Right-biased pairing: citations nearly always FOLLOW their quote, so a
-    // left-first window would steal the previous quote's trailing citation.
-    // Bounded right first, bounded left second (citation-before-quote style).
-    // NO unbounded fallback: reaching past a neighboring quote attributed
-    // OTHER sentences' citations to quoted named entities ("One Big
-    // Beautiful Bill"), flooding the badge with term-of-art false alarms
-    // (first live run on this extractor, 2026-08-14). An unattributed quote
-    // is exempt terminology — the pre-#718 disposition.
-    const citations =
-      firstCitations(answer.slice(end, Math.min(nextBound, end + CITATION_WINDOW_CHARS))) ??
-      firstCitations(answer.slice(Math.max(prevBound, start - CITATION_WINDOW_CHARS), start)) ??
-      [];
-    results.push({ quote, citations });
-  }
-  return results;
-}
-
-/** Ellipsis-tolerant containment: every ellipsis-separated fragment of the
- *  quote must appear in order in the source. Boundary punctuation is trimmed
- *  from fragments (American style tucks commas/periods INSIDE quotation
- *  marks — "efforts," must match a document that reads "efforts."); interior
- *  punctuation still matches verbatim. Pure — unit-tested. */
-export function quoteAppearsIn(quote: string, normalizedSource: string): boolean {
-  const fragments = quote
-    .split(/\[…\]|…|\.\.\./)
-    .map((f) => normalizeForMatch(f).replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, ''))
-    .filter((f) => f.length >= 8);
-  if (fragments.length === 0) return true;
-  let cursor = 0;
-  for (const fragment of fragments) {
-    const idx = normalizedSource.indexOf(fragment, cursor);
-    if (idx === -1) return false;
-    cursor = idx + fragment.length;
-  }
-  return true;
-}
-
-/** Locate the nearest ACTUAL raw document text for a missed quote (#718):
- *  the quote's first words become a case-insensitive, whitespace/punctuation
- *  flexible pattern against the RAW content, so the surfaced window reads
- *  like the document (not the normalized matching form). Shown in the amber
- *  badge and logged, so tense-smoothing and dropped words ("abdicate" ->
- *  "abdicated", the dropped "only") are visible to users and in logs.
- *  Exported for tests. */
-export function findNearestActual(
-  quote: string,
-  citations: number[],
-  idByCitation: Map<number, number>,
-  rawById: Map<number, string>,
-): { citation: number; text: string } | null {
-  const words = quote
-    .split(/[^A-Za-z0-9()]+/)
-    .filter((w) => w.length > 0)
-    .slice(0, 6);
-  if (words.length < 2) return null;
-  // Sliding 3-word anchors over the opening words: anchoring only on the
-  // FIRST words fails precisely when the first word is the drifted one
-  // ("abdicated" vs the document's "abdicate") — a later trigram still lands.
-  const anchors: string[][] = [];
-  for (let o = 0; o + Math.min(3, words.length) <= words.length && o <= 3; o++) {
-    anchors.push(words.slice(o, o + Math.min(3, words.length)));
-  }
-  for (const c of citations) {
-    const id = idByCitation.get(c);
-    const raw = id != null ? rawById.get(id) : undefined;
-    if (!raw) continue;
-    for (const anchor of anchors) {
-      const pattern = new RegExp(
-        anchor.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^A-Za-z0-9]{1,6}'),
-        'i',
-      );
-      const m = pattern.exec(raw);
-      if (m) {
-        const start = Math.max(0, m.index - 60);
-        const text = raw
-          .slice(start, m.index + quote.length + 80)
-          .replace(/\s+/g, ' ')
-          .trim();
-        return { citation: c, text };
-      }
-    }
-  }
-  return null;
 }
 
 /** Verification haystacks per document. Titles join the haystack: answers
@@ -218,22 +78,29 @@ function buildHaystacks(
 
 /** Build one unverified entry with its nearest-actual, and log the miss
  *  (AI's version vs actual source text — owner request, 2026-08-14). When
- *  the quote was found verbatim in a different context document (#718), the
- *  nearest-actual comes from THAT document — the badge can then say "wrong
- *  citation" instead of implying fabrication. */
+ *  the quote was found verbatim in other context documents (#718/#720), the
+ *  nearest-actual comes from one of THOSE — the badge can then say "wrong
+ *  citation" or "term of art" instead of implying fabrication. */
 function buildMiss(
   q: ExtractedQuote,
-  foundIn: number | undefined,
+  containing: number[],
   idByCitation: Map<number, number>,
   rawById: Map<number, string>,
 ): QuoteVerificationResult['unverified'][number] {
+  const foundIn = containing.length === 1 ? containing[0] : undefined;
+  const ambiguousIn = containing.length > 1 ? containing : undefined;
   const nearest = findNearestActual(
     q.quote,
-    foundIn != null ? [foundIn] : q.citations,
+    containing.length > 0 ? containing : q.citations,
     idByCitation,
     rawById,
   );
-  const foundNote = foundIn != null ? ` found verbatim in [Doc ${foundIn}] (wrong citation);` : '';
+  const foundNote =
+    foundIn != null
+      ? ` found verbatim in [Doc ${foundIn}] (wrong citation, unfixable bracket);`
+      : ambiguousIn
+        ? ` found in [Docs ${ambiguousIn.join(', ')}] (term of art);`
+        : '';
   console.warn(
     `[quote-verification] MISS ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}]${foundNote} actual: ${nearest ? `[Doc ${nearest.citation}] "${nearest.text.slice(0, 200)}"` : 'no nearby match for the opening words'}`,
   );
@@ -241,24 +108,27 @@ function buildMiss(
     quote: q.quote.slice(0, 200),
     citations: q.citations,
     ...(foundIn != null ? { foundIn } : {}),
+    ...(ambiguousIn ? { ambiguousIn } : {}),
     ...(nearest ? { nearest: { ...nearest, text: nearest.text.slice(0, 300) } } : {}),
   };
 }
 
-/** Search every OTHER context document for a missed quote (#718): a hit
- *  means the quote is real but attributed to the wrong [Doc N]. Pure —
+/** ALL other context documents containing a missed quote (#718/#720): one
+ *  hit means the quote is real but mis-cited (safe to correct); several mean
+ *  a term of art whose citation likely marks the claim's source. Pure —
  *  unit-tested. */
 export function findQuoteElsewhere(
   q: ExtractedQuote,
   docs: Array<{ citationIndex: number; id: number }>,
   contentById: Map<number, string>,
-): number | undefined {
+): number[] {
+  const containing: number[] = [];
   for (const d of docs) {
     if (q.citations.includes(d.citationIndex)) continue;
     const content = contentById.get(d.id);
-    if (content && quoteAppearsIn(q.quote, content)) return d.citationIndex;
+    if (content && quoteAppearsIn(q.quote, content)) containing.push(d.citationIndex);
   }
-  return undefined;
+  return containing;
 }
 
 /** Document ids any extracted quote may need checking against. */
@@ -276,6 +146,59 @@ function collectNeededIds(
     }
   }
   return neededIds;
+}
+
+/** Quotes not found verbatim in any of their cited documents. */
+function computeMissed(
+  extracted: ExtractedQuote[],
+  idByCitation: Map<number, number>,
+  contentById: Map<number, string>,
+): ExtractedQuote[] {
+  return extracted.filter(
+    (q) =>
+      !q.citations.some((c) => {
+        const id = idByCitation.get(c);
+        const content = id != null ? contentById.get(id) : undefined;
+        return content ? quoteAppearsIn(q.quote, content) : false;
+      }),
+  );
+}
+
+/** Split misses into bracket rewrites and unverified entries (#720): a
+ *  unique verbatim source REPLACES the original citations; several sources
+ *  EXPAND the bracket to the union (original kept — it may support the
+ *  sentence's claim even though it lacks the quoted words). A bracket span
+ *  is never rewritten twice — a second quote pairing to the same bracket
+ *  stays unverified rather than conflict. */
+function resolveMisses(
+  missed: ExtractedQuote[],
+  docs: Array<{ citationIndex: number; id: number }>,
+  contentById: Map<number, string>,
+  idByCitation: Map<number, number>,
+  rawById: Map<number, string>,
+) {
+  const corrections: QuoteCorrection[] = [];
+  const fixes: Array<{ span: { start: number; end: number }; docs: number[] }> = [];
+  const usedSpans = new Set<number>();
+  const unverified: QuoteVerificationResult['unverified'] = [];
+  for (const q of missed) {
+    const containing = findQuoteElsewhere(q, docs, contentById);
+    const fixable =
+      containing.length >= 1 && q.citationSpan != null && !usedSpans.has(q.citationSpan.start);
+    if (fixable) {
+      usedSpans.add(q.citationSpan!.start);
+      const kind = containing.length === 1 ? 'replaced' : 'expanded';
+      const bracketDocs = kind === 'replaced' ? containing : [...q.citations, ...containing];
+      corrections.push({ quote: q.quote.slice(0, 200), from: q.citations, to: containing, kind });
+      fixes.push({ span: q.citationSpan!, docs: bracketDocs });
+      console.warn(
+        `[quote-verification] ${kind.toUpperCase()} ai="${q.quote.slice(0, 160)}" cited=[${q.citations.join(',')}] -> [Doc ${bracketDocs.join(', Doc ')}] (verbatim in ${containing.join(',')})`,
+      );
+    } else {
+      unverified.push(buildMiss(q, containing, idByCitation, rawById));
+    }
+  }
+  return { corrections, fixes, unverified };
 }
 
 /** Fetch title+content haystacks for a set of document ids. */
@@ -321,14 +244,7 @@ export async function verifyAnswerQuotes(
   }
   try {
     const { rawById, contentById } = await loadHaystacks(db, [...neededIds]);
-    const missed = extracted.filter(
-      (q) =>
-        !q.citations.some((c) => {
-          const id = idByCitation.get(c);
-          const content = id != null ? contentById.get(id) : undefined;
-          return content ? quoteAppearsIn(q.quote, content) : false;
-        }),
-    );
+    const missed = computeMissed(extracted, idByCitation, contentById);
     // Found-elsewhere fallback (#718): only on a miss, load the REST of the
     // context docs and check whether the quote is real but mis-cited. The
     // extra fetch is bounded (≤ context size) and rare (misses only).
@@ -340,12 +256,19 @@ export async function verifyAnswerQuotes(
         extra.contentById.forEach((v, k) => contentById.set(k, v));
       }
     }
-    const unverified = missed.map((q) =>
-      buildMiss(q, findQuoteElsewhere(q, docs, contentById), idByCitation, rawById),
+    const { corrections, fixes, unverified } = resolveMisses(
+      missed,
+      docs,
+      contentById,
+      idByCitation,
+      rawById,
     );
     return {
       totalQuotes: extracted.length,
       verifiedCount: extracted.length - unverified.length,
+      ...(corrections.length > 0
+        ? { corrections, correctedAnswer: applyCitationCorrections(answer, fixes) }
+        : {}),
       unverified,
     };
   } catch (err) {
