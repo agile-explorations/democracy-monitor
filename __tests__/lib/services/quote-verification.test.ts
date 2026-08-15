@@ -228,13 +228,13 @@ describe('abbreviation-proof quote pairing (#718 v1.9.29)', () => {
     expect(claims[1]!.citations).toEqual([19]);
   });
 
-  it('leaves the first of two quotes uncited when the citation trails the second', () => {
-    // Deliberate: an unbounded fallback attributed other sentences'
-    // citations to quoted named entities — exemption beats false alarms.
+  it('shares a sentence-final citation across sibling quotes (#721)', () => {
+    // The window may cross a SIBLING quote to the sentence end — one bracket
+    // legitimately covers both quotes — but never a sentence boundary.
     const claims = extractQuotedClaims(
       'The order "suspends all entry immediately" and "revokes existing visas today" [Doc 3].',
     );
-    expect(claims[0]!.citations).toEqual([]);
+    expect(claims[0]!.citations).toEqual([3]);
     expect(claims[1]!.citations).toEqual([3]);
   });
 
@@ -244,6 +244,35 @@ describe('abbreviation-proof quote pairing (#718 v1.9.29)', () => {
     );
     expect(claims[0]!.citations).toEqual([2]);
     expect(claims[1]!.citations).toEqual([9]);
+  });
+});
+
+describe('sentence-scoped pairing windows (#721)', () => {
+  it('does not steal a previous sentence’s brackets via the left window', () => {
+    // The FW4 false alarm: quote pairs across a sentence boundary to the
+    // prior sentence's [Doc 16] [Doc 17] instead of its own sentence-final
+    // [Doc 25] beyond the sibling quote.
+    const claims = extractQuotedClaims(
+      'It renamed the category "Schedule Policy/Career for the record" [Doc 16] [Doc 17]. ' +
+        'He described it as part of "unlawful and unconstitutional attacks on workers" and ' +
+        'making employees "vulnerable to political purges" [Doc 25].',
+    );
+    expect(claims.map((c) => c.citations)).toEqual([[16, 17], [25], [25]]);
+  });
+
+  it('left window still pairs citation-before-quote within one sentence', () => {
+    const claims = extractQuotedClaims(
+      'Cited earlier [Doc 7]. Then the chairman said "a quoted passage of real length".',
+    );
+    expect(claims[0]!.citations).toEqual([]);
+  });
+
+  it('sentence-scoped right window enables the bracket span for corrections', () => {
+    const answer =
+      'He called it part of "unlawful and unconstitutional attacks on workers" and vowed to fight [Doc 25].';
+    const [claim] = extractQuotedClaims(answer);
+    expect(claim!.citations).toEqual([25]);
+    expect(answer.slice(claim!.citationSpan!.start, claim!.citationSpan!.end)).toBe('[Doc 25]');
   });
 });
 

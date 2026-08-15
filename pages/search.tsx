@@ -273,6 +273,9 @@ export default function SearchPage() {
           // the corrected text so both the live render and the final 'done'
           // parse carry the fixed [Doc N] brackets; the badge discloses each.
           if (data.correctedAnswer) {
+            if (debugRef.current) {
+              debugRef.current = { ...debugRef.current, answerBeforeCorrections: accumulated };
+            }
             accumulated = data.correctedAnswer;
             const corrected = parseStreamingSections(accumulated);
             setResearchResult((prev) =>
