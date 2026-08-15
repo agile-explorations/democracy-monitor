@@ -25,12 +25,16 @@ export interface ResearchResult {
   quoteVerification?: {
     totalQuotes: number;
     verifiedCount: number;
+    /** Citations the verifier rewrote in the displayed answer (#720). */
+    corrections?: Array<{ quote: string; from: number[]; to: number }>;
     unverified: Array<{
       quote: string;
       citations: number[];
       /** Context doc that DOES contain the quote verbatim — mis-citation,
        *  not fabrication (#718). */
       foundIn?: number;
+      /** 2+ non-cited docs contain the quote — term-of-art note (#720). */
+      ambiguousIn?: number[];
       nearest?: { citation: number; text: string };
     }>;
   } | null;

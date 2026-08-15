@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyCitationCorrections,
   extractQuotedClaims,
   findNearestActual,
-  findQuoteElsewhere,
   isSearchedPhraseQuote,
   normalizeForMatch,
   quoteAppearsIn,
-} from '@/lib/services/quote-verification';
+} from '@/lib/services/quote-matching';
+import { findQuoteElsewhere } from '@/lib/services/quote-verification';
 
 describe('extractQuotedClaims', () => {
   it('pairs quotes with same-sentence citations', () => {
@@ -135,7 +136,56 @@ describe('extractQuotedClaims branches', () => {
     const claims = extractQuotedClaims(
       'Plain sentence. The order says "a quoted passage of real length" [Doc 3]. Short "tiny" one [Doc 4].',
     );
-    expect(claims).toEqual([{ quote: 'a quoted passage of real length', citations: [3] }]);
+    expect(claims).toHaveLength(1);
+    expect(claims[0]).toMatchObject({ quote: 'a quoted passage of real length', citations: [3] });
+  });
+});
+
+describe('citation bracket span for safe rewrites (#720)', () => {
+  it('records the bracket span when the pairing window holds exactly one bracket', () => {
+    const answer = 'The speech warned of "a political spoils system replacing merit" [Doc 22].';
+    const [claim] = extractQuotedClaims(answer);
+    expect(claim!.citationSpan).toBeDefined();
+    const { start, end } = claim!.citationSpan!;
+    expect(answer.slice(start, end)).toBe('[Doc 22]');
+  });
+
+  it('omits the span when the window holds multiple brackets', () => {
+    const answer =
+      'Quoted here: "a political spoils system replacing merit" as stated [Doc 3] and echoed [Doc 7].';
+    const [claim] = extractQuotedClaims(answer);
+    expect(claim!.citations).toEqual([3, 7]);
+    expect(claim!.citationSpan).toBeUndefined();
+  });
+
+  it('records a left-window bracket span for citation-before-quote style', () => {
+    const answer =
+      'According to [Doc 5], the order demands "a political spoils system replacing merit".';
+    const [claim] = extractQuotedClaims(answer);
+    expect(claim!.citations).toEqual([5]);
+    expect(answer.slice(claim!.citationSpan!.start, claim!.citationSpan!.end)).toBe('[Doc 5]');
+  });
+});
+
+describe('applyCitationCorrections (#720)', () => {
+  it('replaces a single bracket in place', () => {
+    const answer = 'They vowed to fight "the spoils system" [Doc 22]. More text follows.';
+    const span = { start: answer.indexOf('[Doc 22]'), end: answer.indexOf('[Doc 22]') + 8 };
+    expect(applyCitationCorrections(answer, [{ span, to: 25 }])).toBe(
+      'They vowed to fight "the spoils system" [Doc 25]. More text follows.',
+    );
+  });
+
+  it('applies multiple corrections right-to-left so indices stay valid', () => {
+    const answer = 'A "first quote" [Doc 1] and a "second quote" [Docs 2, 3] close by.';
+    const s1 = { start: answer.indexOf('[Doc 1]'), end: answer.indexOf('[Doc 1]') + 7 };
+    const s2 = { start: answer.indexOf('[Docs 2, 3]'), end: answer.indexOf('[Docs 2, 3]') + 11 };
+    expect(
+      applyCitationCorrections(answer, [
+        { span: s1, to: 9 },
+        { span: s2, to: 12 },
+      ]),
+    ).toBe('A "first quote" [Doc 9] and a "second quote" [Doc 12] close by.');
   });
 });
 
@@ -273,14 +323,28 @@ describe('findQuoteElsewhere (#718)', () => {
       quote: 'replace a competitive merit system with a political spoils system',
       citations: [22],
     };
-    expect(findQuoteElsewhere(q, docs, contentById)).toBe(25);
+    expect(findQuoteElsewhere(q, docs, contentById)).toEqual([25]);
   });
 
-  it('skips the quote’s own citations and returns undefined when absent', () => {
+  it('skips the quote’s own citations and returns [] when absent', () => {
     const inOwnDoc = { quote: 'creating Schedule F in the excepted service', citations: [22] };
-    expect(findQuoteElsewhere(inOwnDoc, docs, contentById)).toBeUndefined();
+    expect(findQuoteElsewhere(inOwnDoc, docs, contentById)).toEqual([]);
     const nowhere = { quote: 'a phrase found in no document at all', citations: [22] };
-    expect(findQuoteElsewhere(nowhere, docs, contentById)).toBeUndefined();
+    expect(findQuoteElsewhere(nowhere, docs, contentById)).toEqual([]);
+  });
+
+  it('returns every containing doc for a term-of-art phrase', () => {
+    const multi = new Map([
+      [101, normalizeForMatch('The disparate impact doctrine applies here.')],
+      [102, normalizeForMatch('Courts revisited the disparate impact doctrine at length.')],
+    ]);
+    const q = { quote: 'the disparate impact doctrine', citations: [7] };
+    const roster = [
+      { citationIndex: 7, id: 999 },
+      { citationIndex: 1, id: 101 },
+      { citationIndex: 2, id: 102 },
+    ];
+    expect(findQuoteElsewhere(q, roster, multi)).toEqual([1, 2]);
   });
 });
 
