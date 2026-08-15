@@ -203,14 +203,22 @@ async function main() {
           latencyMs: Date.now() - started,
           totalQuotes: verification?.totalQuotes ?? null,
           unverified: verification?.unverified.length ?? null,
+          // Corrections are model misses the verifier repaired (#720) — count
+          // them so ledgers stay comparable with pre-correction baselines:
+          // raw model miss rate = (unverified + corrected) / totalQuotes.
+          corrected: verification?.corrections?.length ?? 0,
+          rawMisses:
+            (verification?.unverified.length ?? 0) + (verification?.corrections?.length ?? 0),
           misCitations: verification?.unverified.filter((u) => u.foundIn != null).length ?? null,
+          corrections: verification?.corrections ?? null,
           misses: verification?.unverified ?? null,
           answer,
         };
         fs.appendFileSync(out, `${JSON.stringify(record)}\n`);
         console.log(
           `${question.key} arm=${armKey} draw=${draw}: quotes=${record.totalQuotes} ` +
-            `unverified=${record.unverified} misCited=${record.misCitations} ` +
+            `rawMisses=${record.rawMisses} (corrected=${record.corrected}, ` +
+            `unverified=${record.unverified}) misCited=${record.misCitations} ` +
             `stop=${record.stopReason} in=${record.inputTokens} out=${record.outputTokens} ` +
             `$${cost.toFixed(3)} (cum $${dollars.toFixed(2)}, ${calls} calls)`,
         );
