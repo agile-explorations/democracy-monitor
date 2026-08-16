@@ -14,7 +14,13 @@
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 
-const INDEXES = ['idx_documents_embedding_hnsw', 'idx_documents_search_vector'];
+/** Warm order matters: the two indexes TOGETHER (~4.1 GB) exceed effective
+ *  cache (~3.75 GB), so the LAST index warmed wins retention — the HNSW goes
+ *  last because vector traversal is the dominant cold cost. NOTE: run this
+ *  only when the cache is already cold (post-dump); an ad-hoc mid-week run
+ *  DISPLACES the live working set and makes queries slower until traffic
+ *  re-warms it (measured 2026-08-15: 42s → 60s on the heaviest question). */
+const INDEXES = ['idx_documents_search_vector', 'idx_documents_embedding_hnsw'];
 
 async function main(): Promise<void> {
   const { loadEnvConfig } = require('@next/env');
