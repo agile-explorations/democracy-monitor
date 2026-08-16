@@ -23,6 +23,9 @@ export interface ResearchResult {
   alsoSearched?: string[];
   /** Deterministic quote verification vs stored document content (#707). */
   quoteVerification?: {
+    /** Verification could not run (DB error) — rendered distinctly so a
+     *  broken verifier is never mistaken for a quote-free answer (#725). */
+    unavailable?: boolean;
     totalQuotes: number;
     verifiedCount: number;
     /** Citation brackets the verifier rewrote in the displayed answer (#720):

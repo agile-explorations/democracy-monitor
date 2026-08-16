@@ -286,8 +286,9 @@ export default function SearchPage() {
             );
           }
           const verification = {
-            totalQuotes: data.totalQuotes,
-            verifiedCount: data.verifiedCount,
+            unavailable: data.unavailable ?? false,
+            totalQuotes: data.totalQuotes ?? 0,
+            verifiedCount: data.verifiedCount ?? 0,
             corrections: data.corrections ?? [],
             unverified: data.unverified ?? [],
           };
