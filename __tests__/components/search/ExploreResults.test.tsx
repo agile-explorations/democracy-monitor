@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { ExploreResults } from '@/components/search/ExploreResults';
 import type { ExploreDocResult, ExploreResult } from '@/components/search/types';
@@ -51,13 +51,27 @@ describe('ExploreResults (#728)', () => {
     expect(screen.queryByText(/unique documents/)).toBeNull();
   });
 
-  it('humanizes capture/drift badges and explains scores via tooltips', () => {
-    render(<ExploreResults result={result([doc({})], 1)} page={1} onPageChange={() => {}} />);
-    expect(screen.getByText('1 capture signal')).toBeTruthy();
-    expect(screen.getByText('2 drift signals')).toBeTruthy();
+  it('leads with a plain-language summary and hides per-category jargon until expanded', () => {
+    render(
+      <ExploreResults
+        result={result([doc({}), doc({ id: 2, category: 'watchdogs', finalScore: 0 })], 1)}
+        page={1}
+        onPageChange={() => {}}
+      />,
+    );
+    // Collapsed: one summary line, no per-category badge rows
+    expect(screen.getByText(/AI: clearly concerning \(92%\) across all 2 categories/)).toBeTruthy();
+    expect(screen.getByText(/Top score: 6\.0/)).toBeTruthy();
+    expect(screen.queryByText('1 capture signal')).toBeNull();
+    expect(screen.queryByText(/executive order/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Assessment details' }));
+    // Expanded: humanized badges with explanatory tooltips
+    expect(screen.getAllByText('1 capture signal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2 drift signals').length).toBeGreaterThan(0);
     expect(screen.queryByText('1C')).toBeNull();
     const score = screen.getByText('Score: 6.0');
     expect(score.getAttribute('title')).toMatch(/IN THIS CATEGORY/);
-    expect(screen.getByText('formal override').getAttribute('title')).toMatch(/erosion/i);
+    expect(screen.getAllByText('formal override')[0].getAttribute('title')).toMatch(/erosion/i);
   });
 });
