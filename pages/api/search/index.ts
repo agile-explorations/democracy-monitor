@@ -71,7 +71,7 @@ async function timedEmbedOrFail(
   res: NextApiResponse,
   query: string,
   queryHash: string,
-): Promise<number[] | null> {
+): Promise<{ embedding: number[]; embedMs: number } | null> {
   const embedStart = Date.now();
   const embedding = await embedQueryCached(query);
   const embedMs = Date.now() - embedStart;
@@ -83,7 +83,7 @@ async function timedEmbedOrFail(
     return null;
   }
   console.log(`[api/search] timings q=${queryHash} embed=${embedMs}ms`);
-  return embedding;
+  return { embedding, embedMs };
 }
 
 /** adaptiveCorpusStats with the phase-timing log line attached. */
@@ -224,8 +224,9 @@ async function handleResearch(
   const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
   if (docsOnly && !debug && (await serveCachedDocs(res, req, docsCacheKey))) return;
 
-  const embedding = await timedEmbedOrFail(res, query, queryHash);
-  if (!embedding) return;
+  const embedResult = await timedEmbedOrFail(res, query, queryHash);
+  if (!embedResult) return;
+  const { embedding, embedMs } = embedResult;
 
   const retrieveStart = Date.now();
   const {
@@ -233,6 +234,7 @@ async function handleResearch(
     strata,
     inferredFrom,
     alsoSearched,
+    timings: retrievalTimings,
     candidates,
   } = await retrieveResearchDocs(req, query, embedding, debug);
   // Phase-timing line for cold-cache diagnosis (post-dump HNSW evictions can
@@ -252,14 +254,12 @@ async function handleResearch(
   // (corpus stats scan 164K embeddings — ~15-20s). Stats are computed
   // in the streaming synthesis phase instead.
   if (docsOnly) {
-    const payload = buildDocsOnlyPayload(
-      allDocs,
-      avgSimilarity,
-      strata,
-      inferredFrom,
-      alsoSearched,
-      docsHash,
-    );
+    const payload = {
+      ...buildDocsOnlyPayload(allDocs, avgSimilarity, strata, inferredFrom, alsoSearched, docsHash),
+      // Phase breakdown of THIS build (#726) — rides into the docsOnly cache,
+      // so a later fetch of the cached payload reads what the build cost.
+      timings: { embedMs, ...retrievalTimings, measuredAt: new Date().toISOString() },
+    };
     await respondDocsOnly(req, res, query, payload, docsCacheKey, debug, candidates);
     return;
   }
