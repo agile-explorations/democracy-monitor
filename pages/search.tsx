@@ -8,6 +8,7 @@ import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchDebugLog } from '@/components/search/SearchDebugLog';
 import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
+import { SearchProgressStages } from '@/components/search/SearchProgressStages';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -592,15 +593,14 @@ export default function SearchPage() {
         </div>
       )}
 
-      {loading && (
-        <div className="text-center py-12">
-          <p className="text-sm text-dm-muted">
-            {mode === 'research'
-              ? 'Retrieving documents and generating answer...'
-              : 'Searching documents...'}
-          </p>
-        </div>
-      )}
+      {loading &&
+        (mode === 'research' ? (
+          <SearchProgressStages />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-sm text-dm-muted">Searching documents...</p>
+          </div>
+        ))}
 
       {!loading &&
         mode === 'research' &&
