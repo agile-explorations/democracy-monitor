@@ -169,6 +169,12 @@ async function streamCompletion(
       );
     }
     sendEvent(res, { type: 'verification', ...verification });
+  } else {
+    // Verification failure must be VISIBLE, not silent (#725): a null result
+    // (DB error) previously sent no event, making a broken verifier
+    // indistinguishable from an answer with nothing to verify.
+    console.warn('[api/search/stream] quote verification unavailable for this answer');
+    sendEvent(res, { type: 'verification', unavailable: true });
   }
 
   const completion = result.value;

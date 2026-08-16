@@ -107,7 +107,24 @@ function WarningList({ warnings }: { warnings: Unverified[] }) {
  *  citations, #720); term-of-art notes render as info; the amber caution
  *  lists remaining unverified quotes with citation links (#713). */
 export function QuoteVerificationBadge({ verification }: { verification?: Verification | null }) {
-  if (!verification || verification.totalQuotes === 0) return null;
+  if (!verification) return null;
+  if (verification.unavailable) {
+    return (
+      <p className="mt-3 text-[11px] text-dm-muted">
+        Quote verification was unavailable for this answer.
+      </p>
+    );
+  }
+  if (verification.totalQuotes === 0) {
+    return (
+      <p
+        className="mt-3 text-[11px] text-dm-muted"
+        title="Quoted passages are string-matched against the full stored text of their cited documents; this answer contains none."
+      >
+        No quoted passages in this answer — all content is paraphrased from the cited documents.
+      </p>
+    );
+  }
   const corrections = verification.corrections ?? [];
   const notes = verification.unverified.filter((u) => u.ambiguousIn != null);
   const warnings = verification.unverified.filter((u) => u.ambiguousIn == null);
