@@ -12,6 +12,18 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Decision: Explore-mode lens model for future analyses (owner, 2026-08-16)
+
+**Context**: Explore mode's "Category" filter and "Score" sort are not corpus properties — they are outputs of the erosion-monitoring analysis (the 14-category taxonomy and the weighted assessment score), welded onto the corpus explorer because that analysis was the only one. The owner asked whether each future analysis (Authoritarian Infrastructure Monitoring, Rhetoric vs. Action, Following the Money, …) should add its own filter/sort options to Explore.
+
+**Decision**: Adopt the **lens model**. New analyses do NOT add bare filters/sorts to Explore. When the second analysis ships, Explore gains an explicit lens selector — _None (plain corpus)_ | _Institutional erosion_ | future lenses — and the active lens contributes its filters, sort options, and result-card badges; no lens means source/date/relevance only. Nothing is built until that trigger: a lens selector with one lens is ceremony.
+
+**Deferred to lens implementation**: whether "Category" stays base corpus navigation or moves inside the erosion lens (routing happens at ingest, so it half-belongs to the corpus).
+
+**Done now**: "Sort: Score" renamed to "Sort: Assessment score" (sort value/API unchanged); Explore tips wording matched.
+
+---
+
 ## Sprint R-DEEP-MATCH: bare-citation retrieval + verifier normalization (#713 #715–#717, milestone 115, v1.9.22–v1.9.24) — ✅ deployed + outreach set re-validated 2026-08-13
 
 **Origin**: owner asked whether the 287(g) query's "no floor speeches appear" was "the best the corpus has to offer" — corpus census: 208 floor speeches contain "287(g)". Owner called the pre-outreach priority ("I want the folks we reach out to to be wowed, not frustrated"), reversing the freeze-retrieval-through-outreach stance. Context: ran immediately after the #712 full-corpus annotation-correction operation (retro on the issue close-out — 47.6k screened, 8,362 corrections applied, thin-doc policy pass, ≈$515).

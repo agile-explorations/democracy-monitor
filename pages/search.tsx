@@ -8,7 +8,9 @@ import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchDebugLog } from '@/components/search/SearchDebugLog';
 import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
+import { SearchModeIntro } from '@/components/search/SearchModeIntro';
 import { SearchProgressStages } from '@/components/search/SearchProgressStages';
+import { SearchTips } from '@/components/search/SearchTips';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
@@ -402,9 +404,7 @@ export default function SearchPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
         Search the Documentary Record
       </h1>
-      <p className="text-sm text-dm-muted mb-6">
-        Search government documents indexed by Democracy Monitor.
-      </p>
+      <SearchModeIntro />
 
       {/* Mode toggle + date range (shared) */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -522,59 +522,7 @@ export default function SearchPage() {
         </div>
       </form>
 
-      <details className="mb-4 -mt-2">
-        <summary className="text-xs text-dm-muted cursor-pointer hover:text-dm-text-secondary">
-          Tips for questions that get good results
-        </summary>
-        <ul className="mt-1.5 ml-4 space-y-0.5 text-xs text-dm-text-secondary list-disc">
-          <li>
-            Ask for documents, not abstractions: name the kind and a subject — &ldquo;court opinions
-            on removal power&rdquo; beats &ldquo;documents about judicial review&rdquo;. For floor
-            speeches and hearings, also click Commentary &amp; debate — naming the kind in the
-            question is a hint, the filter is a guarantee.
-          </li>
-          <li>
-            Name the administrations you want compared (&ldquo;under Biden vs the second Trump
-            administration&rdquo;) — results are then retrieved evenly from each era.
-          </li>
-          <li>
-            &ldquo;Since January 2025&rdquo; and similar phrases set the date range automatically —
-            or use the Period control for exact dates.
-          </li>
-          <li>
-            Looking only for official actions, or only for reactions? Use the filters above —
-            Government actions (orders, rules, opinions, bills) or Commentary &amp; debate (floor
-            speeches, hearings, debate).
-          </li>
-        </ul>
-        <p className="mt-2 ml-1 text-xs font-medium text-dm-text-secondary">
-          What you&apos;ll see in results:
-        </p>
-        <ul className="mt-1 ml-4 space-y-0.5 text-xs text-dm-text-secondary list-disc">
-          <li>
-            <strong>&ldquo;Also searched&rdquo; chips</strong> — the search expands your wording
-            into the record&apos;s own terms (order numbers, statutory phrases, era renamings),
-            keeping only terms verified to appear in the corpus. The chips disclose exactly what was
-            searched.
-          </li>
-          <li>
-            <strong>Matched passages</strong> — verbatim excerpts showing where a document matched,
-            even when the match sits deep inside a long record.
-          </li>
-          <li>
-            <strong>Quote verification</strong> — after each answer, every quoted passage is
-            machine-checked verbatim against the stored document text; a caution appears if any
-            quote could not be matched. Details on the{' '}
-            <Link
-              href="/system/methodology#research-answers"
-              className="text-dm-accent hover:underline"
-            >
-              methodology page
-            </Link>
-            .
-          </li>
-        </ul>
-      </details>
+      <SearchTips mode={mode} />
 
       {mode === 'explore' && (
         <ExploreFilters
@@ -595,14 +543,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {loading &&
-        (mode === 'research' ? (
-          <SearchProgressStages />
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-sm text-dm-muted">Searching documents...</p>
-          </div>
-        ))}
+      {loading && <SearchProgressStages mode={mode} />}
 
       {!loading &&
         mode === 'research' &&

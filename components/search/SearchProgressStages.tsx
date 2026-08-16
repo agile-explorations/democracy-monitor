@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
  *  to their typical durations, plus an elapsed counter. Client-side timers,
  *  not server signals — the stage order and wording mirror the actual
  *  retrieval pipeline (expansion → hybrid search → fusion/rank → selection). */
-const STAGES: Array<{ at: number; label: string }> = [
+const RESEARCH_STAGES: Array<{ at: number; label: string }> = [
   { at: 0, label: 'Expanding your question into corpus search terms' },
   { at: 3, label: 'Searching the corpus — semantic vectors plus exact keyword matches' },
   { at: 9, label: 'Fusing and ranking candidates (comparisons search each era separately)' },
@@ -14,7 +14,17 @@ const STAGES: Array<{ at: number; label: string }> = [
   { at: 26, label: 'Still working — novel questions bypass every cache and take the longest' },
 ];
 
-export function SearchProgressStages() {
+// Explore runs the same expansion + hybrid search but skips era stratification
+// and passage selection, so it is usually far quicker — shorter timers.
+const EXPLORE_STAGES: Array<{ at: number; label: string }> = [
+  { at: 0, label: 'Expanding your search into corpus terms' },
+  { at: 2, label: 'Searching the corpus — semantic vectors plus exact keyword matches' },
+  { at: 6, label: 'Ranking documents and fetching category assessments' },
+  { at: 15, label: 'Still working — first-time searches skip caches and take longer' },
+];
+
+export function SearchProgressStages({ mode = 'research' }: { mode?: 'research' | 'explore' }) {
+  const STAGES = mode === 'explore' ? EXPLORE_STAGES : RESEARCH_STAGES;
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const started = Date.now();

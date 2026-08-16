@@ -4,6 +4,12 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import {
+  countDistinctDocs,
+  fetchRowsForDocKeys,
+  orderedUniqueDocKeys,
+  pageDocKeysBySql,
+} from '@/lib/services/explore-document-paging';
 import type { ExploreSearchResult, SearchFilters, SearchResultDocument } from './search-service';
 
 const VECTOR_CANDIDATE_LIMIT = 500;
@@ -47,27 +53,6 @@ export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof
   }
 
   return conditions;
-}
-
-export function buildSortClause(
-  sort: string | undefined,
-  hasSemantic: boolean,
-  hasText: boolean,
-): ReturnType<typeof sql> {
-  switch (sort) {
-    case 'date':
-      return sql`d.published_at DESC NULLS LAST`;
-    case 'score':
-      return sql`ds.final_score DESC NULLS LAST`;
-    case 'relevance':
-    default:
-      if (hasSemantic && hasText) {
-        return sql`(COALESCE(text_rank, 0) * 0.4 + COALESCE(cosine_similarity, 0) * 0.6) DESC NULLS LAST`;
-      }
-      if (hasSemantic) return sql`cosine_similarity DESC NULLS LAST`;
-      if (hasText) return sql`text_rank DESC NULLS LAST`;
-      return sql`d.published_at DESC NULLS LAST`;
-  }
 }
 
 export function mapToSearchResult(row: Record<string, unknown>): SearchResultDocument {
@@ -137,7 +122,24 @@ export async function enrichWithAiAssessments(
   }
 }
 
-/** Vector-based explore: semantic search within a candidate pool, with filters and pagination. */
+/** Order the in-memory vector candidates by the requested sort. Pure. */
+function orderVectorCandidates<T extends { publishedAt: string | null; finalScore: number | null }>(
+  candidates: T[],
+  sort: string | undefined,
+): T[] {
+  if (sort === 'date') {
+    return [...candidates].sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
+  }
+  if (sort === 'score') {
+    return [...candidates].sort(
+      (a, b) => (b.finalScore ?? -Infinity) - (a.finalScore ?? -Infinity),
+    );
+  }
+  return candidates; // relevance: keep vector-similarity order
+}
+
+/** Vector-based explore: semantic candidate pool, paged over unique
+ *  documents (#728) with every category row fetched for the page. */
 export async function vectorExplore(
   db: ReturnType<typeof getDb>,
   vectorStr: string,
@@ -150,50 +152,32 @@ export async function vectorExplore(
   whereParts.push(...buildFilterConditions(filters));
   const whereClause = sql.join(whereParts, sql` AND `);
 
-  const textRankExpr = sql`ts_rank_cd(d.search_vector, websearch_to_tsquery('english', ${filters.query}))`;
-  const outerSort =
-    filters.sort === 'date'
-      ? sql`published_at DESC NULLS LAST`
-      : filters.sort === 'score'
-        ? sql`final_score DESC NULLS LAST`
-        : sql`cosine_similarity DESC NULLS LAST`;
+  const candidateRows = await db.execute(sql`
+    SELECT d.id, d.url, d.published_at, ds.final_score
+    FROM documents d
+    LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
+    WHERE ${whereClause}
+    ORDER BY d.embedding <=> ${vectorStr}::vector
+    LIMIT ${VECTOR_CANDIDATE_LIMIT}`);
+  const candidates = (candidateRows.rows as Record<string, unknown>[]).map((r) => ({
+    id: Number(r.id),
+    url: r.url as string | null,
+    publishedAt: r.published_at ? String(r.published_at) : null,
+    finalScore: r.final_score != null ? Number(r.final_score) : null,
+  }));
 
-  const countResult = await db.execute(sql`
-    SELECT count(*) as total FROM (
-      SELECT 1 FROM documents d
-      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      WHERE ${whereClause}
-      ORDER BY d.embedding <=> ${vectorStr}::vector
-      LIMIT ${VECTOR_CANDIDATE_LIMIT}
-    ) c
-  `);
-  const totalResults = Number((countResult.rows[0] as { total: string }).total);
+  const docKeys = orderedUniqueDocKeys(orderVectorCandidates(candidates, filters.sort));
+  const totalResults = docKeys.length;
+  const pageKeys = docKeys.slice(offset, offset + pageSize);
 
-  const results = await db.execute(sql`
-    SELECT * FROM (
-      SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category, d.case_id,
-        LEFT(d.content, 250) as snippet,
-        1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
-        ${textRankExpr} as text_rank,
-        ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
-        ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count,
-        ds.matches, ds.suppressed
-      FROM documents d
-      LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      WHERE ${whereClause}
-      ORDER BY d.embedding <=> ${vectorStr}::vector
-      LIMIT ${VECTOR_CANDIDATE_LIMIT}
-    ) candidates
-    ORDER BY ${outerSort}
-    LIMIT ${pageSize} OFFSET ${offset}
-  `);
-
-  const rows = results.rows as Record<string, unknown>[];
+  const rows = await fetchRowsForDocKeys(db, pageKeys, whereClause, vectorStr, filters.query);
   await enrichWithAiAssessments(db, rows);
   return { totalResults, page, pageSize, documents: rows.map(mapToSearchResult) };
 }
 
-/** Text-based explore fallback: tsvector keyword search when embedding is unavailable. */
+/** Text-based explore fallback: tsvector keyword search when embedding is
+ *  unavailable. Counts and pages over unique documents in SQL (#728) — this
+ *  path's candidate set is unbounded, so dedupe cannot happen in memory. */
 export async function textExplore(
   db: ReturnType<typeof getDb>,
   filters: SearchFilters,
@@ -202,35 +186,32 @@ export async function textExplore(
   pageSize: number,
   offset: number,
 ): Promise<ExploreSearchResult> {
-  const textRankCol = hasQuery
-    ? sql`ts_rank_cd(d.search_vector, websearch_to_tsquery('english', ${filters.query}))`
-    : sql`NULL`;
   const parts: ReturnType<typeof sql>[] = [];
   if (hasQuery) {
     parts.push(sql`d.search_vector @@ websearch_to_tsquery('english', ${filters.query})`);
   }
   parts.push(...buildFilterConditions(filters));
   const whereClause = parts.length > 0 ? sql.join(parts, sql` AND `) : sql`TRUE`;
-  const sortClause = buildSortClause(filters.sort, false, hasQuery);
 
-  const countResult = await db.execute(
-    sql`SELECT count(*) as total FROM documents d LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category WHERE ${whereClause}`,
+  const sortCol =
+    filters.sort === 'score'
+      ? sql`ds.final_score`
+      : filters.sort !== 'date' && hasQuery
+        ? sql`ts_rank_cd(d.search_vector, websearch_to_tsquery('english', ${filters.query}))`
+        : sql`d.published_at`;
+
+  const [totalResults, pageKeys] = await Promise.all([
+    countDistinctDocs(db, whereClause),
+    pageDocKeysBySql(db, whereClause, sortCol, 'DESC', pageSize, offset),
+  ]);
+
+  const rows = await fetchRowsForDocKeys(
+    db,
+    pageKeys,
+    whereClause,
+    null,
+    hasQuery ? filters.query : '',
   );
-  const totalResults = Number((countResult.rows[0] as { total: string }).total);
-
-  const results = await db.execute(sql`
-    SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category, d.case_id,
-      LEFT(d.content, 250) as snippet, NULL as cosine_similarity, ${textRankCol} as text_rank,
-      ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
-      ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed
-    FROM documents d
-    LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-    WHERE ${whereClause}
-    ORDER BY ${sortClause}
-    LIMIT ${pageSize} OFFSET ${offset}
-  `);
-
-  const rows = results.rows as Record<string, unknown>[];
   await enrichWithAiAssessments(db, rows);
   return { totalResults, page, pageSize, documents: rows.map(mapToSearchResult) };
 }
