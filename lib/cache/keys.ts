@@ -17,6 +17,9 @@ export const CacheKeys = {
   /** docsOnly research responses (#705): doc lists are stable within a data
    *  week; refreshed by the Monday pre-warm (&refresh=true bypass). */
   searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v2`,
+  /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
+   *  provider round-trip per cold search. Query text only, never documents. */
+  queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,
   /** LLM alias proposals for hybrid retrieval (#702), keyed by query hash. */
   queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
   /** Corpus-validated aliases, keyed by (query, window) hash. */

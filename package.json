@@ -39,6 +39,7 @@
     "db:pull-prod": "./scripts/db-pull-prod.sh",
     "db:promote": "tsx scripts/db-promote.ts",
     "db:promote:dry-run": "tsx scripts/db-promote.ts --dry-run",
+    "db:prewarm": "tsx lib/cron/prewarm-indexes.ts",
     "db:push-prod": "./scripts/db-push-prod.sh",
     "snapshot": "tsx lib/cron/snapshot.ts",
     "backfill": "tsx lib/cron/backfill.ts",

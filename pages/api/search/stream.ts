@@ -14,7 +14,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { AnthropicProvider } from '@/lib/ai/anthropic';
 import { cacheGet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import { embedText } from '@/lib/services/embedding-service';
+import { embedQueryCached } from '@/lib/services/embedding-service';
 import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -100,7 +100,7 @@ async function retrieveDocuments(
     };
   }
 
-  const embedding = await embedText(query);
+  const embedding = await embedQueryCached(query);
   // Distinguish an embedding outage from a genuinely empty result: the
   // client shows "no documents" for null, which is wrong for a provider blip.
   if (!embedding)
