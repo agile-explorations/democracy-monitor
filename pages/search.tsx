@@ -8,6 +8,7 @@ import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchDebugLog } from '@/components/search/SearchDebugLog';
 import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
 import { SearchHistoryDropdown, useSearchHistory } from '@/components/search/SearchHistory';
+import { SearchModeIntro } from '@/components/search/SearchModeIntro';
 import { SearchProgressStages } from '@/components/search/SearchProgressStages';
 import type { ExploreResult, ResearchResult, SearchMode } from '@/components/search/types';
 import { SEOHead } from '@/components/shared/SEOHead';
@@ -402,9 +403,7 @@ export default function SearchPage() {
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
         Search the Documentary Record
       </h1>
-      <p className="text-sm text-dm-muted mb-6">
-        Search government documents indexed by Democracy Monitor.
-      </p>
+      <SearchModeIntro />
 
       {/* Mode toggle + date range (shared) */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
