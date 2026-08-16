@@ -790,3 +790,40 @@ export const trackedCases = pgTable(
     index('idx_tracked_cases_status_last_filing').on(table.status, table.dateLastFiling),
   ],
 );
+
+/** Per-build search phase timings (#727): degradation CAPTURE, not trend
+ *  tracking — every docsOnly retrieval build writes a row (outliers
+ *  preserved, never averaged) so sudden or intermittent slowdowns are
+ *  detectable and diagnosable after the fact: when, the exact search, the
+ *  phase breakdown, and the running release. Threshold trips flag the row
+ *  and email the operator. Retention: indefinite raw (owner decision). */
+export const searchTimings = pgTable(
+  'search_timings',
+  {
+    id: serial('id').primaryKey(),
+    measuredAt: timestamp('measured_at', { withTimezone: true }).defaultNow().notNull(),
+    query: text('query').notNull(),
+    queryHash: varchar('query_hash', { length: 16 }).notNull(),
+    /** tier / eras / dateFrom / dateTo / refresh — the exact search shape. */
+    params: jsonb('params').$type<Record<string, string | boolean | null>>(),
+    /** 'build' = retrieval ran (timings present); 'cache' = served from the
+     *  docsOnly cache (behavior row, no timings); 'empty' = retrieval ran
+     *  and found nothing — the unmet-demand signal (#727). */
+    served: varchar('served', { length: 8 }).default('build').notNull(),
+    /** Documents returned; 0 on 'empty' rows, null on 'cache' rows. */
+    docCount: integer('doc_count'),
+    embedMs: integer('embed_ms'),
+    expansionMs: integer('expansion_ms'),
+    retrieveWallMs: integer('retrieve_wall_ms'),
+    totalMs: integer('total_ms'),
+    windows: jsonb('windows').$type<Array<{ key: string; searchMs: number; rerankMs: number }>>(),
+    appVersion: varchar('app_version', { length: 20 }),
+    gitCommit: varchar('git_commit', { length: 40 }),
+    flagged: boolean('flagged').default(false).notNull(),
+    flagReason: text('flag_reason'),
+  },
+  (table) => [
+    index('idx_search_timings_measured_at').on(table.measuredAt),
+    index('idx_search_timings_flagged').on(table.flagged, table.measuredAt),
+  ],
+);

@@ -1,38 +1,28 @@
-import { createHash } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedQueryCached } from '@/lib/services/embedding-service';
-import { expandDiagnostic } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
-import type { CandidateSummary } from '@/lib/services/research-doc-retrieval';
-import { computeDateRange } from '@/lib/services/research-prompts';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
+import {
+  docsCacheRefs,
+  hashQuery,
+  respondDocsOnlyBuild,
+  respondEmpty,
+  serveCachedDocs,
+} from '@/lib/services/search-docs-response';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { CachedResearchResult } from '@/lib/services/search-response-format';
-import {
-  buildDocsOnlyPayload,
-  emptyResearchResponse,
-  formatResearchResponse,
-  hashDocsKey,
-} from '@/lib/services/search-response-format';
-import type { RetrievalStratum } from '@/lib/services/search-response-types';
-import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
-import { searchExplore, searchResearch } from '@/lib/services/search-service';
+import { formatResearchResponse } from '@/lib/services/search-response-format';
+import type { ResearchDocument } from '@/lib/services/search-service';
+import { searchExplore } from '@/lib/services/search-service';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
-/** docsOnly doc lists change only when data does (Monday snapshot); the
- *  pre-warm workflow refreshes them right after (&refresh=true). */
-const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
-
-function hashQuery(q: string): string {
-  return createHash('sha256').update(q.toLowerCase().trim()).digest('hex').slice(0, 16);
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
@@ -110,105 +100,6 @@ async function adaptiveCorpusStats(
 
 export type { RetrievalStratum } from '@/lib/services/search-response-types';
 
-/** docsOnly cache refs: the bare hash also travels to the client as
- *  payload.docsKey so the stream can re-attach phase-1 snippets (#707). */
-function docsCacheRefs(
-  query: string,
-  req: NextApiRequest,
-): { docsHash: string; docsCacheKey: string } {
-  const docsHash = hashDocsKey(query, {
-    dateFrom: req.query.dateFrom as string | undefined,
-    dateTo: req.query.dateTo as string | undefined,
-    tier: req.query.tier as string | undefined,
-    eras: req.query.eras as string | undefined,
-  });
-  return { docsHash, docsCacheKey: CacheKeys.searchResearchDocs(docsHash) };
-}
-
-/**
- * Serve the cached docsOnly response if present (#705: the stratified
- * retrieval + fusion measured 30-50s on prod — a repeat visitor or a
- * pre-warmed outreach URL should see documents in under a second).
- * refresh=true bypasses the read (still writes): the Monday pre-warm uses it
- * to rebuild caches right after new data lands. Returns true when served.
- */
-async function serveCachedDocs(
-  res: NextApiResponse,
-  req: NextApiRequest,
-  docsCacheKey: string,
-): Promise<boolean> {
-  if (req.query.refresh === 'true') return false;
-  const cachedDocs = await cacheGet<Record<string, unknown>>(docsCacheKey);
-  if (!cachedDocs) return false;
-  res.status(200).json(cachedDocs);
-  return true;
-}
-
-/** Assemble the #718 debug trace: settings, expansion diagnostics with
- *  rejected reasons, and the pre-rerank candidate set. Comparative searches
- *  validate aliases PER ERA WINDOW, so the diagnostics run per window too —
- *  a single windowless diagnostic showed terms as "rejected" whose windowed
- *  arms actually ran (#721). */
-async function buildDebugTrace(
-  req: NextApiRequest,
-  query: string,
-  candidates: CandidateSummary[] | undefined,
-  strata: Array<{ key: string; from?: string; to?: string }> | undefined,
-) {
-  const tier = (req.query.tier as string | undefined) ?? 'all';
-  const windows = strata?.length
-    ? strata.map((s) => ({ key: s.key, dateFrom: s.from, dateTo: s.to }))
-    : [
-        {
-          key: 'request',
-          dateFrom: req.query.dateFrom as string | undefined,
-          dateTo: req.query.dateTo as string | undefined,
-        },
-      ];
-  const expansion = await Promise.all(
-    windows.map(async (w) => ({
-      window: { key: w.key, from: w.dateFrom ?? null, to: w.dateTo ?? null },
-      ...(await expandDiagnostic(query, {
-        dateFrom: w.dateFrom,
-        dateTo: w.dateTo,
-        tier: tier === 'all' ? undefined : (tier as 'action' | 'discussion'),
-      })),
-    })),
-  );
-  return {
-    capturedAt: new Date().toISOString(),
-    settings: {
-      tier,
-      dateFrom: req.query.dateFrom ?? null,
-      dateTo: req.query.dateTo ?? null,
-      eras: req.query.eras ?? null,
-    },
-    expansion,
-    candidatesPreRerank: candidates ?? [],
-  };
-}
-
-/** docsOnly response: debug runs attach the trace and skip the cache. */
-async function respondDocsOnly(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  query: string,
-  payload: Record<string, unknown>,
-  docsCacheKey: string,
-  debug: boolean,
-  candidates: CandidateSummary[] | undefined,
-): Promise<void> {
-  if (debug) {
-    const strata = payload.strata as Array<{ key: string; from?: string; to?: string }> | undefined;
-    res
-      .status(200)
-      .json({ ...payload, trace: await buildDebugTrace(req, query, candidates, strata) });
-    return;
-  }
-  await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
-  res.status(200).json(payload);
-}
-
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -222,45 +113,44 @@ async function handleResearch(
   const queryHash = hashQuery(query);
 
   const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
-  if (docsOnly && !debug && (await serveCachedDocs(res, req, docsCacheKey))) return;
+  // Cached serve also records the behavior row (#727): cache hits carry no
+  // timings but ARE usage — the frequency signal the build-only log missed.
+  if (docsOnly && !debug && (await serveCachedDocs(req, res, query, queryHash, docsCacheKey))) {
+    return;
+  }
 
   const embedResult = await timedEmbedOrFail(res, query, queryHash);
   if (!embedResult) return;
   const { embedding, embedMs } = embedResult;
 
   const retrieveStart = Date.now();
-  const {
-    docs: allDocs,
-    strata,
-    inferredFrom,
-    alsoSearched,
-    timings: retrievalTimings,
-    candidates,
-  } = await retrieveResearchDocs(req, query, embedding, debug);
+  const retrieval = await retrieveResearchDocs(req, query, embedding, debug);
+  const allDocs = retrieval.docs;
   // Phase-timing line for cold-cache diagnosis (post-dump HNSW evictions can
   // multiply retrieval time; CF cuts requests at ~100s since 2026-07-31).
   console.log(
     `[api/search] timings q=${queryHash} retrieve=${Date.now() - retrieveStart}ms docs=${allDocs.length} docsOnly=${docsOnly}`,
   );
   if (allDocs.length === 0) {
-    res.status(200).json(emptyResearchResponse(docsOnly));
+    respondEmpty(req, res, query, queryHash, docsOnly, embedMs, retrieval.timings);
     return;
   }
 
-  const dateRange = computeDateRange(allDocs);
   const avgSimilarity = avgCosineSimilarity(allDocs);
 
   // docsOnly: return documents immediately without expensive corpus stats
   // (corpus stats scan 164K embeddings — ~15-20s). Stats are computed
   // in the streaming synthesis phase instead.
   if (docsOnly) {
-    const payload = {
-      ...buildDocsOnlyPayload(allDocs, avgSimilarity, strata, inferredFrom, alsoSearched, docsHash),
-      // Phase breakdown of THIS build (#726) — rides into the docsOnly cache,
-      // so a later fetch of the cached payload reads what the build cost.
-      timings: { embedMs, ...retrievalTimings, measuredAt: new Date().toISOString() },
-    };
-    await respondDocsOnly(req, res, query, payload, docsCacheKey, debug, candidates);
+    await respondDocsOnlyBuild(req, res, query, {
+      queryHash,
+      debug,
+      docsCacheKey,
+      docsHash,
+      embedMs,
+      avgSimilarity,
+      retrieval,
+    });
     return;
   }
 
@@ -268,7 +158,7 @@ async function handleResearch(
 
   await synthesizeAndRespond(res, query, queryHash, allDocs, {
     editorial,
-    alsoSearched,
+    alsoSearched: retrieval.alsoSearched,
     avgSimilarity,
     corpusStats,
   });
