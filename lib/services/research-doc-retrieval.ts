@@ -161,19 +161,21 @@ function toCandidateSummary(d: ResearchDocument, era?: string): CandidateSummary
   };
 }
 
-export async function retrieveResearchDocs(
-  req: NextApiRequest,
-  query: string,
-  embedding: number[],
-  debug?: boolean,
-): Promise<{
+export interface RetrievalResult {
   docs: ResearchDocument[];
   strata: RetrievalStratum[] | null;
   inferredFrom: string | null;
   alsoSearched: ValidatedAlias[];
   timings: RetrievalTimings;
   candidates?: CandidateSummary[];
-}> {
+}
+
+export async function retrieveResearchDocs(
+  req: NextApiRequest,
+  query: string,
+  embedding: number[],
+  debug?: boolean,
+): Promise<RetrievalResult> {
   // Range phrases in the question ("since January 2025") become a date floor
   // when the user has not set explicit dates; surfaced in the response so
   // the page can show what was inferred.
