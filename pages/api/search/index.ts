@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import { embedText } from '@/lib/services/embedding-service';
+import { embedQueryCached } from '@/lib/services/embedding-service';
 import { expandDiagnostic } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
@@ -73,7 +73,7 @@ async function timedEmbedOrFail(
   queryHash: string,
 ): Promise<number[] | null> {
   const embedStart = Date.now();
-  const embedding = await embedText(query);
+  const embedding = await embedQueryCached(query);
   const embedMs = Date.now() - embedStart;
   if (!embedding) {
     console.error(`[api/search] embed failed q=${queryHash} after ${embedMs}ms`);

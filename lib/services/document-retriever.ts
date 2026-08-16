@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { embedText } from './embedding-service';
+import { embedQueryCached } from './embedding-service';
 
 export interface RetrievedDocument {
   title: string;
@@ -21,7 +21,7 @@ export async function retrieveRelevantDocuments(
 ): Promise<RetrievedDocument[]> {
   if (!isDbAvailable()) return [];
 
-  const queryEmbedding = await embedText(query);
+  const queryEmbedding = await embedQueryCached(query);
   if (!queryEmbedding) return [];
 
   const db = getDb();

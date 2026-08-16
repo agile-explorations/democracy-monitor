@@ -1,5 +1,28 @@
+import { createHash } from 'crypto';
 import { getEmbeddingProvider } from '@/lib/ai/provider';
+import { cacheGet, cacheSet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 import type { AIEmbeddingResult } from '@/lib/types';
+
+/** Search queries repeat (outreach links, redraws, pre-warm) and embeddings
+ *  are deterministic — a week matches the other search caches. */
+const QUERY_EMBEDDING_TTL = 7 * 86400;
+
+/**
+ * embedText for SEARCH QUERIES, cached by normalized-text hash (#722): saves
+ * a provider round-trip on every repeat search and rides out provider blips
+ * for known queries. Never use for document content — entries are ~30 KB and
+ * document texts don't repeat; documents keep the uncached embedText path.
+ */
+export async function embedQueryCached(text: string): Promise<number[] | null> {
+  const hash = createHash('sha256').update(text.toLowerCase().trim()).digest('hex').slice(0, 24);
+  const key = CacheKeys.queryEmbedding(hash);
+  const cached = await cacheGet<number[]>(key);
+  if (cached) return cached;
+  const embedding = await embedText(text);
+  if (embedding) await cacheSet(key, embedding, QUERY_EMBEDDING_TTL);
+  return embedding;
+}
 
 export async function embedText(text: string): Promise<number[] | null> {
   const provider = getEmbeddingProvider();

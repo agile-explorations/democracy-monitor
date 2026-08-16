@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   cosineSimilarity,
   computeCentroid,
@@ -142,5 +142,33 @@ describe('computeCentroid', () => {
     expect(centroid.length).toBe(dim);
     expect(centroid[0]).toBe(2);
     expect(centroid[dim - 1]).toBe(2);
+  });
+});
+
+describe('embedQueryCached (#722)', () => {
+  it('serves a cache hit without calling the provider, and caches a miss', async () => {
+    vi.resetModules();
+    const cacheStore = new Map<string, unknown>();
+    vi.doMock('@/lib/cache', () => ({
+      cacheGet: vi.fn(async (k: string) => cacheStore.get(k) ?? null),
+      cacheSet: vi.fn(async (k: string, v: unknown) => void cacheStore.set(k, v)),
+    }));
+    const embed = vi.fn(async () => ({ embedding: [0.1, 0.2, 0.3] }));
+    vi.doMock('@/lib/ai/provider', () => ({
+      getEmbeddingProvider: () => ({ isAvailable: () => true, embed }),
+    }));
+    const { embedQueryCached } = await import('@/lib/services/embedding-service');
+
+    const first = await embedQueryCached('What is Schedule F?');
+    expect(first).toEqual([0.1, 0.2, 0.3]);
+    expect(embed).toHaveBeenCalledTimes(1);
+
+    const second = await embedQueryCached('  what is schedule f?  ');
+    expect(second).toEqual([0.1, 0.2, 0.3]);
+    expect(embed).toHaveBeenCalledTimes(1);
+
+    vi.doUnmock('@/lib/cache');
+    vi.doUnmock('@/lib/ai/provider');
+    vi.resetModules();
   });
 });

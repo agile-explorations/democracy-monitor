@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { retrieveRelevantDocuments } from '@/lib/services/document-retriever';
-import { embedText } from '@/lib/services/embedding-service';
+import { embedQueryCached } from '@/lib/services/embedding-service';
 
 // Mock external boundaries
 vi.mock('@/lib/db', () => ({
@@ -10,12 +10,12 @@ vi.mock('@/lib/db', () => ({
 }));
 
 vi.mock('@/lib/services/embedding-service', () => ({
-  embedText: vi.fn(),
+  embedQueryCached: vi.fn(),
 }));
 
 const mockIsDbAvailable = vi.mocked(isDbAvailable);
 const mockGetDb = vi.mocked(getDb);
-const mockEmbedText = vi.mocked(embedText);
+const mockEmbedText = vi.mocked(embedQueryCached);
 
 beforeEach(() => {
   vi.clearAllMocks();

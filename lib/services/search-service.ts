@@ -10,7 +10,7 @@ import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { embedText } from './embedding-service';
+import { embedQueryCached } from './embedding-service';
 import { hybridVectorExplore } from './hybrid-explore';
 import { expandAndValidate } from './query-expansion-service';
 import {
@@ -136,7 +136,7 @@ export async function searchExplore(filters: SearchFilters): Promise<ExploreSear
   // Embed every query for semantic search (no minimum word count)
   let vectorStr: string | null = null;
   if (hasQuery) {
-    const embedding = await embedText(filters.query);
+    const embedding = await embedQueryCached(filters.query);
     if (embedding) vectorStr = `[${embedding.join(',')}]`;
   }
 
@@ -179,7 +179,7 @@ export async function searchResearch(
   tierFilter: ResearchTierFilter = 'all',
 ): Promise<ResearchDocument[]> {
   if (!isDbAvailable()) return [];
-  const embedding = precomputedEmbedding ?? (await embedText(query));
+  const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
   if (!embedding) return [];
 
   const db = getDb();
