@@ -26,6 +26,8 @@ export interface ResearchResult {
     /** Verification could not run (DB error) — rendered distinctly so a
      *  broken verifier is never mistaken for a quote-free answer (#725). */
     unavailable?: boolean;
+    /** Wall-clock cost of the verification pass (#726) — debug capture only. */
+    verificationMs?: number;
     totalQuotes: number;
     verifiedCount: number;
     /** Citation brackets the verifier rewrote in the displayed answer (#720):

@@ -287,6 +287,7 @@ export default function SearchPage() {
           }
           const verification = {
             unavailable: data.unavailable ?? false,
+            verificationMs: data.verificationMs,
             totalQuotes: data.totalQuotes ?? 0,
             verifiedCount: data.verifiedCount ?? 0,
             corrections: data.corrections ?? [],

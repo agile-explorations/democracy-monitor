@@ -71,6 +71,25 @@ function rerankForTier(
     : rerankByRelevance(query, candidates, keep);
 }
 
+/** Per-window phase timings for the payload's `timings` object (#726). */
+export interface WindowTiming {
+  key: string;
+  searchMs: number;
+  rerankMs: number;
+}
+
+/** Phase breakdown of one docsOnly retrieval build (#726): expansion runs
+ *  FIRST (warming its caches) so the window searches below are ~pure DB
+ *  work — separating external-API-bound from database-bound time, the split
+ *  the cold-cache program (#724) decides on. */
+export interface RetrievalTimings {
+  expansionMs: number;
+  /** Wall-clock of the (parallel) window retrieval block. */
+  retrieveWallMs: number;
+  windows: WindowTiming[];
+  totalMs: number;
+}
+
 /** Non-comparative path: one window, full context allocation. */
 async function retrieveSingleWindow(
   query: string,
@@ -82,6 +101,14 @@ async function retrieveSingleWindow(
   inferredFrom: string | null,
   debug?: boolean,
 ) {
+  const t0 = Date.now();
+  const alsoSearched = await collectAlsoSearched(
+    query,
+    [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
+    tier,
+  );
+  const expansionMs = Date.now() - t0;
+  const t1 = Date.now();
   const candidates = await searchResearch(
     query,
     RESEARCH_CONTEXT_DOCS * 2,
@@ -90,17 +117,21 @@ async function retrieveSingleWindow(
     w ? w.to : dateTo,
     tier,
   );
+  const searchMs = Date.now() - t1;
+  const t2 = Date.now();
   const docs = await rerankForTier(query, candidates, RESEARCH_CONTEXT_DOCS, tier);
-  const alsoSearched = await collectAlsoSearched(
-    query,
-    [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
-    tier,
-  );
+  const rerankMs = Date.now() - t2;
   return {
     docs,
     strata: null as RetrievalStratum[] | null,
     inferredFrom,
     alsoSearched,
+    timings: {
+      expansionMs,
+      retrieveWallMs: searchMs,
+      windows: [{ key: w?.key ?? 'window', searchMs, rerankMs }],
+      totalMs: Date.now() - t0,
+    } as RetrievalTimings,
     ...(debug ? { candidates: candidates.map((d) => toCandidateSummary(d)) } : {}),
   };
 }
@@ -140,6 +171,7 @@ export async function retrieveResearchDocs(
   strata: RetrievalStratum[] | null;
   inferredFrom: string | null;
   alsoSearched: ValidatedAlias[];
+  timings: RetrievalTimings;
   candidates?: CandidateSummary[];
 }> {
   // Range phrases in the question ("since January 2025") become a date floor
@@ -189,16 +221,30 @@ async function retrieveEraStratified(
   inferredFrom: string | null,
   debug?: boolean,
 ) {
+  const t0 = Date.now();
   const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
   const windows = intersectEraWindows(eras, dateFrom, dateTo);
+  // Expansion first (#726): warms the per-window alias caches so the window
+  // searches below hit them — the timings then cleanly separate API-bound
+  // expansion from database-bound retrieval.
+  const alsoSearched = await collectAlsoSearched(query, windows, tier);
+  const expansionMs = Date.now() - t0;
   const debugCandidates: CandidateSummary[] = [];
+  const windowTimings: WindowTiming[] = [];
+  const tRetrieve = Date.now();
   const perEra = await Promise.all(
     windows.map(async (w) => {
+      const s0 = Date.now();
       const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
+      const searchMs = Date.now() - s0;
       if (debug) debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
-      return rerankForTier(query, candidates, slots, tier);
+      const r0 = Date.now();
+      const docs = await rerankForTier(query, candidates, slots, tier);
+      windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
+      return docs;
     }),
   );
+  const retrieveWallMs = Date.now() - tRetrieve;
   const strata: RetrievalStratum[] = windows.map((w, i) => ({
     key: w.era.key,
     label: w.era.label,
@@ -207,12 +253,12 @@ async function retrieveEraStratified(
     docCount: perEra[i].length,
     ...(w.dateConflict ? { dateConflict: true } : {}),
   }));
-  const alsoSearched = await collectAlsoSearched(query, windows, tier);
   return {
     docs: perEra.flat(),
     strata: strata as RetrievalStratum[] | null,
     inferredFrom,
     alsoSearched,
+    timings: { expansionMs, retrieveWallMs, windows: windowTimings, totalMs: Date.now() - t0 },
     ...(debug ? { candidates: debugCandidates } : {}),
   };
 }

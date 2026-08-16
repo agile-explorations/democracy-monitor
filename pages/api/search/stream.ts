@@ -125,6 +125,36 @@ async function retrieveDocuments(
   };
 }
 
+/** Deterministic quote verification (#707) emitted as an ALWAYS-present
+ *  event (#725): every quoted span is checked against its cited document's
+ *  full stored content before 'done'; a null result (DB error) emits
+ *  `unavailable: true` so a broken verifier is visible. Timed (#726). */
+async function verifyAndEmit(
+  answer: string,
+  docs: ResearchDocument[],
+  searchedPhrases: string[],
+  res: NextApiResponse,
+) {
+  const verifyStart = Date.now();
+  const verification = await verifyAnswerQuotes(
+    answer,
+    docs.map((d, i) => ({ citationIndex: i + 1, id: d.id })),
+    searchedPhrases,
+  );
+  const verificationMs = Date.now() - verifyStart;
+  if (verification) {
+    if (verification.unverified.length > 0) {
+      console.warn(
+        `[api/search/stream] quote verification: ${verification.unverified.length}/${verification.totalQuotes} unverified`,
+      );
+    }
+    sendEvent(res, { type: 'verification', verificationMs, ...verification });
+  } else {
+    console.warn('[api/search/stream] quote verification unavailable for this answer');
+    sendEvent(res, { type: 'verification', unavailable: true, verificationMs });
+  }
+}
+
 async function streamCompletion(
   provider: AnthropicProvider,
   retrieved: { prompt: string; docs: ResearchDocument[]; searchedPhrases: string[] },
@@ -155,27 +185,7 @@ async function streamCompletion(
     result = await stream.next();
   }
 
-  // Deterministic quote verification (#707): every quoted span checked
-  // against its cited document's FULL stored content before 'done'.
-  const verification = await verifyAnswerQuotes(
-    accumulated,
-    docs.map((d, i) => ({ citationIndex: i + 1, id: d.id })),
-    searchedPhrases,
-  );
-  if (verification) {
-    if (verification.unverified.length > 0) {
-      console.warn(
-        `[api/search/stream] quote verification: ${verification.unverified.length}/${verification.totalQuotes} unverified`,
-      );
-    }
-    sendEvent(res, { type: 'verification', ...verification });
-  } else {
-    // Verification failure must be VISIBLE, not silent (#725): a null result
-    // (DB error) previously sent no event, making a broken verifier
-    // indistinguishable from an answer with nothing to verify.
-    console.warn('[api/search/stream] quote verification unavailable for this answer');
-    sendEvent(res, { type: 'verification', unavailable: true });
-  }
+  await verifyAndEmit(accumulated, docs, searchedPhrases, res);
 
   const completion = result.value;
   sendEvent(res, {
