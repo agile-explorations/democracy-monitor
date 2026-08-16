@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { MatchSnippet, phraseRegex } from '@/components/search/MatchSnippet';
 
@@ -43,5 +43,25 @@ describe('MatchSnippet phrase highlighting (#728)', () => {
 describe('phraseRegex', () => {
   it('does not match a partial phrase', () => {
     expect('Schedule A positions'.match(phraseRegex('Schedule F'))).toBeNull();
+  });
+});
+
+describe('MatchSnippet expandable context (#728)', () => {
+  const longSnippet = `… ${'lead context '.repeat(30)}Schedule F positions ${'trail context '.repeat(30)} …`;
+
+  it('offers a toggle on long excerpts and expands the clamp', () => {
+    const { container } = render(
+      <MatchSnippet snippet={longSnippet} alias="Schedule F positions" />,
+    );
+    expect(container.querySelector('p')?.className).toContain('line-clamp-3');
+    const toggle = screen.getByRole('button', { name: 'Show more context' });
+    fireEvent.click(toggle);
+    expect(container.querySelector('p')?.className).not.toContain('line-clamp-3');
+    expect(screen.getByRole('button', { name: 'Show less' })).toBeTruthy();
+  });
+
+  it('shows no toggle on short excerpts', () => {
+    render(<MatchSnippet snippet="short passage with Schedule F" alias="Schedule F" />);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

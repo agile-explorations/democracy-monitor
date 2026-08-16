@@ -29,6 +29,9 @@ const HEADLINE_CONTENT_CHARS = 120000;
 /** [[..]] markers instead of HTML tags: the UI renders highlights from the
  *  markers without ever injecting document text as raw HTML. */
 const HEADLINE_OPTS = 'MaxFragments=2, MaxWords=40, MinWords=10, StartSel=[[, StopSel=]]';
+/** Context on each side of the literal phrase occurrence in an excerpt —
+ *  wide enough that "show more context" is worth clicking (#728). */
+const SNIPPET_CONTEXT_CHARS = 600;
 
 function quotedPhrase(phrase: string): string {
   return `"${phrase.replace(/"/g, '')}"`;
@@ -99,9 +102,17 @@ export async function runArms(queries: SqlChunk[]): Promise<Record<string, unkno
 }
 
 /**
- * Batched matched-passage extraction for the docs that survived fusion: one
- * ts_headline query for (id, alias) pairs instead of headlining every arm
- * candidate. Failure-tolerant — snippets are enrichment, not retrieval.
+ * Batched matched-passage extraction for the docs that survived fusion —
+ * failure-tolerant (snippets are enrichment, not retrieval).
+ *
+ * The excerpt is a window CENTERED ON THE FIRST LITERAL OCCURRENCE of the
+ * phrase (#728): ts_headline ranks fragments by query-word density, not
+ * phrase coverage, so it could pick passages full of the phrase's words
+ * that never contain the phrase — the excerpt then failed to show what
+ * "Matched passage" claimed. ts_headline remains the fallback for
+ * stemming-only matches with no literal occurrence. The window carries
+ * SNIPPET_CONTEXT_CHARS of context each side; the UI clamps display and
+ * offers "show more context".
  */
 export async function fetchMatchSnippets(
   pairs: Array<{ id: number; phrase: string }>,
@@ -109,15 +120,28 @@ export async function fetchMatchSnippets(
   if (pairs.length === 0) return new Map();
   const db = getDb();
   const values = sql.join(
-    pairs.map((p) => sql`(${p.id}::int, ${quotedPhrase(p.phrase)})`),
+    pairs.map((p) => sql`(${p.id}::int, ${quotedPhrase(p.phrase)}, ${p.phrase})`),
     sql`, `,
   );
   try {
     const rows = await db.execute(sql`
-      SELECT d.id, ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
-        websearch_to_tsquery('english', v.q), ${HEADLINE_OPTS}) as match_snippet
-      FROM (VALUES ${values}) AS v(id, q)
-      JOIN documents d ON d.id = v.id`);
+      SELECT d.id,
+        CASE WHEN loc.pos > 0 THEN
+          (CASE WHEN loc.start_at > 1 THEN '… ' ELSE '' END)
+          || substring(d.content FROM loc.start_at FOR loc.win_len)
+          || (CASE WHEN loc.start_at + loc.win_len <= char_length(d.content) THEN ' …' ELSE '' END)
+        ELSE ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
+          websearch_to_tsquery('english', v.q), ${HEADLINE_OPTS})
+        END as match_snippet
+      FROM (VALUES ${values}) AS v(id, q, phrase)
+      JOIN documents d ON d.id = v.id
+      CROSS JOIN LATERAL (
+        SELECT p.pos,
+          greatest(p.pos - ${SNIPPET_CONTEXT_CHARS}, 1) AS start_at,
+          (p.pos - greatest(p.pos - ${SNIPPET_CONTEXT_CHARS}, 1))
+            + char_length(v.phrase) + ${SNIPPET_CONTEXT_CHARS} AS win_len
+        FROM (SELECT position(lower(v.phrase) IN lower(d.content)) AS pos) p
+      ) loc`);
     return new Map(
       (rows.rows as Array<{ id: number; match_snippet: string | null }>)
         .filter((r) => r.match_snippet)

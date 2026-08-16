@@ -12,6 +12,8 @@
  * rendering remains the fallback when no phrase is known.
  */
 
+import { useState } from 'react';
+
 const MARKER_SPLIT = /\[\[|\]\]/;
 const MARKER_STRIP = /\[\[|\]\]/g;
 
@@ -41,16 +43,34 @@ function Highlighted({ parts }: { parts: string[] }) {
   );
 }
 
-/** Render a headline excerpt with the matched PHRASE highlighted. */
+/** Excerpts longer than this get a "show more context" toggle — the payload
+ *  carries the full window while the clamp shows roughly three lines. */
+const EXPANDABLE_MIN_CHARS = 320;
+
+/** Render an excerpt with the matched PHRASE highlighted; long excerpts are
+ *  clamped with a toggle to read the context around the hit (#728). */
 export function MatchSnippet({ snippet, alias }: { snippet: string; alias?: string | null }) {
+  const [expanded, setExpanded] = useState(false);
   const parts = alias
     ? snippet.replace(MARKER_STRIP, '').split(phraseRegex(alias))
     : snippet.split(MARKER_SPLIT);
+  const expandable = snippet.length > EXPANDABLE_MIN_CHARS;
   return (
-    <p className="mt-2 text-xs text-dm-text-secondary line-clamp-3">
-      <span className="text-dm-muted">Matched passage{alias ? ` (“${alias}”)` : ''}:</span>{' '}
-      <Highlighted parts={parts} />
-    </p>
+    <div className="mt-2 text-xs text-dm-text-secondary">
+      <p className={expanded ? '' : 'line-clamp-3'}>
+        <span className="text-dm-muted">Matched passage{alias ? ` (“${alias}”)` : ''}:</span>{' '}
+        <Highlighted parts={parts} />
+      </p>
+      {expandable && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-0.5 text-[11px] text-dm-accent hover:underline"
+        >
+          {expanded ? 'Show less' : 'Show more context'}
+        </button>
+      )}
+    </div>
   );
 }
 
