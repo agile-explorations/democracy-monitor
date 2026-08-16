@@ -18,6 +18,7 @@ import type { CachedResearchResult } from '@/lib/services/search-response-format
 import { formatResearchResponse } from '@/lib/services/search-response-format';
 import type { ResearchDocument } from '@/lib/services/search-service';
 import { searchExplore } from '@/lib/services/search-service';
+import { recordSearchTiming } from '@/lib/services/search-timing-log';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
 import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
@@ -209,6 +210,7 @@ async function handleExplore(
   res: NextApiResponse,
   query: string,
 ): Promise<void> {
+  const started = Date.now();
   const result = await searchExplore({
     query,
     category: req.query.category as string | undefined,
@@ -221,6 +223,25 @@ async function handleExplore(
     sort: (req.query.sort as 'relevance' | 'date' | 'score') ?? 'relevance',
     page: req.query.page ? Number(req.query.page) : 1,
     pageSize: req.query.pageSize ? Number(req.query.pageSize) : 20,
+  });
+
+  // Behavior + degradation row (#727/#728): Explore was blind to the timing
+  // log; totalMs alone still trips the 30s degradation threshold.
+  void recordSearchTiming({
+    query,
+    queryHash: hashQuery(query),
+    params: {
+      mode: 'explore',
+      category: (req.query.category as string) ?? null,
+      source: (req.query.source as string) ?? null,
+      sort: (req.query.sort as string) ?? null,
+      dateFrom: (req.query.dateFrom as string) ?? null,
+      dateTo: (req.query.dateTo as string) ?? null,
+      page: (req.query.page as string) ?? null,
+    },
+    served: result.totalResults === 0 ? 'empty' : 'build',
+    docCount: result.totalResults,
+    totalMs: Date.now() - started,
   });
 
   res.setHeader('Cache-Control', 'no-store');

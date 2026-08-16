@@ -543,14 +543,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {loading &&
-        (mode === 'research' ? (
-          <SearchProgressStages />
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-sm text-dm-muted">Searching documents...</p>
-          </div>
-        ))}
+      {loading && <SearchProgressStages mode={mode} />}
 
       {!loading &&
         mode === 'research' &&

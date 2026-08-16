@@ -33,4 +33,14 @@ describe('SearchProgressStages (#723)', () => {
     });
     expect(screen.getByText(/Still working/)).toBeTruthy();
   });
+
+  it('shows the shorter explore stage list in explore mode (#728)', () => {
+    render(<SearchProgressStages mode="explore" />);
+    expect(screen.getByText(/Expanding your search/)).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(7_000);
+    });
+    expect(screen.getByText(/Ranking documents and fetching category assessments/)).toBeTruthy();
+    expect(screen.queryByText(/each era separately/)).toBeNull();
+  });
 });

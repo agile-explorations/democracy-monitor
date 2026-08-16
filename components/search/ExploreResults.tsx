@@ -56,38 +56,72 @@ function groupByUrl(docs: ExploreDocResult[]): GroupedDoc[] {
   return [...map.values()];
 }
 
+/** Erosion-lens badges per category row (#728: tooltips + humanized labels
+ *  as the interim legibility fix — the full redesign belongs to the lens
+ *  model, DECISIONS 2026-08-16). */
 function CategoryRow({ doc }: { doc: ExploreDocResult }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
-      <span className="px-1.5 py-0 rounded bg-dm-border/50 text-dm-muted">
+      <span
+        className="px-1.5 py-0 rounded bg-dm-border/50 text-dm-muted cursor-help"
+        title="Monitoring category this document was routed to — one document can be assessed in several categories, each with its own scores"
+      >
         {categoryLabel(doc.category)}
       </span>
       {doc.finalScore != null && (
-        <span className="text-dm-text-secondary">Score: {doc.finalScore.toFixed(1)}</span>
-      )}
-      {doc.documentClass && doc.classMultiplier != null && doc.classMultiplier !== 1.0 && (
-        <span className="text-dm-muted">
-          {doc.documentClass} &times;{doc.classMultiplier.toFixed(1)}
+        <span
+          className="text-dm-text-secondary cursor-help"
+          title="Weekly assessment score for this document IN THIS CATEGORY — 0.0 means none of this category's scoring signals matched; higher means more or stronger concern signals"
+        >
+          Score: {doc.finalScore.toFixed(1)}
         </span>
       )}
-      {(doc.captureCount ?? 0) > 0 && <span className="text-red-500">{doc.captureCount}C</span>}
-      {(doc.driftCount ?? 0) > 0 && <span className="text-amber-500">{doc.driftCount}D</span>}
+      {doc.documentClass && doc.classMultiplier != null && doc.classMultiplier !== 1.0 && (
+        <span
+          className="text-dm-muted cursor-help"
+          title={`Document type and the weight the assessment gives it (${doc.documentClass.replace(/_/g, ' ')} documents count ${doc.classMultiplier.toFixed(1)}× toward category scores)`}
+        >
+          {doc.documentClass.replace(/_/g, ' ')} &times;{doc.classMultiplier.toFixed(1)}
+        </span>
+      )}
+      {(doc.captureCount ?? 0) > 0 && (
+        <span
+          className="text-red-500 cursor-help"
+          title="Capture-tier keyword annotations matched in this document — the most severe annotation tier"
+        >
+          {doc.captureCount} capture signal{doc.captureCount === 1 ? '' : 's'}
+        </span>
+      )}
+      {(doc.driftCount ?? 0) > 0 && (
+        <span
+          className="text-amber-500 cursor-help"
+          title="Drift-tier keyword annotations matched in this document — a moderate annotation tier"
+        >
+          {doc.driftCount} drift signal{doc.driftCount === 1 ? '' : 's'}
+        </span>
+      )}
       {doc.aiAssessment && (
         <span
-          className={`font-medium ${
+          className={`font-medium cursor-help ${
             doc.aiAssessment === 'clearly_concerning'
               ? 'text-red-500'
               : doc.aiAssessment === 'potentially_concerning'
                 ? 'text-amber-500'
                 : 'text-dm-muted'
           }`}
+          title="The AI document reviewer's verdict for this category, with its confidence — the signal that drives concern status"
         >
           AI: {doc.aiAssessment.replace(/_/g, ' ')}
           {doc.aiConfidence != null && ` (${(doc.aiConfidence * 100).toFixed(0)}%)`}
         </span>
       )}
       {doc.aiErosionType && (
-        <span className="text-dm-muted">{doc.aiErosionType.replace(/_/g, ' ')}</span>
+        <span
+          className="text-dm-muted cursor-help"
+          title="How this document erodes institutional checks, per the AI reviewer — see the methodology page for the erosion-type definitions"
+        >
+          {doc.aiErosionType.replace(/_/g, ' ')}
+        </span>
       )}
     </div>
   );
@@ -219,10 +253,8 @@ export function ExploreResults({
   return (
     <div>
       <p className="text-xs text-dm-muted mb-4">
-        {result.totalResults.toLocaleString()} result{result.totalResults !== 1 ? 's' : ''}
-        {grouped.length < result.documents.length && (
-          <span> ({grouped.length} unique documents)</span>
-        )}
+        {result.totalResults.toLocaleString()} matching document
+        {result.totalResults !== 1 ? 's' : ''}
       </p>
       <AlsoSearchedChips phrases={result.alsoSearched} />
       <div className="space-y-2">

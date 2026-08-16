@@ -100,6 +100,7 @@ function timingRecord(
     query,
     queryHash,
     params: {
+      mode: 'research',
       tier: (req.query.tier as string) ?? null,
       eras: (req.query.eras as string) ?? null,
       dateFrom: (req.query.dateFrom as string) ?? null,
