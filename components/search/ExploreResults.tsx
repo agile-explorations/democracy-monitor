@@ -198,7 +198,7 @@ export function ExploreFilters({
       >
         <option value="relevance">Sort: Relevance</option>
         <option value="date">Sort: Date</option>
-        <option value="score">Sort: Score</option>
+        <option value="score">Sort: Assessment score</option>
       </select>
     </div>
   );

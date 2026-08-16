@@ -89,8 +89,8 @@ function ExploreTips() {
         </li>
         <li>
           Sort by <strong>Relevance</strong> for the best matches, <strong>Date</strong> for the
-          newest documents, or <strong>Score</strong> to surface the documents our assessment
-          weighted most heavily.
+          newest documents, or <strong>Assessment score</strong> to surface the documents our weekly
+          assessment weighted most heavily.
         </li>
         <li>Use the Period control to limit results to an exact date range.</li>
       </ul>
