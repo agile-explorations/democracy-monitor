@@ -20,7 +20,10 @@ import { getDb, isDbAvailable } from '@/lib/db';
  *  only when the cache is already cold (post-dump); an ad-hoc mid-week run
  *  DISPLACES the live working set and makes queries slower until traffic
  *  re-warms it (measured 2026-08-15: 42s → 60s on the heaviest question). */
-const INDEXES = ['idx_documents_search_vector', 'idx_documents_embedding_hnsw'];
+// FTS GIN + halfvec HNSW (#724): together ~2.6 GB — the first working set
+// that actually FITS the Pro-4gb page cache (~3.75 GB effective), so this
+// warm can survive instead of self-evicting like the 4.2 GB fp32 set did.
+const INDEXES = ['idx_documents_search_vector', 'idx_documents_embedding_halfvec_hnsw'];
 
 async function main(): Promise<void> {
   const { loadEnvConfig } = require('@next/env');

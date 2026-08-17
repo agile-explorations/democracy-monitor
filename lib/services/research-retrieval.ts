@@ -11,27 +11,8 @@ import { DISCUSSION_SOURCE_TYPES } from '@/lib/data/document-tiers';
 import { PROCEDURAL_TITLE_PATTERN, PROCEDURAL_TITLE_PENALTY } from '@/lib/data/procedural-titles';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
+import { halfvecDistanceDoc } from '@/lib/services/vector-expr';
 import { buildPublishedAtWindow } from '@/lib/utils/date-window';
-
-type Db = ReturnType<typeof getDb>;
-type SqlQuery = ReturnType<typeof sql>;
-
-/**
- * Execute a filtered vector query with HNSW iterative scanning. Tier/date
- * filters post-filter the HNSW candidate stream; at the default ef_search=40
- * a selective filter starves the result set (measured: 11 of 30 requested
- * action docs). pgvector 0.8's iterative scan keeps scanning until the LIMIT
- * is satisfied. SET LOCAL scopes the GUC to this transaction.
- */
-export async function executeFilteredVectorQuery(db: Db, query: SqlQuery) {
-  return db.transaction(async (tx) => {
-    // NOTE: do NOT also raise hnsw.ef_search here — a larger ef multiplies the
-    // per-batch cost of every iterative continuation (measured: ef=200 +
-    // iterative = ~110s; iterative alone at default ef = ~1.4s, complete).
-    await tx.execute(sql`SET LOCAL hnsw.iterative_scan = relaxed_order`);
-    return tx.execute(query);
-  });
-}
 
 /**
  * Fetch research document rows by id, preserving the input order. Phase 2
@@ -157,7 +138,7 @@ export function buildResearchQuery(vectorStr: string, query: string, opts: Resea
           FROM documents d
           LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
           WHERE ${researchCandidateFilters(dateFrom, dateTo, tier)}
-          ORDER BY d.embedding <=> ${vectorStr}::vector
+          ORDER BY ${halfvecDistanceDoc(vectorStr)}
           LIMIT ${candidateLimit}
         ) candidates
         ORDER BY url, cosine_similarity DESC

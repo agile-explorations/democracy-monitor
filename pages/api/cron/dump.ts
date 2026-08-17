@@ -34,7 +34,7 @@ const UPLOAD_SCRIPT = 'lib/cron/upload-backup.ts';
 // Public download-copy uploader (#636): pushes the corpus dump to a PUBLIC B2
 // bucket under a stable key so /api/data/dump can 302-redirect there.
 const DOWNLOAD_UPLOAD_SCRIPT = 'lib/cron/upload-download.ts';
-// Search-index prewarm (#722): pg_dump evicts the ~3 GB HNSW index from
+// Search-index prewarm (#722/#724): pg_dump + B2 uploads evict the search
 // cache, leaving a week of cold random reads; one sequential re-read fixes it.
 const PREWARM_SCRIPT = 'lib/cron/prewarm-indexes.ts';
 
@@ -60,10 +60,6 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   SIZE_BYTES=$(wc -c < "$DUMP_FILE" | tr -d ' ')
   DURATION=$((END - START))
   write_result "$(printf '{"status":"complete","sizeBytes":%s,"durationS":%s,"startedAt":"%s","completedAt":"%s"}' "$SIZE_BYTES" "$DURATION" "$START_ISO" "$END_ISO")"
-  # Re-warm the search indexes the dump just evicted (#722) BEFORE the slower
-  # B2 uploads, so searches stop paying cold random reads as soon as possible.
-  # Best-effort — a prewarm failure never blocks the dump result or uploads.
-  npx tsx "$PREWARM_SCRIPT" >>"$LOG_FILE" 2>&1 || echo "[dump] index prewarm failed (non-blocking)" >>"$LOG_FILE"
   # Off-site backup (#617): verify the archive is readable, then upload to B2.
   # Best-effort — a good local dump is not blocked by an upload failure, but the
   # uploader always writes b2-result-<label>.json so the failure is visible in status.
@@ -87,6 +83,12 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   else
     echo "[dump] integrity check failed (pg_restore -l) — skipping B2 upload" >>"$LOG_FILE"
   fi
+  # Re-warm the search indexes LAST (#722/#724): the B2 uploads read the
+  # 7+ GB dump file through the same page cache and evicted an earlier warm
+  # (2026-08-17 probes: post-dump cold builds hit 71-116s and the 60s edge).
+  # Running after the uploads means nothing follows to undo it.
+  # Best-effort — a prewarm failure never blocks the dump result.
+  npx tsx "$PREWARM_SCRIPT" >>"$LOG_FILE" 2>&1 || echo "[dump] index prewarm failed (non-blocking)" >>"$LOG_FILE"
 else
   EXIT=$?
   rm -f "$DUMP_TEMP"

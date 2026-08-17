@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { embedQueryCached } from './embedding-service';
+import { executeFilteredVectorQuery, halfvecDistanceBare } from './vector-expr';
 
 export interface RetrievedDocument {
   title: string;
@@ -33,14 +34,15 @@ export async function retrieveRelevantDocuments(
   );
 
   try {
-    const results = await db.execute(
+    const results = await executeFilteredVectorQuery(
+      db,
       sql`SELECT title, content, url, published_at,
             1 - (embedding <=> ${vectorStr}::vector) as similarity
           FROM documents
           WHERE category IN (${categoryList})
             AND embedding IS NOT NULL
             AND retrieval_relevant IS NOT FALSE
-          ORDER BY embedding <=> ${vectorStr}::vector
+          ORDER BY ${halfvecDistanceBare(vectorStr)}
           LIMIT ${topK}`,
     );
 

@@ -17,6 +17,16 @@ const mockIsDbAvailable = vi.mocked(isDbAvailable);
 const mockGetDb = vi.mocked(getDb);
 const mockEmbedText = vi.mocked(embedQueryCached);
 
+// The retriever runs inside executeFilteredVectorQuery's transaction
+// (SET LOCAL GUCs + the query), so the mock db needs a transaction that
+// hands the callback a tx sharing the same execute spy.
+function mockDbWith(execute: ReturnType<typeof vi.fn>) {
+  return {
+    execute,
+    transaction: (fn: (tx: { execute: typeof execute }) => unknown) => fn({ execute }),
+  } as never;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -26,23 +36,23 @@ describe('retrieveRelevantDocuments', () => {
     mockIsDbAvailable.mockReturnValue(true);
     mockEmbedText.mockResolvedValue([0.1, 0.2, 0.3]);
     const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
-    mockGetDb.mockReturnValue({ execute: mockExecute } as never);
+    mockGetDb.mockReturnValue(mockDbWith(mockExecute));
 
     await retrieveRelevantDocuments('test query', 'rule_of_law', 5);
 
     // Verify the SQL was called (execute was invoked)
-    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalled();
   });
 
   it('accepts an array of categories', async () => {
     mockIsDbAvailable.mockReturnValue(true);
     mockEmbedText.mockResolvedValue([0.1, 0.2, 0.3]);
     const mockExecute = vi.fn().mockResolvedValue({ rows: [] });
-    mockGetDb.mockReturnValue({ execute: mockExecute } as never);
+    mockGetDb.mockReturnValue(mockDbWith(mockExecute));
 
     await retrieveRelevantDocuments('test query', ['rule_of_law', 'intent'], 8);
 
-    expect(mockExecute).toHaveBeenCalledTimes(1);
+    expect(mockExecute).toHaveBeenCalled();
   });
 
   it('returns empty array when DB is unavailable', async () => {
@@ -66,7 +76,7 @@ describe('retrieveRelevantDocuments', () => {
     mockIsDbAvailable.mockReturnValue(true);
     mockEmbedText.mockResolvedValue([0.1, 0.2, 0.3]);
     const mockExecute = vi.fn().mockRejectedValue(new Error('DB error'));
-    mockGetDb.mockReturnValue({ execute: mockExecute } as never);
+    mockGetDb.mockReturnValue(mockDbWith(mockExecute));
 
     const result = await retrieveRelevantDocuments('test', 'rule_of_law');
 
@@ -87,7 +97,7 @@ describe('retrieveRelevantDocuments', () => {
         },
       ],
     });
-    mockGetDb.mockReturnValue({ execute: mockExecute } as never);
+    mockGetDb.mockReturnValue(mockDbWith(mockExecute));
 
     const result = await retrieveRelevantDocuments('test', 'intent', 5);
 

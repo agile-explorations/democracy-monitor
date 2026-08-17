@@ -26,6 +26,7 @@ import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document
 import {
   getDocumentsForWeek,
   getLastDocumentDateBySource,
+  storableDocumentItems,
   storeDocuments,
 } from '@/lib/services/document-store';
 import {
@@ -125,7 +126,9 @@ async function snapshotCategory(
 
   try {
     const stored = await storeDocuments(items, cat.key);
-    const expected = items.filter((i) => !i.isError && !i.isWarning && i.link).length;
+    // Same filter storeDocuments uses — dockets route to tracked_cases and
+    // must not count as expected document rows (2026-08-17 phantom alarms).
+    const expected = storableDocumentItems(items).length;
     if (stored < expected) {
       const msg = `Document storage incomplete for ${cat.key}: stored ${stored}/${expected}`;
       console.error(`[snapshot] ${msg}`);
