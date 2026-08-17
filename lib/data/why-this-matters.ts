@@ -59,7 +59,12 @@ export const WHY_PILLARS: WhyPillar[] = [
   {
     id: 'watchers',
     shortLabel: 'Watchdogs & Courts',
-    question: 'Who watches the watchers?',
+    // "Who watches the watchers?" was retired (owner, 2026-08-17): Juvenal's
+    // question frames the watchers as the THREAT — the reading erosion
+    // rhetoric invites ("unelected judges") — while this section argues the
+    // watchdogs are the mechanism and the danger is neutering them. The id
+    // stays 'watchers' for anchor stability.
+    question: 'Who keeps the government honest?',
     categoryKeys: ['executiveOversight', 'judicialIndependence'],
     answer:
       'Every large organization needs auditors, and government is the largest. Inspectors General investigate waste and abuse inside agencies. Courts decide whether government actions are legal, and their orders bind the government itself. These categories track whether the auditors stay independent and whether court orders are followed.',
