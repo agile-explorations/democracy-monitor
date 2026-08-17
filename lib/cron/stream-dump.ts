@@ -34,7 +34,7 @@ import {
 import { formatError } from '@/lib/utils/api-helpers';
 
 const HEARTBEAT_MS = 30_000;
-const LOG_TAIL_LINES = 40;
+const LOG_TAIL_LINES = 80; // dump + replay/prewarm lines both fit
 const CORPUS_DUMP_ARGS = [
   '-Fc',
   '--no-owner',
@@ -155,19 +155,37 @@ async function uploadPiiDump(config: B2Config): Promise<Record<string, unknown>>
   }
 }
 
-/** Best-effort post-dump steps: slow-alias replay, then prewarm (#729/#722). */
+/** Best-effort post-dump steps: slow-alias replay, then prewarm (#729/#722).
+ *  Their console output is captured into the run row's logTail — the
+ *  detached runner's stdio goes nowhere and the old dump.log is gone, so
+ *  without this the Monday [alias-replay]/[prewarm] lines would be lost
+ *  entirely (found during the v1.9.49 smoke). */
 async function postDumpSteps(): Promise<void> {
+  const original = { log: console.log, warn: console.warn };
+  const capture =
+    (base: (...args: unknown[]) => void) =>
+    (...args: unknown[]) => {
+      base(...args);
+      logLines.push(`${new Date().toISOString()} ${args.map(String).join(' ')}`);
+    };
+  console.log = capture(original.log);
+  console.warn = capture(original.warn);
   try {
-    const { replaySlowAliases } = await import('@/lib/cron/replay-slow-aliases');
-    await replaySlowAliases();
-  } catch (err) {
-    log(`[alias-replay] failed (non-blocking): ${formatError(err)}`);
-  }
-  try {
-    const { prewarmSearchIndexes } = await import('@/lib/cron/prewarm-indexes');
-    await prewarmSearchIndexes();
-  } catch (err) {
-    log(`[prewarm] failed (non-blocking): ${formatError(err)}`);
+    try {
+      const { replaySlowAliases } = await import('@/lib/cron/replay-slow-aliases');
+      await replaySlowAliases();
+    } catch (err) {
+      log(`[alias-replay] failed (non-blocking): ${formatError(err)}`);
+    }
+    try {
+      const { prewarmSearchIndexes } = await import('@/lib/cron/prewarm-indexes');
+      await prewarmSearchIndexes();
+    } catch (err) {
+      log(`[prewarm] failed (non-blocking): ${formatError(err)}`);
+    }
+  } finally {
+    console.log = original.log;
+    console.warn = original.warn;
   }
 }
 
