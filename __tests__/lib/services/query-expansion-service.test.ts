@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  cachedCountUsable,
   expandAndValidate,
   isBoilerplateAlias,
   parseAliasResponse,
@@ -109,5 +110,18 @@ describe('expandAndValidate kill switch', () => {
     } finally {
       delete process.env.HYBRID_RETRIEVAL_DISABLED;
     }
+  });
+});
+
+describe('cachedCountUsable (#729 validation caching)', () => {
+  it('an unsaturated count is exact and reusable at any cap', () => {
+    expect(cachedCountUsable({ matches: 87, cap: 200 }, 1000)).toBe(true);
+    expect(cachedCountUsable({ matches: 0, cap: 200 }, 500)).toBe(true);
+  });
+
+  it('a saturated count is reusable only when its cap covers the current one', () => {
+    expect(cachedCountUsable({ matches: 201, cap: 200 }, 200)).toBe(true);
+    expect(cachedCountUsable({ matches: 201, cap: 200 }, 150)).toBe(true);
+    expect(cachedCountUsable({ matches: 201, cap: 200 }, 1000)).toBe(false); // must recount
   });
 });

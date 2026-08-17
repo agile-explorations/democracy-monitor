@@ -25,7 +25,10 @@ import { slowAliases } from '@/lib/db/schema';
 type Db = ReturnType<typeof getDb>;
 type SqlChunk = ReturnType<typeof sql>;
 
-export type ArmKind = 'research' | 'explore';
+/** 'research'/'explore' rows replay an arm query; 'validation' rows replay
+ *  an expansion corpus-count (#729 follow-up: validation pays the same
+ *  per-alias phrase-recheck cost the arms do). */
+export type ArmKind = 'research' | 'explore' | 'validation';
 
 export interface KeyedArm {
   kind: ArmKind;
@@ -40,7 +43,12 @@ export interface KeyedArm {
 /** An arm slower than this live is ledgered for the Monday replay. */
 export const SLOW_ARM_MS = 5_000;
 /** Cache slightly past the data week so Monday replay overlaps, never gaps. */
-const ARM_CACHE_TTL_SECONDS = 8 * 86400;
+export const ARM_CACHE_TTL_SECONDS = 8 * 86400;
+
+/** Case-insensitive phrase identity for cache keys. Pure. */
+export function hashPhrase(phrase: string): string {
+  return createHash('sha256').update(phrase.toLowerCase()).digest('hex').slice(0, 16);
+}
 
 export function hashArmParams(params: Record<string, string | null | undefined>): string {
   const stable = Object.keys(params)
@@ -60,22 +68,23 @@ export function dataWeekStamp(now: Date = new Date()): string {
 }
 
 function armKey(arm: Pick<KeyedArm, 'kind' | 'phrase' | 'paramsHash'>): string {
-  const phraseHash = createHash('sha256')
-    .update(arm.phrase.toLowerCase())
-    .digest('hex')
-    .slice(0, 16);
-  return CacheKeys.searchArm(arm.kind, dataWeekStamp(), arm.paramsHash, phraseHash);
+  return CacheKeys.searchArm(arm.kind, dataWeekStamp(), arm.paramsHash, hashPhrase(arm.phrase));
 }
 
-/** Fire-and-forget ledger upsert — never blocks or fails the response. */
-function ledgerSlowAlias(db: Db, arm: KeyedArm, durationMs: number): void {
+/** Fire-and-forget ledger upsert — never blocks or fails the response.
+ *  Shared by arm execution and validation counting (#729 follow-up). */
+export function ledgerSlowAliasWork(
+  db: Db,
+  work: Pick<KeyedArm, 'kind' | 'phrase' | 'paramsHash' | 'params'>,
+  durationMs: number,
+): void {
   void db
     .insert(slowAliases)
     .values({
-      phrase: arm.phrase,
-      kind: arm.kind,
-      paramsHash: arm.paramsHash,
-      params: arm.params,
+      phrase: work.phrase,
+      kind: work.kind,
+      paramsHash: work.paramsHash,
+      params: work.params,
       lastDurationMs: durationMs,
       lastSeenAt: new Date(),
     })
@@ -114,7 +123,7 @@ export async function runCachedArm(
   ).rows as Record<string, unknown>[];
   const durationMs = Date.now() - started;
   await cacheSet(key, rows, ARM_CACHE_TTL_SECONDS);
-  if (durationMs > SLOW_ARM_MS) ledgerSlowAlias(db, arm, durationMs);
+  if (durationMs > SLOW_ARM_MS) ledgerSlowAliasWork(db, arm, durationMs);
   return rows;
 }
 

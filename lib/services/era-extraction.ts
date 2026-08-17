@@ -29,7 +29,11 @@ export const ERA_WINDOWS: Record<EraWindow['key'], EraWindow> = {
 const COMPARATIVE =
   /\b(compar\w*|versus|vs\.?|differ\w*|contrast\w*|between\b.*\b(and|admin)|both\b.*\badministrations?)\b/i;
 
-const ACROSS_ADMINS = /\b(across|between|all( three)?) administrations\b/i;
+// Synonyms matter (#729 follow-up): "across presidential terms" clearly asks
+// for the same three-era comparison as "across administrations" — without
+// the synonym the query silently ran single-window and recency-skewed.
+const ACROSS_ADMINS =
+  /\b(across|between|all( three)?) (administrations|presidencies|presidential terms|presidents)\b/i;
 
 const ERA_PATTERNS: Array<[EraWindow['key'], RegExp]> = [
   [

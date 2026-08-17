@@ -17,6 +17,7 @@ import { slowAliases } from '@/lib/db/schema';
 import { runCachedArm } from '@/lib/services/arm-cache';
 import type { ArmKind } from '@/lib/services/arm-cache';
 import { buildAliasArmQuery, buildExploreAliasArmQuery } from '@/lib/services/hybrid-arms';
+import { warmAliasValidation } from '@/lib/services/query-expansion-service';
 import { researchCandidateFilters } from '@/lib/services/research-retrieval';
 import { buildFilterConditions } from '@/lib/services/search-queries';
 import type { SearchFilters } from '@/lib/services/search-service';
@@ -71,15 +72,30 @@ export async function replaySlowAliases(): Promise<void> {
   console.log(`[alias-replay] replaying ${toReplay.length} slow alias(es)`);
   for (const row of toReplay) {
     const started = Date.now();
+    const params = row.params ?? {};
     try {
-      const query = buildReplayQuery(row.kind as ArmKind, row.phrase, row.params ?? {});
+      // Validation rows (#729 follow-up) replay the expansion corpus-count;
+      // research/explore rows replay the arm query.
+      if (row.kind === 'validation') {
+        await warmAliasValidation(row.phrase, {
+          dateFrom: params.dateFrom ?? undefined,
+          dateTo: params.dateTo ?? undefined,
+          tier: (params.tier ?? undefined) as DocumentTier | undefined,
+          category: params.category ?? undefined,
+        });
+        console.log(
+          `[alias-replay] validation/${row.phrase}: counted in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+        );
+        continue;
+      }
+      const query = buildReplayQuery(row.kind as ArmKind, row.phrase, params);
       const result = await runCachedArm(
         db,
         {
           kind: row.kind as ArmKind,
           phrase: row.phrase,
           paramsHash: row.paramsHash,
-          params: row.params ?? {},
+          params,
           query,
         },
         true, // forceRefresh: always write the fresh week's cache

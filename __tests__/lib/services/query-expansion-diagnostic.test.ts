@@ -22,8 +22,16 @@ const mockGetDb = vi.mocked(getDb);
 function mockDbWithCounts(windowTotal: number, perCandidate: number[]) {
   const counts = [windowTotal, ...perCandidate];
   let call = 0;
+  // Counts now run inside a transaction with a SET LOCAL safety ceiling
+  // (#729) — the SET call must not consume a queued count.
+  const execute = vi.fn(async (q: unknown) => {
+    if (JSON.stringify(q)?.includes('statement_timeout')) return { rows: [] };
+    return { rows: [{ n: String(counts[call++] ?? 0) }] };
+  });
   const db = {
-    execute: vi.fn(async () => ({ rows: [{ n: String(counts[call++] ?? 0) }] })),
+    execute,
+    insert: vi.fn(() => ({ values: () => ({ onConflictDoUpdate: () => Promise.resolve() }) })),
+    transaction: (fn: (tx: { execute: typeof execute }) => unknown) => fn({ execute }),
   };
   mockGetDb.mockReturnValue(db as never);
   return db;
