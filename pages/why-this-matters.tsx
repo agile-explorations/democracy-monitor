@@ -105,6 +105,54 @@ export default function WhyThisMattersPage() {
         </p>
       </div>
 
+      {/* Epistemic charter (owner-approved verbatim 2026-08-17): the witness
+          stance — document the shift, pass no judgment on it. */}
+      <section id="charter" className="max-w-3xl space-y-3 mb-10 scroll-mt-4">
+        <h2 className="text-lg font-semibold text-dm-text-primary">
+          What this site is — and is not
+        </h2>
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          America is changing how it governs itself. Across the documentary record — executive
+          orders, court filings, agency rules, inspector-general reports, congressional debate — you
+          can watch authority moving: toward the presidency, past the referees, out of institutions
+          that once checked it. This site exists to make that movement visible. Nothing more.
+        </p>
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          We do not claim the shift is good or bad. The reasons for it are complex — some of it
+          answers real frustrations with how government has worked — and where it leads cannot be
+          known from here. Reasonable people disagree about whether the design America has carried
+          for 250 years still serves the country. That debate belongs to voters, and this site does
+          not take a side in it.
+        </p>
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          What we do claim is narrower, and we stake everything on it:{' '}
+          <strong className="text-dm-text-primary">
+            the shift is happening, it is visible in the government&apos;s own records, and you can
+            see exactly where.
+          </strong>{' '}
+          Every status on this site traces to specific public documents — quoted, linked, and
+          machine-checked. Where the record shows a departure from long-standing practice, we say so
+          plainly. Where it doesn&apos;t, we say that too.
+        </p>
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          Why keep watch at all, if we pass no judgment? Because some of what is changing took two
+          and a half centuries to build and may not be rebuildable on any timeline that matters to
+          the people alive now. A country is free to renovate its institutions. But renovation done
+          quickly, without a record of what stood before, forecloses the option of changing course.
+          This site is that record.
+        </p>
+        <p className="text-sm text-dm-text-secondary leading-relaxed border-l-2 border-dm-accent/30 pl-3">
+          One commitment above the rest: the same instruments point at every administration. The
+          same review reads Biden-era and Trump-era documents under identical rules; our baselines,
+          our self-tests, and the flags we raised under previous administrations are all public. If
+          we ever fail that standard, the{' '}
+          <Link href="/system/methodology" className="text-dm-accent hover:underline">
+            methodology page
+          </Link>{' '}
+          shows you how to catch us.
+        </p>
+      </section>
+
       <AccountabilityDiagram />
 
       <div className="max-w-3xl space-y-4">

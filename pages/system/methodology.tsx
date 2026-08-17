@@ -53,6 +53,15 @@ export function SummaryContent() {
           judgments. All assessments trace to specific documents, reproducible metrics, and
           published thresholds.
         </p>
+        <p>
+          The stance behind every measurement here is witness, not verdict: document the shift in
+          how America governs itself without judging it — see{' '}
+          <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+            what this site is, and is not
+          </Link>
+          . The same instruments point at every administration; this page is where that claim is
+          checkable.
+        </p>
       </Section>
 
       {/* Detection Architecture */}
@@ -173,6 +182,15 @@ export function DetailedContent() {
           The system is designed to surface patterns worth human examination, not render definitive
           judgments. All assessments trace to specific documents, reproducible metrics, and
           published thresholds.
+        </p>
+        <p>
+          The stance behind every measurement here is witness, not verdict: document the shift in
+          how America governs itself without judging it — see{' '}
+          <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+            what this site is, and is not
+          </Link>
+          . The same instruments point at every administration; this page is where that claim is
+          checkable.
         </p>
       </Section>
 
