@@ -70,6 +70,19 @@ export default function AboutPage() {
             it.
           </p>
           <p className="text-sm text-dm-text-secondary leading-relaxed">
+            What we claim is narrow, and we stake everything on it:{' '}
+            <strong className="text-dm-text-primary">
+              the shift in how America governs itself is happening, it is visible in the
+              government&apos;s own records, and you can see exactly where.
+            </strong>{' '}
+            Some of what is changing took two and a half centuries to build and may not be
+            rebuildable on any timeline that matters to the people alive now — this site is the{' '}
+            <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+              record of what stood before
+            </Link>
+            .
+          </p>
+          <p className="text-sm text-dm-text-secondary leading-relaxed">
             Whether erosion of democracy in America is underway is not this site&apos;s call to make
             — it is for the American people to decide, from the{' '}
             <Link href="/data" className="text-dm-accent hover:underline">
