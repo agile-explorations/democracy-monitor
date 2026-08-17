@@ -11,6 +11,12 @@ services:
     autoDeploy: false
     buildCommand: pnpm install && pnpm db:init && pnpm build
     startCommand: pnpm start
+    # Zero-downtime deploys (#730): Render holds traffic on the old instance
+    # until the new one answers 200 here (a real DB round trip, not just
+    # port-open) — eliminates the ~40s cutover 502 window. In-flight search
+    # builds on the old instance die at swap; the #729 client retry +
+    # Redis-backed coalescing recover them on the new instance.
+    healthCheckPath: /api/health/live
     disk:
       name: data-disk
       mountPath: /var/data
