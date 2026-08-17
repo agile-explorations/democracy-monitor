@@ -91,3 +91,30 @@ describe('runCachedArm', () => {
     expect(SLOW_ARM_MS).toBeGreaterThan(0);
   });
 });
+
+describe('runKeyedArms', () => {
+  it('a failed arm degrades to an empty list without sinking the others', async () => {
+    const { getDb } = await import('@/lib/db');
+    const execute = vi.fn(async (q: unknown) => {
+      if (JSON.stringify(q)?.includes('statement_timeout')) return { rows: [] };
+      return { rows: [{ id: 5 }] };
+    });
+    vi.mocked(getDb).mockReturnValue({
+      execute,
+      insert: vi.fn(() => ({ values: () => ({ onConflictDoUpdate: () => Promise.resolve() }) })),
+      transaction: (fn: (tx: { execute: typeof execute }) => unknown) => fn({ execute }),
+    } as never);
+    const { runKeyedArms } = await import('@/lib/services/arm-cache');
+    const good = { ...ARM, phrase: 'good phrase' };
+    const bad = { ...ARM, phrase: 'bad phrase', query: null as never };
+    // Make the bad arm's execution throw by rejecting on its (null) query.
+    execute.mockImplementation(async (q: unknown) => {
+      if (q === null) throw new Error('boom');
+      if (JSON.stringify(q)?.includes('statement_timeout')) return { rows: [] };
+      return { rows: [{ id: 5 }] };
+    });
+    const [goodRows, badRows] = await runKeyedArms([good, bad]);
+    expect(goodRows).toEqual([{ id: 5 }]);
+    expect(badRows).toEqual([]);
+  });
+});
