@@ -40,10 +40,20 @@ describe('extractComparisonEras (#592)', () => {
     ).toEqual(['trump_t1', 'biden', 'trump_t2']);
   });
 
+  it('treats presidential-term synonyms as across-administrations (#729 follow-up)', () => {
+    const allThree = ['trump_t1', 'biden', 'trump_t2'];
+    expect(
+      keys('Give me an overview of the approach to law enforcement across presidential terms.'),
+    ).toEqual(allThree);
+    expect(keys('How has rulemaking differed between presidencies?')).toEqual(allThree);
+    expect(keys('Compare emergency declarations across presidents.')).toEqual(allThree);
+  });
+
   it('does not stratify non-comparative or single-era questions', () => {
     expect(keys('What OPM actions have been taken since January 2025?')).toBeNull();
     expect(keys('What executive orders were issued in 2020?')).toBeNull();
     expect(keys('Which members of Congress spoke about reclassification?')).toBeNull();
+    expect(keys('How has enforcement varied across states?')).toBeNull();
   });
 });
 

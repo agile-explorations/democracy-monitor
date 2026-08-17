@@ -11,31 +11,37 @@
  * Failure-safe by construction: no API key, an AI error, or zero surviving
  * aliases all degrade to an empty list — the caller falls back to pure
  * vector retrieval, which is exactly the pre-#702 behavior.
+ *
+ * Validation counting (and its per-alias cache, #729) lives in
+ * alias-count-cache.ts.
  */
 
 import { createHash } from 'crypto';
-import { sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
-import type { DocumentTier } from '@/lib/data/document-tiers';
-import { DISCUSSION_SOURCE_TYPES } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
+import type { ExpansionWindow } from '@/lib/services/alias-count-cache';
+import {
+  cachedAliasCount,
+  cachedWindowTotal,
+  MAX_MATCH_CAP,
+  MAX_WINDOW_SHARE,
+  MIN_MATCH_CAP,
+  windowFilters,
+} from '@/lib/services/alias-count-cache';
+
+export type { ExpansionWindow } from '@/lib/services/alias-count-cache';
+export {
+  cachedCountUsable,
+  warmAliasValidation,
+  windowFilters,
+} from '@/lib/services/alias-count-cache';
 
 const EXPANSION_MODEL = 'gpt-4o-mini';
 const EXPANSION_CACHE_TTL = 7 * 86400;
 const MAX_ALIASES = 8;
-/** An alias may match at most this share of the searched window. */
-const MAX_WINDOW_SHARE = 0.05;
-/** Small windows: absolute floor for the match cap. */
-const MIN_MATCH_CAP = 200;
-/** Absolute ceiling for alias admission, aligned with the fusion math: an
- *  arm's weight (1/(1+log10(1+n/100))) falls below the ~0.67 RRF surfacing
- *  threshold near n≈1000 — broader aliases cannot surface results but cost
- *  the most to rank (each match detoasts a ~20KB rank vector; one broad arm
- *  measured 31s on cold prod cache, 2026-08-11). */
-const MAX_MATCH_CAP = 1000;
+
 /** Self-referential terms that carry no entity signal in this corpus. */
 const BOILERPLATE_ALIASES =
   /^(congressional record|congress|senate|house|united states|federal government|government|executive order)$/i;
@@ -43,13 +49,6 @@ const BOILERPLATE_ALIASES =
 export interface ValidatedAlias {
   phrase: string;
   matches: number;
-}
-
-export interface ExpansionWindow {
-  dateFrom?: string;
-  dateTo?: string;
-  tier?: DocumentTier;
-  category?: string;
 }
 
 const EXPANSION_PROMPT = (query: string) =>
@@ -146,52 +145,6 @@ function citationSpellings(token: string): string[] {
   return [...out];
 }
 
-/** Window filter clause for validation counts. Exported for tests. */
-export function windowFilters(w: ExpansionWindow) {
-  const conditions = [
-    sql`d.embedding IS NOT NULL`,
-    sql`d.retrieval_relevant IS NOT FALSE`,
-    sql`d.content_type != 'metadata_only'`,
-    sql`d.category != 'intent'`,
-    sql`d.source_origin IS NOT NULL`,
-    sql`d.source_origin NOT IN (${sql.join(
-      SEARCH_EXCLUDED_ORIGINS.map((o) => sql`${o}`),
-      sql`, `,
-    )})`,
-  ];
-  if (w.dateFrom) conditions.push(sql`d.published_at >= ${w.dateFrom}::timestamptz`);
-  if (w.dateTo) conditions.push(sql`d.published_at <= ${w.dateTo}::timestamptz`);
-  if (w.category) conditions.push(sql`d.category = ${w.category}`);
-  if (w.tier) {
-    const types = sql.join(
-      [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),
-      sql`, `,
-    );
-    conditions.push(
-      w.tier === 'action' ? sql`d.source_type NOT IN (${types})` : sql`d.source_type IN (${types})`,
-    );
-  }
-  return sql.join(conditions, sql` AND `);
-}
-
-/** Window-size counting saturates here: caps validation work on broad
- *  windows (an unbounded count over a no-filter window scanned ~400k rows —
- *  the whole 60s edge-timeout budget on a cold prod cache, 2026-08-11). */
-const WINDOW_COUNT_CAP = 100000;
-
-/** Bounded count: scans at most `cap` matching rows instead of the full set. */
-async function cappedCount(
-  db: ReturnType<typeof getDb>,
-  where: ReturnType<typeof sql>,
-  cap: number,
-): Promise<number> {
-  const r = await db.execute(sql`
-    SELECT count(*) AS n FROM (
-      SELECT 1 FROM documents d WHERE ${where} LIMIT ${cap}
-    ) capped`);
-  return Number((r.rows[0] as { n: string }).n);
-}
-
 /**
  * Corpus validation: keep aliases that match at least one document and at
  * most 5% of the searched window, clamped to [MIN_MATCH_CAP, MAX_MATCH_CAP].
@@ -228,7 +181,7 @@ export async function validateAliasesDiagnostic(
   if (!isDbAvailable() || phrases.length === 0) return empty;
   const db = getDb();
   const filters = windowFilters(window);
-  const windowTotal = await cappedCount(db, filters, WINDOW_COUNT_CAP);
+  const windowTotal = await cachedWindowTotal(db, window, filters);
   const maxMatches = Math.max(
     MIN_MATCH_CAP,
     Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
@@ -251,14 +204,13 @@ export async function validateAliasesDiagnostic(
   }
   // Counts run concurrently — bounded index scans; order is preserved. Each
   // alias is counted only to maxMatches+1: enough to decide the cap, and
-  // armWeight saturates well below that anyway.
+  // armWeight saturates well below that anyway. Counts are cached per
+  // (alias, window, data week) — see cachedAliasCount (#729 follow-up).
   const counts = await Promise.all(
-    candidates.map(async (phrase) => {
-      const quoted = `"${phrase.replace(/"/g, '')}"`;
-      const matchFilter = sql`${filters}
-        AND d.search_vector @@ websearch_to_tsquery('english', ${quoted})`;
-      return { phrase, matches: await cappedCount(db, matchFilter, maxMatches + 1) };
-    }),
+    candidates.map(async (phrase) => ({
+      phrase,
+      matches: await cachedAliasCount(db, phrase, window, filters, maxMatches),
+    })),
   );
   const validated: ValidatedAlias[] = [];
   for (const c of counts) {

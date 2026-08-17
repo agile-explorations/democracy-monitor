@@ -28,6 +28,13 @@ export const CacheKeys = {
    *  params, phrase) — aliases recur across differently-worded queries. */
   searchArm: (kind: string, week: string, paramsHash: string, phraseHash: string) =>
     `search:arm:${kind}:${week}:${paramsHash}:${phraseHash}:v1`,
+  /** Per-alias validation corpus-count (#729 follow-up): validation pays the
+   *  same phrase-recheck cost the arms do, per NOVEL WORDING — this key is
+   *  per alias, so recurring topics stop re-paying it. */
+  searchAliasCount: (week: string, windowHash: string, phraseHash: string) =>
+    `search:vcount:${week}:${windowHash}:${phraseHash}:v1`,
+  /** Validation window-size count, keyed per (window, data week). */
+  searchWindowTotal: (week: string, windowHash: string) => `search:vtotal:${week}:${windowHash}:v1`,
   /** In-flight docsOnly build marker (#729) — coalesces retries/concurrent
    *  identical searches into one build via 202 wait-poll. */
   searchInflight: (docsHash: string) => `search:inflight:${docsHash}:v1`,
