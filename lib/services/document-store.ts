@@ -90,6 +90,18 @@ async function routeDocketItemsToTracker(usable: ContentItem[], category: string
   await upsertTrackedCasesFromItems(docketItems, category);
 }
 
+/** Items that storeDocuments will actually write as document rows: usable
+ *  (no error/warning, has link) and NOT a CL docket item — dockets route to
+ *  tracked_cases, not documents. The snapshot completeness check MUST use
+ *  this same filter or it phantom-alarms on every docket-heavy week (the
+ *  2026-08-17 run reported "stored 68/1048" when all 68 storable docs
+ *  stored; the other 980 were dockets). Pure. */
+export function storableDocumentItems(items: ContentItem[]): ContentItem[] {
+  return items.filter(
+    (item) => !item.isError && !item.isWarning && item.link && item.type !== 'court_opinion',
+  );
+}
+
 export async function storeDocuments(items: ContentItem[], category: string): Promise<number> {
   if (!isDbAvailable()) return 0;
 
@@ -99,7 +111,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
 
   const usable = items.filter((item) => !item.isError && !item.isWarning && item.link);
   await routeDocketItemsToTracker(usable, category);
-  const validItems = usable.filter((item) => item.type !== 'court_opinion');
+  const validItems = storableDocumentItems(items);
 
   for (const item of validItems) {
     try {

@@ -1,5 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildMetadata, inferSourceOrigin } from '@/lib/services/document-store';
+import {
+  buildMetadata,
+  inferSourceOrigin,
+  storableDocumentItems,
+} from '@/lib/services/document-store';
+
+describe('storableDocumentItems', () => {
+  it('excludes CL docket items — they route to tracked_cases, not documents', () => {
+    // Mirrors the 2026-08-17 phantom alarm: 980 dockets + 68 storable docs
+    // must yield expected=68, not 1048.
+    const docket = { link: 'https://cl/docket/1', type: 'court_opinion' };
+    const opinion = { link: 'https://cl/opinion/1', type: 'judicial_opinion' };
+    const press = { link: 'https://doj/press/1', type: 'press_release' };
+    const errored = { link: 'https://x/e', isError: true };
+    const warned = { link: 'https://x/w', isWarning: true };
+    const linkless = { type: 'press_release' };
+    const items = [docket, opinion, press, errored, warned, linkless] as never[];
+    expect(storableDocumentItems(items)).toEqual([opinion, press]);
+  });
+});
 
 describe('buildMetadata', () => {
   it('returns null when no metadata fields are present', () => {
