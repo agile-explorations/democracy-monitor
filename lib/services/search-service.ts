@@ -19,12 +19,9 @@ import {
   fuseHydrateDedupe,
   runResearchAliasArms,
 } from './research-fusion';
-import {
-  buildResearchQuery,
-  executeFilteredVectorQuery,
-  fetchResearchDocRowsByIds,
-} from './research-retrieval';
+import { buildResearchQuery, fetchResearchDocRowsByIds } from './research-retrieval';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
+import { executeFilteredVectorQuery, halfvecDistanceDoc } from './vector-expr';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -302,7 +299,9 @@ export async function findSimilarDocuments(
     };
 
     const fetchSimilar = (catCondition: ReturnType<typeof sql>) =>
-      db.execute(sql`
+      executeFilteredVectorQuery(
+        db,
+        sql`
         SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
           LEFT(d.content, 250) as snippet, 1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
           NULL as text_rank, ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
@@ -314,9 +313,10 @@ export async function findSimilarDocuments(
         LEFT JOIN ai_document_assessments ai ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
         WHERE d.embedding IS NOT NULL AND d.id != ${documentId} AND ${catCondition}
           AND d.retrieval_relevant IS NOT FALSE
-        ORDER BY d.embedding <=> ${vectorStr}::vector
+        ORDER BY ${halfvecDistanceDoc(vectorStr)}
         LIMIT ${limit}
-      `);
+      `,
+      );
 
     const [sameCat, otherCat] = await Promise.all([
       fetchSimilar(sql`d.category = ${sourceCategory}`),

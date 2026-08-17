@@ -10,6 +10,7 @@ import {
   orderedUniqueDocKeys,
   pageDocKeysBySql,
 } from '@/lib/services/explore-document-paging';
+import { executeFilteredVectorQuery, halfvecDistanceDoc } from '@/lib/services/vector-expr';
 import type { ExploreSearchResult, SearchFilters, SearchResultDocument } from './search-service';
 
 const VECTOR_CANDIDATE_LIMIT = 500;
@@ -152,13 +153,16 @@ export async function vectorExplore(
   whereParts.push(...buildFilterConditions(filters));
   const whereClause = sql.join(whereParts, sql` AND `);
 
-  const candidateRows = await db.execute(sql`
+  const candidateRows = await executeFilteredVectorQuery(
+    db,
+    sql`
     SELECT d.id, d.url, d.published_at, ds.final_score
     FROM documents d
     LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
     WHERE ${whereClause}
-    ORDER BY d.embedding <=> ${vectorStr}::vector
-    LIMIT ${VECTOR_CANDIDATE_LIMIT}`);
+    ORDER BY ${halfvecDistanceDoc(vectorStr)}
+    LIMIT ${VECTOR_CANDIDATE_LIMIT}`,
+  );
   const candidates = (candidateRows.rows as Record<string, unknown>[]).map((r) => ({
     id: Number(r.id),
     url: r.url as string | null,

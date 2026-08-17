@@ -18,23 +18,27 @@ import {
   mapToSearchResult,
 } from '@/lib/services/search-queries';
 import type { ExploreSearchResult, SearchFilters } from '@/lib/services/search-service';
+import { executeFilteredVectorQuery, halfvecDistanceDoc } from '@/lib/services/vector-expr';
 
 const VECTOR_CANDIDATE_LIMIT = 500;
 
 type Db = ReturnType<typeof getDb>;
 
-/** Fetch the vector candidate ids in similarity order. */
+/** Fetch the vector candidate ids in similarity order (halfvec index, #724). */
 async function vectorCandidateIds(
   db: Db,
   vectorStr: string,
   whereClause: ReturnType<typeof sql>,
 ): Promise<FusionCandidate[]> {
-  const rows = await db.execute(sql`
+  const rows = await executeFilteredVectorQuery(
+    db,
+    sql`
     SELECT d.id FROM documents d
     LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
     WHERE ${whereClause}
-    ORDER BY d.embedding <=> ${vectorStr}::vector
-    LIMIT ${VECTOR_CANDIDATE_LIMIT}`);
+    ORDER BY ${halfvecDistanceDoc(vectorStr)}
+    LIMIT ${VECTOR_CANDIDATE_LIMIT}`,
+  );
   return (rows.rows as Array<{ id: number }>).map((r) => ({ id: Number(r.id) }));
 }
 
