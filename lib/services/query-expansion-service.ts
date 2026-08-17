@@ -165,6 +165,22 @@ export interface ExpansionDiagnostic {
   matchCap: number;
 }
 
+/** Statutory-citation variants ride along; validation decides which spelling
+ *  the corpus actually uses. Dedupe case-insensitively, originals first. */
+function withCitationVariants(base: string[]): string[] {
+  const seen = new Set(base.map((p) => p.toLowerCase()));
+  const candidates = [...base];
+  for (const p of base) {
+    for (const v of citationVariants(p)) {
+      if (!seen.has(v.toLowerCase())) {
+        seen.add(v.toLowerCase());
+        candidates.push(v);
+      }
+    }
+  }
+  return candidates;
+}
+
 /** validateAliases with the discard reasons retained (#718 debug trace).
  *  The production path is this function — validateAliases just drops the
  *  diagnostics — so the trace can never diverge from real behavior. */
@@ -181,7 +197,15 @@ export async function validateAliasesDiagnostic(
   if (!isDbAvailable() || phrases.length === 0) return empty;
   const db = getDb();
   const filters = windowFilters(window);
-  const windowTotal = await cachedWindowTotal(db, window, filters);
+  // Window-total failure (cold-I/O timeout) degrades to vector-only rather
+  // than killing the build (#729 hotfix).
+  let windowTotal: number;
+  try {
+    windowTotal = await cachedWindowTotal(db, window, filters);
+  } catch (err) {
+    console.warn('[query-expansion] window-total count failed (vector-only fallback):', err);
+    return empty;
+  }
   const maxMatches = Math.max(
     MIN_MATCH_CAP,
     Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
@@ -189,32 +213,29 @@ export async function validateAliasesDiagnostic(
   const rejected: ExpansionDiagnostic['rejected'] = phrases
     .filter((p) => isBoilerplateAlias(p))
     .map((phrase) => ({ phrase, reason: 'boilerplate' }));
-  const base = phrases.filter((p) => !isBoilerplateAlias(p));
-  // Statutory-citation variants ride along; validation decides which spelling
-  // the corpus actually uses. Dedupe case-insensitively, originals first.
-  const seen = new Set(base.map((p) => p.toLowerCase()));
-  const candidates = [...base];
-  for (const p of base) {
-    for (const v of citationVariants(p)) {
-      if (!seen.has(v.toLowerCase())) {
-        seen.add(v.toLowerCase());
-        candidates.push(v);
-      }
-    }
-  }
+  const candidates = withCitationVariants(phrases.filter((p) => !isBoilerplateAlias(p)));
   // Counts run concurrently — bounded index scans; order is preserved. Each
   // alias is counted only to maxMatches+1: enough to decide the cap, and
   // armWeight saturates well below that anyway. Counts are cached per
   // (alias, window, data week) — see cachedAliasCount (#729 follow-up).
   const counts = await Promise.all(
-    candidates.map(async (phrase) => ({
-      phrase,
-      matches: await cachedAliasCount(db, phrase, window, filters, maxMatches),
-    })),
+    candidates.map(async (phrase) => {
+      try {
+        return { phrase, matches: await cachedAliasCount(db, phrase, window, filters, maxMatches) };
+      } catch (err) {
+        // Failure tolerance mirrors the arms (#729 hotfix): the 120s safety
+        // ceiling turned a formerly slow count into a THROW, and one
+        // pathological alias must not kill the whole build. The alias is
+        // dropped this build; nothing is cached, so it retries next time.
+        console.warn(`[query-expansion] count failed (alias dropped): ${phrase}`, err);
+        return { phrase, matches: -1 };
+      }
+    }),
   );
   const validated: ValidatedAlias[] = [];
   for (const c of counts) {
-    if (c.matches < 1) rejected.push({ phrase: c.phrase, reason: 'zero-matches', matches: 0 });
+    if (c.matches === -1) rejected.push({ phrase: c.phrase, reason: 'count-failed' });
+    else if (c.matches < 1) rejected.push({ phrase: c.phrase, reason: 'zero-matches', matches: 0 });
     else if (c.matches > maxMatches)
       rejected.push({ phrase: c.phrase, reason: 'over-match-cap', matches: c.matches });
     else validated.push(c);
@@ -238,7 +259,16 @@ export async function expandAndValidate(
   const key = CacheKeys.queryExpansionValidated(hashExpansionKey(query, window));
   const cached = await cacheGet<ValidatedAlias[]>(key);
   if (cached) return cached;
-  const validated = await validateAliases(await proposeAliases(query), window);
+  // Belt to the per-count tolerance (#729 hotfix): ANY validation failure
+  // degrades to pure-vector retrieval — the module's failure-safe contract.
+  // The failure result is NOT cached, so the next request retries.
+  let validated: ValidatedAlias[];
+  try {
+    validated = await validateAliases(await proposeAliases(query), window);
+  } catch (err) {
+    console.warn('[query-expansion] validation failed (vector-only fallback):', err);
+    return [];
+  }
   await cacheSet(key, validated, EXPANSION_CACHE_TTL);
   return validated;
 }

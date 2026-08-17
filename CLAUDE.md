@@ -119,6 +119,8 @@ Spend is a gated quantity, like data integrity. A wrong estimate must cost the c
 
 Why: Manually created SQL files won't be registered in the Drizzle journal, causing `pnpm db:migrate` to silently skip them. This has caused production failures where columns appeared to exist in the SQL file but were never actually added to the database.
 
+**Zero-downtime migration compatibility (#730)**: Render swaps traffic only after the new instance passes `/api/health/live`, so during every deploy the OLD code briefly runs against the NEW schema (migrations apply in `buildCommand`, before cutover). Additive changes (new tables/columns/indexes) are always safe. Destructive changes (DROP/RENAME of anything the old code reads) must ship in a LATER release than the code that stops using them (expand–contract).
+
 ## Architecture
 
 Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, Tailwind CSS.

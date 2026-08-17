@@ -105,6 +105,13 @@ export function cachedCountUsable(cached: { matches: number; cap: number }, cap:
   return cached.matches <= cached.cap || cached.cap >= cap;
 }
 
+const windowLedgerParams = (w: ExpansionWindow) => ({
+  dateFrom: w.dateFrom ?? null,
+  dateTo: w.dateTo ?? null,
+  tier: w.tier ?? null,
+  category: w.category ?? null,
+});
+
 const windowHashOf = (w: ExpansionWindow) =>
   hashArmParams({
     dateFrom: w.dateFrom ?? null,
@@ -160,23 +167,26 @@ export async function cachedAliasCount(
   const matchFilter = sql`${filters}
     AND d.search_vector @@ websearch_to_tsquery('english', ${quoted})`;
   const started = Date.now();
-  const matches = await cappedCount(db, matchFilter, cap + 1);
+  let matches: number;
+  try {
+    matches = await cappedCount(db, matchFilter, cap + 1);
+  } catch (err) {
+    // A ceiling-cut count still enters the ledger (with the elapsed time)
+    // so the Monday replay learns about it; the throw propagates for the
+    // caller's per-alias tolerance. Nothing is cached.
+    ledgerSlowAliasWork(
+      db,
+      { kind: 'validation', phrase, paramsHash: windowHash, params: windowLedgerParams(window) },
+      Date.now() - started,
+    );
+    throw err;
+  }
   const durationMs = Date.now() - started;
   await cacheSet(key, { matches, cap }, ARM_CACHE_TTL_SECONDS);
   if (durationMs > SLOW_ARM_MS) {
     ledgerSlowAliasWork(
       db,
-      {
-        kind: 'validation',
-        phrase,
-        paramsHash: windowHash,
-        params: {
-          dateFrom: window.dateFrom ?? null,
-          dateTo: window.dateTo ?? null,
-          tier: window.tier ?? null,
-          category: window.category ?? null,
-        },
-      },
+      { kind: 'validation', phrase, paramsHash: windowHash, params: windowLedgerParams(window) },
       durationMs,
     );
   }
