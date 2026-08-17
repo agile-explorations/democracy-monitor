@@ -7,9 +7,11 @@ import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/rese
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import {
   claimBuildSlot,
+  claimGlobalBuildSlot,
   docsCacheRefs,
   hashQuery,
   releaseBuildSlot,
+  releaseGlobalBuildSlot,
   respondBuilding,
   respondDocsOnlyBuild,
   respondEmpty,
@@ -130,6 +132,18 @@ async function handleResearch(
     respondBuilding(res);
     return;
   }
+  // Global semaphore (#729 DOS hardening): distinct novel builds queue past
+  // a server-wide concurrency cap. The hash slot is released first so the
+  // retry can claim both when capacity frees.
+  let globalSlot: number | null = null;
+  if (coalesce) {
+    globalSlot = await claimGlobalBuildSlot();
+    if (globalSlot === null) {
+      releaseBuildSlot(docsHash);
+      respondBuilding(res);
+      return;
+    }
+  }
   try {
     await runResearchBuild(req, res, query, {
       queryHash,
@@ -140,7 +154,10 @@ async function handleResearch(
       docsCacheKey,
     });
   } finally {
-    if (coalesce) releaseBuildSlot(docsHash);
+    if (coalesce) {
+      releaseBuildSlot(docsHash);
+      if (globalSlot !== null) releaseGlobalBuildSlot(globalSlot);
+    }
   }
 }
 

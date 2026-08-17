@@ -31,6 +31,9 @@ export const CacheKeys = {
   /** In-flight docsOnly build marker (#729) — coalesces retries/concurrent
    *  identical searches into one build via 202 wait-poll. */
   searchInflight: (docsHash: string) => `search:inflight:${docsHash}:v1`,
+  /** Global uncached-build slots (#729 DOS hardening): caps CONCURRENT
+   *  distinct builds server-wide; excess wait-polls via 202. */
+  searchBuildSlot: (slot: number) => `search:buildslot:${slot}:v1`,
   documentCount: () => 'stats:doc-count:v4',
   validateGraph: () => 'health:validate-graph:v1',
   validateGraphLive: () => 'health:validate-graph:live:v1',

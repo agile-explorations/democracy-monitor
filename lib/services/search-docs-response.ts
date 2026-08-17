@@ -52,6 +52,31 @@ export function respondBuilding(res: NextApiResponse): void {
   res.status(202).json({ status: 'building', retryAfterMs: RETRY_AFTER_MS });
 }
 
+/** Server-wide cap on CONCURRENT uncached builds (#729 DOS hardening): the
+ *  arm path amplifies a cheap request into up to 8×120s of DB work, and
+ *  per-IP rate limits don't bound distinct-IP concurrency. Three
+ *  simultaneous NOVEL builds is rare outside attack conditions; excess
+ *  requests wait-poll on 202 and the client retry machinery absorbs it. */
+const GLOBAL_BUILD_SLOTS = 3;
+
+/** Claim one of the global build slots; null = all busy (caller 202s).
+ *  Best-effort (get-then-set race window acceptable); slot TTL self-heals
+ *  a crashed build. */
+export async function claimGlobalBuildSlot(): Promise<number | null> {
+  for (let slot = 0; slot < GLOBAL_BUILD_SLOTS; slot++) {
+    const key = CacheKeys.searchBuildSlot(slot);
+    if (!(await cacheGet<boolean>(key))) {
+      await cacheSet(key, true, INFLIGHT_TTL_SECONDS);
+      return slot;
+    }
+  }
+  return null;
+}
+
+export function releaseGlobalBuildSlot(slot: number): void {
+  void cacheDel(CacheKeys.searchBuildSlot(slot));
+}
+
 export function hashQuery(q: string): string {
   return createHash('sha256').update(q.toLowerCase().trim()).digest('hex').slice(0, 16);
 }
