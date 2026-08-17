@@ -37,6 +37,9 @@ const DOWNLOAD_UPLOAD_SCRIPT = 'lib/cron/upload-download.ts';
 // Search-index prewarm (#722/#724): pg_dump + B2 uploads evict the search
 // cache, leaving a week of cold random reads; one sequential re-read fixes it.
 const PREWARM_SCRIPT = 'lib/cron/prewarm-indexes.ts';
+// Slow-alias replay (#729): pre-caches last week's pathological alias arms
+// into the fresh data week so recurring topics have no first-payer.
+const REPLAY_SCRIPT = 'lib/cron/replay-slow-aliases.ts';
 
 // Shell script that performs the dump and writes a result file atomically.
 // Reads its inputs from env vars set by the spawning Node process — no user
@@ -83,10 +86,14 @@ if pg_dump -Fc --no-owner --no-privileges --exclude-table-data=subscribers --exc
   else
     echo "[dump] integrity check failed (pg_restore -l) — skipping B2 upload" >>"$LOG_FILE"
   fi
+  # Slow-alias replay (#729) runs BEFORE the prewarm: its pathological arm
+  # rechecks read heap/TOAST through the page cache, and the prewarm that
+  # follows mops that up. Best-effort.
+  npx tsx "$REPLAY_SCRIPT" >>"$LOG_FILE" 2>&1 || echo "[dump] slow-alias replay failed (non-blocking)" >>"$LOG_FILE"
   # Re-warm the search indexes LAST (#722/#724): the B2 uploads read the
   # 7+ GB dump file through the same page cache and evicted an earlier warm
   # (2026-08-17 probes: post-dump cold builds hit 71-116s and the 60s edge).
-  # Running after the uploads means nothing follows to undo it.
+  # Running after the uploads (and the replay) means nothing follows to undo it.
   # Best-effort — a prewarm failure never blocks the dump result.
   npx tsx "$PREWARM_SCRIPT" >>"$LOG_FILE" 2>&1 || echo "[dump] index prewarm failed (non-blocking)" >>"$LOG_FILE"
 else

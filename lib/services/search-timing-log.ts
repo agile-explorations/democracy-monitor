@@ -93,6 +93,22 @@ export function buildDegradationDetails(
   ];
 }
 
+/** Prewarm mop-up (#729): a flagged heavy build likely evicted part of the
+ *  index working set (pathological arm rechecks read GBs of heap through the
+ *  same page cache). Re-warming costs ~15s and restores warm-state for
+ *  everyone; cooldown-limited so bursts trigger it once. Fire-and-forget. */
+const MOPUP_COOLDOWN_SECONDS = 30 * 60;
+async function maybePrewarmMopUp(reason: string): Promise<void> {
+  // Only retrieval-phase trips imply eviction; a slow embed does not.
+  if (!/retrieveWallMs|totalMs/.test(reason)) return;
+  const cooldownKey = 'ops:prewarm-mopup-cooldown:v1';
+  if (await cacheGet<boolean>(cooldownKey)) return;
+  await cacheSet(cooldownKey, true, MOPUP_COOLDOWN_SECONDS);
+  const { prewarmSearchIndexes } = await import('@/lib/cron/prewarm-indexes');
+  await prewarmSearchIndexes();
+  console.log('[search-timing] prewarm mop-up completed after flagged build');
+}
+
 async function maybeAlert(record: SearchTimingRecord, reason: string): Promise<void> {
   const cooldownKey = 'ops:search-timing-alert-cooldown:v1';
   if (await cacheGet<boolean>(cooldownKey)) {
@@ -146,7 +162,12 @@ export async function recordSearchTiming(record: SearchTimingRecord): Promise<vo
       flagged: reason != null,
       flagReason: reason,
     });
-    if (reason != null) await maybeAlert(record, reason);
+    if (reason != null) {
+      await maybeAlert(record, reason);
+      void maybePrewarmMopUp(reason).catch((err) =>
+        console.warn('[search-timing] prewarm mop-up failed:', err),
+      );
+    }
   } catch (err) {
     console.warn('[search-timing] record failed (detector blind for this build):', err);
   }

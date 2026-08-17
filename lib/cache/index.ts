@@ -74,6 +74,20 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
   });
 }
 
+/** Delete a key (used by short-lived coordination markers, #729). */
+export async function cacheDel(key: string): Promise<void> {
+  const client = getRedis();
+  if (client) {
+    try {
+      await client.del(key);
+      return;
+    } catch (err) {
+      console.warn('Redis DEL failed, falling back to memory cache:', err);
+    }
+  }
+  memoryCache.delete(key);
+}
+
 /**
  * Atomically increment a fixed-window counter and return the new count, or
  * null when Redis is unavailable (caller falls back to a per-process limiter).

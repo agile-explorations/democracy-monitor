@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DateRangeSelect } from '@/components/search/DateRangeSelect';
 import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
-import { parseStreamingSections } from '@/components/search/helpers';
+import { fetchDocsResilient, parseStreamingSections } from '@/components/search/helpers';
 import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchDebugLog } from '@/components/search/SearchDebugLog';
 import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
@@ -171,7 +171,10 @@ export default function SearchPage() {
     const docsParams = new URLSearchParams(urlParams);
     docsParams.set('docsOnly', 'true');
     const debugMode = urlParams.get('debug') === '1';
-    const docsRes = await fetch(`/api/search?${docsParams.toString()}`, { signal });
+    // Resilient fetch (#729): survives the ~60s edge cut on pathological
+    // first builds (server finishes + caches; we re-request) and wait-polls
+    // 202 while another request builds this exact search.
+    const docsRes = await fetchDocsResilient(`/api/search?${docsParams.toString()}`, signal);
     if (!docsRes.ok) {
       const body = await docsRes.json().catch(() => ({}));
       throw new Error(body.error || `Search failed (${docsRes.status})`);

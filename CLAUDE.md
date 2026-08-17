@@ -20,6 +20,7 @@ pnpm snapshot              # Run weekly snapshot cron (incremental fetch + full 
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
 pnpm db:prewarm          # Re-warm search indexes after the weekly dump evicts them (pg_prewarm)
+pnpm aliases:replay      # Re-cache last week's slow alias arms into the fresh data week (#729)
 pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|oig|fec|doj, --dry-run, --limit N)
 pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores

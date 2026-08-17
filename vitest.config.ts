@@ -43,6 +43,10 @@ export default defineConfig({
         'lib/cron/backfill-gaps.ts',
         'lib/cron/backfill-oversight-gov.ts',
         'lib/cron/feedback-moderate.ts',
+        // #729 replay/prewarm: pure pieces (arm cache, key/stamp logic) are
+        // unit-tested in arm-cache.test.ts; these carry the DB I/O + CLI glue
+        'lib/cron/replay-slow-aliases.ts',
+        'lib/cron/prewarm-indexes.ts',
         // CL bulk staging — DB COPY ops, execSync pipes, not unit-testable
         'lib/services/cl-bulk-staging.ts',
       ],

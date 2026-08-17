@@ -67,3 +67,55 @@ export function parseStreamingSections(text: string): {
 
   return { expert, public: pub, relatedQuestions };
 }
+
+/** Abortable delay for the resilient docs fetch (#729). */
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      clearTimeout(timer);
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', abort);
+      resolve();
+    }, ms);
+    if (signal.aborted) abort();
+    else signal.addEventListener('abort', abort, { once: true });
+  });
+}
+
+/**
+ * Resilient docsOnly fetch (#729): pathological first builds outlive
+ * Render's ~60s edge cut, but the server finishes and caches them — so on a
+ * cut (network error) we re-request, and on 202 (another request is already
+ * building this search) we wait-poll. The progress stages keep running the
+ * whole time. Aborts (user cancelled / superseded search) propagate.
+ */
+export async function fetchDocsResilient(
+  url: string,
+  signal: AbortSignal,
+  opts: { maxTotalMs?: number; retryDelayMs?: number } = {},
+): Promise<Response> {
+  const maxTotalMs = opts.maxTotalMs ?? 240_000;
+  const retryDelayMs = opts.retryDelayMs ?? 8_000;
+  const started = Date.now();
+  for (;;) {
+    let res: Response | null = null;
+    try {
+      res = await fetch(url, { signal });
+    } catch (err) {
+      if (signal.aborted) throw err;
+      res = null; // edge cut / transient network failure — retry below
+    }
+    if (res && res.status !== 202) return res; // 200 or a real error: caller's problem
+    if (Date.now() - started > maxTotalMs) {
+      throw new Error('The search is taking unusually long — please try again in a minute.');
+    }
+    const waitMs =
+      res?.status === 202
+        ? (((await res.json().catch(() => ({}))) as { retryAfterMs?: number }).retryAfterMs ??
+          retryDelayMs)
+        : retryDelayMs;
+    await delay(waitMs, signal);
+  }
+}
