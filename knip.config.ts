@@ -4,11 +4,10 @@ const config: KnipConfig = {
   // Cron scripts and diagnostic scripts are entry points, not imported by app code
   entry: [
     'pages/**/*.{ts,tsx}',
+    'lib/cron/stream-dump.ts',
     'lib/cron/uptime-check.ts',
     'lib/cron/weekly-clustering.ts',
     // Invoked from the dump shell script (pages/api/cron/dump.ts), not imported.
-    'lib/cron/upload-backup.ts',
-    'lib/cron/upload-download.ts',
     'scripts/**/*.ts',
   ],
 

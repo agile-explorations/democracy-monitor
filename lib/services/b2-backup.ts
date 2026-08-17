@@ -12,7 +12,7 @@
  * bounded regardless of dump size.
  */
 
-import { createReadStream, statSync } from 'fs';
+import type { Readable } from 'stream';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 
@@ -93,40 +93,33 @@ export function downloadPublicUrl(config: B2Config, key: string): string {
   return `https://${config.bucket}.s3.${config.region}.backblazeb2.com/${key}`;
 }
 
-export interface B2UploadResult {
-  key: string;
-  sizeBytes: number;
-  uploadedAt: string;
-}
-
-/**
- * Stream a file to B2. By default uses a dated key (backup bucket, retention-
- * locked); pass `opts.key` to upload under a fixed key (e.g. the public download
- * bucket's stable `database.pgdump`, overwritten each run).
- */
-export async function uploadFileToB2(
-  filePath: string,
-  config: B2Config,
-  opts: { now?: Date; basename?: string; key?: string } = {},
-): Promise<B2UploadResult> {
-  const now = opts.now ?? new Date();
-  const key = opts.key ?? backupObjectKey(now, opts.basename);
-  const sizeBytes = statSync(filePath).size;
-
-  const client = new S3Client({
+/** S3 client for a B2 config — caller destroys. */
+export function b2Client(config: B2Config): S3Client {
+  return new S3Client({
     endpoint: config.endpoint,
     region: config.region,
     credentials: { accessKeyId: config.keyId, secretAccessKey: config.appKey },
   });
+}
 
-  const upload = new Upload({
+/**
+ * Multipart upload from a stream (#731 disk removal): pg_dump pipes straight
+ * to B2 with no local staging. Returns the Upload so the caller can abort on
+ * upstream failure (an aborted multipart never becomes a visible object).
+ */
+export function createB2StreamUpload(
+  client: S3Client,
+  config: B2Config,
+  key: string,
+  body: Readable,
+): Upload {
+  // Smaller parts than the file path: TWO stream uploads run concurrently
+  // (backup + public download) and buffered parts cost RAM on the shared web
+  // instance — 25 MB x 4 x 2 = 200 MB peak vs 800 MB at the file setting.
+  return new Upload({
     client,
-    params: { Bucket: config.bucket, Key: key, Body: createReadStream(filePath) },
-    partSize: UPLOAD_PART_SIZE,
+    params: { Bucket: config.bucket, Key: key, Body: body },
+    partSize: 25 * 1024 * 1024,
     queueSize: UPLOAD_QUEUE_SIZE,
   });
-  await upload.done();
-  client.destroy();
-
-  return { key, sizeBytes, uploadedAt: now.toISOString() };
 }

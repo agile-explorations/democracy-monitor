@@ -16,14 +16,12 @@ services:
     # port-open) — eliminates the ~40s cutover 502 window. In-flight search
     # builds on the old instance die at swap; the #729 client retry +
     # Redis-backed coalescing recover them on the new instance.
+    # NOTE (#731): the data-disk is REMOVED — pg_dump streams straight to B2
+    # (lib/cron/stream-dump.ts) and dump status lives in the dump_runs table.
+    # A disk-attached service can never do zero-downtime deploys (the disk
+    # mounts one instance, forcing stop-before-start); with it gone, the
+    # healthCheckPath below enables true overlapped cutover.
     healthCheckPath: /api/health/live
-    disk:
-      name: data-disk
-      mountPath: /var/data
-      # Verified against the Render dashboard 2026-07-25 (#560). Must hold one
-      # full dump (~6.2 GB and growing; the previous dump is deleted before a
-      # new one is written, so peak usage is a single dump).
-      sizeGB: 10
     envVars:
       - key: DATABASE_URL
         fromDatabase:

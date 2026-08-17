@@ -850,3 +850,29 @@ export const slowAliases = pgTable(
     uniqueIndex('uq_slow_aliases_identity').on(table.phrase, table.kind, table.paramsHash),
   ],
 );
+
+/** Weekly-dump run state (#731): replaces the /var/data result/log files so
+ *  the persistent disk can be removed (disk-attached services can't do
+ *  zero-downtime deploys on Render). One row per run; the runner heartbeats
+ *  while streaming pg_dump to B2 and finalizes with size/sha/verify/offsite. */
+export const dumpRuns = pgTable(
+  'dump_runs',
+  {
+    id: serial('id').primaryKey(),
+    status: varchar('status', { length: 10 }).default('running').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true }).defaultNow().notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }),
+    durationS: integer('duration_s'),
+    sha256: varchar('sha256', { length: 64 }),
+    /** pg_restore -l ran clean against the uploaded object. */
+    verified: boolean('verified'),
+    /** { database, piiTables, download } upload results — same shape the
+     *  status endpoint has always served. */
+    offsite: jsonb('offsite').$type<Record<string, unknown>>(),
+    error: text('error'),
+    logTail: text('log_tail'),
+  },
+  (table) => [index('idx_dump_runs_started_at').on(table.startedAt)],
+);

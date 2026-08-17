@@ -3,12 +3,11 @@
  *
  * Returns the Last-Modified date + byte size of the artifact `/api/data/dump`
  * serves, so the Downloads & API page can show "Last updated: <date>". Source of
- * truth is the B2 download object's HEAD (the exact bytes users download, so it
- * can't drift from the local dump); falls back to the local file's `stat` when B2
- * isn't configured. Public, rate-limited, and CDN-cached (the dump changes weekly).
+ * truth is the B2 download object's HEAD (the exact bytes users download).
+ * The local-file fallback is gone (#731 — persistent disk removed). Public,
+ * rate-limited, and CDN-cached (the dump changes weekly).
  */
 
-import { existsSync, statSync } from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   DOWNLOAD_OBJECT_KEY,
@@ -20,7 +19,6 @@ import type { DumpInfo } from '@/lib/services/dump-info';
 import { requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
-const DUMP_FILE = '/var/data/database.pgdump';
 const HEAD_TIMEOUT_MS = 3000;
 const CACHE_MAX_AGE_S = 3600; // dump changes weekly; an hour of shared cache is safe
 const EMPTY: DumpInfo = { lastModified: null, sizeBytes: null };
@@ -39,23 +37,16 @@ async function b2DumpInfo(): Promise<DumpInfo | null> {
     return dumpInfoFromHeaders(res.headers);
   } catch {
     // nosemgrep: opengrep.no-silent-catch — freshness is best-effort; a HEAD
-    // failure falls back to the local stat and never breaks the page.
+    // failure reports empty and never breaks the page.
     return null;
   }
-}
-
-/** Freshness from the local dump file on the persistent disk, or null if absent. */
-function localDumpInfo(): DumpInfo | null {
-  if (!existsSync(DUMP_FILE)) return null;
-  const stat = statSync(DUMP_FILE);
-  return { lastModified: stat.mtime.toISOString(), sizeBytes: stat.size };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
   if (!(await enforceRateLimit(req, res, RATE_LIMITS.dumpInfo))) return;
 
-  const info = (await b2DumpInfo()) ?? localDumpInfo() ?? EMPTY;
+  const info = (await b2DumpInfo()) ?? EMPTY;
   res.setHeader(
     'Cache-Control',
     `public, s-maxage=${CACHE_MAX_AGE_S}, stale-while-revalidate=86400`,
