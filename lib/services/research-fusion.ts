@@ -10,7 +10,8 @@
 
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { tierForSourceType } from '@/lib/data/document-tiers';
-import { buildAliasArmQuery, fetchMatchSnippets, runArms } from './hybrid-arms';
+import { hashArmParams, runKeyedArms } from './arm-cache';
+import { buildAliasArmQuery, fetchMatchSnippets } from './hybrid-arms';
 import type { FusionArm } from './hybrid-fusion';
 import { armWeight, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
 import type { ValidatedAlias } from './query-expansion-service';
@@ -45,7 +46,17 @@ export async function runResearchAliasArms(
   const aliases = await expandAndValidate(query, { dateFrom, dateTo, tier });
   if (aliases.length === 0) return { aliases, arms: [] };
   const filters = researchCandidateFilters(dateFrom, dateTo, tier);
-  const rowLists = await runArms(aliases.map((a) => buildAliasArmQuery(a, filters)));
+  const armParams = { dateFrom: dateFrom ?? null, dateTo: dateTo ?? null, tier: tier ?? null };
+  const paramsHash = hashArmParams(armParams);
+  const rowLists = await runKeyedArms(
+    aliases.map((a) => ({
+      kind: 'research' as const,
+      phrase: a.phrase,
+      paramsHash,
+      params: armParams,
+      query: buildAliasArmQuery(a, filters),
+    })),
+  );
   const arms = rowLists.map((rows, i) => ({
     items: rows.map((r) => ({
       id: Number(r.id),

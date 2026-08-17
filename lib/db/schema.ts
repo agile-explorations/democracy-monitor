@@ -827,3 +827,26 @@ export const searchTimings = pgTable(
     index('idx_search_timings_flagged').on(table.flagged, table.measuredAt),
   ],
 );
+
+/** Slow-alias ledger (#729): alias arms whose live execution exceeded the
+ *  slow threshold. The Monday post-dump replay re-runs these serially into
+ *  the weekly arm cache so recurring pathological topics have no first-payer.
+ *  Upserted on (phrase, kind, params_hash); rows age out of the replay by
+ *  last_seen_at, never deleted automatically. */
+export const slowAliases = pgTable(
+  'slow_aliases',
+  {
+    id: serial('id').primaryKey(),
+    phrase: text('phrase').notNull(),
+    /** Arm query shape: 'research' | 'explore'. */
+    kind: varchar('kind', { length: 12 }).notNull(),
+    paramsHash: varchar('params_hash', { length: 16 }).notNull(),
+    /** The window/filter params needed to rebuild the arm query on replay. */
+    params: jsonb('params').$type<Record<string, string | null>>(),
+    lastDurationMs: integer('last_duration_ms').notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('uq_slow_aliases_identity').on(table.phrase, table.kind, table.paramsHash),
+  ],
+);

@@ -6,8 +6,11 @@ import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import {
+  claimBuildSlot,
   docsCacheRefs,
   hashQuery,
+  releaseBuildSlot,
+  respondBuilding,
   respondDocsOnlyBuild,
   respondEmpty,
   serveCachedDocs,
@@ -120,6 +123,43 @@ async function handleResearch(
     return;
   }
 
+  // Build coalescing (#729): retries after an edge cut (and concurrent
+  // identical searches) wait-poll instead of starting a duplicate build.
+  const coalesce = docsOnly && !debug;
+  if (coalesce && !(await claimBuildSlot(docsHash))) {
+    respondBuilding(res);
+    return;
+  }
+  try {
+    await runResearchBuild(req, res, query, {
+      queryHash,
+      editorial,
+      docsOnly,
+      debug,
+      docsHash,
+      docsCacheKey,
+    });
+  } finally {
+    if (coalesce) releaseBuildSlot(docsHash);
+  }
+}
+
+/** The uncached research build: embed → retrieve → respond (docsOnly or
+ *  full synthesis). Runs inside the coalescing slot. */
+async function runResearchBuild(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  query: string,
+  ctx: {
+    queryHash: string;
+    editorial: boolean;
+    docsOnly: boolean;
+    debug: boolean;
+    docsHash: string;
+    docsCacheKey: string;
+  },
+): Promise<void> {
+  const { queryHash, editorial, docsOnly, debug, docsHash, docsCacheKey } = ctx;
   const embedResult = await timedEmbedOrFail(res, query, queryHash);
   if (!embedResult) return;
   const { embedding, embedMs } = embedResult;

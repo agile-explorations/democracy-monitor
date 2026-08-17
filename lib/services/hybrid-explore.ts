@@ -7,8 +7,9 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { hashArmParams, runKeyedArms } from '@/lib/services/arm-cache';
 import { fetchRowsForDocKeys, orderedUniqueDocKeys } from '@/lib/services/explore-document-paging';
-import { buildExploreAliasArmQuery, fetchMatchSnippets, runArms } from '@/lib/services/hybrid-arms';
+import { buildExploreAliasArmQuery, fetchMatchSnippets } from '@/lib/services/hybrid-arms';
 import type { FusionCandidate } from '@/lib/services/hybrid-fusion';
 import { armWeight, fuseWeightedRrf } from '@/lib/services/hybrid-fusion';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
@@ -107,6 +108,32 @@ async function attachPageSnippets(
  * fetch every category row for the paged documents, enrich. totalResults is
  * the fused unique document count (vector pool ∪ alias-arm hits).
  */
+/** Keyed arms for the explore filter shape — cached per (alias, filters,
+ *  data week) so recurring topics skip the phrase-recheck cost (#729). */
+function exploreKeyedArms(
+  filters: SearchFilters,
+  aliases: ValidatedAlias[],
+  whereClause: ReturnType<typeof sql>,
+) {
+  const armParams = {
+    category: filters.category ?? null,
+    dateFrom: filters.dateFrom ?? null,
+    dateTo: filters.dateTo ?? null,
+    sourceOrigin: filters.sourceOrigin ?? null,
+    scoreMin: filters.scoreMin != null ? String(filters.scoreMin) : null,
+    scoreMax: filters.scoreMax != null ? String(filters.scoreMax) : null,
+    documentClass: filters.documentClass ?? null,
+  };
+  const paramsHash = hashArmParams(armParams);
+  return aliases.map((a) => ({
+    kind: 'explore' as const,
+    phrase: a.phrase,
+    paramsHash,
+    params: armParams,
+    query: buildExploreAliasArmQuery(a, whereClause),
+  }));
+}
+
 export async function hybridVectorExplore(
   db: Db,
   vectorStr: string,
@@ -121,7 +148,7 @@ export async function hybridVectorExplore(
 
   const [primary, armRowLists] = await Promise.all([
     vectorCandidateIds(db, vectorStr, whereClause),
-    runArms(aliases.map((a) => buildExploreAliasArmQuery(a, whereClause))),
+    runKeyedArms(exploreKeyedArms(filters, aliases, whereClause)),
   ]);
   const arms = toFusionArms(armRowLists, aliases);
 

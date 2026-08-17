@@ -86,21 +86,6 @@ export function buildExploreAliasArmQuery(alias: ValidatedAlias, whereClause: Sq
     LIMIT ${ALIAS_ARM_LIMIT}`;
 }
 
-/** Execute alias arms concurrently, tolerating per-arm failures. */
-export async function runArms(queries: SqlChunk[]): Promise<Record<string, unknown>[][]> {
-  const db = getDb();
-  return Promise.all(
-    queries.map(async (q) => {
-      try {
-        return (await db.execute(q)).rows as Record<string, unknown>[];
-      } catch (err) {
-        console.warn('[hybrid-arms] alias arm failed (skipped):', err);
-        return [];
-      }
-    }),
-  );
-}
-
 /**
  * Batched matched-passage extraction for the docs that survived fusion —
  * failure-tolerant (snippets are enrichment, not retrieval).
