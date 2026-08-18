@@ -452,7 +452,7 @@ export default function Home() {
                     </a>
                   </h2>
                   <p className="text-[11px] text-dm-muted mb-3">
-                    Convergence status per category over time
+                    Departure status per category over time
                   </p>
                   <StatusTimeline
                     entries={filteredOverview?.statusTimeline ?? []}
