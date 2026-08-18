@@ -61,12 +61,14 @@ export default function RoadmapPage() {
           </p>
         </Section>
 
-        <Section title="Authoritarian Infrastructure Monitoring" id="authoritarian-infrastructure">
+        <Section title="Durable-Power Infrastructure" id="authoritarian-infrastructure">
           <p>
-            Nobody systematically tracks whether the government is building the operational capacity
-            for authoritarian action — not what officials say, and not what policies are announced,
-            but whether the personnel, surveillance technology, enforcement networks, and funding
-            are being put in place to act at scale.
+            Nobody systematically tracks whether the government is building operational capacity
+            that would outlast the president assembling it — not what officials say, and not what
+            policies are announced, but whether the personnel, surveillance technology, enforcement
+            networks, and funding are being put in place to act at scale. Which powers outlast the
+            president who builds them is the question this analysis would answer with procurement
+            and staffing records.
           </p>
           <p>
             Existing organizations do excellent work tracking detention capacity (the{' '}
@@ -201,7 +203,7 @@ export default function RoadmapPage() {
           <p>
             This would touch several other items on this page: it adds the funding backbone that{' '}
             <a href="#authoritarian-infrastructure" className="text-dm-accent hover:underline">
-              Authoritarian Infrastructure Monitoring
+              Durable-Power Infrastructure
             </a>{' '}
             needs (tracking whether enforcement capacity is being <em>funded</em>, not just
             announced); it gives{' '}

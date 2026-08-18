@@ -77,8 +77,9 @@ function annotationRules(p2Count: number, totalDocs: number): string[] {
     `11. ${p2Count} of ${totalDocs} documents include classifications from Democracy Monitor's`,
     '    automated document review. When referencing one, attribute it explicitly and render',
     '    the label in plain language — write "Democracy Monitor\'s automated review classified',
-    '    this document as clearly concerning (a formal override of existing rules)", never the',
-    '    raw label ("clearly_concerning (formal_override)") and never phrased as the',
+    '    this document as a clear departure from baseline practice (a formal override of',
+    '    existing rules)", never the raw label ("clearly_concerning (formal_override)")',
+    '    and never phrased as the',
     "    document's own claim or as this answer's judgment.",
     '12. Lines marked "(annotation)" — AI Assessment and AI Review Note — are machine',
     '    annotations, NOT document text. Never quote them, never attribute their phrasing',
@@ -89,5 +90,10 @@ function annotationRules(p2Count: number, totalDocs: number): string[] {
     '    does not mention or reference a term when its Matched Passage line shows that',
     "    term; if the passage's mention is incidental or embedded (e.g., appropriations",
     '    text read into the record), characterize it that way instead of denying it.',
+    '13. WITNESS TONE (site charter): describe what documents say and do with descriptive',
+    '    verbs and precise nouns — never whether it is good or bad. Banned outside verbatim',
+    '    quotes: alarming, chilling, dangerous, disturbing, assault, attack, threat(ening),',
+    '    dismantling, gutting, authoritarian, crackdown. "Unprecedented" only when a provided',
+    '    count proves it. Precision over euphemism: state plainly what a document did.',
   ];
 }

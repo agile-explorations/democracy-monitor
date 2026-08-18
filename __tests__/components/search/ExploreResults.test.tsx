@@ -62,13 +62,13 @@ describe('ExploreResults (#728)', () => {
     // Collapsed: one summary line, no per-category badge rows
     expect(screen.getByText(/AI: clear departure \(92%\) across all 2 categories/)).toBeTruthy();
     expect(screen.getByText(/Top score: 6\.0/)).toBeTruthy();
-    expect(screen.queryByText('1 capture signal')).toBeNull();
+    expect(screen.queryByText('1 strong keyword signal')).toBeNull();
     expect(screen.queryByText(/executive order/)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Assessment details' }));
     // Expanded: humanized badges with explanatory tooltips
-    expect(screen.getAllByText('1 capture signal').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('2 drift signals').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('1 strong keyword signal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('2 moderate keyword signals').length).toBeGreaterThan(0);
     expect(screen.queryByText('1C')).toBeNull();
     const score = screen.getByText('Score: 6.0');
     expect(score.getAttribute('title')).toMatch(/IN THIS CATEGORY/);
