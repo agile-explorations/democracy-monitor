@@ -45,3 +45,10 @@ export const CONCERN_LEVEL_THRESHOLDS: Record<Exclude<ConcernLevel, 'Divergent'>
   Elevated: '≥1 clear-departure, or ≥2 possible-departure documents',
   ConfirmedConcern: '≥2 clear-departure, or ≥3 departure documents with a >20% departure rate',
 };
+
+/** Count-aware strip label (#732): "3 Notable departures" but "1 Sustained
+ *  departure"; labels without a countable noun are returned unchanged. */
+export function concernLevelCountLabel(status: ConcernLevel, count: number): string {
+  const label = CONCERN_LEVEL_LABELS[status];
+  return count === 1 ? label : label.replace(/\bdeparture\b/, 'departures');
+}
