@@ -6,7 +6,7 @@ import { DescriptiveMetricsChart } from '@/components/category/DescriptiveMetric
 type ChartMode = 'concern' | 'metrics';
 
 const MODE_TITLES: Record<ChartMode, string> = {
-  concern: 'Concern Status Over Time',
+  concern: 'Departure from Norm Status Over Time',
   metrics: 'Descriptive Metrics Over Time',
 };
 
@@ -40,7 +40,7 @@ export function CategoryChartCard(props: CategoryStatusChartProps) {
               chartMode === 'concern' ? 'bg-dm-accent text-white' : 'hover:bg-dm-border'
             }`}
           >
-            Concern Level
+            Departure Status
           </button>
           <button
             onClick={() => setChartMode('metrics')}

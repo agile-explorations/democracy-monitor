@@ -52,9 +52,9 @@ const STATUS_BAR_HEIGHT: Record<ConcernLevel, number> = {
 
 /** Y-axis tick labels: show status names instead of bare numbers */
 const SCORE_TICK_LABELS: Record<number, string> = {
-  0: 'Stable',
-  1: 'Elevated',
-  2: 'Concern',
+  0: 'Consistent',
+  1: 'Notable',
+  2: 'Sustained',
 };
 
 /** Stable shape renderer for status bars — avoids Cell+Brush index misalignment */
