@@ -82,3 +82,17 @@ export function sendCached(res: NextApiResponse, body: object): void {
   res.setHeader('Cache-Control', 'public, s-maxage=3600');
   res.status(200).json(body);
 }
+
+/**
+ * Lenient boolean query-param parse (#732): accepts the common spellings and
+ * returns null for anything unrecognized so routes can 400 instead of
+ * silently taking the wrong code path (docsOnly=1 used to fall through to
+ * the full research pipeline). Absent params are false.
+ */
+export function parseBooleanParam(value: string | string[] | undefined): boolean | null {
+  if (value === undefined) return false;
+  const v = (Array.isArray(value) ? value[value.length - 1] : value).toLowerCase();
+  if (v === 'true' || v === '1' || v === 'yes') return true;
+  if (v === 'false' || v === '0' || v === 'no' || v === '') return false;
+  return null;
+}

@@ -1,7 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { describe, it, expect, vi } from 'vitest';
 import type { StoredNarrative } from '@/lib/types';
-import { formatError, requireWeekOf, tryStoredResponse, sendCached } from '@/lib/utils/api-helpers';
+import {
+  formatError,
+  parseBooleanParam,
+  requireWeekOf,
+  tryStoredResponse,
+  sendCached,
+} from '@/lib/utils/api-helpers';
 
 function mockReq(query: Record<string, string | undefined> = {}): NextApiRequest {
   return { query } as unknown as NextApiRequest;
@@ -108,5 +114,29 @@ describe('sendCached', () => {
     expect(res._status).toBe(200);
     expect(res._body).toEqual({ data: 'ok' });
     expect(res._headers['Cache-Control']).toBe('public, s-maxage=3600');
+  });
+});
+
+describe('parseBooleanParam (#732)', () => {
+  it('accepts the common truthy and falsy spellings case-insensitively', () => {
+    for (const v of ['true', '1', 'yes', 'TRUE', 'Yes']) {
+      expect(parseBooleanParam(v)).toBe(true);
+    }
+    for (const v of ['false', '0', 'no', '', 'FALSE']) {
+      expect(parseBooleanParam(v)).toBe(false);
+    }
+  });
+
+  it('treats an absent parameter as false', () => {
+    expect(parseBooleanParam(undefined)).toBe(false);
+  });
+
+  it('returns null on unrecognized values so callers can reject them', () => {
+    expect(parseBooleanParam('maybe')).toBeNull();
+    expect(parseBooleanParam('2')).toBeNull();
+  });
+
+  it('uses the last value when the parameter repeats', () => {
+    expect(parseBooleanParam(['false', 'true'])).toBe(true);
   });
 });
