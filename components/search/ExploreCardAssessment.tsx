@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import {
+  ASSESSMENT_LABELS,
+  EROSION_TYPE_LABELS,
+  EROSION_TYPE_TIPS,
+} from '@/lib/data/assessment-labels';
 import { categoryLabel } from './helpers';
 import type { ExploreDocResult } from './types';
 
@@ -79,9 +84,9 @@ function VerdictPhrase({ s }: { s: AssessmentSummary }) {
   return (
     <span
       className={`font-medium cursor-help ${verdictColor(s.verdict)}`}
-      title="The AI document reviewer's strongest verdict for this document, with its confidence — the signal that drives concern status"
+      title="The AI document reviewer's strongest classification for this document, with its confidence — the signal that drives weekly status"
     >
-      AI: {s.verdict.replace(/_/g, ' ')}
+      AI: {ASSESSMENT_LABELS[s.verdict] ?? s.verdict.replace(/_/g, ' ')}
       {s.confidence != null && ` (${(s.confidence * 100).toFixed(0)}%)`}
       {scope}
     </span>
@@ -171,18 +176,21 @@ export function CategoryRow({ doc }: { doc: ExploreDocResult }) {
       {doc.aiAssessment && (
         <span
           className={`font-medium cursor-help ${verdictColor(doc.aiAssessment)}`}
-          title="The AI document reviewer's verdict for this category, with its confidence — the signal that drives concern status"
+          title="The AI document reviewer's classification for this category, with its confidence — the signal that drives weekly status"
         >
-          AI: {doc.aiAssessment.replace(/_/g, ' ')}
+          AI: {ASSESSMENT_LABELS[doc.aiAssessment] ?? doc.aiAssessment.replace(/_/g, ' ')}
           {doc.aiConfidence != null && ` (${(doc.aiConfidence * 100).toFixed(0)}%)`}
         </span>
       )}
       {doc.aiErosionType && (
         <span
           className="text-dm-muted cursor-help"
-          title="How this document erodes institutional checks, per the AI reviewer — see the methodology page for the erosion-type definitions"
+          title={
+            EROSION_TYPE_TIPS[doc.aiErosionType] ??
+            'The mechanism of change the reviewer identified — see the methodology page'
+          }
         >
-          {doc.aiErosionType.replace(/_/g, ' ')}
+          {EROSION_TYPE_LABELS[doc.aiErosionType] ?? doc.aiErosionType.replace(/_/g, ' ')}
         </span>
       )}
     </div>

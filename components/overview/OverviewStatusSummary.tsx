@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import type { ConcernLevel } from '@/lib/types';
 
 export interface OverviewStatusSummaryProps {
@@ -9,11 +10,7 @@ export interface OverviewStatusSummaryProps {
 
 const STATUS_ORDER: ConcernLevel[] = ['Stable', 'Elevated', 'ConfirmedConcern'];
 
-const STATUS_LABELS: Record<string, string> = {
-  Stable: 'Stable',
-  Elevated: 'Elevated',
-  ConfirmedConcern: 'Confirmed Concern',
-};
+const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 /** Minimum visible width percentage for non-zero segments. */
 const MIN_SEGMENT_PCT = 3;

@@ -66,7 +66,7 @@ function ConcernBar({
  * "Concerning by actor" context line (#537). Renders only when the week's
  * ai_detail carries actorConfirmations (aggregates enriched pre-attribution
  * lack it) and at least one confirmed doc exists. Context only — actor
- * attribution does not affect concern status.
+ * attribution does not affect the weekly status.
  */
 function ActorMixLine({
   actorConfirmations,

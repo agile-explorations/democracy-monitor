@@ -26,7 +26,7 @@ describe('CategoryCard', () => {
   it('renders title and convergence status', () => {
     const { getByText, getByRole } = render(<CategoryCard {...defaultProps} />);
     expect(getByText('Government Worker Protections')).toBeTruthy();
-    expect(getByRole('status').textContent).toContain('Elevated');
+    expect(getByRole('status').textContent).toContain('Notable departure');
   });
 
   it('renders layer z-scores', () => {

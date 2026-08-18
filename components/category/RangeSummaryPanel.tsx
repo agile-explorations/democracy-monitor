@@ -43,7 +43,7 @@ export function RangeSummaryPanel({ weeklyData, startIndex, endIndex }: RangeSum
             {rangeStats.avgScore != null ? rangeStats.avgScore.toFixed(2) : '—'}
           </p>
           <p className="text-[10px] text-dm-muted mt-0.5">
-            Stable (0) → Elevated (1) → Confirmed Concern (2)
+            Consistent with baseline (0) → Notable departure (1) → Sustained departure (2)
           </p>
         </div>
 

@@ -73,7 +73,7 @@ export function DetailedTooltip({
       <div className="mt-1 space-y-0.5">
         {d.confirmedWeighted > 0 && (
           <p style={{ color: statusColors.ConfirmedConcern }}>
-            Confirmed Concern: {d.confirmedWeighted}
+            Sustained departure: {d.confirmedWeighted}
           </p>
         )}
         {d.elevatedWeighted > 0 && (

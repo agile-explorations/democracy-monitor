@@ -89,9 +89,9 @@ describe('ThisWeekStrip', () => {
   it('renders week label, status counts in severity order, and jump links', () => {
     render(<ThisWeekStrip {...baseProps} />);
     expect(screen.getByText(/Jun 29/)).toBeDefined();
-    expect(screen.getByText('Confirmed Concern')).toBeDefined();
-    expect(screen.getByText('Elevated')).toBeDefined();
-    expect(screen.getByText('Stable')).toBeDefined();
+    expect(screen.getByText('Sustained departure')).toBeDefined();
+    expect(screen.getByText('Notable departure')).toBeDefined();
+    expect(screen.getByText('Consistent with baseline')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Trend' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Term so far' })).toBeDefined();
   });
@@ -128,7 +128,7 @@ describe('ThisWeekStrip', () => {
     );
     expect(screen.getByText('Week of')).toBeDefined();
     expect(screen.getByText(/Mar 9/)).toBeDefined();
-    expect(screen.getByText('Confirmed Concern')).toBeDefined();
+    expect(screen.getByText('Sustained departure')).toBeDefined();
     // present-tense gap streak must not describe a past week
     expect(screen.queryByText(/data gaps/i)).toBeNull();
   });

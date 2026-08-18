@@ -82,7 +82,7 @@ export function SynchronyChart({
   }, [data, startIdx, endIdx]);
 
   if (data.length === 0) {
-    return <p className="text-sm text-dm-text-secondary py-4">No concern data available.</p>;
+    return <p className="text-sm text-dm-text-secondary py-4">No status data available.</p>;
   }
 
   return (

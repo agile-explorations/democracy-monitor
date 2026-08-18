@@ -88,7 +88,7 @@ describe('DocumentTable', () => {
     const { getByText } = render(
       <DocumentTable documents={[docs[0]]} category="judicialIndependence" weekOf="2025-02-03" />,
     );
-    const assessmentEl = getByText('clearly concerning');
+    const assessmentEl = getByText('clear departure');
     expect(assessmentEl.title).toContain('Multiple indicators');
     const erosionEl = getByText('formal override');
     expect(erosionEl.title).toContain('Explicit legal');

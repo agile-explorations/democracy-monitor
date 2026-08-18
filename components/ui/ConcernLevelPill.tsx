@@ -1,12 +1,8 @@
-import { CONCERN_LEVEL_TOOLTIPS } from '@/lib/data/concern-level-explanations';
+import {
+  CONCERN_LEVEL_LABELS,
+  CONCERN_LEVEL_TOOLTIPS,
+} from '@/lib/data/concern-level-explanations';
 import type { ConcernLevel } from '@/lib/types/structural';
-
-const DISPLAY_LABELS: Record<ConcernLevel, string> = {
-  Stable: 'Stable',
-  Elevated: 'Elevated',
-  Divergent: 'Divergent',
-  ConfirmedConcern: 'Confirmed Concern',
-};
 
 const ICONS: Record<ConcernLevel, string> = {
   Stable: '\u2014', // em dash —
@@ -28,12 +24,12 @@ export function ConcernLevelPill({ status }: { status: ConcernLevel }) {
   return (
     <span
       role="status"
-      aria-label={`Status: ${DISPLAY_LABELS[status]}. ${CONCERN_LEVEL_TOOLTIPS[status]}`}
+      aria-label={`Status: ${CONCERN_LEVEL_LABELS[status]}. ${CONCERN_LEVEL_TOOLTIPS[status]}`}
       title={CONCERN_LEVEL_TOOLTIPS[status]}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${STYLE[status]}`}
     >
       <span aria-hidden="true">{ICONS[status]}</span>
-      {DISPLAY_LABELS[status]}
+      {CONCERN_LEVEL_LABELS[status]}
     </span>
   );
 }

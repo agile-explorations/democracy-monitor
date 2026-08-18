@@ -15,6 +15,7 @@ import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
 import type { ArchiveWeekEntry } from '@/lib/services/ssr-narrative-data';
@@ -24,11 +25,7 @@ import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
 const ARCHIVE_COLLAPSED_COUNT = 12;
 
-const STATUS_LABELS: Record<string, string> = {
-  Stable: 'Stable',
-  Elevated: 'Elevated',
-  ConfirmedConcern: 'Confirmed Concern',
-};
+const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 const STATUS_COLORS: Record<string, string> = {
   Elevated: 'text-yellow-600 dark:text-yellow-400',

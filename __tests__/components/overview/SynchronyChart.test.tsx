@@ -67,7 +67,7 @@ const sampleData: SynchronyPoint[] = [
 describe('SynchronyChart', () => {
   it('renders empty message when no data', () => {
     render(<SynchronyChart data={[]} mode="light" readingLevel="summary" />);
-    expect(screen.getByText('No concern data available.')).toBeDefined();
+    expect(screen.getByText('No status data available.')).toBeDefined();
   });
 
   it('renders composed chart with data in summary mode', () => {

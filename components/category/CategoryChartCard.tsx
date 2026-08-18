@@ -12,9 +12,9 @@ const MODE_TITLES: Record<ChartMode, string> = {
 
 const MODE_TOOLTIPS: Record<ChartMode, string> = {
   concern:
-    'Stable = AI within baseline. Elevated = AI flags anomalous content with P2 corroboration. Confirmed Concern = AI elevated with high P2 concern rate (>20%).',
+    'Consistent with baseline = document review within baseline range. Notable departure = review flags departures with second-pass corroboration. Sustained departure = high rate of clear-departure documents (>20%).',
   metrics:
-    'Structural anomaly, AI review flag rate, and thematic drift scores on a 0–100 scale. These are descriptive context layers — only AI review drives concern status.',
+    'Structural anomaly, AI review flag rate, and thematic drift scores on a 0–100 scale. These are descriptive context layers — only AI review drives the weekly status.',
 };
 
 export function CategoryChartCard(props: CategoryStatusChartProps) {

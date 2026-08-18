@@ -6,6 +6,7 @@ import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { keyToSlug } from '@/lib/data/category-slugs';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import type { AdjacentWeek, WeeklyHubPageData } from '@/lib/services/ssr-narrative-data';
 import { getWeeklyHubPageData } from '@/lib/services/ssr-narrative-data';
 import type { EditorialRecord } from '@/lib/types';
@@ -53,10 +54,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   return { props: data };
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  Elevated: 'Elevated',
-  ConfirmedConcern: 'Confirmed Concern',
-};
+const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 const STATUS_COLORS: Record<string, string> = {
   Elevated: 'text-yellow-600 dark:text-yellow-400',

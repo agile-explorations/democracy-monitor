@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 import { CHART_COLORS, CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import type { WeeklyRow } from '@/lib/hooks/useCategoryDetail';
 import type { ConcernLevel } from '@/lib/types/structural';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
@@ -97,7 +98,7 @@ function StatusTooltip({
       <p className="font-medium text-dm-text-primary">{formatWeekLabel(d.week)}</p>
       {d.status && (
         <p className="mt-1" style={{ color: statusColors[d.status] }}>
-          {d.status === 'ConfirmedConcern' ? 'Confirmed Concern' : d.status}
+          {CONCERN_LEVEL_LABELS[d.status as ConcernLevel] ?? d.status}
         </p>
       )}
       {d.trend != null && (
@@ -178,7 +179,7 @@ export function CategoryStatusChart({
               className="inline-block w-3 h-3 rounded-sm"
               style={{ backgroundColor: statusColors[s] }}
             />
-            {s === 'ConfirmedConcern' ? 'Concern' : s}
+            {s === 'ConfirmedConcern' ? 'Sustained' : 'Notable'}
           </span>
         ))}
       </div>
