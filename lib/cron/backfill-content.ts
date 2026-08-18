@@ -26,6 +26,7 @@ import { fetchGovInfoText } from '@/lib/services/govinfo-fetcher';
 import { fetchHhsOigReportContent } from '@/lib/services/hhs-oig-fetcher';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { extractPdfText } from '@/lib/utils/pdf-extractor';
 
 const BATCH_SIZE = 50;
@@ -207,8 +208,10 @@ async function backfillGovInfo(options: BackfillOptions): Promise<number> {
  * CPD CSS-contamination repair (#736): the day-one CPD backfill (cb8ea5f)
  * ran one day before <style>-stripping landed in stripHtml (c4f907e), so
  * that vintage stores the DCPD package id + raw CSS as content. The
- * predicate keys on the contamination shape (content starts with the
- * package id), not length — contaminated docs are long, not short.
+ * predicate keys on an actual CSS marker — the bare DCPD title token also
+ * appears on healthy docs (tranche-1 lesson) and is repaired in place by
+ * stripBoilerplate, not by refetching. Refetched text is run through
+ * stripBoilerplate so re-extraction cannot reintroduce either shape.
  */
 async function backfillCpd(options: BackfillOptions): Promise<number> {
   const db = getDb();
@@ -216,7 +219,7 @@ async function backfillCpd(options: BackfillOptions): Promise<number> {
   const rows = await db
     .select({ id: documents.id, metadata: documents.metadata })
     .from(documents)
-    .where(and(eq(documents.sourceOrigin, 'govinfo_cpd'), like(documents.content, 'DCPD%')));
+    .where(and(eq(documents.sourceOrigin, 'govinfo_cpd'), like(documents.content, '%{margin:0%')));
 
   console.log(`[backfill-content] cpd: ${rows.length} CSS-contaminated CPD docs`);
   if (options.dryRun) return 0;
@@ -232,7 +235,8 @@ async function backfillCpd(options: BackfillOptions): Promise<number> {
       const packageId = meta?.packageId as string | undefined;
       if (!packageId) continue;
 
-      const content = await fetchCpdText(packageId);
+      const fetched = await fetchCpdText(packageId);
+      const content = fetched ? stripBoilerplate(fetched, 'govinfo_cpd') : null;
       if (content) {
         await db
           .update(documents)

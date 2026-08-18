@@ -24,15 +24,19 @@ function stripFrGpoHeader(content: string): string {
 /**
  * Strip CPD CSS contamination from GovInfo presidential documents.
  *
- * Pattern: "DCPD" identifier followed by embedded CSS stylesheet rules
- * ({margin:0}, .s1 {}, h1 {}, .p, p {} etc). Actual content starts with
- * "Administration of..." after the last closing brace.
- * Measured: median 769 chars, affects 8,129 docs (69% of CPD).
+ * Two shapes (#736): the day-one backfill vintage stores the "DCPD" package
+ * identifier followed by embedded CSS stylesheet rules ({margin:0}, .s1 {},
+ * h1 {} etc) — actual content starts with "Administration of..." after the
+ * last closing brace. Later vintages (and re-extraction via the /htm
+ * rendition) carry only the bare package-id token from the page <title>,
+ * with no CSS. Strip both: token first, then the CSS preamble when present.
+ * Measured 2026-08-18: 8,376 CSS-contaminated + ~6,800 token-only.
  */
 function stripCpdCss(content: string): string {
+  const withoutToken = content.replace(/^DCPD\d+\s*/, '');
   // CSS preamble is always in the first ~1500 chars (measured max: 1460).
   // Find the last closing brace within that window, then take everything after.
-  const searchWindow = content.slice(0, 2000);
+  const searchWindow = withoutToken.slice(0, 2000);
   let lastBrace = -1;
   for (let i = searchWindow.length - 1; i >= 0; i--) {
     if (searchWindow[i] === '}') {
@@ -40,8 +44,8 @@ function stripCpdCss(content: string): string {
       break;
     }
   }
-  if (lastBrace === -1) return content;
-  const after = content.slice(lastBrace + 1).replace(/^\s+/, '');
+  if (lastBrace === -1) return withoutToken.length > 0 ? withoutToken : content;
+  const after = withoutToken.slice(lastBrace + 1).replace(/^\s+/, '');
   return after.length > 0 ? after : content;
 }
 
