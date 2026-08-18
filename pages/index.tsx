@@ -336,18 +336,18 @@ export default function Home() {
               <div className="flex items-start justify-between mb-1">
                 <div>
                   <h2 className="text-sm font-semibold text-dm-text-primary">
-                    Cumulative Concern Score
+                    Cumulative Departure Score
                     <a
                       href="#concern-score"
                       className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Link to Cumulative Concern Score"
+                      aria-label="Link to Cumulative Departure Score"
                     >
                       #
                     </a>
                   </h2>
                   <p className="text-[11px] text-dm-muted mt-0.5">
                     {readingLevel === 'summary'
-                      ? 'Weighted concern score across all categories per week'
+                      ? 'Weighted departure score across all categories per week'
                       : 'Departure score stacked by magnitude: categories at Notable departure (1 point each) or Sustained departure (2 points)'}
                   </p>
                 </div>

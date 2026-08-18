@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { SignificantWeeksList } from '@/components/overview/SignificantWeeksList';
 
 describe('SignificantWeeksList', () => {
-  it("shows each week's Concern Score so significance is anchored to the chart", () => {
+  it("shows each week's Departure Score so significance is anchored to the chart", () => {
     render(
       <SignificantWeeksList
         weeks={[
@@ -17,7 +17,7 @@ describe('SignificantWeeksList', () => {
         ]}
       />,
     );
-    expect(screen.getByText(/Concern Score 26/)).toBeDefined();
+    expect(screen.getByText(/Departure Score 26/)).toBeDefined();
   });
 
   it('omits the score when unavailable', () => {
@@ -34,7 +34,7 @@ describe('SignificantWeeksList', () => {
         ]}
       />,
     );
-    expect(screen.queryByText(/Concern Score/)).toBeNull();
+    expect(screen.queryByText(/Departure Score/)).toBeNull();
   });
 });
 

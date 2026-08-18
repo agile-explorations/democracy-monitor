@@ -63,7 +63,7 @@ export function SignificantWeeksList({ weeks }: SignificantWeeksListProps) {
                   Week of {formatWeekLabelWithYear(w.weekOf)}
                 </Link>
                 {typeof w.concernScore === 'number' && (
-                  <span className="text-dm-muted"> · Concern Score {w.concernScore}</span>
+                  <span className="text-dm-muted"> · Departure Score {w.concernScore}</span>
                 )}
                 {w.headline ? (
                   <>
