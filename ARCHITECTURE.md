@@ -1816,7 +1816,7 @@ _What's missing:_ (a) Proposal extraction at scale — the 920-page document nee
 - **Status persistence** — `p2025_tracking` table storing proposal status over time. Weekly snapshot records current status per proposal. Enables "implementation velocity" metric: how many proposals changed status this week/month.
 - **Category integration** — P2025 match counts become an additional convergence input per category. A category with high Layer 1/2/3 scores _and_ active P2025 implementation is qualitatively different from one with high scores but no blueprint connection.
 
-**Phase 10 — Authoritarian infrastructure build-out tracking (requires new data sources):**
+**Phase 10 — Durable-Power Infrastructure tracking (formerly "authoritarian infrastructure build-out"; requires new data sources):**
 
 _Rationale (validated 2026-03-03):_ The system currently tracks executive orders, court rulings, and regulatory actions — what the government _says_ and _decides_. No existing democracy monitoring tool systematically tracks the _operational capacity_ for authoritarian action: whether the government is quietly building the physical, personnel, and legal infrastructure that would make authoritarian action possible at scale. This is a distinct analytical dimension from rhetoric (what officials say), policy (what officials enact), and P2025 alignment (whether actions match a declared plan). Infrastructure build-out is the _capability_ dimension — it answers "even if the government hasn't done X yet, could it do X tomorrow?"
 

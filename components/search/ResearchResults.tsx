@@ -4,9 +4,15 @@ import type { Components } from 'react-markdown';
 import { CaseContext } from '@/components/shared/CaseContext';
 import { EditorialPanel } from '@/components/shared/EditorialPanel';
 import type { ReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import {
+  ASSESSMENT_LABELS,
+  EROSION_TYPE_LABELS,
+  EROSION_TYPE_TIPS,
+} from '@/lib/data/assessment-labels';
 import { labelForSourceType } from '@/lib/data/document-tiers';
 import type { EditorialRecord } from '@/lib/types';
 import { CITATION_GROUP_PATTERN, parseDocCitations } from '@/lib/utils/citations';
+import { verdictColor } from './ExploreCardAssessment';
 import { categoryLabel, formatDate, similarityBar } from './helpers';
 import { AlsoSearchedChips, MatchSnippet } from './MatchSnippet';
 import { QuoteVerificationBadge } from './QuoteVerificationBadge';
@@ -113,6 +119,26 @@ function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
               {categoryLabel(doc.category)}
             </span>
             {doc.finalScore != null && <span>Score: {doc.finalScore.toFixed(1)}</span>}
+            {doc.p2Assessment && (
+              <span
+                className={`font-medium cursor-help ${verdictColor(doc.p2Assessment)}`}
+                title="The AI document reviewer's classification for this document, with its confidence — the signal that drives weekly status"
+              >
+                AI: {ASSESSMENT_LABELS[doc.p2Assessment] ?? doc.p2Assessment.replace(/_/g, ' ')}
+                {doc.p2Confidence != null && ` (${(doc.p2Confidence * 100).toFixed(0)}%)`}
+              </span>
+            )}
+            {doc.p2ErosionType && doc.p2ErosionType !== 'routine' && (
+              <span
+                className="cursor-help"
+                title={
+                  EROSION_TYPE_TIPS[doc.p2ErosionType] ??
+                  'The mechanism of change the reviewer identified — see the methodology page'
+                }
+              >
+                {EROSION_TYPE_LABELS[doc.p2ErosionType] ?? doc.p2ErosionType.replace(/_/g, ' ')}
+              </span>
+            )}
             <span
               className={`px-1.5 py-0 rounded font-medium ${
                 doc.tier === 'discussion'

@@ -110,8 +110,8 @@ pnpm test
 
 The keyword dictionaries in `lib/data/assessment-rules.ts` are the most impactful thing you can improve. Each category has three severity tiers:
 
-- **capture** — Indicates serious violations (e.g., "violated impoundment control act")
-- **drift** — Concerning patterns (e.g., "reclassification", "excepted service")
+- **capture** — Strong departure indicators (e.g., "violated impoundment control act")
+- **drift** — Moderate departure patterns (e.g., "reclassification", "excepted service")
 - **warning** — Minor issues (e.g., "reorganization", "workforce reduction")
 
 When adding keywords:

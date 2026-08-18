@@ -57,6 +57,7 @@ export function formatDocList(docs: ResearchDocument[]) {
     documentClass: doc.documentClass,
     p2Assessment: doc.p2Assessment,
     p2ErosionType: doc.p2ErosionType,
+    p2Confidence: doc.p2Confidence,
     p2Summary: doc.p2Summary,
     ...(doc.matchSnippet ? { matchSnippet: doc.matchSnippet } : {}),
     ...(doc.matchedAlias ? { matchedAlias: doc.matchedAlias } : {}),
