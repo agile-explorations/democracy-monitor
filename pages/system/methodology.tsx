@@ -106,10 +106,10 @@ export function SummaryContent() {
         </p>
       </Section>
 
-      {/* Concern Synthesis */}
-      <Section title="Concern Synthesis" id="concern-synthesis">
+      {/* Status synthesis (internal module name: concern synthesis) */}
+      <Section title="Status Synthesis" id="concern-synthesis">
         <p>
-          AI document review is the primary active detection method driving concern status.
+          AI document review is the primary active detection method driving the weekly status.
           Structural anomaly, silence detection, and thematic drift provide descriptive context.
         </p>
         <p>
@@ -547,12 +547,12 @@ export function DetailedContent() {
         </p>
       </Section>
 
-      {/* Concern Synthesis */}
-      <Section title="Concern Synthesis" id="concern-synthesis">
+      {/* Status synthesis (internal module name: concern synthesis) */}
+      <Section title="Status Synthesis" id="concern-synthesis">
         <p>
-          AI document review drives the concern status for each category. Structural anomaly,
-          silence detection, and thematic drift scores are preserved as descriptive metadata but do
-          not influence the status.
+          AI document review drives the weekly status for each category. Structural anomaly, silence
+          detection, and thematic drift scores are preserved as descriptive metadata but do not
+          influence the status.
         </p>
         <DataTable
           headers={['Status', 'Meaning', "How it's set (Pass 2 counts)"]}
