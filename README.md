@@ -2,17 +2,17 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and congressional records, then uses AI content assessment to identify when democratic checks and balances may be under pressure.
+A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and congressional records, then uses AI content assessment to identify where the documentary record departs from documented baseline practice. The site bears witness to institutional change without judging it — see the [epistemic charter](https://democracymonitor.us/why-this-matters#charter).
 
 ## What It Does
 
-The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a concern status:
+The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a weekly status measuring departure from baseline practice (internal enum names in parentheses — they appear in the published data and the code):
 
-| Status                | Meaning                                                                                  |
-| --------------------- | ---------------------------------------------------------------------------------------- |
-| **Stable**            | AI content assessment found no concerning documents                                      |
-| **Elevated**          | AI two-pass review identifies concerning documents with Pass 2 corroboration             |
-| **Confirmed Concern** | AI assessment elevated with high Pass 2 concern rate (≥20%). Warrants close examination. |
+| Status                                       | Meaning                                                                                      |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Consistent with baseline** (`Stable`)      | AI content assessment found no departures from documented practice                           |
+| **Notable departure** (`Elevated`)           | AI two-pass review identifies departure documents with Pass 2 corroboration                  |
+| **Sustained departure** (`ConfirmedConcern`) | AI assessment elevated with a high Pass 2 departure rate (≥20%). Warrants close examination. |
 
 Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
 
@@ -20,10 +20,10 @@ Assessments are fully transparent: every status traces to specific documents, re
 
 1. **Data collection** — Weekly cron jobs fetch from 10 source types (Federal Register, GovInfo/GAO, CourtListener, DOJ press releases, DHS/ICE/CBP press releases, 11 OIG offices incl. oversight.gov, LegiScan, FEC, Congressional Record floor speeches, congressional hearing transcripts), storing full documents in PostgreSQL. Federal litigation is tracked separately in a case tracker (`tracked_cases`): 200k+ cases with court, filing/termination dates, and procedural posture, refreshed weekly for active cases.
 2. **AI content assessment** (sole active detection) — Two-pass AI review with epistemic independence: GPT-4o-mini screens every document (8K chars, boilerplate-stripped), then Claude evaluates flagged documents with week-level context. Different providers ensure independent evaluation.
-3. **Silence detection** (descriptive context) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active. Provides narrative context but does not drive concern status.
-4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive concern status.
-5. **Thematic drift** (descriptive context) — Embedding-based 8-week rolling window detecting semantic shifts in government output. Provides research context but does not drive concern status.
-6. **Concern synthesis** — AI document review determines concern status via absolute Pass 2 thresholds. Structural, silence, and thematic data enrich narratives without influencing the status.
+3. **Silence detection** (descriptive context) — Measures whether government-controlled sources have gone unusually quiet while independent-branch sources remain active. Provides narrative context but does not drive weekly status.
+4. **Structural anomaly** (descriptive context) — Deterministic, metadata-only analysis of volume, composition, timing, and agency patterns. Provides narrative grounding but does not drive weekly status.
+5. **Thematic drift** (descriptive context) — Embedding-based 8-week rolling window detecting semantic shifts in government output. Provides research context but does not drive weekly status.
+6. **Status synthesis** (internal name: concern synthesis) — AI document review determines the weekly status via absolute Pass 2 thresholds. Structural, silence, and thematic data enrich narratives without influencing the status.
 
 For full methodology details, see [ASSESSMENT_METHODOLOGY.md](ASSESSMENT_METHODOLOGY.md).
 

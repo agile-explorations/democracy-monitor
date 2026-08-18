@@ -458,7 +458,7 @@ This capability connects directly to L1v2 silence detection (Release 1B), which 
 
 ### Repurposing Risk: From Immigration Enforcement to Broader Repression
 
-The authoritarian threat of enforcement infrastructure is not only its scale but its **repurposability.** Infrastructure built for one target population can be redirected toward others. This is not a theoretical concern — it is the consistent historical pattern (Japanese internment used census data, McCarthyism used federal employee databases, post-9/11 surveillance targeted Muslim communities using counterterrorism tools) and it is already underway in the current period.
+What makes enforcement infrastructure durable is not only its scale but its **repurposability.** Infrastructure built for one target population can be redirected toward others. This is not a theoretical concern — it is the consistent historical pattern (Japanese internment used census data, McCarthyism used federal employee databases, post-9/11 surveillance targeted Muslim communities using counterterrorism tools) and it is already underway in the current period.
 
 **The mechanism:** Each infrastructure dimension has a stated purpose (immigration enforcement) and a latent capability (enforcement against any population the government designates). Detention facilities can hold anyone. Surveillance tools can monitor anyone. 287(g) agreements deputize local police to enforce federal law in any context. The transition from stated purpose to broader application doesn't require new infrastructure — it requires only a change in who is designated as the target.
 

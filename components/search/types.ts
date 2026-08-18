@@ -76,6 +76,10 @@ export interface ResearchDocResult {
   documentClass: string | null;
   /** P2 review reasoning excerpt (optional: cached payloads may predate it). */
   p2Summary?: string | null;
+  /** P2 verdict/mechanism/confidence (optional: cached payloads may predate them). */
+  p2Assessment?: string | null;
+  p2ErosionType?: string | null;
+  p2Confidence?: number | null;
   /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
   matchSnippet?: string | null;
   /** The corpus-validated alias whose arm surfaced this doc (#702). */

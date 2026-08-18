@@ -67,7 +67,7 @@ export function summarizeAssessment(categories: ExploreDocResult[]): AssessmentS
   };
 }
 
-function verdictColor(verdict: string): string {
+export function verdictColor(verdict: string): string {
   if (verdict === 'clearly_concerning') return 'text-status-capture';
   if (verdict === 'potentially_concerning') return 'text-status-drift';
   return 'text-dm-muted';

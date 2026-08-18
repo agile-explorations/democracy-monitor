@@ -2,7 +2,7 @@
 
 Democracy Monitor is an open-source system that tracks signs of executive-power centralization across U.S. government institutions. It reads publicly available government documents — federal regulations, court filings, press releases, legislative reports — and uses AI content assessment as its primary detection method — supported by three descriptive context methods (structural anomaly, silence detection, thematic drift) — to identify when institutional norms may be shifting.
 
-The system is designed to surface patterns worth human examination, not render definitive judgments. All assessments trace to specific documents, reproducible metrics, and published thresholds.
+The system is designed to surface patterns worth human examination, not render definitive judgments. It measures **departure from documented baseline practice** and leaves the evaluation of those departures to the reader — see the [epistemic charter](https://democracymonitor.us/why-this-matters#charter). All assessments trace to specific documents, reproducible metrics, and published thresholds. Display language on the site uses departure vocabulary; the internal enum names shown in backticks below appear unchanged in the published data and the code.
 
 ## Data Sources
 
@@ -52,7 +52,7 @@ The system monitors 14 institutional categories, aligned to frameworks used by V
 
 ## Detection Architecture
 
-Democracy Monitor uses multiple analysis methods. **One active detection method** — AI document review — drives concern status. Three additional methods provide **descriptive context** for narratives and research without influencing the status determination.
+Democracy Monitor uses multiple analysis methods. **One active detection method** — AI document review — drives the weekly status. Three additional methods provide **descriptive context** for narratives and research without influencing the status determination.
 
 ### Active Detection Method
 
@@ -60,24 +60,24 @@ Democracy Monitor uses multiple analysis methods. **One active detection method*
 
 The AI document review uses artificial intelligence to read and evaluate individual documents. To reduce single-provider bias, it uses a two-pass design with different AI providers:
 
-- **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to democratic institutional concerns. Each document receives up to 8,000 characters of boilerplate-stripped content. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
-- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but not concerning, potentially concerning, or clearly concerning. Pass 2 also receives up to 8,000 characters of boilerplate-stripped content, plus week-level context (flag rate, peer titles, trajectory). Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots.
+- **Pass 1 (Screening)** — A fast model (GPT-4o-mini, from OpenAI) evaluates every document for relevance to departures from democratic institutional baselines. Each document receives up to 8,000 characters of boilerplate-stripped content. Documents are flagged as relevant or routine. Most government documents are routine administrative activity; this pass filters to the small fraction worth closer examination.
+- **Pass 2 (Detailed Review)** — A different provider (Claude, from Anthropic) independently assesses each flagged document, classifying it as: routine, novel but within baseline, a possible departure, or a clear departure (stored as `routine`, `novel_not_concerning`, `potentially_concerning`, `clearly_concerning`). Pass 2 also receives up to 8,000 characters of boilerplate-stripped content, plus week-level context (flag rate, peer titles, trajectory). Using a different AI provider for each pass ensures that the two assessments are epistemically independent — they don't share the same biases or blind spots.
 
-Concern status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
+The weekly status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
 
-- **Stable** — Pass 2 found no concerning documents (0 clearly concerning, ≤1 potentially concerning)
-- **Elevated** — ≥1 clearly concerning OR ≥2 potentially concerning documents
-- **Confirmed Concern** — ≥2 clearly concerning, OR ≥3 concerning documents with ≥20% concern rate
+- **Consistent with baseline** (`Stable`) — Pass 2 found no departures (0 clear-departure, ≤1 possible-departure documents)
+- **Notable departure** (`Elevated`) — ≥1 clear-departure OR ≥2 possible-departure documents
+- **Sustained departure** (`ConfirmedConcern`) — ≥2 clear-departure, OR ≥3 departure documents with a ≥20% departure rate
 
 Pass 2's written reasoning is displayed beside documents as an annotation and follows an explicit discipline (August 2026): rhetoric is attributed to its source rather than restated as fact, real-world knowledge the document does not contain is marked as context, and causal actions are credited only to the instrument whose text performs them. A sampled audit of annotations against their documents runs periodically; corrections are logged publicly.
 
-Pass 2 also records two descriptive classifications for each document: the **erosion mechanism** (formal override, operational hollowing, or noncompliance/refusal) and the **erosion actor** — which institutional actor performs the erosion-relevant action: `federal_executive`, `congress`, `judiciary`, `state_local`, or `other_unclear`. The actor is whoever performs the action, not the document's author or venue (a court opinion documenting a federal agency's defiance of court orders attributes to the federal executive; a ruling that itself removes a protection attributes to the judiciary; a bill that itself erodes attributes to Congress). Actor attribution is **context only**: it does not change how any document is assessed or how weekly concern status is computed. Per-actor confirmation counts are stored on weekly aggregates for research and for a future, data-informed decision about how attribution should shape the dashboard's headline framing — that decision is deliberately deferred until the attributed distributions can be examined. Attribution runs as a **separate lightweight classification pass** (GPT-4o-mini over the stored assessment reasoning and document text) — deliberately decoupled from Pass 2 itself: a controlled three-arm experiment measured that embedding attribution in the Pass 2 prompt shifted assessment outcomes by ~11 percentage points beyond the same-prompt noise floor, so the assessment prompt is kept byte-identical and attribution never influences any assessment. Historical assessments were attributed retroactively by the same pass; new confirmed documents are attributed weekly during the snapshot.
+Pass 2 also records two descriptive classifications for each document: the **mechanism of change** (formal override, operational hollowing, or noncompliance/refusal — stored internally as the "erosion type") and the **erosion actor** — which institutional actor performs the erosion-relevant action: `federal_executive`, `congress`, `judiciary`, `state_local`, or `other_unclear`. The actor is whoever performs the action, not the document's author or venue (a court opinion documenting a federal agency's defiance of court orders attributes to the federal executive; a ruling that itself removes a protection attributes to the judiciary; a bill that itself erodes attributes to Congress). Actor attribution is **context only**: it does not change how any document is assessed or how the weekly status is computed. Per-actor confirmation counts are stored on weekly aggregates for research and for a future, data-informed decision about how attribution should shape the dashboard's headline framing — that decision is deliberately deferred until the attributed distributions can be examined. Attribution runs as a **separate lightweight classification pass** (GPT-4o-mini over the stored assessment reasoning and document text) — deliberately decoupled from Pass 2 itself: a controlled three-arm experiment measured that embedding attribution in the Pass 2 prompt shifted assessment outcomes by ~11 percentage points beyond the same-prompt noise floor, so the assessment prompt is kept byte-identical and attribution never influences any assessment. Historical assessments were attributed retroactively by the same pass; new confirmed documents are attributed weekly during the snapshot.
 
-An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many concerning documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
+An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to estimate false negative rates — how many departure documents Pass 1 might be missing. Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority of routine documents while catching most documents that warrant closer review.
 
 ### Descriptive Context Methods
 
-These methods are computed and stored for narrative grounding and research, but **do not influence concern status**:
+These methods are computed and stored for narrative grounding and research, but **do not influence the weekly status**:
 
 #### Silence Detection (Descriptive Only)
 
@@ -112,21 +112,21 @@ Thematic drift uses embedding-based analysis to detect when the _topics_ discuss
 - **Variance Ratio** — Embedding variance of the week's documents relative to the window's: above 1 means topics are diversifying, below 1 means narrowing
 - **Cross-Administration Distance** — Comparison against a prior administration's baseline centroid
 
-Thematic drift signals are preserved for research visualization but do not drive concern status.
+Thematic drift signals are preserved for research visualization but do not drive the weekly status.
 
-**Data reprocessing.** When scoring, filtering, or counting rules change, all historical periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule changes do not create breaks in the data. When court-record collection was reworked in February 2026, document counts were made consistent in July 2026 by defining the counting population with a documented classifier applied uniformly to all periods (the `counting_scope` flag in the published data; see the Data page). If a future collection change cannot be reconciled this way, the volume-based research views mark it with ▲ and suppress "findings" that overlap it rather than presenting them as detection. Concern statuses are derived from document _content_ against absolute thresholds and are verified to remain comparable across every change (each pipeline change is gated on producing zero unexplained status flips), so status-based displays carry no breaks.
+**Data reprocessing.** When scoring, filtering, or counting rules change, all historical periods are reprocessed under the new rules, so cross-era comparisons remain valid — rule changes do not create breaks in the data. When court-record collection was reworked in February 2026, document counts were made consistent in July 2026 by defining the counting population with a documented classifier applied uniformly to all periods (the `counting_scope` flag in the published data; see the Data page). If a future collection change cannot be reconciled this way, the volume-based research views mark it with ▲ and suppress "findings" that overlap it rather than presenting them as detection. Weekly statuses are derived from document _content_ against absolute thresholds and are verified to remain comparable across every change (each pipeline change is gated on producing zero unexplained status flips), so status-based displays carry no breaks.
 
-## Concern Synthesis
+## Status Synthesis
 
-AI document review is the primary active detection method, combined into a concern status for each category:
+AI document review is the primary active detection method, combined into a weekly status for each category (internal module name: concern synthesis):
 
-| Status                | Meaning                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------ |
-| **Stable**            | AI content assessment within baseline range. No concerns detected.                               |
-| **Elevated**          | AI two-pass review flags anomalous content with Pass 2 corroboration.                            |
-| **Confirmed Concern** | AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination. |
+| Status                                       | Meaning                                                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Consistent with baseline** (`Stable`)      | AI content assessment within the baseline range. No departures detected.                             |
+| **Notable departure** (`Elevated`)           | AI two-pass review flags departure documents with Pass 2 corroboration.                              |
+| **Sustained departure** (`ConfirmedConcern`) | AI content assessment elevated with a high Pass 2 departure rate (>20%). Warrants close examination. |
 
-Structural anomaly, silence detection, and thematic drift provide descriptive context but do not influence the concern status. This architecture was adopted after empirical validation showed that non-AI methods could not reliably distinguish signal from noise.
+Structural anomaly, silence detection, and thematic drift provide descriptive context but do not influence the weekly status. This architecture was adopted after empirical validation showed that non-AI methods could not reliably distinguish signal from noise.
 
 ## Baselines
 
@@ -149,9 +149,9 @@ All eight baselines cover the same core data sources (Federal Register, CourtLis
 
 ## Keywords as Annotations
 
-Keywords were Democracy Monitor's original detection mechanism, but as the three-layer architecture was developed, their role changed. Keywords now serve as **contextual annotations** — they help explain what the system is detecting, but they do not drive the concern status.
+Keywords were Democracy Monitor's original detection mechanism, but as the three-layer architecture was developed, their role changed. Keywords now serve as **contextual annotations** — they help explain what the system is detecting, but they do not drive the weekly status.
 
-Each category has curated keyword dictionaries organized by severity tier (capture, drift, warning). When documents contain these keywords, the matches are displayed alongside the assessment to provide interpretive context. An administration-specific keyword overlay adds time-bounded terms relevant to the current administration. Baselines use only the core keyword set to avoid anachronistic false positives.
+Each category has curated keyword dictionaries organized by severity tier (capture, drift, warning — displayed as strong and moderate keyword signals). When documents contain these keywords, the matches are displayed alongside the assessment to provide interpretive context. An administration-specific keyword overlay adds time-bounded terms relevant to the current administration. Baselines use only the core keyword set to avoid anachronistic false positives.
 
 ## Source Health Monitoring
 
@@ -162,7 +162,7 @@ Source health maps to four integrity levels:
 | Level        | Meaning                                       |
 | ------------ | --------------------------------------------- |
 | **High**     | All or nearly all sources responding normally |
-| **Moderate** | Some degradation or canary source concerns    |
+| **Moderate** | Some degradation or canary-source issues      |
 | **Low**      | Significant source unavailability             |
 | **Critical** | Majority of sources unavailable               |
 
@@ -172,12 +172,12 @@ A source is marked silent after two consecutive scheduled checks return zero doc
 
 ## AI Narrative Generation
 
-For categories at Elevated status or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
+For categories at Notable departure (`Elevated`) or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
 
 - **Expert** — Technical analysis (400-800 words) for researchers and policy analysts, citing specific documents with links, counter-arguments, and limitations.
 - **Public** — Accessible summary (200-500 words) for general audiences, avoiding jargon and focusing on what the findings mean in practical terms.
 
-Categories at Stable status use a template-based summary rather than AI generation, since there is nothing unusual to explain.
+Categories consistent with baseline use a template-based summary rather than AI generation, since there is nothing unusual to explain.
 
 ## Limitations
 
@@ -190,7 +190,7 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 - **Thematic drift requires volume** — Categories with few documents per week produce noisy drift signals. The system reduces confidence during low-volume periods, but sparse categories may generate unreliable thematic drift results.
 - **Source availability dependence** — The system depends on government websites remaining accessible and APIs remaining stable. Deliberate restriction of government data sources would degrade the system's ability to detect other changes.
 - **Aggregator completeness (Oversight.gov)** — IG reports from OPM, Treasury, TIGTA, State, EAC, FEC, and the IC IG are ingested via Oversight.gov, the CIGIE aggregator, because several of those OIGs block automated access to their own sites. Aggregator coverage depends on each OIG's self-submission to CIGIE and varies by OIG: spot-checks found 100% parity for TIGTA (FY2025) and OPM OIG (FY2024), but DHS OIG ground truth measured only 75–80%, so per-OIG volumes from this source should be read as floors. DoD OIG is not reachable through the aggregator's OIG filter and is not yet covered.
-- **Recurring oversight genres always raise concerns — to different degrees at different times** — Inspectors General publish recurring statutory documents (semiannual reports to Congress, annual "management challenges" assessments, program plans) whose purpose is to enumerate institutional problems. Such documents can be flagged as concerning in any era; the AI assessment is asked to read the severity of the described conditions, not the document's genre. The measured cross-era differential on identical genres — roughly 1.5–2% of IG documents confirmed concerning in 2017–2024 versus ~10% in the current term — indicates content rather than format drives classification. Even so, weeks whose status rests on these recurring documents deserve a read of the underlying reports before drawing conclusions.
+- **Recurring oversight genres always describe problems — to different degrees at different times** — Inspectors General publish recurring statutory documents (semiannual reports to Congress, annual "management challenges" assessments, program plans) whose purpose is to enumerate institutional problems. Such documents can be flagged in any era; the AI assessment is asked to read the severity of the described conditions, not the document's genre. The measured cross-era differential on identical genres — roughly 1.5–2% of IG documents confirmed as departures in 2017–2024 versus ~10% in the current term — indicates content rather than format drives classification. Even so, weeks whose status rests on these recurring documents deserve a read of the underlying reports before drawing conclusions.
 - **Baseline assumptions** — Baselines reflect specific historical periods. Structural changes in government publishing practices (new document formats, API changes, publication frequency shifts) could invalidate baseline comparisons over time.
 - **Embedding coverage gaps** — Thematic drift analysis depends on document embeddings. Not all documents may have embeddings available, particularly older documents or those from newer source types.
 - **Automation bias** — Presenting automated assessments alongside official government documents risks creating an impression of certainty that the methodology does not support. All findings are indicators warranting human review, not conclusions.
@@ -202,8 +202,8 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 All scoring thresholds, dimension weights, and configuration constants are defined in a single file: [`lib/methodology/scoring-config.ts`](lib/methodology/scoring-config.ts). Key values include:
 
 - Structural anomaly threshold: composite z-score > 2.5 (descriptive only)
-- P2 Elevated: ≥1 clearly concerning OR ≥2 potentially concerning
-- P2 Confirmed Concern: ≥2 clearly concerning, OR ≥3 concerning with ≥20% rate
+- P2 Notable departure (`Elevated`): ≥1 clear-departure OR ≥2 possible-departure documents
+- P2 Sustained departure (`ConfirmedConcern`): ≥2 clear-departure, OR ≥3 departure documents with ≥20% rate
 - Thematic drift window: 8 weeks rolling (descriptive only)
 - Long-horizon cumulative tracking: 12 weeks
 - Structural dampening: exponential decay for mild z-scores, JSD outlier cap
