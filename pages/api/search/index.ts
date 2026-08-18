@@ -114,7 +114,7 @@ export type { RetrievalStratum } from '@/lib/services/search-response-types';
 function parseResearchFlags(
   req: NextApiRequest,
   res: NextApiResponse,
-): { editorial: boolean; docsOnly: boolean; debug: boolean } | null {
+): { editorial: boolean; docsOnly: boolean; debug: boolean; refresh: boolean } | null {
   const editorial = parseBooleanParam(req.query.editorial);
   const docsOnly = parseBooleanParam(req.query.docsOnly);
   const debug = parseBooleanParam(req.query.debug);
@@ -128,7 +128,7 @@ function parseResearchFlags(
   }
   req.query.refresh = refresh ? 'true' : 'false';
   req.query.debug = debug ? '1' : '0';
-  return { editorial, docsOnly, debug };
+  return { editorial, docsOnly, debug, refresh };
 }
 
 async function handleResearch(
@@ -138,7 +138,7 @@ async function handleResearch(
 ): Promise<void> {
   const flags = parseResearchFlags(req, res);
   if (!flags) return;
-  const { editorial, docsOnly, debug } = flags;
+  const { editorial, docsOnly, debug, refresh } = flags;
   const queryHash = hashQuery(query);
 
   const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
@@ -173,6 +173,7 @@ async function handleResearch(
       editorial,
       docsOnly,
       debug,
+      refresh,
       docsHash,
       docsCacheKey,
     });
@@ -195,11 +196,12 @@ async function runResearchBuild(
     editorial: boolean;
     docsOnly: boolean;
     debug: boolean;
+    refresh: boolean;
     docsHash: string;
     docsCacheKey: string;
   },
 ): Promise<void> {
-  const { queryHash, editorial, docsOnly, debug, docsHash, docsCacheKey } = ctx;
+  const { queryHash, editorial, docsOnly, debug, refresh, docsHash, docsCacheKey } = ctx;
   const embedResult = await timedEmbedOrFail(res, query, queryHash);
   if (!embedResult) return;
   const { embedding, embedMs } = embedResult;
@@ -239,6 +241,7 @@ async function runResearchBuild(
 
   await synthesizeAndRespond(res, query, queryHash, allDocs, {
     editorial,
+    refresh,
     alsoSearched: retrieval.alsoSearched,
     avgSimilarity,
     corpusStats,
@@ -253,12 +256,18 @@ async function synthesizeAndRespond(
   allDocs: ResearchDocument[],
   opts: {
     editorial: boolean;
+    /** refresh=true regenerates the synthesis (#732) — same contract as the
+     *  docs cache; before this, cached answers could not be invalidated
+     *  externally (prod Redis is internal-only). Still writes the cache. */
+    refresh: boolean;
     alsoSearched: ValidatedAlias[];
     avgSimilarity: number;
     corpusStats: CorpusStats | null;
   },
 ): Promise<void> {
-  const cached = await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
+  const cached = opts.refresh
+    ? null
+    : await cacheGet<CachedResearchResult>(CacheKeys.searchResearch(queryHash));
   if (cached) {
     res
       .status(200)
