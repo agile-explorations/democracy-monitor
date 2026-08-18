@@ -29,14 +29,14 @@ export const CONCERN_LEVEL_COLORS = {
   light: {
     Stable: '#94a3b8',
     Elevated: '#6366f1',
-    Divergent: '#f59e0b',
-    ConfirmedConcern: '#ef4444',
+    Divergent: '#8b5cf6',
+    ConfirmedConcern: '#3730a3',
   },
   dark: {
     Stable: '#64748b',
     Elevated: '#818cf8',
-    Divergent: '#fbbf24',
-    ConfirmedConcern: '#f87171',
+    Divergent: '#c4b5fd',
+    ConfirmedConcern: '#a78bfa',
   },
 } as const;
 

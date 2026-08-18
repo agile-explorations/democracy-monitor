@@ -28,8 +28,8 @@ const ARCHIVE_COLLAPSED_COUNT = 12;
 const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 const STATUS_COLORS: Record<string, string> = {
-  Elevated: 'text-yellow-600 dark:text-yellow-400',
-  ConfirmedConcern: 'text-red-600 dark:text-red-400',
+  Elevated: 'text-convergence-elevated',
+  ConfirmedConcern: 'text-convergence-confirmed',
 };
 
 interface PageProps {

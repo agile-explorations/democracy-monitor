@@ -68,8 +68,8 @@ export function summarizeAssessment(categories: ExploreDocResult[]): AssessmentS
 }
 
 function verdictColor(verdict: string): string {
-  if (verdict === 'clearly_concerning') return 'text-red-500';
-  if (verdict === 'potentially_concerning') return 'text-amber-500';
+  if (verdict === 'clearly_concerning') return 'text-status-capture';
+  if (verdict === 'potentially_concerning') return 'text-status-drift';
   return 'text-dm-muted';
 }
 
@@ -104,7 +104,7 @@ export function CardAssessment({ categories }: { categories: ExploreDocResult[] 
         {s.topScore != null && s.topScore > 0 && s.topCategory && (
           <span
             className="text-dm-text-secondary cursor-help"
-            title="The document's highest weekly-assessment score across its categories — higher means more or stronger concern signals"
+            title="The document's highest weekly-assessment score across its categories — higher means more or stronger departure signals"
           >
             Top score: {s.topScore.toFixed(1)} ({categoryLabel(s.topCategory)})
           </span>
@@ -144,7 +144,7 @@ export function CategoryRow({ doc }: { doc: ExploreDocResult }) {
       {doc.finalScore != null && (
         <span
           className="text-dm-text-secondary cursor-help"
-          title="Weekly assessment score for this document IN THIS CATEGORY — 0.0 means none of this category's scoring signals matched; higher means more or stronger concern signals"
+          title="Weekly assessment score for this document IN THIS CATEGORY — 0.0 means none of this category's scoring signals matched; higher means more or stronger departure signals"
         >
           Score: {doc.finalScore.toFixed(1)}
         </span>
@@ -159,18 +159,18 @@ export function CategoryRow({ doc }: { doc: ExploreDocResult }) {
       )}
       {(doc.captureCount ?? 0) > 0 && (
         <span
-          className="text-red-500 cursor-help"
-          title="Capture-tier keyword annotations matched in this document — the most severe annotation tier"
+          className="text-status-capture cursor-help"
+          title="Strong-tier keyword annotations matched in this document (internal name: capture tier)"
         >
-          {doc.captureCount} capture signal{doc.captureCount === 1 ? '' : 's'}
+          {doc.captureCount} strong keyword signal{doc.captureCount === 1 ? '' : 's'}
         </span>
       )}
       {(doc.driftCount ?? 0) > 0 && (
         <span
-          className="text-amber-500 cursor-help"
-          title="Drift-tier keyword annotations matched in this document — a moderate annotation tier"
+          className="text-status-drift cursor-help"
+          title="Moderate-tier keyword annotations matched in this document (internal name: drift tier)"
         >
-          {doc.driftCount} drift signal{doc.driftCount === 1 ? '' : 's'}
+          {doc.driftCount} moderate keyword signal{doc.driftCount === 1 ? '' : 's'}
         </span>
       )}
       {doc.aiAssessment && (
