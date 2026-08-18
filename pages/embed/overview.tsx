@@ -1,5 +1,5 @@
 /**
- * Embeddable overview chart — renders just the Cumulative Concern Score
+ * Embeddable overview chart — renders just the Cumulative Departure Score
  * and Status Distribution bar without site chrome.
  *
  * Query params:
@@ -94,7 +94,7 @@ export default function EmbedOverview() {
   return (
     <>
       <Head>
-        <title>Democracy Monitor — Cumulative Concern Score</title>
+        <title>Democracy Monitor — Cumulative Departure Score</title>
         <meta name="robots" content="noindex" />
       </Head>
 

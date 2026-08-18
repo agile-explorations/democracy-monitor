@@ -47,7 +47,7 @@ export function SummaryTooltip({
   return (
     <div className="rounded-md border border-dm-border bg-dm-card px-3 py-2 shadow-md text-xs">
       <p className="font-medium text-dm-text-primary">{formatWeekLabel(d.week)}</p>
-      <p className="text-dm-text-secondary mt-1">Concern score: {d.weightedScore}</p>
+      <p className="text-dm-text-secondary mt-1">Departure score: {d.weightedScore}</p>
       <p className="text-dm-text-secondary">Trend: {d.trend.toFixed(1)}</p>
       <ComparisonRows d={d} showComparison={showComparison} comparisonColors={comparisonColors} />
     </div>
@@ -77,7 +77,7 @@ export function DetailedTooltip({
           </p>
         )}
         {d.elevatedWeighted > 0 && (
-          <p style={{ color: statusColors.Elevated }}>Elevated: {d.elevatedWeighted}</p>
+          <p style={{ color: statusColors.Elevated }}>Notable departure: {d.elevatedWeighted}</p>
         )}
       </div>
       <p className="text-dm-text-secondary mt-1">Total: {d.weightedScore}</p>
@@ -120,15 +120,15 @@ export function ChartLegend({
       {readingLevel === 'summary' ? (
         <span className="flex items-center gap-1">
           <Swatch color={statusColors.Elevated} opacity={0.5} />
-          Concern Score
+          Departure Score
         </span>
       ) : (
         <>
           <span className="flex items-center gap-1">
-            <Swatch color={statusColors.Elevated} /> Elevated
+            <Swatch color={statusColors.Elevated} /> Notable departure (1 pt)
           </span>
           <span className="flex items-center gap-1">
-            <Swatch color={statusColors.ConfirmedConcern} /> Confirmed
+            <Swatch color={statusColors.ConfirmedConcern} /> Sustained departure (2 pts)
           </span>
         </>
       )}

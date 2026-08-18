@@ -226,7 +226,7 @@ export async function getSignificantWeeks(): Promise<SignificantWeek[]> {
   const rows = await db.select().from(significantWeeks).orderBy(asc(significantWeeks.rank));
   if (rows.length === 0) return [];
 
-  // Attach each week's cumulative Concern Score — the same 1×Elevated +
+  // Attach each week's cumulative Departure Score — the same 1×Elevated +
   // 2×Confirmed sum the overview chart plots — so "significance" is anchored
   // to a number users can see on the chart. Computed at read time from
   // weekly_aggregates (always current; no schema change).

@@ -19,7 +19,7 @@ function buildEmbedUrl(props: EmbedButtonProps): string {
 
 function buildIframeCode(props: EmbedButtonProps): string {
   const url = `https://democracymonitor.org${buildEmbedUrl(props)}`;
-  return `<iframe src="${url}" width="100%" height="500" frameborder="0" title="Democracy Monitor — Cumulative Concern Score"></iframe>`;
+  return `<iframe src="${url}" width="100%" height="500" frameborder="0" title="Democracy Monitor — Cumulative Departure Score"></iframe>`;
 }
 
 export function EmbedButton({ theme, range, comparison, readingLevel }: EmbedButtonProps) {
@@ -81,7 +81,7 @@ export function EmbedButton({ theme, range, comparison, readingLevel }: EmbedBut
           >
             <h3 className="text-sm font-semibold text-dm-text-primary mb-2">Embed This Chart</h3>
             <p className="text-xs text-dm-muted mb-3">
-              Copy the code below to embed the Cumulative Concern Score chart on your website. The
+              Copy the code below to embed the Cumulative Departure Score chart on your website. The
               embed uses your current settings (theme, time range, comparison lines).
             </p>
             <div className="relative">
