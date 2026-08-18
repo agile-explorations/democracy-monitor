@@ -25,7 +25,7 @@ import type { ResearchDocument } from '@/lib/services/search-service';
 import { searchExplore } from '@/lib/services/search-service';
 import { recordSearchTiming } from '@/lib/services/search-timing-log';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
-import { formatError, requireDb, requireMethod } from '@/lib/utils/api-helpers';
+import { formatError, parseBooleanParam, requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const RESEARCH_CACHE_TTL = 86400; // 24 hours
@@ -106,16 +106,39 @@ async function adaptiveCorpusStats(
 
 export type { RetrievalStratum } from '@/lib/services/search-response-types';
 
+/** Parse + validate the research boolean flags (#732): unrecognized values
+ *  400 instead of silently taking the wrong code path (docsOnly=1 used to
+ *  fall through to the full synthesis pipeline). Canonicalizes the spellings
+ *  downstream helpers compare against. debug (#718) is the always-fresh
+ *  diagnostic run — it bypasses the docs cache in both directions. */
+function parseResearchFlags(
+  req: NextApiRequest,
+  res: NextApiResponse,
+): { editorial: boolean; docsOnly: boolean; debug: boolean } | null {
+  const editorial = parseBooleanParam(req.query.editorial);
+  const docsOnly = parseBooleanParam(req.query.docsOnly);
+  const debug = parseBooleanParam(req.query.debug);
+  const refresh = parseBooleanParam(req.query.refresh);
+  if (editorial === null || docsOnly === null || debug === null || refresh === null) {
+    res.status(400).json({
+      error:
+        'Boolean parameters (docsOnly, debug, refresh, editorial) accept true/false/1/0/yes/no',
+    });
+    return null;
+  }
+  req.query.refresh = refresh ? 'true' : 'false';
+  req.query.debug = debug ? '1' : '0';
+  return { editorial, docsOnly, debug };
+}
+
 async function handleResearch(
   req: NextApiRequest,
   res: NextApiResponse,
   query: string,
 ): Promise<void> {
-  const editorial = req.query.editorial === 'true';
-  const docsOnly = req.query.docsOnly === 'true';
-  // Debug trace (#718): always-fresh diagnostic run — bypasses the docs
-  // cache in both directions so the trace reflects live behavior.
-  const debug = req.query.debug === '1';
+  const flags = parseResearchFlags(req, res);
+  if (!flags) return;
+  const { editorial, docsOnly, debug } = flags;
   const queryHash = hashQuery(query);
 
   const { docsHash, docsCacheKey } = docsCacheRefs(query, req);
