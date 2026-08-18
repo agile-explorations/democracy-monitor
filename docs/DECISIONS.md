@@ -12,6 +12,32 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-WITNESS: witness-stance editorial program + follow-ons (v1.9.51–v1.9.56) — ✅ deployed + prod-smoked 2026-08-18
+
+**Origin**: owner: "The site feels decidedly partisan. I wish it were more solidly bearing witness to a shift away from Classic American Democracy … without judgement about that shift." The program reframed every reader-facing surface from danger vocabulary to **departure-from-documented-baseline** vocabulary — precision without valence, never euphemism — while leaving every stored enum, prompt baseline, and historical record untouched. Follow-ons the same night: owner screenshots flagged the overview chart's stale vocabulary and the heatmap's indistinguishable colors; owner asked for the same assessment info on Research cards and for the markdown docs to join the vocabulary; a smoke-test mishap surfaced a real API trap.
+
+**Built (six releases)**:
+
+- v1.9.51 — tier 1: owner-approved-verbatim epistemic charter at /why-this-matters#charter, echoed on About + methodology.
+- v1.9.52 — tiers 2+3: central display-label mapping (`assessment-labels.ts`, `concern-level-explanations.ts`: Stable→"Consistent with baseline", Elevated→"Notable departure", ConfirmedConcern→"Sustained departure"; verdicts→"clear/possible departure") repointed across every status surface; narrative witness-tone rules (banned-valence list, "unprecedented" needs a supplied count) + deterministic validator check T-NAR-0.
+- v1.9.53 — tier 4: magnitude palette — convergence tokens move from red/amber to a single-hue indigo ramp; tier 5: /api/intent/assess responses carry a `framing` field (governance labels are a pattern comparison against Levitsky & Way / V-Dem categories, not a judgment); "Authoritarian Infrastructure" → "Durable-Power Infrastructure" (roadmap page, anchor id preserved). Search-mode sweep: Explore tooltips/badges de-valenced ("strong/moderate keyword signal" with internal tier names in tooltips); research synthesis draft rule 13 WITNESS TONE.
+- v1.9.54 — the last old-vocabulary surface: "Cumulative Concern Score" → "Cumulative Departure Score" (title, embed, tooltips, legend enum leaks "Elevated/Confirmed" → display labels with point values). Dark-mode ramp rebuilt to separate by **lightness** (slate → indigo-500 → violet-300); legacy Divergent moved to violet-500; Elevated _text_ token stays indigo-400 for contrast (indigo-500 is 3.8:1 on the card bg).
+- v1.9.55 — Research doc cards show the AI verdict + confidence + mechanism of change (server already computed all three; payload gained only `p2Confidence`). Markdown witness pass: README + ASSESSMENT_METHODOLOGY lead with display labels, internal enums documented in backticks; "Concern Synthesis" → "Status Synthesis"; FUTURE_ROADMAP's "authoritarian threat" sentence reframed around durability; historical records (DECISIONS, PROJECT_KNOWLEDGE, archives) deliberately untouched.
+- v1.9.56 — `parseBooleanParam` on /api/search: `docsOnly=1` had silently run the full synthesis pipeline (route compared `=== 'true'`); now true/false/1/0/yes/no parse leniently, anything else 400s, spellings canonicalized for downstream helpers.
+
+**Key decisions (owner)**: the witness reframe itself and charter text (approved verbatim); tier sequencing (1 → 2+3 → 4+5); heatmap colors "not clear enough" (drove the lightness ramp); markdown scope (public docs yes, historical records no); Research-card parity; ship the docsOnly hardening. **(Claude)**: display-layer-only mapping (stored enums are 100+ weeks of data and eval baselines); single-hue magnitude ramps separate by lightness, not hue; text tokens may diverge from cell hexes where contrast demands; internal names stay _documented_ (backticks/tooltips) rather than hidden — the mapping is disclosed, not disguised.
+
+**Lessons learned**:
+
+1. A vocabulary program is a **sweep, not a feature**: the old words hid in chart titles, legend enum leaks, tooltip strings, embed snippets, API framing, markdown rendered on GitHub, and prompt rules. Grep for the old vocabulary is the completeness check; every follow-on the owner caught was a surface the initial pass had missed.
+2. Single-hue magnitude ramps must step by lightness — indigo-400 vs violet-400 (hue-only) read as one color on the heatmap; the shipped-then-corrected palette cost one extra release.
+3. Smoke with **exactly the parameters the UI sends**: `docsOnly=1` vs `'true'` produced an hour-long false alarm (full-pipeline hangs mimicking a prod regression through timings log, provider probes, and semaphore inspection) — and then became a real fix: booleans on public APIs parse leniently or 400, never silently pick a path.
+4. Check the server before building UI parity: the Research-card request needed one payload field, one client type, one render block — the expensive part already existed for synthesis prompts.
+
+**Spec deviations**: none — display, docs, and one API validation; detection pipeline, stored data, and thresholds byte-identical throughout. Stored narratives and cached syntheses adopt the tone rules as caches roll (Monday).
+
+---
+
 ## Decision: Explore-mode lens model for future analyses (owner, 2026-08-16)
 
 **Context**: Explore mode's "Category" filter and "Score" sort are not corpus properties — they are outputs of the erosion-monitoring analysis (the 14-category taxonomy and the weighted assessment score), welded onto the corpus explorer because that analysis was the only one. The owner asked whether each future analysis (Authoritarian Infrastructure Monitoring, Rhetoric vs. Action, Following the Money, …) should add its own filter/sort options to Explore.
@@ -136,25 +162,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 - Retiring a validation's subject flips the check's polarity: "all marked metadata_only" became "none present" — a retired population's check should become its regrowth detector, not be deleted.
 
 **Spec deviations**: none (no spec section; architecture recorded in FUTURE_ROADMAP + c5fcb7d design commit). Detection untouched — tracked_cases is display/research surface only.
-
-## Sprint R-DOCKET-CONTEXT: opinion docket timelines + posture lines + glossary (#686–#692, milestone 111) — ✅ built 2026-08-09, ships v1.7.0
-
-**Origin**: owner discussion of the 283k metadata-only CL docket stubs' value. Pre-roadmap investigation found stored stubs CANNOT power timelines (median 1 query-matched entry/case, caption-only titles) — but every opinion's `case_id = cl:<docketId>` is a live gateway to CourtListener's v4 docket-entries API, whose entry descriptions are rich procedural text (live-probed before planning). Also settled en route: the stubs' real forward value is as the case-universe index for the future posture tracker, not as content; and the homepage corpus figure was a leftover (stubs counted in the hero number after R-POPULATION removed them from all analytics) — owner decided the hero cites only searchable full-text.
-
-**Built (zero AI spend — fully deterministic)**:
-
-- `lib/services/docket-timeline.ts` — pure keyword classifier (10 event types, ordered precedence) + posture derivation + one-page CL fetch. `pages/api/case/timeline` — validated (`^cl:\d{1,10}$`), rate-limited (30/min), Redis-cached 24h with **asOf captured at CL-fetch time** so the staleness stamp reports data age across cache hits; CL failure → 502, never cached.
-- `useCaseTimeline` (module cache + in-flight dedupe + concurrency-3 queue) + `CaseContext` (EditorialPanel-pattern disclosure). Rendered on all three opinion surfaces; research citations auto-load the posture line (owner decision — visibility is the point; ~5–10 opinion cites/answer vs CL's 5k/hr budget).
-- caseId plumbed through both search query paths, research formatDocList whitelist (optional field — 24h-cached payloads predate it), and the week-detail explanation query (+sourceType).
-- **Glossary tooltips** (owner request mid-review): `lib/data/docket-glossary.ts` — 10 event-type tips + ~30 legal terms of art ("per curiam", R&R, habeas, en banc…), longest-phrase-first matching, composed into native title tooltips per the ASSESSMENT_TIPS precedent. Touch-device limitation matches every existing tooltip in the app.
-- case_id join documented for dump consumers (dictionary entry + table-level note); hero count now full-text-only.
-
-**Key decisions (owner)**: auto-load posture on research; all three surfaces at once; hero shows ~270k searchable full-text only (the ~470k records figure was an unrevisited leftover — recorded as such); glossary added.
-
-**Lessons learned**:
-
-- **A test can bless a bug.** The classifier initially marked "Order on Motion for Summary Judgment" as terminal `judgment` — and the fixture I wrote asserted exactly that. Caught only on re-reading the fixtures as legal facts rather than expected outputs. Fixture review is domain review.
-- **The no-negative-mock-assertions OpenGrep rule earned its keep**: restructuring "cacheSet not called" into "a later request retries successfully" produced a strictly better test (real cache map, observable behavior).
-- **Probe before roadmap**: the docket-stub investigation (1-entry medians, caption titles) killed the naive display-join design before anything was planned around it; the CL API probe then settled classifier feasibility with real descriptions. Both took minutes and reshaped the feature.
-
-**Spec deviations**: none; UI-only + one cached proxy endpoint. Detection untouched (post-opinion activity surfaces as displayed context only — any status-driving use remains an explicit future methodology decision).

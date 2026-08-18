@@ -146,6 +146,7 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 ### Sprint log
 
+- R-WITNESS (v1.9.51–v1.9.56, 2026-08-17/18): witness-stance editorial program — owner-verbatim epistemic charter (/why-this-matters#charter), departure vocabulary sitewide via central label mapping (stored enums untouched), narrative tone rules + T-NAR-0 validator, single-hue lightness-stepped magnitude palette, intent-API framing field, Durable-Power rename, Research-card AI verdict display, README/methodology markdown pass, /api/search lenient boolean parsing (docsOnly=1 trap). Full retro in DECISIONS.md.
 - R-DEEP-MATCH (milestone 115, v1.9.21–v1.9.24): bare-citation alias extraction (287g/287(g) both spellings + bare tokens), matched-passage denial guard, verifier normalization from real document typesetting (hyphenation/punctuation/nested quotes; badge false alarms 21→4), pg_stat_statements enabled, ES decision gate recorded NOT-met on #713; 12/12 outreach suite re-validated
 
 | Sprint        | Dates   | Milestone                                                                                      | Summary                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
