@@ -80,3 +80,93 @@ export function dedupeByUrl<T extends { id: number; url?: string | null }>(docs:
     return true;
   });
 }
+
+/** Fields the same-instrument dedupe (#734) reads. */
+export interface InstrumentIdentity {
+  id: number;
+  title: string;
+  publishedAt: string | null;
+  sourceOrigin: string | null;
+}
+
+/**
+ * Instrument-title normalization (#734): the Federal Register titles a
+ * presidential document by its subject ("Improving Oversight of Federal
+ * Grantmaking") while the CPD copy prefixes the instrument ("Executive Order
+ * 14332—Improving Oversight of Federal Grantmaking", "Memorandum on …").
+ * Stripping the prefix makes the two spellings collide. Exported for tests.
+ */
+export function normalizeInstrumentTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(
+      /^(executive order|proclamation|presidential determination|notice)\s*\d*\s*[—–-]+\s*/,
+      '',
+    )
+    .replace(/^memorandum on\s+/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/** The publication lag between a presidential document's signing date (CPD)
+ *  and its Federal Register publication — observed 5-6 days; 7 bounds it
+ *  without reaching the recurring-boilerplate titles that repeat across
+ *  different appropriations acts a week or more apart. */
+const INSTRUMENT_MIRROR_WINDOW_DAYS = 7;
+
+const isMirrorPair = (a: string | null, b: string | null): boolean =>
+  (a === 'federal_register' && b === 'govinfo_cpd') ||
+  (a === 'govinfo_cpd' && b === 'federal_register');
+
+const dayOf = (publishedAt: string | null): number | null => {
+  if (!publishedAt) return null;
+  const t = Date.parse(publishedAt);
+  return Number.isNaN(t) ? null : Math.floor(t / 86_400_000);
+};
+
+/**
+ * Same-instrument dedupe (#734): one physical instrument stored by two
+ * sources must not burn two of the final slots (and must not surface two
+ * independent — sometimes contradictory — P2 verdicts). Rules, deliberately
+ * conservative:
+ *  - same normalized title + same day → duplicates regardless of origin
+ *    (covers CourtListener revision-cluster pairs);
+ *  - same normalized title within INSTRUMENT_MIRROR_WINDOW_DAYS, only for
+ *    the federal_register ↔ govinfo_cpd mirror pair (signing vs publication
+ *    lag).
+ * Keeps the higher-fused-rank row, except the Federal Register copy always
+ * beats the CPD copy (full text vs the CPD rendition). Docs without a
+ * parseable date only participate in the same-title-same-day rule when both
+ * dates are null.
+ */
+export function dedupeByInstrument<T extends InstrumentIdentity>(docs: T[]): T[] {
+  const byTitle = new Map<string, Array<{ doc: T; day: number | null; slot: number }>>();
+  const kept: T[] = [];
+  for (const doc of docs) {
+    const norm = normalizeInstrumentTitle(doc.title);
+    const day = dayOf(doc.publishedAt);
+    const entries = byTitle.get(norm) ?? [];
+    const match = entries.find((e) => {
+      if (e.day === null || day === null) return e.day === day;
+      if (e.day === day) return true;
+      return (
+        Math.abs(e.day - day) <= INSTRUMENT_MIRROR_WINDOW_DAYS &&
+        isMirrorPair(e.doc.sourceOrigin, doc.sourceOrigin)
+      );
+    });
+    if (!match) {
+      entries.push({ doc, day, slot: kept.length });
+      byTitle.set(norm, entries);
+      kept.push(doc);
+      continue;
+    }
+    // Duplicate: the FR copy wins in place; otherwise the earlier (higher
+    // fused rank) row stays.
+    if (doc.sourceOrigin === 'federal_register' && match.doc.sourceOrigin === 'govinfo_cpd') {
+      kept[match.slot] = doc;
+      match.doc = doc;
+      match.day = day;
+    }
+  }
+  return kept;
+}

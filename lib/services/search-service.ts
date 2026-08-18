@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { embedQueryCached } from './embedding-service';
 import { hybridVectorExplore } from './hybrid-explore';
 import { expandAndValidate } from './query-expansion-service';
@@ -256,7 +257,16 @@ function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
   return {
     id: Number(row.id),
     title: row.title as string,
-    content: row.content as string | null,
+    // Read-time boilerplate strip (#736): storage keeps full originals
+    // (R-CONTENT), but CSS-contaminated CPD vintages must not spend the
+    // synthesis excerpt budget on style rules.
+    content: row.content
+      ? stripBoilerplate(
+          row.content as string,
+          (row.source_origin as string | null) ?? null,
+          row.title as string,
+        )
+      : null,
     url: row.url as string | null,
     publishedAt: row.published_at ? String(row.published_at) : null,
     sourceType: row.source_type as string,

@@ -21,6 +21,15 @@ import { buildPublishedAtWindow } from '@/lib/utils/date-window';
  * ran independent retrievals whose agreement was accidental. Returns raw rows
  * in the research-query column shape; the caller maps them.
  */
+/**
+ * Per-doc content chars fetched for synthesis (#736): must cover the largest
+ * prompt excerpt budget (ACTION_EXCERPT_CHARS in research-prompts.ts, guard
+ * test enforces the coupling) plus headroom for read-time boilerplate
+ * stripping. Full texts run to ~1MB and shipping them measured 8-10s of the
+ * retrieval latency — this cap is the wire-cost ceiling, not a storage cap.
+ */
+export const RESEARCH_CONTENT_FETCH_CHARS = 5000;
+
 export async function fetchResearchDocRowsByIds(
   ids: number[],
   vectorStr?: string,
@@ -30,7 +39,7 @@ export async function fetchResearchDocRowsByIds(
   const cosineExpr = vectorStr ? sql`1 - (d.embedding <=> ${vectorStr}::vector)` : sql`0`;
   try {
     const results = await db.execute(sql`
-      SELECT d.id, d.title, LEFT(d.content, 3000) as content, d.url, d.published_at, d.source_type,
+      SELECT d.id, d.title, LEFT(d.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d.url, d.published_at, d.source_type,
         d.source_origin, d.case_id, d.category,
         ${cosineExpr} as cosine_similarity, ds.final_score, ds.document_class,
         ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
@@ -110,11 +119,11 @@ export function buildResearchQuery(vectorStr: string, query: string, opts: Resea
   const candidateLimit = topK * 5;
 
   // Candidate stages carry only ids + ranking inputs; content is joined back
-  // for the final topK rows only, capped at 3000 chars (the prompt uses at
-  // most ACTION_EXCERPT_CHARS=2200). Shipping full opinion texts (up to ~1MB
-  // each) over the wire measured ~8-10s of the retrieval latency.
+  // for the final topK rows only, capped at RESEARCH_CONTENT_FETCH_CHARS
+  // (covers ACTION_EXCERPT_CHARS + strip headroom). Shipping full opinion
+  // texts (up to ~1MB each) over the wire measured ~8-10s of the latency.
   return sql`
-    SELECT r.id, d2.title, LEFT(d2.content, 3000) as content, d2.url, d2.published_at, d2.source_type,
+    SELECT r.id, d2.title, LEFT(d2.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d2.url, d2.published_at, d2.source_type,
       d2.source_origin, d2.case_id, d2.category, r.cosine_similarity, r.final_score, r.document_class,
       ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary

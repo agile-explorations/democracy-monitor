@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ACTION_EXCERPT_CHARS,
   buildDraftPrompt,
   buildFeedbackPrompt,
   buildRevisionPrompt,
@@ -7,6 +8,7 @@ import {
   formatCorpusStats,
   buildSinglePassPrompt,
 } from '@/lib/services/research-prompts';
+import { RESEARCH_CONTENT_FETCH_CHARS } from '@/lib/services/research-retrieval';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import type { ResearchDocument } from '@/lib/services/search-service';
 
@@ -232,7 +234,7 @@ describe('buildRevisionPrompt', () => {
 
 describe('buildSinglePassPrompt (#552 tier contract)', () => {
   it('tags docs with their tier and applies per-tier excerpt budgets', () => {
-    const longText = 'Z'.repeat(3000);
+    const longText = 'Z'.repeat(ACTION_EXCERPT_CHARS + 500);
     const action = makeDoc({ id: 1, title: 'An Opinion', content: longText });
     const discussion = makeDoc({
       id: 2,
@@ -246,10 +248,10 @@ describe('buildSinglePassPrompt (#552 tier contract)', () => {
     expect(prompt).toContain('[Doc 1 | ACTION] An Opinion');
     expect(prompt).toContain('[Doc 2 | DISCUSSION] A Speech');
 
-    // Per-tier budgets: action excerpt is 2200 chars, discussion 1200
+    // Per-tier budgets: action excerpt cut at ACTION_EXCERPT_CHARS, discussion at 1200
     const actionExcerpt = prompt.split('[Doc 1 | ACTION]')[1].split('[Doc 2')[0];
     const discussionExcerpt = prompt.split('[Doc 2 | DISCUSSION]')[1];
-    expect((actionExcerpt.match(/Z/g) ?? []).length).toBe(2200);
+    expect((actionExcerpt.match(/Z/g) ?? []).length).toBe(ACTION_EXCERPT_CHARS);
     expect((discussionExcerpt.match(/Z/g) ?? []).length).toBe(1200);
   });
 
@@ -286,5 +288,20 @@ describe('retrieval note (#712)', () => {
     const prompt = buildSinglePassPrompt('q', docs, null);
     expect(prompt).toContain('Note: Retrieval uses vector similarity');
     expect(prompt).not.toContain('Retrieval was hybrid');
+  });
+});
+
+describe('source-coverage manifest (#737)', () => {
+  it('names ingested and non-ingested source classes in every prompt', () => {
+    const prompt = buildSinglePassPrompt('q', [makeDoc()], null);
+    expect(prompt).toContain('Source coverage:');
+    expect(prompt).toContain('NOT ingested: OMB/OPM memoranda');
+    expect(prompt).toContain('GAO reports');
+  });
+});
+
+describe('excerpt budget coupling (#736)', () => {
+  it('keeps the prompt excerpt budget within the SQL fetch cap', () => {
+    expect(ACTION_EXCERPT_CHARS).toBeLessThanOrEqual(RESEARCH_CONTENT_FETCH_CHARS);
   });
 });

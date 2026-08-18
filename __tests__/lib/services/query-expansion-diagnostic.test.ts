@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { validateAliasesDiagnostic } from '@/lib/services/query-expansion-service';
+import {
+  expandDiagnosticWithRetry,
+  validateAliasesDiagnostic,
+} from '@/lib/services/query-expansion-service';
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
   isDbAvailable: vi.fn(),
 }));
+const mocks = vi.hoisted(() => ({
+  provider: { isAvailable: vi.fn(() => false), complete: vi.fn() },
+}));
 vi.mock('@/lib/ai/provider', () => ({
-  getProvider: vi.fn(() => ({ isAvailable: () => false })),
+  getProvider: vi.fn(() => mocks.provider),
 }));
 vi.mock('@/lib/cache', () => ({
   cacheGet: vi.fn(async () => null),
@@ -74,5 +80,62 @@ describe('validateAliasesDiagnostic (#718)', () => {
     const d = await validateAliasesDiagnostic(['Schedule F'], {});
     expect(d.matchCap).toBe(200);
     expect(d.validated).toEqual([{ phrase: 'Schedule F', matches: 30 }]);
+  });
+});
+
+describe('expandDiagnosticWithRetry (#733)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockIsDbAvailable.mockReturnValue(true);
+    mocks.provider.isAvailable.mockReturnValue(true);
+  });
+
+  it('narrows over-cap rejects in a single retry round and merges the result', async () => {
+    // Round 1: one over-cap proposal. Round 2: its narrowed variant validates.
+    mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
+      .mockResolvedValueOnce({ content: '["OMB apportionment"]' });
+    // Counts consumed in order: windowTotal, round-1 count, windowTotal, round-2 count.
+    mockDbWithCounts(100000, [1001, 100000, 42]);
+    const d = await expandDiagnosticWithRetry('who controls agency spending?', {});
+    expect(mocks.provider.complete).toHaveBeenCalledTimes(2);
+    expect(d.proposed).toEqual(['Office of Management and Budget', 'OMB apportionment']);
+    expect(d.validated).toEqual([{ phrase: 'OMB apportionment', matches: 42 }]);
+    expect(d.rejected).toEqual(
+      expect.arrayContaining([
+        { phrase: 'Office of Management and Budget', reason: 'over-match-cap', matches: 1001 },
+      ]),
+    );
+  });
+
+  it('makes no narrowing call when nothing is over-cap', async () => {
+    mocks.provider.complete.mockResolvedValueOnce({ content: '["Schedule F"]' });
+    mockDbWithCounts(100000, [42]);
+    const d = await expandDiagnosticWithRetry('schedule f reinstatement', {});
+    expect(mocks.provider.complete).toHaveBeenCalledTimes(1);
+    expect(d.validated).toEqual([{ phrase: 'Schedule F', matches: 42 }]);
+  });
+
+  it('keeps the round-1 result when narrowing only re-proposes seen phrases', async () => {
+    mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
+      .mockResolvedValueOnce({ content: '["office of management and budget"]' });
+    mockDbWithCounts(100000, [1001]);
+    const d = await expandDiagnosticWithRetry('who controls agency spending?', {});
+    expect(d.validated).toEqual([]);
+    expect(d.rejected).toHaveLength(1);
+    expect(d.proposed).toEqual(['Office of Management and Budget']);
+  });
+
+  it('keeps the round-1 result when the narrowing proposal itself fails', async () => {
+    mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
+      .mockRejectedValueOnce(new Error('provider down'));
+    mockDbWithCounts(100000, [1001]);
+    const d = await expandDiagnosticWithRetry('who controls agency spending?', {});
+    expect(d.validated).toEqual([]);
+    expect(d.rejected).toEqual([
+      { phrase: 'Office of Management and Budget', reason: 'over-match-cap', matches: 1001 },
+    ]);
   });
 });

@@ -1,13 +1,15 @@
 /**
- * CLI: pnpm backfill:content [--source fr|govinfo|oig|fec|doj|crec] [--dry-run] [--limit N]
+ * CLI: pnpm backfill:content [--source fr|govinfo|oig|fec|doj|crec|cpd] [--dry-run] [--limit N]
  *
  * Backfills null-content documents with full text:
- * - FR (all types): fetches raw_text_url from FR API, then raw text
+ * - FR (all types): fetches raw_text_url from FR API, then raw text; also
+ *   repairs the pre-cap-removal vintage stored truncated at 8,000/8,001 chars
  * - GovInfo Congressional Reports: fetches /packages/{id}/htm from GovInfo API
  * - OIG (HHS/DOJ/SSA Inspector General): HHS detail page HTML, DOJ/SSA PDF extraction
  * - FEC (MURs/Advisory Opinions): re-fetches structured data + PDF text extraction
  * - DOJ Press Releases: re-fetches full body from DOJ API (replaces truncated teasers)
  * - CREC: re-fetches granule text for docs truncated to 800 chars
+ * - CPD: re-extracts CSS-contaminated day-one presidential documents (#736)
  *
  * Sets embedded_at = NULL on updated docs so `pnpm embeddings:backfill` re-embeds them.
  */
@@ -16,6 +18,7 @@ import { eq, isNull, and, or, sql, like, lt } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { stripHtml } from '@/lib/parsers/feed-parser';
+import { fetchCpdText } from '@/lib/services/cpd-fetcher';
 import { fetchGranuleText } from '@/lib/services/crec-fetcher';
 import { fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
@@ -39,7 +42,7 @@ const DHS_OIG_CRAWL_DELAY_MS = 5_000; // no robots.txt crawl-delay, match DOJ
 const FEC_RATE_LIMIT_MS = 4_000; // FEC allows ~1,000 req/hr
 const DOJ_SHORT_CONTENT_THRESHOLD = 1_000; // DOJ teasers are ~800 chars
 
-type Source = 'fr' | 'govinfo' | 'oig' | 'fec' | 'doj' | 'crec';
+type Source = 'fr' | 'govinfo' | 'oig' | 'fec' | 'doj' | 'crec' | 'cpd';
 const CREC_RATE_LIMIT_MS = 200; // GovInfo API rate limit
 
 interface BackfillOptions {
@@ -93,17 +96,29 @@ async function fetchRawText(rawTextUrl: string): Promise<string | null> {
 async function backfillFr(options: BackfillOptions): Promise<number> {
   const db = getDb();
 
-  // Find all FR documents with null or short content (< 1000 chars).
-  // Catches abstract-only docs (800-char FR abstracts) like the Schedule F final rule at 782 chars.
+  // Find all FR documents with null or short content (< 1000 chars) —
+  // catches abstract-only docs (800-char FR abstracts) like the Schedule F
+  // final rule at 782 chars — plus the pre-cap-removal vintage stored
+  // truncated at exactly 8,000/8,001 chars (#736; violates the R-CONTENT
+  // no-storage-caps rule). A full document of exactly that length is
+  // vanishingly rare and a refetch is harmless.
   const rows = await db
     .select({ id: documents.id, url: documents.url })
     .from(documents)
     .where(
       and(
         eq(documents.sourceOrigin, 'federal_register'),
-        or(isNull(documents.content), lt(sql`length(${documents.content})`, 1000)),
+        or(
+          isNull(documents.content),
+          lt(sql`length(${documents.content})`, 1000),
+          sql`length(${documents.content}) IN (8000, 8001)`,
+        ),
       ),
-    );
+    )
+    // Longest-first so --limit tranches repair the 8,000-char truncation
+    // vintage (guaranteed full-text on the FR side) before the null/short
+    // backlog, much of which has no fetchable full text (#736).
+    .orderBy(sql`length(${documents.content}) DESC NULLS LAST`);
 
   console.log(`[backfill-content] fr: ${rows.length} Federal Register documents need content`);
   if (options.dryRun) return 0;
@@ -182,6 +197,55 @@ async function backfillGovInfo(options: BackfillOptions): Promise<number> {
 
     console.log(
       `[backfill-content] govinfo: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length} processed (${updated} updated)`,
+    );
+  }
+
+  return updated;
+}
+
+/**
+ * CPD CSS-contamination repair (#736): the day-one CPD backfill (cb8ea5f)
+ * ran one day before <style>-stripping landed in stripHtml (c4f907e), so
+ * that vintage stores the DCPD package id + raw CSS as content. The
+ * predicate keys on the contamination shape (content starts with the
+ * package id), not length — contaminated docs are long, not short.
+ */
+async function backfillCpd(options: BackfillOptions): Promise<number> {
+  const db = getDb();
+
+  const rows = await db
+    .select({ id: documents.id, metadata: documents.metadata })
+    .from(documents)
+    .where(and(eq(documents.sourceOrigin, 'govinfo_cpd'), like(documents.content, 'DCPD%')));
+
+  console.log(`[backfill-content] cpd: ${rows.length} CSS-contaminated CPD docs`);
+  if (options.dryRun) return 0;
+
+  const toProcess = options.limit ? rows.slice(0, options.limit) : rows;
+  let updated = 0;
+
+  for (let i = 0; i < toProcess.length; i += BATCH_SIZE) {
+    const batch = toProcess.slice(i, i + BATCH_SIZE);
+
+    for (const row of batch) {
+      const meta = row.metadata as Record<string, unknown> | null;
+      const packageId = meta?.packageId as string | undefined;
+      if (!packageId) continue;
+
+      const content = await fetchCpdText(packageId);
+      if (content) {
+        await db
+          .update(documents)
+          .set({ content, embeddedAt: sql`NULL` })
+          .where(eq(documents.id, row.id));
+        updated++;
+      }
+
+      await sleep(RATE_LIMIT_MS);
+    }
+
+    console.log(
+      `[backfill-content] cpd: ${Math.min(i + BATCH_SIZE, toProcess.length)}/${toProcess.length} processed (${updated} updated)`,
     );
   }
 
@@ -536,6 +600,8 @@ async function run(options: BackfillOptions): Promise<void> {
       totalUpdated += await backfillDoj(options);
     } else if (source === 'crec') {
       totalUpdated += await backfillCrec(options);
+    } else if (source === 'cpd') {
+      totalUpdated += await backfillCpd(options);
     }
   }
 
@@ -562,7 +628,7 @@ if (require.main === module) {
     `Usage: pnpm backfill:content [options]
 
 Options:
-  --source <name>     Source to backfill (fr, govinfo, oig, fec, doj, crec; default: all)
+  --source <name>     Source to backfill (fr, govinfo, oig, fec, doj, crec, cpd; default: all)
   --limit <n>         Max documents to process
   --dry-run           Preview without writing to DB`,
   );
@@ -571,7 +637,7 @@ Options:
   const dryRun = args.includes('--dry-run');
 
   const sourceArg = sourceIdx !== -1 ? args[sourceIdx + 1] : undefined;
-  const validSources: Source[] = ['fr', 'govinfo', 'oig', 'fec', 'doj', 'crec'];
+  const validSources: Source[] = ['fr', 'govinfo', 'oig', 'fec', 'doj', 'crec', 'cpd'];
   const sources: Source[] =
     sourceArg && validSources.includes(sourceArg as Source) ? [sourceArg as Source] : validSources;
 

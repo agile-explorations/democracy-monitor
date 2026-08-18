@@ -26,6 +26,7 @@ pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagin
 pnpm validate:data         # Data readiness: scores, embeddings, baselines, L2 coverage, layer scores
 pnpm validate:detection    # Detection correctness: known events, negative controls, layer attribution
 pnpm validate:narratives   # Narrative quality: 3-pass generation + spec criteria (--type, --category, --week, --output)
+pnpm eval:completeness     # Journalist-test ground-truth eval (#738; --skip-capture, --baseline FILE, --out FILE)
 pnpm validate:graph        # Derivation-graph edge contract (G1a..G5); nonzero exit on error-severity violations
 pnpm pipeline:repair       # DAG-aware re-derivation for --from/--to with built-in gates (--expect-flips, --confirm-baseline)
 pnpm digest:send           # Manually release a held weekly digest (--week YYYY-MM-DD) after reviewing the narrative
@@ -72,7 +73,7 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `OPENAI_API_KEY` — OpenAI API key (optional; enables AI-enhanced assessment)
 - `ANTHROPIC_API_KEY` — Anthropic API key (optional; enables AI-enhanced assessment)
 - `COURTLISTENER_API_TOKEN` — CourtListener API token (optional; enables court docket fetching)
-- `GOVINFO_API_KEY` — GovInfo API key (optional; enables GAO/Congressional/Public Law fetching)
+- `GOVINFO_API_KEY` — GovInfo API key (optional; enables Congressional/Public Law/CPD/CREC/CHRG fetching. NOT GAO: GovInfo's GAOREPORTS collection is a dead pre-2009 archive and the fetcher was removed in #529; see #739 for the Wayback-based ingest proposal)
 - `FEC_API_KEY` — FEC API key (optional; enables advisory opinion and MUR fetching)
 - `LEGISCAN_API_KEY` — LegiScan API key (optional; enables legislative bill tracking via bulk datasets)
 - `RESEND_API_KEY` — Resend API key (optional; enables email newsletter)
@@ -127,7 +128,7 @@ Next.js 14 app using **Pages Router** (not App Router), TypeScript strict mode, 
 
 ### Data flow
 
-The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (JSON APIs, Federal Register queries, CourtListener, DOJ press releases, DHS/ICE/CBP newsrooms, GovInfo/GAO, OIG reports, FEC filings). The flow is:
+The dashboard monitors executive-power signals across 14 institutional categories. Each category defines multiple **signals** (JSON APIs, Federal Register queries, CourtListener, DOJ press releases, DHS/ICE/CBP newsrooms, GovInfo, OIG reports, FEC filings; GAO is NOT ingested — see #529/#739). The flow is:
 
 1. **Cron/backfill** fetches data from external sources (FR, CourtListener, DOJ, DHS/ICE/CBP press, GovInfo/CPD, FEC, CREC, CHRG, LegiScan, OIG incl. oversight.gov) and stores full documents in PostgreSQL
 2. **Snapshot pipeline** (`lib/cron/snapshot.ts`) runs assessment (structural anomaly + AI two-pass + thematic drift) → convergence synthesis → stores assessment snapshots
