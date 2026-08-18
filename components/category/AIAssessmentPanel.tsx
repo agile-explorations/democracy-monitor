@@ -88,7 +88,7 @@ function ActorMixLine({
   if (parts.length === 0) return null;
   return (
     <div className="mb-4">
-      <h3 className="text-[11px] font-semibold text-dm-text-secondary mb-1">Concerning by Actor</h3>
+      <h3 className="text-[11px] font-semibold text-dm-text-secondary mb-1">Departures by Actor</h3>
       <p className="text-xs text-dm-text-secondary">{parts.join(' · ')}</p>
     </div>
   );
@@ -160,7 +160,7 @@ export function AIAssessmentPanel({ summary, readingLevel }: AIAssessmentPanelPr
           </p>
         </div>
         <div>
-          <p className="text-[11px] text-dm-muted">Concern Rate</p>
+          <p className="text-[11px] text-dm-muted">Departure Rate</p>
           <p className={`text-sm ${concernClass}`}>
             {(summary.concernRate * 100).toFixed(1)}%{concernElevated && ' (elevated)'}
           </p>

@@ -108,9 +108,9 @@ describe('ThisWeekStrip', () => {
     expect(plural.closest('[title]')?.getAttribute('title')).toMatch(/second-pass review/i);
   });
 
-  it('sparkline links to the full concern chart and highlights the viewed week', () => {
+  it('sparkline links to the full departure chart and highlights the viewed week', () => {
     const { container } = render(<ThisWeekStrip {...baseProps} />);
-    const chartLink = screen.getByRole('link', { name: 'View full concern chart' });
+    const chartLink = screen.getByRole('link', { name: 'View full departure chart' });
     expect(chartLink.getAttribute('href')).toBe('#concern-score');
     // weekOf (2026-06-29) exists in the synchrony series → highlight dot renders
     expect(container.querySelectorAll('circle').length).toBeGreaterThan(0);

@@ -37,7 +37,7 @@ export function RangeSummaryPanel({ weeklyData, startIndex, endIndex }: RangeSum
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="rounded-lg border border-dm-border bg-dm-card p-4">
           <p className="text-[11px] uppercase tracking-wider text-dm-text-secondary mb-1">
-            Avg Concern
+            Avg Departure
           </p>
           <p className="text-lg font-semibold text-dm-text-primary">
             {rangeStats.avgScore != null ? rangeStats.avgScore.toFixed(2) : '—'}

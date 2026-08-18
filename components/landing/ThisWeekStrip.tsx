@@ -177,8 +177,8 @@ export function ThisWeekStrip({
         {sparkData.length > 1 && (
           <a
             href="#concern-score"
-            aria-label="View full concern chart"
-            title="View full concern chart"
+            aria-label="View full departure chart"
+            title="View full departure chart"
             className="ml-auto opacity-80 hover:opacity-100 transition-opacity"
           >
             <Sparkline

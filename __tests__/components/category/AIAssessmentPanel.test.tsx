@@ -48,14 +48,14 @@ describe('AIAssessmentPanel', () => {
       },
     });
     render(<AIAssessmentPanel summary={summary} readingLevel="detailed" />);
-    expect(screen.getByText('Concerning by Actor')).toBeDefined();
+    expect(screen.getByText('Departures by Actor')).toBeDefined();
     expect(screen.getByText(/4 federal executive/)).toBeDefined();
     expect(screen.getByText(/1 Congress/)).toBeDefined();
   });
 
   it('renders no actor-mix line for legacy ai_detail without actorConfirmations (#537)', () => {
     render(<AIAssessmentPanel summary={makeSummary()} readingLevel="detailed" />);
-    expect(screen.queryByText('Concerning by Actor')).toBeNull();
+    expect(screen.queryByText('Departures by Actor')).toBeNull();
   });
 
   it('highlights concern rate when above threshold', () => {
