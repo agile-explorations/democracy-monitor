@@ -1,10 +1,13 @@
 import type { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { CategoryChartCard } from '@/components/category/CategoryChartCard';
+import { CategoryWeekSeo } from '@/components/category/CategoryWeekSeo';
 import { LitigationPanel } from '@/components/category/LitigationPanel';
 import { RangeSummaryPanel } from '@/components/category/RangeSummaryPanel';
+import { StaticWeekContent } from '@/components/category/StaticWeekContent';
+import { WeekArchiveSection } from '@/components/category/WeekArchiveSection';
 import { WeekDetailPanel } from '@/components/category/WeekDetailPanel';
 import { WhyThisMattersLine } from '@/components/category/WhyThisMattersLine';
 import { TimeRangeBar } from '@/components/landing/TimeRangeBar';
@@ -15,36 +18,67 @@ import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
-import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import { useCategoryDetail } from '@/lib/hooks/useCategoryDetail';
 import type { CategoryDetailInitialParams } from '@/lib/hooks/useCategoryDetail';
-import type { ArchiveWeekEntry } from '@/lib/services/ssr-narrative-data';
-import { getNarrativeWeeksForCategory } from '@/lib/services/ssr-narrative-data';
+import type { ArchiveWeekEntry, CategoryWeekPageData } from '@/lib/services/ssr-narrative-data';
+import {
+  getCategoryWeekPageData,
+  getNarrativeWeeksForCategory,
+} from '@/lib/services/ssr-narrative-data';
 import { formatWeekLabel, formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://democracymonitor.us';
-const ARCHIVE_COLLAPSED_COUNT = 12;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
+/**
+ * Unified category route (#733): one optional-catch-all page serves both
+ * /category/[key] and /category/[key]/week/[date], so selecting a week (chart
+ * click or arrows) shallow-updates the URL without remounting, and a shared
+ * week URL restores the FULL interactive display (chart, range summary, week
+ * detail) pinned to that week. The former standalone week page's SEO surface
+ * (canonical, article markup, server-rendered narrative) is preserved via
+ * CategoryWeekSeo + StaticWeekContent.
+ */
 
-const STATUS_COLORS: Record<string, string> = {
-  Elevated: 'text-convergence-elevated',
-  ConfirmedConcern: 'text-convergence-confirmed',
-};
+/** Parse the optional catch-all: [] → landing; ['week', date] → week view. */
+function parseRest(rest: string[] | undefined): { weekDate: string | null; valid: boolean } {
+  if (!rest || rest.length === 0) return { weekDate: null, valid: true };
+  if (rest.length === 2 && rest[0] === 'week' && DATE_RE.test(rest[1])) {
+    return { weekDate: rest[1], valid: true };
+  }
+  return { weekDate: null, valid: false };
+}
 
 interface PageProps {
   archiveWeeks: ArchiveWeekEntry[];
-  /** Category key resolved from slug, for SSR data */
   resolvedKey: string | null;
+  /** SSR week data when the URL is the week-path form; null on the landing form. */
+  ssrWeek: CategoryWeekPageData | null;
 }
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
   const slug = ctx.params?.key as string;
-  if (!slug) return { props: { archiveWeeks: [], resolvedKey: null } };
+  const { weekDate, valid } = parseRest(ctx.params?.rest as string[] | undefined);
+  if (!slug || !valid) return { notFound: true };
 
   const categoryKey = slugToKey(slug) ?? slug;
   const category = CATEGORIES.find((c) => c.key === categoryKey);
-  if (!category) return { props: { archiveWeeks: [], resolvedKey: null } };
+  if (!category) {
+    return weekDate
+      ? { notFound: true }
+      : { props: { archiveWeeks: [], resolvedKey: null, ssrWeek: null } };
+  }
+
+  let ssrWeek: CategoryWeekPageData | null = null;
+  if (weekDate) {
+    try {
+      ssrWeek = await getCategoryWeekPageData(categoryKey, weekDate);
+    } catch (err) {
+      console.error(`[category-week SSR] Error fetching ${categoryKey}/${weekDate}:`, err);
+    }
+    if (!ssrWeek) return { notFound: true };
+    ctx.res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+  }
 
   let archiveWeeks: ArchiveWeekEntry[] = [];
   try {
@@ -53,35 +87,39 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     console.error(`[category landing] Archive query failed for ${categoryKey}:`, err);
   }
 
-  return { props: { archiveWeeks, resolvedKey: categoryKey } };
+  return { props: { archiveWeeks, resolvedKey: categoryKey, ssrWeek } };
 };
 
 export default function CategoryDetailPage({
   archiveWeeks,
   resolvedKey,
+  ssrWeek,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const { key, weekOf, from, to } = router.query;
+  const { key, rest, weekOf, from, to } = router.query;
   const rawKey = typeof key === 'string' ? key : undefined;
   const categoryKey = rawKey ? (slugToKey(rawKey) ?? rawKey) : undefined;
   const { readingLevel } = useReadingLevel();
   const { resolvedMode } = useTheme();
 
-  // SSR-resolved category info (available before client-side data loads)
+  // Week from the URL path (updates on shallow nav + back/forward)
+  const { weekDate: urlWeek } = parseRest(Array.isArray(rest) ? rest : undefined);
+
   const ssrCategory = useMemo(
     () => CATEGORIES.find((c) => c.key === (resolvedKey ?? categoryKey)),
     [resolvedKey, categoryKey],
   );
-  const ssrSlug = keyToSlug(resolvedKey ?? categoryKey ?? '');
+  const slug = keyToSlug(resolvedKey ?? categoryKey ?? '');
   const ssrTitle = ssrCategory?.title ?? '';
 
   const initialParams = useMemo<CategoryDetailInitialParams | undefined>(() => {
-    const w = typeof weekOf === 'string' ? weekOf : undefined;
+    const w = ssrWeek?.weekOf ?? (typeof weekOf === 'string' ? weekOf : undefined);
     const f = typeof from === 'string' ? from : undefined;
     const t = typeof to === 'string' ? to : undefined;
     if (!w && !f && !t) return undefined;
     return { weekOf: w, from: f, to: t };
-  }, [weekOf, from, to]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ssrWeek?.weekOf, weekOf, from, to]);
 
   const {
     weeklyData,
@@ -101,20 +139,39 @@ export default function CategoryDetailPage({
 
   const availableWeeks = useMemo(() => weeklyData.map((r) => r.weekOf), [weeklyData]);
   const category = useMemo(() => CATEGORIES.find((c) => c.key === categoryKey), [categoryKey]);
+  const latestRow = weeklyData[weeklyData.length - 1];
+  const latestWeek = latestRow?.weekOf;
 
-  // Archive expansion state
-  const [archiveExpanded, setArchiveExpanded] = useState(false);
-  const visibleArchive = archiveExpanded
-    ? archiveWeeks
-    : archiveWeeks.slice(0, ARCHIVE_COLLAPSED_COUNT);
+  /** Select a week AND sync the URL (#733): historical weeks get the
+   *  shareable /week/ path; latest (or none) returns to the bare path. */
+  const handleSelectWeek = useCallback(
+    (week: string | null) => {
+      selectWeek(week);
+      if (!slug) return;
+      const target =
+        week && week !== latestWeek ? `/category/${slug}/week/${week}` : `/category/${slug}`;
+      if (router.asPath.split('?')[0] !== target) {
+        void router.push(target, undefined, { shallow: true, scroll: false });
+      }
+    },
+    [selectWeek, slug, latestWeek, router],
+  );
 
-  // When viewing a specific week via query params, point crawlers to the SSR canonical page
-  const weekOfParam = typeof weekOf === 'string' ? weekOf : undefined;
-  const slug = ssrSlug;
-  const hasWeekParam = !!weekOfParam;
+  // Back/forward support: when the URL's week segment changes underneath us
+  // (popstate), re-select to match. Pushes from handleSelectWeek are no-ops
+  // here because selectedWeek already equals the URL week.
+  useEffect(() => {
+    if (loading) return;
+    if (urlWeek && urlWeek !== selectedWeek) selectWeek(urlWeek);
+    else if (!urlWeek && selectedWeek && latestWeek && selectedWeek !== latestWeek) {
+      selectWeek(latestWeek);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlWeek]);
+
   const displayTitle = title || ssrTitle;
+  const weekOfParam = typeof weekOf === 'string' ? weekOf : undefined;
 
-  // JSON-LD archive items (uses SSR-available data)
   const archiveItems = archiveWeeks.map((w) => ({
     name: `${ssrTitle} — Week of ${formatWeekLabelWithYear(w.weekOf)}`,
     url: `${SITE_URL}/category/${slug}/week/${w.weekOf}`,
@@ -131,35 +188,38 @@ export default function CategoryDetailPage({
     );
   }
 
-  const latestRow = weeklyData[weeklyData.length - 1];
-
   return (
     <>
-      {/* SEO + structured data — always rendered (SSR-critical) */}
-      <SEOHead
-        title={displayTitle}
-        description={
-          ssrCategory
-            ? `${ssrCategory.expertDescription ?? ssrCategory.description} Track weekly assessments and institutional health trends.`
-            : `${displayTitle} institutional health tracking.`
-        }
-        canonicalPath={hasWeekParam ? `/category/${slug}/week/${weekOfParam}` : `/category/${slug}`}
-        noindex={hasWeekParam}
-      />
-      <BreadcrumbJsonLd
-        items={[
-          { name: 'Overview', path: '/' },
-          { name: displayTitle, path: `/category/${slug}` },
-        ]}
-      />
+      {ssrWeek ? (
+        <CategoryWeekSeo ssrWeek={ssrWeek} slug={slug} />
+      ) : (
+        <>
+          <SEOHead
+            title={displayTitle}
+            description={
+              ssrCategory
+                ? `${ssrCategory.expertDescription ?? ssrCategory.description} Track weekly assessments and institutional health trends.`
+                : `${displayTitle} institutional health tracking.`
+            }
+            canonicalPath={
+              weekOfParam ? `/category/${slug}/week/${weekOfParam}` : `/category/${slug}`
+            }
+            noindex={!!weekOfParam}
+          />
+          <BreadcrumbJsonLd
+            items={[
+              { name: 'Overview', path: '/' },
+              { name: displayTitle, path: `/category/${slug}` },
+            ]}
+          />
+        </>
+      )}
       {archiveItems.length > 0 && <ArchiveItemListJsonLd items={archiveItems} />}
 
-      {/* Back link */}
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview
       </Link>
 
-      {/* Header */}
       <header className="mt-4 mb-6">
         <div>
           <h2 className="text-lg font-bold text-dm-text-primary">{displayTitle}</h2>
@@ -194,6 +254,10 @@ export default function CategoryDetailPage({
         </p>
       </header>
 
+      {/* Pre-hydration + crawler content for week URLs (#733): the retired
+          week page's narrative body, server-rendered until the client loads */}
+      {loading && ssrWeek && <StaticWeekContent ssrWeek={ssrWeek} slug={slug} />}
+
       {loading && (
         <div className="animate-pulse space-y-6">
           <div className="h-8 w-64 bg-dm-border/50 rounded" />
@@ -202,13 +266,9 @@ export default function CategoryDetailPage({
         </div>
       )}
 
-      {/* Interactive content — client-side loaded */}
       {!loading && (
         <>
-          {/* Time range bar */}
           <TimeRangeBar rangeLabel={rangeLabel} selected={rangePreset} onChange={setRangePreset} />
-
-          {/* Status-over-time chart */}
           <CategoryChartCard
             data={weeklyData}
             mode={resolvedMode}
@@ -216,15 +276,15 @@ export default function CategoryDetailPage({
             brushEndIndex={brushEndIndex}
             onRangeChange={setBrushRange}
             selectedWeek={selectedWeek}
-            onWeekClick={selectWeek}
+            onWeekClick={handleSelectWeek}
           />
-          {selectedWeek && selectedWeek !== latestRow?.weekOf ? (
+          {selectedWeek && selectedWeek !== latestWeek ? (
             <div className="flex items-center justify-between mt-2 mb-4 px-3 py-1.5 rounded-md bg-dm-accent/10 border border-dm-accent/20">
               <span className="text-xs text-dm-accent font-medium">
                 Viewing week of {formatWeekLabel(selectedWeek)}
               </span>
               <button
-                onClick={() => latestRow && selectWeek(latestRow.weekOf)}
+                onClick={() => latestWeek && handleSelectWeek(latestWeek)}
                 className="text-[10px] text-dm-muted hover:text-dm-text-secondary"
               >
                 Back to latest
@@ -236,7 +296,6 @@ export default function CategoryDetailPage({
             </p>
           )}
 
-          {/* Range summary */}
           {weeklyData.length > 0 && (
             <div className="mb-6">
               <RangeSummaryPanel
@@ -247,14 +306,13 @@ export default function CategoryDetailPage({
             </div>
           )}
 
-          {/* Week detail — shown when a week is selected */}
           {selectedWeek && categoryKey && (
             <div className="mt-8 pt-6 border-t border-dm-border">
               <div className="flex items-center justify-end mb-4">
                 <WeekNavigator
                   availableWeeks={availableWeeks}
                   selectedWeek={selectedWeek}
-                  onWeekChange={selectWeek}
+                  onWeekChange={handleSelectWeek}
                 />
               </div>
               <WeekDetailPanel
@@ -266,62 +324,16 @@ export default function CategoryDetailPage({
                 editorial={weekData?.editorial ?? null}
                 readingLevel={readingLevel}
                 loading={weekLoading}
-                onClose={() => selectWeek(null)}
+                onClose={() => handleSelectWeek(null)}
               />
             </div>
           )}
 
-          {/* Tracked litigation fallback — WeekDetailPanel renders it when a week is selected */}
           {!selectedWeek && categoryKey && <LitigationPanel categoryKey={categoryKey} />}
         </>
       )}
 
-      {/* Week archive — server-rendered for crawlers */}
-      {archiveWeeks.length > 0 && (
-        <section id="week-archive" className="mt-8 pt-6 border-t border-dm-border group">
-          <h2 className="text-sm font-semibold text-dm-text-primary mb-3">
-            Week Archive
-            <a
-              href="#week-archive"
-              className="ml-1 text-dm-muted hover:text-dm-accent opacity-0 group-hover:opacity-100 transition-opacity"
-              aria-label="Link to Week Archive"
-            >
-              #
-            </a>
-            <span className="ml-2 text-[11px] font-normal text-dm-muted">
-              {archiveWeeks.length} weeks with narratives
-            </span>
-          </h2>
-          <ul className="space-y-1">
-            {visibleArchive.map((w) => {
-              const label = formatWeekLabelWithYear(w.weekOf);
-              const statusLabel = w.status ? (STATUS_LABELS[w.status] ?? w.status) : null;
-              const statusColor = w.status ? (STATUS_COLORS[w.status] ?? '') : '';
-              return (
-                <li key={w.weekOf} className="flex items-center justify-between text-sm py-1">
-                  <Link
-                    href={`/category/${slug}/week/${w.weekOf}`}
-                    className="text-dm-accent hover:underline"
-                  >
-                    Week of {label}
-                  </Link>
-                  {statusLabel && (
-                    <span className={`text-xs font-medium ${statusColor}`}>{statusLabel}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {archiveWeeks.length > ARCHIVE_COLLAPSED_COUNT && !archiveExpanded && (
-            <button
-              onClick={() => setArchiveExpanded(true)}
-              className="mt-2 text-xs text-dm-accent hover:underline"
-            >
-              Show all {archiveWeeks.length} weeks
-            </button>
-          )}
-        </section>
-      )}
+      <WeekArchiveSection archiveWeeks={archiveWeeks} slug={slug} />
     </>
   );
 }
