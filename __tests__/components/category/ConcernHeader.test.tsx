@@ -28,7 +28,7 @@ describe('ConcernHeader', () => {
 
   it('renders Stable status', () => {
     render(<ConcernHeader synthesis={makeSynthesis()} />);
-    expect(screen.getByText('Consistent with baseline')).toBeDefined();
+    expect(screen.getByText('Consistent with norms')).toBeDefined();
   });
 
   it('renders Elevated status with pattern', () => {
@@ -42,7 +42,7 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('Notable departure')).toBeDefined();
+    expect(screen.getByText('Notable departure from norms')).toBeDefined();
     expect(screen.getByText(/flags departures from baseline practice/)).toBeDefined();
   });
 
@@ -56,7 +56,7 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('Departure (legacy)')).toBeDefined();
+    expect(screen.getByText('Departure from norms (legacy)')).toBeDefined();
   });
 
   it('renders ConfirmedConcern status', () => {
@@ -69,7 +69,7 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('Sustained departure')).toBeDefined();
+    expect(screen.getByText('Sustained departure from norms')).toBeDefined();
   });
 
   it('shows bootstrap badge', () => {

@@ -95,8 +95,8 @@ describe('SynchronyChart', () => {
 
   it('renders legend with status levels in detailed mode', () => {
     render(<SynchronyChart data={sampleData} mode="light" readingLevel="detailed" />);
-    expect(screen.getByText('Notable departure (1 pt)')).toBeDefined();
-    expect(screen.getByText('Sustained departure (2 pts)')).toBeDefined();
+    expect(screen.getByText('Notable departure from norms (1 pt)')).toBeDefined();
+    expect(screen.getByText('Sustained departure from norms (2 pts)')).toBeDefined();
     expect(screen.getByText('Trend Lines:')).toBeDefined();
     expect(screen.getByText('Trump T2')).toBeDefined();
   });

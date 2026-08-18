@@ -65,9 +65,9 @@ The AI document review uses artificial intelligence to read and evaluate individ
 
 The weekly status is determined by absolute Pass 2 classification counts — no cross-administration baseline comparison is needed:
 
-- **Consistent with baseline** (`Stable`) — Pass 2 found no departures (0 clear-departure, ≤1 possible-departure documents)
-- **Notable departure** (`Elevated`) — ≥1 clear-departure OR ≥2 possible-departure documents
-- **Sustained departure** (`ConfirmedConcern`) — ≥2 clear-departure, OR ≥3 departure documents with a ≥20% departure rate
+- **Consistent with norms** (`Stable`) — Pass 2 found no departures (0 clear-departure, ≤1 possible-departure documents)
+- **Notable departure from norms** (`Elevated`) — ≥1 clear-departure OR ≥2 possible-departure documents
+- **Sustained departure from norms** (`ConfirmedConcern`) — ≥2 clear-departure, OR ≥3 departure documents with a ≥20% departure rate
 
 Pass 2's written reasoning is displayed beside documents as an annotation and follows an explicit discipline (August 2026): rhetoric is attributed to its source rather than restated as fact, real-world knowledge the document does not contain is marked as context, and causal actions are credited only to the instrument whose text performs them. A sampled audit of annotations against their documents runs periodically; corrections are logged publicly.
 
@@ -120,11 +120,11 @@ Thematic drift signals are preserved for research visualization but do not drive
 
 AI document review is the primary active detection method, combined into a weekly status for each category (internal module name: concern synthesis):
 
-| Status                                       | Meaning                                                                                              |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Consistent with baseline** (`Stable`)      | AI content assessment within the baseline range. No departures detected.                             |
-| **Notable departure** (`Elevated`)           | AI two-pass review flags departure documents with Pass 2 corroboration.                              |
-| **Sustained departure** (`ConfirmedConcern`) | AI content assessment elevated with a high Pass 2 departure rate (>20%). Warrants close examination. |
+| Status                                                  | Meaning                                                                                              |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Consistent with norms** (`Stable`)                    | AI content assessment within the baseline range. No departures detected.                             |
+| **Notable departure from norms** (`Elevated`)           | AI two-pass review flags departure documents with Pass 2 corroboration.                              |
+| **Sustained departure from norms** (`ConfirmedConcern`) | AI content assessment elevated with a high Pass 2 departure rate (>20%). Warrants close examination. |
 
 Structural anomaly, silence detection, and thematic drift provide descriptive context but do not influence the weekly status. This architecture was adopted after empirical validation showed that non-AI methods could not reliably distinguish signal from noise.
 
@@ -172,7 +172,7 @@ A source is marked silent after two consecutive scheduled checks return zero doc
 
 ## AI Narrative Generation
 
-For categories at Notable departure (`Elevated`) or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
+For categories at Notable departure from norms (`Elevated`) or above, the system generates plain-language narrative summaries explaining what the detection system found and why. Narratives are produced in two versions:
 
 - **Expert** — Technical analysis (400-800 words) for researchers and policy analysts, citing specific documents with links, counter-arguments, and limitations.
 - **Public** — Accessible summary (200-500 words) for general audiences, avoiding jargon and focusing on what the findings mean in practical terms.
@@ -202,8 +202,8 @@ Democracy Monitor is an automated monitoring system, not a substitute for expert
 All scoring thresholds, dimension weights, and configuration constants are defined in a single file: [`lib/methodology/scoring-config.ts`](lib/methodology/scoring-config.ts). Key values include:
 
 - Structural anomaly threshold: composite z-score > 2.5 (descriptive only)
-- P2 Notable departure (`Elevated`): ≥1 clear-departure OR ≥2 possible-departure documents
-- P2 Sustained departure (`ConfirmedConcern`): ≥2 clear-departure, OR ≥3 departure documents with ≥20% rate
+- P2 Notable departure from norms (`Elevated`): ≥1 clear-departure OR ≥2 possible-departure documents
+- P2 Sustained departure from norms (`ConfirmedConcern`): ≥2 clear-departure, OR ≥3 departure documents with ≥20% rate
 - Thematic drift window: 8 weeks rolling (descriptive only)
 - Long-horizon cumulative tracking: 12 weeks
 - Structural dampening: exponential decay for mild z-scores, JSD outlier cap

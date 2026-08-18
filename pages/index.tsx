@@ -205,8 +205,8 @@ export default function Home() {
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
             Each week, AI-assisted review reads what the U.S. government publishes across 14
             democratic-institution categories and asks where it departs from the government&apos;s
-            own documented practice, calibrated against 2017&ndash;2024 records from both parties
-            &mdash; grounded in {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'}{' '}
+            previous norms, calibrated against 2017&ndash;2024 records from both parties &mdash;
+            grounded in {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'}{' '}
             searchable full-text government documents.
           </p>
           <details className="mt-1 max-w-3xl">
@@ -350,7 +350,7 @@ export default function Home() {
                   <p className="text-[11px] text-dm-muted mt-0.5">
                     {readingLevel === 'summary'
                       ? 'Weighted departure score across all categories per week'
-                      : 'Departure score stacked by magnitude: categories at Notable departure (1 point each) or Sustained departure (2 points)'}
+                      : 'Departure score stacked by magnitude: categories at Notable departure from norms (1 point each) or Sustained departure from norms (2 points)'}
                   </p>
                 </div>
                 <EmbedButton
