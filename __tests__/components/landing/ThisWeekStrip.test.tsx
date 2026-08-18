@@ -96,6 +96,18 @@ describe('ThisWeekStrip', () => {
     expect(screen.getByRole('link', { name: 'Term so far' })).toBeDefined();
   });
 
+  it('pluralizes departure counts and explains each status on hover (#732)', () => {
+    render(
+      <ThisWeekStrip
+        {...baseProps}
+        categories={[cat('Elevated'), cat('Elevated'), cat('Elevated'), cat('ConfirmedConcern')]}
+      />,
+    );
+    const plural = screen.getByText('Notable departures');
+    expect(screen.getByText('Sustained departure')).toBeDefined();
+    expect(plural.closest('[title]')?.getAttribute('title')).toMatch(/second-pass review/i);
+  });
+
   it('sparkline links to the full concern chart and highlights the viewed week', () => {
     const { container } = render(<ThisWeekStrip {...baseProps} />);
     const chartLink = screen.getByRole('link', { name: 'View full concern chart' });

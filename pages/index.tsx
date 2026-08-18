@@ -203,9 +203,11 @@ export default function Home() {
         {/* Positioning statement — one line; full copy in the About expander */}
         <section className="mb-4">
           <p className="text-sm text-dm-text-secondary leading-relaxed max-w-3xl">
-            AI-assisted analyses of democratic institutional health across 14 categories, grounded
-            in {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'} searchable
-            full-text U.S. government documents.
+            Each week, AI-assisted review reads what the U.S. government publishes across 14
+            democratic-institution categories and asks where it departs from the government&apos;s
+            own documented practice, calibrated against 2017&ndash;2024 records from both parties
+            &mdash; grounded in {fullTextCount ? formatApproxCount(fullTextCount) : 'over 200,000'}{' '}
+            searchable full-text government documents.
           </p>
           <details className="mt-1 max-w-3xl">
             <summary className="text-xs text-dm-accent cursor-pointer hover:underline">

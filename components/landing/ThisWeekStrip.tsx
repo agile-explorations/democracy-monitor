@@ -4,7 +4,10 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
-import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
+import {
+  CONCERN_LEVEL_TOOLTIPS,
+  concernLevelCountLabel,
+} from '@/lib/data/concern-level-explanations';
 import type { SignificantWeekLink } from '@/lib/hooks/useLandingNarratives';
 import type { ConcernLevel } from '@/lib/types';
 import type { FetchWeekHealth, SynchronyPoint } from '@/lib/types/overview';
@@ -150,14 +153,20 @@ export function ThisWeekStrip({
             <span className="text-sm text-dm-muted animate-pulse">Loading…</span>
           ) : countParts.length > 0 ? (
             countParts.map((status) => (
-              <span key={status} className="flex items-center gap-1.5 text-sm">
+              <span
+                key={status}
+                className="flex items-center gap-1.5 text-sm cursor-help"
+                title={CONCERN_LEVEL_TOOLTIPS[status]}
+              >
                 <span
                   className="inline-block h-2.5 w-2.5 rounded-full"
                   style={{ backgroundColor: colors[status as keyof typeof colors] }}
                   aria-hidden
                 />
                 <span className="text-dm-text-primary font-medium">{counts[status]}</span>
-                <span className="text-dm-text-secondary">{CONCERN_LEVEL_LABELS[status]}</span>
+                <span className="text-dm-text-secondary">
+                  {concernLevelCountLabel(status, counts[status] ?? 0)}
+                </span>
               </span>
             ))
           ) : (
