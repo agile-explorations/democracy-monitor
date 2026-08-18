@@ -4,18 +4,13 @@ import { Sparkline } from '@/components/ui/Sparkline';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import type { SignificantWeekLink } from '@/lib/hooks/useLandingNarratives';
 import type { ConcernLevel } from '@/lib/types';
 import type { FetchWeekHealth, SynchronyPoint } from '@/lib/types/overview';
 import { formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
 const STATUS_ORDER: ConcernLevel[] = ['ConfirmedConcern', 'Elevated', 'Stable'];
-
-const STATUS_LABELS: Record<string, string> = {
-  ConfirmedConcern: 'Confirmed Concern',
-  Elevated: 'Elevated',
-  Stable: 'Stable',
-};
 
 /** Tally current-week convergence statuses from the category summaries. */
 export function tallyCurrentWeekStatuses(
@@ -162,7 +157,7 @@ export function ThisWeekStrip({
                   aria-hidden
                 />
                 <span className="text-dm-text-primary font-medium">{counts[status]}</span>
-                <span className="text-dm-text-secondary">{STATUS_LABELS[status]}</span>
+                <span className="text-dm-text-secondary">{CONCERN_LEVEL_LABELS[status]}</span>
               </span>
             ))
           ) : (

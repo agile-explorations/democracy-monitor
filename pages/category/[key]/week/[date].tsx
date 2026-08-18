@@ -6,6 +6,7 @@ import { NarrativeSection } from '@/components/shared/NarrativeSection';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { keyToSlug, slugToKey } from '@/lib/data/category-slugs';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import type { AdjacentWeek, CategoryWeekPageData } from '@/lib/services/ssr-narrative-data';
 import { getCategoryWeekPageData } from '@/lib/services/ssr-narrative-data';
 import type { ConcernAssessment, EditorialRecord } from '@/lib/types';
@@ -13,10 +14,7 @@ import { formatWeekLabelWithYear } from '@/lib/utils/date-utils';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-const STATUS_LABELS: Record<string, string> = {
-  Elevated: 'Elevated',
-  ConfirmedConcern: 'Confirmed Concern',
-};
+const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 /** Serializable props — dates and JSON objects must be plain. */
 interface PageProps {

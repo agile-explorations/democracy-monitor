@@ -23,12 +23,12 @@ function makeSynthesis(overrides: Partial<ConcernAssessment> = {}): ConcernAsses
 describe('ConcernHeader', () => {
   it('shows "no concern data" when synthesis is null', () => {
     render(<ConcernHeader synthesis={null} />);
-    expect(screen.getByText('No concern data available.')).toBeDefined();
+    expect(screen.getByText('No status data available.')).toBeDefined();
   });
 
   it('renders Stable status', () => {
     render(<ConcernHeader synthesis={makeSynthesis()} />);
-    expect(screen.getByText('Stable')).toBeDefined();
+    expect(screen.getByText('Consistent with baseline')).toBeDefined();
   });
 
   it('renders Elevated status with pattern', () => {
@@ -42,8 +42,8 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('Elevated')).toBeDefined();
-    expect(screen.getByText('AI content assessment elevated')).toBeDefined();
+    expect(screen.getByText('Notable departure')).toBeDefined();
+    expect(screen.getByText(/flags departures from baseline practice/)).toBeDefined();
   });
 
   it('renders Divergent status (legacy)', () => {
@@ -56,7 +56,7 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('Divergent')).toBeDefined();
+    expect(screen.getByText('Departure (legacy)')).toBeDefined();
   });
 
   it('renders ConfirmedConcern status', () => {
@@ -69,7 +69,7 @@ describe('ConcernHeader', () => {
         })}
       />,
     );
-    expect(screen.getByText('ConfirmedConcern')).toBeDefined();
+    expect(screen.getByText('Sustained departure')).toBeDefined();
   });
 
   it('shows bootstrap badge', () => {

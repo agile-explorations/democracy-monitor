@@ -80,6 +80,27 @@ function check(name: string, pass: boolean, detail: string): CheckResult {
   return { name, pass, detail };
 }
 
+/** Witness-tone check (#732): valence words are banned outside verbatim
+ *  quotes. Deterministic proxy — strips "quoted spans" then scans for the
+ *  banned list from the draft prompt's WITNESS TONE rules. */
+const VALENCE_WORDS =
+  /\b(alarming|chilling|dangerous|disturbing|assaults?|attacks?|threats?|threatening|dismantling|gutting|authoritarian|crackdowns?)\b/gi;
+function valenceViolations(text: string): string[] {
+  const unquoted = text.replace(/"[^"]*"|\u201c[^\u201d]*\u201d/g, '');
+  return [...new Set((unquoted.match(VALENCE_WORDS) ?? []).map((w) => w.toLowerCase()))];
+}
+function checkWitnessTone(label: string, expert: string, pub: string): CheckResult {
+  const hits = [...valenceViolations(expert), ...valenceViolations(pub)];
+  const unique = [...new Set(hits)];
+  return check(
+    `${label} witness tone`,
+    unique.length === 0,
+    unique.length === 0
+      ? 'no valence language outside quotes'
+      : `valence words: ${unique.join(', ')}`,
+  );
+}
+
 /** Get first substantive paragraphs (skip headers, disclaimers, short lines). */
 function firstSubstantiveParagraphs(text: string, count = 3): string {
   const paras = text.split(/\n\n+/).filter(Boolean);
@@ -219,6 +240,7 @@ async function validateCategoryWeek(category: string, weekOf: string): Promise<C
   }
 
   const results: CheckResult[] = [];
+  results.push(checkWitnessTone('T-NAR-0', expert, pub));
 
   // T-NAR-1 / T-NAR-2: Word counts
   if (substantive) {

@@ -15,6 +15,28 @@ import {
  * Pass 1 — Draft prompt for Claude Opus.
  * Generates both expert and public narratives in a single call.
  */
+/** Witness-tone rules (site charter, /why-this-matters#charter — #732):
+ *  bearing witness to departures from baseline practice, never judging them.
+ *  Shared by the weekly draft and term-summary prompts. */
+export function witnessToneRules(): string[] {
+  return [
+    'WITNESS TONE (site charter — bear witness, do not judge):',
+    '- Use descriptive verbs and precise nouns. Say exactly what happened and which',
+    '  long-standing practice it departs from — never whether that departure is good or bad.',
+    '- BANNED WORDS unless quoting a source verbatim: alarming, chilling, dangerous,',
+    '  disturbing, assault, attack, threat, threatening, dismantling, gutting, authoritarian,',
+    '  crackdown. "Unprecedented" is allowed ONLY when the data section supplies the count',
+    '  that proves it.',
+    '- Significance belongs to the record, not the narrator: "the largest weekly total in the',
+    '  data provided" — never "a troubling escalation".',
+    '- Precision is not euphemism: "removals continued after the injunction" is correct;',
+    '  "the agency adjusted its compliance posture" is not.',
+    '- When the record is ambiguous, say so plainly.',
+    '- When naming the weekly status in prose, use the reader-facing terms: "consistent with',
+    '  baseline", "notable departure", "sustained departure" — not the internal identifiers.',
+  ];
+}
+
 export function buildDraftPrompt(data: NarrativeLayerData): string {
   const preamble = [
     'You are an analyst for a democratic institution monitoring system.',
@@ -45,6 +67,8 @@ export function buildDraftPrompt(data: NarrativeLayerData): string {
     'evidence warrants a briefer counter-argument; weaker evidence warrants a more prominent one.',
     'Limit to 2-3 alternative explanations in the PUBLIC narrative, 3-4 in the EXPERT narrative.',
     'Do not list all possibilities with equal weight.',
+    '',
+    ...witnessToneRules(),
   ].join('\n');
 
   const context = [formatLayerAssessment(data), ...collectDraftSections(data)].join('\n\n');
@@ -110,6 +134,13 @@ function feedbackReviewInstructions(): string[] {
     'or protection at stake? The sentence must use conditional language ("could affect",',
     '"may indicate"). If this sentence is missing from either narrative, flag it as the',
     'highest-priority revision item.',
+    '',
+    '(t) WITNESS TONE — Does either draft use valence language (alarming, dangerous, assault,',
+    'threat, dismantling, gutting, authoritarian, crackdown, chilling, disturbing) outside a',
+    'verbatim quote, claim "unprecedented" without a supporting count from the source data, or',
+    'attribute significance to the narrator rather than the record? Flag every instance — the',
+    'site bears witness to departures from baseline practice without judging them. Equally flag',
+    'EUPHEMISM: vague paraphrase that softens what a document plainly states.',
   ];
 }
 
@@ -406,6 +437,8 @@ function collectTermDataSections(input: TermSummaryInput, version: 'expert' | 'p
 
 function termCriticalGuidelines(): string[] {
   return [
+    ...witnessToneRules(),
+    '',
     'CRITICAL GUIDELINES:',
     '- This is a standalone synthesis of the full term built from the data above — there is',
     '  no prior term summary to update. Every claim must be justified by the current data.',

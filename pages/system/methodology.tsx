@@ -76,7 +76,8 @@ export function SummaryContent() {
           different providers (OpenAI for screening, Anthropic for detailed review) to ensure
           epistemic independence. Both passes receive up to 8,000 characters of boilerplate-stripped
           content. Pass 2 also receives week-level context including peer document titles and flag
-          rate trajectory. Documents are classified from routine to clearly concerning.
+          rate trajectory. Documents are classified from routine to clear departure (internal value:
+          clearly_concerning).
         </p>
         <p>
           <strong>Silence Detection (descriptive only)</strong> — Measures whether
@@ -118,20 +119,20 @@ export function SummaryContent() {
         <div className="space-y-2 ml-2">
           <ConcernLevel
             className="bg-dm-border"
-            label="Stable"
-            description="AI content assessment within baseline range. No concerns detected."
+            label="Consistent with baseline"
+            description="Document review within the baseline range. No departures detected. (Internal status: Stable.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.Stable}
           />
           <ConcernLevel
             className="bg-dm-accent"
-            label="Elevated"
-            description="AI two-pass review flags anomalous content with Pass 2 corroboration."
+            label="Notable departure"
+            description="Two-pass document review flags departures from baseline practice, with Pass 2 corroboration. (Internal status: Elevated.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.Elevated}
           />
           <ConcernLevel
             className="bg-status-capture"
-            label="Confirmed Concern"
-            description="AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination."
+            label="Sustained departure"
+            description="High Pass 2 rate of clear-departure documents (>20%). Warrants close examination. (Internal status: ConfirmedConcern.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern}
           />
         </div>
@@ -441,44 +442,47 @@ export function DetailedContent() {
           </li>
           <li>
             <strong>Pass 2 (Detailed Review)</strong> — A different provider (Claude, from
-            Anthropic) independently assesses each flagged document, classifying it as: routine,
-            novel but not concerning, potentially concerning, or clearly concerning. Using a
+            Anthropic) independently assesses each flagged document, classifying it as: routine;
+            novel, within baseline; possible departure; or clear departure (internal values:
+            routine, novel_not_concerning, potentially_concerning, clearly_concerning). Using a
             different AI provider for each pass ensures that the two assessments are epistemically
             independent.
           </li>
         </ul>
         <p>
-          Concern status is determined by absolute Pass 2 classification counts — no
+          The weekly status is determined by absolute Pass 2 classification counts — no
           cross-administration baseline comparison is needed:
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <strong>Stable</strong> — Pass 2 found no concerning documents (0 clearly concerning, ≤1
-            potentially concerning)
+            <strong>Consistent with baseline</strong> (internal: Stable) — Pass 2 found no departure
+            documents (0 clear-departure, ≤1 possible-departure)
           </li>
           <li>
-            <strong>Elevated</strong> — ≥1 clearly concerning OR ≥2 potentially concerning documents
+            <strong>Notable departure</strong> (internal: Elevated) — ≥1 clear-departure OR ≥2
+            possible-departure documents
           </li>
           <li>
-            <strong>Confirmed Concern</strong> — ≥2 clearly concerning, OR ≥3 concerning documents
-            with ≥20% concern rate
+            <strong>Sustained departure</strong> (internal: ConfirmedConcern) — ≥2 clear-departure,
+            OR ≥3 departure documents with ≥20% departure rate
           </li>
         </ul>
         <p>
           Pass 2 also records two descriptive classifications for each concerning document: the{' '}
-          <strong>erosion mechanism</strong> (formal override, operational hollowing, or
-          noncompliance/refusal) and the <strong>erosion actor</strong> — which institutional actor
-          performs the erosion-relevant action: the federal executive, Congress, the judiciary, or a
-          state/local government. The actor is whoever performs the action, not the document&apos;s
-          author or venue: a court opinion documenting a federal agency&apos;s defiance of court
-          orders attributes to the federal executive, while a ruling that itself removes a
-          protection attributes to the judiciary. Actor attribution is context only — it does not
-          change how any document is assessed or how weekly concern status is computed. To guarantee
-          that, attribution runs as a separate lightweight classification pass, fully decoupled from
-          the assessment prompt: a controlled experiment showed that embedding attribution in the
-          assessment prompt measurably shifted outcomes, so the assessment prompt is kept unchanged.
-          How attribution should shape the dashboard&apos;s headline framing is an open product
-          question that will be decided from the attributed data itself.
+          <strong>mechanism of change</strong> (formal override, operational hollowing, or
+          noncompliance/refusal — stored as the &quot;erosion type&quot;) and the{' '}
+          <strong>actor</strong> — which institutional actor performs the erosion-relevant action:
+          the federal executive, Congress, the judiciary, or a state/local government. The actor is
+          whoever performs the action, not the document&apos;s author or venue: a court opinion
+          documenting a federal agency&apos;s defiance of court orders attributes to the federal
+          executive, while a ruling that itself removes a protection attributes to the judiciary.
+          Actor attribution is context only — it does not change how any document is assessed or how
+          weekly concern status is computed. To guarantee that, attribution runs as a separate
+          lightweight classification pass, fully decoupled from the assessment prompt: a controlled
+          experiment showed that embedding attribution in the assessment prompt measurably shifted
+          outcomes, so the assessment prompt is kept unchanged. How attribution should shape the
+          dashboard&apos;s headline framing is an open product question that will be decided from
+          the attributed data itself.
         </p>
         <p>
           An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to
@@ -554,18 +558,18 @@ export function DetailedContent() {
           headers={['Status', 'Meaning', "How it's set (Pass 2 counts)"]}
           rows={[
             [
-              'Stable',
-              'AI content assessment within baseline range. No concerns detected.',
+              'Consistent with baseline',
+              'Document review within the baseline range. No departures detected.',
               CONCERN_LEVEL_THRESHOLDS.Stable,
             ],
             [
-              'Elevated',
-              'AI two-pass review flags anomalous content with Pass 2 corroboration.',
+              'Notable departure',
+              'Two-pass document review flags departures from baseline practice, with Pass 2 corroboration.',
               CONCERN_LEVEL_THRESHOLDS.Elevated,
             ],
             [
-              'Confirmed Concern',
-              'AI content assessment elevated with high Pass 2 concern rate (>20%). Warrants close examination.',
+              'Sustained departure',
+              'High Pass 2 rate of clear-departure documents (>20%). Warrants close examination.',
               CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern,
             ],
           ]}
@@ -732,8 +736,8 @@ export function DetailedContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Structural anomaly threshold: composite z-score &gt; 2.5 (descriptive only)</li>
-          <li>P2 Elevated: ≥1 clearly concerning OR ≥2 potentially concerning</li>
-          <li>P2 Confirmed Concern: ≥2 clearly concerning, OR ≥3 concerning with ≥20% rate</li>
+          <li>P2 Notable departure: ≥1 clear-departure OR ≥2 possible-departure</li>
+          <li>P2 Sustained departure: ≥2 clear-departure, OR ≥3 departure docs with ≥20% rate</li>
           <li>Thematic drift window: 8 weeks rolling (descriptive only)</li>
           <li>Long-horizon cumulative tracking: 12 weeks</li>
           <li>Structural dampening: exponential decay for mild z-scores, JSD outlier cap</li>

@@ -1,6 +1,9 @@
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
-import { CONCERN_LEVEL_EXPLANATIONS } from '@/lib/data/concern-level-explanations';
+import {
+  CONCERN_LEVEL_EXPLANATIONS,
+  CONCERN_LEVEL_LABELS,
+} from '@/lib/data/concern-level-explanations';
 import type { ConcernAssessment } from '@/lib/types/structural';
 
 export interface ConcernHeaderProps {
@@ -13,7 +16,7 @@ export function ConcernHeader({ synthesis }: ConcernHeaderProps) {
   if (!synthesis) {
     return (
       <div className="rounded-lg border border-dm-border bg-dm-card p-4 mb-6">
-        <p className="text-xs text-dm-muted italic">No concern data available.</p>
+        <p className="text-xs text-dm-muted italic">No status data available.</p>
       </div>
     );
   }
@@ -27,7 +30,7 @@ export function ConcernHeader({ synthesis }: ConcernHeaderProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold" style={{ color: statusColor }}>
-              {synthesis.status}
+              {CONCERN_LEVEL_LABELS[synthesis.status] ?? synthesis.status}
             </span>
             {synthesis.bootstrap && (
               <span className="text-[10px] px-1.5 py-0.5 rounded border border-dm-border text-dm-muted">

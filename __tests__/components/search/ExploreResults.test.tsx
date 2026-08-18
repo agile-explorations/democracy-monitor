@@ -60,7 +60,7 @@ describe('ExploreResults (#728)', () => {
       />,
     );
     // Collapsed: one summary line, no per-category badge rows
-    expect(screen.getByText(/AI: clearly concerning \(92%\) across all 2 categories/)).toBeTruthy();
+    expect(screen.getByText(/AI: clear departure \(92%\) across all 2 categories/)).toBeTruthy();
     expect(screen.getByText(/Top score: 6\.0/)).toBeTruthy();
     expect(screen.queryByText('1 capture signal')).toBeNull();
     expect(screen.queryByText(/executive order/)).toBeNull();
@@ -72,6 +72,8 @@ describe('ExploreResults (#728)', () => {
     expect(screen.queryByText('1C')).toBeNull();
     const score = screen.getByText('Score: 6.0');
     expect(score.getAttribute('title')).toMatch(/IN THIS CATEGORY/);
-    expect(screen.getAllByText('formal override')[0].getAttribute('title')).toMatch(/erosion/i);
+    expect(screen.getAllByText('formal override')[0].getAttribute('title')).toMatch(
+      /institutional protections/i,
+    );
   });
 });

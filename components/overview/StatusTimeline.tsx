@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { keyToSlug } from '@/lib/data/category-slugs';
 import { CONCERN_LEVEL_COLORS } from '@/lib/data/chart-colors';
+import { CONCERN_LEVEL_LABELS } from '@/lib/data/concern-level-explanations';
 import { buildMarkersByWeek } from '@/lib/data/instrument-changes';
 import type { ConcernLevel } from '@/lib/types';
 import type { StatusTimelineEntry } from '@/lib/types/overview';
@@ -16,16 +17,12 @@ export interface StatusTimelineProps {
   linkParams?: string;
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  Stable: 'Stable',
-  Elevated: 'Elevated',
-  ConfirmedConcern: 'Confirmed Concern',
-};
+const STATUS_LABELS: Record<string, string> = CONCERN_LEVEL_LABELS;
 
 const LEGEND_ITEMS: Array<{ status: ConcernLevel; label: string }> = [
-  { status: 'Stable', label: 'Stable' },
-  { status: 'Elevated', label: 'Elevated' },
-  { status: 'ConfirmedConcern', label: 'Confirmed Concern' },
+  { status: 'Stable', label: CONCERN_LEVEL_LABELS.Stable },
+  { status: 'Elevated', label: CONCERN_LEVEL_LABELS.Elevated },
+  { status: 'ConfirmedConcern', label: CONCERN_LEVEL_LABELS.ConfirmedConcern },
 ];
 
 function noDataBg(mode: 'light' | 'dark'): string {
