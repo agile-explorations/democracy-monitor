@@ -26,6 +26,12 @@ const SYSTEM_PROMPT =
   'You rank government documents by how directly they bear on a research question. ' +
   'A document bears on the question when its content would be cited in an answer — ' +
   'topical adjacency (same agency, same vocabulary, different subject) does not count. ' +
+  // Type awareness (#735): bills are often NAMED after the topic while the
+  // events themselves live in orders, rules, and opinions — a title that
+  // echoes the question is not evidence the document bears on it.
+  'Prefer primary instruments — executive orders, rules, judicial opinions — that ' +
+  'enact or adjudicate what the question asks about over bills or resolutions whose ' +
+  'titles merely echo the question, unless the question asks about legislation. ' +
   'Respond with ONLY a JSON array of the document numbers in descending order of ' +
   'relevance, e.g. [3,1,7]. Include every number exactly once.';
 

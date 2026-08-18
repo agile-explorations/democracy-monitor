@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { armWeight, dedupeByUrl, fuseWeightedRrf, RRF_K } from '@/lib/services/hybrid-fusion';
+import {
+  armWeight,
+  dedupeByInstrument,
+  dedupeByUrl,
+  fuseWeightedRrf,
+  normalizeInstrumentTitle,
+  RRF_K,
+} from '@/lib/services/hybrid-fusion';
 
 interface Item {
   id: number;
@@ -94,5 +101,84 @@ describe('dedupeByUrl', () => {
       { id: 2, url: null },
     ];
     expect(dedupeByUrl(docs)).toHaveLength(2);
+  });
+});
+
+describe('normalizeInstrumentTitle (#734)', () => {
+  it('strips the CPD instrument prefix so both spellings collide', () => {
+    expect(
+      normalizeInstrumentTitle('Executive Order 14332—Improving Oversight of Federal Grantmaking'),
+    ).toBe(normalizeInstrumentTitle('Improving Oversight of Federal Grantmaking'));
+    expect(
+      normalizeInstrumentTitle('Memorandum on Use of Appropriated Funds for Illegal Lobbying'),
+    ).toBe(normalizeInstrumentTitle('Use of Appropriated Funds for Illegal Lobbying'));
+  });
+
+  it('does not strip mid-title instrument words', () => {
+    expect(normalizeInstrumentTitle('Rescinding Executive Order 14052')).toBe(
+      'rescinding executive order 14052',
+    );
+  });
+});
+
+describe('dedupeByInstrument (#734)', () => {
+  const doc = (
+    id: number,
+    title: string,
+    publishedAt: string | null,
+    sourceOrigin: string | null,
+  ) => ({ id, title, publishedAt, sourceOrigin });
+
+  it('collapses the FR/CPD mirror pair within the window, FR copy winning in place', () => {
+    const docs = [
+      doc(
+        3,
+        'Executive Order 14332—Improving Oversight of Federal Grantmaking',
+        '2025-08-07',
+        'govinfo_cpd',
+      ),
+      doc(9, 'Unrelated Rule', '2025-08-10', 'federal_register'),
+      doc(1, 'Improving Oversight of Federal Grantmaking', '2025-08-12', 'federal_register'),
+    ];
+    const out = dedupeByInstrument(docs);
+    // FR copy replaces the CPD copy at the CPD copy's (higher) rank slot.
+    expect(out.map((d) => d.id)).toEqual([1, 9]);
+  });
+
+  it('keeps same-title docs a week+ apart when they are not an FR/CPD mirror pair', () => {
+    const docs = [
+      doc(1, '(INCLUDING TRANSFERS OF FUNDS)', '2026-01-14', 'crec'),
+      doc(2, '(INCLUDING TRANSFERS OF FUNDS)', '2026-01-22', 'crec'),
+    ];
+    expect(dedupeByInstrument(docs)).toHaveLength(2);
+  });
+
+  it('collapses same-title same-day rows regardless of origin (revision clusters)', () => {
+    const docs = [
+      doc(1, 'Trump v. Illinois', '2025-12-23', 'courtlistener'),
+      doc(2, 'Trump v. Illinois', '2025-12-23', 'courtlistener'),
+    ];
+    expect(dedupeByInstrument(docs).map((d) => d.id)).toEqual([1]);
+  });
+
+  it('does not window-match same-origin near-dated docs', () => {
+    const docs = [
+      doc(1, 'Prior Balance Replacement Funds', '2025-11-24', 'federal_register'),
+      doc(2, 'Prior Balance Replacement Funds', '2025-11-26', 'federal_register'),
+    ];
+    expect(dedupeByInstrument(docs)).toHaveLength(2);
+  });
+
+  it('treats unparseable dates as same-day only when both are null', () => {
+    const both = [
+      doc(1, 'Some Order', null, 'federal_register'),
+      doc(2, 'Some Order', null, 'govinfo_cpd'),
+    ];
+    expect(dedupeByInstrument(both)).toHaveLength(1);
+    const mixed = [
+      doc(1, 'Some Order', null, 'federal_register'),
+      doc(2, 'Some Order', '2025-08-07', 'govinfo_cpd'),
+    ];
+    expect(dedupeByInstrument(mixed)).toHaveLength(2);
   });
 });

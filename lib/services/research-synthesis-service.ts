@@ -254,11 +254,12 @@ export async function synthesizeResearchAnswerSinglePass(
   query: string,
   documents: ResearchDocument[],
   corpusStats?: CorpusStats | null,
+  alsoSearched?: ValidatedAlias[],
 ): Promise<SinglePassSynthesisResult> {
   const claude = getProvider('anthropic');
   if (!claude.isAvailable()) throw new Error('Anthropic API key not configured');
 
-  const prompt = buildSinglePassPrompt(query, documents, corpusStats);
+  const prompt = buildSinglePassPrompt(query, documents, corpusStats, alsoSearched);
   const result = await callWithRetry(
     () =>
       claude.complete(prompt, {

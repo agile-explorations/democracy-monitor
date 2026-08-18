@@ -1,0 +1,1530 @@
+{
+  "_readme": "Ground truth for pnpm eval:completeness (#738). Built 2026-08-18 from web-researched domain-expert checklists (see the Journalist Test report). weight CORE = a beat reporter would immediately notice its absence. sourceGap = the evidencing document lives in a non-ingested source class (absence is expected, not a retrieval failure). analytical = a synthesis-level completeness criterion with no single evidencing document. patterns are SQL ILIKE title patterns; answerKeys are case-insensitive substrings expected in a complete answer.",
+  "questions": [
+    {
+      "id": "FW1",
+      "q": "Which members of Congress have spoken on the floor about Schedule F or reclassifying federal employees, and what concerns did they raise?",
+      "params": {
+        "tier": "discussion"
+      }
+    },
+    {
+      "id": "FW2",
+      "q": "What OPM and OMB actions have been taken regarding federal workforce restructuring since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "FW3",
+      "q": "What government documents reference both federal workforce reduction and inspector general oversight?",
+      "params": {}
+    },
+    {
+      "id": "FW4",
+      "q": "How did congressional responses to the 2020 Schedule F executive order compare to responses to the 2025 reinstatement?",
+      "params": {}
+    },
+    {
+      "id": "IM1",
+      "q": "What congressional floor speeches have addressed the expansion of 287(g) agreements between ICE and local law enforcement since 2025?",
+      "params": {
+        "tier": "discussion",
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "IM2",
+      "q": "How did detention-related rulemaking under the Biden administration compare to both Trump administrations?",
+      "params": {}
+    },
+    {
+      "id": "IM3",
+      "q": "What government documents reference both immigration enforcement and due process protections?",
+      "params": {}
+    },
+    {
+      "id": "IM4",
+      "q": "How have congressional responses to immigration enforcement actions differed between the first and second Trump administrations?",
+      "params": {}
+    },
+    {
+      "id": "RL1",
+      "q": "What firings or removals of inspectors general have occurred across federal agencies, and what congressional responses have there been?",
+      "params": {}
+    },
+    {
+      "id": "RL2",
+      "q": "What court opinions and executive branch documents address the President's power to remove independent agency officials?",
+      "params": {}
+    },
+    {
+      "id": "RL3",
+      "q": "How has the use of executive orders and presidential memoranda to modify federal agency independence compared across administrations since 2017?",
+      "params": {}
+    },
+    {
+      "id": "RL4",
+      "q": "How have DOJ press releases about civil rights enforcement differed across administrations?",
+      "params": {}
+    },
+    {
+      "id": "H2",
+      "q": "What executive actions, court rulings, and congressional responses address the domestic deployment of the National Guard or military forces since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "H3",
+      "q": "What government documents address investigations or prosecutions of individuals the President has publicly named as political adversaries since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    }
+  ],
+  "items": [
+    {
+      "qid": "FW1",
+      "key": "patronage-system-debate",
+      "name": "H.R. 302 Preventing a Patronage System Act floor debate + passage (Sep 2022)",
+      "patterns": ["%Preventing a Patronage System%"],
+      "answerKeys": ["Patronage"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "ndaa-schedule-f-amendment",
+      "name": "Connolly-Fitzpatrick FY23 NDAA anti-Schedule F amendment (2022)",
+      "patterns": ["%Schedule F%"],
+      "answerKeys": ["NDAA", "National Defense Authorization"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "s399-uc-block",
+      "name": "Dec 2024 Senate UC attempt on S.399 Saving the Civil Service Act blocked (Schmitt)",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["Saving the Civil Service"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "s134-hr492-intro",
+      "name": "S.134/H.R.492 Saving the Civil Service Act intro statements (Jan 16 2025)",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["Saving the Civil Service"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "2025-floor-speeches",
+      "name": "2025 Senate floor speeches on Schedule F revival / mass firings (Kaine et al.)",
+      "patterns": ["%Schedule F%", "%Schedule Policy%"],
+      "answerKeys": ["Schedule F", "Schedule Policy"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "shutdown-rif-floor",
+      "name": "Oct-Nov 2025 shutdown-era RIF floor debate",
+      "patterns": ["%reduction in force%", "%reductions in force%"],
+      "answerKeys": ["reduction in force", "shutdown"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "final-rule-reactions",
+      "name": "Floor reactions to Feb 2026 final rule + Jun 2026 EO 14410",
+      "patterns": ["%Schedule Policy%", "%policy-influencing%"],
+      "answerKeys": ["Schedule Policy"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW1",
+      "key": "hr8687-2020",
+      "name": "H.R.8687 Saving the Civil Service Act of 2020 (lame-duck response)",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["2020"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "opm-probationary-memo",
+      "name": "OPM Jan 20 2025 probationary/admin-leave memo (OPM-site only; evidenced via AFGE v. OPM)",
+      "patterns": ["%probationary%"],
+      "answerKeys": ["probationary"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "FW2",
+      "key": "fork-in-road",
+      "name": "Fork in the Road deferred resignation program + AFGE v. Ezell",
+      "patterns": ["%deferred resignation%", "%Fork in the Road%", "%Ezell%"],
+      "answerKeys": ["deferred resignation", "Fork in the Road"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "FW2",
+      "key": "probationary-terminations",
+      "name": "OPM-directed probationary terminations + AFGE v. OPM (Alsup rulings, SCOTUS stay)",
+      "patterns": ["%American Federation of Government Employees%", "%AFGE%"],
+      "answerKeys": ["probationary", "AFGE"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "arrp-memo",
+      "name": "OPM/OMB ARRP RIF-plans memo implementing EO 14210 (memo is source-gap; EO in FR)",
+      "patterns": ["%Workforce Optimization%"],
+      "answerKeys": ["Workforce Optimization", "RIF", "reduction in force"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "FW2",
+      "key": "spc-nprm",
+      "name": "OPM proposed rule Improving Performance, Accountability and Responsiveness (Apr 2025)",
+      "patterns": ["%Improving Performance, Accountability%"],
+      "answerKeys": ["Improving Performance"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "spc-final-rule",
+      "name": "OPM final rule establishing Schedule Policy/Career (Feb 6 2026)",
+      "patterns": ["%Improving Performance, Accountability%", "%Schedule Policy%"],
+      "answerKeys": ["final rule", "Schedule Policy"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "rif-proposed-rule",
+      "name": "OPM proposed rule Reduction in Force (Mar 2026, performance over tenure)",
+      "patterns": ["%Reduction in Force%"],
+      "answerKeys": ["Reduction in Force"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "rif-appeals-rule",
+      "name": "OPM proposed rule Reduction in Force Appeals (Feb 2026)",
+      "patterns": ["%Reduction in Force Appeals%"],
+      "answerKeys": ["Appeals"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "probationary-certification-memo",
+      "name": "Jul 2025 presidential memo on probationary certification + OPM guidance",
+      "patterns": ["%probationary period%"],
+      "answerKeys": ["certif"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW2",
+      "key": "eo-14410",
+      "name": "EO 14410 Implementing Schedule Policy/Career in the Excepted Service (Jun 2026)",
+      "patterns": ["%Implementing Schedule Policy%"],
+      "answerKeys": ["Implementing Schedule Policy", "14410"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "usaid-oig-report",
+      "name": "USAID OIG advisory on aid freeze; IG Martin fired next day",
+      "patterns": ["%USAID%"],
+      "answerKeys": ["USAID"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "storch",
+      "name": "Storch v. Hegseth (8 fired IGs; Sep 2025 merits ruling)",
+      "patterns": ["%Storch%"],
+      "answerKeys": ["Storch"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-workforce-1",
+      "name": "GAO-26-108719 Federal Agency Workforce Changes Jan-Jun 2025",
+      "patterns": ["%Federal Agency Workforce Changes%"],
+      "answerKeys": ["GAO", "Workforce Changes"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-workforce-2",
+      "name": "GAO-26-108583 Workforce Changes Jul 2025-Jan 2026",
+      "patterns": ["%Federal Agency Workforce Changes%"],
+      "answerKeys": ["GAO"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-opm",
+      "name": "GAO-26-108916 Recent Federal Workforce Changes at OPM",
+      "patterns": ["%Workforce Changes at OPM%", "%Recent Federal Workforce%"],
+      "answerKeys": ["OPM"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "va-oig-staffing",
+      "name": "VA OIG FY2025 staffing-shortages determination amid RIF",
+      "patterns": ["%staffing shortages%"],
+      "answerKeys": ["Veterans"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "rightsizing-hearing",
+      "name": "House Oversight Rightsizing Government hearing (Feb 2025)",
+      "patterns": ["%Rightsizing Government%"],
+      "answerKeys": ["Rightsizing"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW3",
+      "key": "ig-purge-floor",
+      "name": "Congressional statements on IG purge + 30-day notice",
+      "patterns": ["%inspectors general%"],
+      "answerKeys": ["inspector"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-13957",
+      "name": "EO 13957 Creating Schedule F (Oct 2020)",
+      "patterns": ["%Creating Schedule F%", "%Schedule F%"],
+      "answerKeys": ["13957"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "hr8687",
+      "name": "H.R.8687 Saving the Civil Service Act of 2020",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["2020"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "2020-oversight-letters",
+      "name": "2020-21 Oversight Dems GAO-briefing request + OMB halt letter",
+      "patterns": ["%Schedule F%"],
+      "answerKeys": ["letter"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-14003",
+      "name": "EO 14003 Protecting the Federal Workforce (rescission, Jan 2021)",
+      "patterns": ["%Protecting the Federal Workforce%"],
+      "answerKeys": ["14003", "rescind"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "hr302-ndaa-push",
+      "name": "117th-118th prophylactic push: H.R.302 passage + NDAA amendments",
+      "patterns": ["%Preventing a Patronage System%"],
+      "answerKeys": ["Patronage"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "dec-2024-uc",
+      "name": "Dec 2024 S.399 UC block (Schmitt)",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["unanimous consent", "blocked"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-14171",
+      "name": "EO 14171 Restoring Accountability to Policy-Influencing Positions (Jan 20 2025)",
+      "patterns": ["%Policy-Influencing%", "%Restoring Accountability%"],
+      "answerKeys": ["14171", "Policy-Influencing", "Schedule Policy"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "s134-119th",
+      "name": "S.134/H.R.492 (119th) — no floor action under unified control",
+      "patterns": ["%Saving the Civil Service%"],
+      "answerKeys": ["Saving the Civil Service"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "warner-opm-letter",
+      "name": "May 2025 Warner/Kaine comment letter vs Schedule P/C rule",
+      "patterns": ["%Schedule Policy%"],
+      "answerKeys": ["comment"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "FW4",
+      "key": "rightsizing-majority",
+      "name": "2025 majority hearings endorsing restructuring (inversion vs 2020)",
+      "patterns": ["%Rightsizing Government%"],
+      "answerKeys": ["Rightsizing", "majority"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "2026-escalation",
+      "name": "2026 responses: final rule, EO 14410, NTEU/AFGE suits",
+      "patterns": ["%National Treasury Employees Union%", "%Schedule Policy%"],
+      "answerKeys": ["2026"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "FW4",
+      "key": "structural-comparison",
+      "name": "Analytical: 2020 response ended by rescission in ~13 weeks; 2025 response is 18+ months, shifted to litigation/oversight",
+      "patterns": [],
+      "answerKeys": ["rescission", "litigation"],
+      "weight": "CORE",
+      "sourceGap": false,
+      "analytical": true
+    },
+    {
+      "qid": "IM1",
+      "key": "eo-14159",
+      "name": "EO 14159 Protecting the American People Against Invasion (287(g) trigger)",
+      "patterns": ["%Protecting the American People Against Invasion%"],
+      "answerKeys": ["Invasion", "14159"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "laken-riley",
+      "name": "Laken Riley Act floor debate (Jan 2025)",
+      "patterns": ["%Laken Riley%"],
+      "answerKeys": ["Laken Riley"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "287g-expansion-data",
+      "name": "287(g) program explosion (135→2,315 MOAs; task force model revived)",
+      "patterns": ["%287(g)%", "%287 (g)%"],
+      "answerKeys": ["287"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "IM1",
+      "key": "287g-bills",
+      "name": "287(g) bills: H.R.756, S.2401, S.4405, H.R.8077",
+      "patterns": ["%287(g)%"],
+      "answerKeys": ["287"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "obbba",
+      "name": "One Big Beautiful Bill Act detention/ICE funding floor debate",
+      "patterns": ["%One Big Beautiful%"],
+      "answerKeys": ["One Big Beautiful", "reconciliation"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "secure-america",
+      "name": "Secure America Act (S.2, Jun 2026) floor debate",
+      "patterns": ["%Secure America Act%"],
+      "answerKeys": ["Secure America"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "sanctuary-hearings",
+      "name": "Sanctuary mayors/governors hearings (Mar/Jun 2025)",
+      "patterns": ["%anctuary%"],
+      "answerKeys": ["sanctuary"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "metro-surge",
+      "name": "Operation Metro Surge + ICE shootings; MN delegation floor speeches",
+      "patterns": ["%Metro Surge%"],
+      "answerKeys": ["Metro Surge", "Minneapolis"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "charlottes-web",
+      "name": "Operation Charlotte's Web; NC delegation responses",
+      "patterns": ["%Charlotte%"],
+      "answerKeys": ["Charlotte"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM1",
+      "key": "florida-287g",
+      "name": "Florida statewide 287(g) mandate (all 67 counties)",
+      "patterns": ["%Florida%287%"],
+      "answerKeys": ["Florida"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "IM1",
+      "key": "fy2026-cr",
+      "name": "FY2026 shutdown/CR ICE-funding floor debate",
+      "patterns": ["%continuing appropriations%"],
+      "answerKeys": ["shutdown"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "eo-13767",
+      "name": "EO 13767 Border Security and Immigration Enforcement Improvements (2017)",
+      "patterns": ["%Border Security and Immigration Enforcement Improvements%"],
+      "answerKeys": ["13767", "catch and release"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "flores-replacement-rule",
+      "name": "2018 NPRM + 2019 DHS/HHS final rule replacing Flores (enjoined)",
+      "patterns": ["%Apprehension, Processing, Care%"],
+      "answerKeys": ["Flores"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "er-2019",
+      "name": "2019 expedited-removal nationwide expansion notice",
+      "patterns": ["%Designating Aliens for Expedited Removal%"],
+      "answerKeys": ["expedited removal", "2019"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "er-rescission-2022",
+      "name": "2022 rescission of the 2019 expedited-removal designation",
+      "patterns": ["%Designating Aliens%", "%expedited removal%"],
+      "answerKeys": ["rescis", "2022"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "asylum-ifr",
+      "name": "2022 Asylum Processing IFR (credible fear / parole framework)",
+      "patterns": ["%Credible Fear%"],
+      "answerKeys": ["credible fear"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "uc-foundational",
+      "name": "2024 Unaccompanied Children Program Foundational Rule",
+      "patterns": ["%Foundational Rule%", "%Unaccompanied Children Program%"],
+      "answerKeys": ["Foundational"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "securing-border",
+      "name": "2024 Securing the Border rule",
+      "patterns": ["%Securing the Border%"],
+      "answerKeys": ["Securing the Border"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "family-detention-end",
+      "name": "2021 operational end of family detention (memo, not rulemaking)",
+      "patterns": ["%family detention%"],
+      "answerKeys": ["family detention"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "IM2",
+      "key": "er-2025",
+      "name": "Jan 2025 expedited-removal maximum-scope notice",
+      "patterns": ["%Designating Aliens for Expedited Removal%"],
+      "answerKeys": ["expedited removal", "2025"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "laken-riley-detention",
+      "name": "Laken Riley Act mandatory-detention mandate (statutory)",
+      "patterns": ["%Laken Riley%"],
+      "answerKeys": ["Laken Riley"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "uc-amendments",
+      "name": "2025 IFR + 2026 Sponsor Assessment amendments to UC rule",
+      "patterns": ["%Sponsor Assessment%", "%Foundational Rule%"],
+      "answerKeys": ["Sponsor"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "bond-elimination",
+      "name": "Bond elimination via memo/BIA (Matter of Q. Li; Maldonado Bautista class)",
+      "patterns": ["%Maldonado%"],
+      "answerKeys": ["bond"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "civil-penalties",
+      "name": "Jun 2025 civil-penalties IFR (failure-to-depart fines)",
+      "patterns": ["%Civil Penalties%Immigration%"],
+      "answerKeys": ["penalt"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM2",
+      "key": "flores-termination-nds",
+      "name": "Flores termination motion (denied) + 2026 National Detention Standards",
+      "patterns": ["%Flores%", "%detention standards%"],
+      "answerKeys": ["Flores"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "er-challenge",
+      "name": "Expedited-removal expansion + Make the Road NY challenge",
+      "patterns": ["%Make the Road%", "%expedited removal%"],
+      "answerKeys": ["expedited removal"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "proc-10903",
+      "name": "Proclamation 10903 Alien Enemies Act invocation (Tren de Aragua)",
+      "patterns": ["%Alien Enemies%", "%Tren de Aragua%"],
+      "answerKeys": ["Alien Enemies"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "jgg",
+      "name": "J.G.G. v. Trump (Boasberg TROs, contempt; SCOTUS notice+habeas)",
+      "patterns": ["%J.G.G%"],
+      "answerKeys": ["J.G.G", "Boasberg"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "aarp",
+      "name": "A.A.R.P. v. Trump (SCOTUS May 2025, process required)",
+      "patterns": ["%A.A.R.P%"],
+      "answerKeys": ["A.A.R.P"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "abrego",
+      "name": "Abrego Garcia arc (facilitate return; vindictive-prosecution dismissal 2026)",
+      "patterns": ["%Abrego Garcia%"],
+      "answerKeys": ["Abrego"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "dvd",
+      "name": "D.V.D. v. DHS third-country removals (SCOTUS stay; Feb 2026 vacatur)",
+      "patterns": ["%D.V.D%", "%third country%"],
+      "answerKeys": ["third country", "D.V.D"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "wmm-moot",
+      "name": "W.M.M. AEA merits mooted (5th Cir. Aug 13 2026)",
+      "patterns": ["%W.M.M%"],
+      "answerKeys": ["moot"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "bond-due-process",
+      "name": "Bond/mandatory-detention due-process fight (Q. Li; Maldonado Bautista)",
+      "patterns": ["%Maldonado%"],
+      "answerKeys": ["bond"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "vasquez-perdomo",
+      "name": "Noem v. Vasquez Perdomo (SCOTUS stay, roving stops)",
+      "patterns": ["%Vasquez Perdomo%"],
+      "answerKeys": ["Vasquez"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "laken-riley-dp",
+      "name": "Laken Riley Act detention-without-bond due-process objections",
+      "patterns": ["%Laken Riley%"],
+      "answerKeys": ["Laken Riley"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "flores-litigation",
+      "name": "Flores termination litigation (2025-26)",
+      "patterns": ["%Flores%"],
+      "answerKeys": ["Flores"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM3",
+      "key": "neguse",
+      "name": "Neguse v. ICE congressional oversight-access orders",
+      "patterns": ["%Neguse%"],
+      "answerKeys": ["Neguse"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "zero-tolerance",
+      "name": "2018 DOJ zero-tolerance announcement",
+      "patterns": ["%Zero Tolerance%", "%zero-tolerance%"],
+      "answerKeys": ["zero tolerance"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "eo-13841",
+      "name": "EO 13841 Affording Congress an Opportunity (family separation retreat)",
+      "patterns": ["%Family Separation%"],
+      "answerKeys": ["13841", "family separation"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "keep-families",
+      "name": "Keep Families Together Act (S.3036, 2018)",
+      "patterns": ["%Keep Families Together%"],
+      "answerKeys": ["Keep Families"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "supplemental-2019",
+      "name": "2019 $4.6B emergency border supplemental (PL 116-26)",
+      "patterns": ["%supplemental%border%", "%Humanitarian Assistance%Border%"],
+      "answerKeys": ["supplemental"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "oig-family-separation",
+      "name": "DHS OIG-18-84 + HHS OIG separation reports; 2019 overcrowding alerts",
+      "patterns": ["%amily eparation%", "%Family Separation%", "%overcrowding%"],
+      "answerKeys": ["OIG", "inspector"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "judiciary-hearing-2019",
+      "name": "2019 family-separation / detention-conditions hearings",
+      "patterns": ["%Family Separation%"],
+      "answerKeys": ["hearing"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "gao-19-163",
+      "name": "GAO-19-163 separated-children data failures",
+      "patterns": ["%reunif%"],
+      "answerKeys": ["GAO"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "hjres46",
+      "name": "H.J.Res.46 border-emergency termination (vetoed 2019)",
+      "patterns": ["%national emergency%"],
+      "answerKeys": ["veto"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "laken-riley-contrast",
+      "name": "Laken Riley Act as bipartisan pro-enforcement contrast",
+      "patterns": ["%Laken Riley%"],
+      "answerKeys": ["Laken Riley"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "funding-escalation",
+      "name": "OBBBA + Secure America Act detention-funding escalation",
+      "patterns": ["%One Big Beautiful%", "%Secure America Act%"],
+      "answerKeys": ["One Big Beautiful", "Secure America"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "mciver",
+      "name": "Delaney Hall incident; Rep. McIver prosecution + 3d Cir. appeal",
+      "patterns": ["%McIver%", "%Delaney Hall%"],
+      "answerKeys": ["McIver"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "neguse-oversight",
+      "name": "Oversight-access collapse → Neguse v. ICE orders",
+      "patterns": ["%Neguse%"],
+      "answerKeys": ["Neguse", "oversight"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "padilla",
+      "name": "Sen. Padilla removal at Noem press conference; floor speeches",
+      "patterns": ["%Padilla%"],
+      "answerKeys": ["Padilla"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "2026-hearings",
+      "name": "2026 majority hearings defending enforcement (structural contrast)",
+      "patterns": ["%Threats to ICE%", "%Delaney Hall%"],
+      "answerKeys": ["2026", "hearing"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "metro-surge-response",
+      "name": "Minority response to Metro Surge / ICE shootings (2026)",
+      "patterns": ["%Metro Surge%"],
+      "answerKeys": ["Metro Surge", "Minneapolis"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "IM4",
+      "key": "guardrail-bills",
+      "name": "Guardrail bills without floor action (Equal Detention Standards etc.)",
+      "patterns": ["%Detention Standards Act%"],
+      "answerKeys": ["introduced"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "ig-mass-firing",
+      "name": "Jan 24 2025 mass firing of 17-18 IGs (emails source-gap; recited in Storch + CREC)",
+      "patterns": ["%inspectors general%"],
+      "answerKeys": ["17", "mass", "January 2025"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "storch-case",
+      "name": "Storch v. Hegseth (filed Feb 2025; Sep 2025 merits: unlawful, no reinstatement)",
+      "patterns": ["%Storch%"],
+      "answerKeys": ["Storch"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "usaid-ig-firing",
+      "name": "USAID IG Martin fired day after aid-freeze advisory",
+      "patterns": ["%USAID%"],
+      "answerKeys": ["USAID", "Martin"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "grassley-durbin-letter",
+      "name": "Grassley-Durbin letter demanding rationale (letter source-gap; CREC statements)",
+      "patterns": ["%inspector general%"],
+      "answerKeys": ["Grassley"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL1",
+      "key": "schiff-hsgac-letter",
+      "name": "Schiff + 11 senators letter urging HSGAC hearing",
+      "patterns": ["%inspectors general%"],
+      "answerKeys": ["Schiff"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL1",
+      "key": "watchdogs-act",
+      "name": "Protect Our Watchdogs Act (Mar 2025)",
+      "patterns": ["%Watchdog%"],
+      "answerKeys": ["Watchdog"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "hr3735-ig-act",
+      "name": "H.R.3735 IG Act of 2025 + Grassley IG-independence reintroduction",
+      "patterns": ["%IG Act%", "%Inspector General%ndependence%"],
+      "answerKeys": ["IG Act", "independence"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL1",
+      "key": "warren-hegseth-letter",
+      "name": "Warren letter on DoD IG removal",
+      "patterns": ["%Hegseth%"],
+      "answerKeys": ["Warren"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL1",
+      "key": "exim-ig-firing",
+      "name": "Ex-Im Bank IG Salehi fired (Oct 2025)",
+      "patterns": ["%Export-Import%", "%Salehi%"],
+      "answerKeys": ["Export-Import", "Salehi"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL1",
+      "key": "cigie-capacity",
+      "name": "IG workforce erosion; Mason installed at CIGIE",
+      "patterns": ["%CIGIE%", "%Council of the Inspectors General%"],
+      "answerKeys": ["CIGIE"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL1",
+      "key": "minority-hearing-requests",
+      "name": "House minority hearing requests on IG purge",
+      "patterns": ["%inspectors general%"],
+      "answerKeys": ["hearing"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL2",
+      "key": "dellinger",
+      "name": "Dellinger v. Bessent (Special Counsel; reinstated then dropped Mar 2025)",
+      "patterns": ["%Dellinger%"],
+      "answerKeys": ["Dellinger"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "harris-bessent",
+      "name": "Harris v. Bessent (MSPB; Dec 2025 D.C. Cir. merits)",
+      "patterns": ["%Harris%Bessent%", "%Merit Systems Protection%"],
+      "answerKeys": ["Harris"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "wilcox",
+      "name": "Wilcox v. Trump / Trump v. Wilcox (SCOTUS stay May 2025, Fed carve-out)",
+      "patterns": ["%Wilcox%"],
+      "answerKeys": ["Wilcox"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "boyle",
+      "name": "Trump v. Boyle (CPSC commissioners, Jul 2025 stay)",
+      "patterns": ["%Boyle%", "%Consumer Product Safety%"],
+      "answerKeys": ["Boyle", "CPSC"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "slaughter",
+      "name": "Trump v. Slaughter (SCOTUS Jun 29 2026: Humphrey's Executor overruled)",
+      "patterns": ["%Slaughter%", "%Humphrey%"],
+      "answerKeys": ["Slaughter", "Humphrey"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "cook",
+      "name": "Trump v. Cook (Fed governor; SCOTUS Jun 29 2026: Fed protection stands)",
+      "patterns": ["%Cook%"],
+      "answerKeys": ["Cook"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "eo-14215",
+      "name": "EO 14215 Ensuring Accountability for All Agencies",
+      "patterns": ["%Ensuring Accountability for All Agencies%"],
+      "answerKeys": ["14215", "Ensuring Accountability"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "sg-530d-letter",
+      "name": "Acting SG letter: DOJ won't defend for-cause removal statutes",
+      "patterns": ["%Humphrey%"],
+      "answerKeys": ["Solicitor General", "no longer defend"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL2",
+      "key": "severino",
+      "name": "Severino v. Biden (D.C. Cir. 2023 baseline)",
+      "patterns": ["%Severino%"],
+      "answerKeys": ["Severino"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL2",
+      "key": "baseline-precedents",
+      "name": "Humphrey's Executor / Seila Law / Collins v. Yellen baselines",
+      "patterns": ["%Seila%", "%Collins v. Yellen%"],
+      "answerKeys": ["Seila", "Humphrey"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13771",
+      "name": "EO 13771 Reducing Regulation (2017 baseline)",
+      "patterns": ["%Reducing Regulation%"],
+      "answerKeys": ["13771", "two-for-one"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13891",
+      "name": "EO 13891 Agency Guidance Documents (2019)",
+      "patterns": ["%Guidance Documents%"],
+      "answerKeys": ["13891", "guidance"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13957-rl3",
+      "name": "EO 13957 Schedule F (2020)",
+      "patterns": ["%Creating Schedule F%", "%Schedule F%"],
+      "answerKeys": ["Schedule F"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14003-rl3",
+      "name": "EO 14003 revoking Schedule F (2021)",
+      "patterns": ["%Protecting the Federal Workforce%"],
+      "answerKeys": ["14003", "revok"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "modernizing-reg-review",
+      "name": "Biden Modernizing Regulatory Review memo + EO 14094",
+      "patterns": ["%Modernizing Regulatory Review%"],
+      "answerKeys": ["Modernizing"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14171-rl3",
+      "name": "EO 14171 Schedule Policy/Career reinstatement (2025)",
+      "patterns": ["%Policy-Influencing%"],
+      "answerKeys": ["14171", "Schedule Policy"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "doge-eos",
+      "name": "EO 14158 DOGE + EO 14210 Workforce Optimization",
+      "patterns": ["%Government Efficiency%"],
+      "answerKeys": ["DOGE", "Government Efficiency"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14215-rl3",
+      "name": "EO 14215 Ensuring Accountability for All Agencies (era-defining)",
+      "patterns": ["%Ensuring Accountability for All Agencies%"],
+      "answerKeys": ["14215", "Ensuring Accountability"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14219",
+      "name": "EO 14219 Lawful Governance / Deregulatory Initiative",
+      "patterns": ["%Lawful Governance%"],
+      "answerKeys": ["14219", "Deregulatory"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "career-sen-execs",
+      "name": "Memo Restoring Accountability for Career Senior Executives",
+      "patterns": ["%Career Senior Executives%"],
+      "answerKeys": ["Senior Executive"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "opm-final-rule-rl3",
+      "name": "OPM Schedule P/C final rule (Feb 2026)",
+      "patterns": ["%Improving Performance, Accountability%"],
+      "answerKeys": ["final rule"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL3",
+      "key": "cross-era-synthesis",
+      "name": "Analytical: process control (2017-20) → revocation (2021-24) → direct subordination + implementation (2025-26)",
+      "patterns": [],
+      "answerKeys": ["compare", "contrast", "era"],
+      "weight": "CORE",
+      "sourceGap": false,
+      "analytical": true
+    },
+    {
+      "qid": "RL4",
+      "key": "sessions-consent-decrees",
+      "name": "Sessions 2017/2018 consent-decree memos (source-gap; any OPA statement)",
+      "patterns": ["%consent decree%"],
+      "answerKeys": ["Sessions", "consent decree"],
+      "weight": "CORE",
+      "sourceGap": true
+    },
+    {
+      "qid": "RL4",
+      "key": "religious-liberty",
+      "name": "2017 religious-liberty guidance announcement",
+      "patterns": ["%religious liberty%"],
+      "answerKeys": ["religious"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "yale-suit",
+      "name": "2020 Yale admissions suit (dropped 2021)",
+      "patterns": ["%Yale%"],
+      "answerKeys": ["Yale"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "chauvin-arbery",
+      "name": "Chauvin federal civil-rights charges + Arbery hate-crimes convictions",
+      "patterns": ["%Chauvin%", "%Arbery%"],
+      "answerKeys": ["Chauvin", "Arbery"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "georgia-sb202",
+      "name": "2021 DOJ suit against Georgia SB 202",
+      "patterns": ["%Georgia%"],
+      "answerKeys": ["Georgia"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "redlining",
+      "name": "2021 Combatting Redlining Initiative",
+      "patterns": ["%redlining%"],
+      "answerKeys": ["redlining"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "pattern-practice-findings",
+      "name": "2023 Louisville + Minneapolis pattern-or-practice findings",
+      "patterns": ["%Louisville%", "%Minneapolis%"],
+      "answerKeys": ["Louisville", "Minneapolis"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "bondi-sb202-dismissal",
+      "name": "2025 Bondi dismissal of SB 202 suit",
+      "patterns": ["%Georgia%"],
+      "answerKeys": ["dismiss", "Georgia"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "consent-decree-dismissals",
+      "name": "May 2025 dismissal of Louisville/Minneapolis decrees + closed investigations",
+      "patterns": ["%consent decree%", "%Minneapolis%"],
+      "answerKeys": ["consent decree", "dismiss"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "civil-rights-fraud-initiative",
+      "name": "2025 Civil Rights Fraud Initiative (FCA vs universities) + Title IX SIT",
+      "patterns": ["%Civil Rights Fraud%", "%False Claims%"],
+      "answerKeys": ["False Claims", "fraud initiative"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "title-ix-suits",
+      "name": "U.S. v. Maine + California Title IX suits (2025)",
+      "patterns": ["%Maine%", "%Title IX%"],
+      "answerKeys": ["Maine", "Title IX"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "RL4",
+      "key": "2026-redirection",
+      "name": "2026 voter-roll suits, Second Amendment suit, division exodus",
+      "patterns": ["%voter roll%", "%list maintenance%", "%Second Amendment%"],
+      "answerKeys": ["voter roll"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "la-federalization-memo",
+      "name": "Presidential Memo: DoD Security for Protection of DHS Functions (LA Guard federalization)",
+      "date": "2025-06-07",
+      "patterns": ["%Protection of%Homeland Security Functions%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "newsom-v-trump",
+      "name": "Newsom v. Trump (TRO, 9th Cir. stay, en banc)",
+      "date": "2025-06/10",
+      "patterns": ["%Newsom%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "newsom-posse-comitatus",
+      "name": "Newsom v. Trump Posse Comitatus ruling + Dec 2025 end of LA deployment",
+      "date": "2025-09/12",
+      "patterns": ["%Posse Comitatus%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "eo-14333-dc",
+      "name": "EO 14333 DC Crime Emergency + DC Guard mobilization memos",
+      "date": "2025-08-11",
+      "patterns": ["%Crime Emergency%", "%District of Columbia%Guard%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "dc-v-trump",
+      "name": "District of Columbia v. Trump (Cobb ruling, DC Cir. stay)",
+      "date": "2025-09/12",
+      "patterns": ["%District of Columbia v%", "%Columbia v. Trump%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "oregon-v-trump",
+      "name": "Oregon v. Trump (Portland TROs, permanent injunction)",
+      "date": "2025-10/11",
+      "patterns": ["%Oregon v%Trump%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "illinois-scotus",
+      "name": "Illinois v. Trump / Trump v. Illinois (SCOTUS Dec 23 2025)",
+      "date": "2025-10/12",
+      "patterns": ["%Illinois v%Trump%", "%Trump v%Illinois%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "memphis-task-force",
+      "name": "Memphis Safe Task Force memo + TN litigation",
+      "date": "2025-09-15",
+      "patterns": ["%Memphis%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "insurrection-act-bills",
+      "name": "S.2070 Insurrection Act of 2025 / H.R.5604 National Guard Proper Use Act",
+      "date": "2025-06/10",
+      "patterns": ["%Insurrection Act%", "%National Guard Proper Use%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "floor-debate-deployments",
+      "name": "CREC floor debate on deployments/Insurrection Act",
+      "date": "2025-2026",
+      "patterns": ["%National Guard%"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "guard-shooting-prosecution",
+      "name": "WV Guard members shooting; Lakanwal prosecution",
+      "date": "2025-11-26",
+      "patterns": ["%Lakanwal%", "%Beckstrom%"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    },
+    {
+      "qid": "H2",
+      "key": "title32-consensual",
+      "name": "Title 32 governor-requested deployments (New Orleans etc.)",
+      "date": "2025-12+",
+      "patterns": ["%New Orleans%Guard%", "%Title 32%"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "H3",
+      "key": "eo-14147-weaponization",
+      "name": "EO 14147 Ending Weaponization + DOJ Weaponization Working Group",
+      "date": "2025-01-20",
+      "patterns": ["%Weaponization%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "law-firm-eos",
+      "name": "Law-firm EOs 14230/14237/14246/14250/14263 (+ Paul Weiss rescission 14244)",
+      "date": "2025-03/04",
+      "patterns": ["%Perkins Coie%", "%Jenner%", "%WilmerHale%", "%Susman%", "%Paul Weiss%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "law-firm-rulings",
+      "name": "District rulings striking law-firm EOs (Howell/Bates/Leon/AliKhan) + 2026 appeal reversal",
+      "date": "2025-05/06",
+      "patterns": ["%Perkins Coie%", "%Jenner%", "%WilmerHale%", "%Susman%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "clearance-memo",
+      "name": "Memo rescinding security clearances of named individuals",
+      "date": "2025-03-22",
+      "patterns": ["%Security Clearances%", "%security clearance%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "krebs-taylor-memos",
+      "name": "Apr 9 2025 Krebs + Miles Taylor investigation memos",
+      "date": "2025-04-09",
+      "patterns": ["%Krebs%", "%Egregious Leaker%", "%Miles Taylor%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-comey",
+      "name": "United States v. Comey (indictment + Nov 24 2025 dismissal)",
+      "date": "2025-09/11",
+      "patterns": ["%Comey%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-james",
+      "name": "United States v. James (indictment + dismissal)",
+      "date": "2025-10/11",
+      "patterns": ["%Letitia James%", "% v. James%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "fourth-circuit-appeal",
+      "name": "4th Cir. consolidated appeal of Comey/James dismissals (pending)",
+      "date": "2026",
+      "patterns": ["%Comey%", "%Halligan%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-bolton",
+      "name": "United States v. Bolton (indictment, Jun 2026 guilty plea)",
+      "date": "2025-10/2026-06",
+      "patterns": ["%Bolton%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "cook-removal",
+      "name": "Lisa Cook removal attempt + Trump v. Cook (SCOTUS Jun 29 2026)",
+      "date": "2025-08/2026-06",
+      "patterns": ["%Cook%"],
+      "weight": "CORE",
+      "sourceGap": false
+    },
+    {
+      "qid": "H3",
+      "key": "martin-schiff-probes",
+      "name": "Ed Martin special-attorney probes (Schiff, James mortgage)",
+      "date": "2025-08+",
+      "patterns": ["%Schiff%", "%Ed Martin%"],
+      "weight": "SECONDARY",
+      "sourceGap": true
+    },
+    {
+      "qid": "H3",
+      "key": "congressional-responses-weaponization",
+      "name": "Congressional floor/hearing responses (weaponization, Halligan)",
+      "date": "2025-09+",
+      "patterns": ["%weaponization%", "%Halligan%"],
+      "weight": "SECONDARY",
+      "sourceGap": false
+    }
+  ]
+}

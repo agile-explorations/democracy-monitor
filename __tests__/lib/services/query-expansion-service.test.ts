@@ -28,15 +28,15 @@ describe('parseAliasResponse', () => {
     expect(parseAliasResponse('{"terms": ["x"]}')).toEqual([]);
   });
 
-  it('drops non-strings and out-of-bounds lengths, caps at 8', () => {
-    const twelve = JSON.stringify([
+  it('drops non-strings and out-of-bounds lengths, caps at 12', () => {
+    const sixteen = JSON.stringify([
       42,
       'ab',
       'x'.repeat(61),
-      ...Array.from({ length: 12 }, (_, i) => `Term ${i}`),
+      ...Array.from({ length: 16 }, (_, i) => `Term ${i}`),
     ]);
-    const parsed = parseAliasResponse(twelve);
-    expect(parsed).toHaveLength(8);
+    const parsed = parseAliasResponse(sixteen);
+    expect(parsed).toHaveLength(12);
     expect(parsed[0]).toBe('Term 0');
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DISPOSITION_HEADLINE_OPTS,
+  dropBoilerplateFragments,
   QUERY_HEADLINE_OPTS,
 } from '@/lib/services/synthesis-context-enrichment';
 
@@ -21,4 +22,45 @@ describe('ts_headline options are valid deflists', () => {
       }
     });
   }
+});
+
+describe('dropBoilerplateFragments (#744)', () => {
+  const GPO_HEADER =
+    'Federal Register, Volume 90 Issue 153 (Tuesday, August 12, 2025) [Federal Register Volume 90, Number';
+
+  it('drops a masthead-only excerpt entirely (the observed live defect)', () => {
+    expect(dropBoilerplateFragments(GPO_HEADER)).toBeNull();
+  });
+
+  it('keeps the substantive fragment when only one fragment is masthead', () => {
+    const real =
+      'directs the Attorney General to investigate whether Federal grant funds are being used to illegally support lobbying activities';
+    expect(dropBoilerplateFragments(`${GPO_HEADER} ... ${real}`)).toBe(real);
+  });
+
+  it('keeps body passages that merely mention the Federal Register', () => {
+    const body =
+      'published in the Federal Register on August 29, 2025 (90 FR 42234), and available at the common instructions page';
+    expect(dropBoilerplateFragments(body)).toBe(body);
+  });
+
+  it('drops hearing and report mastheads', () => {
+    expect(
+      dropBoilerplateFragments(
+        '- NOMINATION OF SCOTT KUPOR [Senate Hearing, 119-43] [From the U.S',
+      ),
+    ).toBeNull();
+  });
+
+  it('drops billing-code tails', () => {
+    expect(
+      dropBoilerplateFragments(
+        '[FR Doc. 2025-21172 Filed 11-25-25; 8:45 am] BILLING CODE 3110-01-P',
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null rather than a too-short residue', () => {
+    expect(dropBoilerplateFragments(`${GPO_HEADER} ... short bit`)).toBeNull();
+  });
 });

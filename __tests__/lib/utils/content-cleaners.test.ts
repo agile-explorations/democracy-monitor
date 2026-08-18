@@ -44,6 +44,17 @@ describe('stripBoilerplate', () => {
       const result = stripBoilerplate(content, 'govinfo_cpd');
       expect(result).toBe(content);
     });
+
+    it('strips a bare DCPD title token without CSS (#736 re-extraction shape)', () => {
+      const content =
+        'DCPD202200318 Administration of Joseph R. Biden, Jr., 2022 Remarks Honoring Teachers';
+      const result = stripBoilerplate(content, 'govinfo_cpd');
+      expect(result).toBe('Administration of Joseph R. Biden, Jr., 2022 Remarks Honoring Teachers');
+    });
+
+    it('does not reduce a token-only string to empty', () => {
+      expect(stripBoilerplate('DCPD202200318', 'govinfo_cpd')).toBe('DCPD202200318');
+    });
   });
 
   describe('govinfo — report header', () => {

@@ -13,7 +13,7 @@ import { tierForSourceType } from '@/lib/data/document-tiers';
 import { hashArmParams, runKeyedArms } from './arm-cache';
 import { buildAliasArmQuery, fetchMatchSnippets } from './hybrid-arms';
 import type { FusionArm } from './hybrid-fusion';
-import { armWeight, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
+import { armWeight, dedupeByInstrument, dedupeByUrl, fuseWeightedRrf } from './hybrid-fusion';
 import type { ValidatedAlias } from './query-expansion-service';
 import { expandAndValidate } from './query-expansion-service';
 import { fetchResearchDocRowsByIds, researchCandidateFilters } from './research-retrieval';
@@ -96,7 +96,7 @@ export async function fuseHydrateDedupe(
     if (f.matchedAlias && !d.matchedAlias) d.matchedAlias = f.matchedAlias;
     docs.push(d);
   }
-  return dedupeByUrl(docs).slice(0, topK);
+  return dedupeByInstrument(dedupeByUrl(docs)).slice(0, topK);
 }
 
 /**

@@ -1,4 +1,5 @@
 /** Prompt builders for the research synthesis pipeline. */
+import { SOURCE_COVERAGE_MANIFEST } from '@/lib/data/source-coverage-manifest';
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
 import type { ValidatedAlias } from './query-expansion-service';
 import { draftRules } from './research-draft-rules';
@@ -30,11 +31,15 @@ function formatMatchedPassage(doc: ResearchDocument): string {
 }
 
 /**
- * Per-tier content budgets (#552): primary sources (ACTION) carry the holding
- * or operative text deeper into the excerpt; DISCUSSION docs are summarizable
- * from less. 30 docs at these budgets ≈ 18k tokens of context.
+ * Per-tier content budgets (#552, raised by #736): primary sources (ACTION)
+ * carry the holding or operative text deeper into the excerpt — at 2200 chars
+ * an executive order's excerpt ended inside its purpose section and the
+ * operative sections never reached the model. DISCUSSION docs are
+ * summarizable from less. 30 docs at these budgets ≈ 22k tokens of context.
+ * Must stay ≤ RESEARCH_CONTENT_FETCH_CHARS (research-retrieval.ts) — the
+ * SQL fetch truncates first; a guard test enforces the coupling.
  */
-export const ACTION_EXCERPT_CHARS = 2200;
+export const ACTION_EXCERPT_CHARS = 4000;
 export const DISCUSSION_EXCERPT_CHARS = 1200;
 
 function formatDocumentContext(docs: ResearchDocument[]): string {
@@ -144,6 +149,7 @@ function buildCoverageSection(
     `Date range of retrieved documents: ${dateRange.earliest} to ${dateRange.latest}`,
     `Documents retrieved: ${docs.length} (most relevant, weighted toward recent)`,
     ...retrievalLines,
+    ...SOURCE_COVERAGE_MANIFEST,
     'The corpus statistics below, when present, provide the full-corpus picture.',
   ];
   if (corpusStats) {
