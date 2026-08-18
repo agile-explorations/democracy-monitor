@@ -33,7 +33,7 @@ export const CONCERN_LEVEL_COLORS = {
     ConfirmedConcern: '#3730a3',
   },
   dark: {
-    Stable: '#64748b',
+    Stable: '#475569',
     Elevated: '#6366f1',
     Divergent: '#8b5cf6',
     ConfirmedConcern: '#c4b5fd',
