@@ -8,11 +8,11 @@ A real-time dashboard that monitors signals of executive-power centralization ac
 
 The dashboard tracks **14 institutional categories** — civil service protections, fiscal independence, executive oversight (inspectors general), Hatch Act enforcement, judicial independence, military constraints, rulemaking autonomy, executive actions, information availability, elections, media freedom, federal law enforcement, civil liberties, and immigration enforcement — and assigns each a weekly status measuring departure from baseline practice (internal enum names in parentheses — they appear in the published data and the code):
 
-| Status                                       | Meaning                                                                                      |
-| -------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| **Consistent with baseline** (`Stable`)      | AI content assessment found no departures from documented practice                           |
-| **Notable departure** (`Elevated`)           | AI two-pass review identifies departure documents with Pass 2 corroboration                  |
-| **Sustained departure** (`ConfirmedConcern`) | AI assessment elevated with a high Pass 2 departure rate (≥20%). Warrants close examination. |
+| Status                                                  | Meaning                                                                                      |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Consistent with norms** (`Stable`)                    | AI content assessment found no departures from documented practice                           |
+| **Notable departure from norms** (`Elevated`)           | AI two-pass review identifies departure documents with Pass 2 corroboration                  |
+| **Sustained departure from norms** (`ConfirmedConcern`) | AI assessment elevated with a high Pass 2 departure rate (≥20%). Warrants close examination. |
 
 Assessments are fully transparent: every status traces to specific documents, reproducible metrics, and published thresholds.
 

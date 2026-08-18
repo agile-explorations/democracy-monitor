@@ -119,19 +119,19 @@ export function SummaryContent() {
         <div className="space-y-2 ml-2">
           <ConcernLevel
             className="bg-dm-border"
-            label="Consistent with baseline"
+            label="Consistent with norms"
             description="Document review within the baseline range. No departures detected. (Internal status: Stable.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.Stable}
           />
           <ConcernLevel
             className="bg-dm-accent"
-            label="Notable departure"
+            label="Notable departure from norms"
             description="Two-pass document review flags departures from baseline practice, with Pass 2 corroboration. (Internal status: Elevated.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.Elevated}
           />
           <ConcernLevel
             className="bg-status-capture"
-            label="Sustained departure"
+            label="Sustained departure from norms"
             description="High Pass 2 rate of clear-departure documents (>20%). Warrants close examination. (Internal status: ConfirmedConcern.)"
             threshold={CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern}
           />
@@ -455,16 +455,16 @@ export function DetailedContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>
-            <strong>Consistent with baseline</strong> (internal: Stable) — Pass 2 found no departure
+            <strong>Consistent with norms</strong> (internal: Stable) — Pass 2 found no departure
             documents (0 clear-departure, ≤1 possible-departure)
           </li>
           <li>
-            <strong>Notable departure</strong> (internal: Elevated) — ≥1 clear-departure OR ≥2
-            possible-departure documents
+            <strong>Notable departure from norms</strong> (internal: Elevated) — ≥1 clear-departure
+            OR ≥2 possible-departure documents
           </li>
           <li>
-            <strong>Sustained departure</strong> (internal: ConfirmedConcern) — ≥2 clear-departure,
-            OR ≥3 departure documents with ≥20% departure rate
+            <strong>Sustained departure from norms</strong> (internal: ConfirmedConcern) — ≥2
+            clear-departure, OR ≥3 departure documents with ≥20% departure rate
           </li>
         </ul>
         <p>
@@ -558,17 +558,17 @@ export function DetailedContent() {
           headers={['Status', 'Meaning', "How it's set (Pass 2 counts)"]}
           rows={[
             [
-              'Consistent with baseline',
+              'Consistent with norms',
               'Document review within the baseline range. No departures detected.',
               CONCERN_LEVEL_THRESHOLDS.Stable,
             ],
             [
-              'Notable departure',
+              'Notable departure from norms',
               'Two-pass document review flags departures from baseline practice, with Pass 2 corroboration.',
               CONCERN_LEVEL_THRESHOLDS.Elevated,
             ],
             [
-              'Sustained departure',
+              'Sustained departure from norms',
               'High Pass 2 rate of clear-departure documents (>20%). Warrants close examination.',
               CONCERN_LEVEL_THRESHOLDS.ConfirmedConcern,
             ],
@@ -736,8 +736,11 @@ export function DetailedContent() {
         </p>
         <ul className="list-disc list-inside space-y-1 ml-2">
           <li>Structural anomaly threshold: composite z-score &gt; 2.5 (descriptive only)</li>
-          <li>P2 Notable departure: ≥1 clear-departure OR ≥2 possible-departure</li>
-          <li>P2 Sustained departure: ≥2 clear-departure, OR ≥3 departure docs with ≥20% rate</li>
+          <li>P2 Notable departure from norms: ≥1 clear-departure OR ≥2 possible-departure</li>
+          <li>
+            P2 Sustained departure from norms: ≥2 clear-departure, OR ≥3 departure docs with ≥20%
+            rate
+          </li>
           <li>Thematic drift window: 8 weeks rolling (descriptive only)</li>
           <li>Long-horizon cumulative tracking: 12 weeks</li>
           <li>Structural dampening: exponential decay for mild z-scores, JSD outlier cap</li>

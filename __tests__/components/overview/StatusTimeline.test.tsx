@@ -44,7 +44,9 @@ describe('StatusTimeline', () => {
 
   it('includes status label in cell title', () => {
     render(<StatusTimeline entries={sampleEntries} mode="light" />);
-    expect(screen.getByTitle(/Fiscal Controls — Jan 13: Sustained departure/)).toBeDefined();
+    expect(
+      screen.getByTitle(/Fiscal Controls — Jan 13: Sustained departure from norms/),
+    ).toBeDefined();
   });
 
   it('hides the Not-yet-assessed legend entry when every cell has a status', () => {

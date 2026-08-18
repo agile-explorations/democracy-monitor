@@ -7,10 +7,10 @@ import type { ConcernLevel } from '@/lib/types/structural';
  * this file is the single mapping layer for every surface that renders them.
  */
 export const CONCERN_LEVEL_LABELS: Record<ConcernLevel, string> = {
-  Stable: 'Consistent with baseline',
-  Elevated: 'Notable departure',
-  Divergent: 'Departure (legacy)',
-  ConfirmedConcern: 'Sustained departure',
+  Stable: 'Consistent with norms',
+  Elevated: 'Notable departure from norms',
+  Divergent: 'Departure from norms (legacy)',
+  ConfirmedConcern: 'Sustained departure from norms',
 };
 
 /** Short tooltip text for ConcernLevelPill title attributes. */
@@ -46,7 +46,7 @@ export const CONCERN_LEVEL_THRESHOLDS: Record<Exclude<ConcernLevel, 'Divergent'>
   ConfirmedConcern: '≥2 clear-departure, or ≥3 departure documents with a >20% departure rate',
 };
 
-/** Count-aware strip label (#732): "3 Notable departures" but "1 Sustained
+/** Count-aware strip label (#732): "3 Notable departures from norms" but "1 Sustained
  *  departure"; labels without a countable noun are returned unchanged. */
 export function concernLevelCountLabel(status: ConcernLevel, count: number): string {
   const label = CONCERN_LEVEL_LABELS[status];

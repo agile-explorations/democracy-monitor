@@ -73,11 +73,13 @@ export function DetailedTooltip({
       <div className="mt-1 space-y-0.5">
         {d.confirmedWeighted > 0 && (
           <p style={{ color: statusColors.ConfirmedConcern }}>
-            Sustained departure: {d.confirmedWeighted}
+            Sustained departure from norms: {d.confirmedWeighted}
           </p>
         )}
         {d.elevatedWeighted > 0 && (
-          <p style={{ color: statusColors.Elevated }}>Notable departure: {d.elevatedWeighted}</p>
+          <p style={{ color: statusColors.Elevated }}>
+            Notable departure from norms: {d.elevatedWeighted}
+          </p>
         )}
       </div>
       <p className="text-dm-text-secondary mt-1">Total: {d.weightedScore}</p>
@@ -125,10 +127,10 @@ export function ChartLegend({
       ) : (
         <>
           <span className="flex items-center gap-1">
-            <Swatch color={statusColors.Elevated} /> Notable departure (1 pt)
+            <Swatch color={statusColors.Elevated} /> Notable departure from norms (1 pt)
           </span>
           <span className="flex items-center gap-1">
-            <Swatch color={statusColors.ConfirmedConcern} /> Sustained departure (2 pts)
+            <Swatch color={statusColors.ConfirmedConcern} /> Sustained departure from norms (2 pts)
           </span>
         </>
       )}
