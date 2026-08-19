@@ -10,9 +10,17 @@ import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import type {
+  ExploreSearchResult,
+  ResearchDocument,
+  SearchFilters,
+  SimilarDocumentResult,
+} from '@/lib/types/search';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { embedQueryCached } from './embedding-service';
+import { mineArmsFromCandidates } from './entity-mining';
 import { hybridVectorExplore } from './hybrid-explore';
+import type { ValidatedAlias } from './query-expansion-service';
 import { expandAndValidate } from './query-expansion-service';
 import {
   armsForTier,
@@ -28,96 +36,13 @@ import { executeFilteredVectorQuery, halfvecDistanceDoc } from './vector-expr';
 // Types
 // ---------------------------------------------------------------------------
 
-export interface SearchFilters {
-  query: string;
-  category?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  sourceOrigin?: string;
-  scoreMin?: number;
-  scoreMax?: number;
-  documentClass?: string;
-  sort?: 'relevance' | 'date' | 'score';
-  page?: number;
-  pageSize?: number;
-}
-
-export interface SearchResultDocument {
-  id: number;
-  title: string;
-  url: string | null;
-  publishedAt: string | null;
-  sourceType: string;
-  sourceOrigin: string | null;
-  caseId: string | null;
-  category: string;
-  snippet: string | null;
-  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
-  matchSnippet?: string | null;
-  /** The corpus-validated alias whose arm surfaced this doc (#702). */
-  matchedAlias?: string | null;
-  cosineSimilarity: number | null;
-  textRank: number | null;
-  severityScore: number | null;
-  finalScore: number | null;
-  documentClass: string | null;
-  classMultiplier: number | null;
-  captureCount: number | null;
-  driftCount: number | null;
-  warningCount: number | null;
-  suppressedCount: number | null;
-  matches: unknown[] | null;
-  suppressed: unknown[] | null;
-  aiAssessment: string | null;
-  aiConfidence: number | null;
-  aiErosionType: string | null;
-  aiReasoning: string | null;
-}
-
-export interface ExploreSearchResult {
-  totalResults: number;
-  page: number;
-  pageSize: number;
-  documents: SearchResultDocument[];
-  /** Corpus-validated alias terms the hybrid arms searched (#702) — for the
-   *  "Also searched:" transparency chips. Absent on pure-vector fallback. */
-  alsoSearched?: string[];
-}
-
-export interface ResearchDocument {
-  id: number;
-  title: string;
-  content: string | null;
-  url: string | null;
-  publishedAt: string | null;
-  sourceType: string;
-  /** Action/discussion tier (#552) — derived from sourceType at map time. */
-  tier: DocumentTier;
-  sourceOrigin: string | null;
-  caseId: string | null;
-  category: string;
-  cosineSimilarity: number;
-  finalScore: number | null;
-  documentClass: string | null;
-  p2Assessment: string | null;
-  p2ErosionType: string | null;
-  p2Confidence: number | null;
-  p2Summary: string | null;
-  /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
-  matchSnippet?: string;
-  /** The corpus-validated alias whose arm surfaced this doc (#702). */
-  matchedAlias?: string;
-  /** Query-matched verbatim excerpt for synthesis grounding (#707). */
-  queryExcerpt?: string;
-  /** Ruling-language excerpt for judicial opinions (#707). */
-  dispositionExcerpt?: string;
-}
-
-export interface SimilarDocumentResult {
-  sameCategory: SearchResultDocument[];
-  otherCategories: SearchResultDocument[];
-}
-
+export type {
+  ExploreSearchResult,
+  ResearchDocument,
+  SearchFilters,
+  SearchResultDocument,
+  SimilarDocumentResult,
+} from '@/lib/types/search';
 // ---------------------------------------------------------------------------
 // Explore mode: vector semantic search with filters (tsvector fallback)
 // ---------------------------------------------------------------------------
@@ -176,35 +101,92 @@ export async function searchResearch(
   dateTo?: string,
   tierFilter: ResearchTierFilter = 'all',
 ): Promise<ResearchDocument[]> {
-  if (!isDbAvailable()) return [];
+  return (
+    await searchResearchWithMeta(query, topK, precomputedEmbedding, dateFrom, dateTo, tierFilter)
+  ).documents;
+}
+
+/** searchResearch plus the corpus-mined aliases (#750), so callers can
+ *  surface mined phrases in the transparency chips and quote-verifier
+ *  exemptions alongside the LLM-proposed terms. */
+export async function searchResearchWithMeta(
+  query: string,
+  topK = 30,
+  precomputedEmbedding?: number[],
+  dateFrom?: string,
+  dateTo?: string,
+  tierFilter: ResearchTierFilter = 'all',
+): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
+  if (!isDbAvailable()) return { documents: [], minedAliases: [] };
   const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
-  if (!embedding) return [];
+  if (!embedding) return { documents: [], minedAliases: [] };
 
   const db = getDb();
   const vectorStr = `[${embedding.join(',')}]`;
 
   try {
     if (tierFilter !== 'all') {
-      const [results, { arms }] = await Promise.all([
-        executeFilteredVectorQuery(
-          db,
-          buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: tierFilter }),
-        ),
-        runResearchAliasArms(query, dateFrom, dateTo, tierFilter),
-      ]);
-      const primary = (results.rows as Record<string, unknown>[]).map(mapToResearchDoc);
-      return attachMatchSnippets(
-        await fuseHydrateDedupe(primary, arms, topK, vectorStr, mapToResearchDoc),
+      return await searchSingleTierWithMeta(
+        db,
+        query,
+        vectorStr,
+        topK,
+        dateFrom,
+        dateTo,
+        tierFilter,
       );
     }
-    return await attachMatchSnippets(
-      await searchResearchAllTiers(db, query, vectorStr, topK, dateFrom, dateTo),
+    const { documents, minedAliases } = await searchResearchAllTiers(
+      db,
+      query,
+      vectorStr,
+      topK,
+      dateFrom,
+      dateTo,
     );
+    return { documents: await attachMatchSnippets(documents), minedAliases };
   } catch (err) {
     // #598: throw, never return [] — see searchExplore's catch for rationale.
     console.error('[search] Research search failed:', err);
     throw err;
   }
+}
+
+/** Single-tier research pool with LLM + corpus-mined arms (#702/#750). */
+async function searchSingleTierWithMeta(
+  db: ReturnType<typeof getDb>,
+  query: string,
+  vectorStr: string,
+  topK: number,
+  dateFrom: string | undefined,
+  dateTo: string | undefined,
+  tier: DocumentTier,
+): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
+  const [results, { aliases, arms }] = await Promise.all([
+    executeFilteredVectorQuery(
+      db,
+      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier }),
+    ),
+    runResearchAliasArms(query, dateFrom, dateTo, tier),
+  ]);
+  const rows = results.rows as Record<string, unknown>[];
+  const { minedAliases, minedArms } = await mineArmsFromCandidates(
+    rows,
+    aliases,
+    dateFrom,
+    dateTo,
+    tier,
+  );
+  const documents = await attachMatchSnippets(
+    await fuseHydrateDedupe(
+      rows.map(mapToResearchDoc),
+      [...arms, ...minedArms],
+      topK,
+      vectorStr,
+      mapToResearchDoc,
+    ),
+  );
+  return { documents, minedAliases };
 }
 
 /**
@@ -220,8 +202,8 @@ async function searchResearchAllTiers(
   topK: number,
   dateFrom?: string,
   dateTo?: string,
-): Promise<ResearchDocument[]> {
-  const [actionRows, discussionRows, { arms }] = await Promise.all([
+): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
+  const [actionRows, discussionRows, { aliases, arms }] = await Promise.all([
     executeFilteredVectorQuery(
       db,
       buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
@@ -232,10 +214,24 @@ async function searchResearchAllTiers(
     ),
     runResearchAliasArms(query, dateFrom, dateTo),
   ]);
+  // Pseudo-relevance feedback (#750): the LLM expansion cannot name
+  // post-cutoff entities, but the vector candidates' own text can. Mine
+  // captions/order numbers/operations from the pooled candidates, validate
+  // like any alias, and run them as extra arms. Failure degrades to none.
+  const { minedAliases, minedArms } = await mineArmsFromCandidates(
+    [
+      ...(actionRows.rows as Record<string, unknown>[]),
+      ...(discussionRows.rows as Record<string, unknown>[]),
+    ],
+    aliases,
+    dateFrom,
+    dateTo,
+  );
+  const allArms = [...arms, ...minedArms];
   const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
     fuseHydrateDedupe(
       rows.map(mapToResearchDoc),
-      armsForTier(arms, tier),
+      armsForTier(allArms, tier),
       topK,
       vectorStr,
       mapToResearchDoc,
@@ -244,7 +240,7 @@ async function searchResearchAllTiers(
     fusePool(actionRows.rows as Record<string, unknown>[], 'action'),
     fusePool(discussionRows.rows as Record<string, unknown>[], 'discussion'),
   ]);
-  return composeTieredResults(action, discussion, topK);
+  return { documents: composeTieredResults(action, discussion, topK), minedAliases };
 }
 
 /** Fetch research documents by id, preserving input order (#552). */

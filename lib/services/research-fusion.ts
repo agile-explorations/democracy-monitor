@@ -45,6 +45,19 @@ export async function runResearchAliasArms(
 ): Promise<{ aliases: ValidatedAlias[]; arms: FusionArm<ArmHit>[] }> {
   const aliases = await expandAndValidate(query, { dateFrom, dateTo, tier });
   if (aliases.length === 0) return { aliases, arms: [] };
+  const arms = await runArmsForAliases(aliases, dateFrom, dateTo, tier);
+  return { aliases, arms };
+}
+
+/** Run keyword arms for already-validated aliases (LLM-proposed or
+ *  corpus-mined #750) through the shared per-alias arm cache. */
+export async function runArmsForAliases(
+  aliases: ValidatedAlias[],
+  dateFrom?: string,
+  dateTo?: string,
+  tier?: DocumentTier,
+): Promise<FusionArm<ArmHit>[]> {
+  if (aliases.length === 0) return [];
   const filters = researchCandidateFilters(dateFrom, dateTo, tier);
   const armParams = { dateFrom: dateFrom ?? null, dateTo: dateTo ?? null, tier: tier ?? null };
   const paramsHash = hashArmParams(armParams);
@@ -57,7 +70,7 @@ export async function runResearchAliasArms(
       query: buildAliasArmQuery(a, filters),
     })),
   );
-  const arms = rowLists.map((rows, i) => ({
+  return rowLists.map((rows, i) => ({
     items: rows.map((r) => ({
       id: Number(r.id),
       sourceType: r.source_type as string,
@@ -65,7 +78,6 @@ export async function runResearchAliasArms(
     })),
     weight: armWeight(aliases[i].matches),
   }));
-  return { aliases, arms };
 }
 
 /**
