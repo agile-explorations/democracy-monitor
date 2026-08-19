@@ -49,6 +49,9 @@ export default defineConfig({
         'lib/cron/prewarm-indexes.ts',
         // CL bulk staging — DB COPY ops, execSync pipes, not unit-testable
         'lib/services/cl-bulk-staging.ts',
+        // #750 entity mining I/O (DB fetch + arm runs); the pure extraction
+        // half lives in entity-extraction.ts and is fully unit-tested
+        'lib/services/entity-mining.ts',
       ],
       thresholds: {
         statements: 70,

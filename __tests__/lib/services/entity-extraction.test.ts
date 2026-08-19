@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractEntityPhrases } from '@/lib/services/entity-mining';
+import { extractEntityPhrases } from '@/lib/services/entity-extraction';
 
 describe('extractEntityPhrases (#750)', () => {
   it('extracts case captions mentioned across multiple candidates', () => {
