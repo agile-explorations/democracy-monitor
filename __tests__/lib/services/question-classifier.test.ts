@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import path from 'path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ANALYTICAL_MAX_TOKENS,
   budgetForQuestion,
@@ -9,6 +9,25 @@ import {
   ENUMERATION_MAX_TOKENS,
   RESEARCH_CONTEXT_DOCS_ANALYTICAL,
 } from '@/lib/services/question-classifier';
+
+// The kill-switch (#756 incident) defaults enumeration mode OFF; these
+// tests exercise the enabled behavior.
+beforeAll(() => {
+  process.env.ENUMERATION_MODE = 'on';
+});
+afterAll(() => {
+  delete process.env.ENUMERATION_MODE;
+});
+
+describe('enumeration kill-switch (#756)', () => {
+  it('defaults every question to analytical when the flag is off', () => {
+    delete process.env.ENUMERATION_MODE;
+    expect(classifyQuestionMode('What executive orders address collective bargaining?')).toBe(
+      'analytical',
+    );
+    process.env.ENUMERATION_MODE = 'on';
+  });
+});
 
 describe('classifyQuestionMode', () => {
   it('classifies every completeness-eval question as enumeration', () => {
