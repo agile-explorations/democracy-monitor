@@ -19,7 +19,7 @@ import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
 import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
-import { searchResearch } from '@/lib/services/search-service';
+import { searchResearchWithMeta } from '@/lib/services/search-service';
 
 /** Docs sent to the synthesis LLM. */
 export const RESEARCH_CONTEXT_DOCS = 30;
@@ -57,6 +57,14 @@ async function collectAlsoSearched(
     }
   }
   return [...byPhrase].map(([phrase, matches]) => ({ phrase, matches }));
+}
+
+/** Merge corpus-mined aliases (#750) into the searched-terms list so the
+ *  transparency chips, synthesis prompt, and quote-verifier exemptions all
+ *  see them alongside the LLM-proposed terms. */
+function mergeSearchedTerms(base: ValidatedAlias[], mined: ValidatedAlias[]): ValidatedAlias[] {
+  const seen = new Set(base.map((a) => a.phrase.toLowerCase()));
+  return [...base, ...mined.filter((m) => !seen.has(m.phrase.toLowerCase()))];
 }
 
 /** Tier balance survives the re-rank on mixed-tier retrievals (#707). */
@@ -109,7 +117,7 @@ async function retrieveSingleWindow(
   );
   const expansionMs = Date.now() - t0;
   const t1 = Date.now();
-  const candidates = await searchResearch(
+  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
     query,
     RESEARCH_CONTEXT_DOCS * 2,
     embedding,
@@ -125,7 +133,7 @@ async function retrieveSingleWindow(
     docs,
     strata: null as RetrievalStratum[] | null,
     inferredFrom,
-    alsoSearched,
+    alsoSearched: mergeSearchedTerms(alsoSearched, minedAliases),
     timings: {
       expansionMs,
       retrieveWallMs: searchMs,
@@ -211,6 +219,39 @@ export async function retrieveResearchDocs(
   return retrieveEraStratified(query, embedding, eras, dateFrom, dateTo, tier, inferredFrom, debug);
 }
 
+/** One era window's retrieve + rerank, accumulating shared collectors. */
+async function retrieveEraWindow(
+  query: string,
+  embedding: number[],
+  w: ReturnType<typeof intersectEraWindows>[number],
+  slots: number,
+  tier: ResearchTierFilter,
+  sinks: {
+    eraMined: ValidatedAlias[];
+    windowTimings: WindowTiming[];
+    debugCandidates: CandidateSummary[] | null;
+  },
+): Promise<ResearchDocument[]> {
+  const s0 = Date.now();
+  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
+    query,
+    slots * 2,
+    embedding,
+    w.from,
+    w.to,
+    tier,
+  );
+  sinks.eraMined.push(...minedAliases);
+  const searchMs = Date.now() - s0;
+  if (sinks.debugCandidates) {
+    sinks.debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
+  }
+  const r0 = Date.now();
+  const docs = await rerankForTier(query, candidates, slots, tier);
+  sinks.windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
+  return docs;
+}
+
 /** Comparative path: each era competes only with itself for its slot share. */
 // eslint-disable-next-line max-params
 async function retrieveEraStratified(
@@ -234,17 +275,15 @@ async function retrieveEraStratified(
   const debugCandidates: CandidateSummary[] = [];
   const windowTimings: WindowTiming[] = [];
   const tRetrieve = Date.now();
+  const eraMined: ValidatedAlias[] = [];
   const perEra = await Promise.all(
-    windows.map(async (w) => {
-      const s0 = Date.now();
-      const candidates = await searchResearch(query, slots * 2, embedding, w.from, w.to, tier);
-      const searchMs = Date.now() - s0;
-      if (debug) debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
-      const r0 = Date.now();
-      const docs = await rerankForTier(query, candidates, slots, tier);
-      windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
-      return docs;
-    }),
+    windows.map((w) =>
+      retrieveEraWindow(query, embedding, w, slots, tier, {
+        eraMined,
+        windowTimings,
+        debugCandidates: debug ? debugCandidates : null,
+      }),
+    ),
   );
   const retrieveWallMs = Date.now() - tRetrieve;
   const strata: RetrievalStratum[] = windows.map((w, i) => ({
@@ -259,7 +298,7 @@ async function retrieveEraStratified(
     docs: perEra.flat(),
     strata: strata as RetrievalStratum[] | null,
     inferredFrom,
-    alsoSearched,
+    alsoSearched: mergeSearchedTerms(alsoSearched, eraMined),
     timings: { expansionMs, retrieveWallMs, windows: windowTimings, totalMs: Date.now() - t0 },
     ...(debug ? { candidates: debugCandidates } : {}),
   };

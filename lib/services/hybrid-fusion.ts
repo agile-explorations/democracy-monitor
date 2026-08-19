@@ -24,13 +24,18 @@ export const RRF_K = 60;
 
 /**
  * IDF-style arm weight from an alias's corpus match count. Aliases under
- * ~100 matches compete at near-full weight; only genuinely broad ones are
+ * ~250 matches compete at near-full weight; only genuinely broad ones are
  * damped. Calibration matters: against a 150-deep primary arm under RRF
  * k=60, an arm needs weight > ~0.67 for its rank-1 doc to surface at all —
- * steeper curves silently zero out every alias arm.
+ * steeper curves silently zero out every alias arm. Recalibrated n/100 →
+ * n/250 in #750: mid-frequency entity aliases (a marquee case caption sits
+ * at 100-400 corpus matches, e.g. "Cook" at 396 → old weight 0.60) were
+ * admitted by the match cap but mathematically unable to surface — a dead
+ * zone between admission and surfacing. New curve: n=200 → 0.80, n=400 →
+ * 0.71, n=1000 → 0.59 (broad aliases stay damped).
  */
 export function armWeight(matches: number): number {
-  return 1 / (1 + Math.log10(1 + matches / 100));
+  return 1 / (1 + Math.log10(1 + matches / 250));
 }
 
 /**

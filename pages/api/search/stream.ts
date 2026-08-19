@@ -18,7 +18,7 @@ import { embedQueryCached } from '@/lib/services/embedding-service';
 import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
-import { fetchResearchDocsByIds, searchResearch } from '@/lib/services/search-service';
+import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
@@ -107,7 +107,14 @@ async function retrieveDocuments(
     throw new Error('Search is temporarily unavailable. Please try the search again.');
 
   const retrieveStart = Date.now();
-  const allDocs = await searchResearch(query, CONTEXT_DOCS, embedding, dateFrom, dateTo, tier);
+  const { documents: allDocs, minedAliases } = await searchResearchWithMeta(
+    query,
+    CONTEXT_DOCS,
+    embedding,
+    dateFrom,
+    dateTo,
+    tier,
+  );
   console.log(
     `[api/search/stream] timings retrieve=${Date.now() - retrieveStart}ms docs=${allDocs.length}`,
   );
@@ -120,8 +127,8 @@ async function retrieveDocuments(
   await enrichDocsForSynthesis(contextDocs, query);
   return {
     docs: contextDocs,
-    prompt: buildSinglePassPrompt(query, contextDocs, null),
-    searchedPhrases: [],
+    prompt: buildSinglePassPrompt(query, contextDocs, null, minedAliases),
+    searchedPhrases: minedAliases.map((a) => a.phrase),
   };
 }
 
