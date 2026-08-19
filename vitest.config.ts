@@ -52,6 +52,11 @@ export default defineConfig({
         // #750 entity mining I/O (DB fetch + arm runs); the pure extraction
         // half lives in entity-extraction.ts and is fully unit-tested
         'lib/services/entity-mining.ts',
+        // #756 read-and-follow-up loop I/O (search sweeps + LLM read + arm
+        // hydration); the pure composition half lives in aspect-composition.ts
+        // and the digest builder is unit-tested in its own test file
+        'lib/services/research-loop-retrieval.ts',
+        'lib/services/followup-proposal-service.ts',
       ],
       thresholds: {
         statements: 70,

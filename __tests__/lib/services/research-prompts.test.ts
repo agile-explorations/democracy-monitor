@@ -305,3 +305,20 @@ describe('excerpt budget coupling (#736)', () => {
     expect(ACTION_EXCERPT_CHARS).toBeLessThanOrEqual(RESEARCH_CONTENT_FETCH_CHARS);
   });
 });
+
+describe('enumeration instruction (#751)', () => {
+  it('adds the enumeration addendum for enumeration questions', () => {
+    const prompt = buildSinglePassPrompt(
+      'What executive orders address collective bargaining?',
+      [makeDoc()],
+      null,
+    );
+    expect(prompt).toContain('comprehensive enumeration');
+    expect(prompt).toContain('court cases by');
+  });
+
+  it('omits the addendum for analytical questions', () => {
+    const prompt = buildSinglePassPrompt('Is the impoundment of funds legal?', [makeDoc()], null);
+    expect(prompt).not.toContain('comprehensive enumeration');
+  });
+});

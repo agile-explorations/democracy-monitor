@@ -15,6 +15,8 @@ import { AnthropicProvider } from '@/lib/ai/anthropic';
 import { cacheGet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedQueryCached } from '@/lib/services/embedding-service';
+import type { SynthesisBudget } from '@/lib/services/question-classifier';
+import { budgetForQuestion } from '@/lib/services/question-classifier';
 import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -25,7 +27,9 @@ import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
 const SINGLE_PASS_MODEL = 'claude-sonnet-4-6';
 const SYNTHESIS_TEMPERATURE = 0.2;
-const CONTEXT_DOCS = 30;
+// Doc + output budgets come from the question classifier (#751): both
+// endpoints classify the same text, so a 60-doc enumeration payload is
+// never silently cut back to 30 here.
 
 const SYSTEM_SINGLE_PASS =
   'You are a research analyst answering questions about U.S. government actions. ' +
@@ -74,6 +78,7 @@ async function attachCachedSnippets(
 
 async function retrieveDocuments(
   query: string,
+  budget: SynthesisBudget,
   dateFrom?: string,
   dateTo?: string,
   ids?: number[],
@@ -89,7 +94,7 @@ async function retrieveDocuments(
   // the docsOnly phase, so citations [Doc N] are guaranteed to match the doc
   // cards — and the redundant embedding + vector search is skipped entirely.
   if (ids && ids.length > 0) {
-    const docs = await fetchResearchDocsByIds(ids.slice(0, CONTEXT_DOCS));
+    const docs = await fetchResearchDocsByIds(ids.slice(0, budget.contextDocs));
     if (docs.length === 0) return null;
     const alsoSearched = await attachCachedSnippets(docs, docsKey);
     await enrichDocsForSynthesis(docs, query);
@@ -109,7 +114,7 @@ async function retrieveDocuments(
   const retrieveStart = Date.now();
   const { documents: allDocs, minedAliases } = await searchResearchWithMeta(
     query,
-    CONTEXT_DOCS,
+    budget.contextDocs,
     embedding,
     dateFrom,
     dateTo,
@@ -123,7 +128,7 @@ async function retrieveDocuments(
   // Skip corpus stats — scanning 164K embeddings takes 15-20s and delays
   // the first streamed byte past EventSource timeout. The synthesis prompt
   // works without corpus stats (they add context but aren't required).
-  const contextDocs = allDocs.slice(0, CONTEXT_DOCS);
+  const contextDocs = allDocs.slice(0, budget.contextDocs);
   await enrichDocsForSynthesis(contextDocs, query);
   return {
     docs: contextDocs,
@@ -165,13 +170,14 @@ async function verifyAndEmit(
 async function streamCompletion(
   provider: AnthropicProvider,
   retrieved: { prompt: string; docs: ResearchDocument[]; searchedPhrases: string[] },
+  maxTokens: number,
   res: NextApiResponse,
   clientGone: () => boolean,
 ) {
   const { prompt, docs, searchedPhrases } = retrieved;
   const stream = provider.completeStream(prompt, {
     model: SINGLE_PASS_MODEL,
-    maxTokens: 4096,
+    maxTokens,
     systemPrompt: SYSTEM_SINGLE_PASS,
     // Low temperature: factual synthesis, not creative writing (#707).
     temperature: SYNTHESIS_TEMPERATURE,
@@ -238,7 +244,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ids = parseIdsParam(req.query.ids as string | undefined);
     const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
     const docsKey = req.query.dk as string | undefined;
-    const retrieved = await retrieveDocuments(query, dateFrom, dateTo, ids, tier, docsKey);
+    const budget = budgetForQuestion(query);
+    const retrieved = await retrieveDocuments(query, budget, dateFrom, dateTo, ids, tier, docsKey);
     if (!retrieved) {
       sendEvent(res, { type: 'error', message: 'No matching documents found' });
       res.end();
@@ -249,7 +256,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.query.debug === '1') {
       sendEvent(res, { type: 'debug', synthesisPrompt: retrieved.prompt });
     }
-    await streamCompletion(provider, retrieved, res, () => disconnected);
+    await streamCompletion(provider, retrieved, budget.maxTokens, res, () => disconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';
     console.error('[api/search/stream] Error:', err);

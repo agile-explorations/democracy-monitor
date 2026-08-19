@@ -26,6 +26,7 @@ import {
   armsForTier,
   attachMatchSnippets,
   fuseHydrateDedupe,
+  runArmsForAliases,
   runResearchAliasArms,
 } from './research-fusion';
 import { buildResearchQuery, fetchResearchDocRowsByIds } from './research-retrieval';
@@ -108,7 +109,8 @@ export async function searchResearch(
 
 /** searchResearch plus the corpus-mined aliases (#750), so callers can
  *  surface mined phrases in the transparency chips and quote-verifier
- *  exemptions alongside the LLM-proposed terms. */
+ *  exemptions alongside the LLM-proposed terms. `extraAliases` (#756) are
+ *  pre-validated follow-up phrases from the read loop, run as extra arms. */
 export async function searchResearchWithMeta(
   query: string,
   topK = 30,
@@ -116,6 +118,7 @@ export async function searchResearchWithMeta(
   dateFrom?: string,
   dateTo?: string,
   tierFilter: ResearchTierFilter = 'all',
+  extraAliases?: ValidatedAlias[],
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
   if (!isDbAvailable()) return { documents: [], minedAliases: [] };
   const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
@@ -134,6 +137,7 @@ export async function searchResearchWithMeta(
         dateFrom,
         dateTo,
         tierFilter,
+        extraAliases,
       );
     }
     const { documents, minedAliases } = await searchResearchAllTiers(
@@ -143,6 +147,7 @@ export async function searchResearchWithMeta(
       topK,
       dateFrom,
       dateTo,
+      extraAliases,
     );
     return { documents: await attachMatchSnippets(documents), minedAliases };
   } catch (err) {
@@ -161,18 +166,20 @@ async function searchSingleTierWithMeta(
   dateFrom: string | undefined,
   dateTo: string | undefined,
   tier: DocumentTier,
+  extraAliases?: ValidatedAlias[],
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
-  const [results, { aliases, arms }] = await Promise.all([
+  const [results, { aliases, arms }, extraArms] = await Promise.all([
     executeFilteredVectorQuery(
       db,
       buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier }),
     ),
     runResearchAliasArms(query, dateFrom, dateTo, tier),
+    runArmsForAliases(extraAliases ?? [], dateFrom, dateTo, tier),
   ]);
   const rows = results.rows as Record<string, unknown>[];
   const { minedAliases, minedArms } = await mineArmsFromCandidates(
     rows,
-    aliases,
+    [...aliases, ...(extraAliases ?? [])],
     dateFrom,
     dateTo,
     tier,
@@ -180,7 +187,7 @@ async function searchSingleTierWithMeta(
   const documents = await attachMatchSnippets(
     await fuseHydrateDedupe(
       rows.map(mapToResearchDoc),
-      [...arms, ...minedArms],
+      [...arms, ...minedArms, ...extraArms],
       topK,
       vectorStr,
       mapToResearchDoc,
@@ -202,8 +209,9 @@ async function searchResearchAllTiers(
   topK: number,
   dateFrom?: string,
   dateTo?: string,
+  extraAliases?: ValidatedAlias[],
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
-  const [actionRows, discussionRows, { aliases, arms }] = await Promise.all([
+  const [actionRows, discussionRows, { aliases, arms }, extraArms] = await Promise.all([
     executeFilteredVectorQuery(
       db,
       buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
@@ -213,6 +221,7 @@ async function searchResearchAllTiers(
       buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
     ),
     runResearchAliasArms(query, dateFrom, dateTo),
+    runArmsForAliases(extraAliases ?? [], dateFrom, dateTo),
   ]);
   // Pseudo-relevance feedback (#750): the LLM expansion cannot name
   // post-cutoff entities, but the vector candidates' own text can. Mine
@@ -223,11 +232,11 @@ async function searchResearchAllTiers(
       ...(actionRows.rows as Record<string, unknown>[]),
       ...(discussionRows.rows as Record<string, unknown>[]),
     ],
-    aliases,
+    [...aliases, ...(extraAliases ?? [])],
     dateFrom,
     dateTo,
   );
-  const allArms = [...arms, ...minedArms];
+  const allArms = [...arms, ...minedArms, ...extraArms];
   const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
     fuseHydrateDedupe(
       rows.map(mapToResearchDoc),
