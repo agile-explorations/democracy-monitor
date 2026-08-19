@@ -1,0 +1,1691 @@
+{
+  "ranAt": null,
+  "summary": [
+    {
+      "qid": "FW1",
+      "core": 4,
+      "coreOk": 2,
+      "corePassRate": 0.5
+    },
+    {
+      "qid": "FW2",
+      "core": 8,
+      "coreOk": 5,
+      "corePassRate": 0.625
+    },
+    {
+      "qid": "FW3",
+      "core": 3,
+      "coreOk": 0,
+      "corePassRate": 0
+    },
+    {
+      "qid": "FW4",
+      "core": 9,
+      "coreOk": 3,
+      "corePassRate": 0.3333333333333333
+    },
+    {
+      "qid": "H2",
+      "core": 9,
+      "coreOk": 6,
+      "corePassRate": 0.6666666666666666
+    },
+    {
+      "qid": "H3",
+      "core": 10,
+      "coreOk": 3,
+      "corePassRate": 0.3
+    },
+    {
+      "qid": "IM1",
+      "core": 7,
+      "coreOk": 2,
+      "corePassRate": 0.2857142857142857
+    },
+    {
+      "qid": "IM2",
+      "core": 10,
+      "coreOk": 5,
+      "corePassRate": 0.5
+    },
+    {
+      "qid": "IM3",
+      "core": 7,
+      "coreOk": 2,
+      "corePassRate": 0.2857142857142857
+    },
+    {
+      "qid": "IM4",
+      "core": 12,
+      "coreOk": 8,
+      "corePassRate": 0.6666666666666666
+    },
+    {
+      "qid": "RL1",
+      "core": 5,
+      "coreOk": 3,
+      "corePassRate": 0.6
+    },
+    {
+      "qid": "RL2",
+      "core": 8,
+      "coreOk": 5,
+      "corePassRate": 0.625
+    },
+    {
+      "qid": "RL3",
+      "core": 6,
+      "coreOk": 5,
+      "corePassRate": 0.8333333333333334
+    },
+    {
+      "qid": "RL4",
+      "core": 9,
+      "coreOk": 4,
+      "corePassRate": 0.4444444444444444
+    }
+  ],
+  "results": [
+    {
+      "qid": "FW1",
+      "key": "patronage-system-debate",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW1",
+      "key": "ndaa-schedule-f-amendment",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 90,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW1",
+      "key": "s399-uc-block",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW1",
+      "key": "s134-hr492-intro",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW1",
+      "key": "2025-floor-speeches",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 96,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW1",
+      "key": "shutdown-rif-floor",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 24,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW1",
+      "key": "final-rule-reactions",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 14,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW1",
+      "key": "hr8687-2020",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW2",
+      "key": "opm-probationary-memo",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 20,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW2",
+      "key": "fork-in-road",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 17,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "probationary-terminations",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 42,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "arrp-memo",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 14,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "spc-nprm",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 10,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW2",
+      "key": "spc-final-rule",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 16,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "rif-proposed-rule",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 24,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "rif-appeals-rule",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 7,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW2",
+      "key": "probationary-certification-memo",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 10,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW2",
+      "key": "eo-14410",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW3",
+      "key": "usaid-oig-report",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 58,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW3",
+      "key": "storch",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-workforce-1",
+      "weight": "CORE",
+      "corpus": "ABSENT",
+      "corpusMatches": 0,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "SOURCE-GAP(!)"
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-workforce-2",
+      "weight": "SECONDARY",
+      "corpus": "ABSENT",
+      "corpusMatches": 0,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "SOURCE-GAP(!)"
+    },
+    {
+      "qid": "FW3",
+      "key": "gao-opm",
+      "weight": "SECONDARY",
+      "corpus": "ABSENT",
+      "corpusMatches": 0,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "SOURCE-GAP(!)"
+    },
+    {
+      "qid": "FW3",
+      "key": "va-oig-staffing",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 1,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW3",
+      "key": "rightsizing-hearing",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 3,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW3",
+      "key": "ig-purge-floor",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 68,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-13957",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 101,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "hr8687",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "2020-oversight-letters",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 90,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-14003",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW4",
+      "key": "hr302-ndaa-push",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW4",
+      "key": "dec-2024-uc",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW4",
+      "key": "eo-14171",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 28,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "s134-119th",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW4",
+      "key": "warner-opm-letter",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "rightsizing-majority",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 3,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "FW4",
+      "key": "2026-escalation",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 34,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "FW4",
+      "key": "structural-comparison",
+      "weight": "CORE",
+      "corpus": "SKIPPED",
+      "corpusMatches": -1,
+      "retrieved": "n/a",
+      "synthesized": "NO",
+      "verdict": "SYNTHESIS-GAP(analytical)"
+    },
+    {
+      "qid": "IM1",
+      "key": "eo-14159",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 11,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "laken-riley",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 71,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "287g-expansion-data",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 20,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM1",
+      "key": "287g-bills",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 20,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM1",
+      "key": "obbba",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 43,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "secure-america",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 40,
+      "retrieved": "YES",
+      "synthesized": "NO",
+      "verdict": "SYNTHESIS-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "sanctuary-hearings",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 430,
+      "retrieved": "YES",
+      "synthesized": "NO",
+      "verdict": "SYNTHESIS-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "metro-surge",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 7,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "charlottes-web",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 199,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM1",
+      "key": "florida-287g",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 1,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM1",
+      "key": "fy2026-cr",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 332,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "eo-13767",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 10,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "flores-replacement-rule",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 9,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "er-2019",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 4,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "er-rescission-2022",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 32,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "asylum-ifr",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 42,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "uc-foundational",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 35,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "securing-border",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 38,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "family-detention-end",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 13,
+      "retrieved": "YES",
+      "synthesized": "NO",
+      "verdict": "SYNTHESIS-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "er-2025",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 4,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "laken-riley-detention",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 71,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "uc-amendments",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 20,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM2",
+      "key": "bond-elimination",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 64,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "civil-penalties",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM2",
+      "key": "flores-termination-nds",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 127,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM3",
+      "key": "er-challenge",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 34,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM3",
+      "key": "proc-10903",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 72,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "jgg",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 12,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "aarp",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 3,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "abrego",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 11,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "dvd",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 18,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "wmm-moot",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "bond-due-process",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 64,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM3",
+      "key": "vasquez-perdomo",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 1,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "laken-riley-dp",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 71,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM3",
+      "key": "flores-litigation",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 98,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM3",
+      "key": "neguse",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "zero-tolerance",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 31,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "eo-13841",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 107,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "keep-families",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 18,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "supplemental-2019",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 137,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "oig-family-separation",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 114,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "judiciary-hearing-2019",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 107,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "gao-19-163",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 60,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "hjres46",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 2711,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "laken-riley-contrast",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 71,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "funding-escalation",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 83,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "mciver",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 7,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "neguse-oversight",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "padilla",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 74,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "2026-hearings",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 13,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "IM4",
+      "key": "metro-surge-response",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 7,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "IM4",
+      "key": "guardrail-bills",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 9,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "ig-mass-firing",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 68,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL1",
+      "key": "storch-case",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "usaid-ig-firing",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 58,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "grassley-durbin-letter",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 852,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL1",
+      "key": "schiff-hsgac-letter",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 68,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL1",
+      "key": "watchdogs-act",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 728,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "hr3735-ig-act",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 34,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL1",
+      "key": "warren-hegseth-letter",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 84,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "exim-ig-firing",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 9,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL1",
+      "key": "cigie-capacity",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 15,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL1",
+      "key": "minority-hearing-requests",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 68,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "dellinger",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 28,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "harris-bessent",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 30,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "wilcox",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 34,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "boyle",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 55,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL2",
+      "key": "slaughter",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 146,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "cook",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 396,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL2",
+      "key": "eo-14215",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 9,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL2",
+      "key": "sg-530d-letter",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 51,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "severino",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 7,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL2",
+      "key": "baseline-precedents",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 42,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13771",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 8,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13891",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 119,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-13957-rl3",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 101,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14003-rl3",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "modernizing-reg-review",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 17,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14171-rl3",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 8,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "doge-eos",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 148,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14215-rl3",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 9,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL3",
+      "key": "eo-14219",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 8,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL3",
+      "key": "career-sen-execs",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 8,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL3",
+      "key": "opm-final-rule-rl3",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 10,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL3",
+      "key": "cross-era-synthesis",
+      "weight": "CORE",
+      "corpus": "SKIPPED",
+      "corpusMatches": -1,
+      "retrieved": "n/a",
+      "synthesized": "YES",
+      "verdict": "OK-ANALYTICAL"
+    },
+    {
+      "qid": "RL4",
+      "key": "sessions-consent-decrees",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 1030,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL4",
+      "key": "religious-liberty",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 58,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "yale-suit",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 30,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "chauvin-arbery",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "georgia-sb202",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 951,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "redlining",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 24,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "pattern-practice-findings",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 402,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL4",
+      "key": "bondi-sb202-dismissal",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 951,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL4",
+      "key": "consent-decree-dismissals",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 1233,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "RL4",
+      "key": "civil-rights-fraud-initiative",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 47,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "title-ix-suits",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 722,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "RL4",
+      "key": "2026-redirection",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 85,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H2",
+      "key": "la-federalization-memo",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 2,
+      "retrieved": "YES",
+      "synthesized": "NO",
+      "verdict": "SYNTHESIS-GAP"
+    },
+    {
+      "qid": "H2",
+      "key": "newsom-v-trump",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 200,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H2",
+      "key": "newsom-posse-comitatus",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 5,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "eo-14333-dc",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 46,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "dc-v-trump",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "oregon-v-trump",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "illinois-scotus",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 4,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "memphis-task-force",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 177,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H2",
+      "key": "insurrection-act-bills",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 33,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "floor-debate-deployments",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 757,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H2",
+      "key": "guard-shooting-prosecution",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H2",
+      "key": "title32-consensual",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 6,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H3",
+      "key": "eo-14147-weaponization",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 60,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H3",
+      "key": "law-firm-eos",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 79,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "law-firm-rulings",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 65,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "clearance-memo",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 177,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H3",
+      "key": "krebs-taylor-memos",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 21,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-comey",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 132,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-james",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 165,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "fourth-circuit-appeal",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 134,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "us-v-bolton",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 35,
+      "retrieved": "NO",
+      "synthesized": "YES",
+      "verdict": "OK"
+    },
+    {
+      "qid": "H3",
+      "key": "cook-removal",
+      "weight": "CORE",
+      "corpus": "PRESENT",
+      "corpusMatches": 396,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "martin-schiff-probes",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 77,
+      "retrieved": "NO",
+      "synthesized": "NO",
+      "verdict": "RETRIEVAL-GAP"
+    },
+    {
+      "qid": "H3",
+      "key": "congressional-responses-weaponization",
+      "weight": "SECONDARY",
+      "corpus": "PRESENT",
+      "corpusMatches": 62,
+      "retrieved": "YES",
+      "synthesized": "YES",
+      "verdict": "OK"
+    }
+  ]
+}
