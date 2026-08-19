@@ -1,6 +1,6 @@
 {
   "name": "democracy-monitor",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "description": "Live dashboard tracking signals of executive-power centralization across US government institutions",
   "license": "MIT",
   "author": "Michael Kelly",

@@ -24,9 +24,12 @@ import { recordSearchTiming } from '@/lib/services/search-timing-log';
 /** docsOnly doc lists change only when data does (Monday snapshot); the
  *  pre-warm workflow refreshes them right after (&refresh=true). */
 const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
-/** In-flight marker outlives the 120s arm safety ceiling with headroom;
- *  self-expires if a build dies without releasing. */
-const INFLIGHT_TTL_SECONDS = 240;
+/** In-flight marker outlives the worst observed cold build with headroom
+ *  (aspect-stratified builds run 3-5 sub-queries at concurrency 2 — a
+ *  single-query cold build already hit 206s, #753); self-expires if a build
+ *  dies without releasing. Expiry mid-build re-admits a coalesced poller
+ *  and stampedes a duplicate build, so err long. */
+const INFLIGHT_TTL_SECONDS = 600;
 const RETRY_AFTER_MS = 8000;
 
 /**
