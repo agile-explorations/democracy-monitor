@@ -52,11 +52,14 @@ export default defineConfig({
         // #750 entity mining I/O (DB fetch + arm runs); the pure extraction
         // half lives in entity-extraction.ts and is fully unit-tested
         'lib/services/entity-mining.ts',
-        // #756 read-and-follow-up loop I/O (search sweeps + LLM read + arm
-        // hydration); the pure composition half lives in aspect-composition.ts
-        // and the digest builder is unit-tested in its own test file
+        // #758 enumeration retrieval I/O (seed sweep + salience arms + arm
+        // hydration); pure halves live in aspect-composition.ts,
+        // hot-entity-ranking.ts, and hot-entity-selection's exported ranker
         'lib/services/research-loop-retrieval.ts',
-        'lib/services/followup-proposal-service.ts',
+        'lib/services/hot-entity-selection.ts',
+        'lib/services/hot-entity-judge.ts',
+        // #757 weekly hot-entity sweep — DB batches + embedding I/O
+        'lib/cron/refresh-hot-entities.ts',
       ],
       thresholds: {
         statements: 70,

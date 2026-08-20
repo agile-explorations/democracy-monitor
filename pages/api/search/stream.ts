@@ -58,14 +58,15 @@ function parseIdsParam(idsParam?: string): number[] | undefined {
  */
 async function attachCachedSnippets(
   docs: ResearchDocument[],
-  docsKey?: string,
+  docsKey: string | undefined,
+  enumeration: boolean,
 ): Promise<Array<{ phrase: string; matches: number }> | undefined> {
   if (!docsKey || !/^[a-f0-9]{16}$/.test(docsKey)) return undefined;
   const cached = await cacheGet<{
     documents?: Array<Record<string, unknown>>;
     alsoSearched?: string[];
     searchedTerms?: Array<{ phrase: string; matches: number }>;
-  }>(CacheKeys.searchResearchDocs(docsKey));
+  }>(CacheKeys.searchResearchDocs(docsKey, enumeration));
   if (!cached?.documents) return undefined;
   const byId = new Map(cached.documents.map((d) => [Number(d.id), d]));
   for (const doc of docs) {
@@ -96,7 +97,7 @@ async function retrieveDocuments(
   if (ids && ids.length > 0) {
     const docs = await fetchResearchDocsByIds(ids.slice(0, budget.contextDocs));
     if (docs.length === 0) return null;
-    const alsoSearched = await attachCachedSnippets(docs, docsKey);
+    const alsoSearched = await attachCachedSnippets(docs, docsKey, budget.mode === 'enumeration');
     await enrichDocsForSynthesis(docs, query);
     return {
       docs,

@@ -227,3 +227,17 @@ async function trySendWeeklyDigest(weekOf: string, errors: string[]): Promise<vo
     errors.push(`Weekly digest failed: ${formatError(err)}`);
   }
 }
+
+/** Weekly hot-entity salience index refresh (#757) — non-fatal, last step:
+ *  search quality degrades gracefully to seed-only retrieval without it. */
+export async function tryRefreshHotEntities(errors: string[]): Promise<void> {
+  try {
+    const { refreshHotEntities } = await import('@/lib/cron/refresh-hot-entities');
+    const r = await refreshHotEntities({ dryRun: false });
+    console.log(
+      `[snapshot] hot entities: ${r.written} written, ${r.junctionRows} mention rows (${r.docsScanned} docs scanned)`,
+    );
+  } catch (err) {
+    errors.push(`Hot-entity refresh failed: ${formatError(err)}`);
+  }
+}

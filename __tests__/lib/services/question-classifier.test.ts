@@ -89,6 +89,7 @@ describe('budgetForQuestion', () => {
   it('derives enumeration budgets', () => {
     const b = budgetForQuestion('What executive orders address collective bargaining?');
     expect(b).toEqual({
+      mode: 'enumeration',
       contextDocs: ENUMERATION_CONTEXT_DOCS,
       maxTokens: ENUMERATION_MAX_TOKENS,
     });
@@ -97,6 +98,7 @@ describe('budgetForQuestion', () => {
   it('derives analytical budgets', () => {
     const b = budgetForQuestion('Is the impoundment of funds legal?');
     expect(b).toEqual({
+      mode: 'analytical',
       contextDocs: RESEARCH_CONTEXT_DOCS_ANALYTICAL,
       maxTokens: ANALYTICAL_MAX_TOKENS,
     });

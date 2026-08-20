@@ -3,9 +3,9 @@
  * the /api/search route file): tiered retrieval with the request's date +
  * tier params, era stratification for comparative questions (each era
  * competes only with itself, so the recency-dense current term cannot crowd
- * out the eras being compared), the read-and-follow-up loop for enumeration
- * questions (#756 — research-loop-retrieval.ts), tier-balanced re-rank, and
- * "also searched" chip collection.
+ * out the eras being compared), salience-armed enumeration retrieval (#758
+ * — research-loop-retrieval.ts), tier-balanced re-rank, and "also searched"
+ * chip collection.
  */
 
 import type { NextApiRequest } from 'next';
@@ -16,10 +16,7 @@ import {
   extractDateFloor,
 } from '@/lib/services/era-extraction';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
-import {
-  budgetForQuestion,
-  RESEARCH_CONTEXT_DOCS_ANALYTICAL,
-} from '@/lib/services/question-classifier';
+import { budgetForQuestion } from '@/lib/services/question-classifier';
 import { retrieveEnumerationLoop } from '@/lib/services/research-loop-retrieval';
 import type {
   RetrievalResult,
@@ -35,10 +32,6 @@ import {
 import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchResearchWithMeta } from '@/lib/services/search-service';
-
-/** Docs sent to the synthesis LLM on the analytical path; enumeration
- *  questions get ENUMERATION_CONTEXT_DOCS via budgetForQuestion (#751). */
-export const RESEARCH_CONTEXT_DOCS = RESEARCH_CONTEXT_DOCS_ANALYTICAL;
 
 export type {
   CandidateSummary,
@@ -144,15 +137,15 @@ export async function retrieveResearchDocs(
     );
   }
 
-  // Enumeration questions get the read-and-follow-up loop (#756): recency-
-  // stratified seed, one corpus-grounded read round proposing follow-up
-  // entity arms, one follow-up sweep. A single remaining era chip narrows
-  // the window like the single path does.
-  if (budget.contextDocs > RESEARCH_CONTEXT_DOCS) {
+  // Enumeration questions (#758): single seed sweep + salience arms from
+  // the hot-entity index into guaranteed slots. A single remaining era chip
+  // narrows the window like the single path does.
+  if (budget.mode === 'enumeration') {
     const w = eras?.[0];
     return retrieveEnumerationLoop(
       {
         query,
+        embedding,
         dateFrom: w ? w.from : dateFrom,
         dateTo: w ? w.to : dateTo,
         tier,

@@ -1,32 +1,28 @@
 /**
- * Read-and-follow-up retrieval loop for enumeration questions (#756).
+ * Enumeration retrieval (#758, R-SALIENCE): a single hybrid seed sweep plus
+ * salience arms from the weekly hot-entity index (#757), whose hits get
+ * GUARANTEED slots in the final pool.
  *
- * One bounded round of what a researcher does by hand: retrieve, READ what
- * came back, notice which named entities the pool discusses but does not
- * contain, and search again for exactly those. The read step
- * (followup-proposal-service) is corpus-grounded — it reports entities from
- * the pool's own text, so the model's knowledge cutoff is irrelevant; the
- * follow-up phrases pass standard alias validation and their arm hits get
- * GUARANTEED slots in the final pool. The instrumented IM3 trace showed why
- * a fusion vote cannot be trusted with this: a "J.G.G. v. Trump" arm
- * carried the target opinions at positions 0-8 and weighted RRF still
- * dropped every one — dozens of co-validated generic arms re-boost the
- * incumbent docs and outvote the sharp entity arms. Follow-up arms exist
- * precisely because the pool lacked their documents; they do not campaign
- * for slots, they are allocated them.
+ * Why guaranteed slots, not fusion: the instrumented IM3 trace (#756)
+ * showed a "J.G.G. v. Trump" arm carrying the target opinions at positions
+ * 0-8 and weighted RRF still dropping every one — co-validated generic arms
+ * re-boost incumbents and outvote sharp entity arms. Salience arms exist
+ * precisely because similarity failed to surface their documents; they are
+ * allocated slots, never made to campaign for them.
  *
- * Recency stratum: an undated enumeration question retrieves in TWO windows
- * — full history and the current term — composed round-robin. Without it,
- * the corpus's historical gravity (decades of caselaw and rulemaking)
- * swamps current-term litigation in both vector and mining space.
+ * Why an offline index, not query-time discovery: marquee docs sit at
+ * vector sim 0.39-0.44 vs a 0.57 rank-60 cutoff (unreachable at any depth),
+ * LLM expansion is knowledge-cutoff-blind, and pool-grounded reading only
+ * sees what vector already retrieved. Corpus-wide recurrence — computable
+ * weekly in batch — is the salience signal.
+ *
+ * Failure-tolerant: zero salience arms (empty index, off-topic question,
+ * selection error) degrades to the seed sweep exactly.
  */
 
 import { composeAspectPools } from '@/lib/services/aspect-composition';
-import { mineEntityAliases } from '@/lib/services/entity-mining';
-import { ERA_WINDOWS } from '@/lib/services/era-extraction';
-import { proposeFollowups } from '@/lib/services/followup-proposal-service';
+import { selectSalienceArms } from '@/lib/services/hot-entity-selection';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
-import { validateAliasesDiagnostic } from '@/lib/services/query-expansion-service';
 import type { ArmHit } from '@/lib/services/research-fusion';
 import { runArmsForAliases } from '@/lib/services/research-fusion';
 import type { RetrievalResult, WindowTiming } from '@/lib/services/research-retrieval-helpers';
@@ -38,84 +34,22 @@ import {
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 
-/** Per-window retrieval depth is capped at the reranker/prompt scale. */
-const MAX_WINDOW_DEPTH = 60;
-/** Final-pool slots reserved for follow-up arm hits (when any exist). */
+/** Final-pool slots reserved for salience-arm hits (when any exist). */
 const FOLLOWUP_SLOTS = 15;
-/** Sharpest follow-up arms kept, rarest corpus footprint first. */
-const MAX_FOLLOWUP_ARMS = 12;
 
 export interface LoopRetrievalParams {
   query: string;
+  embedding: number[];
   dateFrom: string | undefined;
   dateTo: string | undefined;
   tier: ResearchTierFilter;
   inferredFrom: string | null;
 }
 
-interface LoopWindow {
-  key: string;
-  from: string | undefined;
-  to: string | undefined;
-}
-
-/** Undated questions get a dedicated current-term stratum (#756). */
-function loopWindows(p: LoopRetrievalParams): LoopWindow[] {
-  if (p.dateFrom || p.dateTo) return [{ key: 'window', from: p.dateFrom, to: p.dateTo }];
-  return [
-    { key: 'full', from: undefined, to: undefined },
-    { key: 'current_term', from: ERA_WINDOWS.trump_t2.from, to: undefined },
-  ];
-}
-
-/** Follow-up phrases the pool searches have not already run, sharpest
- *  (rarest corpus footprint) first. */
-async function validateNovelFollowups(
-  phrases: string[],
-  searched: ValidatedAlias[],
-  p: LoopRetrievalParams,
-): Promise<ValidatedAlias[]> {
-  const known = new Set(searched.map((a) => a.phrase.toLowerCase()));
-  const novel = phrases.filter((ph) => !known.has(ph.toLowerCase()));
-  if (novel.length === 0) return [];
-  const { validated } = await validateAliasesDiagnostic(novel, {
-    dateFrom: p.dateFrom,
-    dateTo: p.dateTo,
-    tier: p.tier === 'all' ? undefined : p.tier,
-  });
-  return validated.sort((a, b) => a.matches - b.matches);
-}
-
-/** Both read channels (LLM deep-read + regex mining over the fused seed
- *  pool), merged sharpest-first and capped. */
-async function readFollowups(
-  p: LoopRetrievalParams,
-  seedDocs: ResearchDocument[],
-  alreadySearched: ValidatedAlias[],
-): Promise<ValidatedAlias[]> {
-  const [llmFollowups, minedFused] = await Promise.all([
-    proposeFollowups(p.query, seedDocs).then((phrases) =>
-      validateNovelFollowups(phrases, alreadySearched, p),
-    ),
-    mineEntityAliases(
-      seedDocs.map((d) => d.id),
-      alreadySearched,
-      {
-        dateFrom: p.dateFrom,
-        dateTo: p.dateTo,
-        tier: p.tier === 'all' ? undefined : p.tier,
-      },
-    ).catch(() => [] as ValidatedAlias[]),
-  ]);
-  return mergeSearchedTerms(llmFollowups, minedFused)
-    .sort((a, b) => a.matches - b.matches)
-    .slice(0, MAX_FOLLOWUP_ARMS);
-}
-
-/** Hydrate the follow-up arms' hits into a ranked doc pool: round-robin
+/** Hydrate the salience arms' hits into a ranked doc pool: round-robin
  *  across arms (each arm's best hits first) so one broad arm cannot claim
  *  every reserved slot. */
-async function hydrateFollowupPool(
+async function hydrateSaliencePool(
   arms: Array<{ items: ArmHit[] }>,
   excludeIds: Set<number>,
   poolSize: number,
@@ -146,111 +80,100 @@ async function hydrateFollowupPool(
   return docs;
 }
 
-function toPools(pools: ResearchDocument[][], slots: number) {
-  return pools.map((docs) => ({
-    kept: docs.slice(0, slots),
-    overflow: docs.slice(slots),
-  }));
-}
-
-/** Seed pass: per-window hybrid retrieval (vector + LLM arms + PRF mining). */
-async function runSeedPass(
-  p: LoopRetrievalParams,
-  windows: LoopWindow[],
-  depth: number,
-  timings: WindowTiming[],
-) {
-  const seed = await Promise.all(
-    windows.map(async (w) => {
-      const s0 = Date.now();
-      const result = await searchResearchWithMeta(p.query, depth, undefined, w.from, w.to, p.tier);
-      timings.push({ key: `seed:${w.key}`, searchMs: Date.now() - s0, rerankMs: 0 });
-      return result;
-    }),
-  );
-  return {
-    seedPools: seed.map((s) => s.documents),
-    seedMined: seed.reduce<ValidatedAlias[]>(
-      (acc, s) => mergeSearchedTerms(acc, s.minedAliases),
-      [],
-    ),
-  };
-}
-
-/** Reserve FOLLOWUP_SLOTS for the follow-up pool; without one, the seed
+/** Reserve FOLLOWUP_SLOTS for the salience pool; without one, the seed
  *  composition stands. */
-function composeWithFollowups(
-  seedPools: ResearchDocument[][],
+function composeWithSalience(
   seedDocs: ResearchDocument[],
-  followupPool: ResearchDocument[],
+  saliencePool: ResearchDocument[],
   contextDocs: number,
-  windowCount: number,
 ): ResearchDocument[] {
-  if (followupPool.length === 0) return seedDocs;
+  if (saliencePool.length === 0) return seedDocs.slice(0, contextDocs);
+  const seedKeep = contextDocs - FOLLOWUP_SLOTS;
   return composeAspectPools(
     [
-      ...toPools(seedPools, Math.floor((contextDocs - FOLLOWUP_SLOTS) / windowCount)),
+      { kept: seedDocs.slice(0, seedKeep), overflow: seedDocs.slice(seedKeep) },
       {
-        kept: followupPool.slice(0, FOLLOWUP_SLOTS),
-        overflow: followupPool.slice(FOLLOWUP_SLOTS),
+        kept: saliencePool.slice(0, FOLLOWUP_SLOTS),
+        overflow: saliencePool.slice(FOLLOWUP_SLOTS),
       },
     ],
     contextDocs,
   ).docs;
 }
 
-/**
- * Seed → read → follow-up slots → compose. Degrades gracefully: an empty
- * read step composes the seed windows exactly as before.
- */
+/** Select salience arms for the seed pool (phrases the seed already
+ *  searched are excluded), run them window-scoped, hydrate their hits. */
+async function runSalienceStage(
+  p: LoopRetrievalParams,
+  seed: { documents: ResearchDocument[]; minedAliases: ValidatedAlias[] },
+  expansionTerms: ValidatedAlias[],
+): Promise<{ novelSalience: ValidatedAlias[]; saliencePool: ResearchDocument[] }> {
+  const novelSalience = await selectSalienceArms(
+    p.query,
+    seed.documents.map((d) => ({ id: d.id, category: d.category })),
+    [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
+  );
+  const arms = novelSalience.length
+    ? await runArmsForAliases(novelSalience, p.dateFrom, p.dateTo)
+    : [];
+  const seedIds = new Set(seed.documents.map((d) => d.id));
+  const saliencePool = await hydrateSaliencePool(arms, seedIds, FOLLOWUP_SLOTS * 2);
+  return { novelSalience, saliencePool };
+}
+
+/** Seed sweep → salience arms → guaranteed slots → compose. */
 export async function retrieveEnumerationLoop(
   p: LoopRetrievalParams,
   contextDocs: number,
   debug?: boolean,
 ): Promise<RetrievalResult> {
   const t0 = Date.now();
-  const windows = loopWindows(p);
-  const seedSlots = Math.floor(contextDocs / windows.length);
-  const depth = Math.min(MAX_WINDOW_DEPTH, seedSlots * 2);
-
   const timings: WindowTiming[] = [];
-  const seedStart = Date.now();
-  const { seedPools, seedMined } = await runSeedPass(p, windows, depth, timings);
-  const seedDocs = composeAspectPools(toPools(seedPools, seedSlots), contextDocs).docs;
 
-  // Read step: what does the pool mention that it does not contain?
-  const readStart = Date.now();
+  // Expansion first (#726 convention): warms the alias caches the seed
+  // search re-derives internally, and yields the transparency chips.
   const expansionTerms = await collectAlsoSearched(
     p.query,
-    windows.map((w) => ({ from: w.from, to: w.to })),
+    [{ from: p.dateFrom, to: p.dateTo }],
     p.tier,
   );
-  const alreadySearched = mergeSearchedTerms(expansionTerms, seedMined);
-  const followups = await readFollowups(p, seedDocs, alreadySearched);
-  const readMs = Date.now() - readStart;
+  const expansionMs = Date.now() - t0;
 
-  // Follow-up arms → guaranteed slots (see module doc for why not fusion).
-  const armStart = Date.now();
-  const arms = followups.length ? await runArmsForAliases(followups, p.dateFrom, p.dateTo) : [];
-  const seedIds = new Set(seedDocs.map((d) => d.id));
-  const followupPool = await hydrateFollowupPool(arms, seedIds, FOLLOWUP_SLOTS * 2);
-  timings.push({ key: 'followup:arms', searchMs: Date.now() - armStart, rerankMs: 0 });
+  const s0 = Date.now();
+  const seed = await searchResearchWithMeta(
+    p.query,
+    contextDocs,
+    p.embedding,
+    p.dateFrom,
+    p.dateTo,
+    p.tier,
+  );
+  timings.push({ key: 'seed', searchMs: Date.now() - s0, rerankMs: 0 });
 
-  const docs = composeWithFollowups(seedPools, seedDocs, followupPool, contextDocs, windows.length);
+  const a0 = Date.now();
+  const { novelSalience, saliencePool } = await runSalienceStage(p, seed, expansionTerms);
+  timings.push({ key: 'salience', searchMs: Date.now() - a0, rerankMs: 0 });
+
+  const docs = composeWithSalience(seed.documents, saliencePool, contextDocs);
 
   return {
     docs,
     strata: null,
     inferredFrom: p.inferredFrom,
-    alsoSearched: mergeSearchedTerms(alreadySearched, followups),
+    alsoSearched: mergeSearchedTerms(
+      mergeSearchedTerms(expansionTerms, seed.minedAliases),
+      novelSalience,
+    ),
     timings: {
-      expansionMs: readMs,
-      retrieveWallMs: Date.now() - seedStart - readMs,
+      expansionMs,
+      retrieveWallMs: Date.now() - s0,
       windows: timings,
       totalMs: Date.now() - t0,
     },
     ...(debug
-      ? { candidates: [...seedPools.flat(), ...followupPool].map((d) => toCandidateSummary(d)) }
+      ? {
+          candidates: [...seed.documents, ...saliencePool].map((d) => toCandidateSummary(d)),
+        }
       : {}),
   };
 }

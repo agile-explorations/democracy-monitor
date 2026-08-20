@@ -78,6 +78,7 @@ export function enumerationModeEnabled(): boolean {
 }
 
 export interface SynthesisBudget {
+  mode: QuestionMode;
   contextDocs: number;
   maxTokens: number;
 }
@@ -85,8 +86,16 @@ export interface SynthesisBudget {
 /** The single source of truth both endpoints derive budgets from. */
 export function budgetForQuestion(question: string): SynthesisBudget {
   return classifyQuestionMode(question) === 'enumeration'
-    ? { contextDocs: ENUMERATION_CONTEXT_DOCS, maxTokens: ENUMERATION_MAX_TOKENS }
-    : { contextDocs: RESEARCH_CONTEXT_DOCS_ANALYTICAL, maxTokens: ANALYTICAL_MAX_TOKENS };
+    ? {
+        mode: 'enumeration',
+        contextDocs: ENUMERATION_CONTEXT_DOCS,
+        maxTokens: ENUMERATION_MAX_TOKENS,
+      }
+    : {
+        mode: 'analytical',
+        contextDocs: RESEARCH_CONTEXT_DOCS_ANALYTICAL,
+        maxTokens: ANALYTICAL_MAX_TOKENS,
+      };
 }
 
 /** Enumeration-mode prompt instruction (#751): coverage questions are judged

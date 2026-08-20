@@ -2,17 +2,15 @@
  * Corpus-mined entity aliases — pseudo-relevance feedback (#750).
  *
  * The LLM expansion (#733) cannot name entities from after its knowledge
- * cutoff: asked about 2025-26 litigation it proposes Zadvydas v. Davis
- * (2001), never Newsom v. Trump. The corpus itself has no cutoff — the top
- * vector candidates' own text names the captions, order numbers, and
- * operations the question is about. Mine those (extraction lives in
- * entity-extraction.ts), validate them exactly like LLM aliases, and run
- * them as ordinary keyword arms.
+ * cutoff; the vector candidates' own text can. Mine captions/order numbers/
+ * operations from the pooled candidates (extraction: entity-extraction.ts,
+ * LIGHT config — bit-identical to the v1.10.1 shipped behavior; the widened
+ * settings ran in this common path once and destabilized prod, #756),
+ * validate like any alias, and run them as extra arms.
  *
- * Failure-tolerant like the rest of expansion: any error degrades to zero
- * mined aliases and retrieval proceeds on vector + LLM arms alone.
- * Excluded from unit coverage (DB + arm I/O); the extraction half is fully
- * unit-tested.
+ * Failure-tolerant: any error degrades to zero mined aliases and retrieval
+ * proceeds on vector + LLM arms alone. Excluded from unit coverage (DB +
+ * arm I/O); the extraction half is fully unit-tested.
  */
 
 import { sql } from 'drizzle-orm';
@@ -20,10 +18,8 @@ import type { DocumentTier } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import {
   extractEntityPhrases,
-  MAX_MINED_PHRASES,
+  LIGHT_EXTRACTION,
   MINING_CANDIDATE_LIMIT,
-  MINING_CONTENT_CHARS,
-  MINING_VALIDATION_CANDIDATES,
 } from '@/lib/services/entity-extraction';
 import type { FusionArm } from '@/lib/services/hybrid-fusion';
 import type { ExpansionWindow, ValidatedAlias } from '@/lib/services/query-expansion-service';
@@ -35,6 +31,7 @@ import { runArmsForAliases } from '@/lib/services/research-fusion';
  * Mine entity phrases from the given candidate documents and validate them
  * through the standard alias machinery (match caps, count cache,
  * boilerplate filter). `existing` phrases (the LLM aliases) are skipped.
+ * v1.10.1 semantics: cap to maxPhrases BEFORE validation.
  */
 export async function mineEntityAliases(
   candidateIds: number[],
@@ -45,7 +42,7 @@ export async function mineEntityAliases(
   const db = getDb();
   const ids = candidateIds.slice(0, MINING_CANDIDATE_LIMIT);
   const rows = await db.execute(sql`
-    SELECT d.title, LEFT(d.content, ${MINING_CONTENT_CHARS}) as body
+    SELECT d.title, LEFT(d.content, ${LIGHT_EXTRACTION.contentChars}) as body
     FROM documents d
     WHERE d.id IN (${sql.join(
       ids.map((i) => sql`${i}`),
@@ -55,18 +52,12 @@ export async function mineEntityAliases(
     (r) => `${r.title ?? ''}\n${r.body ?? ''}`,
   );
   const known = new Set(existing.map((a) => a.phrase.toLowerCase()));
-  // Validate WIDE, slice AFTER (#753): doc-frequency ranks ubiquitous
-  // statutes first, and slicing before validation let them consume every
-  // slot only to die at the match cap — starving the freq-1 captions the
-  // mining exists to find. Validation is week-cached per phrase, so the
-  // wider list costs one cold count per novel phrase.
-  const phrases = extractEntityPhrases(texts)
+  const phrases = extractEntityPhrases(texts, LIGHT_EXTRACTION)
     .filter((e) => !known.has(e.phrase.toLowerCase()))
-    .slice(0, MINING_VALIDATION_CANDIDATES)
+    .slice(0, LIGHT_EXTRACTION.maxPhrases)
     .map((e) => e.phrase);
   if (phrases.length === 0) return [];
-  const { validated } = await validateAliasesDiagnostic(phrases, window);
-  return validated.slice(0, MAX_MINED_PHRASES);
+  return (await validateAliasesDiagnostic(phrases, window)).validated;
 }
 
 /** The full pseudo-relevance-feedback step: mine entity phrases from vector
