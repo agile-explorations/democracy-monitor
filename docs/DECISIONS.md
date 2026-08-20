@@ -12,6 +12,25 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint arc R-JOURNALIST → R-DECOMP → R-SALIENCE: journalist-test retrieval (#733–#760, milestones 116–117, v1.10.0–v1.12.0) — ✅ deployed + flag-on prod eval 2026-08-19
+
+**Origin**: the 2026-08-18 Journalist Test found the corpus 97% complete but answers passing only 47% of CORE ground-truth items. Outreach paused; a ≥70% CORE gate was set. One continuous three-sprint arc followed (2026-08-18→19), including one production incident and two architecture pivots — all owner-gated at each turn.
+
+**Planned vs built**: R-JOURNALIST's six fixes (expansion entities, instrument dedup, rerank instruction, content repairs incl. ~22.5k doc re-extraction/re-embed, coverage manifest, committed eval harness) shipped v1.10.0/v1.10.1 and improved the frozen-matcher holdout 120→130 — but the answer-level score stayed ~50%. The measured ceiling of the whole single-query architecture (depth-60, no rerank cut, enumeration prompting) was 64%: 38 of 39 remaining misses never reached the retrieval pool at any depth. R-DECOMP built aspect decomposition, then a read-and-follow-up loop; instrumented tracing killed both (below). R-SALIENCE — a weekly offline hot-entity index (novelty-ranked: term recurrence ÷ baseline recurrence), judge-selected salience arms into guaranteed slots, enumeration synthesis (60 docs/8192) behind an ENUMERATION_MODE flag — is what shipped: **local acceptance 70/107 (65%), prod 63/107 (59%), vs 53/107 corrected baseline; zero per-question regressions; prod stable**. Gate path to ≥70%: #760 (era-path salience + per-era index + extraction classes + judge stability) → #740 (criminal dockets; H3 is unreachable without it) → #739 (GAO).
+
+**Production incident (2026-08-19)**: v1.11.0's loop builds crashed prod instances (prewarm verified 0/12; builds died uncached); the v1.11.1 "kill-switch" release ALSO destabilized prod because the flag gated only the classifier while widened mining ran in every build's common path. Resolved by v1.11.2 full revert (tree verified == v1.10.1). Lessons now standing: **a kill-switch must cover every shared-path change or the release must be additive-only outside the flag**; **local probe wall-times are deploy gates, not link artifacts**; the hardened prewarm's verify-or-fail pass caught the incident and later greenlit the safe rollout — alerting-by-default pays.
+
+**Key measured findings (the arc's real yield)**:
+
+- Marquee-item discovery is a **salience problem, not similarity**: targets sat at vector sim 0.39–0.44 vs a 0.57 rank-60 cutoff; phrase-embedding sim ranked junk above J.G.G. v. Trump on the question about it; every query-time discovery channel (LLM expansion → cutoff-blind; pool mining/reading → self-referential) failed measurably. Corpus-wide recurrence, computed offline weekly, is the missing signal — and **novelty (term ÷ baseline recurrence) is what separates news from era-invariant legal boilerplate** (Ashcroft v. Iqbal, EO 12866 topped raw frequency).
+- **Weighted RRF cannot be trusted to deliver entity arms**: a perfect arm carried targets at positions 0–8 and fusion dropped every one under co-validated generic-arm dilution → guaranteed slots, never a vote.
+- **Four same-shaped cap-ordering bugs** (slice-before-validate, chunk concat-then-cap, freq-rank starving freq-1 gold, doc-join refilling its own genre) — when a system repeats one failure shape at every joint, it is a pipeline of compensations; replace, don't tune.
+- The retrieval pipeline is **inherently nondeterministic** (old-vs-old doc overlap 10/30): equivalence gates must be band-form, and single eval runs carry ±4–6 aggregate items.
+
+**Spend**: content repairs ~$1 embeddings; eval/ceiling/probe runs ≈ $15 total across the arc; salience index $0/week (no LLM); judge ~$0.001/question-week.
+
+**Open follow-ups**: #760 (mechanisms incl. per-era index + judge stability + weekly validation-cost fix BEFORE the 08-24 cron), #740, #739, #742. Deferred by design: low-recurrence question-specific items (documented as out of scope — chasing them would overfit the eval).
+
 ## Sprint R-WITNESS: witness-stance editorial program + follow-ons (v1.9.51–v1.9.56) — ✅ deployed + prod-smoked 2026-08-18
 
 **Origin**: owner: "The site feels decidedly partisan. I wish it were more solidly bearing witness to a shift away from Classic American Democracy … without judgement about that shift." The program reframed every reader-facing surface from danger vocabulary to **departure-from-documented-baseline** vocabulary — precision without valence, never euphemism — while leaving every stored enum, prompt baseline, and historical record untouched. Follow-ons the same night: owner screenshots flagged the overview chart's stale vocabulary and the heatmap's indistinguishable colors; owner asked for the same assessment info on Research cards and for the markdown docs to join the vocabulary; a smoke-test mishap surfaced a real API trap.
@@ -133,32 +152,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Standing caveats**: heaviest era-stratified questions run 37–50s warm, near the 60s edge cut — a fully cold first hit (post-Monday-dump) can fail once before warming (mitigations: #705 re-rank latency, post-cron pre-warm). Occasional tangential-but-validated chips accepted as v1 behavior.
 
 **Spec deviations**: none (no spec section; design recorded on #702/#704).
-
-## Sprint R-CASE-TRACKER: tracked_cases + Litigation panel + stub retirement (#693–#698, milestone 112) — ✅ deployed v1.8.0 2026-08-10 (full prod sequence: promote, purge, milestone closed)
-
-**Origin**: owner question after R-DOCKET-CONTEXT — "is the case tracker also CL-API-bound, and can the trigger stubs be purged once pulled?" Answer became the architecture: case UNIVERSE from our 283k docket stubs (the only record of case→category routing), case CONTENT from CL bulk dockets (5GB quarterly file verified to carry filing/termination/last-filing dates, NOS, cause, court; NO docket-entries bulk exists — entry-level posture stays on the shipped timeline API), weekly capped v4 refresh for open cases. **Stub retirement is a deliverable**: once tracked_cases verifiably carries the universe, the 283k metadata-only documents rows (−42% of the table) are purged.
-
-**Built ($0 AI spend — fully deterministic)**:
-
-- `tracked_cases` table (jsonb categories + GIN, posture jsonb cache, provenance, refreshed_at-as-queue) + dictionary artifact with dated format-change notes.
-- `pnpm cases:seed` (LOCAL ONLY — the 71M-row staging tables never touch prod): documents-universe aggregation LEFT JOINed with search_docket/search_court/latest search_opinioncluster. **Parity perfect: 202,664 = 202,664, 0 missing, all 14 categories exact**; re-seed from fresh 2026-06-30 bulk cut bulk-miss 2,606 → 349; 156,511 terminated.
-- **The linchpin**: `storeDocuments` now routes court_opinion items to `upsertTrackedCasesFromItems` (category-merge upsert) instead of persisting stubs — without this the stubs regrow. In-memory flow untouched (fillClOpinions still sees the items).
-- Weekly refresh as snapshot post-step: docket-date sweep (cap 200/run, `id__in` batches of 20 ⇒ ≤10 calls) + tier-B posture cache (top 3 open per category, cap 40 calls). CL-absent dockets get refreshed_at stamped so the queue drains.
-- `GET /api/category/cases` (GIN query, Redis 24h) + `LitigationPanel` on category pages (cards, open/all toggle, load-more, CaseContext live-timeline expand); CollapsiblePanel lifted to `components/ui/`.
-- `pnpm docs:purge-stubs`: pre-flight ABORTS unless every stub case is in tracked_cases AND zero score/assessment rows. Local dry-run: 282,521 docs / 191,502 cases, both gates pass. Retirement surface pass: methodology + ASSESSMENT_METHODOLOGY rewrite, ingest stub check flipped all-marked → **none-present** (regrowth detector), doc-count cache v4, mark-docket-stubs retired.
-- DEPLOYMENT.md rollout runbook + promotion-manifest `tracked_cases` entry.
-
-**Key decisions (owner)**: work now, deploy held until after the Monday snapshot review; purge folded into the sprint as a deliverable.
-
-**Rehearsal findings (both fixed pre-commit)**:
-
-- **fetch_log has no per-URL rows** (per source/category/week) — the planned "delete matching fetch_log" would have falsely marked CL weeks unfetched. Purge now leaves fetch_log alone, with the reason printed in the runbook output.
-- **Year-3926 filing dates**: 11 CL bulk rows carry typo'd `date_last_filing`; DESC ordering pinned them atop every case list. Sanitized at both write paths (seed + refresh) and in data.
-
-**Lessons learned**:
-
-- **Rehearse against real data before review**: both defects above were invisible in code review and surfaced only by running the endpoint/purge against the seeded local DB.
-- **The staged-file pre-commit hook runs test-quality OpenGrep rules the full `lint:patterns` scan exempts** — negative-mock and mock-call-argument assertions in new tests fail at commit even after a green full scan. Write tests behaviorally from the start.
-- Retiring a validation's subject flips the check's polarity: "all marked metadata_only" became "none present" — a retired population's check should become its regrowth detector, not be deleted.
-
-**Spec deviations**: none (no spec section; architecture recorded in FUTURE_ROADMAP + c5fcb7d design commit). Detection untouched — tracked_cases is display/research surface only.

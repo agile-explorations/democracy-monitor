@@ -21,6 +21,8 @@
  */
 
 import { composeAspectPools } from '@/lib/services/aspect-composition';
+import type { EntityEra } from '@/lib/services/hot-entity-ranking';
+import { eraForDate } from '@/lib/services/hot-entity-ranking';
 import { selectSalienceArms } from '@/lib/services/hot-entity-selection';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import type { ArmHit } from '@/lib/services/research-fusion';
@@ -112,6 +114,7 @@ async function runSalienceStage(
     p.query,
     seed.documents.map((d) => ({ id: d.id, category: d.category })),
     [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
+    eraForDate(p.dateFrom ?? null),
   );
   const arms = novelSalience.length
     ? await runArmsForAliases(novelSalience, p.dateFrom, p.dateTo)
@@ -119,6 +122,50 @@ async function runSalienceStage(
   const seedIds = new Set(seed.documents.map((d) => d.id));
   const saliencePool = await hydrateSaliencePool(arms, seedIds, FOLLOWUP_SLOTS * 2);
   return { novelSalience, saliencePool };
+}
+
+/**
+ * Salience stage for an arbitrary retrieval window (#760): select era-scoped
+ * entities against the window's docs, run their arms window-scoped, and
+ * reserve slots for the hits. Used by the era-stratified path per window;
+ * the enumeration loop uses its own composition below. Returns the original
+ * docs untouched when selection yields nothing.
+ */
+export async function applySalienceStage(opts: {
+  query: string;
+  dateFrom: string | undefined;
+  dateTo: string | undefined;
+  era: EntityEra;
+  docs: ResearchDocument[];
+  alreadySearched: ValidatedAlias[];
+  reserve: number;
+}): Promise<{ docs: ResearchDocument[]; salience: ValidatedAlias[] }> {
+  const salience = await selectSalienceArms(
+    opts.query,
+    opts.docs.map((d) => ({ id: d.id, category: d.category })),
+    opts.alreadySearched.map((t) => t.phrase),
+    opts.era,
+  );
+  if (salience.length === 0) return { docs: opts.docs, salience: [] };
+  const arms = await runArmsForAliases(salience, opts.dateFrom, opts.dateTo);
+  const pool = await hydrateSaliencePool(
+    arms,
+    new Set(opts.docs.map((d) => d.id)),
+    opts.reserve * 2,
+  );
+  if (pool.length === 0) return { docs: opts.docs, salience };
+  const keep = opts.docs.length;
+  const composed = composeAspectPools(
+    [
+      {
+        kept: opts.docs.slice(0, keep - opts.reserve),
+        overflow: opts.docs.slice(keep - opts.reserve),
+      },
+      { kept: pool.slice(0, opts.reserve), overflow: pool.slice(opts.reserve) },
+    ],
+    keep,
+  ).docs;
+  return { docs: composed, salience };
 }
 
 /** Seed sweep → salience arms → guaranteed slots → compose. */

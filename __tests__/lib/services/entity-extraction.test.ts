@@ -114,3 +114,24 @@ describe('WIDE config — offline hot-entity sweep (#757)', () => {
     expect(phrases).not.toContain('Paperwork Reduction Act');
   });
 });
+
+describe('WIDE config — task forces and initiatives (#760)', () => {
+  it('extracts named task forces and initiatives with class tags', () => {
+    const texts = [
+      'The Memphis Safe Task Force expanded operations. The Civil Rights Fraud Initiative was announced.',
+    ];
+    const out = extractEntityPhrases(texts, { ...WIDE_EXTRACTION, minDocFrequency: 1 });
+    expect(out.find((e) => e.phrase === 'Memphis Safe Task Force')?.entityClass).toBe('task_force');
+    expect(out.find((e) => e.phrase === 'Civil Rights Fraud Initiative')?.entityClass).toBe(
+      'initiative',
+    );
+  });
+
+  it('rejects generic or sentence-artifact forms', () => {
+    const texts = ['The Task Force met. This Initiative continues under the new plan.'];
+    const phrases = extractEntityPhrases(texts, { ...WIDE_EXTRACTION, minDocFrequency: 1 }).map(
+      (e) => e.phrase,
+    );
+    expect(phrases.filter((p) => /Task Force|Initiative/.test(p))).toEqual([]);
+  });
+});

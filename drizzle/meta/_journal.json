@@ -414,6 +414,13 @@
       "when": 1787191244932,
       "tag": "0058_amused_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1787227566874,
+      "tag": "0059_fixed_medusa",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { ExtractedPhrase } from '@/lib/services/entity-extraction';
 import {
+  applyCrossEraFrequencies,
+  eraForDate,
   hotEntityScore,
   mergeDocExtraction,
   rankHotEntities,
@@ -87,5 +89,38 @@ describe('rankHotEntities', () => {
   it('applies the doc-frequency floor and the cap', () => {
     const acc = new Map([entry('A v. B', 1, 0), entry('C v. D', 5, 0), entry('E v. F', 4, 0)]);
     expect(rankHotEntities(acc, 2, 1).map((e) => e.phrase)).toEqual(['C v. D']);
+  });
+});
+
+describe('eraForDate (#760)', () => {
+  it('maps publication dates to analysis eras', () => {
+    expect(eraForDate('2026-08-01T00:00:00Z')).toBe('trump_t2');
+    expect(eraForDate('2022-06-01T00:00:00Z')).toBe('biden');
+    expect(eraForDate('2019-03-01T00:00:00Z')).toBe('trump_t1');
+    expect(eraForDate(null)).toBe('trump_t2');
+  });
+});
+
+describe('applyCrossEraFrequencies (#760)', () => {
+  const entry = (term: number): HotEntityEntry => ({
+    phrase: 'Ashcroft v. Iqbal',
+    entityClass: 'caption',
+    docFreqTerm: term,
+    docFreqRecent: 0,
+    docFreqBaseline: 0,
+    mentionDocIds: [1],
+    categoryCounts: {},
+  });
+
+  it('sets each era denominator to the sum of the other eras', () => {
+    const accs = {
+      trump_t1: new Map([['ashcroft v. iqbal', entry(100)]]),
+      biden: new Map([['ashcroft v. iqbal', entry(80)]]),
+      trump_t2: new Map([['ashcroft v. iqbal', entry(120)]]),
+    };
+    applyCrossEraFrequencies(accs);
+    expect(accs.trump_t2.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(180);
+    expect(accs.biden.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(220);
+    expect(accs.trump_t1.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(200);
   });
 });

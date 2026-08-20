@@ -7,6 +7,7 @@ import {
   nominateShortlist,
   rankCategoryEntities,
   rankPoolEntities,
+  stabilityFloor,
 } from '@/lib/services/hot-entity-selection';
 
 const entity = (
@@ -110,5 +111,27 @@ describe('nominateShortlist', () => {
       [],
     );
     expect(out.map((r) => r.phrase)).toEqual(['Shared v. Entity', 'Fill Entity']);
+  });
+});
+
+describe('stabilityFloor (#760)', () => {
+  it('always keeps top pool nominees and top captions regardless of judge picks', () => {
+    const shortlist = [
+      { ...entity('Pool One v. Case'), poolMentions: 5 } as EntityRow,
+      { ...entity('Pool Two v. Case'), poolMentions: 3 } as EntityRow,
+      { ...entity('Fill Statute Act', 50, 0, ['a']), entityClass: 'statute' },
+      entity('Fill Caption v. Trump', 40, 0, ['a', 'b', 'c']),
+    ];
+    const floor = stabilityFloor(shortlist, 2);
+    expect(floor.map((r) => r.phrase)).toEqual([
+      'Pool One v. Case',
+      'Pool Two v. Case',
+      'Fill Caption v. Trump',
+    ]);
+  });
+
+  it('handles a shortlist with no pool channel', () => {
+    const floor = stabilityFloor([entity('Solo v. Caption')], 0);
+    expect(floor.map((r) => r.phrase)).toEqual(['Solo v. Caption']);
   });
 });
