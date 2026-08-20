@@ -1351,9 +1351,11 @@
       "key": "dc-v-trump",
       "name": "District of Columbia v. Trump (Cobb ruling, DC Cir. stay)",
       "date": "2025-09/12",
-      "patterns": ["%District of Columbia v%", "%Columbia v. Trump%"],
+      "patterns": ["%District of Columbia v%", "%Columbia v. Trump%", "%DC v.%Trump%"],
       "weight": "CORE",
-      "sourceGap": false
+      "sourceGap": false,
+      "answerKeys": ["DC v. Trump"],
+      "note": "2026-08-19: corpus titles this case 'DC v. Donald Trump' and answers cite 'DC v. Trump'; original patterns only matched the spelled-out caption (checker artifact, see #750)."
     },
     {
       "qid": "H2",

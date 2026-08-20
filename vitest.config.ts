@@ -52,6 +52,14 @@ export default defineConfig({
         // #750 entity mining I/O (DB fetch + arm runs); the pure extraction
         // half lives in entity-extraction.ts and is fully unit-tested
         'lib/services/entity-mining.ts',
+        // #758 enumeration retrieval I/O (seed sweep + salience arms + arm
+        // hydration); pure halves live in aspect-composition.ts,
+        // hot-entity-ranking.ts, and hot-entity-selection's exported ranker
+        'lib/services/research-loop-retrieval.ts',
+        'lib/services/hot-entity-selection.ts',
+        'lib/services/hot-entity-judge.ts',
+        // #757 weekly hot-entity sweep — DB batches + embedding I/O
+        'lib/cron/refresh-hot-entities.ts',
       ],
       thresholds: {
         statements: 70,

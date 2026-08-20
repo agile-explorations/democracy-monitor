@@ -15,8 +15,13 @@ export const CacheKeys = {
   fec: (queryKey: string) => `fec:${queryKey}`,
   searchResearch: (queryHash: string) => `search:research:${queryHash}:v2`,
   /** docsOnly research responses (#705): doc lists are stable within a data
-   *  week; refreshed by the Monday pre-warm (&refresh=true bypass). */
-  searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v2`,
+   *  week; refreshed by the Monday pre-warm (&refresh=true bypass).
+   *  Mode-derived version (#758): analytical (and flag-off) requests keep
+   *  the v1.10.1 v2 namespace so a flag-off deploy hits the existing warm
+   *  caches — no deploy-day rebuild stampede; enumeration doc sets differ
+   *  and get their own v3 namespace. */
+  searchResearchDocs: (keyHash: string, enumeration = false) =>
+    `search:rdocs:${keyHash}:${enumeration ? 'v3' : 'v2'}`,
   /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
    *  provider round-trip per cold search. Query text only, never documents. */
   queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,
@@ -24,6 +29,9 @@ export const CacheKeys = {
   queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
   /** Corpus-validated aliases, keyed by (query, window) hash. */
   queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v2`,
+  /** Shortlist-judge picks for enumeration questions (#758), keyed per
+   *  (question, data week). */
+  searchEntityJudge: (keyHash: string) => `search:qjudge:${keyHash}:v1`,
   /** Complete alias-arm results (#729), keyed by (kind, data week, filter
    *  params, phrase) — aliases recur across differently-worded queries. */
   searchArm: (kind: string, week: string, paramsHash: string, phraseHash: string) =>

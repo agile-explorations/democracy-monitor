@@ -11,6 +11,7 @@ import {
   tryWarnUnfragmentedCrec,
   tryRegenerateTermSummary,
   tryStoreDataReport,
+  tryRefreshHotEntities,
   tryValidateFunnel,
   tryValidateGraph,
 } from '@/lib/cron/snapshot-poststeps';
@@ -516,6 +517,7 @@ async function runPostCategorySteps(
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);
+  await tryRefreshHotEntities(errors);
   if (narrativesGenerated) {
     await gateAndSendDigest(
       currentWeek,

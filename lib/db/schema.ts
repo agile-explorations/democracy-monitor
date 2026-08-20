@@ -876,3 +876,45 @@ export const dumpRuns = pgTable(
   },
   (table) => [index('idx_dump_runs_started_at').on(table.startedAt)],
 );
+
+/** Hot-entity salience index (#757): weekly full-replace, mined corpus-wide
+ *  from the current term and ranked by novelty (term recurrence divided by
+ *  baseline-era recurrence — era-invariant legal boilerplate collapses).
+ *  `ftsMatches` is the alias-validation corpus count (feeds armWeight).
+ *  Query-time selection joins the retrieval pool's doc ids against
+ *  hot_entity_docs — "which entities does this pool discuss" — measured
+ *  exact where phrase-embedding similarity was mush (#758). */
+export const hotEntities = pgTable(
+  'hot_entities',
+  {
+    id: serial('id').primaryKey(),
+    phrase: varchar('phrase', { length: 80 }).notNull().unique(),
+    entityClass: varchar('entity_class', { length: 20 }).notNull(),
+    docFreqTerm: integer('doc_freq_term').notNull(),
+    docFreqBaseline: integer('doc_freq_baseline').notNull(),
+    ftsMatches: integer('fts_matches').notNull(),
+    /** Top categories of the entity's mention docs — the coarse selection
+     *  signal that survives an off-target retrieval pool (#758). */
+    categories: jsonb('categories').$type<string[]>().notNull(),
+    weekStamp: varchar('week_stamp', { length: 10 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_hot_entities_week_stamp').on(table.weekStamp)],
+);
+
+/** Which term documents mention each hot entity (capped per entity at
+ *  refresh time). doc_id is indexed for the query-time pool join. */
+export const hotEntityDocs = pgTable(
+  'hot_entity_docs',
+  {
+    entityId: integer('entity_id')
+      .notNull()
+      .references(() => hotEntities.id, { onDelete: 'cascade' }),
+    docId: integer('doc_id').notNull(),
+  },
+  (table) => [
+    unique('uq_hot_entity_docs').on(table.entityId, table.docId),
+    index('idx_hot_entity_docs_doc_id').on(table.docId),
+  ],
+);

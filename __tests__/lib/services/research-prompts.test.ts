@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import {
   ACTION_EXCERPT_CHARS,
   buildDraftPrompt,
@@ -303,5 +303,29 @@ describe('source-coverage manifest (#737)', () => {
 describe('excerpt budget coupling (#736)', () => {
   it('keeps the prompt excerpt budget within the SQL fetch cap', () => {
     expect(ACTION_EXCERPT_CHARS).toBeLessThanOrEqual(RESEARCH_CONTENT_FETCH_CHARS);
+  });
+});
+
+describe('enumeration instruction (#751)', () => {
+  beforeAll(() => {
+    process.env.ENUMERATION_MODE = 'on';
+  });
+  afterAll(() => {
+    delete process.env.ENUMERATION_MODE;
+  });
+
+  it('adds the enumeration addendum for enumeration questions', () => {
+    const prompt = buildSinglePassPrompt(
+      'What executive orders address collective bargaining?',
+      [makeDoc()],
+      null,
+    );
+    expect(prompt).toContain('comprehensive enumeration');
+    expect(prompt).toContain('court cases by');
+  });
+
+  it('omits the addendum for analytical questions', () => {
+    const prompt = buildSinglePassPrompt('Is the impoundment of funds legal?', [makeDoc()], null);
+    expect(prompt).not.toContain('comprehensive enumeration');
   });
 });

@@ -8,6 +8,7 @@ import { createHash } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheDel, cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { classifyQuestionMode } from '@/lib/services/question-classifier';
 import type {
   CandidateSummary,
   RetrievalResult,
@@ -25,7 +26,8 @@ import { recordSearchTiming } from '@/lib/services/search-timing-log';
  *  pre-warm workflow refreshes them right after (&refresh=true). */
 const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
 /** In-flight marker outlives the 120s arm safety ceiling with headroom;
- *  self-expires if a build dies without releasing. */
+ *  self-expires if a build dies without releasing. Reverted to the v1.10.1
+ *  value (#758): the 600s incident-era bump only lengthened crash wedges. */
 const INFLIGHT_TTL_SECONDS = 240;
 const RETRY_AFTER_MS = 8000;
 
@@ -93,7 +95,8 @@ export function docsCacheRefs(
     tier: req.query.tier as string | undefined,
     eras: req.query.eras as string | undefined,
   });
-  return { docsHash, docsCacheKey: CacheKeys.searchResearchDocs(docsHash) };
+  const enumeration = classifyQuestionMode(query) === 'enumeration';
+  return { docsHash, docsCacheKey: CacheKeys.searchResearchDocs(docsHash, enumeration) };
 }
 
 /**
