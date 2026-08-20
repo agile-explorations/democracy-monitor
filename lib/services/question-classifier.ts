@@ -52,29 +52,15 @@ const COMPARATIVE_SPECIES =
   /\b(responses|actions|orders|rulings|documents|policies|prosecutions|rulemaking|enforcement|speeches|releases)\b/i;
 
 /**
- * Classify a research question. Pure given the environment; both search
- * endpoints call this and a unit test asserts they derive identical budgets
- * for the same text.
+ * Classify a research question. Pure; both search endpoints call this and a
+ * unit test asserts they derive identical budgets for the same text.
  */
 export function classifyQuestionMode(question: string): QuestionMode {
-  if (!enumerationModeEnabled()) return 'analytical';
   if (ENUMERATION_OPENER.test(question) && DOCUMENT_SPECIES.test(question)) return 'enumeration';
   if (COVERAGE_VERBS.test(question)) return 'enumeration';
   if (LIST_MARKER.test(question)) return 'enumeration';
   if (COMPARATIVE_SPECIES.test(question) && extractComparisonEras(question)) return 'enumeration';
   return 'analytical';
-}
-
-/**
- * Kill-switch (#756 incident, 2026-08-19): cold enumeration-loop builds
- * crashed prod instances (502s mid-build, caches never filled, 0/12 prewarm
- * verification) and forced a rollback. Enumeration mode ships default-OFF
- * until the loop meets a measured production latency/stability budget; set
- * ENUMERATION_MODE=on to canary it (both endpoints read the same env, so
- * budgets stay consistent).
- */
-export function enumerationModeEnabled(): boolean {
-  return process.env.ENUMERATION_MODE === 'on';
 }
 
 export interface SynthesisBudget {

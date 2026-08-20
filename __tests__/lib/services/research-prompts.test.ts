@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   ACTION_EXCERPT_CHARS,
   buildDraftPrompt,
@@ -307,13 +307,6 @@ describe('excerpt budget coupling (#736)', () => {
 });
 
 describe('enumeration instruction (#751)', () => {
-  beforeAll(() => {
-    process.env.ENUMERATION_MODE = 'on';
-  });
-  afterAll(() => {
-    delete process.env.ENUMERATION_MODE;
-  });
-
   it('adds the enumeration addendum for enumeration questions', () => {
     const prompt = buildSinglePassPrompt(
       'What executive orders address collective bargaining?',
