@@ -25,6 +25,7 @@ import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { JudgeCandidate } from '@/lib/services/hot-entity-judge';
 import { judgeShortlist } from '@/lib/services/hot-entity-judge';
+import type { EntityEra } from '@/lib/services/hot-entity-ranking';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 
 /** Arms handed to the guaranteed slots per question. */
@@ -152,14 +153,14 @@ function mapEntityRow(r: Record<string, unknown>): EntityRow {
   };
 }
 
-async function queryPoolJoin(seedDocIds: number[]): Promise<PoolEntityRow[]> {
+async function queryPoolJoin(seedDocIds: number[], era: EntityEra): Promise<PoolEntityRow[]> {
   const db = getDb();
   const result = await db.execute(sql`
     SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
            e.doc_freq_term, e.doc_freq_baseline, count(*) AS pool_mentions
     FROM hot_entity_docs d
     JOIN hot_entities e ON e.id = d.entity_id
-    WHERE d.doc_id IN (${sql.join(
+    WHERE e.era = ${era} AND d.doc_id IN (${sql.join(
       seedDocIds.map((i) => sql`${i}`),
       sql`, `,
     )})
@@ -171,35 +172,85 @@ async function queryPoolJoin(seedDocIds: number[]): Promise<PoolEntityRow[]> {
   }));
 }
 
-async function queryCategoryMatch(categories: string[]): Promise<EntityRow[]> {
+async function queryCategoryMatch(categories: string[], era: EntityEra): Promise<EntityRow[]> {
   if (categories.length === 0) return [];
   const db = getDb();
   const result = await db.execute(sql`
     SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
            e.doc_freq_term, e.doc_freq_baseline
     FROM hot_entities e
-    WHERE e.categories ?| array[${sql.join(
+    WHERE e.era = ${era} AND e.categories ?| array[${sql.join(
       categories.map((c) => sql`${c}`),
       sql`, `,
     )}]::text[]`);
   return (result.rows as Array<Record<string, unknown>>).map(mapEntityRow);
 }
 
+/** Judge-pick stability floor (#760): environment-sensitive shortlists made
+ *  judge picks flip between local and prod (IM3 lost its caption picks).
+ *  The top mechanical nominees from each channel are ALWAYS included —
+ *  top-2 pool-discussed + top-2 breadth-ranked captions — so no single
+ *  judge call can zero out either channel. Pure; exported for tests. */
+export function stabilityFloor(shortlist: EntityRow[], poolCount: number): EntityRow[] {
+  const fromPool = shortlist.slice(0, Math.min(2, poolCount));
+  const inPool = new Set(fromPool.map((r) => r.phrase.toLowerCase()));
+  const captions = shortlist
+    .filter((r) => r.entityClass === 'caption' && !inPool.has(r.phrase.toLowerCase()))
+    .slice(0, 2);
+  return [...fromPool, ...captions];
+}
+
+/** Floor ∪ judge picks (mechanical fallback when picks are null), deduped
+ *  and capped. Pure; exported for tests via stabilityFloor. */
+function finalizeArms(
+  shortlist: EntityRow[],
+  picks: string[] | null,
+  poolRows: PoolEntityRow[],
+  excludePhrases: string[],
+): ValidatedAlias[] {
+  const byPhrase = new Map(shortlist.map((r) => [r.phrase.toLowerCase(), r]));
+  const judged =
+    picks !== null
+      ? picks.map((ph) => byPhrase.get(ph.toLowerCase())).filter((r): r is EntityRow => !!r)
+      : shortlist;
+  const excluded = new Set(excludePhrases.map((ph) => ph.toLowerCase()));
+  const poolCount = rankPoolEntities(poolRows).filter(
+    (r) => !excluded.has(r.phrase.toLowerCase()),
+  ).length;
+  const floor = stabilityFloor(shortlist, poolCount);
+  const seen = new Set<string>();
+  const chosen: EntityRow[] = [];
+  for (const r of [...floor, ...judged]) {
+    const k = r.phrase.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    chosen.push(r);
+  }
+  return chosen
+    .slice(0, MAX_SALIENCE_ARMS)
+    .map((r) => ({ phrase: r.phrase, matches: r.ftsMatches }));
+}
+
 export async function selectSalienceArms(
   question: string,
   seedDocs: Array<{ id: number; category: string | null }>,
   excludePhrases: string[],
+  era: EntityEra,
 ): Promise<ValidatedAlias[]> {
   if (!isDbAvailable() || seedDocs.length === 0) return [];
   try {
     const globalShares = await queryGlobalCategoryShares();
     const [poolRows, categoryRows] = await Promise.all([
-      queryPoolJoin(seedDocs.map((d) => d.id)),
+      queryPoolJoin(
+        seedDocs.map((d) => d.id),
+        era,
+      ),
       queryCategoryMatch(
         dominantCategories(
           seedDocs.map((d) => d.category),
           globalShares,
         ),
+        era,
       ),
     ]);
     const shortlist = nominateShortlist(poolRows, categoryRows, excludePhrases);
@@ -211,14 +262,7 @@ export async function selectSalienceArms(
       docFreqTerm: r.docFreqTerm,
     }));
     const picks = await judgeShortlist(question, candidates);
-    const byPhrase = new Map(shortlist.map((r) => [r.phrase.toLowerCase(), r]));
-    const chosen =
-      picks !== null
-        ? picks.map((ph) => byPhrase.get(ph.toLowerCase())).filter((r): r is EntityRow => !!r)
-        : shortlist;
-    return chosen
-      .slice(0, MAX_SALIENCE_ARMS)
-      .map((r) => ({ phrase: r.phrase, matches: r.ftsMatches }));
+    return finalizeArms(shortlist, picks, poolRows, excludePhrases);
   } catch (err) {
     console.warn('[hot-entity-selection] failed (continuing seed-only):', err);
     return [];

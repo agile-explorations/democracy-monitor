@@ -69,6 +69,11 @@ const OPERATION_RE = /Operation [A-Z][A-Za-z]+(?:['’][sS])?(?: [A-Z][A-Za-z]+)
 const PUBLIC_LAW_RE = /Public Law \d{2,3}-\d{1,4}/g;
 /** Named statutes ("Alien Enemies Act", "Laken Riley Act of 2025") — WIDE only. */
 const STATUTE_RE = /\b(?:[A-Z][A-Za-z'’-]+ ){1,4}Act(?: of \d{4})?\b/g;
+/** Named task forces ("Memphis Safe Task Force") and initiatives ("Civil
+ *  Rights Fraud Initiative") — WIDE only (#760). Same shape family as
+ *  statutes: TitleCase words before a class noun, ≥3 words total. */
+const TASK_FORCE_RE = /\b(?:[A-Z][A-Za-z'’-]+ ){1,4}Task Force\b/g;
+const INITIATIVE_RE = /\b(?:[A-Z][A-Za-z'’-]+ ){1,4}Initiative\b/g;
 /** Person names in legal-action context — WIDE only. Bare bigram extraction
  *  would flood; the keyword anchor keeps precision. */
 const NAME = String.raw`[A-Z][a-z'’-]+ [A-Z][A-Za-z'’-]+`;
@@ -91,7 +96,15 @@ const STATUTE_STOPWORDS =
 const PERSON_STOPWORDS =
   /^(?:United States|White House|Supreme Court|District Court|Attorney General|Justice Department|Homeland Security|Federal Bureau|Grand Jury|New York|Los Angeles|El Salvador|District Judge|Chief Judge|President Trump|President Biden|Mr|Mrs|Ms|Dr)\b|^(?:The|This|That|Federal|Civil|Criminal|Judicial|National|Executive|Congressional) /i;
 
-export type EntityClass = 'caption' | 'statute' | 'eo' | 'operation' | 'public_law' | 'person';
+export type EntityClass =
+  | 'caption'
+  | 'statute'
+  | 'eo'
+  | 'operation'
+  | 'public_law'
+  | 'person'
+  | 'task_force'
+  | 'initiative';
 
 export interface ExtractedPhrase {
   phrase: string;
@@ -113,10 +126,12 @@ function stripLeadingConnectors(phrase: string, guard: RegExp): string {
 function normalizePhrase(raw: string, kind: EntityClass): string | null {
   let phrase = raw.replace(/\s+/g, ' ').trim();
   if (kind === 'caption') phrase = stripLeadingConnectors(phrase, / [vV]\.? /);
-  if (kind === 'statute') {
-    phrase = stripLeadingConnectors(phrase, / Act\b/);
+  if (kind === 'statute' || kind === 'task_force' || kind === 'initiative') {
+    const guard =
+      kind === 'statute' ? / Act\b/ : kind === 'task_force' ? / Task Force\b/ : / Initiative\b/;
+    phrase = stripLeadingConnectors(phrase, guard);
     if (STATUTE_STOPWORDS.test(phrase) || !/^[A-Z][a-z]/.test(phrase)) return null;
-    if (phrase.split(' ').length < 3) return null; // "Riley Act" alone is too weak an arm
+    if (phrase.split(' ').length < 3) return null; // one qualifier alone is too weak an arm
   }
   if (phrase.length < MIN_PHRASE_CHARS || phrase.length > MAX_PHRASE_CHARS) return null;
   if (kind === 'caption' && CAPTION_STOPWORDS.test(phrase)) return null;
@@ -131,7 +146,13 @@ function collectMatches(
 ) {
   const classes: Array<{ re: RegExp; kind: EntityClass }> = [
     { re: CAPTION_RE, kind: 'caption' },
-    ...(wide ? [{ re: STATUTE_RE, kind: 'statute' as const }] : []),
+    ...(wide
+      ? [
+          { re: STATUTE_RE, kind: 'statute' as const },
+          { re: TASK_FORCE_RE, kind: 'task_force' as const },
+          { re: INITIATIVE_RE, kind: 'initiative' as const },
+        ]
+      : []),
     { re: EO_RE, kind: 'eo' },
     { re: OPERATION_RE, kind: 'operation' },
     { re: PUBLIC_LAW_RE, kind: 'public_law' },

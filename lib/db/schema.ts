@@ -888,9 +888,17 @@ export const hotEntities = pgTable(
   'hot_entities',
   {
     id: serial('id').primaryKey(),
-    phrase: varchar('phrase', { length: 80 }).notNull().unique(),
+    phrase: varchar('phrase', { length: 80 }).notNull(),
+    /** Which analysis era this row's salience describes (#760): trump_t1 /
+     *  biden / trump_t2 — baseline-era questions need their own marquee
+     *  entities (owner requirement). One row per (phrase, era). */
+    era: varchar('era', { length: 12 }).notNull().default('trump_t2'),
     entityClass: varchar('entity_class', { length: 20 }).notNull(),
+    /** Mention-doc recurrence within this row's era. */
     docFreqTerm: integer('doc_freq_term').notNull(),
+    /** Recurrence OUTSIDE this era (#760 generalization of the original
+     *  baseline denominator) — cross-era novelty collapses era-invariant
+     *  boilerplate symmetrically. Column name kept for migration economy. */
     docFreqBaseline: integer('doc_freq_baseline').notNull(),
     ftsMatches: integer('fts_matches').notNull(),
     /** Top categories of the entity's mention docs — the coarse selection
@@ -900,7 +908,11 @@ export const hotEntities = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index('idx_hot_entities_week_stamp').on(table.weekStamp)],
+  (table) => [
+    unique('uq_hot_entities_phrase_era').on(table.phrase, table.era),
+    index('idx_hot_entities_week_stamp').on(table.weekStamp),
+    index('idx_hot_entities_era').on(table.era),
+  ],
 );
 
 /** Which term documents mention each hot entity (capped per entity at

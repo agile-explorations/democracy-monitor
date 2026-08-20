@@ -17,7 +17,10 @@ import {
 } from '@/lib/services/era-extraction';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { budgetForQuestion } from '@/lib/services/question-classifier';
-import { retrieveEnumerationLoop } from '@/lib/services/research-loop-retrieval';
+import {
+  applySalienceStage,
+  retrieveEnumerationLoop,
+} from '@/lib/services/research-loop-retrieval';
 import type {
   RetrievalResult,
   RetrievalTimings,
@@ -133,6 +136,9 @@ export async function retrieveResearchDocs(
     return retrieveEraStratified(
       { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
       budget.contextDocs,
+      // Era-window salience arms (#760) only on the enumeration budget —
+      // the analytical path stays byte-identical to v1.10.1 semantics.
+      budget.mode === 'enumeration',
       debug,
     );
   }
@@ -179,11 +185,17 @@ interface EraRetrievalParams {
   inferredFrom: string | null;
 }
 
-/** One era window's retrieve + rerank, accumulating shared collectors. */
+/** Salience slots reserved inside each era window (#760). */
+const ERA_SALIENCE_RESERVE_DIVISOR = 4;
+const ERA_SALIENCE_RESERVE_MAX = 5;
+
+/** One era window's retrieve + rerank (+ optional era-scoped salience
+ *  stage, #760), accumulating shared collectors. */
 async function retrieveEraWindow(
   p: EraRetrievalParams,
   w: ReturnType<typeof intersectEraWindows>[number],
   slots: number,
+  salience: boolean,
   sinks: {
     eraMined: ValidatedAlias[];
     windowTimings: WindowTiming[];
@@ -205,7 +217,20 @@ async function retrieveEraWindow(
     sinks.debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
   }
   const r0 = Date.now();
-  const docs = await rerankForTier(p.query, candidates, slots, p.tier);
+  let docs = await rerankForTier(p.query, candidates, slots, p.tier);
+  if (salience) {
+    const staged = await applySalienceStage({
+      query: p.query,
+      dateFrom: w.from,
+      dateTo: w.to,
+      era: w.era.key,
+      docs,
+      alreadySearched: minedAliases,
+      reserve: Math.min(ERA_SALIENCE_RESERVE_MAX, Math.floor(slots / ERA_SALIENCE_RESERVE_DIVISOR)),
+    });
+    docs = staged.docs;
+    sinks.eraMined.push(...staged.salience);
+  }
   sinks.windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
   return docs;
 }
@@ -214,6 +239,7 @@ async function retrieveEraWindow(
 async function retrieveEraStratified(
   p: EraRetrievalParams,
   contextDocs: number,
+  salience: boolean,
   debug?: boolean,
 ): Promise<RetrievalResult> {
   const t0 = Date.now();
@@ -230,7 +256,7 @@ async function retrieveEraStratified(
   const eraMined: ValidatedAlias[] = [];
   const perEra = await Promise.all(
     windows.map((w) =>
-      retrieveEraWindow(p, w, slots, {
+      retrieveEraWindow(p, w, slots, salience, {
         eraMined,
         windowTimings,
         debugCandidates: debug ? debugCandidates : null,
