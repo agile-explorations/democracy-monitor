@@ -32,36 +32,9 @@ describe('extractEntityPhrases (#750)', () => {
     expect(phrases).toContain('Public Law 119-21');
   });
 
-  it('keeps singletons (#753 — corpus validation filters what frequency used to)', () => {
+  it('drops singletons (a caption seen once is usually its own doc)', () => {
     const texts = ['Only mention of Doe v. Roe here.', 'No captions in this one.'];
-    expect(extractEntityPhrases(texts)).toEqual([{ phrase: 'Doe v. Roe', docFreq: 1 }]);
-  });
-
-  it('extracts named statutes but not generic Act references (#753)', () => {
-    const texts = [
-      'Removals under the Alien Enemies Act were challenged. This Act does not apply here.',
-      'The Laken Riley Act of 2025 mandates detention. Under the Act, custody is required.',
-    ];
-    const phrases = extractEntityPhrases(texts).map((e) => e.phrase);
-    expect(phrases).toContain('Alien Enemies Act');
-    expect(phrases).toContain('Laken Riley Act of 2025');
-    expect(phrases.filter((p) => /^(This|The|Such) /.test(p))).toEqual([]);
-  });
-
-  it('extracts person names only in legal-action context (#753)', () => {
-    const texts = [
-      'The grand jury returned an indictment of James Comey on two counts.',
-      'Kilmar Abrego was deported despite a standing order. Sarah Johnson attended the hearing.',
-    ];
-    const phrases = extractEntityPhrases(texts).map((e) => e.phrase);
-    expect(phrases).toContain('James Comey');
-    expect(phrases).toContain('Kilmar Abrego');
-    expect(phrases).not.toContain('Sarah Johnson');
-  });
-
-  it('rejects institutional bigrams in legal-action context (#753)', () => {
-    const texts = ['The investigation by the Justice Department expanded.'];
-    expect(extractEntityPhrases(texts).map((e) => e.phrase)).not.toContain('Justice Department');
+    expect(extractEntityPhrases(texts)).toEqual([]);
   });
 
   it('counts a phrase once per document regardless of repetition', () => {

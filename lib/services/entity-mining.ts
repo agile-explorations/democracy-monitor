@@ -23,7 +23,6 @@ import {
   MAX_MINED_PHRASES,
   MINING_CANDIDATE_LIMIT,
   MINING_CONTENT_CHARS,
-  MINING_VALIDATION_CANDIDATES,
 } from '@/lib/services/entity-extraction';
 import type { FusionArm } from '@/lib/services/hybrid-fusion';
 import type { ExpansionWindow, ValidatedAlias } from '@/lib/services/query-expansion-service';
@@ -55,18 +54,12 @@ export async function mineEntityAliases(
     (r) => `${r.title ?? ''}\n${r.body ?? ''}`,
   );
   const known = new Set(existing.map((a) => a.phrase.toLowerCase()));
-  // Validate WIDE, slice AFTER (#753): doc-frequency ranks ubiquitous
-  // statutes first, and slicing before validation let them consume every
-  // slot only to die at the match cap — starving the freq-1 captions the
-  // mining exists to find. Validation is week-cached per phrase, so the
-  // wider list costs one cold count per novel phrase.
   const phrases = extractEntityPhrases(texts)
     .filter((e) => !known.has(e.phrase.toLowerCase()))
-    .slice(0, MINING_VALIDATION_CANDIDATES)
+    .slice(0, MAX_MINED_PHRASES)
     .map((e) => e.phrase);
   if (phrases.length === 0) return [];
-  const { validated } = await validateAliasesDiagnostic(phrases, window);
-  return validated.slice(0, MAX_MINED_PHRASES);
+  return (await validateAliasesDiagnostic(phrases, window)).validated;
 }
 
 /** The full pseudo-relevance-feedback step: mine entity phrases from vector

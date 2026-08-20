@@ -15,12 +15,8 @@ export const CacheKeys = {
   fec: (queryKey: string) => `fec:${queryKey}`,
   searchResearch: (queryHash: string) => `search:research:${queryHash}:v2`,
   /** docsOnly research responses (#705): doc lists are stable within a data
-   *  week; refreshed by the Monday pre-warm (&refresh=true bypass).
-   *  v3: R-DECOMP aspect-stratified retrieval changes doc sets (#753). */
-  searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v3`,
-  /** Read-step follow-up proposals for enumeration questions (#756),
-   *  keyed per (question, data week). */
-  searchFollowup: (keyHash: string) => `search:qfollow:${keyHash}:v1`,
+   *  week; refreshed by the Monday pre-warm (&refresh=true bypass). */
+  searchResearchDocs: (keyHash: string) => `search:rdocs:${keyHash}:v2`,
   /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
    *  provider round-trip per cold search. Query text only, never documents. */
   queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,

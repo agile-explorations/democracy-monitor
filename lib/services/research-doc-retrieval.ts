@@ -3,9 +3,8 @@
  * the /api/search route file): tiered retrieval with the request's date +
  * tier params, era stratification for comparative questions (each era
  * competes only with itself, so the recency-dense current term cannot crowd
- * out the eras being compared), the read-and-follow-up loop for enumeration
- * questions (#756 — research-loop-retrieval.ts), tier-balanced re-rank, and
- * "also searched" chip collection.
+ * out the eras being compared), tier-balanced re-rank, and "also searched"
+ * chip collection.
  */
 
 import type { NextApiRequest } from 'next';
@@ -15,37 +14,15 @@ import {
   extractComparisonEras,
   extractDateFloor,
 } from '@/lib/services/era-extraction';
+import { expandAndValidate } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
-import {
-  budgetForQuestion,
-  RESEARCH_CONTEXT_DOCS_ANALYTICAL,
-} from '@/lib/services/question-classifier';
-import { retrieveEnumerationLoop } from '@/lib/services/research-loop-retrieval';
-import type {
-  RetrievalResult,
-  RetrievalTimings,
-  WindowTiming,
-} from '@/lib/services/research-retrieval-helpers';
-import {
-  collectAlsoSearched,
-  mergeSearchedTerms,
-  rerankForTier,
-  toCandidateSummary,
-} from '@/lib/services/research-retrieval-helpers';
+import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
 import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { searchResearchWithMeta } from '@/lib/services/search-service';
 
-/** Docs sent to the synthesis LLM on the analytical path; enumeration
- *  questions get ENUMERATION_CONTEXT_DOCS via budgetForQuestion (#751). */
-export const RESEARCH_CONTEXT_DOCS = RESEARCH_CONTEXT_DOCS_ANALYTICAL;
-
-export type {
-  CandidateSummary,
-  RetrievalResult,
-  RetrievalTimings,
-  WindowTiming,
-} from '@/lib/services/research-retrieval-helpers';
+/** Docs sent to the synthesis LLM. */
+export const RESEARCH_CONTEXT_DOCS = 30;
 
 /** Intersect user date bounds with each era window; an empty intersection
  *  falls back to the full era and is flagged rather than silently dropped. */
@@ -60,7 +37,68 @@ function intersectEraWindows(eras: EraWindow[], dateFrom?: string, dateTo?: stri
   });
 }
 
-/** Non-comparative single-query path: one window, full context allocation. */
+/** Corpus-validated aliases (phrase + corpus match count) for the windows
+ *  searched (#702, counts #713) — cache hits, since searchResearch already
+ *  ran the same expansion internally. Multi-window merges keep the max count. */
+async function collectAlsoSearched(
+  query: string,
+  windows: Array<{ from?: string; to?: string }>,
+  tier: ResearchTierFilter,
+): Promise<ValidatedAlias[]> {
+  const byPhrase = new Map<string, number>();
+  for (const w of windows) {
+    const aliases = await expandAndValidate(query, {
+      dateFrom: w.from,
+      dateTo: w.to,
+      tier: tier === 'all' ? undefined : tier,
+    });
+    for (const a of aliases) {
+      byPhrase.set(a.phrase, Math.max(byPhrase.get(a.phrase) ?? 0, a.matches));
+    }
+  }
+  return [...byPhrase].map(([phrase, matches]) => ({ phrase, matches }));
+}
+
+/** Merge corpus-mined aliases (#750) into the searched-terms list so the
+ *  transparency chips, synthesis prompt, and quote-verifier exemptions all
+ *  see them alongside the LLM-proposed terms. */
+function mergeSearchedTerms(base: ValidatedAlias[], mined: ValidatedAlias[]): ValidatedAlias[] {
+  const seen = new Set(base.map((a) => a.phrase.toLowerCase()));
+  return [...base, ...mined.filter((m) => !seen.has(m.phrase.toLowerCase()))];
+}
+
+/** Tier balance survives the re-rank on mixed-tier retrievals (#707). */
+function rerankForTier(
+  query: string,
+  candidates: ResearchDocument[],
+  keep: number,
+  tier: ResearchTierFilter,
+): Promise<ResearchDocument[]> {
+  return tier === 'all'
+    ? rerankTierBalanced(query, candidates, keep)
+    : rerankByRelevance(query, candidates, keep);
+}
+
+/** Per-window phase timings for the payload's `timings` object (#726). */
+export interface WindowTiming {
+  key: string;
+  searchMs: number;
+  rerankMs: number;
+}
+
+/** Phase breakdown of one docsOnly retrieval build (#726): expansion runs
+ *  FIRST (warming its caches) so the window searches below are ~pure DB
+ *  work — separating external-API-bound from database-bound time, the split
+ *  the cold-cache program (#724) decides on. */
+export interface RetrievalTimings {
+  expansionMs: number;
+  /** Wall-clock of the (parallel) window retrieval block. */
+  retrieveWallMs: number;
+  windows: WindowTiming[];
+  totalMs: number;
+}
+
+/** Non-comparative path: one window, full context allocation. */
 async function retrieveSingleWindow(
   query: string,
   embedding: number[],
@@ -69,9 +107,8 @@ async function retrieveSingleWindow(
   dateTo: string | undefined,
   tier: ResearchTierFilter,
   inferredFrom: string | null,
-  contextDocs: number,
   debug?: boolean,
-): Promise<RetrievalResult> {
+) {
   const t0 = Date.now();
   const alsoSearched = await collectAlsoSearched(
     query,
@@ -82,7 +119,7 @@ async function retrieveSingleWindow(
   const t1 = Date.now();
   const { documents: candidates, minedAliases } = await searchResearchWithMeta(
     query,
-    contextDocs * 2,
+    RESEARCH_CONTEXT_DOCS * 2,
     embedding,
     w ? w.from : dateFrom,
     w ? w.to : dateTo,
@@ -90,11 +127,11 @@ async function retrieveSingleWindow(
   );
   const searchMs = Date.now() - t1;
   const t2 = Date.now();
-  const docs = await rerankForTier(query, candidates, contextDocs, tier);
+  const docs = await rerankForTier(query, candidates, RESEARCH_CONTEXT_DOCS, tier);
   const rerankMs = Date.now() - t2;
   return {
     docs,
-    strata: null,
+    strata: null as RetrievalStratum[] | null,
     inferredFrom,
     alsoSearched: mergeSearchedTerms(alsoSearched, minedAliases),
     timings: {
@@ -102,23 +139,43 @@ async function retrieveSingleWindow(
       retrieveWallMs: searchMs,
       windows: [{ key: w?.key ?? 'window', searchMs, rerankMs }],
       totalMs: Date.now() - t0,
-    },
+    } as RetrievalTimings,
     ...(debug ? { candidates: candidates.map((d) => toCandidateSummary(d)) } : {}),
   };
 }
 
-/** Chips UI override (#592): eras=trump_t1,trump_t2 pins the strata after
- *  the user removes one; a single remaining era degrades to a plain
- *  date-windowed retrieval. */
-function resolveEras(req: NextApiRequest, query: string): EraWindow[] | null {
-  const eraParam = req.query.eras as string | undefined;
-  const requested = eraParam
-    ? eraParam
-        .split(',')
-        .map((k) => ERA_WINDOWS[k as keyof typeof ERA_WINDOWS])
-        .filter(Boolean)
-    : null;
-  return requested && requested.length > 0 ? requested : extractComparisonEras(query);
+/** Light pre-rerank candidate shape for the debug trace (#718). */
+export interface CandidateSummary {
+  id: number;
+  title: string;
+  sourceType: string | null;
+  tier: string;
+  publishedAt: string | null;
+  cosineSimilarity: number;
+  matchedAlias?: string;
+  era?: string;
+}
+
+function toCandidateSummary(d: ResearchDocument, era?: string): CandidateSummary {
+  return {
+    id: d.id,
+    title: d.title,
+    sourceType: d.sourceType,
+    tier: d.tier,
+    publishedAt: d.publishedAt,
+    cosineSimilarity: d.cosineSimilarity,
+    ...(d.matchedAlias ? { matchedAlias: d.matchedAlias } : {}),
+    ...(era ? { era } : {}),
+  };
+}
+
+export interface RetrievalResult {
+  docs: ResearchDocument[];
+  strata: RetrievalStratum[] | null;
+  inferredFrom: string | null;
+  alsoSearched: ValidatedAlias[];
+  timings: RetrievalTimings;
+  candidates?: CandidateSummary[];
 }
 
 export async function retrieveResearchDocs(
@@ -134,77 +191,55 @@ export async function retrieveResearchDocs(
   const dateFrom = (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined;
   const dateTo = req.query.dateTo as string | undefined;
   const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-  const budget = budgetForQuestion(query);
-  const eras = resolveEras(req, query);
-  if (eras && eras.length >= 2) {
-    return retrieveEraStratified(
-      { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
-      budget.contextDocs,
+
+  // Chips UI override (#592): eras=trump_t1,trump_t2 pins the strata after
+  // the user removes one; a single remaining era degrades to a plain
+  // date-windowed retrieval.
+  const eraParam = req.query.eras as string | undefined;
+  const requested = eraParam
+    ? eraParam
+        .split(',')
+        .map((k) => ERA_WINDOWS[k as keyof typeof ERA_WINDOWS])
+        .filter(Boolean)
+    : null;
+  const eras = requested && requested.length > 0 ? requested : extractComparisonEras(query);
+  if (!eras || eras.length < 2) {
+    return retrieveSingleWindow(
+      query,
+      embedding,
+      eras?.[0],
+      dateFrom,
+      dateTo,
+      tier,
+      inferredFrom,
       debug,
     );
   }
 
-  // Enumeration questions get the read-and-follow-up loop (#756): recency-
-  // stratified seed, one corpus-grounded read round proposing follow-up
-  // entity arms, one follow-up sweep. A single remaining era chip narrows
-  // the window like the single path does.
-  if (budget.contextDocs > RESEARCH_CONTEXT_DOCS) {
-    const w = eras?.[0];
-    return retrieveEnumerationLoop(
-      {
-        query,
-        dateFrom: w ? w.from : dateFrom,
-        dateTo: w ? w.to : dateTo,
-        tier,
-        inferredFrom,
-      },
-      budget.contextDocs,
-      debug,
-    );
-  }
-
-  return retrieveSingleWindow(
-    query,
-    embedding,
-    eras?.[0],
-    dateFrom,
-    dateTo,
-    tier,
-    inferredFrom,
-    budget.contextDocs,
-    debug,
-  );
-}
-
-interface EraRetrievalParams {
-  query: string;
-  embedding: number[];
-  eras: EraWindow[];
-  dateFrom: string | undefined;
-  dateTo: string | undefined;
-  tier: ResearchTierFilter;
-  inferredFrom: string | null;
+  return retrieveEraStratified(query, embedding, eras, dateFrom, dateTo, tier, inferredFrom, debug);
 }
 
 /** One era window's retrieve + rerank, accumulating shared collectors. */
 async function retrieveEraWindow(
-  p: EraRetrievalParams,
+  query: string,
+  embedding: number[],
   w: ReturnType<typeof intersectEraWindows>[number],
   slots: number,
+  tier: ResearchTierFilter,
   sinks: {
     eraMined: ValidatedAlias[];
     windowTimings: WindowTiming[];
-    debugCandidates: ReturnType<typeof toCandidateSummary>[] | null;
+    debugCandidates: CandidateSummary[] | null;
   },
 ): Promise<ResearchDocument[]> {
   const s0 = Date.now();
   const { documents: candidates, minedAliases } = await searchResearchWithMeta(
-    p.query,
+    query,
     slots * 2,
-    p.embedding,
+    embedding,
     w.from,
     w.to,
-    p.tier,
+    tier,
   );
   sinks.eraMined.push(...minedAliases);
   const searchMs = Date.now() - s0;
@@ -212,32 +247,38 @@ async function retrieveEraWindow(
     sinks.debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
   }
   const r0 = Date.now();
-  const docs = await rerankForTier(p.query, candidates, slots, p.tier);
+  const docs = await rerankForTier(query, candidates, slots, tier);
   sinks.windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
   return docs;
 }
 
 /** Comparative path: each era competes only with itself for its slot share. */
+// eslint-disable-next-line max-params
 async function retrieveEraStratified(
-  p: EraRetrievalParams,
-  contextDocs: number,
+  query: string,
+  embedding: number[],
+  eras: EraWindow[],
+  dateFrom: string | undefined,
+  dateTo: string | undefined,
+  tier: ResearchTierFilter,
+  inferredFrom: string | null,
   debug?: boolean,
-): Promise<RetrievalResult> {
+) {
   const t0 = Date.now();
-  const slots = Math.floor(contextDocs / p.eras.length);
-  const windows = intersectEraWindows(p.eras, p.dateFrom, p.dateTo);
+  const slots = Math.floor(RESEARCH_CONTEXT_DOCS / eras.length);
+  const windows = intersectEraWindows(eras, dateFrom, dateTo);
   // Expansion first (#726): warms the per-window alias caches so the window
   // searches below hit them — the timings then cleanly separate API-bound
   // expansion from database-bound retrieval.
-  const alsoSearched = await collectAlsoSearched(p.query, windows, p.tier);
+  const alsoSearched = await collectAlsoSearched(query, windows, tier);
   const expansionMs = Date.now() - t0;
-  const debugCandidates: ReturnType<typeof toCandidateSummary>[] = [];
+  const debugCandidates: CandidateSummary[] = [];
   const windowTimings: WindowTiming[] = [];
   const tRetrieve = Date.now();
   const eraMined: ValidatedAlias[] = [];
   const perEra = await Promise.all(
     windows.map((w) =>
-      retrieveEraWindow(p, w, slots, {
+      retrieveEraWindow(query, embedding, w, slots, tier, {
         eraMined,
         windowTimings,
         debugCandidates: debug ? debugCandidates : null,
@@ -253,18 +294,12 @@ async function retrieveEraStratified(
     docCount: perEra[i].length,
     ...(w.dateConflict ? { dateConflict: true } : {}),
   }));
-  const timings: RetrievalTimings = {
-    expansionMs,
-    retrieveWallMs,
-    windows: windowTimings,
-    totalMs: Date.now() - t0,
-  };
   return {
     docs: perEra.flat(),
-    strata,
-    inferredFrom: p.inferredFrom,
+    strata: strata as RetrievalStratum[] | null,
+    inferredFrom,
     alsoSearched: mergeSearchedTerms(alsoSearched, eraMined),
-    timings,
+    timings: { expansionMs, retrieveWallMs, windows: windowTimings, totalMs: Date.now() - t0 },
     ...(debug ? { candidates: debugCandidates } : {}),
   };
 }

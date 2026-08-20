@@ -1,7 +1,6 @@
 /** Prompt builders for the research synthesis pipeline. */
 import { SOURCE_COVERAGE_MANIFEST } from '@/lib/data/source-coverage-manifest';
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
-import { enumerationInstruction } from '@/lib/services/question-classifier';
 import type { ValidatedAlias } from './query-expansion-service';
 import { draftRules } from './research-draft-rules';
 import { reviewCriteria } from './research-review-criteria';
@@ -286,7 +285,6 @@ export function buildSinglePassPrompt(
   return [
     ...buildPromptBody(query, docs, stats, alsoSearched),
     ...buildComparativeInstruction(query, docs),
-    ...enumerationInstruction(query),
     '',
     ...selfVerificationChecklist(!!stats),
     '',

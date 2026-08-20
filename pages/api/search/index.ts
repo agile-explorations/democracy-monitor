@@ -3,8 +3,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { embedQueryCached } from '@/lib/services/embedding-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
-import { budgetForQuestion } from '@/lib/services/question-classifier';
-import { retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
+import { RESEARCH_CONTEXT_DOCS, retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
 import {
   claimBuildSlot,
@@ -276,7 +275,7 @@ async function synthesizeAndRespond(
     return;
   }
 
-  const contextDocs = allDocs.slice(0, budgetForQuestion(query).contextDocs);
+  const contextDocs = allDocs.slice(0, RESEARCH_CONTEXT_DOCS);
   await enrichDocsForSynthesis(contextDocs, query);
   const synthesis = await synthesizeResearchAnswer(
     query,
