@@ -169,6 +169,8 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 
+- R-JOURNALIST/R-DECOMP/R-SALIENCE (milestones 116-117, v1.10.0-v1.12.0, 2026-08-18/19): journalist-test retrieval arc — content repairs + eval harness; measured 64% single-query ceiling; two pivots (aspect decomposition, read-loop — both measured out); one production incident (v1.11.0/v1.11.1, resolved by full-revert v1.11.2); shipped weekly hot-entity salience index (novelty-ranked) + judge-selected arms into guaranteed slots + enumeration synthesis behind ENUMERATION_MODE. CORE 47%→59-65%, zero regressions. Follow-ups #760/#740/#739.
+
 ## Current state (as of 2026-03-16)
 
 ### Categories & baselines
@@ -295,6 +297,15 @@ Older sprints (R-S1a through R-DATA1): see `DECISIONS-ARCHIVE.md`.
 ## Lessons learned
 
 Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `DECISIONS-ARCHIVE.md` for full context.
+
+### Retrieval & search (R-SALIENCE arc, 2026-08-19)
+
+- **Marquee-item discovery is a salience problem, not a similarity problem.** Vector sim of marquee docs sat 0.13-0.18 below the retrieval cutoff (unreachable at any depth); LLM expansion is knowledge-cutoff-blind; pool-grounded mining/reading only sees what similarity already retrieved. The signal that works is corpus-wide recurrence computed OFFLINE (weekly batch), with novelty = term recurrence ÷ baseline recurrence to collapse era-invariant legal boilerplate. (#757/#758)
+- **Never let entity arms campaign in fusion.** Weighted RRF dropped target docs an arm carried at positions 0-8 — co-validated generic arms re-boost incumbents. Guaranteed slots, not votes. (#756 trace)
+- **Repeated failure shapes mean replace, don't tune.** Four cap-ordering bugs of identical shape across one pipeline (slice-before-validate, concat-then-cap, rank-starved singletons, doc-join self-refill) were the signature of compensation layering. (#756/#758)
+- **A kill-switch must cover every shared-path change** — or the release must be additive-only outside the flag. The v1.11.1 flag-off deploy reproduced the v1.11.0 incident because widened mining ran in every build's common path. Verify flag-off equivalence by DOC IDS against the prior release — in band form: this pipeline is inherently nondeterministic (old-vs-old doc overlap 10/30), so equality gates false-fail. (#756 incident)
+- **Local probe wall-times are deploy gates.** 5-9 min/question local was dismissed as link overhead; prod matched it and crashed. (#756 incident)
+- **Prewarm must verify-or-fail.** The tolerant always-green workflow would have hidden the incident; the hardened verify pass caught it (0/12) and later greenlit the safe rollout (12/12). (#754)
 
 ### Data pipeline
 
