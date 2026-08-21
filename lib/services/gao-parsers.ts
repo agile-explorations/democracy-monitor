@@ -93,16 +93,21 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-/** Title from og:title (both generations), stripped of site branding. */
-function parseTitle(html: string): string | null {
-  const og = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
-  if (og) return decodeEntities(og[1]).trim();
-  const tag = html.match(/<title>([\s\S]*?)<\/title>/i);
-  if (!tag) return null;
-  return decodeEntities(tag[1])
+/** Strip site branding a title may carry in either generation's format. */
+function stripGaoBranding(title: string): string {
+  return title
     .replace(/\s*\|\s*U\.S\. GAO\s*$/i, '')
     .replace(/^U\.S\. GAO\s*[-–]\s*/i, '')
     .trim();
+}
+
+/** Title from og:title (both generations), stripped of site branding. */
+function parseTitle(html: string): string | null {
+  const og = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i);
+  if (og) return stripGaoBranding(decodeEntities(og[1]));
+  const tag = html.match(/<title>([\s\S]*?)<\/title>/i);
+  if (!tag) return null;
+  return stripGaoBranding(decodeEntities(tag[1]));
 }
 
 /** First "Published: Mon DD, YYYY"-shaped date on the page → ISO. */
