@@ -12,6 +12,25 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-DOCKETS: criminal-docket RECAP ingest + auto-discovery (#740 #761, milestone 119, v1.14.0) — ✅ shipped 2026-08-21
+
+**Origin**: H3 ("prosecutions of named adversaries") sat at 30–40% CORE because the primary documents did not exist in the corpus — both CL ingest paths are structurally blind to criminal dockets (NOS filters civil-only; opinion court scopes exclude vaed/njd). The 2026-08-18 spike confirmed CL holds the documents and `tracked_cases` already tracks the dockets.
+
+**Planned vs built**: as planned, plus one plan amendment (owner concern: no curated-list maintenance treadmill → #761 salience-driven auto-discovery: hot person entities ≥15 docFreq → CL party-name search → `-cr-` docket filter → ≤3 enrollments/week, provenance-tagged + logged). Shipped: pure court-authored classifier (head-anchored charging instruments; party paper/1-page orders excluded), full-docket RECAP fetcher, backfill CLI, weekly ingest as pass 4 of `cases:refresh`, embed carve-out (`metadata->>'recapDocumentId'`, fragments precedent). Backfill: 151 docs (Comey 113 incl. the 2025-11-24 Appointments Clause dismissal verified verbatim, McIver 25, James 13), dual-categorized lawEnforcement+civilLiberties, counting_scope=false by construction.
+
+**Two defects caught by verification, both silent-failure shapes**:
+
+1. **Silent pagination cap ate the marquee doc**: entries ≫ documents (minute entries carry no recap_documents); a 10-page ascending sweep dropped the Comey docket's newest filings — including the dismissal — and the dry-run reconciled perfectly because it was truncated identically. Fix: newest-first ordering (truncation drops the OLD tail), cap 30, loud CAPPED warning. Lesson: **a dry-run reconciled against its own truncated enumeration proves nothing about coverage; reconcile against an independent count** (docket date_last_filing).
+2. **Salience nomination was pool-circular**: both channels could only surface what the seed pool already discussed, and the category-enrichment ratio let 1 stray mediaFreedom doc in a 60-doc pool outrank lawEnforcement 10/60 (tiny global share denominator). U.S. v. Comey (breadth 470) was never nominated. Fix: proportional category support floor (≥ max(2, 5%)) + third nomination channel (era-wide top-20 by breadth, category-agnostic — the judge filters topical fit).
+
+**Eval**: 53 → **66/107 (62%)** vs corrected baseline, H3 3→7 (Comey/James/4th-Cir converted), gains on 6 other questions from the global channel. RL3 "regression" (5/6→4/6) did not reproduce — two fresh single-question runs scored 6/6 (band-form noise, per the arc's nondeterminism finding). Two invalid eval runs preceded the valid one: the harness silently reuses existing captures, and its default base is the live site whose week-stamped caches predate mid-week ingests. Lesson: **an eval that can serve cached captures/responses must prove it re-measured** (fresh capture dir + cache-cold base are part of the measurement, not optional hygiene).
+
+**Spend**: AI review actuals 310 P1 + 188 P2 (~$5.5 vs <$4 modeled; audit sampling wasn't in the precheck — now a standing precheck line item). CL API well under limits.
+
+**Open follow-ups**: live-site caches stale until Monday cron rolls the data week (owner has flush one-liner); Monday cron verifies pass 4 + discovery; #739 (GAO) is the next gate mover — FW3 0/3 is a SOURCE-GAP.
+
+---
+
 ## Sprint arc R-JOURNALIST → R-DECOMP → R-SALIENCE: journalist-test retrieval (#733–#760, milestones 116–117, v1.10.0–v1.12.0) — ✅ deployed + flag-on prod eval 2026-08-19
 
 **Origin**: the 2026-08-18 Journalist Test found the corpus 97% complete but answers passing only 47% of CORE ground-truth items. Outreach paused; a ≥70% CORE gate was set. One continuous three-sprint arc followed (2026-08-18→19), including one production incident and two architecture pivots — all owner-gated at each turn.
