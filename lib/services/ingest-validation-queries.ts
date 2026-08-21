@@ -331,6 +331,7 @@ const SIGNAL_TYPE_TO_ORIGIN: Record<string, string> = {
   fec_json: 'fec',
   oig_html: 'oig',
   dhs_press: 'dhs_press',
+  gao_wayback: 'gao',
 };
 
 /** Sources that reach categories via pipeline routing, not signal definitions. */

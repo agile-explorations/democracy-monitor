@@ -45,6 +45,7 @@ export const SOURCE_TYPE_LABELS: Record<string, string> = {
   presidential_interview: 'Interview',
   press_release: 'Press Release',
   ig_report: 'IG Report',
+  gao_report: 'GAO Report',
   congressional_report: 'Congressional Report',
   floor_speech: 'Floor Speech',
   hearing_transcript: 'Hearing Transcript',

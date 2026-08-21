@@ -12,6 +12,7 @@ import {
   fetchWeekItemsFec,
   fetchWeekItemsOig,
   fetchWeekItemsDhsPress,
+  fetchWeekItemsGao,
 } from '@/lib/cron/backfill-fetchers';
 import type { SourceFetchResult } from '@/lib/cron/backfill-fetchers';
 import type { FeedItem } from '@/lib/parsers/feed-parser';
@@ -33,6 +34,7 @@ type GroupedSignals = {
   fec: Signal[];
   oig: Signal[];
   dhspress: Signal[];
+  gao: Signal[];
 };
 
 /** Maps fetcher group keys to document source_origin values in the DB. */
@@ -44,6 +46,7 @@ const GROUP_TO_SOURCE_ORIGIN: Record<string, string> = {
   fec: 'fec',
   oig: 'oig',
   dhspress: 'dhs_press',
+  gao: 'gao',
 };
 
 function groupSignals(signals: Signal[]): GroupedSignals {
@@ -55,6 +58,7 @@ function groupSignals(signals: Signal[]): GroupedSignals {
     fec: signals.filter((s) => s.type === 'fec_json'),
     oig: signals.filter((s) => s.type === 'oig_html'),
     dhspress: signals.filter((s) => s.type === 'dhs_press'),
+    gao: signals.filter((s) => s.type === 'gao_wayback'),
   };
 }
 
@@ -105,6 +109,7 @@ export async function fetchCategoryIncremental(
     { key: 'fec', fn: fetchWeekItemsFec },
     { key: 'oig', fn: fetchWeekItemsOig },
     { key: 'dhspress', fn: fetchWeekItemsDhsPress },
+    { key: 'gao', fn: fetchWeekItemsGao },
   ];
 
   for (const { key, fn } of fetchers) {

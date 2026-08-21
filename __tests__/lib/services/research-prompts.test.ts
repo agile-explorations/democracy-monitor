@@ -296,7 +296,10 @@ describe('source-coverage manifest (#737)', () => {
     const prompt = buildSinglePassPrompt('q', [makeDoc()], null);
     expect(prompt).toContain('Source coverage:');
     expect(prompt).toContain('NOT ingested: OMB/OPM memoranda');
-    expect(prompt).toContain('GAO reports');
+    // GAO moved from NOT-ingested to ingested in #739.
+    expect(prompt).toContain('GAO');
+    expect(prompt).toContain('reports and testimonies');
+    expect(prompt).not.toMatch(/NOT ingested:[^.]*GAO/);
   });
 });
 

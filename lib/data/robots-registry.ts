@@ -63,7 +63,7 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
     paths: ['/cdx/search/cdx', '/web/2022/https://example.gov/'],
     kind: 'crawl',
     status: 'active',
-    note: 'CDX enumeration + replay fetches (DHS pre-2025 re-sourcing)',
+    note: 'CDX enumeration + replay fetches (DHS pre-2025 re-sourcing; GAO product ingest #739 — gao.gov WAF-blocks non-browser fetches)',
   },
   {
     host: 'www.govinfo.gov',

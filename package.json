@@ -48,6 +48,7 @@
     "backfill": "tsx lib/cron/backfill.ts",
     "backfill:dhs-oig": "tsx lib/cron/backfill-dhs-oig.ts",
     "backfill:dhs-press": "tsx lib/cron/backfill-dhs-press.ts",
+    "backfill:gao": "tsx lib/cron/backfill-gao.ts",
     "backfill:oversight-gov": "tsx lib/cron/backfill-oversight-gov.ts",
     "feedback:moderate": "tsx lib/cron/feedback-moderate.ts",
     "demo:seed": "tsx lib/cron/seed-demo-data.ts",
