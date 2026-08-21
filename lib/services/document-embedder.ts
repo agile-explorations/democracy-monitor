@@ -163,16 +163,17 @@ async function processBatches(
  */
 /**
  * Embedding eligibility: unembedded, counting-population docs (+ optional
- * filters). Fragments (#704 Path A) are the deliberate exception: they sit
- * outside the counting population (counting_scope=false) but ARE embedded —
- * retrieval-grade search is their whole purpose.
+ * filters). Two deliberate exceptions sit outside the counting population
+ * (counting_scope=false) but ARE embedded because retrieval-grade search is
+ * their whole purpose: fragments (#704 Path A) and curated-docket RECAP
+ * documents (#740, identified by their provenance metadata).
  */
 function embeddableConditions(category?: string, dateFilter?: SQL): SQL[] {
   const conditions = [
     isNull(documents.embeddedAt),
     sql`${documents.contentType} != 'metadata_only'`,
     retrievalRelevantOnly(),
-    sql`(${countingScopeOnly()} OR ${documents.parentId} IS NOT NULL)`,
+    sql`(${countingScopeOnly()} OR ${documents.parentId} IS NOT NULL OR ${documents.metadata} ->> 'recapDocumentId' IS NOT NULL)`,
   ];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);

@@ -60,6 +60,13 @@ export default defineConfig({
         'lib/services/hot-entity-judge.ts',
         // #757 weekly hot-entity sweep — DB batches + embedding I/O
         'lib/cron/refresh-hot-entities.ts',
+        // #740 RECAP ingest — CL API + storage I/O; filter is unit-tested
+        'lib/services/recap-fetcher.ts',
+        'lib/cron/backfill-recap.ts',
+        'lib/services/recap-weekly.ts',
+        // #761 docket discovery — CL search + tracked_cases I/O; candidate
+        // filter is unit-tested
+        'lib/services/docket-discovery.ts',
       ],
       thresholds: {
         statements: 70,

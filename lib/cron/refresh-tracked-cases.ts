@@ -159,9 +159,23 @@ export async function refreshTrackedCases(): Promise<string> {
   const dates = await refreshDocketDates();
   const postures = await refreshPostures();
   const summaries = await syncCaseSummaries();
+  // Pass 4 (#740/#761): salience-driven docket discovery + RECAP document
+  // ingest for enrolled dockets. Both capped; failures degrade to zero
+  // rather than failing the refresh (the errors channel is the caller's).
+  let discovery = 0;
+  let recap = { stored: 0, dockets: 0 };
+  try {
+    const { discoverAndEnrollDockets } = await import('@/lib/services/docket-discovery');
+    discovery = await discoverAndEnrollDockets();
+    const { ingestNewRecapDocuments } = await import('@/lib/services/recap-weekly');
+    recap = await ingestNewRecapDocuments();
+  } catch (err) {
+    console.warn('[cases:refresh] recap pass failed (continuing):', err);
+  }
   return (
     `dates: ${dates.refreshed} cases in ${dates.calls} calls; ` +
     `posture: ${postures.postured} cases in ${postures.calls} calls; ` +
-    `summaries: ${summaries} synced`
+    `summaries: ${summaries} synced; ` +
+    `recap: ${recap.stored} docs from ${recap.dockets} dockets (+${discovery} discovered)`
   );
 }
