@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-selection';
 import {
   categoryFillScore,
+  categorySupportFloor,
   dominantCategories,
   MIN_POOL_MENTIONS,
   nominateShortlist,
@@ -133,5 +134,31 @@ describe('stabilityFloor (#760)', () => {
   it('handles a shortlist with no pool channel', () => {
     const floor = stabilityFloor([entity('Solo v. Caption')], 0);
     expect(floor.map((r) => r.phrase)).toEqual(['Solo v. Caption']);
+  });
+});
+
+describe('categorySupportFloor (#740 H3 fix)', () => {
+  it('excludes a single stray doc from a large pool', () => {
+    // H3 measured case: 1 mediaFreedom doc in a 60-doc pool outranked
+    // lawEnforcement (10/60) purely on global-share division.
+    const poolCategories = [
+      ...Array(10).fill('lawEnforcement'),
+      ...Array(9).fill('civilLiberties'),
+      ...Array(8).fill('rulemaking'),
+      'mediaFreedom',
+    ];
+    const shares = new Map([
+      ['lawEnforcement', 0.15],
+      ['civilLiberties', 0.3],
+      ['rulemaking', 0.1],
+      ['mediaFreedom', 0.005],
+    ]);
+    const cats = dominantCategories(poolCategories, shares);
+    expect(cats).not.toContain('mediaFreedom');
+  });
+
+  it('keeps proportionally supported categories in small pools', () => {
+    expect(categorySupportFloor(7)).toBe(2);
+    expect(categorySupportFloor(60)).toBe(3);
   });
 });

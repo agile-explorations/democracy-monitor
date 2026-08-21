@@ -3,14 +3,22 @@
  * labeled shortlist from the weekly hot-entity index (#757); a shortlist
  * judge (hot-entity-judge.ts) PICKS the arms.
  *
- * Nomination blends two pool-anchored signals at different granularities:
+ * Nomination blends three signals at different granularities:
  * 1. DOC JOIN (fine): entities whose mention docs appear in the pool.
  *    Capped — opinion-heavy pools cite dozens of co-indexed captions and
  *    would refill every slot with their own genre (measured, IM3).
  * 2. CATEGORY ENRICHMENT (coarse): entities sharing the categories this
  *    pool is UNUSUALLY about (pool share ÷ global share — raw counts are
  *    non-discriminating because civilLiberties tops every pool), ranked by
- *    breadth-weighted, baseline-collapsed recurrence.
+ *    breadth-weighted, baseline-collapsed recurrence. A support floor
+ *    keeps one stray pool doc from crowning its category (measured, H3:
+ *    a single mediaFreedom doc outranked lawEnforcement 10/60 because
+ *    mediaFreedom's global share is tiny).
+ * 3. GLOBAL BREADTH (era-wide): the era's top entities by breadth score
+ *    regardless of category. Both pool channels are circular — they can
+ *    only surface what the seed pool already discusses — so an era-defining
+ *    entity the seed missed entirely (U.S. v. Comey for H3) needs a
+ *    category-agnostic path to the judge, who filters topical fit.
  *
  * Six measured iterations showed mechanical ranking finds the right
  * NEIGHBORHOOD but mis-orders the final twelve; the judge resolves that as
@@ -37,6 +45,13 @@ const TOP_POOL_CATEGORIES = 2;
 /** Shortlist slots offered to the judge, per nomination channel. */
 const SHORTLIST_POOL = 15;
 const SHORTLIST_CATEGORY = 40;
+const SHORTLIST_GLOBAL = 20;
+/** Pool support a category needs before it can rank as dominant: at least
+ *  two docs, scaling with pool size (5%). One stray doc is never "what the
+ *  pool is about" — measured, H3. */
+export function categorySupportFloor(poolTotal: number): number {
+  return Math.max(2, Math.ceil(poolTotal * 0.05));
+}
 
 export interface EntityRow {
   phrase: string;
@@ -99,7 +114,10 @@ export function dominantCategories(
     total++;
   }
   if (total === 0) return [];
-  return [...counts.entries()]
+  const floor = categorySupportFloor(total);
+  const qualified = [...counts.entries()].filter(([, n]) => n >= floor);
+  const pool = qualified.length > 0 ? qualified : [...counts.entries()];
+  return pool
     .map(([c, n]) => ({
       c,
       enrichment: n / total / (globalShares.get(c) ?? 1 / (globalShares.size || 1)),
@@ -116,6 +134,7 @@ export function nominateShortlist(
   poolRows: PoolEntityRow[],
   categoryRows: EntityRow[],
   excludePhrases: string[],
+  globalRows: EntityRow[] = [],
 ): EntityRow[] {
   const excluded = new Set(excludePhrases.map((ph) => ph.toLowerCase()));
   const shortlist: EntityRow[] = [];
@@ -128,6 +147,7 @@ export function nominateShortlist(
   };
   rankPoolEntities(poolRows).slice(0, SHORTLIST_POOL).forEach(push);
   rankCategoryEntities(categoryRows).slice(0, SHORTLIST_CATEGORY).forEach(push);
+  rankCategoryEntities(globalRows).slice(0, SHORTLIST_GLOBAL).forEach(push);
   return shortlist;
 }
 
@@ -170,6 +190,21 @@ async function queryPoolJoin(seedDocIds: number[], era: EntityEra): Promise<Pool
     ...mapEntityRow(r),
     poolMentions: Number(r.pool_mentions),
   }));
+}
+
+/** Era-wide top entities by breadth score, category-agnostic (channel 3).
+ *  Ordered in SQL so the LIMIT binds the transfer, not the ranking. */
+async function queryGlobalTop(era: EntityEra): Promise<EntityRow[]> {
+  const db = getDb();
+  const result = await db.execute(sql`
+    SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
+           e.doc_freq_term, e.doc_freq_baseline
+    FROM hot_entities e
+    WHERE e.era = ${era}
+    ORDER BY (e.doc_freq_term * greatest(1, jsonb_array_length(e.categories)))
+             / (1 + e.doc_freq_baseline) DESC, e.phrase
+    LIMIT ${SHORTLIST_GLOBAL}`);
+  return (result.rows as Array<Record<string, unknown>>).map(mapEntityRow);
 }
 
 async function queryCategoryMatch(categories: string[], era: EntityEra): Promise<EntityRow[]> {
@@ -240,7 +275,7 @@ export async function selectSalienceArms(
   if (!isDbAvailable() || seedDocs.length === 0) return [];
   try {
     const globalShares = await queryGlobalCategoryShares();
-    const [poolRows, categoryRows] = await Promise.all([
+    const [poolRows, categoryRows, globalRows] = await Promise.all([
       queryPoolJoin(
         seedDocs.map((d) => d.id),
         era,
@@ -252,8 +287,9 @@ export async function selectSalienceArms(
         ),
         era,
       ),
+      queryGlobalTop(era),
     ]);
-    const shortlist = nominateShortlist(poolRows, categoryRows, excludePhrases);
+    const shortlist = nominateShortlist(poolRows, categoryRows, excludePhrases, globalRows);
     if (shortlist.length === 0) return [];
     const candidates: JudgeCandidate[] = shortlist.map((r) => ({
       phrase: r.phrase,
