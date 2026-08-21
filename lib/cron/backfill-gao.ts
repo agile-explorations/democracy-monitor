@@ -23,8 +23,10 @@ import { storeDocuments } from '@/lib/services/document-store';
 import {
   enumerateGaoProducts,
   fetchGaoHistorical,
+  fetchProducts,
   gaoIdPrefixesForRange,
 } from '@/lib/services/gao-fetcher';
+import type { GaoEnumerated } from '@/lib/services/gao-fetcher';
 import { GAO_SOURCE_ORIGIN } from '@/lib/services/gao-parsers';
 import { checkHelp } from '@/lib/utils/cli-help';
 
@@ -57,16 +59,14 @@ async function dryRun(opts: GaoBackfillOptions): Promise<void> {
   console.log(`[gao] DRY RUN — enumerating ${opts.dateFrom}..${opts.dateTo}`);
   const prefixes = gaoIdPrefixesForRange(opts.dateFrom, opts.dateTo);
   let total = 0;
-  const perPrefix: Array<{ prefix: string; n: number }> = [];
-  const samples: string[] = [];
+  const sampleProducts: GaoEnumerated[] = [];
   for (const prefix of prefixes) {
     const products = await enumerateGaoProducts([prefix]);
-    perPrefix.push({ prefix, n: products.length });
+    console.log(`  ${prefix}* -> ${products.length} products`);
     total += products.length;
-    if (samples.length < 3)
-      samples.push(...products.slice(0, 3 - samples.length).map((p) => p.canonicalUrl));
+    if (sampleProducts.length < 3)
+      sampleProducts.push(...products.slice(0, 3 - sampleProducts.length));
   }
-  for (const { prefix, n } of perPrefix) console.log(`  ${prefix}* -> ${n} products`);
   console.log(`[gao] TOTAL enumerated: ${total}`);
 
   if (opts.dateFrom >= T2_START) {
@@ -77,12 +77,9 @@ async function dryRun(opts: GaoBackfillOptions): Promise<void> {
     }
   }
 
-  console.log('[gao] parse samples (verifies replay decode + both templates):');
-  const sampleItems = await fetchGaoHistorical({
-    dateFrom: '2000-01-01',
-    dateTo: '2099-12-31',
-    limit: 3,
-  });
+  console.log('[gao] parse samples (verifies replay decode):');
+  // Reuse the enumeration above — no extra CDX traffic for samples.
+  const sampleItems = await fetchProducts(sampleProducts);
   for (const item of sampleItems) {
     console.log(
       `  ${item.link} | ${item.pubDate} | ${item.contentType} | ${item.content?.length ?? 0} chars | ${item.title?.slice(0, 80)}`,

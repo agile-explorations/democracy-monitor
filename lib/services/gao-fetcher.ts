@@ -104,7 +104,7 @@ async function fetchProduct(product: GaoEnumerated): Promise<ContentItem | null>
   });
 }
 
-async function fetchProducts(
+export async function fetchProducts(
   products: GaoEnumerated[],
   opts?: { limit?: number; skipUrls?: Set<string> },
 ): Promise<ContentItem[]> {
