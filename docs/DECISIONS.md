@@ -12,6 +12,20 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-GAO Phase A: GAO reports via Wayback (#739, milestone 120, v1.15.0) — ✅ shipped 2026-08-21; Phase B (baselines) pending owner approvals
+
+**Origin**: zero GAO documents in the corpus; gao.gov WAF-blocks non-browser fetches (403 on robots.txt → direct crawl forecloses under robots discipline); GovInfo GAOREPORTS dead since 2009 (#529). The Journalist Test flagged the 2026 GAO workforce series as journalist-noticeable absences and the coverage manifest disclosed the gap to every synthesis prompt.
+
+**Planned vs built**: as planned, with one owner-driven scope change during planning — the owner's "does T2-only really serve both features?" review flipped v1 from T2-only to **full backfill-to-2017 in two phases** (DHS-OIG/CHRG precedent: era-comparable search, real negative controls, no structural seam). Shipped Phase A: generic `wayback-cdx.ts` (extracted from dhs-press-archive, re-exported, + capture-window support), pure two-generation page parser (2017-era template verified to carry the same Highlights markers), historical/recent fetcher pair (weekly = capture-window keyed, so IA-late captures still arrive), `backfill:gao` CLI whose pre-T2 dateFrom is REJECTED without `--baselines` (the per-invocation baseline acknowledgment, mechanically enforced).
+
+**Results**: 887 docs stored (1,073 enumerated − 126 pre-T2 releases − 60 replay failures ≈ 5.6%); all 3 eval-flagged reports verified; review 863/863 P1, 57 flagged (6.6%), 11 clearly_concerning + 27 potentially_concerning; ~1,000 calls ≈ $5 vs $7 modeled (audit line now in the precheck template). Eval: **FW3's gao-workforce-1 CORE converted** (+ both SECONDARY GAO items), aggregate 66/107 flat-in-band vs the docket run, zero regressions vs the committed baseline.
+
+**Defects caught by verification**: (1) dry-run sample step expanded a placeholder 2000–2099 range into ~100 bogus CDX queries — hammered the archive until killed; samples now reuse the range enumeration. (2) og:title path skipped the brand-strip (313 stored titles cleaned). (3) **`ACTIVE_SOURCES` (lib/data/analysis-periods.ts) is a mandatory new-source registration point** that gates embedding, scoring, aggregation, AND baselines — two exploration passes missed it and the 887 docs were invisible to all four until embed-missing's "0 embedded" exposed it. Lesson: after any new-source ingest, verify each downstream population (embeddings count, score rows, aggregate counts) — "stored" proves only storage.
+
+**Phase B (parked for per-invocation approvals)**: baselines 2017–2025, 4,956 products sized by CDX, nc:margins before/after, ~$35–55 review, retroactive INSTRUMENT_CHANGES entry on completion. Until then executiveOversight has a T2-only GAO seam (validate:ingest shows baseline dashes).
+
+---
+
 ## Sprint R-DOCKETS: criminal-docket RECAP ingest + auto-discovery (#740 #761, milestone 119, v1.14.0) — ✅ shipped 2026-08-21
 
 **Origin**: H3 ("prosecutions of named adversaries") sat at 30–40% CORE because the primary documents did not exist in the corpus — both CL ingest paths are structurally blind to criminal dockets (NOS filters civil-only; opinion court scopes exclude vaed/njd). The 2026-08-18 spike confirmed CL holds the documents and `tracked_cases` already tracks the dockets.
