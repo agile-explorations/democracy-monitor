@@ -46,8 +46,11 @@ const GUARANTEED_SLOTS = 30;
 /** Docs any single arm may place in the guaranteed pool. Bounds breadth:
  *  no term, however many matches, can flood the pool (#762 neutrality). */
 export const PER_ARM_CAP = 2;
-/** Hard roster bound — arms are cheap cached FTS queries, but bounded. */
-const MAX_ROSTER_ARMS = 48;
+/** Roster bound = the arms that can actually place documents plus slack
+ *  for empty-result arms: GUARANTEED_SLOTS/PER_ARM_CAP = 15 contributors.
+ *  Measured (#762 candidate run 1): 48 concurrent cold arm queries
+ *  saturated the DB pool — 121s arms stage; slot-justified width only. */
+const MAX_ROSTER_ARMS = 18;
 
 export interface SlotArm {
   phrase: string;
@@ -154,7 +157,12 @@ async function buildArmRoster(
   dateFrom: string | undefined,
   dateTo: string | undefined,
 ): Promise<SlotArm[]> {
-  const bounded = aliases.slice(0, MAX_ROSTER_ARMS);
+  // Sharpest-first is knowable BEFORE running arms (matches come from
+  // validation), so the slice keeps exactly the arms the slot allocator
+  // would order first anyway.
+  const bounded = [...aliases]
+    .sort((a, b) => a.matches - b.matches || a.phrase.localeCompare(b.phrase))
+    .slice(0, MAX_ROSTER_ARMS);
   if (bounded.length === 0) return [];
   const arms = await runArmsForAliases(bounded, dateFrom, dateTo);
   return arms
