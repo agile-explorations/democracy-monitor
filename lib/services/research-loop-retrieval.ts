@@ -41,8 +41,6 @@ import {
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 
-/** Era-path slots reserved for arm hits (when any exist) (#760). */
-const FOLLOWUP_SLOTS = 15;
 /** Enumeration-loop ceiling on arm-guaranteed slots (half the pool). */
 const GUARANTEED_SLOTS = 30;
 /** Docs any single arm may place in the guaranteed pool. Bounds breadth:
@@ -309,6 +307,3 @@ export interface LoopRetrievalParams {
   tier: ResearchTierFilter;
   inferredFrom: string | null;
 }
-
-/** Retained export for the era path's reserve sizing (#760). */
-export { FOLLOWUP_SLOTS };

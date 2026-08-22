@@ -1,7 +1,7 @@
 /** Prompt builders for the research synthesis pipeline. */
 import { SOURCE_COVERAGE_MANIFEST } from '@/lib/data/source-coverage-manifest';
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
-import { enumerationInstruction } from '@/lib/services/question-classifier';
+import { classifyQuestionMode, enumerationInstruction } from '@/lib/services/question-classifier';
 import type { ValidatedAlias } from './query-expansion-service';
 import { draftRules } from './research-draft-rules';
 import { reviewCriteria } from './research-review-criteria';
@@ -185,7 +185,13 @@ function buildPromptBody(
 }
 
 /** Shared output format instructions. */
-function outputFormatSection(): string[] {
+function outputFormatSection(query?: string): string[] {
+  // #763: an enumeration answer cannot both cover 60 documents and stay
+  // under 800 words — the cap yields to completeness in that mode only.
+  const expertLength =
+    query !== undefined && classifyQuestionMode(query) === 'enumeration'
+      ? '(As long as complete enumeration requires. Technical analysis for researchers.'
+      : '(400-800 words. Technical analysis for researchers.';
   return [
     '--- OUTPUT FORMAT ---',
     'Use markdown formatting: **bold** for emphasis, bullet lists (- ) for enumerating',
@@ -194,7 +200,7 @@ function outputFormatSection(): string[] {
     'Produce ALL THREE sections in your response:',
     '',
     EXPERT_HEADER,
-    '(400-800 words. Technical analysis for researchers. Reference specific documents by',
+    expertLength + ' Reference specific documents by',
     'title and [Doc N] citation. Include date qualifications. Note limitations of the',
     'documentary record. Present counter-arguments. Where evidence supports it, note',
     'institutional implications.)',
@@ -218,7 +224,10 @@ export function buildDraftPrompt(
   return [
     ...buildPromptBody(query, docs, corpusStats ?? null, alsoSearched),
     '',
-    ...outputFormatSection(),
+    ...outputFormatSection(query),
+    // #763: the draft->revise path previously lost the enumeration
+    // instruction entirely (it lived only in the single-pass prompt).
+    ...enumerationInstruction(query),
   ].join('\n');
 }
 
@@ -290,7 +299,7 @@ export function buildSinglePassPrompt(
     '',
     ...selfVerificationChecklist(!!stats),
     '',
-    ...outputFormatSection(),
+    ...outputFormatSection(query),
   ].join('\n');
 }
 
@@ -320,8 +329,11 @@ export function buildRevisionPrompt(
     '- Add counter-arguments, stated justifications, and coverage gap caveats.',
     ...statsLine,
     '- Do not fundamentally rewrite — adjust specific claims and phrasing.',
+    ...enumerationInstruction(query),
     '',
-    `Produce ${EXPERT_HEADER} (400-800 words) and ${PUBLIC_HEADER} (200-500 words).`,
+    classifyQuestionMode(query) === 'enumeration'
+      ? `Produce ${EXPERT_HEADER} (as long as complete enumeration requires) and ${PUBLIC_HEADER} (200-500 words).`
+      : `Produce ${EXPERT_HEADER} (400-800 words) and ${PUBLIC_HEADER} (200-500 words).`,
     `Use markdown. ${EXPERT_HEADER}\n\n${PUBLIC_HEADER}`,
   ].join('\n');
 }

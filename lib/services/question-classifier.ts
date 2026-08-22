@@ -112,6 +112,9 @@ export function enumerationInstruction(query: string): string[] {
     'caption, executive orders and proclamations by number and title,',
     'memoranda and rules by their formal names, bills by number. Group them',
     'by kind, use compact list form where that helps, and do not omit a',
-    'responsive document merely to keep the answer short.',
+    'responsive document merely to keep the answer short. Before finalizing,',
+    'account for every provided document: each [Doc N] is either named in',
+    'the answer or classified non-responsive to the question — never',
+    'omitted for length.',
   ];
 }

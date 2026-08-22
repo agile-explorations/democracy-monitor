@@ -30,6 +30,7 @@ import {
   MIN_MATCH_CAP,
   windowFilters,
 } from '@/lib/services/alias-count-cache';
+import { classifyQuestionMode } from '@/lib/services/question-classifier';
 
 export type { ExpansionWindow } from '@/lib/services/alias-count-cache';
 export {
@@ -41,6 +42,14 @@ export {
 const EXPANSION_MODEL = 'gpt-4o-mini';
 const EXPANSION_CACHE_TTL = 7 * 86400;
 const MAX_ALIASES = 12;
+/** #763: enumeration questions accept a few more terms — coverage tasks
+ *  benefit and every arm's pool share is slot-bounded (#762). */
+const MAX_ALIASES_ENUM = 16;
+
+/** Mode-derived alias cap; analytical stays byte-identical at 12. */
+function aliasCap(query: string): number {
+  return classifyQuestionMode(query) === 'enumeration' ? MAX_ALIASES_ENUM : MAX_ALIASES;
+}
 /** Cap on narrower re-proposals accepted from the single retry round (#733). */
 const MAX_NARROWED_ALIASES = 4;
 
@@ -53,7 +62,7 @@ export interface ValidatedAlias {
   matches: number;
 }
 
-const EXPANSION_PROMPT = (query: string) =>
+const EXPANSION_PROMPT = (query: string, cap: number = MAX_ALIASES) =>
   `For this search query about the U.S. government record, list SHORT ATOMIC search ` +
   `terms (1-4 words each, plus bare order/statute numbers) that would appear LITERALLY ` +
   `in government documents from 2017-2026. Draw from every class that fits the query: ` +
@@ -62,7 +71,7 @@ const EXPANSION_PROMPT = (query: string) =>
   `"X v. Y"), full names of officials or named individuals central to the topic, ` +
   `named operations or initiatives, and the record's own terms of art for the topic. ` +
   `Never invent numbers, captions, or names; never compose descriptive titles; ` +
-  `include the core entity itself. Return ONLY a JSON array of 5-12 terms. ` +
+  `include the core entity itself. Return ONLY a JSON array of 5-${cap} terms. ` +
   `Query: "${query}"`;
 
 /** Follow-up proposal for over-cap rejects (#733): the entity is real and
@@ -84,11 +93,11 @@ export async function proposeAliases(query: string): Promise<string[]> {
   const cached = await cacheGet<string[]>(key);
   if (cached) return cached;
   try {
-    const result = await provider.complete(EXPANSION_PROMPT(query), {
+    const result = await provider.complete(EXPANSION_PROMPT(query, aliasCap(query)), {
       temperature: 0,
       model: EXPANSION_MODEL,
     });
-    const aliases = parseAliasResponse(result.content);
+    const aliases = parseAliasResponse(result.content, aliasCap(query));
     await cacheSet(key, aliases, EXPANSION_CACHE_TTL);
     return aliases;
   } catch (err) {
@@ -98,14 +107,14 @@ export async function proposeAliases(query: string): Promise<string[]> {
 }
 
 /** Parse the model's JSON-array reply; [] when unparseable. Exported for tests. */
-export function parseAliasResponse(content: string): string[] {
+export function parseAliasResponse(content: string, limit: number = MAX_ALIASES): string[] {
   try {
     const raw = content.replace(/```json|```/g, '').trim();
     const arr = JSON.parse(raw) as unknown;
     if (!Array.isArray(arr)) return [];
     return arr
       .filter((p): p is string => typeof p === 'string' && p.length >= 3 && p.length <= 60)
-      .slice(0, MAX_ALIASES);
+      .slice(0, limit);
   } catch {
     console.warn(
       '[query-expansion] unparseable alias reply (vector-only fallback):',
@@ -357,6 +366,9 @@ export async function expandDiagnostic(
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {
   const material = [
     'v4', // bumped for entity-aware prompt + narrowing retry (#733) — invalidates pre-fix caches
+    // #763: enumeration-mode caches carry the wider cap; analytical keys
+    // are unchanged so existing caches stay valid.
+    classifyQuestionMode(query) === 'enumeration' ? 'enum16' : '',
     query.toLowerCase().trim(),
     window?.dateFrom ?? '',
     window?.dateTo ?? '',
