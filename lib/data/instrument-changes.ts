@@ -82,6 +82,18 @@ export const INSTRUMENT_CHANGES: InstrumentChange[] = [
     retroactive: true,
     affectsConcernStatuses: false,
   },
+  {
+    date: '2026-08-22',
+    label:
+      'GAO reports and testimonies were added as a source and backfilled to January 2017, so all periods, past and present, include them (report highlights retrieved via the Internet Archive; gao.gov blocks automated collection).',
+    categories: ['executiveOversight'],
+    // Uniform backfill across every era (#739 Phase A+B) — no seam. One
+    // baseline status flip (executiveOversight 2019-03-11 → Elevated on a
+    // GAO ethics-oversight report) reviewed and accepted by the owner
+    // 2026-08-22; negative controls unchanged-or-improved across the change.
+    retroactive: true,
+    affectsConcernStatuses: false,
+  },
 ];
 
 /**

@@ -12,7 +12,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-GAO Phase A: GAO reports via Wayback (#739, milestone 120, v1.15.0) — ✅ shipped 2026-08-21; Phase B (baselines) pending owner approvals
+## Sprint R-GAO: GAO reports via Wayback (#739, milestone 120, v1.15.0–v1.15.1) — ✅ Phase A shipped 2026-08-21; Phase B (baselines-to-2017) completed + accepted 2026-08-22
 
 **Origin**: zero GAO documents in the corpus; gao.gov WAF-blocks non-browser fetches (403 on robots.txt → direct crawl forecloses under robots discipline); GovInfo GAOREPORTS dead since 2009 (#529). The Journalist Test flagged the 2026 GAO workforce series as journalist-noticeable absences and the coverage manifest disclosed the gap to every synthesis prompt.
 
@@ -22,7 +22,9 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Defects caught by verification**: (1) dry-run sample step expanded a placeholder 2000–2099 range into ~100 bogus CDX queries — hammered the archive until killed; samples now reuse the range enumeration. (2) og:title path skipped the brand-strip (313 stored titles cleaned). (3) **`ACTIVE_SOURCES` (lib/data/analysis-periods.ts) is a mandatory new-source registration point** that gates embedding, scoring, aggregation, AND baselines — two exploration passes missed it and the 887 docs were invisible to all four until embed-missing's "0 embedded" exposed it. Lesson: after any new-source ingest, verify each downstream population (embeddings count, score rows, aggregate counts) — "stored" proves only storage.
 
-**Phase B (parked for per-invocation approvals)**: baselines 2017–2025, 4,956 products sized by CDX, nc:margins before/after, ~$35–55 review, retroactive INSTRUMENT_CHANGES entry on completion. Until then executiveOversight has a T2-only GAO seam (validate:ingest shows baseline dashes).
+**Phase B actuals (completed 2026-08-22, all steps owner-approved per invocation)**: 4,534 baseline docs stored (6,032 enumerated, 386 replay failures ≈ 7.5%; per-year 510–666, no thin years) → 5,421 total GAO docs spanning 2017–2026. Review: 4,289/4,289 P1, 84 flagged (**2.0% baseline vs 6.6% current-term — a 3× era difference, itself a calibration finding**), 27 confirmed, 409 audit samples; ≈ $19–20 vs $27–32 modeled. All embedded; 410 baseline weeks scored + re-aggregated; 30 confirmed rows actor-attributed (29 federal_executive). **Negative controls unchanged-or-improved across the entire change**; exactly **one baseline status flip** (executiveOversight 2019-03-11 → Elevated on GAO's Federal Ethics Programs report, potentially_concerning 0.72) — presented and **accepted by owner** (uniform-rules principle: baselines judged like the current term). Retroactive INSTRUMENT_CHANGES entry shipped; the T2-only seam never reached a release.
+
+~~**Phase B (parked for per-invocation approvals)**: baselines 2017–2025, 4,956 products sized by CDX, nc:margins before/after, ~$35–55 review, retroactive INSTRUMENT_CHANGES entry on completion. Until then executiveOversight has a T2-only GAO seam (validate:ingest shows baseline dashes).~~
 
 ---
 
