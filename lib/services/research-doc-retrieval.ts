@@ -9,6 +9,7 @@
  */
 
 import type { NextApiRequest } from 'next';
+import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EraWindow } from '@/lib/services/era-extraction';
 import {
   ERA_WINDOWS,
@@ -210,6 +211,11 @@ async function retrieveEraWindow(
     w.from,
     w.to,
     p.tier,
+    undefined,
+    // #762: only the enumeration-budget era path mines with the widened
+    // config; analytical comparative questions share this function and
+    // stay byte-identical (miningConfig absent = LIGHT).
+    salience ? ENUM_EXTRACTION : undefined,
   );
   sinks.eraMined.push(...minedAliases);
   const searchMs = Date.now() - s0;

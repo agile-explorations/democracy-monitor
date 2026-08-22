@@ -25,6 +25,7 @@
  */
 
 import { composeAspectPools } from '@/lib/services/aspect-composition';
+import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EntityEra } from '@/lib/services/hot-entity-ranking';
 import { erasForWindow } from '@/lib/services/hot-entity-ranking';
 import { selectSalienceArms } from '@/lib/services/hot-entity-selection';
@@ -266,6 +267,9 @@ export async function retrieveEnumerationLoop(
     p.dateFrom,
     p.dateTo,
     p.tier,
+    undefined,
+    // #762: enumeration builds mine with the widened statute-aware config.
+    ENUM_EXTRACTION,
   );
   timings.push({ key: 'seed', searchMs: Date.now() - s0, rerankMs: 0 });
 

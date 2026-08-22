@@ -24,8 +24,10 @@ export interface ExtractionConfig {
   minDocFrequency: number;
   /** true = cap to maxPhrases BEFORE validation (v1.10.1 semantics). */
   sliceBeforeValidate: boolean;
-  /** 'light' = captions/EOs/operations/public laws; 'wide' adds statutes + persons. */
-  classes: 'light' | 'wide';
+  /** 'light' = captions/EOs/operations/public laws; 'enum' adds statutes
+   *  (#762 query-time, enumeration builds only); 'wide' adds statutes +
+   *  task forces + initiatives + persons (offline sweep). */
+  classes: 'light' | 'enum' | 'wide';
 }
 
 /** v1.10.1 shipped query-time semantics — do not widen (#756 incident). */
@@ -36,6 +38,18 @@ export const LIGHT_EXTRACTION: ExtractionConfig = {
   minDocFrequency: 2,
   sliceBeforeValidate: true,
   classes: 'light',
+};
+
+/** Enumeration-build mining (#762): LIGHT plus statutes, validate-then-
+ *  slice (the slice-before-validate bug family stays dead), a few more
+ *  phrases. Analytical builds keep LIGHT byte-identically. */
+export const ENUM_EXTRACTION: ExtractionConfig = {
+  contentChars: 8000,
+  maxPhrases: 12,
+  validationCandidates: 16,
+  minDocFrequency: 2,
+  sliceBeforeValidate: false,
+  classes: 'enum',
 };
 
 /** Offline hot-entity sweep (#757): recall-first; validation filters. */
@@ -140,15 +154,16 @@ function normalizePhrase(raw: string, kind: EntityClass): string | null {
 
 function collectMatches(
   text: string,
-  wide: boolean,
+  classSet: ExtractionConfig['classes'],
   seen: Set<string>,
   bump: (key: string, phrase: string, entityClass: EntityClass) => void,
 ) {
+  const wide = classSet === 'wide';
   const classes: Array<{ re: RegExp; kind: EntityClass }> = [
     { re: CAPTION_RE, kind: 'caption' },
+    ...(classSet !== 'light' ? [{ re: STATUTE_RE, kind: 'statute' as const }] : []),
     ...(wide
       ? [
-          { re: STATUTE_RE, kind: 'statute' as const },
           { re: TASK_FORCE_RE, kind: 'task_force' as const },
           { re: INITIATIVE_RE, kind: 'initiative' as const },
         ]
@@ -192,7 +207,7 @@ export function extractEntityPhrases(
   const freq = accumulator ?? new Map<string, ExtractedPhrase>();
   for (const text of texts) {
     const seen = new Set<string>();
-    collectMatches(text, config.classes === 'wide', seen, (key, phrase, entityClass) => {
+    collectMatches(text, config.classes, seen, (key, phrase, entityClass) => {
       const entry = freq.get(key);
       if (entry) entry.docFreq++;
       else freq.set(key, { phrase, docFreq: 1, entityClass });
