@@ -3,6 +3,7 @@ import type { ExtractedPhrase } from '@/lib/services/entity-extraction';
 import {
   applyCrossEraFrequencies,
   eraForDate,
+  erasForWindow,
   hotEntityScore,
   mergeDocExtraction,
   rankHotEntities,
@@ -122,5 +123,23 @@ describe('applyCrossEraFrequencies (#760)', () => {
     expect(accs.trump_t2.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(180);
     expect(accs.biden.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(220);
     expect(accs.trump_t1.get('ashcroft v. iqbal')!.docFreqBaseline).toBe(200);
+  });
+});
+
+describe('erasForWindow (#762)', () => {
+  it('returns all eras for an unbounded window', () => {
+    expect(erasForWindow(null, null)).toEqual(['trump_t1', 'biden', 'trump_t2']);
+  });
+
+  it('returns only trump_t2 for a current-term window', () => {
+    expect(erasForWindow('2025-01-20', null)).toEqual(['trump_t2']);
+  });
+
+  it('spans eras when the window does', () => {
+    expect(erasForWindow('2020-06-01', '2021-06-01')).toEqual(['trump_t1', 'biden']);
+  });
+
+  it('handles a fully past window', () => {
+    expect(erasForWindow('2018-01-01', '2019-01-01')).toEqual(['trump_t1']);
   });
 });

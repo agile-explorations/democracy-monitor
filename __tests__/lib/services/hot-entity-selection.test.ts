@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-selection';
 import {
   categoryFillScore,
+  finalizeArms,
+  MAX_SALIENCE_ARMS_ENUM,
   categorySupportFloor,
   dominantCategories,
   MIN_POOL_MENTIONS,
@@ -160,5 +162,34 @@ describe('categorySupportFloor (#740 H3 fix)', () => {
   it('keeps proportionally supported categories in small pools', () => {
     expect(categorySupportFloor(7)).toBe(2);
     expect(categorySupportFloor(60)).toBe(3);
+  });
+});
+
+describe('finalizeArms mechanical top-up (#762)', () => {
+  const row = (phrase: string, cls = 'eo'): EntityRow => ({
+    phrase,
+    entityClass: cls,
+    categories: ['executiveOversight'],
+    ftsMatches: 10,
+    docFreqTerm: 10,
+    docFreqBaseline: 0,
+  });
+
+  it('includes top mechanical nominees the judge passed over', () => {
+    const shortlist = Array.from({ length: 15 }, (_, i) =>
+      row(`entity-${String(i).padStart(2, '0')}`),
+    );
+    const picks = ['entity-14']; // judge picks only the last nominee
+    const arms = finalizeArms(shortlist, picks, [], []);
+    const phrases = arms.map((a) => a.phrase);
+    // top-8 mechanical nominees run regardless of judge picks
+    for (let i = 0; i < 8; i++) expect(phrases).toContain(`entity-0${i}`);
+    expect(phrases).toContain('entity-14');
+  });
+
+  it('caps the widened roster at MAX_SALIENCE_ARMS_ENUM', () => {
+    const shortlist = Array.from({ length: 40 }, (_, i) => row(`e-${String(i).padStart(2, '0')}`));
+    const arms = finalizeArms(shortlist, null, [], []);
+    expect(arms.length).toBeLessThanOrEqual(MAX_SALIENCE_ARMS_ENUM);
   });
 });

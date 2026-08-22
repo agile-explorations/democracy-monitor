@@ -36,8 +36,13 @@ import { judgeShortlist } from '@/lib/services/hot-entity-judge';
 import type { EntityEra } from '@/lib/services/hot-entity-ranking';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 
-/** Arms handed to the guaranteed slots per question. */
+/** Judge-picked arms per question (judged portion semantics, #758). */
 export const MAX_SALIENCE_ARMS = 12;
+/** Total arms after the mechanical top-up (#762: safe because every arm's
+ *  pool share is bounded by the per-arm slot cap). */
+export const MAX_SALIENCE_ARMS_ENUM = 20;
+/** Top mechanical nominees ALWAYS run as arms, judge picks or not (#762). */
+const MECHANICAL_TOP_UP = 8;
 /** Doc-join floor: one passing mention in one pool doc is incidental. */
 export const MIN_POOL_MENTIONS = 2;
 /** Pool categories considered "dominant". */
@@ -173,19 +178,24 @@ function mapEntityRow(r: Record<string, unknown>): EntityRow {
   };
 }
 
-async function queryPoolJoin(seedDocIds: number[], era: EntityEra): Promise<PoolEntityRow[]> {
+/** Pool doc-join across ALL eras (#762): pool docs are already
+ *  window-scoped, so a mention in the pool IS window-relevance evidence
+ *  regardless of which era row indexed the entity (the Bolton case:
+ *  trump_t1 entity, current-window documents). Aggregated by phrase. */
+async function queryPoolJoin(seedDocIds: number[]): Promise<PoolEntityRow[]> {
   const db = getDb();
   const result = await db.execute(sql`
-    SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
-           e.doc_freq_term, e.doc_freq_baseline, count(*) AS pool_mentions
+    SELECT e.phrase, max(e.entity_class) AS entity_class,
+           max(e.categories::text)::jsonb AS categories, max(e.fts_matches) AS fts_matches,
+           max(e.doc_freq_term) AS doc_freq_term, min(e.doc_freq_baseline) AS doc_freq_baseline,
+           count(DISTINCT d.doc_id) AS pool_mentions
     FROM hot_entity_docs d
     JOIN hot_entities e ON e.id = d.entity_id
-    WHERE e.era = ${era} AND d.doc_id IN (${sql.join(
+    WHERE d.doc_id IN (${sql.join(
       seedDocIds.map((i) => sql`${i}`),
       sql`, `,
     )})
-    GROUP BY e.id, e.phrase, e.entity_class, e.categories, e.fts_matches,
-             e.doc_freq_term, e.doc_freq_baseline`);
+    GROUP BY e.phrase`);
   return (result.rows as Array<Record<string, unknown>>).map((r) => ({
     ...mapEntityRow(r),
     poolMentions: Number(r.pool_mentions),
@@ -194,27 +204,34 @@ async function queryPoolJoin(seedDocIds: number[], era: EntityEra): Promise<Pool
 
 /** Era-wide top entities by breadth score, category-agnostic (channel 3).
  *  Ordered in SQL so the LIMIT binds the transfer, not the ranking. */
-async function queryGlobalTop(era: EntityEra): Promise<EntityRow[]> {
+async function queryGlobalTop(eras: EntityEra[]): Promise<EntityRow[]> {
   const db = getDb();
-  const result = await db.execute(sql`
-    SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
-           e.doc_freq_term, e.doc_freq_baseline
-    FROM hot_entities e
-    WHERE e.era = ${era}
-    ORDER BY (e.doc_freq_term * greatest(1, jsonb_array_length(e.categories)))
-             / (1 + e.doc_freq_baseline) DESC, e.phrase
-    LIMIT ${SHORTLIST_GLOBAL}`);
-  return (result.rows as Array<Record<string, unknown>>).map(mapEntityRow);
+  const rows: EntityRow[] = [];
+  for (const era of eras) {
+    const result = await db.execute(sql`
+      SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
+             e.doc_freq_term, e.doc_freq_baseline
+      FROM hot_entities e
+      WHERE e.era = ${era}
+      ORDER BY (e.doc_freq_term * greatest(1, jsonb_array_length(e.categories)))
+               / (1 + e.doc_freq_baseline) DESC, e.phrase
+      LIMIT ${SHORTLIST_GLOBAL}`);
+    rows.push(...(result.rows as Array<Record<string, unknown>>).map(mapEntityRow));
+  }
+  return rows;
 }
 
-async function queryCategoryMatch(categories: string[], era: EntityEra): Promise<EntityRow[]> {
-  if (categories.length === 0) return [];
+async function queryCategoryMatch(categories: string[], eras: EntityEra[]): Promise<EntityRow[]> {
+  if (categories.length === 0 || eras.length === 0) return [];
   const db = getDb();
   const result = await db.execute(sql`
     SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
            e.doc_freq_term, e.doc_freq_baseline
     FROM hot_entities e
-    WHERE e.era = ${era} AND e.categories ?| array[${sql.join(
+    WHERE e.era IN (${sql.join(
+      eras.map((e) => sql`${e}`),
+      sql`, `,
+    )}) AND e.categories ?| array[${sql.join(
       categories.map((c) => sql`${c}`),
       sql`, `,
     )}]::text[]`);
@@ -235,9 +252,12 @@ export function stabilityFloor(shortlist: EntityRow[], poolCount: number): Entit
   return [...fromPool, ...captions];
 }
 
-/** Floor ∪ judge picks (mechanical fallback when picks are null), deduped
- *  and capped. Pure; exported for tests via stabilityFloor. */
-function finalizeArms(
+/** Floor ∪ judge picks ∪ top mechanical nominees (#762), deduped and
+ *  capped. The judge orders the best twelve; the mechanical top-up ensures
+ *  high-ranked nominees run as arms even when the judge passes them over —
+ *  safe because every arm's pool share is slot-bounded. Pure; exported for
+ *  tests via stabilityFloor. */
+export function finalizeArms(
   shortlist: EntityRow[],
   picks: string[] | null,
   poolRows: PoolEntityRow[],
@@ -255,14 +275,18 @@ function finalizeArms(
   const floor = stabilityFloor(shortlist, poolCount);
   const seen = new Set<string>();
   const chosen: EntityRow[] = [];
-  for (const r of [...floor, ...judged]) {
+  for (const r of [
+    ...floor,
+    ...judged.slice(0, MAX_SALIENCE_ARMS),
+    ...shortlist.slice(0, MECHANICAL_TOP_UP),
+  ]) {
     const k = r.phrase.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
     chosen.push(r);
   }
   return chosen
-    .slice(0, MAX_SALIENCE_ARMS)
+    .slice(0, MAX_SALIENCE_ARMS_ENUM)
     .map((r) => ({ phrase: r.phrase, matches: r.ftsMatches }));
 }
 
@@ -270,24 +294,21 @@ export async function selectSalienceArms(
   question: string,
   seedDocs: Array<{ id: number; category: string | null }>,
   excludePhrases: string[],
-  era: EntityEra,
+  eras: EntityEra[],
 ): Promise<ValidatedAlias[]> {
-  if (!isDbAvailable() || seedDocs.length === 0) return [];
+  if (!isDbAvailable() || seedDocs.length === 0 || eras.length === 0) return [];
   try {
     const globalShares = await queryGlobalCategoryShares();
     const [poolRows, categoryRows, globalRows] = await Promise.all([
-      queryPoolJoin(
-        seedDocs.map((d) => d.id),
-        era,
-      ),
+      queryPoolJoin(seedDocs.map((d) => d.id)),
       queryCategoryMatch(
         dominantCategories(
           seedDocs.map((d) => d.category),
           globalShares,
         ),
-        era,
+        eras,
       ),
-      queryGlobalTop(era),
+      queryGlobalTop(eras),
     ]);
     const shortlist = nominateShortlist(poolRows, categoryRows, excludePhrases, globalRows);
     if (shortlist.length === 0) return [];

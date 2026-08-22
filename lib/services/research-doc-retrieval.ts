@@ -227,6 +227,8 @@ async function retrieveEraWindow(
       docs,
       alreadySearched: minedAliases,
       reserve: Math.min(ERA_SALIENCE_RESERVE_MAX, Math.floor(slots / ERA_SALIENCE_RESERVE_DIVISOR)),
+      // #762: the window's own mined aliases share the slot guarantee.
+      extraArms: minedAliases,
     });
     docs = staged.docs;
     sinks.eraMined.push(...staged.salience);

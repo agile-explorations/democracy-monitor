@@ -1,14 +1,18 @@
 /**
- * Enumeration retrieval (#758, R-SALIENCE): a single hybrid seed sweep plus
- * salience arms from the weekly hot-entity index (#757), whose hits get
- * GUARANTEED slots in the final pool.
+ * Enumeration retrieval (#758 R-SALIENCE, #762 R-SLOTS): a single hybrid
+ * seed sweep plus GUARANTEED slots for every productive arm — salience,
+ * expansion, and mined alike.
  *
  * Why guaranteed slots, not fusion: the instrumented IM3 trace (#756)
  * showed a "J.G.G. v. Trump" arm carrying the target opinions at positions
  * 0-8 and weighted RRF still dropping every one — co-validated generic arms
- * re-boost incumbents and outvote sharp entity arms. Salience arms exist
- * precisely because similarity failed to surface their documents; they are
- * allocated slots, never made to campaign for them.
+ * re-boost incumbents and outvote sharp entity arms. #762 measured the same
+ * failure for expansion arms: a "Title IX" arm matching 608 docs
+ * contributed ZERO candidates (RRF break-even only for its top ~19 hits,
+ * fused into positions the salience-reservation slice then discarded). Arms
+ * are allocated bounded slots, never made to campaign for them; the
+ * per-arm cap keeps any single broad arm from flooding the pool
+ * (content-neutral by construction — no arm class is privileged).
  *
  * Why an offline index, not query-time discovery: marquee docs sit at
  * vector sim 0.39-0.44 vs a 0.57 rank-60 cutoff (unreachable at any depth),
@@ -16,13 +20,13 @@
  * sees what vector already retrieved. Corpus-wide recurrence — computable
  * weekly in batch — is the salience signal.
  *
- * Failure-tolerant: zero salience arms (empty index, off-topic question,
+ * Failure-tolerant: an empty arm roster (no validated aliases, empty index,
  * selection error) degrades to the seed sweep exactly.
  */
 
 import { composeAspectPools } from '@/lib/services/aspect-composition';
 import type { EntityEra } from '@/lib/services/hot-entity-ranking';
-import { eraForDate } from '@/lib/services/hot-entity-ranking';
+import { erasForWindow } from '@/lib/services/hot-entity-ranking';
 import { selectSalienceArms } from '@/lib/services/hot-entity-selection';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import type { ArmHit } from '@/lib/services/research-fusion';
@@ -36,41 +40,68 @@ import {
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 
-/** Final-pool slots reserved for salience-arm hits (when any exist). */
+/** Era-path slots reserved for arm hits (when any exist) (#760). */
 const FOLLOWUP_SLOTS = 15;
+/** Enumeration-loop ceiling on arm-guaranteed slots (half the pool). */
+const GUARANTEED_SLOTS = 30;
+/** Docs any single arm may place in the guaranteed pool. Bounds breadth:
+ *  no term, however many matches, can flood the pool (#762 neutrality). */
+export const PER_ARM_CAP = 2;
+/** Hard roster bound — arms are cheap cached FTS queries, but bounded. */
+const MAX_ROSTER_ARMS = 48;
 
-export interface LoopRetrievalParams {
-  query: string;
-  embedding: number[];
-  dateFrom: string | undefined;
-  dateTo: string | undefined;
-  tier: ResearchTierFilter;
-  inferredFrom: string | null;
+export interface SlotArm {
+  phrase: string;
+  /** Corpus match count — ordering key (sharpest arm first). */
+  matches: number;
+  items: ArmHit[];
 }
 
-/** Hydrate the salience arms' hits into a ranked doc pool: round-robin
- *  across arms (each arm's best hits first) so one broad arm cannot claim
- *  every reserved slot. */
-async function hydrateSaliencePool(
-  arms: Array<{ items: ArmHit[] }>,
+/**
+ * Round-robin bounded slot allocation across arms (pure, #762). Each round,
+ * every arm still under `perArmCap` contributes its next unseen hit;
+ * deterministic arm order = ascending corpus matches (sharpest first),
+ * phrase tiebreak. Stops at `totalSlots` or when every arm is exhausted.
+ * Exported for tests.
+ */
+export function composeArmSlotPool(
+  arms: SlotArm[],
   excludeIds: Set<number>,
-  poolSize: number,
-): Promise<ResearchDocument[]> {
+  perArmCap: number,
+  totalSlots: number,
+): ArmHit[] {
+  const ordered = [...arms].sort(
+    (a, b) => a.matches - b.matches || a.phrase.localeCompare(b.phrase),
+  );
+  const cursors = new Map<SlotArm, number>();
+  const taken = new Map<SlotArm, number>();
   const picked: ArmHit[] = [];
   const seen = new Set<number>();
-  for (let round = 0; picked.length < poolSize; round++) {
+  for (;;) {
     let advanced = false;
-    for (const arm of arms) {
-      if (round >= arm.items.length) continue;
-      advanced = true;
-      const hit = arm.items[round];
-      if (seen.has(hit.id) || excludeIds.has(hit.id)) continue;
-      seen.add(hit.id);
-      picked.push(hit);
-      if (picked.length >= poolSize) break;
+    for (const arm of ordered) {
+      if (picked.length >= totalSlots) return picked;
+      if ((taken.get(arm) ?? 0) >= perArmCap) continue;
+      let cursor = cursors.get(arm) ?? 0;
+      while (cursor < arm.items.length) {
+        const hit = arm.items[cursor];
+        cursor++;
+        if (!seen.has(hit.id) && !excludeIds.has(hit.id)) {
+          seen.add(hit.id);
+          picked.push(hit);
+          taken.set(arm, (taken.get(arm) ?? 0) + 1);
+          advanced = true;
+          break;
+        }
+      }
+      cursors.set(arm, cursor);
     }
-    if (!advanced) break;
+    if (!advanced) return picked;
   }
+}
+
+/** Hydrate picked arm hits into docs, carrying alias/snippet provenance. */
+async function hydrateArmPool(picked: ArmHit[]): Promise<ResearchDocument[]> {
   if (picked.length === 0) return [];
   const docs = await fetchResearchDocsByIds(picked.map((h) => h.id));
   const hitById = new Map(picked.map((h) => [h.id, h]));
@@ -79,57 +110,67 @@ async function hydrateSaliencePool(
     if (hit?.matchedAlias) doc.matchedAlias = hit.matchedAlias;
     if (hit?.matchSnippet) doc.matchSnippet = hit.matchSnippet;
   }
-  return docs;
+  // Preserve slot order (fetch returns arbitrary order).
+  const order = new Map(picked.map((h, i) => [h.id, i]));
+  return docs.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
-/** Reserve FOLLOWUP_SLOTS for the salience pool; without one, the seed
- *  composition stands. */
-function composeWithSalience(
+/** Reserve the arm pool's slots; without one, the seed composition stands. */
+function composeWithArms(
   seedDocs: ResearchDocument[],
-  saliencePool: ResearchDocument[],
+  armPool: ResearchDocument[],
   contextDocs: number,
 ): ResearchDocument[] {
-  if (saliencePool.length === 0) return seedDocs.slice(0, contextDocs);
-  const seedKeep = contextDocs - FOLLOWUP_SLOTS;
+  if (armPool.length === 0) return seedDocs.slice(0, contextDocs);
+  const seedKeep = contextDocs - armPool.length;
   return composeAspectPools(
     [
       { kept: seedDocs.slice(0, seedKeep), overflow: seedDocs.slice(seedKeep) },
-      {
-        kept: saliencePool.slice(0, FOLLOWUP_SLOTS),
-        overflow: saliencePool.slice(FOLLOWUP_SLOTS),
-      },
+      { kept: armPool, overflow: [] },
     ],
     contextDocs,
   ).docs;
 }
 
-/** Select salience arms for the seed pool (phrases the seed already
- *  searched are excluded), run them window-scoped, hydrate their hits. */
-async function runSalienceStage(
-  p: LoopRetrievalParams,
-  seed: { documents: ResearchDocument[]; minedAliases: ValidatedAlias[] },
-  expansionTerms: ValidatedAlias[],
-): Promise<{ novelSalience: ValidatedAlias[]; saliencePool: ResearchDocument[] }> {
-  const novelSalience = await selectSalienceArms(
-    p.query,
-    seed.documents.map((d) => ({ id: d.id, category: d.category })),
-    [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
-    eraForDate(p.dateFrom ?? null),
-  );
-  const arms = novelSalience.length
-    ? await runArmsForAliases(novelSalience, p.dateFrom, p.dateTo)
-    : [];
-  const seedIds = new Set(seed.documents.map((d) => d.id));
-  const saliencePool = await hydrateSaliencePool(arms, seedIds, FOLLOWUP_SLOTS * 2);
-  return { novelSalience, saliencePool };
+/** Dedupe aliases across sources by lowercase phrase, preserving order. */
+function dedupeAliases(groups: ValidatedAlias[][]): ValidatedAlias[] {
+  const seen = new Set<string>();
+  const out: ValidatedAlias[] = [];
+  for (const group of groups) {
+    for (const alias of group) {
+      const key = alias.phrase.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(alias);
+    }
+  }
+  return out;
+}
+
+/** Run every productive arm (expansion + mined + salience) into a roster.
+ *  Arm queries route through the per-(phrase, window) cache — the seed
+ *  sweep already ran the expansion/mined arms, so those are cache hits. */
+async function buildArmRoster(
+  aliases: ValidatedAlias[],
+  dateFrom: string | undefined,
+  dateTo: string | undefined,
+): Promise<SlotArm[]> {
+  const bounded = aliases.slice(0, MAX_ROSTER_ARMS);
+  if (bounded.length === 0) return [];
+  const arms = await runArmsForAliases(bounded, dateFrom, dateTo);
+  return arms
+    .map((arm, i) => ({ phrase: bounded[i].phrase, matches: bounded[i].matches, items: arm.items }))
+    .filter((a) => a.items.length > 0);
 }
 
 /**
  * Salience stage for an arbitrary retrieval window (#760): select era-scoped
- * entities against the window's docs, run their arms window-scoped, and
- * reserve slots for the hits. Used by the era-stratified path per window;
- * the enumeration loop uses its own composition below. Returns the original
- * docs untouched when selection yields nothing.
+ * entities against the window's docs, run their arms window-scoped alongside
+ * any `extraArms` the window already validated (#762: mined aliases get the
+ * same slot guarantee — no arm class is privileged), and reserve slots for
+ * the hits. Used by the era-stratified path per window; the enumeration
+ * loop uses its own composition below. Returns the original docs untouched
+ * when the roster is empty.
  */
 export async function applySalienceStage(opts: {
   query: string;
@@ -139,36 +180,67 @@ export async function applySalienceStage(opts: {
   docs: ResearchDocument[];
   alreadySearched: ValidatedAlias[];
   reserve: number;
+  extraArms?: ValidatedAlias[];
 }): Promise<{ docs: ResearchDocument[]; salience: ValidatedAlias[] }> {
   const salience = await selectSalienceArms(
     opts.query,
     opts.docs.map((d) => ({ id: d.id, category: d.category })),
     opts.alreadySearched.map((t) => t.phrase),
-    opts.era,
+    [opts.era],
   );
-  if (salience.length === 0) return { docs: opts.docs, salience: [] };
-  const arms = await runArmsForAliases(salience, opts.dateFrom, opts.dateTo);
-  const pool = await hydrateSaliencePool(
-    arms,
-    new Set(opts.docs.map((d) => d.id)),
-    opts.reserve * 2,
+  const roster = await buildArmRoster(
+    dedupeAliases([salience, opts.extraArms ?? []]),
+    opts.dateFrom,
+    opts.dateTo,
   );
-  if (pool.length === 0) return { docs: opts.docs, salience };
+  if (roster.length === 0) return { docs: opts.docs, salience };
   const keep = opts.docs.length;
+  const keptIds = new Set(opts.docs.slice(0, keep - opts.reserve).map((d) => d.id));
+  const picked = composeArmSlotPool(roster, keptIds, PER_ARM_CAP, opts.reserve);
+  const pool = await hydrateArmPool(picked);
+  if (pool.length === 0) return { docs: opts.docs, salience };
   const composed = composeAspectPools(
     [
       {
-        kept: opts.docs.slice(0, keep - opts.reserve),
-        overflow: opts.docs.slice(keep - opts.reserve),
+        kept: opts.docs.slice(0, keep - pool.length),
+        overflow: opts.docs.slice(keep - pool.length),
       },
-      { kept: pool.slice(0, opts.reserve), overflow: pool.slice(opts.reserve) },
+      { kept: pool, overflow: [] },
     ],
     keep,
   ).docs;
   return { docs: composed, salience };
 }
 
-/** Seed sweep → salience arms → guaranteed slots → compose. */
+/** Salience selection + full arm roster + bounded slot pool (#762). */
+async function runArmStage(
+  p: LoopRetrievalParams,
+  seed: { documents: ResearchDocument[]; minedAliases: ValidatedAlias[] },
+  expansionTerms: ValidatedAlias[],
+  contextDocs: number,
+): Promise<{ novelSalience: ValidatedAlias[]; armPool: ResearchDocument[] }> {
+  const novelSalience = await selectSalienceArms(
+    p.query,
+    seed.documents.map((d) => ({ id: d.id, category: d.category })),
+    [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
+    erasForWindow(p.dateFrom ?? null, p.dateTo ?? null),
+  );
+  const roster = await buildArmRoster(
+    dedupeAliases([novelSalience, expansionTerms, seed.minedAliases]),
+    p.dateFrom,
+    p.dateTo,
+  );
+  // The bug #762 fixed: exclude only the KEPT seed prefix, so a doc the
+  // seed ranked past the reservation line can still earn an arm slot
+  // instead of being both barred and discarded.
+  const maxReserve = Math.min(GUARANTEED_SLOTS, Math.floor(contextDocs / 2));
+  const keptSeedIds = new Set(seed.documents.slice(0, contextDocs - maxReserve).map((d) => d.id));
+  const picked = composeArmSlotPool(roster, keptSeedIds, PER_ARM_CAP, maxReserve);
+  const armPool = await hydrateArmPool(picked);
+  return { novelSalience, armPool };
+}
+
+/** Seed sweep → all productive arms → bounded guaranteed slots → compose. */
 export async function retrieveEnumerationLoop(
   p: LoopRetrievalParams,
   contextDocs: number,
@@ -198,10 +270,10 @@ export async function retrieveEnumerationLoop(
   timings.push({ key: 'seed', searchMs: Date.now() - s0, rerankMs: 0 });
 
   const a0 = Date.now();
-  const { novelSalience, saliencePool } = await runSalienceStage(p, seed, expansionTerms);
-  timings.push({ key: 'salience', searchMs: Date.now() - a0, rerankMs: 0 });
+  const { novelSalience, armPool } = await runArmStage(p, seed, expansionTerms, contextDocs);
+  timings.push({ key: 'arms', searchMs: Date.now() - a0, rerankMs: 0 });
 
-  const docs = composeWithSalience(seed.documents, saliencePool, contextDocs);
+  const docs = composeWithArms(seed.documents, armPool, contextDocs);
 
   return {
     docs,
@@ -219,8 +291,20 @@ export async function retrieveEnumerationLoop(
     },
     ...(debug
       ? {
-          candidates: [...seed.documents, ...saliencePool].map((d) => toCandidateSummary(d)),
+          candidates: [...seed.documents, ...armPool].map((d) => toCandidateSummary(d)),
         }
       : {}),
   };
 }
+
+export interface LoopRetrievalParams {
+  query: string;
+  embedding: number[];
+  dateFrom: string | undefined;
+  dateTo: string | undefined;
+  tier: ResearchTierFilter;
+  inferredFrom: string | null;
+}
+
+/** Retained export for the era path's reserve sizing (#760). */
+export { FOLLOWUP_SLOTS };
