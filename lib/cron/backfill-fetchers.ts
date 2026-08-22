@@ -23,6 +23,8 @@ import {
   parseSignalParams,
 } from '@/lib/services/federal-register-fetcher';
 import { recordFrDrops } from '@/lib/services/fr-drop-ledger';
+import { fetchGaoRecent } from '@/lib/services/gao-fetcher';
+import { parseGaoParams } from '@/lib/services/gao-parsers';
 import {
   fetchGovInfoHistorical,
   fetchGovInfoText,
@@ -51,6 +53,7 @@ type SignalGroups = {
   fec: Signal[];
   oig: Signal[];
   dhspress: Signal[];
+  gao: Signal[];
 };
 
 interface WeekRange {
@@ -84,6 +87,7 @@ const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
   fec: 'fec',
   oig: 'oig',
   dhspress: 'dhs_press',
+  gao: 'gao',
 };
 
 const SIGNAL_MAX_RETRIES = 4;
@@ -515,6 +519,34 @@ export async function fetchWeekItemsDhsPress(
   return { items: unique, errors, contentGaps };
 }
 
+export async function fetchWeekItemsGao(
+  signals: Array<{ url: string; type: string }>,
+  week: WeekRange,
+  categoryKey: string,
+): Promise<SourceFetchResult> {
+  const items: ContentItem[] = [];
+  const errors: string[] = [];
+
+  for (const signal of signals) {
+    if (!parseGaoParams(signal.url).products) continue;
+    const result = await fetchSignalWithRetry(
+      () => fetchGaoRecent({ dateFrom: week.start, dateTo: week.end }),
+      signal.url,
+      categoryKey,
+      week.start,
+    );
+    items.push(...result.items);
+    if (result.error) errors.push(result.error);
+  }
+
+  const nullCount = items.filter((i) => !i.content).length;
+  const shortCount = items.filter((i) => i.contentType === 'metadata_only').length;
+  const contentGaps: ContentGaps | undefined =
+    nullCount > 0 || shortCount > 0 ? { source: 'GAO', nullCount, shortCount } : undefined;
+
+  return { items, errors, contentGaps };
+}
+
 type FetchFn = (
   signals: Signal[],
   week: WeekRange,
@@ -529,6 +561,7 @@ const GROUP_FETCHERS: Array<{ key: keyof SignalGroups; fn: FetchFn }> = [
   { key: 'fec', fn: fetchWeekItemsFec },
   { key: 'oig', fn: fetchWeekItemsOig },
   { key: 'dhspress', fn: fetchWeekItemsDhsPress },
+  { key: 'gao', fn: fetchWeekItemsGao },
 ];
 
 export async function fetchWeekDocuments(

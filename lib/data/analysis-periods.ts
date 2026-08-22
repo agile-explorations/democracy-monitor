@@ -77,6 +77,7 @@ export const ACTIVE_SOURCES: ReadonlySet<string> = new Set([
   'crec',
   'chrg',
   'dhs_press',
+  'gao',
 ]);
 
 /**

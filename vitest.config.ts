@@ -64,6 +64,11 @@ export default defineConfig({
         'lib/services/recap-fetcher.ts',
         'lib/cron/backfill-recap.ts',
         'lib/services/recap-weekly.ts',
+        // #739 GAO Wayback ingest — CDX/replay I/O; parsing is unit-tested
+        // in gao-parsers.test.ts, CDX parsing in wayback-cdx.test.ts
+        'lib/services/wayback-cdx.ts',
+        'lib/services/gao-fetcher.ts',
+        'lib/cron/backfill-gao.ts',
         // #761 docket discovery — CL search + tracked_cases I/O; candidate
         // filter is unit-tested
         'lib/services/docket-discovery.ts',

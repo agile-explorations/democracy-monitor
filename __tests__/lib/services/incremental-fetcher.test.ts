@@ -13,6 +13,7 @@ vi.mock('@/lib/cron/backfill-fetchers', () => ({
   fetchWeekItemsFec: vi.fn().mockResolvedValue({ items: [], errors: [] }),
   fetchWeekItemsOig: vi.fn().mockResolvedValue({ items: [], errors: [] }),
   fetchWeekItemsDhsPress: vi.fn().mockResolvedValue({ items: [], errors: [] }),
+  fetchWeekItemsGao: vi.fn().mockResolvedValue({ items: [], errors: [] }),
 }));
 
 const { fetchWeekItemsFr } = await import('@/lib/cron/backfill-fetchers');

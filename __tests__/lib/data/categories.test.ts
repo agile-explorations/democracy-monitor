@@ -25,6 +25,7 @@ describe('CATEGORIES', () => {
       'fec_json',
       'oig_html',
       'dhs_press',
+      'gao_wayback',
     ];
     for (const cat of CATEGORIES) {
       for (const signal of cat.signals) {

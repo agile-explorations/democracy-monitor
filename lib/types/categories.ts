@@ -9,7 +9,8 @@ export type SignalType =
   | 'govinfo'
   | 'fec_json'
   | 'oig_html'
-  | 'dhs_press';
+  | 'dhs_press'
+  | 'gao_wayback';
 
 export type StatusLevel = 'Stable' | 'Warning' | 'Drift' | 'Capture';
 

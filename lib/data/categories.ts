@@ -129,6 +129,19 @@ export const CATEGORIES: Category[] = [
       'Inspectors General provide independent oversight of executive agencies, with statutory protections against removal. Mass IG firings, vacancy manipulation, or resource cuts degrade the internal accountability infrastructure that deters waste, fraud, and abuse of power across the federal government.',
     signals: [
       {
+        id: 'gao_reports',
+        name: 'GAO Reports & Testimonies',
+        url: 'gao://products',
+        type: 'gao_wayback',
+        note: 'GAO product-page highlights via Wayback replay (gao.gov WAF-blocks non-browser fetches; GovInfo GAOREPORTS is a dead pre-2009 archive, #529/#739); backfill via backfill:gao',
+        health: {
+          isCanary: false,
+          expectedFrequency: 'daily',
+          maxSilentDays: 10,
+          expectedMinWeeklyDocs: 8,
+        },
+      },
+      {
         id: 'oig_ssa',
         name: 'SSA Inspector General',
         url: 'oig://ssa',

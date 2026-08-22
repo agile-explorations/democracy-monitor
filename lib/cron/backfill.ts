@@ -62,6 +62,7 @@ type SignalGroups = {
   fec: Signal[];
   oig: Signal[];
   dhspress: Signal[];
+  gao: Signal[];
 };
 
 const SIGNAL_TYPE_TO_GROUP_KEY: Record<string, keyof SignalGroups> = {
@@ -133,7 +134,11 @@ function buildSignalGroups(
     gi: signals.filter((s) => s.type === 'govinfo'),
     fec: signals.filter((s) => s.type === 'fec_json'),
     oig: signals.filter((s) => s.type === 'oig_html'),
+    // GAO backfill goes through the dedicated backfill:gao CLI (per-week CDX
+    // enumeration would hammer the archive); empty here keeps the generic
+    // week-walker from touching it.
     dhspress: signals.filter((s) => s.type === 'dhs_press'),
+    gao: [],
   };
   if (sourceSignalType) {
     const keepKey = SIGNAL_TYPE_TO_GROUP_KEY[sourceSignalType];
