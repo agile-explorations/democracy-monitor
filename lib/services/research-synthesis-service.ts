@@ -237,7 +237,7 @@ async function runFeedback(
 /** Low variance for factual synthesis (#707). */
 /** #763: an enumeration answer covering 60 documents cannot fit 4096
  *  tokens; analytical answers keep the original budget byte-identically. */
-function synthesisMaxTokens(query: string): number {
+export function synthesisMaxTokens(query: string): number {
   return classifyQuestionMode(query) === 'enumeration' ? ENUMERATION_MAX_TOKENS : 4096;
 }
 

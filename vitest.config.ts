@@ -58,6 +58,17 @@ export default defineConfig({
         'lib/services/research-loop-retrieval.ts',
         'lib/services/hot-entity-selection.ts',
         'lib/services/hot-entity-judge.ts',
+        // #762: the slot-pool unit tests import the loop, whose import
+        // chain loads these DB/arm I/O modules into the coverage
+        // denominator at 0% — their pure halves (armWeight, fusion,
+        // composers) are tested via their own suites.
+        'lib/services/research-fusion.ts',
+        'lib/services/search-service.ts',
+        'lib/services/search-queries.ts',
+        'lib/services/research-retrieval.ts',
+        'lib/services/research-synthesis-service.ts',
+        'lib/services/hybrid-explore.ts',
+        'lib/services/narrative-queries.ts',
         // #757 weekly hot-entity sweep — DB batches + embedding I/O
         'lib/cron/refresh-hot-entities.ts',
         // #740 RECAP ingest — CL API + storage I/O; filter is unit-tested
