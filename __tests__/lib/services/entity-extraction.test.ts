@@ -163,7 +163,7 @@ describe('ENUM_EXTRACTION (#762)', () => {
 
   it('validates-then-slices (config shape)', () => {
     expect(ENUM_EXTRACTION.sliceBeforeValidate).toBe(false);
-    expect(ENUM_EXTRACTION.validationCandidates).toBeGreaterThan(ENUM_EXTRACTION.maxPhrases);
+    expect(ENUM_EXTRACTION.validationCandidates).toBeGreaterThanOrEqual(ENUM_EXTRACTION.maxPhrases);
     expect(LIGHT_EXTRACTION.sliceBeforeValidate).toBe(true);
   });
 });

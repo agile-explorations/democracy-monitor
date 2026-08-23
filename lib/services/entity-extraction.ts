@@ -46,7 +46,9 @@ export const LIGHT_EXTRACTION: ExtractionConfig = {
 export const ENUM_EXTRACTION: ExtractionConfig = {
   contentChars: 8000,
   maxPhrases: 12,
-  validationCandidates: 16,
+  // 16 -> 12 (option-1 trim, 2026-08-22): validation counts are the cold
+  // seed's cost driver; 12 keeps statutes + validate-then-slice.
+  validationCandidates: 12,
   minDocFrequency: 2,
   sliceBeforeValidate: false,
   classes: 'enum',

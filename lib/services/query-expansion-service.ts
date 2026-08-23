@@ -42,14 +42,10 @@ export {
 const EXPANSION_MODEL = 'gpt-4o-mini';
 const EXPANSION_CACHE_TTL = 7 * 86400;
 const MAX_ALIASES = 12;
-/** #763: enumeration questions accept a few more terms — coverage tasks
- *  benefit and every arm's pool share is slot-bounded (#762). */
-const MAX_ALIASES_ENUM = 16;
-
-/** Mode-derived alias cap; analytical stays byte-identical at 12. */
-function aliasCap(query: string): number {
-  return classifyQuestionMode(query) === 'enumeration' ? MAX_ALIASES_ENUM : MAX_ALIASES;
-}
+// #763 R5 (16-term enumeration expansion) was measured and dropped: the
+// matrix attributed the gains to slot guarantees, not width, and the extra
+// aliases were a main driver of the 100-150s cold seed (owner option-1
+// decision, 2026-08-22). parseAliasResponse keeps its limit param.
 /** Cap on narrower re-proposals accepted from the single retry round (#733). */
 const MAX_NARROWED_ALIASES = 4;
 
@@ -93,11 +89,11 @@ export async function proposeAliases(query: string): Promise<string[]> {
   const cached = await cacheGet<string[]>(key);
   if (cached) return cached;
   try {
-    const result = await provider.complete(EXPANSION_PROMPT(query, aliasCap(query)), {
+    const result = await provider.complete(EXPANSION_PROMPT(query), {
       temperature: 0,
       model: EXPANSION_MODEL,
     });
-    const aliases = parseAliasResponse(result.content, aliasCap(query));
+    const aliases = parseAliasResponse(result.content);
     await cacheSet(key, aliases, EXPANSION_CACHE_TTL);
     return aliases;
   } catch (err) {
@@ -366,9 +362,6 @@ export async function expandDiagnostic(
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {
   const material = [
     'v4', // bumped for entity-aware prompt + narrowing retry (#733) — invalidates pre-fix caches
-    // #763: enumeration-mode caches carry the wider cap; analytical keys
-    // are unchanged so existing caches stay valid.
-    classifyQuestionMode(query) === 'enumeration' ? 'enum16' : '',
     query.toLowerCase().trim(),
     window?.dateFrom ?? '',
     window?.dateTo ?? '',
