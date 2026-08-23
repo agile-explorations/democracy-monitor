@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cachedCountUsable,
+  unionDraws,
   expandAndValidate,
   isBoilerplateAlias,
   parseAliasResponse,
@@ -132,5 +133,25 @@ describe('mode-derived alias cap (#763)', () => {
   it('parses up to the provided limit', () => {
     expect(parseAliasResponse(sixteen, 16).length).toBe(16);
     expect(parseAliasResponse(sixteen).length).toBe(12);
+  });
+});
+
+describe('unionDraws (#773)', () => {
+  it('unions draws in order with case-insensitive dedupe', () => {
+    expect(
+      unionDraws([
+        ['Laken Riley Act', 'EO 14159'],
+        ['laken riley act', 'Operation Metro Surge'],
+      ]),
+    ).toEqual(['Laken Riley Act', 'EO 14159', 'Operation Metro Surge']);
+  });
+
+  it('caps the union', () => {
+    const a = Array.from({ length: 30 }, (_, i) => `term-${i}`);
+    expect(unionDraws([a, []]).length).toBe(24);
+  });
+
+  it('handles an empty second draw (single-draw degradation)', () => {
+    expect(unionDraws([['x y z'], []])).toEqual(['x y z']);
   });
 });

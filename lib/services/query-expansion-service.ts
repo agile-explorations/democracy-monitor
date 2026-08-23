@@ -82,6 +82,12 @@ const NARROWING_PROMPT = (query: string, phrases: string[]) =>
   `Query: "${query}"`;
 
 /** LLM alias proposal — cached by normalized query; [] on any failure. */
+/** #773: temp-0 completions are still nondeterministic across calls —
+ *  each call is a draw, and a cached bad draw (EO 11625 in a 2026 answer)
+ *  costs its question for the full cache TTL. Two draws unioned compress
+ *  the variance upward for ~one extra mini call per question-week. */
+const EXPANSION_DRAWS = 2;
+
 export async function proposeAliases(query: string): Promise<string[]> {
   const provider = getProvider('openai');
   if (!provider.isAvailable()) return [];
@@ -89,17 +95,40 @@ export async function proposeAliases(query: string): Promise<string[]> {
   const cached = await cacheGet<string[]>(key);
   if (cached) return cached;
   try {
-    const result = await provider.complete(EXPANSION_PROMPT(query), {
-      temperature: 0,
-      model: EXPANSION_MODEL,
-    });
-    const aliases = parseAliasResponse(result.content);
+    const results = await Promise.all(
+      Array.from({ length: EXPANSION_DRAWS }, () =>
+        provider.complete(EXPANSION_PROMPT(query), {
+          temperature: 0,
+          model: EXPANSION_MODEL,
+        }),
+      ),
+    );
+    const aliases = unionDraws(results.map((r) => parseAliasResponse(r.content)));
     await cacheSet(key, aliases, EXPANSION_CACHE_TTL);
     return aliases;
   } catch (err) {
     console.warn('[query-expansion] proposal failed (falling back to vector-only):', err);
     return [];
   }
+}
+
+/** Union draws preserving order: draw-1 terms first, then novel draw-2
+ *  terms, case-insensitively deduped, capped at twice the single-draw
+ *  limit (validation caps still apply downstream). Pure; exported for
+ *  tests. */
+export function unionDraws(draws: string[][], cap: number = MAX_ALIASES * 2): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const draw of draws) {
+    for (const phrase of draw) {
+      const k = phrase.toLowerCase().trim();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(phrase);
+      if (out.length >= cap) return out;
+    }
+  }
+  return out;
 }
 
 /** Parse the model's JSON-array reply; [] when unparseable. Exported for tests. */
@@ -361,7 +390,7 @@ export async function expandDiagnostic(
 
 function hashExpansionKey(query: string, window?: ExpansionWindow): string {
   const material = [
-    'v4', // bumped for entity-aware prompt + narrowing retry (#733) — invalidates pre-fix caches
+    'v5', // #773 union-of-two-draws — invalidates pinned single-draw caches
     query.toLowerCase().trim(),
     window?.dateFrom ?? '',
     window?.dateTo ?? '',
