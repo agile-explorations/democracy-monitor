@@ -211,11 +211,6 @@ async function retrieveEraWindow(
     w.from,
     w.to,
     p.tier,
-    undefined,
-    // #762: only the enumeration-budget era path mines with the widened
-    // config; analytical comparative questions share this function and
-    // stay byte-identical (miningConfig absent = LIGHT).
-    salience ? ENUM_EXTRACTION : undefined,
   );
   sinks.eraMined.push(...minedAliases);
   const searchMs = Date.now() - s0;
@@ -233,8 +228,6 @@ async function retrieveEraWindow(
       docs,
       alreadySearched: minedAliases,
       reserve: Math.min(ERA_SALIENCE_RESERVE_MAX, Math.floor(slots / ERA_SALIENCE_RESERVE_DIVISOR)),
-      // #762: the window's own mined aliases share the slot guarantee.
-      extraArms: minedAliases,
     });
     docs = staged.docs;
     sinks.eraMined.push(...staged.salience);
