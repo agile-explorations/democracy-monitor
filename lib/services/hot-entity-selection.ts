@@ -273,13 +273,14 @@ export function finalizeArms(
     (r) => !excluded.has(r.phrase.toLowerCase()),
   ).length;
   const floor = stabilityFloor(shortlist, poolCount);
+  // #774: the top-up ranks by breadth score across ALL channels, not
+  // shortlist position — shortlist-head order re-amplified the pool
+  // channel's genre floods (IM3's habeas mill outranked the due-process
+  // canon 15 captions deep despite 4x lower breadth).
+  const topUp = rankCategoryEntities(shortlist).slice(0, MECHANICAL_TOP_UP);
   const seen = new Set<string>();
   const chosen: EntityRow[] = [];
-  for (const r of [
-    ...floor,
-    ...judged.slice(0, MAX_SALIENCE_ARMS),
-    ...shortlist.slice(0, MECHANICAL_TOP_UP),
-  ]) {
+  for (const r of [...floor, ...judged.slice(0, MAX_SALIENCE_ARMS), ...topUp]) {
     const k = r.phrase.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);

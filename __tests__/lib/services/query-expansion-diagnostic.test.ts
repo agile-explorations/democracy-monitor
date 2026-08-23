@@ -91,14 +91,16 @@ describe('expandDiagnosticWithRetry (#733)', () => {
   });
 
   it('narrows over-cap rejects in a single retry round and merges the result', async () => {
-    // Round 1: one over-cap proposal. Round 2: its narrowed variant validates.
+    // Round 1: two draws (#773) proposing the same over-cap term.
+    // Round 2: its narrowed variant validates.
     mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
       .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
       .mockResolvedValueOnce({ content: '["OMB apportionment"]' });
     // Counts consumed in order: windowTotal, round-1 count, windowTotal, round-2 count.
     mockDbWithCounts(100000, [1001, 100000, 42]);
     const d = await expandDiagnosticWithRetry('who controls agency spending?', {});
-    expect(mocks.provider.complete).toHaveBeenCalledTimes(2);
+    expect(mocks.provider.complete).toHaveBeenCalledTimes(3);
     expect(d.proposed).toEqual(['Office of Management and Budget', 'OMB apportionment']);
     expect(d.validated).toEqual([{ phrase: 'OMB apportionment', matches: 42 }]);
     expect(d.rejected).toEqual(
@@ -109,16 +111,19 @@ describe('expandDiagnosticWithRetry (#733)', () => {
   });
 
   it('makes no narrowing call when nothing is over-cap', async () => {
-    mocks.provider.complete.mockResolvedValueOnce({ content: '["Schedule F"]' });
+    mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Schedule F"]' })
+      .mockResolvedValueOnce({ content: '["Schedule F"]' });
     mockDbWithCounts(100000, [42]);
     const d = await expandDiagnosticWithRetry('schedule f reinstatement', {});
-    expect(mocks.provider.complete).toHaveBeenCalledTimes(1);
+    expect(mocks.provider.complete).toHaveBeenCalledTimes(2);
     expect(d.validated).toEqual([{ phrase: 'Schedule F', matches: 42 }]);
   });
 
   it('keeps the round-1 result when narrowing only re-proposes seen phrases', async () => {
     mocks.provider.complete
       .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
+      .mockResolvedValueOnce({ content: '["office of management and budget"]' })
       .mockResolvedValueOnce({ content: '["office of management and budget"]' });
     mockDbWithCounts(100000, [1001]);
     const d = await expandDiagnosticWithRetry('who controls agency spending?', {});
@@ -129,6 +134,7 @@ describe('expandDiagnosticWithRetry (#733)', () => {
 
   it('keeps the round-1 result when the narrowing proposal itself fails', async () => {
     mocks.provider.complete
+      .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
       .mockResolvedValueOnce({ content: '["Office of Management and Budget"]' })
       .mockRejectedValueOnce(new Error('provider down'));
     mockDbWithCounts(100000, [1001]);

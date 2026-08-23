@@ -187,6 +187,23 @@ describe('finalizeArms mechanical top-up (#762)', () => {
     expect(phrases).toContain('entity-14');
   });
 
+  it('ranks the top-up by breadth score, not shortlist position (#774)', () => {
+    // Pool-channel genre flood: many low-breadth captions at the shortlist
+    // head; one high-breadth canon entity deep in the category channel.
+    const mill = Array.from({ length: 12 }, (_, i) => ({
+      ...row(`mill-case-${String(i).padStart(2, '0')}`, 'caption'),
+      categories: ['civilLiberties'],
+      docFreqTerm: 9,
+    }));
+    const canon = {
+      ...row('J.G.G. v. Trump', 'caption'),
+      categories: ['civilLiberties', 'immigrationEnforcement', 'executiveActions', 'military'],
+      docFreqTerm: 19,
+    };
+    const arms = finalizeArms([...mill, canon], [], [], []);
+    expect(arms.map((a) => a.phrase)).toContain('J.G.G. v. Trump');
+  });
+
   it('caps the widened roster at MAX_SALIENCE_ARMS_ENUM', () => {
     const shortlist = Array.from({ length: 40 }, (_, i) => row(`e-${String(i).padStart(2, '0')}`));
     const arms = finalizeArms(shortlist, null, [], []);
