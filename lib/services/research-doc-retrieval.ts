@@ -9,6 +9,7 @@
  */
 
 import type { NextApiRequest } from 'next';
+import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EraWindow } from '@/lib/services/era-extraction';
 import {
   ERA_WINDOWS,

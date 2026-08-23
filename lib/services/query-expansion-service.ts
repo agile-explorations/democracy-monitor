@@ -30,6 +30,7 @@ import {
   MIN_MATCH_CAP,
   windowFilters,
 } from '@/lib/services/alias-count-cache';
+import { classifyQuestionMode } from '@/lib/services/question-classifier';
 
 export type { ExpansionWindow } from '@/lib/services/alias-count-cache';
 export {
@@ -41,6 +42,10 @@ export {
 const EXPANSION_MODEL = 'gpt-4o-mini';
 const EXPANSION_CACHE_TTL = 7 * 86400;
 const MAX_ALIASES = 12;
+// #763 R5 (16-term enumeration expansion) was measured and dropped: the
+// matrix attributed the gains to slot guarantees, not width, and the extra
+// aliases were a main driver of the 100-150s cold seed (owner option-1
+// decision, 2026-08-22). parseAliasResponse keeps its limit param.
 /** Cap on narrower re-proposals accepted from the single retry round (#733). */
 const MAX_NARROWED_ALIASES = 4;
 
@@ -53,7 +58,7 @@ export interface ValidatedAlias {
   matches: number;
 }
 
-const EXPANSION_PROMPT = (query: string) =>
+const EXPANSION_PROMPT = (query: string, cap: number = MAX_ALIASES) =>
   `For this search query about the U.S. government record, list SHORT ATOMIC search ` +
   `terms (1-4 words each, plus bare order/statute numbers) that would appear LITERALLY ` +
   `in government documents from 2017-2026. Draw from every class that fits the query: ` +
@@ -62,7 +67,7 @@ const EXPANSION_PROMPT = (query: string) =>
   `"X v. Y"), full names of officials or named individuals central to the topic, ` +
   `named operations or initiatives, and the record's own terms of art for the topic. ` +
   `Never invent numbers, captions, or names; never compose descriptive titles; ` +
-  `include the core entity itself. Return ONLY a JSON array of 5-12 terms. ` +
+  `include the core entity itself. Return ONLY a JSON array of 5-${cap} terms. ` +
   `Query: "${query}"`;
 
 /** Follow-up proposal for over-cap rejects (#733): the entity is real and
@@ -98,14 +103,14 @@ export async function proposeAliases(query: string): Promise<string[]> {
 }
 
 /** Parse the model's JSON-array reply; [] when unparseable. Exported for tests. */
-export function parseAliasResponse(content: string): string[] {
+export function parseAliasResponse(content: string, limit: number = MAX_ALIASES): string[] {
   try {
     const raw = content.replace(/```json|```/g, '').trim();
     const arr = JSON.parse(raw) as unknown;
     if (!Array.isArray(arr)) return [];
     return arr
       .filter((p): p is string => typeof p === 'string' && p.length >= 3 && p.length <= 60)
-      .slice(0, MAX_ALIASES);
+      .slice(0, limit);
   } catch {
     console.warn(
       '[query-expansion] unparseable alias reply (vector-only fallback):',

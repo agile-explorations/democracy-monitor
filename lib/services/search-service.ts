@@ -18,6 +18,7 @@ import type {
 } from '@/lib/types/search';
 import { stripBoilerplate } from '@/lib/utils/content-cleaners';
 import { embedQueryCached } from './embedding-service';
+import type { ExtractionConfig } from './entity-extraction';
 import { mineArmsFromCandidates } from './entity-mining';
 import { hybridVectorExplore } from './hybrid-explore';
 import type { ValidatedAlias } from './query-expansion-service';
@@ -119,6 +120,9 @@ export async function searchResearchWithMeta(
   dateTo?: string,
   tierFilter: ResearchTierFilter = 'all',
   extraAliases?: ValidatedAlias[],
+  // #762: enumeration builds pass ENUM_EXTRACTION; absent = LIGHT =
+  // analytical byte-identical.
+  miningConfig?: ExtractionConfig,
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
   if (!isDbAvailable()) return { documents: [], minedAliases: [] };
   const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
@@ -138,6 +142,7 @@ export async function searchResearchWithMeta(
         dateTo,
         tierFilter,
         extraAliases,
+        miningConfig,
       );
     }
     const { documents, minedAliases } = await searchResearchAllTiers(
@@ -148,6 +153,7 @@ export async function searchResearchWithMeta(
       dateFrom,
       dateTo,
       extraAliases,
+      miningConfig,
     );
     return { documents: await attachMatchSnippets(documents), minedAliases };
   } catch (err) {
@@ -167,6 +173,7 @@ async function searchSingleTierWithMeta(
   dateTo: string | undefined,
   tier: DocumentTier,
   extraAliases?: ValidatedAlias[],
+  miningConfig?: ExtractionConfig,
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
   const [results, { aliases, arms }, extraArms] = await Promise.all([
     executeFilteredVectorQuery(
@@ -183,6 +190,7 @@ async function searchSingleTierWithMeta(
     dateFrom,
     dateTo,
     tier,
+    miningConfig,
   );
   const documents = await attachMatchSnippets(
     await fuseHydrateDedupe(
@@ -210,6 +218,7 @@ async function searchResearchAllTiers(
   dateFrom?: string,
   dateTo?: string,
   extraAliases?: ValidatedAlias[],
+  miningConfig?: ExtractionConfig,
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
   const [actionRows, discussionRows, { aliases, arms }, extraArms] = await Promise.all([
     executeFilteredVectorQuery(
@@ -235,6 +244,8 @@ async function searchResearchAllTiers(
     [...aliases, ...(extraAliases ?? [])],
     dateFrom,
     dateTo,
+    undefined,
+    miningConfig,
   );
   const allArms = [...arms, ...minedArms, ...extraArms];
   const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>

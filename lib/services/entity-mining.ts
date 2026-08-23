@@ -21,6 +21,7 @@ import {
   LIGHT_EXTRACTION,
   MINING_CANDIDATE_LIMIT,
 } from '@/lib/services/entity-extraction';
+import type { ExtractionConfig } from '@/lib/services/entity-extraction';
 import type { FusionArm } from '@/lib/services/hybrid-fusion';
 import type { ExpansionWindow, ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { validateAliasesDiagnostic } from '@/lib/services/query-expansion-service';
@@ -31,18 +32,21 @@ import { runArmsForAliases } from '@/lib/services/research-fusion';
  * Mine entity phrases from the given candidate documents and validate them
  * through the standard alias machinery (match caps, count cache,
  * boilerplate filter). `existing` phrases (the LLM aliases) are skipped.
- * v1.10.1 semantics: cap to maxPhrases BEFORE validation.
+ * LIGHT default keeps v1.10.1 semantics byte-identically (cap to maxPhrases
+ * BEFORE validation); ENUM (#762) forwards validationCandidates phrases and
+ * slices VALIDATED aliases to maxPhrases instead.
  */
 export async function mineEntityAliases(
   candidateIds: number[],
   existing: ValidatedAlias[],
   window: ExpansionWindow,
+  config: ExtractionConfig = LIGHT_EXTRACTION,
 ): Promise<ValidatedAlias[]> {
   if (!isDbAvailable() || candidateIds.length === 0) return [];
   const db = getDb();
   const ids = candidateIds.slice(0, MINING_CANDIDATE_LIMIT);
   const rows = await db.execute(sql`
-    SELECT d.title, LEFT(d.content, ${LIGHT_EXTRACTION.contentChars}) as body
+    SELECT d.title, LEFT(d.content, ${config.contentChars}) as body
     FROM documents d
     WHERE d.id IN (${sql.join(
       ids.map((i) => sql`${i}`),
@@ -52,12 +56,17 @@ export async function mineEntityAliases(
     (r) => `${r.title ?? ''}\n${r.body ?? ''}`,
   );
   const known = new Set(existing.map((a) => a.phrase.toLowerCase()));
-  const phrases = extractEntityPhrases(texts, LIGHT_EXTRACTION)
-    .filter((e) => !known.has(e.phrase.toLowerCase()))
-    .slice(0, LIGHT_EXTRACTION.maxPhrases)
-    .map((e) => e.phrase);
+  const novel = extractEntityPhrases(texts, config).filter(
+    (e) => !known.has(e.phrase.toLowerCase()),
+  );
+  const phrases = (
+    config.sliceBeforeValidate
+      ? novel.slice(0, config.maxPhrases)
+      : novel.slice(0, config.validationCandidates)
+  ).map((e) => e.phrase);
   if (phrases.length === 0) return [];
-  return (await validateAliasesDiagnostic(phrases, window)).validated;
+  const { validated } = await validateAliasesDiagnostic(phrases, window);
+  return config.sliceBeforeValidate ? validated : validated.slice(0, config.maxPhrases);
 }
 
 /** The full pseudo-relevance-feedback step: mine entity phrases from vector
@@ -69,13 +78,19 @@ export async function mineArmsFromCandidates(
   dateFrom?: string,
   dateTo?: string,
   tier?: DocumentTier,
+  config: ExtractionConfig = LIGHT_EXTRACTION,
 ): Promise<{ minedAliases: ValidatedAlias[]; minedArms: FusionArm<ArmHit>[] }> {
   try {
     const candidateIds = [...new Set(rows.map((r) => Number(r.id)).filter(Number.isFinite))].slice(
       0,
       MINING_CANDIDATE_LIMIT,
     );
-    const minedAliases = await mineEntityAliases(candidateIds, aliases, { dateFrom, dateTo, tier });
+    const minedAliases = await mineEntityAliases(
+      candidateIds,
+      aliases,
+      { dateFrom, dateTo, tier },
+      config,
+    );
     const minedArms = await runArmsForAliases(minedAliases, dateFrom, dateTo, tier);
     return { minedAliases, minedArms };
   } catch (err) {

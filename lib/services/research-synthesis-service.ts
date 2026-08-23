@@ -8,6 +8,7 @@
 
 import { getProvider } from '@/lib/ai/provider';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
+import { classifyQuestionMode, ENUMERATION_MAX_TOKENS } from '@/lib/services/question-classifier';
 import type { AICompletionResult } from '@/lib/types';
 import {
   buildDraftPrompt,
@@ -170,7 +171,7 @@ export async function synthesizeResearchAnswer(
     () =>
       claude.complete(revisionPrompt, {
         model: FINAL_MODEL,
-        maxTokens: 4096,
+        maxTokens: synthesisMaxTokens(query),
         temperature: SYNTHESIS_TEMPERATURE,
         systemPrompt: SYSTEM_REVISION,
       }),
@@ -202,7 +203,7 @@ async function runDraft(
     () =>
       provider.complete(buildDraftPrompt(query, docs, stats, alsoSearched), {
         model: DRAFT_MODEL,
-        maxTokens: 4096,
+        maxTokens: synthesisMaxTokens(query),
         temperature: SYNTHESIS_TEMPERATURE,
         systemPrompt: SYSTEM_DRAFT,
       }),
@@ -234,6 +235,12 @@ async function runFeedback(
 // ---------------------------------------------------------------------------
 
 /** Low variance for factual synthesis (#707). */
+/** #763: an enumeration answer covering 60 documents cannot fit 4096
+ *  tokens; analytical answers keep the original budget byte-identically. */
+export function synthesisMaxTokens(query: string): number {
+  return classifyQuestionMode(query) === 'enumeration' ? ENUMERATION_MAX_TOKENS : 4096;
+}
+
 const SYNTHESIS_TEMPERATURE = 0.2;
 
 const SYSTEM_SINGLE_PASS =
@@ -264,7 +271,7 @@ export async function synthesizeResearchAnswerSinglePass(
     () =>
       claude.complete(prompt, {
         model: SINGLE_PASS_MODEL,
-        maxTokens: 4096,
+        maxTokens: synthesisMaxTokens(query),
         systemPrompt: SYSTEM_SINGLE_PASS,
       }),
     'Single-pass synthesis',

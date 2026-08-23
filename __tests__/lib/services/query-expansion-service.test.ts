@@ -125,3 +125,12 @@ describe('cachedCountUsable (#729 validation caching)', () => {
     expect(cachedCountUsable({ matches: 201, cap: 200 }, 1000)).toBe(false); // must recount
   });
 });
+
+describe('mode-derived alias cap (#763)', () => {
+  const sixteen = JSON.stringify(Array.from({ length: 20 }, (_, i) => `term number ${i}`));
+
+  it('parses up to the provided limit', () => {
+    expect(parseAliasResponse(sixteen, 16).length).toBe(16);
+    expect(parseAliasResponse(sixteen).length).toBe(12);
+  });
+});

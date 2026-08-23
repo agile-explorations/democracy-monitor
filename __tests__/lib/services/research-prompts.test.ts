@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import {
   ACTION_EXCERPT_CHARS,
   buildDraftPrompt,
+  buildRevisionPrompt,
   buildFeedbackPrompt,
   buildRevisionPrompt,
   computeDateRange,
@@ -330,5 +331,41 @@ describe('enumeration instruction (#751)', () => {
   it('omits the addendum for analytical questions', () => {
     const prompt = buildSinglePassPrompt('Is the impoundment of funds legal?', [makeDoc()], null);
     expect(prompt).not.toContain('comprehensive enumeration');
+  });
+});
+
+describe('enumeration coverage in the multi-pass path (#763)', () => {
+  const enumQ = 'What executive orders address federal workforce reduction?';
+
+  afterEach(() => {
+    delete process.env.ENUMERATION_MODE;
+  });
+
+  it('injects the enumeration instruction into draft AND revision prompts when the flag is on', () => {
+    process.env.ENUMERATION_MODE = 'on';
+    const draft = buildDraftPrompt(enumQ, [makeDoc()]);
+    expect(draft).toContain('comprehensive enumeration');
+    expect(draft).toContain('account for every provided document');
+    const revision = buildRevisionPrompt('e', 'p', 'f', enumQ, [makeDoc()]);
+    expect(revision).toContain('comprehensive enumeration');
+    expect(revision).toContain('as long as complete enumeration requires');
+  });
+
+  it('lifts the expert word cap only in enumeration mode', () => {
+    process.env.ENUMERATION_MODE = 'on';
+    expect(buildDraftPrompt(enumQ, [makeDoc()])).not.toContain('(400-800 words.');
+    expect(buildDraftPrompt('Why did the court rule that way?', [makeDoc()])).toContain(
+      '(400-800 words.',
+    );
+  });
+
+  it('keeps prompts byte-identical with the flag off (v1.10.1 discipline)', () => {
+    delete process.env.ENUMERATION_MODE;
+    const draft = buildDraftPrompt(enumQ, [makeDoc()]);
+    expect(draft).toContain('(400-800 words.');
+    expect(draft).not.toContain('comprehensive enumeration');
+    const revision = buildRevisionPrompt('e', 'p', 'f', enumQ, [makeDoc()]);
+    expect(revision).toContain('(400-800 words)');
+    expect(revision).not.toContain('comprehensive enumeration');
   });
 });

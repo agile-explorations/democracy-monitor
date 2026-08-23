@@ -12,6 +12,16 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-SLOTS: retrieval slot economics (#762 #763, milestone 121, v1.16.0) — ✅ shipped 2026-08-23
+
+**Origin**: the scatter diagnostic classified 36/40 remaining CORE eval misses as never-candidate — documents in corpus, no query reaches them. Root causes measured: no slot guarantee for non-salience arms (a 608-match 'Title IX' arm contributed 0 candidates — RRF dilution + the reservation slice); selection funnel dropping indexed entities (Laken Riley Act docFreq 160 never an arm); era artifact (Bolton in trump_t1); synthesis losing the enumeration instruction in the two-pass path. Owner constraints throughout: corpus-scale sustainable, content-neutral (no curated lists, no per-question logic).
+
+**Built**: composeArmSlotPool — bounded round-robin slots (PER_ARM_CAP=2, 30/60 slots) for ALL productive arms + the seed-exclusion bug fix; widened selection (judge ∪ floor ∪ top-8 mechanical, cap 20) + cross-era nomination (era-blind pool join, erasForWindow); statute-aware ENUM mining (validate-then-slice); synthesis per-doc accounting in draft AND revision prompts with lifted caps. All behind classifyQuestionMode — flag-off byte-identity guarded by tests; Explore and analytical paths untouched.
+
+**Measured, cut, and kept (the sprint's real story)**: three latency incidents drove scope: (1) 48-arm roster saturated the DB pool (121s arms stage) → slot-justified 18; (2) era-window arm extras ran per window against ≤5-slot reserves (RL3/RL4 could never finish a build) → reverted to #760 semantics [owner: ask-first feedback + retroactive approval]; (3) R5 (16-term expansion) + mining width drove 100–150s seeds → matrix attributed gains to slots not width → option-1 trim (owner decision). Acceptance was band-form replicated: baseline [68,72] → candidate [72,72] (zero interval regressions, IM4/RL2 above-interval replicating EXACTLY — slot guarantees also stabilized retrieval variance) → trimmed confirmation 76/107 (71%), the project's best single run.
+
+**Open residuals**: IM3's due-process canon still never nominated (0/40 arms both candidate runs — nomination ORDERING, not funnel width; next diagnosis); RL4 big-count items; outreach gate = replicated prod pair pending post-deploy.
+
 ## Sprint R-GAO: GAO reports via Wayback (#739, milestone 120, v1.15.0–v1.15.1) — ✅ Phase A shipped 2026-08-21; Phase B (baselines-to-2017) completed + accepted 2026-08-22
 
 **Origin**: zero GAO documents in the corpus; gao.gov WAF-blocks non-browser fetches (403 on robots.txt → direct crawl forecloses under robots discipline); GovInfo GAOREPORTS dead since 2009 (#529). The Journalist Test flagged the 2026 GAO workforce series as journalist-noticeable absences and the coverage manifest disclosed the gap to every synthesis prompt.

@@ -18,6 +18,26 @@ export function eraForDate(publishedAt: string | null): EntityEra {
   return 'trump_t1';
 }
 
+/** Eras whose [inauguration, next-inauguration) window intersects the query
+ *  window [dateFrom, dateTo] (#762 cross-era nomination). Open bounds span
+ *  everything on that side. Pure; exported for tests. */
+export function erasForWindow(
+  dateFrom: string | null | undefined,
+  dateTo: string | null | undefined,
+): EntityEra[] {
+  const starts: Record<EntityEra, [string, string | null]> = {
+    trump_t1: ['0000-01-01', BIDEN_INAUGURATION],
+    biden: [BIDEN_INAUGURATION, T2_INAUGURATION],
+    trump_t2: [T2_INAUGURATION, null],
+  };
+  return ENTITY_ERAS.filter((era) => {
+    const [start, end] = starts[era];
+    if (dateTo && dateTo < start) return false;
+    if (dateFrom && end && dateFrom >= end) return false;
+    return true;
+  });
+}
+
 /** Entities kept per weekly refresh, per era (baseline windows are smaller
  *  samples, so their lists are shorter). */
 export const MAX_HOT_ENTITIES = 1500;

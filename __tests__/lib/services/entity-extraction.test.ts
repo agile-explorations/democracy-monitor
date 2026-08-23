@@ -3,6 +3,7 @@ import {
   extractEntityPhrases,
   LIGHT_EXTRACTION,
   WIDE_EXTRACTION,
+  ENUM_EXTRACTION,
 } from '@/lib/services/entity-extraction';
 
 describe('extractEntityPhrases — shared classes (#750)', () => {
@@ -133,5 +134,36 @@ describe('WIDE config — task forces and initiatives (#760)', () => {
       (e) => e.phrase,
     );
     expect(phrases.filter((p) => /Task Force|Initiative/.test(p))).toEqual([]);
+  });
+});
+
+describe('ENUM_EXTRACTION (#762)', () => {
+  const statuteText = [
+    'The Insurrection Act of 1807 was invoked. The Laken Riley Act passed.',
+    'Debate continued on the Insurrection Act of 1807 and the Laken Riley Act.',
+  ];
+
+  it('extracts statutes under enum but not under light', () => {
+    const enumPhrases = extractEntityPhrases(statuteText, ENUM_EXTRACTION).map((e) => e.phrase);
+    const lightPhrases = extractEntityPhrases(statuteText, {
+      ...LIGHT_EXTRACTION,
+      minDocFrequency: 1,
+    }).map((e) => e.phrase);
+    expect(enumPhrases.join(' ')).toMatch(/Insurrection Act/);
+    expect(lightPhrases.join(' ')).not.toMatch(/Insurrection Act/);
+  });
+
+  it('keeps task forces and persons wide-only', () => {
+    const text = ['The Memphis Safe Task Force arrested Defendant John Smith yesterday.'];
+    const enumPhrases = extractEntityPhrases(text, { ...ENUM_EXTRACTION, minDocFrequency: 1 }).map(
+      (e) => e.phrase,
+    );
+    expect(enumPhrases.join(' ')).not.toMatch(/Task Force/);
+  });
+
+  it('validates-then-slices (config shape)', () => {
+    expect(ENUM_EXTRACTION.sliceBeforeValidate).toBe(false);
+    expect(ENUM_EXTRACTION.validationCandidates).toBeGreaterThanOrEqual(ENUM_EXTRACTION.maxPhrases);
+    expect(LIGHT_EXTRACTION.sliceBeforeValidate).toBe(true);
   });
 });
