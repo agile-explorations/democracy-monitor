@@ -263,19 +263,28 @@ async function queryGlobalTop(eras: EntityEra[]): Promise<EntityRow[]> {
 async function queryQuestionMatch(question: string, eras: EntityEra[]): Promise<EntityRow[]> {
   if (eras.length === 0) return [];
   const db = getDb();
+  // LIMIT-bound the FTS side (#776 hotfix): a generic question matches
+  // enormous doc sets and the aggregation pays for every matching junction
+  // row before any LIMIT. The CTE caps scanned matches; entity mention
+  // docs are a ~40k subset, so 5000 sampled matches rank entities fine.
   const result = await db.execute(sql`
+    WITH qdocs AS (
+      SELECT d.id FROM documents d
+      WHERE d.search_vector @@ websearch_to_tsquery('english', ${question})
+        AND EXISTS (SELECT 1 FROM hot_entity_docs h WHERE h.doc_id = d.id)
+      LIMIT 5000
+    )
     SELECT e.phrase, max(e.entity_class) AS entity_class,
            max(e.categories::text)::jsonb AS categories, max(e.fts_matches) AS fts_matches,
            max(e.doc_freq_term) AS doc_freq_term, min(e.doc_freq_baseline) AS doc_freq_baseline,
            count(DISTINCT hd.doc_id) AS q_matches
     FROM hot_entity_docs hd
+    JOIN qdocs q ON q.id = hd.doc_id
     JOIN hot_entities e ON e.id = hd.entity_id
-    JOIN documents d ON d.id = hd.doc_id
     WHERE e.era IN (${sql.join(
       eras.map((era) => sql`${era}`),
       sql`, `,
     )})
-      AND d.search_vector @@ websearch_to_tsquery('english', ${question})
     GROUP BY e.phrase
     ORDER BY (count(DISTINCT hd.doc_id) * count(DISTINCT hd.doc_id))::float
              / greatest(1, max(e.doc_freq_term)) DESC
