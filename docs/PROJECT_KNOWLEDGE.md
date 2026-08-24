@@ -316,6 +316,8 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 
 ### Data pipeline
 
+- **Congressional recess suppresses blended flag rates — it's composition, not detection.** CREC and LegiScan are the two highest-flag-rate sources (Jul 2026: 28.8% / 21.5% vs Federal Register 3.6%); when Congress adjourns their volume collapses (CREC 200–370 → 4–5 docs/wk in Aug 2026) and the blended weekly flag rate mechanically halves (~14% → ~7%) with no change in what's detected. Before investigating a "departures look low" period: (1) git-check the detection path for changes, (2) recompute rates excluding newly added sources, (3) compare _within-source_ flag rates July-vs-now — if those hold or rise, the dip is composition/seasonal. Verified 2026-08-24: within-source rates stable or up across FR/CL/DOJ/OIG while aggregate rate fell. Expect the same dip every August recess and December holidays.
+
 - **Audit resolution, not just coverage.** A source can have uniform document counts across eras and still be resolution-asymmetric — old-era CREC stored whole days as single granules whose L2 review saw only the first 8k chars, silently under-evidencing baselines while the #557 count-based parity audit reported zero findings. Every parity audit must compare the unit of storage and assessment (granule size distribution, chars-seen-by-L2) per era. (#704)
 
 - **Counting, collection, and evidence populations are three different things.** When a collection method changes irreversibly, define the _counting_ population as a documented classifier over stored fields and apply it uniformly to all eras — consistency by construction, no re-collection needed, and the L2 evidence population can stay untouched so statuses cannot flip. (R-POPULATION)

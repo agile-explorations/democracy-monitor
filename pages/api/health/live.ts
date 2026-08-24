@@ -6,18 +6,21 @@
  * cutover 502s measured pre-#730. Checks actual readiness (a DB round trip),
  * not just process liveness — an instance that cannot reach Postgres must
  * not receive traffic. No auth: the response carries no data beyond status.
+ *
+ * The round trip runs on a dedicated single-connection pool (pingDb) so it
+ * can never queue behind heavy retrieval queries on the shared pool — that
+ * starvation got healthy instances evicted on 2026-08-24.
  */
 
-import { sql } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getDb } from '@/lib/db';
+import { pingDb } from '@/lib/db';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
   if (!requireDb(res)) return;
   try {
-    await getDb().execute(sql`SELECT 1`);
+    await pingDb();
     res.status(200).json({ status: 'ok' });
   } catch {
     res.status(503).json({ status: 'db-unreachable' });
