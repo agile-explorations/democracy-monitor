@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCriminalDocketCandidate } from '@/lib/services/docket-discovery';
+import { caseNameMatchesPerson, isCriminalDocketCandidate } from '@/lib/services/docket-discovery';
 
 describe('isCriminalDocketCandidate (#761)', () => {
   it('accepts current-term criminal docket numbers', () => {
@@ -31,5 +31,20 @@ describe('isCriminalDocketCandidate (#761)', () => {
     expect(isCriminalDocketCandidate({ docketNumber: '1:25-cr-00272', dateFiled: null })).toBe(
       false,
     );
+  });
+});
+
+describe('caseNameMatchesPerson (#777 discovery guard)', () => {
+  it('accepts when the surname appears in the caption', () => {
+    expect(caseNameMatchesPerson('United States v. Comey', 'James B. Comey')).toBe(true);
+    expect(caseNameMatchesPerson('United States v. Comey', 'Jack Smith')).toBe(false);
+  });
+
+  it('rejects the measured junk-entity case', () => {
+    expect(caseNameMatchesPerson('United States v. De La Cruz-Lopez', 'Image Jose')).toBe(false);
+  });
+
+  it('rejects when no usable name token exists', () => {
+    expect(caseNameMatchesPerson('United States v. Doe', 'A B')).toBe(false);
   });
 });

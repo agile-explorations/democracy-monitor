@@ -64,6 +64,20 @@ export function isCriminalDocketCandidate(d: {
   return Boolean(d.dateFiled && d.dateFiled >= T2_INAUGURATION);
 }
 
+/** A discovered case must actually NAME the person searched: the person's
+ *  surname (last token, >=4 chars) appears in the caption. Guards against
+ *  junk person entities whose loose search matches unrelated cases (the
+ *  2026-08-24 "Image Jose" -> De La Cruz-Lopez enrollment). Pure. */
+export function caseNameMatchesPerson(caseName: string, personName: string): boolean {
+  const tokens = personName
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t.length >= 4);
+  if (tokens.length === 0) return false;
+  const surname = tokens[tokens.length - 1].toLowerCase();
+  return caseName.toLowerCase().includes(surname);
+}
+
 /** Party-name search for current-term criminal dockets. */
 async function searchCriminalDockets(personName: string): Promise<DiscoveredDocket[]> {
   const url = `${CL_API_V4}/search/?type=r&q=${encodeURIComponent(`"${personName}"`)}&order_by=dateFiled desc`;
@@ -143,6 +157,9 @@ export async function discoverAndEnrollDockets(): Promise<number> {
   const enrolled = await enrolledDocketIds();
   const people = await hotPersonEntities();
   let enrollments = 0;
+  // CL keeps duplicate docket rows for one case (the Comey precedent):
+  // dedupe within the run by docket NUMBER, not just id.
+  const seenNumbers = new Set<string>();
   for (const person of people) {
     if (enrollments >= DISCOVERY_ENROLL_CAP) break;
     const dockets = await searchCriminalDockets(person);
@@ -150,6 +167,10 @@ export async function discoverAndEnrollDockets(): Promise<number> {
     for (const d of dockets) {
       if (enrollments >= DISCOVERY_ENROLL_CAP) break;
       if (enrolled.has(d.docketId)) continue;
+      if (!caseNameMatchesPerson(d.caseName, person)) continue;
+      const numberKey = `${d.court}:${d.docketNumber}`.toLowerCase();
+      if (seenNumbers.has(numberKey)) continue;
+      seenNumbers.add(numberKey);
       await enrollDocket(d);
       enrolled.add(d.docketId);
       enrollments++;
