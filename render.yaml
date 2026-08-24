@@ -99,6 +99,11 @@ services:
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/snapshot.ts
     envVars:
+      # 2026-08-24 OOM: the weekly hot-entity sweep outgrew node's default
+      # heap (~250MB) as the corpus passed 300k scanned docs; a
+      # memory-bounded sweep is the durable fix (backlog).
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=1024
       - key: DATABASE_URL
         fromDatabase:
           name: epd-db
