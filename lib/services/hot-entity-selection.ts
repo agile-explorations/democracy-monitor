@@ -50,7 +50,16 @@ const TOP_POOL_CATEGORIES = 2;
 /** Shortlist slots offered to the judge, per nomination channel. */
 const SHORTLIST_POOL = 15;
 const SHORTLIST_CATEGORY = 40;
+/** Per-class quota inside the category channel (#775): a flat top-40 was
+ *  19 EOs deep — giga-entities starved every other class (IM3's canon
+ *  ranked 93-216 overall but top-6 within caption/person). Quota 10, not
+ *  5: extraction-junk entities occupy ~a third of top class slots (index
+ *  quality follow-up), and the canon sits at in-class ranks 6-12. */
+export const CATEGORY_CLASS_QUOTA = 10;
 const SHORTLIST_GLOBAL = 20;
+/** Question-conditioned channel slots (#776). */
+const SHORTLIST_QUESTION = 15;
+const QUESTION_CHANNEL_LIMIT = 20;
 /** Pool support a category needs before it can rank as dominant: at least
  *  two docs, scaling with pool size (5%). One stray doc is never "what the
  *  pool is about" — measured, H3. */
@@ -103,6 +112,24 @@ export function rankCategoryEntities(rows: EntityRow[]): EntityRow[] {
   );
 }
 
+/** Class-stratified category shortlist (#775): top-N per entity class by
+ *  breadth score, then breadth-ranked overall. Mechanical stratification —
+ *  no class is privileged; every class gets the same quota. Pure. */
+export function stratifyByClass(
+  rows: EntityRow[],
+  perClass: number = CATEGORY_CLASS_QUOTA,
+): EntityRow[] {
+  const byClass = new Map<string, EntityRow[]>();
+  for (const r of rankCategoryEntities(rows)) {
+    const bucket = byClass.get(r.entityClass) ?? [];
+    if (bucket.length < perClass) {
+      bucket.push(r);
+      byClass.set(r.entityClass, bucket);
+    }
+  }
+  return rankCategoryEntities([...byClass.values()].flat());
+}
+
 /** The pool's dominant categories by ENRICHMENT — pool share divided by
  *  global share. Raw counts are non-discriminating: civilLiberties is the
  *  corpus's largest category and tops every pool. Pure; exported for tests. */
@@ -140,6 +167,7 @@ export function nominateShortlist(
   categoryRows: EntityRow[],
   excludePhrases: string[],
   globalRows: EntityRow[] = [],
+  questionRows: EntityRow[] = [],
 ): EntityRow[] {
   const excluded = new Set(excludePhrases.map((ph) => ph.toLowerCase()));
   const shortlist: EntityRow[] = [];
@@ -151,6 +179,9 @@ export function nominateShortlist(
     shortlist.push(r);
   };
   rankPoolEntities(poolRows).slice(0, SHORTLIST_POOL).forEach(push);
+  // #776: question-conditioned nominees precede the question-blind
+  // channels — they carry the strongest relevance signal.
+  questionRows.slice(0, SHORTLIST_QUESTION).forEach(push);
   rankCategoryEntities(categoryRows).slice(0, SHORTLIST_CATEGORY).forEach(push);
   rankCategoryEntities(globalRows).slice(0, SHORTLIST_GLOBAL).forEach(push);
   return shortlist;
@@ -219,6 +250,37 @@ async function queryGlobalTop(eras: EntityEra[]): Promise<EntityRow[]> {
     rows.push(...(result.rows as Array<Record<string, unknown>>).map(mapEntityRow));
   }
   return rows;
+}
+
+/** Question-conditioned nomination (#776): entities whose MENTION DOCS
+ *  match the question's own terms. The other channels are question-blind
+ *  (category/global) or pool-circular (doc-join); this one lets the
+ *  question's vocabulary reach entities the pool never retrieved — J.G.G.'s
+ *  19 mention docs are saturated with "due process" while no giant's are.
+ *  Score = matches x share (matches^2 / docFreq): volume alone would
+ *  re-admit the giants, share alone would admit 1-doc noise. Mechanical
+ *  and content-neutral; the question text drives it, nothing curated. */
+async function queryQuestionMatch(question: string, eras: EntityEra[]): Promise<EntityRow[]> {
+  if (eras.length === 0) return [];
+  const db = getDb();
+  const result = await db.execute(sql`
+    SELECT e.phrase, max(e.entity_class) AS entity_class,
+           max(e.categories::text)::jsonb AS categories, max(e.fts_matches) AS fts_matches,
+           max(e.doc_freq_term) AS doc_freq_term, min(e.doc_freq_baseline) AS doc_freq_baseline,
+           count(DISTINCT hd.doc_id) AS q_matches
+    FROM hot_entity_docs hd
+    JOIN hot_entities e ON e.id = hd.entity_id
+    JOIN documents d ON d.id = hd.doc_id
+    WHERE e.era IN (${sql.join(
+      eras.map((era) => sql`${era}`),
+      sql`, `,
+    )})
+      AND d.search_vector @@ websearch_to_tsquery('english', ${question})
+    GROUP BY e.phrase
+    ORDER BY (count(DISTINCT hd.doc_id) * count(DISTINCT hd.doc_id))::float
+             / greatest(1, max(e.doc_freq_term)) DESC
+    LIMIT ${QUESTION_CHANNEL_LIMIT}`);
+  return (result.rows as Array<Record<string, unknown>>).map(mapEntityRow);
 }
 
 async function queryCategoryMatch(categories: string[], eras: EntityEra[]): Promise<EntityRow[]> {
@@ -300,7 +362,7 @@ export async function selectSalienceArms(
   if (!isDbAvailable() || seedDocs.length === 0 || eras.length === 0) return [];
   try {
     const globalShares = await queryGlobalCategoryShares();
-    const [poolRows, categoryRows, globalRows] = await Promise.all([
+    const [poolRows, categoryRows, globalRows, questionRows] = await Promise.all([
       queryPoolJoin(seedDocs.map((d) => d.id)),
       queryCategoryMatch(
         dominantCategories(
@@ -310,8 +372,15 @@ export async function selectSalienceArms(
         eras,
       ),
       queryGlobalTop(eras),
+      queryQuestionMatch(question, eras),
     ]);
-    const shortlist = nominateShortlist(poolRows, categoryRows, excludePhrases, globalRows);
+    const shortlist = nominateShortlist(
+      poolRows,
+      stratifyByClass(categoryRows),
+      excludePhrases,
+      globalRows,
+      questionRows,
+    );
     if (shortlist.length === 0) return [];
     const candidates: JudgeCandidate[] = shortlist.map((r) => ({
       phrase: r.phrase,

@@ -46,7 +46,11 @@ export function buildJudgePrompt(question: string, candidates: JudgeCandidate[])
     `A research system answers questions from U.S. government documents. For the ` +
     `question below, choose which of these tracked entities a researcher would run ` +
     `as targeted follow-up searches — entities whose own documents likely answer ` +
-    `part of the question. Choose ONLY from the list, copy phrases EXACTLY, most ` +
+    `part of the question. Many entities postdate your knowledge — an unfamiliar ` +
+    `case caption or program name is EXPECTED, not suspect: judge by entity class ` +
+    `and category fit, never by name recognition. Court cases matter for questions ` +
+    `about litigation, rights, and process even when you cannot recall the case. ` +
+    `Choose ONLY from the list, copy phrases EXACTLY, most ` +
     `relevant first, at most ${MAX_JUDGE_PICKS}. Skip entities that are merely from ` +
     `the same broad policy area. Return ONLY a JSON array of phrase strings.\n\n` +
     `Question: "${question}"\n\nEntities:\n${list}`
@@ -79,7 +83,7 @@ export function parseJudgeResponse(content: string, candidatePhrases: string[]):
 
 function hashJudgeKey(question: string): string {
   return createHash('sha256')
-    .update(['v1', dataWeekStamp(), question.toLowerCase().trim()].join('|'))
+    .update(['v2', dataWeekStamp(), question.toLowerCase().trim()].join('|'))
     .digest('hex')
     .slice(0, 16);
 }

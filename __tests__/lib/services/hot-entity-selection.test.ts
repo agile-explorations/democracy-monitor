@@ -11,6 +11,7 @@ import {
   rankCategoryEntities,
   rankPoolEntities,
   stabilityFloor,
+  stratifyByClass,
 } from '@/lib/services/hot-entity-selection';
 
 const entity = (
@@ -208,5 +209,71 @@ describe('finalizeArms mechanical top-up (#762)', () => {
     const shortlist = Array.from({ length: 40 }, (_, i) => row(`e-${String(i).padStart(2, '0')}`));
     const arms = finalizeArms(shortlist, null, [], []);
     expect(arms.length).toBeLessThanOrEqual(MAX_SALIENCE_ARMS_ENUM);
+  });
+});
+
+describe('stratifyByClass (#775)', () => {
+  const e = (phrase: string, cls: string, freq: number, cats = 2): EntityRow => ({
+    phrase,
+    entityClass: cls,
+    categories: Array.from({ length: cats }, (_, i) => `cat-${i}`),
+    ftsMatches: freq,
+    docFreqTerm: freq,
+    docFreqBaseline: 0,
+  });
+
+  it('admits top-of-class entities a flat cap would exclude', () => {
+    // 19 EO giants (the measured IM3 flood) + a caption canon below them all.
+    const giants = Array.from({ length: 19 }, (_, i) => e(`EO-${i}`, 'eo', 500 - i, 5));
+    const canon = e('J.G.G. v. Trump', 'caption', 19, 5);
+    const out = stratifyByClass([...giants, canon], 5);
+    expect(out.map((r) => r.phrase)).toContain('J.G.G. v. Trump');
+    expect(out.filter((r) => r.entityClass === 'eo').length).toBe(5);
+  });
+
+  it('keeps overall breadth ordering across the stratified survivors', () => {
+    const out = stratifyByClass([e('small-cap', 'caption', 10), e('big-eo', 'eo', 100)], 5);
+    expect(out[0].phrase).toBe('big-eo');
+  });
+
+  it('applies the same quota to every class', () => {
+    const rows = [
+      ...Array.from({ length: 8 }, (_, i) => e(`c-${i}`, 'caption', 50 - i)),
+      ...Array.from({ length: 8 }, (_, i) => e(`p-${i}`, 'person', 40 - i)),
+    ];
+    const out = stratifyByClass(rows, 3);
+    expect(out.filter((r) => r.entityClass === 'caption').length).toBe(3);
+    expect(out.filter((r) => r.entityClass === 'person').length).toBe(3);
+  });
+});
+
+describe('question-channel shortlist ordering (#776)', () => {
+  const e = (phrase: string, cls = 'caption'): EntityRow => ({
+    phrase,
+    entityClass: cls,
+    categories: ['civilLiberties'],
+    ftsMatches: 10,
+    docFreqTerm: 10,
+    docFreqBaseline: 0,
+  });
+
+  it('places question-conditioned nominees after pool but before category/global', () => {
+    const out = nominateShortlist(
+      [],
+      [e('category-entity')],
+      [],
+      [e('global-entity')],
+      [e('question-entity')],
+    );
+    expect(out.map((r) => r.phrase)).toEqual([
+      'question-entity',
+      'category-entity',
+      'global-entity',
+    ]);
+  });
+
+  it('dedupes question nominees against later channels', () => {
+    const out = nominateShortlist([], [e('shared')], [], [], [e('shared')]);
+    expect(out.length).toBe(1);
   });
 });
