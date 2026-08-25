@@ -149,3 +149,55 @@ export function rankHotEntities(
     .sort((a, b) => hotEntityScore(b) - hotEntityScore(a) || a.phrase.localeCompare(b.phrase))
     .slice(0, max);
 }
+
+// Pure entity-ranking primitives (moved from hot-entity-selection, 2026-08-24).
+export interface EntityRow {
+  phrase: string;
+  entityClass: string;
+  categories: string[];
+  ftsMatches: number;
+  docFreqTerm: number;
+  docFreqBaseline: number;
+}
+
+export interface PoolEntityRow extends EntityRow {
+  /** How many of the question's pool docs mention this entity. */
+  poolMentions: number;
+}
+
+/** Breadth-weighted, baseline-collapsed recurrence — cross-cutting
+ *  recurrence is what "marquee" means in this product. Pure. */
+export function categoryFillScore(r: EntityRow): number {
+  return (r.docFreqTerm * Math.max(1, r.categories.length)) / (1 + r.docFreqBaseline);
+}
+
+export function rankCategoryEntities(rows: EntityRow[]): EntityRow[] {
+  return [...rows].sort(
+    (a, b) => categoryFillScore(b) - categoryFillScore(a) || a.phrase.localeCompare(b.phrase),
+  );
+}
+
+/** Per-class quota inside the category channel (#775): a flat top-40 was
+ *  19 EOs deep — giga-entities starved every other class (IM3's canon
+ *  ranked 93-216 overall but top-6 within caption/person). Quota 10, not
+ *  5: extraction-junk entities occupy ~a third of top class slots (index
+ *  quality follow-up), and the canon sits at in-class ranks 6-12. */
+export const CATEGORY_CLASS_QUOTA = 10;
+
+/** Class-stratified category shortlist (#775): top-N per entity class by
+ *  breadth score, then breadth-ranked overall. Mechanical stratification —
+ *  no class is privileged; every class gets the same quota. Pure. */
+export function stratifyByClass(
+  rows: EntityRow[],
+  perClass: number = CATEGORY_CLASS_QUOTA,
+): EntityRow[] {
+  const byClass = new Map<string, EntityRow[]>();
+  for (const r of rankCategoryEntities(rows)) {
+    const bucket = byClass.get(r.entityClass) ?? [];
+    if (bucket.length < perClass) {
+      bucket.push(r);
+      byClass.set(r.entityClass, bucket);
+    }
+  }
+  return rankCategoryEntities([...byClass.values()].flat());
+}
