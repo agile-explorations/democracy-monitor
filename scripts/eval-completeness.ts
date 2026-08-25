@@ -83,6 +83,15 @@ async function fetchDocs(base: string, item: EvalQuestion, attempt = 0): Promise
   let res: Response;
   try {
     res = await fetch(url, { signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS) });
+    // .json() inside the try: an edge-killed response can 200 then die
+    // mid-body, which must retry like any transport failure (2026-08-24).
+    if (res.ok) {
+      const body = (await res.json()) as { documents?: unknown[] };
+      // A degraded build can answer 200 with zero documents; for these
+      // questions that is never legitimate — retry, don't capture it.
+      if (body.documents?.length) return body;
+      throw new Error('empty documents payload');
+    }
   } catch (err) {
     if (attempt >= 8) throw err;
     console.log(`  ${item.id}: fetch failed, retry ${attempt + 1} in 30s`);
@@ -94,8 +103,7 @@ async function fetchDocs(base: string, item: EvalQuestion, attempt = 0): Promise
     await sleep(15_000);
     return fetchDocs(base, item, attempt + 1);
   }
-  if (!res.ok) throw new Error(`${item.id} docsOnly HTTP ${res.status}`);
-  return res.json();
+  throw new Error(`${item.id} docsOnly HTTP ${res.status}`);
 }
 
 async function streamAnswer(
@@ -143,7 +151,18 @@ async function capture(base: string, questions: EvalQuestion[], captureDir: stri
     const docs = (await fetchDocs(base, q)) as { documents?: Array<{ id: number }> };
     writeFileSync(docsPath, JSON.stringify(docs, null, 1));
     await sleep(3_000);
-    const answer = await streamAnswer(base, q, docs);
+    let answer = '';
+    for (let tries = 0; ; tries++) {
+      try {
+        answer = await streamAnswer(base, q, docs);
+        break;
+      } catch (err) {
+        // Mid-stream socket deaths (edge timeout) retry like fetchDocs does.
+        if (tries >= 2) throw err;
+        console.log(`  ${q.id}: stream failed, retry ${tries + 1} in 30s`);
+        await sleep(30_000);
+      }
+    }
     writeFileSync(answerPath, answer);
     console.log(`  ${q.id}: docs=${docs.documents?.length ?? 0} answer=${answer.length}ch`);
     await sleep(PACING_MS);
