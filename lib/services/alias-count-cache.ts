@@ -22,9 +22,11 @@ import {
   hashArmParams,
   hashPhrase,
   ledgerSlowAliasWork,
+  isStatementTimeout,
   SLOW_ARM_MS,
 } from '@/lib/services/arm-cache';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
+import { mapConcurrent, sleep } from '@/lib/utils/async';
 
 export interface ExpansionWindow {
   dateFrom?: string;
@@ -204,4 +206,50 @@ export async function warmAliasValidation(phrase: string, window: ExpansionWindo
     Math.min(MAX_MATCH_CAP, Math.floor(windowTotal * MAX_WINDOW_SHARE)),
   );
   await cachedAliasCount(db, phrase, window, filters, cap, true);
+}
+
+/** Same bound rationale as ARM_QUERY_CONCURRENCY (arm-cache.ts): leave the
+ *  10-client pool headroom so no count statement runs slow enough to hit
+ *  the 120s ceiling under a cold-cache burst (2026-08-24 incident). */
+const COUNT_QUERY_CONCURRENCY = 5;
+const COUNT_TIMEOUT_RETRY_DELAY_MS = 3_000;
+
+/** Count every candidate alias with bounded concurrency, order preserved.
+ *  Failure tolerance mirrors the arms (#729 hotfix): one pathological alias
+ *  must not kill the whole build. A statement-timeout kill gets ONE delayed
+ *  retry (contention is transient); still failing, the alias is dropped
+ *  this build (matches = -1) and nothing is cached, so it retries next
+ *  build. Dropped aliases are logged as a DEGRADED summary (#778). */
+export async function countAliasCandidates(
+  db: ReturnType<typeof getDb>,
+  candidates: string[],
+  window: ExpansionWindow,
+  filters: ReturnType<typeof windowFilters>,
+  maxMatches: number,
+): Promise<Array<{ phrase: string; matches: number }>> {
+  const counts = await mapConcurrent(candidates, COUNT_QUERY_CONCURRENCY, async (phrase) => {
+    const attempt = () => cachedAliasCount(db, phrase, window, filters, maxMatches);
+    try {
+      return { phrase, matches: await attempt() };
+    } catch (err) {
+      if (isStatementTimeout(err)) {
+        await sleep(COUNT_TIMEOUT_RETRY_DELAY_MS);
+        try {
+          return { phrase, matches: await attempt() };
+        } catch {
+          console.warn(`[query-expansion] count failed after retry (alias dropped): ${phrase}`);
+          return { phrase, matches: -1 };
+        }
+      }
+      console.warn(`[query-expansion] count failed (alias dropped): ${phrase}`, err);
+      return { phrase, matches: -1 };
+    }
+  });
+  const dropped = counts.filter((c) => c.matches === -1);
+  if (dropped.length > 0) {
+    console.warn(
+      `[query-expansion] DEGRADED VALIDATION: ${dropped.length}/${candidates.length} aliases dropped: ${dropped.map((c) => c.phrase).join(', ')}`,
+    );
+  }
+  return counts;
 }

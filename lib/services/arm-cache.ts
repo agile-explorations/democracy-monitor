@@ -21,6 +21,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
 import { slowAliases } from '@/lib/db/schema';
+import { mapConcurrent, sleep } from '@/lib/utils/async';
 
 type Db = ReturnType<typeof getDb>;
 type SqlChunk = ReturnType<typeof sql>;
@@ -127,18 +128,52 @@ export async function runCachedArm(
   return rows;
 }
 
-/** Execute keyed alias arms concurrently, tolerating per-arm failures —
- *  a failed/ceiling-cut arm degrades to an empty list and caches nothing. */
+/** Postgres 57014 (statement timeout) anywhere in the error's cause chain.
+ *  Pure — exported for tests. */
+export function isStatementTimeout(err: unknown): boolean {
+  for (let e = err as { code?: string; cause?: unknown } | undefined; e; e = e.cause as never) {
+    if (e.code === '57014') return true;
+  }
+  return false;
+}
+
+/** Concurrent arm statements are capped WELL below the pool's 10 clients:
+ *  10-wide fan-out under a cold cache thrashed the 1-CPU DB until 1s queries
+ *  blew the 120s ceiling and arms silently vanished (2026-08-24 incident). */
+const ARM_QUERY_CONCURRENCY = 5;
+const TIMEOUT_RETRY_DELAY_MS = 3_000;
+
+/** Execute keyed alias arms with bounded concurrency, tolerating per-arm
+ *  failures — a failed arm degrades to an empty list and caches nothing. A
+ *  statement-timeout kill gets ONE delayed retry (contention is transient;
+ *  the retry usually lands once the burst drains). Dropped arms are counted
+ *  and logged as a summary so degraded builds are visible (#778). */
 export async function runKeyedArms(arms: KeyedArm[]): Promise<Record<string, unknown>[][]> {
   const db = getDb();
-  return Promise.all(
-    arms.map(async (arm) => {
-      try {
-        return await runCachedArm(db, arm);
-      } catch (err) {
-        console.warn(`[arm-cache] alias arm failed (skipped): ${arm.phrase}`, err);
-        return [];
+  const dropped: string[] = [];
+  const results = await mapConcurrent(arms, ARM_QUERY_CONCURRENCY, async (arm) => {
+    try {
+      return await runCachedArm(db, arm);
+    } catch (err) {
+      if (isStatementTimeout(err)) {
+        await sleep(TIMEOUT_RETRY_DELAY_MS);
+        try {
+          return await runCachedArm(db, arm);
+        } catch (retryErr) {
+          console.warn(`[arm-cache] alias arm failed after retry (skipped): ${arm.phrase}`);
+          dropped.push(arm.phrase);
+          return [];
+        }
       }
-    }),
-  );
+      console.warn(`[arm-cache] alias arm failed (skipped): ${arm.phrase}`, err);
+      dropped.push(arm.phrase);
+      return [];
+    }
+  });
+  if (dropped.length > 0) {
+    console.warn(
+      `[arm-cache] DEGRADED BUILD: ${dropped.length}/${arms.length} arms dropped: ${dropped.join(', ')}`,
+    );
+  }
+  return results;
 }

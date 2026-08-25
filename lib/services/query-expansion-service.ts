@@ -23,8 +23,8 @@ import { CacheKeys } from '@/lib/cache/keys';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { ExpansionWindow } from '@/lib/services/alias-count-cache';
 import {
-  cachedAliasCount,
   cachedWindowTotal,
+  countAliasCandidates,
   MAX_MATCH_CAP,
   MAX_WINDOW_SHARE,
   MIN_MATCH_CAP,
@@ -257,24 +257,7 @@ export async function validateAliasesDiagnostic(
     .filter((p) => isBoilerplateAlias(p))
     .map((phrase) => ({ phrase, reason: 'boilerplate' }));
   const candidates = withCitationVariants(phrases.filter((p) => !isBoilerplateAlias(p)));
-  // Counts run concurrently — bounded index scans; order is preserved. Each
-  // alias is counted only to maxMatches+1: enough to decide the cap, and
-  // armWeight saturates well below that anyway. Counts are cached per
-  // (alias, window, data week) — see cachedAliasCount (#729 follow-up).
-  const counts = await Promise.all(
-    candidates.map(async (phrase) => {
-      try {
-        return { phrase, matches: await cachedAliasCount(db, phrase, window, filters, maxMatches) };
-      } catch (err) {
-        // Failure tolerance mirrors the arms (#729 hotfix): the 120s safety
-        // ceiling turned a formerly slow count into a THROW, and one
-        // pathological alias must not kill the whole build. The alias is
-        // dropped this build; nothing is cached, so it retries next time.
-        console.warn(`[query-expansion] count failed (alias dropped): ${phrase}`, err);
-        return { phrase, matches: -1 };
-      }
-    }),
-  );
+  const counts = await countAliasCandidates(db, candidates, window, filters, maxMatches);
   const validated: ValidatedAlias[] = [];
   for (const c of counts) {
     if (c.matches === -1) rejected.push({ phrase: c.phrase, reason: 'count-failed' });
