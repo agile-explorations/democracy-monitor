@@ -63,6 +63,10 @@ export default defineConfig({
         // denominator at 0% — their pure halves (armWeight, fusion,
         // composers) are tested via their own suites.
         'lib/services/research-fusion.ts',
+        // Load-test harness (#781): I/O probe/runner code exercised against
+        // the dev environment, not unit tests; pure parts (hashQuery, pct,
+        // bank exclusions) ARE unit-tested but the files are I/O-dominant.
+        'scripts/loadtest/**',
         'lib/services/search-service.ts',
         'lib/services/search-queries.ts',
         'lib/services/research-retrieval.ts',
