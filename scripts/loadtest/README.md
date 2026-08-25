@@ -16,9 +16,26 @@ CRON_SECRET         dev value — lets collect.ts read /api/health/search-timing
 
 ## Runbook (one measurement round)
 
-1. Restore + standardize the dev DB: `DATABASE_URL=<dev> pnpm db:pull-prod`
-   (verifies row count), then `DATABASE_URL=<dev> pnpm db:prewarm`. Record
-   the DB tier — it goes in the report and every comparison.
+1. Restore + standardize the dev DB **via an internal Render job** (the
+   default — restores over Render's private network in ~25-40 min):
+
+   ```
+   curl -X POST -H "Authorization: Bearer $RENDER_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"startCommand":"pnpm db:init --force && pnpm db:prewarm"}' \
+     https://api.render.com/v1/services/<dev-service-id>/jobs
+   ```
+
+   Poll the job via `GET .../jobs/<id>` until `succeeded`, then verify:
+   `psql <dev-url> -c 'SELECT count(*) FROM documents'` ≥ 100k. Record the
+   DB tier — it goes in the report and every comparison.
+
+   (`DATABASE_URL=<dev> pnpm db:pull-prod` remains for when you want the
+   dump locally — but it pushes ~8.5GB of COPY upstream through your uplink
+   at ~2.5MB/s: a ~2.5h operation, measured 2026-08-25, with the VPN as an
+   extra failure mode. The dev DB disk must be ≥30GB either way — a 15GB
+   disk filled mid-restore and Postgres dropped every connection.)
+
 2. Per profile: `pnpm loadtest:reset` → `pnpm loadtest --profile=p0 --label=<tier>`
    → `pnpm loadtest:collect scripts/loadtest/reports/<run>.json`.
    Profiles: `p0` (lead metric, 5 sequential cold probes), `p1` (browse-only
