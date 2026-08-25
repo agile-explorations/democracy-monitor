@@ -152,17 +152,41 @@ function dedupeAliases(groups: ValidatedAlias[][]): ValidatedAlias[] {
 /** Run every productive arm (expansion + mined + salience) into a roster.
  *  Arm queries route through the per-(phrase, window) cache — the seed
  *  sweep already ran the expansion/mined arms, so those are cache hits. */
+/** Judge-picked arms guaranteed roster seats: sharpest-first alone let
+ *  swarms of low-match captions fill all 18 seats and cut the judge's
+ *  question-relevant picks (Trump v. J.G.G. at 31 matches lost every seat
+ *  to sub-20-match junk — 2026-08-24 gate miss). */
+const ROSTER_PRIORITY_SEATS = 10;
+
+/** Pure roster selection: priority phrases (judge's relevance order) claim
+ *  up to ROSTER_PRIORITY_SEATS; remaining seats fill sharpest-first from
+ *  everything else. Exported for tests. */
+export function composeRoster(
+  aliases: ValidatedAlias[],
+  priorityPhrases: string[] = [],
+  maxArms: number = MAX_ROSTER_ARMS,
+  prioritySeats: number = ROSTER_PRIORITY_SEATS,
+): ValidatedAlias[] {
+  const byPhrase = new Map(aliases.map((a) => [a.phrase.toLowerCase(), a]));
+  const priority: ValidatedAlias[] = [];
+  for (const ph of priorityPhrases) {
+    const a = byPhrase.get(ph.toLowerCase());
+    if (a && priority.length < prioritySeats && !priority.includes(a)) priority.push(a);
+  }
+  const taken = new Set(priority.map((a) => a.phrase.toLowerCase()));
+  const rest = aliases
+    .filter((a) => !taken.has(a.phrase.toLowerCase()))
+    .sort((a, b) => a.matches - b.matches || a.phrase.localeCompare(b.phrase));
+  return [...priority, ...rest].slice(0, maxArms);
+}
+
 async function buildArmRoster(
   aliases: ValidatedAlias[],
   dateFrom: string | undefined,
   dateTo: string | undefined,
+  priorityPhrases: string[] = [],
 ): Promise<SlotArm[]> {
-  // Sharpest-first is knowable BEFORE running arms (matches come from
-  // validation), so the slice keeps exactly the arms the slot allocator
-  // would order first anyway.
-  const bounded = [...aliases]
-    .sort((a, b) => a.matches - b.matches || a.phrase.localeCompare(b.phrase))
-    .slice(0, MAX_ROSTER_ARMS);
+  const bounded = composeRoster(aliases, priorityPhrases);
   if (bounded.length === 0) return [];
   const arms = await runArmsForAliases(bounded, dateFrom, dateTo);
   return arms
@@ -189,16 +213,18 @@ export async function applySalienceStage(opts: {
   reserve: number;
   extraArms?: ValidatedAlias[];
 }): Promise<{ docs: ResearchDocument[]; salience: ValidatedAlias[] }> {
-  const salience = await selectSalienceArms(
+  const selection = await selectSalienceArms(
     opts.query,
     opts.docs.map((d) => ({ id: d.id, category: d.category })),
     opts.alreadySearched.map((t) => t.phrase),
     [opts.era],
   );
+  const salience = selection.arms;
   const roster = await buildArmRoster(
     dedupeAliases([salience, opts.extraArms ?? []]),
     opts.dateFrom,
     opts.dateTo,
+    selection.judgedPhrases,
   );
   if (roster.length === 0) return { docs: opts.docs, salience };
   const keep = opts.docs.length;
@@ -226,16 +252,18 @@ async function runArmStage(
   expansionTerms: ValidatedAlias[],
   contextDocs: number,
 ): Promise<{ novelSalience: ValidatedAlias[]; armPool: ResearchDocument[] }> {
-  const novelSalience = await selectSalienceArms(
+  const selection = await selectSalienceArms(
     p.query,
     seed.documents.map((d) => ({ id: d.id, category: d.category })),
     [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
     erasForWindow(p.dateFrom ?? null, p.dateTo ?? null),
   );
+  const novelSalience = selection.arms;
   const roster = await buildArmRoster(
     dedupeAliases([novelSalience, expansionTerms, seed.minedAliases]),
     p.dateFrom,
     p.dateTo,
+    selection.judgedPhrases,
   );
   // The bug #762 fixed: exclude only the KEPT seed prefix, so a doc the
   // seed ranked past the reservation line can still earn an arm slot

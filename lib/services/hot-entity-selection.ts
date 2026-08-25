@@ -22,19 +22,28 @@
  *
  * Six measured iterations showed mechanical ranking finds the right
  * NEIGHBORHOOD but mis-orders the final twelve; the judge resolves that as
- * a labeled multiple-choice. Phrase-embedding similarity was evaluated and
- * rejected outright (junk statutes outscored J.G.G. v. Trump on the very
- * question about it). Failure-tolerant at every stage: judge failure falls
- * back to the mechanical ranking; any error returns [] (seed-only build).
- * Pure ranking halves exported for tests.
+ * a labeled multiple-choice (phrase-embedding similarity was evaluated and
+ * rejected: junk statutes outscored J.G.G. v. Trump). Failure-tolerant at
+ * every stage — judge failure falls back to the mechanical ranking; any
+ * error returns the empty selection. Pure ranking halves exported for tests.
  */
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { JudgeCandidate } from '@/lib/services/hot-entity-judge';
 import { judgeShortlist } from '@/lib/services/hot-entity-judge';
-import type { EntityEra } from '@/lib/services/hot-entity-ranking';
+import type { EntityEra, EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-ranking';
+import { rankCategoryEntities, stratifyByClass } from '@/lib/services/hot-entity-ranking';
+import { logSalienceOutcome } from '@/lib/services/hot-entity-trace';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
+
+export type { EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-ranking';
+export {
+  CATEGORY_CLASS_QUOTA,
+  categoryFillScore,
+  rankCategoryEntities,
+  stratifyByClass,
+} from '@/lib/services/hot-entity-ranking';
 
 /** Judge-picked arms per question (judged portion semantics, #758). */
 export const MAX_SALIENCE_ARMS = 12;
@@ -45,40 +54,18 @@ export const MAX_SALIENCE_ARMS_ENUM = 20;
 const MECHANICAL_TOP_UP = 8;
 /** Doc-join floor: one passing mention in one pool doc is incidental. */
 export const MIN_POOL_MENTIONS = 2;
-/** Pool categories considered "dominant". */
-const TOP_POOL_CATEGORIES = 2;
+const TOP_POOL_CATEGORIES = 2; // pool categories considered "dominant"
 /** Shortlist slots offered to the judge, per nomination channel. */
 const SHORTLIST_POOL = 15;
 const SHORTLIST_CATEGORY = 40;
-/** Per-class quota inside the category channel (#775): a flat top-40 was
- *  19 EOs deep — giga-entities starved every other class (IM3's canon
- *  ranked 93-216 overall but top-6 within caption/person). Quota 10, not
- *  5: extraction-junk entities occupy ~a third of top class slots (index
- *  quality follow-up), and the canon sits at in-class ranks 6-12. */
-export const CATEGORY_CLASS_QUOTA = 10;
 const SHORTLIST_GLOBAL = 20;
-/** Question-conditioned channel slots (#776). */
-const SHORTLIST_QUESTION = 15;
+const SHORTLIST_QUESTION = 15; // question-conditioned channel slots (#776)
 const QUESTION_CHANNEL_LIMIT = 20;
 /** Pool support a category needs before it can rank as dominant: at least
  *  two docs, scaling with pool size (5%). One stray doc is never "what the
  *  pool is about" — measured, H3. */
 export function categorySupportFloor(poolTotal: number): number {
   return Math.max(2, Math.ceil(poolTotal * 0.05));
-}
-
-export interface EntityRow {
-  phrase: string;
-  entityClass: string;
-  categories: string[];
-  ftsMatches: number;
-  docFreqTerm: number;
-  docFreqBaseline: number;
-}
-
-export interface PoolEntityRow extends EntityRow {
-  /** How many of the question's pool docs mention this entity. */
-  poolMentions: number;
 }
 
 const novelty = (r: { docFreqTerm: number; docFreqBaseline: number }) =>
@@ -98,36 +85,6 @@ export function rankPoolEntities(
         novelty(b) - novelty(a) ||
         a.phrase.localeCompare(b.phrase),
     );
-}
-
-/** Breadth-weighted, baseline-collapsed recurrence — cross-cutting
- *  recurrence is what "marquee" means in this product. Pure. */
-export function categoryFillScore(r: EntityRow): number {
-  return (r.docFreqTerm * Math.max(1, r.categories.length)) / (1 + r.docFreqBaseline);
-}
-
-export function rankCategoryEntities(rows: EntityRow[]): EntityRow[] {
-  return [...rows].sort(
-    (a, b) => categoryFillScore(b) - categoryFillScore(a) || a.phrase.localeCompare(b.phrase),
-  );
-}
-
-/** Class-stratified category shortlist (#775): top-N per entity class by
- *  breadth score, then breadth-ranked overall. Mechanical stratification —
- *  no class is privileged; every class gets the same quota. Pure. */
-export function stratifyByClass(
-  rows: EntityRow[],
-  perClass: number = CATEGORY_CLASS_QUOTA,
-): EntityRow[] {
-  const byClass = new Map<string, EntityRow[]>();
-  for (const r of rankCategoryEntities(rows)) {
-    const bucket = byClass.get(r.entityClass) ?? [];
-    if (bucket.length < perClass) {
-      bucket.push(r);
-      byClass.set(r.entityClass, bucket);
-    }
-  }
-  return rankCategoryEntities([...byClass.values()].flat());
 }
 
 /** The pool's dominant categories by ENRICHMENT — pool share divided by
@@ -260,8 +217,15 @@ async function queryGlobalTop(eras: EntityEra[]): Promise<EntityRow[]> {
  *  Score = matches x share (matches^2 / docFreq): volume alone would
  *  re-admit the giants, share alone would admit 1-doc noise. Mechanical
  *  and content-neutral; the question text drives it, nothing curated. */
+/** Per-era question matching, recency-first merge: one combined LIMIT let
+ *  baseline-era omnibus granules (matching any long question's AND terms)
+ *  bury current-era entities (2026-08-24 gate miss). */
 async function queryQuestionMatch(question: string, eras: EntityEra[]): Promise<EntityRow[]> {
-  if (eras.length === 0) return [];
+  const perEra = await Promise.all(eras.map((era) => queryQuestionMatchForEra(question, era)));
+  return [...perEra].reverse().flat();
+}
+
+async function queryQuestionMatchForEra(question: string, era: EntityEra): Promise<EntityRow[]> {
   const db = getDb();
   // LIMIT-bound the FTS side (#776 hotfix): a generic question matches
   // enormous doc sets and the aggregation pays for every matching junction
@@ -281,10 +245,7 @@ async function queryQuestionMatch(question: string, eras: EntityEra[]): Promise<
     FROM hot_entity_docs hd
     JOIN qdocs q ON q.id = hd.doc_id
     JOIN hot_entities e ON e.id = hd.entity_id
-    WHERE e.era IN (${sql.join(
-      eras.map((era) => sql`${era}`),
-      sql`, `,
-    )})
+    WHERE e.era = ${era}
     GROUP BY e.phrase
     ORDER BY (count(DISTINCT hd.doc_id) * count(DISTINCT hd.doc_id))::float
              / greatest(1, max(e.doc_freq_term)) DESC
@@ -362,13 +323,21 @@ export function finalizeArms(
     .map((r) => ({ phrase: r.phrase, matches: r.ftsMatches }));
 }
 
+export interface SalienceSelection {
+  arms: ValidatedAlias[];
+  /** Judge picks (relevance order) in arms; composeRoster reserves seats. */
+  judgedPhrases: string[];
+}
+
+const NO_SALIENCE: SalienceSelection = { arms: [], judgedPhrases: [] };
+
 export async function selectSalienceArms(
   question: string,
   seedDocs: Array<{ id: number; category: string | null }>,
   excludePhrases: string[],
   eras: EntityEra[],
-): Promise<ValidatedAlias[]> {
-  if (!isDbAvailable() || seedDocs.length === 0 || eras.length === 0) return [];
+): Promise<SalienceSelection> {
+  if (!isDbAvailable() || seedDocs.length === 0 || eras.length === 0) return NO_SALIENCE;
   try {
     const globalShares = await queryGlobalCategoryShares();
     const [poolRows, categoryRows, globalRows, questionRows] = await Promise.all([
@@ -390,7 +359,7 @@ export async function selectSalienceArms(
       globalRows,
       questionRows,
     );
-    if (shortlist.length === 0) return [];
+    if (shortlist.length === 0) return NO_SALIENCE;
     const candidates: JudgeCandidate[] = shortlist.map((r) => ({
       phrase: r.phrase,
       entityClass: r.entityClass,
@@ -398,9 +367,12 @@ export async function selectSalienceArms(
       docFreqTerm: r.docFreqTerm,
     }));
     const picks = await judgeShortlist(question, candidates);
-    return finalizeArms(shortlist, picks, poolRows, excludePhrases);
+    const arms = finalizeArms(shortlist, picks, poolRows, excludePhrases);
+    logSalienceOutcome({ eras, poolRows, questionRows, shortlist, picks, arms });
+    const inArms = new Set(arms.map((a) => a.phrase.toLowerCase()));
+    return { arms, judgedPhrases: (picks ?? []).filter((ph) => inArms.has(ph.toLowerCase())) };
   } catch (err) {
     console.warn('[hot-entity-selection] failed (continuing seed-only):', err);
-    return [];
+    return NO_SALIENCE;
   }
 }

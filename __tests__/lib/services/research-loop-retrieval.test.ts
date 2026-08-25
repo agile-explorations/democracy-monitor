@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { SlotArm } from '@/lib/services/research-loop-retrieval';
-import { composeArmSlotPool, PER_ARM_CAP } from '@/lib/services/research-loop-retrieval';
+import {
+  composeArmSlotPool,
+  composeRoster,
+  PER_ARM_CAP,
+} from '@/lib/services/research-loop-retrieval';
 
 const arm = (phrase: string, matches: number, ids: number[]): SlotArm => ({
   phrase,
@@ -63,5 +67,47 @@ describe('composeArmSlotPool (#762)', () => {
       3,
     );
     expect(picked.length).toBe(3);
+  });
+});
+
+describe('composeRoster priority seats (2026-08-24 gate miss)', () => {
+  const alias = (phrase: string, matches: number) => ({ phrase, matches });
+
+  it('judge-picked arms claim seats ahead of sharper unjudged arms', () => {
+    const swarm = Array.from({ length: 20 }, (_, i) => alias(`tiny-${i}`, 5 + i));
+    const canon = alias('Trump v. J.G.G.', 31);
+    const roster = composeRoster([...swarm, canon], ['Trump v. J.G.G.'], 18, 10);
+    expect(roster.some((a) => a.phrase === 'Trump v. J.G.G.')).toBe(true);
+    expect(roster[0].phrase).toBe('Trump v. J.G.G.');
+    expect(roster).toHaveLength(18);
+  });
+
+  it('keeps judge relevance order within the priority seats', () => {
+    const aliases = [alias('a', 50), alias('b', 5), alias('c', 30)];
+    const roster = composeRoster(aliases, ['c', 'a'], 18, 10);
+    expect(roster.slice(0, 2).map((r) => r.phrase)).toEqual(['c', 'a']);
+  });
+
+  it('caps priority seats and fills the rest sharpest-first', () => {
+    const priority = Array.from({ length: 12 }, (_, i) => alias(`p-${i}`, 100 + i));
+    const rest = [alias('sharp', 1), alias('blunt', 999)];
+    const roster = composeRoster(
+      [...priority, ...rest],
+      priority.map((a) => a.phrase),
+      12,
+      10,
+    );
+    // Seats 0-9 are the first ten priority phrases in judge order; the two
+    // unclaimed priority arms then compete sharpest-first with everyone else.
+    expect(roster.slice(0, 10).map((a) => a.phrase)).toEqual(
+      priority.slice(0, 10).map((a) => a.phrase),
+    );
+    expect(roster.map((a) => a.phrase)).toContain('sharp');
+    expect(roster.map((a) => a.phrase)).not.toContain('blunt');
+  });
+
+  it('without priority phrases degrades to the sharpest-first slice', () => {
+    const aliases = [alias('big', 500), alias('mid', 50), alias('small', 5)];
+    expect(composeRoster(aliases, [], 2, 10).map((a) => a.phrase)).toEqual(['small', 'mid']);
   });
 });

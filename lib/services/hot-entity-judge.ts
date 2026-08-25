@@ -81,9 +81,16 @@ export function parseJudgeResponse(content: string, candidatePhrases: string[]):
   }
 }
 
-function hashJudgeKey(question: string): string {
+function hashJudgeKey(question: string, candidatePhrases: string[]): string {
+  // The shortlist is part of the key (v3): picks cached against one
+  // shortlist replayed against a different one during the 2026-08-24 gate
+  // runs — the question channel's nominees changed but the stale picks won.
+  const shortlistHash = createHash('sha256')
+    .update([...candidatePhrases].sort().join('|').toLowerCase())
+    .digest('hex')
+    .slice(0, 12);
   return createHash('sha256')
-    .update(['v2', dataWeekStamp(), question.toLowerCase().trim()].join('|'))
+    .update(['v3', dataWeekStamp(), question.toLowerCase().trim(), shortlistHash].join('|'))
     .digest('hex')
     .slice(0, 16);
 }
@@ -99,7 +106,12 @@ export async function judgeShortlist(
 ): Promise<string[] | null> {
   const provider = getProvider('openai');
   if (!provider.isAvailable() || candidates.length === 0) return null;
-  const key = CacheKeys.searchEntityJudge(hashJudgeKey(question));
+  const key = CacheKeys.searchEntityJudge(
+    hashJudgeKey(
+      question,
+      candidates.map((c) => c.phrase),
+    ),
+  );
   const cached = await cacheGet<string[]>(key);
   if (cached) return cached;
   try {
