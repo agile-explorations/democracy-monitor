@@ -32,6 +32,12 @@ import {
 } from './research-fusion';
 import { buildResearchQuery, fetchResearchDocRowsByIds } from './research-retrieval';
 import { mapToSearchResult, textExplore, vectorExplore } from './search-queries';
+import {
+  searchResearchAllTiers,
+  searchSingleTierWithMeta,
+  timedStage,
+} from './search-research-tiers';
+import type { SeedStageTiming } from './search-research-tiers';
 import { executeFilteredVectorQuery, halfvecDistanceDoc } from './vector-expr';
 
 // ---------------------------------------------------------------------------
@@ -123,6 +129,9 @@ export async function searchResearchWithMeta(
   // #762: enumeration builds pass ENUM_EXTRACTION; absent = LIGHT =
   // analytical byte-identical.
   miningConfig?: ExtractionConfig,
+  // #780 WP1b: caller-provided sink receives seed-internal stage rows
+  // (all-tiers path only — the era path has its own window timings).
+  stageSink?: SeedStageTiming[],
 ): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
   if (!isDbAvailable()) return { documents: [], minedAliases: [] };
   const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
@@ -154,113 +163,17 @@ export async function searchResearchWithMeta(
       dateTo,
       extraAliases,
       miningConfig,
+      stageSink,
     );
-    return { documents: await attachMatchSnippets(documents), minedAliases };
+    const withSnippets = await timedStage('seed-snippets', stageSink, () =>
+      attachMatchSnippets(documents),
+    );
+    return { documents: withSnippets, minedAliases };
   } catch (err) {
     // #598: throw, never return [] — see searchExplore's catch for rationale.
     console.error('[search] Research search failed:', err);
     throw err;
   }
-}
-
-/** Single-tier research pool with LLM + corpus-mined arms (#702/#750). */
-async function searchSingleTierWithMeta(
-  db: ReturnType<typeof getDb>,
-  query: string,
-  vectorStr: string,
-  topK: number,
-  dateFrom: string | undefined,
-  dateTo: string | undefined,
-  tier: DocumentTier,
-  extraAliases?: ValidatedAlias[],
-  miningConfig?: ExtractionConfig,
-): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
-  const [results, { aliases, arms }, extraArms] = await Promise.all([
-    executeFilteredVectorQuery(
-      db,
-      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier }),
-    ),
-    runResearchAliasArms(query, dateFrom, dateTo, tier),
-    runArmsForAliases(extraAliases ?? [], dateFrom, dateTo, tier),
-  ]);
-  const rows = results.rows as Record<string, unknown>[];
-  const { minedAliases, minedArms } = await mineArmsFromCandidates(
-    rows,
-    [...aliases, ...(extraAliases ?? [])],
-    dateFrom,
-    dateTo,
-    tier,
-    miningConfig,
-  );
-  const documents = await attachMatchSnippets(
-    await fuseHydrateDedupe(
-      rows.map(mapToResearchDoc),
-      [...arms, ...minedArms, ...extraArms],
-      topK,
-      vectorStr,
-      mapToResearchDoc,
-    ),
-  );
-  return { documents, minedAliases };
-}
-
-/**
- * Per-tier candidate pools: primary sources must not be crowded out of a
- * shared pool by debate-style text that embeds closer to question phrasing.
- * Alias arms run once tier-unfiltered, then split by tier so each pool fuses
- * only with its own tier's keyword hits (#702).
- */
-async function searchResearchAllTiers(
-  db: ReturnType<typeof getDb>,
-  query: string,
-  vectorStr: string,
-  topK: number,
-  dateFrom?: string,
-  dateTo?: string,
-  extraAliases?: ValidatedAlias[],
-  miningConfig?: ExtractionConfig,
-): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
-  const [actionRows, discussionRows, { aliases, arms }, extraArms] = await Promise.all([
-    executeFilteredVectorQuery(
-      db,
-      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'action' }),
-    ),
-    executeFilteredVectorQuery(
-      db,
-      buildResearchQuery(vectorStr, query, { topK, dateFrom, dateTo, tier: 'discussion' }),
-    ),
-    runResearchAliasArms(query, dateFrom, dateTo),
-    runArmsForAliases(extraAliases ?? [], dateFrom, dateTo),
-  ]);
-  // Pseudo-relevance feedback (#750): the LLM expansion cannot name
-  // post-cutoff entities, but the vector candidates' own text can. Mine
-  // captions/order numbers/operations from the pooled candidates, validate
-  // like any alias, and run them as extra arms. Failure degrades to none.
-  const { minedAliases, minedArms } = await mineArmsFromCandidates(
-    [
-      ...(actionRows.rows as Record<string, unknown>[]),
-      ...(discussionRows.rows as Record<string, unknown>[]),
-    ],
-    [...aliases, ...(extraAliases ?? [])],
-    dateFrom,
-    dateTo,
-    undefined,
-    miningConfig,
-  );
-  const allArms = [...arms, ...minedArms, ...extraArms];
-  const fusePool = (rows: Record<string, unknown>[], tier: DocumentTier) =>
-    fuseHydrateDedupe(
-      rows.map(mapToResearchDoc),
-      armsForTier(allArms, tier),
-      topK,
-      vectorStr,
-      mapToResearchDoc,
-    );
-  const [action, discussion] = await Promise.all([
-    fusePool(actionRows.rows as Record<string, unknown>[], 'action'),
-    fusePool(discussionRows.rows as Record<string, unknown>[], 'discussion'),
-  ]);
-  return { documents: composeTieredResults(action, discussion, topK), minedAliases };
 }
 
 /** Fetch research documents by id, preserving input order (#552). */
@@ -269,7 +182,7 @@ export async function fetchResearchDocsByIds(ids: number[]): Promise<ResearchDoc
   return rows.map(mapToResearchDoc);
 }
 
-function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
+export function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument {
   return {
     id: Number(row.id),
     title: row.title as string,
