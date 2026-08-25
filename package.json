@@ -1,6 +1,6 @@
 {
   "name": "democracy-monitor",
-  "version": "1.16.5",
+  "version": "1.16.6",
   "description": "Live dashboard tracking signals of executive-power centralization across US government institutions",
   "license": "MIT",
   "author": "Michael Kelly",
@@ -86,6 +86,7 @@
     "headlines:backfill": "tsx lib/cron/backfill-week-headlines.ts",
     "validate:detection": "tsx lib/cron/validate-detection.ts",
     "validate:graph": "tsx lib/cron/validate-graph.ts",
+    "validate:infra": "tsx scripts/validate-infra.ts",
     "dhs:resource-wayback": "tsx lib/cron/resource-dhs-wayback.ts",
     "robots:attest": "tsx lib/cron/attest-robots-window.ts",
     "validate:robots": "tsx lib/cron/validate-robots.ts",

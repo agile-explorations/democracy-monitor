@@ -251,14 +251,24 @@ async function runArmStage(
   seed: { documents: ResearchDocument[]; minedAliases: ValidatedAlias[] },
   expansionTerms: ValidatedAlias[],
   contextDocs: number,
-): Promise<{ novelSalience: ValidatedAlias[]; armPool: ResearchDocument[] }> {
+): Promise<{
+  novelSalience: ValidatedAlias[];
+  armPool: ResearchDocument[];
+  stageTimings: WindowTiming[];
+}> {
+  // Stage attribution (#780 WP1): the arm stage was one opaque number for
+  // the whole 2026-08-24 diagnosis — judge, fan-out, and compose now report
+  // separately through the existing windows channel.
+  const j0 = Date.now();
   const selection = await selectSalienceArms(
     p.query,
     seed.documents.map((d) => ({ id: d.id, category: d.category })),
     [...expansionTerms, ...seed.minedAliases].map((t) => t.phrase),
     erasForWindow(p.dateFrom ?? null, p.dateTo ?? null),
   );
+  const judgeMs = Date.now() - j0;
   const novelSalience = selection.arms;
+  const f0 = Date.now();
   const roster = await buildArmRoster(
     dedupeAliases([novelSalience, expansionTerms, seed.minedAliases]),
     p.dateFrom,
@@ -268,10 +278,58 @@ async function runArmStage(
   // The bug #762 fixed: exclude only the KEPT seed prefix, so a doc the
   // seed ranked past the reservation line can still earn an arm slot
   // instead of being both barred and discarded.
+  const fanoutMs = Date.now() - f0;
+  const h0 = Date.now();
   const maxReserve = Math.min(GUARANTEED_SLOTS, Math.floor(contextDocs / 2));
   const keptSeedIds = new Set(seed.documents.slice(0, contextDocs - maxReserve).map((d) => d.id));
   const picked = composeArmSlotPool(roster, keptSeedIds, PER_ARM_CAP, maxReserve);
   const armPool = await hydrateArmPool(picked);
+  const stageTimings: WindowTiming[] = [
+    { key: 'judge', searchMs: judgeMs, rerankMs: 0 },
+    { key: 'arm-fanout', searchMs: fanoutMs, rerankMs: 0 },
+    { key: 'hydrate-compose', searchMs: Date.now() - h0, rerankMs: 0 },
+  ];
+  return { novelSalience, armPool, stageTimings };
+}
+
+/** Seed sweep with its timing row; #762: enumeration mines with the
+ *  widened statute-aware config. */
+async function runTimedSeed(
+  p: LoopRetrievalParams,
+  contextDocs: number,
+  timings: WindowTiming[],
+): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
+  const s0 = Date.now();
+  const seed = await searchResearchWithMeta(
+    p.query,
+    contextDocs,
+    p.embedding,
+    p.dateFrom,
+    p.dateTo,
+    p.tier,
+    undefined,
+    ENUM_EXTRACTION,
+  );
+  timings.push({ key: 'seed', searchMs: Date.now() - s0, rerankMs: 0 });
+  return seed;
+}
+
+/** Arm stage + aggregate-and-per-stage timing rows (#780 WP1). */
+async function runTimedArmStage(
+  p: LoopRetrievalParams,
+  seed: { documents: ResearchDocument[]; minedAliases: ValidatedAlias[] },
+  expansionTerms: ValidatedAlias[],
+  contextDocs: number,
+  timings: WindowTiming[],
+): Promise<{ novelSalience: ValidatedAlias[]; armPool: ResearchDocument[] }> {
+  const a0 = Date.now();
+  const { novelSalience, armPool, stageTimings } = await runArmStage(
+    p,
+    seed,
+    expansionTerms,
+    contextDocs,
+  );
+  timings.push({ key: 'arms', searchMs: Date.now() - a0, rerankMs: 0 }, ...stageTimings);
   return { novelSalience, armPool };
 }
 
@@ -294,22 +352,15 @@ export async function retrieveEnumerationLoop(
   const expansionMs = Date.now() - t0;
 
   const s0 = Date.now();
-  const seed = await searchResearchWithMeta(
-    p.query,
-    contextDocs,
-    p.embedding,
-    p.dateFrom,
-    p.dateTo,
-    p.tier,
-    undefined,
-    // #762: enumeration builds mine with the widened statute-aware config.
-    ENUM_EXTRACTION,
-  );
-  timings.push({ key: 'seed', searchMs: Date.now() - s0, rerankMs: 0 });
+  const seed = await runTimedSeed(p, contextDocs, timings);
 
-  const a0 = Date.now();
-  const { novelSalience, armPool } = await runArmStage(p, seed, expansionTerms, contextDocs);
-  timings.push({ key: 'arms', searchMs: Date.now() - a0, rerankMs: 0 });
+  const { novelSalience, armPool } = await runTimedArmStage(
+    p,
+    seed,
+    expansionTerms,
+    contextDocs,
+    timings,
+  );
 
   const docs = composeWithArms(seed.documents, armPool, contextDocs);
 

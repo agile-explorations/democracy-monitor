@@ -78,11 +78,30 @@ function qs(params: Record<string, string>): string {
 
 /** docsOnly fetch with 202-coalescing and edge-timeout retries (the
  *  production client's behavior). */
-async function fetchDocs(base: string, item: EvalQuestion, attempt = 0): Promise<unknown> {
+/** 202-coalescing patience: the heaviest cold build measured 1,100s
+ *  (2026-08-24), so waiting out an in-flight build needs ~20 min. */
+const COALESCE_MAX_POLLS = 80;
+
+async function fetchDocs(
+  base: string,
+  item: EvalQuestion,
+  attempt = 0,
+  coalescePolls = 0,
+): Promise<unknown> {
   const url = `${base}/api/search?${qs({ q: item.q, mode: 'research', docsOnly: '1', ...item.params })}`;
   let res: Response;
   try {
     res = await fetch(url, { signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS) });
+    // 202 MUST be checked before ok — res.ok covers all of 2xx, and a
+    // coalescing body has no documents, which the empty-payload guard would
+    // misread as a degraded build (bit run 2 on 2026-08-24).
+    if (res.status === 202) {
+      if (coalescePolls >= COALESCE_MAX_POLLS) {
+        throw new Error(`${item.id} still coalesced after ${coalescePolls} polls`);
+      }
+      await sleep(15_000);
+      return fetchDocs(base, item, attempt, coalescePolls + 1);
+    }
     // .json() inside the try: an edge-killed response can 200 then die
     // mid-body, which must retry like any transport failure (2026-08-24).
     if (res.ok) {
@@ -92,18 +111,13 @@ async function fetchDocs(base: string, item: EvalQuestion, attempt = 0): Promise
       if (body.documents?.length) return body;
       throw new Error('empty documents payload');
     }
+    throw new Error(`${item.id} docsOnly HTTP ${res.status}`);
   } catch (err) {
     if (attempt >= 8) throw err;
     console.log(`  ${item.id}: fetch failed, retry ${attempt + 1} in 30s`);
     await sleep(30_000);
-    return fetchDocs(base, item, attempt + 1);
+    return fetchDocs(base, item, attempt + 1, coalescePolls);
   }
-  if (res.status === 202) {
-    if (attempt >= 12) throw new Error(`${item.id} still coalesced after ${attempt} retries`);
-    await sleep(15_000);
-    return fetchDocs(base, item, attempt + 1);
-  }
-  throw new Error(`${item.id} docsOnly HTTP ${res.status}`);
 }
 
 async function streamAnswer(

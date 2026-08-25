@@ -219,7 +219,11 @@ async function retrieveEraWindow(
   }
   const r0 = Date.now();
   let docs = await rerankForTier(p.query, candidates, slots, p.tier);
+  const rerankMs = Date.now() - r0;
   if (salience) {
+    // Salience (incl. the LLM judge) timed separately (#780 WP1): it was
+    // silently charged to rerankMs, hiding the judge from attribution.
+    const g0 = Date.now();
     const staged = await applySalienceStage({
       query: p.query,
       dateFrom: w.from,
@@ -231,8 +235,13 @@ async function retrieveEraWindow(
     });
     docs = staged.docs;
     sinks.eraMined.push(...staged.salience);
+    sinks.windowTimings.push({
+      key: `${w.era.key}-salience`,
+      searchMs: Date.now() - g0,
+      rerankMs: 0,
+    });
   }
-  sinks.windowTimings.push({ key: w.era.key, searchMs, rerankMs: Date.now() - r0 });
+  sinks.windowTimings.push({ key: w.era.key, searchMs, rerankMs });
   return docs;
 }
 
