@@ -118,3 +118,56 @@ describe('runKeyedArms', () => {
     expect(badRows).toEqual([]);
   });
 });
+
+describe('isStatementTimeout', () => {
+  it('detects Postgres 57014 anywhere in the cause chain', async () => {
+    const { isStatementTimeout } = await import('@/lib/services/arm-cache');
+    const pgErr = Object.assign(new Error('canceling statement due to statement timeout'), {
+      code: '57014',
+    });
+    const wrapped = Object.assign(new Error('Failed query'), { cause: pgErr });
+    expect(isStatementTimeout(pgErr)).toBe(true);
+    expect(isStatementTimeout(wrapped)).toBe(true);
+  });
+
+  it('is false for other errors and non-errors', async () => {
+    const { isStatementTimeout } = await import('@/lib/services/arm-cache');
+    expect(isStatementTimeout(new Error('boom'))).toBe(false);
+    expect(isStatementTimeout(Object.assign(new Error('x'), { code: '23505' }))).toBe(false);
+    expect(isStatementTimeout(undefined)).toBe(false);
+    expect(isStatementTimeout('string error')).toBe(false);
+  });
+});
+
+describe('runKeyedArms statement-timeout retry', () => {
+  it('retries a timed-out arm once and succeeds', async () => {
+    vi.useFakeTimers();
+    const { getDb } = await import('@/lib/db');
+    const execute = vi.fn();
+    vi.mocked(getDb).mockReturnValue({
+      execute,
+      insert: vi.fn(() => ({ values: () => ({ onConflictDoUpdate: () => Promise.resolve() }) })),
+      transaction: (fn: (tx: { execute: typeof execute }) => unknown) => fn({ execute }),
+    } as never);
+    const { runKeyedArms } = await import('@/lib/services/arm-cache');
+    let armRuns = 0;
+    execute.mockImplementation(async (q: unknown) => {
+      if (JSON.stringify(q)?.includes('statement_timeout')) return { rows: [] };
+      armRuns += 1;
+      if (armRuns === 1) {
+        throw Object.assign(new Error('Failed query'), {
+          cause: Object.assign(new Error('canceling statement due to statement timeout'), {
+            code: '57014',
+          }),
+        });
+      }
+      return { rows: [{ id: 9 }] };
+    });
+    const resultPromise = runKeyedArms([{ ...ARM, phrase: 'retry me' }]);
+    await vi.runAllTimersAsync();
+    const [rows] = await resultPromise;
+    expect(rows).toEqual([{ id: 9 }]);
+    expect(armRuns).toBe(2);
+    vi.useRealTimers();
+  });
+});

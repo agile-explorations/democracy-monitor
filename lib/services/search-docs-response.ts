@@ -25,10 +25,15 @@ import { recordSearchTiming } from '@/lib/services/search-timing-log';
 /** docsOnly doc lists change only when data does (Monday snapshot); the
  *  pre-warm workflow refreshes them right after (&refresh=true). */
 const RESEARCH_DOCS_CACHE_TTL = 7 * 86400;
-/** In-flight marker outlives the 120s arm safety ceiling with headroom;
- *  self-expires if a build dies without releasing. Reverted to the v1.10.1
- *  value (#758): the 600s incident-era bump only lengthened crash wedges. */
-const INFLIGHT_TTL_SECONDS = 240;
+/** In-flight marker must outlive the WORST cold build, not just one arm's
+ *  120s ceiling: at 240s, slow builds (300-1,100s measured 2026-08-24)
+ *  outlived their slot, retries claimed it again, and duplicate concurrent
+ *  builds of the same question compounded the DB contention that made them
+ *  slow (#778). The trade-off is crash-wedge length (a build that dies
+ *  without releasing wedges its question for the TTL — the #758 argument
+ *  for 240s), but process death is now rare (v1.16.3 health isolation) and
+ *  a 15-min wedge on one question beats a contention spiral across all. */
+const INFLIGHT_TTL_SECONDS = 900;
 const RETRY_AFTER_MS = 8000;
 
 /**
