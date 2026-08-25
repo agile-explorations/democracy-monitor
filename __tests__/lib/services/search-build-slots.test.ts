@@ -47,3 +47,55 @@ describe('global build semaphore (#729 DOS hardening)', () => {
     expect(await claimGlobalBuildSlot()).toBe(1); // freed slot is reusable
   });
 });
+
+describe('never-cache-empty guard (#778/#780)', () => {
+  const buildRes = () => {
+    const res = { statusCode: 0, body: undefined as unknown };
+    return Object.assign(res, {
+      status(code: number) {
+        res.statusCode = code;
+        return res;
+      },
+      json(payload: unknown) {
+        res.body = payload;
+        return res;
+      },
+    });
+  };
+  const req = { query: {} };
+
+  it('caches a build with documents but serves-without-caching an empty one', async () => {
+    const { respondDocsOnlyBuild } = await import('@/lib/services/search-docs-response');
+    const mkBuild = (docs: unknown[]) => ({
+      queryHash: 'abcd1234abcd1234',
+      debug: false,
+      docsCacheKey: 'search:rdocs:test:v3',
+      docsHash: 'testhash',
+      embedMs: 1,
+      avgSimilarity: 0.5,
+      retrieval: {
+        docs,
+        strata: null,
+        inferredFrom: null,
+        alsoSearched: [],
+        timings: { expansionMs: 1, retrieveWallMs: 1, windows: [], totalMs: 2 },
+      },
+    });
+    store.clear();
+    const okRes = buildRes();
+    await respondDocsOnlyBuild(
+      req as never,
+      okRes as never,
+      'a question',
+      mkBuild([{ id: 1 }]) as never,
+    );
+    expect(okRes.statusCode).toBe(200);
+    expect(store.has('search:rdocs:test:v3')).toBe(true);
+
+    store.clear();
+    const emptyRes = buildRes();
+    await respondDocsOnlyBuild(req as never, emptyRes as never, 'a question', mkBuild([]) as never);
+    expect(emptyRes.statusCode).toBe(200);
+    expect(store.has('search:rdocs:test:v3')).toBe(false);
+  });
+});

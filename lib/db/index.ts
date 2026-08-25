@@ -14,7 +14,18 @@ export function getDb() {
     throw new Error('DATABASE_URL environment variable is not set');
   }
 
-  pool = new Pool({ connectionString, ssl: resolveDbSsl(connectionString) });
+  // Explicit pool bounds (#778/#780): max matches the pg default we always
+  // ran with (now deliberate, sized against the 100-connection instance
+  // limit with headroom for the health pool + CLI); connectionTimeoutMillis
+  // makes pool exhaustion a fast visible error instead of an unbounded
+  // queue — waiters queuing behind saturated fan-outs is how the 2026-08-24
+  // health-starvation incident stayed invisible.
+  pool = new Pool({
+    connectionString,
+    ssl: resolveDbSsl(connectionString),
+    max: 10,
+    connectionTimeoutMillis: 30_000,
+  });
   db = drizzle(pool, { schema });
   return db;
 }

@@ -121,10 +121,17 @@ export async function serveCachedDocs(
   docsCacheKey: string,
 ): Promise<boolean> {
   if (req.query.refresh === 'true') return false;
+  const c0 = Date.now();
   const cachedDocs = await cacheGet<Record<string, unknown>>(docsCacheKey);
   if (!cachedDocs) return false;
   res.status(200).json(cachedDocs);
-  void recordSearchTiming({ ...timingRecord(req, query, queryHash), served: 'cache' });
+  // Cache-hit latency recorded as totalMs (#780 WP1): warm-path latency was
+  // invisible (all-null timings), so a slow Redis would never show up.
+  void recordSearchTiming({
+    ...timingRecord(req, query, queryHash),
+    served: 'cache',
+    totalMs: Date.now() - c0,
+  });
   return true;
 }
 
@@ -241,6 +248,15 @@ async function respondDocsOnly(
       .json({ ...payload, trace: await buildDebugTrace(req, query, candidates, strata) });
     return;
   }
-  await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
+  // Never cache an empty build (#778/#780): a degraded zero-doc result
+  // cached here served instant empties for the whole week TTL during the
+  // 2026-08-24 incident. Empty responses are served but not persisted, so
+  // the next request rebuilds.
+  const docs = payload.documents as unknown[] | undefined;
+  if (docs && docs.length > 0) {
+    await cacheSet(docsCacheKey, payload, RESEARCH_DOCS_CACHE_TTL);
+  } else {
+    console.warn(`[search] empty build NOT cached (docs=0): ${query.slice(0, 80)}`);
+  }
   res.status(200).json(payload);
 }
