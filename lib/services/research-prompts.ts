@@ -190,7 +190,7 @@ function outputFormatSection(query?: string): string[] {
   // under 800 words — the cap yields to completeness in that mode only.
   const expertLength =
     query !== undefined && classifyQuestionMode(query) === 'enumeration'
-      ? '(As long as complete enumeration requires. Technical analysis for researchers.'
+      ? '(As long as complete enumeration requires. Open with the prose overview, then the grouped enumeration. Technical analysis for researchers.'
       : '(400-800 words. Technical analysis for researchers.';
   return [
     '--- OUTPUT FORMAT ---',

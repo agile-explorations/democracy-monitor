@@ -1,0 +1,482 @@
+[
+  {
+    "id": "workforce-1a",
+    "family": "workforce",
+    "q": "What government documents describe Schedule F reclassification since 2025?"
+  },
+  {
+    "id": "workforce-1b",
+    "family": "workforce",
+    "q": "How have federal agencies implemented Schedule F reclassification, and what pushback followed?"
+  },
+  {
+    "id": "workforce-1c",
+    "family": "workforce",
+    "q": "Which court rulings and executive actions address Schedule F reclassification?"
+  },
+  {
+    "id": "workforce-1d",
+    "family": "workforce",
+    "q": "What congressional responses have there been to Schedule F reclassification?"
+  },
+  {
+    "id": "workforce-2a",
+    "family": "workforce",
+    "q": "What government documents describe reduction-in-force directives since 2025?"
+  },
+  {
+    "id": "workforce-2b",
+    "family": "workforce",
+    "q": "How have federal agencies implemented reduction-in-force directives, and what pushback followed?"
+  },
+  {
+    "id": "workforce-2c",
+    "family": "workforce",
+    "q": "Which court rulings and executive actions address reduction-in-force directives?"
+  },
+  {
+    "id": "workforce-2d",
+    "family": "workforce",
+    "q": "What congressional responses have there been to reduction-in-force directives?"
+  },
+  {
+    "id": "workforce-3a",
+    "family": "workforce",
+    "q": "What government documents describe probationary employee terminations since 2025?"
+  },
+  {
+    "id": "workforce-3b",
+    "family": "workforce",
+    "q": "How have federal agencies implemented probationary employee terminations, and what pushback followed?"
+  },
+  {
+    "id": "workforce-3c",
+    "family": "workforce",
+    "q": "Which court rulings and executive actions address probationary employee terminations?"
+  },
+  {
+    "id": "workforce-3d",
+    "family": "workforce",
+    "q": "What congressional responses have there been to probationary employee terminations?"
+  },
+  {
+    "id": "oversight-1a",
+    "family": "oversight",
+    "q": "What government documents describe inspector general vacancies since 2025?"
+  },
+  {
+    "id": "oversight-1b",
+    "family": "oversight",
+    "q": "How have federal agencies implemented inspector general vacancies, and what pushback followed?"
+  },
+  {
+    "id": "oversight-1c",
+    "family": "oversight",
+    "q": "Which court rulings and executive actions address inspector general vacancies?"
+  },
+  {
+    "id": "oversight-1d",
+    "family": "oversight",
+    "q": "What congressional responses have there been to inspector general vacancies?"
+  },
+  {
+    "id": "oversight-2a",
+    "family": "oversight",
+    "q": "What government documents describe agency watchdog independence since 2025?"
+  },
+  {
+    "id": "oversight-2b",
+    "family": "oversight",
+    "q": "How have federal agencies implemented agency watchdog independence, and what pushback followed?"
+  },
+  {
+    "id": "oversight-2c",
+    "family": "oversight",
+    "q": "Which court rulings and executive actions address agency watchdog independence?"
+  },
+  {
+    "id": "oversight-2d",
+    "family": "oversight",
+    "q": "What congressional responses have there been to agency watchdog independence?"
+  },
+  {
+    "id": "oversight-3a",
+    "family": "oversight",
+    "q": "What government documents describe GAO recommendation compliance since 2025?"
+  },
+  {
+    "id": "oversight-3b",
+    "family": "oversight",
+    "q": "How have federal agencies implemented GAO recommendation compliance, and what pushback followed?"
+  },
+  {
+    "id": "oversight-3c",
+    "family": "oversight",
+    "q": "Which court rulings and executive actions address GAO recommendation compliance?"
+  },
+  {
+    "id": "oversight-3d",
+    "family": "oversight",
+    "q": "What congressional responses have there been to GAO recommendation compliance?"
+  },
+  {
+    "id": "immigration-1a",
+    "family": "immigration",
+    "q": "What government documents describe expedited removal expansion since 2025?"
+  },
+  {
+    "id": "immigration-1b",
+    "family": "immigration",
+    "q": "How have federal agencies implemented expedited removal expansion, and what pushback followed?"
+  },
+  {
+    "id": "immigration-1c",
+    "family": "immigration",
+    "q": "Which court rulings and executive actions address expedited removal expansion?"
+  },
+  {
+    "id": "immigration-1d",
+    "family": "immigration",
+    "q": "What congressional responses have there been to expedited removal expansion?"
+  },
+  {
+    "id": "immigration-2a",
+    "family": "immigration",
+    "q": "What government documents describe detention capacity contracts since 2025?"
+  },
+  {
+    "id": "immigration-2b",
+    "family": "immigration",
+    "q": "How have federal agencies implemented detention capacity contracts, and what pushback followed?"
+  },
+  {
+    "id": "immigration-2c",
+    "family": "immigration",
+    "q": "Which court rulings and executive actions address detention capacity contracts?"
+  },
+  {
+    "id": "immigration-2d",
+    "family": "immigration",
+    "q": "What congressional responses have there been to detention capacity contracts?"
+  },
+  {
+    "id": "immigration-3a",
+    "family": "immigration",
+    "q": "What government documents describe immigration court backlogs since 2025?"
+  },
+  {
+    "id": "immigration-3b",
+    "family": "immigration",
+    "q": "How have federal agencies implemented immigration court backlogs, and what pushback followed?"
+  },
+  {
+    "id": "immigration-3c",
+    "family": "immigration",
+    "q": "Which court rulings and executive actions address immigration court backlogs?"
+  },
+  {
+    "id": "immigration-3d",
+    "family": "immigration",
+    "q": "What congressional responses have there been to immigration court backlogs?"
+  },
+  {
+    "id": "prosecutions-1a",
+    "family": "prosecutions",
+    "q": "What government documents describe special counsel appointments since 2025?"
+  },
+  {
+    "id": "prosecutions-1b",
+    "family": "prosecutions",
+    "q": "How have federal agencies implemented special counsel appointments, and what pushback followed?"
+  },
+  {
+    "id": "prosecutions-1c",
+    "family": "prosecutions",
+    "q": "Which court rulings and executive actions address special counsel appointments?"
+  },
+  {
+    "id": "prosecutions-1d",
+    "family": "prosecutions",
+    "q": "What congressional responses have there been to special counsel appointments?"
+  },
+  {
+    "id": "prosecutions-2a",
+    "family": "prosecutions",
+    "q": "What government documents describe public corruption prosecutions since 2025?"
+  },
+  {
+    "id": "prosecutions-2b",
+    "family": "prosecutions",
+    "q": "How have federal agencies implemented public corruption prosecutions, and what pushback followed?"
+  },
+  {
+    "id": "prosecutions-2c",
+    "family": "prosecutions",
+    "q": "Which court rulings and executive actions address public corruption prosecutions?"
+  },
+  {
+    "id": "prosecutions-2d",
+    "family": "prosecutions",
+    "q": "What congressional responses have there been to public corruption prosecutions?"
+  },
+  {
+    "id": "prosecutions-3a",
+    "family": "prosecutions",
+    "q": "What government documents describe obstruction of justice charges since 2025?"
+  },
+  {
+    "id": "prosecutions-3b",
+    "family": "prosecutions",
+    "q": "How have federal agencies implemented obstruction of justice charges, and what pushback followed?"
+  },
+  {
+    "id": "prosecutions-3c",
+    "family": "prosecutions",
+    "q": "Which court rulings and executive actions address obstruction of justice charges?"
+  },
+  {
+    "id": "prosecutions-3d",
+    "family": "prosecutions",
+    "q": "What congressional responses have there been to obstruction of justice charges?"
+  },
+  {
+    "id": "media-1a",
+    "family": "media",
+    "q": "What government documents describe broadcast license reviews since 2025?"
+  },
+  {
+    "id": "media-1b",
+    "family": "media",
+    "q": "How have federal agencies implemented broadcast license reviews, and what pushback followed?"
+  },
+  {
+    "id": "media-1c",
+    "family": "media",
+    "q": "Which court rulings and executive actions address broadcast license reviews?"
+  },
+  {
+    "id": "media-1d",
+    "family": "media",
+    "q": "What congressional responses have there been to broadcast license reviews?"
+  },
+  {
+    "id": "media-2a",
+    "family": "media",
+    "q": "What government documents describe press credential policies since 2025?"
+  },
+  {
+    "id": "media-2b",
+    "family": "media",
+    "q": "How have federal agencies implemented press credential policies, and what pushback followed?"
+  },
+  {
+    "id": "media-2c",
+    "family": "media",
+    "q": "Which court rulings and executive actions address press credential policies?"
+  },
+  {
+    "id": "media-2d",
+    "family": "media",
+    "q": "What congressional responses have there been to press credential policies?"
+  },
+  {
+    "id": "media-3a",
+    "family": "media",
+    "q": "What government documents describe public broadcasting funding since 2025?"
+  },
+  {
+    "id": "media-3b",
+    "family": "media",
+    "q": "How have federal agencies implemented public broadcasting funding, and what pushback followed?"
+  },
+  {
+    "id": "media-3c",
+    "family": "media",
+    "q": "Which court rulings and executive actions address public broadcasting funding?"
+  },
+  {
+    "id": "media-3d",
+    "family": "media",
+    "q": "What congressional responses have there been to public broadcasting funding?"
+  },
+  {
+    "id": "courts-1a",
+    "family": "courts",
+    "q": "What government documents describe nationwide injunction compliance since 2025?"
+  },
+  {
+    "id": "courts-1b",
+    "family": "courts",
+    "q": "How have federal agencies implemented nationwide injunction compliance, and what pushback followed?"
+  },
+  {
+    "id": "courts-1c",
+    "family": "courts",
+    "q": "Which court rulings and executive actions address nationwide injunction compliance?"
+  },
+  {
+    "id": "courts-1d",
+    "family": "courts",
+    "q": "What congressional responses have there been to nationwide injunction compliance?"
+  },
+  {
+    "id": "courts-2a",
+    "family": "courts",
+    "q": "What government documents describe contempt proceedings against agencies since 2025?"
+  },
+  {
+    "id": "courts-2b",
+    "family": "courts",
+    "q": "How have federal agencies implemented contempt proceedings against agencies, and what pushback followed?"
+  },
+  {
+    "id": "courts-2c",
+    "family": "courts",
+    "q": "Which court rulings and executive actions address contempt proceedings against agencies?"
+  },
+  {
+    "id": "courts-2d",
+    "family": "courts",
+    "q": "What congressional responses have there been to contempt proceedings against agencies?"
+  },
+  {
+    "id": "courts-3a",
+    "family": "courts",
+    "q": "What government documents describe emergency stay applications since 2025?"
+  },
+  {
+    "id": "courts-3b",
+    "family": "courts",
+    "q": "How have federal agencies implemented emergency stay applications, and what pushback followed?"
+  },
+  {
+    "id": "courts-3c",
+    "family": "courts",
+    "q": "Which court rulings and executive actions address emergency stay applications?"
+  },
+  {
+    "id": "courts-3d",
+    "family": "courts",
+    "q": "What congressional responses have there been to emergency stay applications?"
+  },
+  {
+    "id": "emergency-1a",
+    "family": "emergency",
+    "q": "What government documents describe national emergency declarations since 2025?"
+  },
+  {
+    "id": "emergency-1b",
+    "family": "emergency",
+    "q": "How have federal agencies implemented national emergency declarations, and what pushback followed?"
+  },
+  {
+    "id": "emergency-1c",
+    "family": "emergency",
+    "q": "Which court rulings and executive actions address national emergency declarations?"
+  },
+  {
+    "id": "emergency-1d",
+    "family": "emergency",
+    "q": "What congressional responses have there been to national emergency declarations?"
+  },
+  {
+    "id": "emergency-2a",
+    "family": "emergency",
+    "q": "What government documents describe defense production authorities since 2025?"
+  },
+  {
+    "id": "emergency-2b",
+    "family": "emergency",
+    "q": "How have federal agencies implemented defense production authorities, and what pushback followed?"
+  },
+  {
+    "id": "emergency-2c",
+    "family": "emergency",
+    "q": "Which court rulings and executive actions address defense production authorities?"
+  },
+  {
+    "id": "emergency-2d",
+    "family": "emergency",
+    "q": "What congressional responses have there been to defense production authorities?"
+  },
+  {
+    "id": "emergency-3a",
+    "family": "emergency",
+    "q": "What government documents describe emergency tariff measures since 2025?"
+  },
+  {
+    "id": "emergency-3b",
+    "family": "emergency",
+    "q": "How have federal agencies implemented emergency tariff measures, and what pushback followed?"
+  },
+  {
+    "id": "emergency-3c",
+    "family": "emergency",
+    "q": "Which court rulings and executive actions address emergency tariff measures?"
+  },
+  {
+    "id": "emergency-3d",
+    "family": "emergency",
+    "q": "What congressional responses have there been to emergency tariff measures?"
+  },
+  {
+    "id": "procurement-1a",
+    "family": "procurement",
+    "q": "What government documents describe sole-source contract awards since 2025?"
+  },
+  {
+    "id": "procurement-1b",
+    "family": "procurement",
+    "q": "How have federal agencies implemented sole-source contract awards, and what pushback followed?"
+  },
+  {
+    "id": "procurement-1c",
+    "family": "procurement",
+    "q": "Which court rulings and executive actions address sole-source contract awards?"
+  },
+  {
+    "id": "procurement-1d",
+    "family": "procurement",
+    "q": "What congressional responses have there been to sole-source contract awards?"
+  },
+  {
+    "id": "procurement-2a",
+    "family": "procurement",
+    "q": "What government documents describe grant termination disputes since 2025?"
+  },
+  {
+    "id": "procurement-2b",
+    "family": "procurement",
+    "q": "How have federal agencies implemented grant termination disputes, and what pushback followed?"
+  },
+  {
+    "id": "procurement-2c",
+    "family": "procurement",
+    "q": "Which court rulings and executive actions address grant termination disputes?"
+  },
+  {
+    "id": "procurement-2d",
+    "family": "procurement",
+    "q": "What congressional responses have there been to grant termination disputes?"
+  },
+  {
+    "id": "procurement-3a",
+    "family": "procurement",
+    "q": "What government documents describe federal advisory committee changes since 2025?"
+  },
+  {
+    "id": "procurement-3b",
+    "family": "procurement",
+    "q": "How have federal agencies implemented federal advisory committee changes, and what pushback followed?"
+  },
+  {
+    "id": "procurement-3c",
+    "family": "procurement",
+    "q": "Which court rulings and executive actions address federal advisory committee changes?"
+  },
+  {
+    "id": "procurement-3d",
+    "family": "procurement",
+    "q": "What congressional responses have there been to federal advisory committee changes?"
+  }
+]

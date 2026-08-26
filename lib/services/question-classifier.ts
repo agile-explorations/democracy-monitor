@@ -101,7 +101,10 @@ export function budgetForQuestion(question: string): SynthesisBudget {
 /** Enumeration-mode prompt instruction (#751): coverage questions are judged
  *  by how many distinct responsive instruments the answer names. Wording
  *  proven by the 2026-08-19 ceiling experiment (+14 pts over the essay
- *  default). Empty for analytical questions. */
+ *  default). The prose-overview lead (owner request, 2026-08-25) puts the
+ *  actual answer before the inventory — without it the synthesis landed as
+ *  a bullet appendix after the grouped bibliography. Empty for analytical
+ *  questions. */
 export function enumerationInstruction(query: string): string[] {
   if (classifyQuestionMode(query) !== 'enumeration') return [];
   return [
@@ -116,5 +119,16 @@ export function enumerationInstruction(query: string): string[] {
     'account for every provided document: each [Doc N] is either named in',
     'the answer or classified non-responsive to the question — never',
     'omitted for length.',
+    '',
+    'STRUCTURE: open the EXPERT answer with a prose overview — two to four',
+    'paragraphs of flowing prose, no bullets, no document-by-document',
+    'structure — that directly answers the question and states its main',
+    'through-line (for a comparative question: what changed across the eras',
+    'and what persisted). Cite [Doc N] in the overview as usual. Begin the',
+    'overview directly, without giving it a label or heading of its own.',
+    'Only after that overview, present the grouped enumeration. The',
+    'synthesis belongs in this opening overview, not in a closing',
+    'observations section — do not append a separate synthesis section at',
+    'the end that repeats it.',
   ];
 }

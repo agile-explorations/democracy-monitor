@@ -23,7 +23,10 @@ curl -fSL --max-time 600 "$PROD_URL/api/data/dump" -o "$DUMP_FILE"
 DUMP_SIZE=$(du -h "$DUMP_FILE" | cut -f1)
 echo "==> Downloaded $DUMP_SIZE to $DUMP_FILE"
 
-echo "==> Restoring into $DATABASE_URL..."
+# Redact credentials when echoing the target (a full URL in a log surfaced
+# a live password into a session transcript, 2026-08-25).
+REDACTED_URL=$(printf '%s' "$DATABASE_URL" | sed -E 's|//[^@/]+@|//***@|')
+echo "==> Restoring into $REDACTED_URL..."
 pg_restore --clean --if-exists --no-owner --no-privileges -d "$DATABASE_URL" "$DUMP_FILE" 2>&1 || true
 # pg_restore returns non-zero for warnings (e.g., "relation does not exist" on --clean);
 # this is expected when the dev DB has a different schema. The || true ensures we continue —
