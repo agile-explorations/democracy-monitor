@@ -22,9 +22,16 @@ CRON_SECRET         dev value — lets collect.ts read /api/health/search-timing
    ```
    curl -X POST -H "Authorization: Bearer $RENDER_API_KEY" \
      -H "Content-Type: application/json" \
-     -d '{"startCommand":"pnpm db:init --force && pnpm db:prewarm"}' \
+     -d '{"startCommand":"NEXT_PUBLIC_SITE_URL=https://democracymonitor.us pnpm db:init --force && pnpm db:prewarm"}' \
      https://api.render.com/v1/services/<dev-service-id>/jobs
    ```
+
+   The `NEXT_PUBLIC_SITE_URL` override is REQUIRED: `db:init` streams the
+   dump from `$NEXT_PUBLIC_SITE_URL/api/data/dump`, and the dev service's
+   own env points that at dev itself, which 404s (no dump cron on dev) and
+   then falls back to a stale GitHub Releases archive whose schema predates
+   current columns — a hard `\copy` failure (first attempt, 2026-08-26).
+   Prod's endpoint 302s to the current B2 dump object; curl -fL follows it.
 
    Poll the job via `GET .../jobs/<id>` until `succeeded`, then verify:
    `psql <dev-url> -c 'SELECT count(*) FROM documents'` ≥ 100k. Record the
