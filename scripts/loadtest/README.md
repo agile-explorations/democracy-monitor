@@ -14,6 +14,17 @@ LOADTEST_REDIS_URL  dev keyvalue EXTERNAL connection string (enable external
 CRON_SECRET         dev value — lets collect.ts read /api/health/search-timings
 ```
 
+## Dev-parity pre-flight (before any round)
+
+Same tag as prod, same DB tier, `plan: standard` web, `healthCheckPath`
+set — and the **same behavior flags**: `ENUMERATION_MODE=on` must be set
+on the dev service (prod runs it; without it every "What documents…"
+probe silently takes the 30-doc analytical path and the round measures
+the wrong system — caught on the first Round A, 2026-08-26). When
+setting env vars via the API: a PUT stores the value but does NOT
+restart the service — trigger an explicit deploy
+(`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
+
 ## Runbook (one measurement round)
 
 1. Restore + standardize the dev DB **via an internal Render job** (the
@@ -56,8 +67,12 @@ CRON_SECRET         dev value — lets collect.ts read /api/health/search-timing
 - **Never against prod.** The guard fails closed; don't work around it.
 - The 14 eval questions and 12 prewarm questions are measurement
   instruments — the bank asserts disjointness at startup; never add them.
-- Synthetic `cf-connecting-ip` headers are a dev-only rate-limit bypass
-  (dev sits off Cloudflare, so the header is client-controlled there).
+- Rate limits are neutralized by the runner clearing `rl:*` every 30s
+  (recorded as `rateLimitsNeutralized` in the run metadata). Synthetic
+  `cf-connecting-ip` headers do NOT work: `onrender.com` transits
+  Cloudflare, which 403s any client-supplied `cf-connecting-ip`
+  (error 1000; learned on the first real P0, 2026-08-26) — so all
+  harness traffic shares the runner's real IP.
 - A probe still 202-polling at 900s is an **incident** (wedged inflight
   slot or dead build), not a data point.
 - Deploys during a run invalidate it (cutover kills in-flight builds and

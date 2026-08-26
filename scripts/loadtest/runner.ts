@@ -11,6 +11,7 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
+import Redis from 'ioredis';
 import { hashQuery, researchProbe } from './client';
 import type { ProbeResult } from './client';
 import { assertNotProd } from './guard';
@@ -50,14 +51,17 @@ function assertBankExclusions(bank: BankQuestion[]): void {
   }
 }
 
-/** One browse VU: loop the read-path endpoints with jittered think time. */
+/** One browse VU: loop the read-path endpoints with jittered think time.
+ *  No synthetic IP header — Cloudflare fronts onrender.com and 403s
+ *  client-supplied cf-connecting-ip; rlFlusher neutralizes shared-IP
+ *  rate limits instead. */
 async function browseVu(
   baseUrl: string,
   vu: number,
   durationS: number,
   sink: Array<{ endpoint: string; ms: number; status: number }>,
 ): Promise<void> {
-  const headers = { 'cf-connecting-ip': `203.0.113.${100 + vu}` };
+  const headers = {};
   const end = Date.now() + durationS * 1000;
   let i = vu; // stagger starting endpoint per VU
   while (Date.now() < end) {
@@ -77,6 +81,43 @@ async function browseVu(
     sink.push({ endpoint: endpoint.split('?')[0], ms: Date.now() - t0, status });
     await sleep(2_000 + Math.floor(Math.random() * 3_000));
   }
+}
+
+/** Rate-limit neutralizer: all harness traffic shares the runner's real IP
+ *  (synthetic cf-connecting-ip is rejected by Cloudflare — see client.ts),
+ *  so per-IP policies (search 20/5min, browse caps) would throttle the run
+ *  and measure the limiter, not the system. Clear `rl:*` on the dev Redis
+ *  every 30s for the run's duration; the run report records that rate
+ *  limiting was neutralized. Never touches any other namespace. */
+function rlFlusher(redisUrl: string): { stop: () => Promise<void>; cleared: () => number } {
+  const redis = new Redis(redisUrl, {
+    tls: redisUrl.startsWith('rediss') ? {} : undefined,
+  });
+  let active = true;
+  let total = 0;
+  const loop = (async () => {
+    while (active) {
+      try {
+        let cursor = '0';
+        do {
+          const [next, keys] = await redis.scan(cursor, 'MATCH', 'rl:*', 'COUNT', 500);
+          cursor = next;
+          if (keys.length > 0) total += await redis.del(...keys);
+        } while (cursor !== '0' && active);
+      } catch (err) {
+        console.error('[loadtest] rl flush error:', String(err).slice(0, 120));
+      }
+      await sleep(30_000);
+    }
+  })();
+  return {
+    stop: async () => {
+      active = false;
+      await loop;
+      await redis.quit();
+    },
+    cleared: () => total,
+  };
 }
 
 /** Health sampler: /api/health/live every 5s for the whole run. */
@@ -110,7 +151,12 @@ async function main(): Promise<void> {
     console.error('LOADTEST_BASE_URL is required (dev web service url)');
     process.exit(1);
   }
-  assertNotProd({ baseUrl });
+  const redisUrl = process.env.LOADTEST_REDIS_URL;
+  if (!redisUrl) {
+    console.error('LOADTEST_REDIS_URL is required (rl:* neutralization during the run)');
+    process.exit(1);
+  }
+  assertNotProd({ baseUrl, redisUrl });
   const profile = PROFILES[arg('profile') ?? ''];
   if (!profile) {
     console.error('--profile=p0|p1|p2|p3 is required');
@@ -131,6 +177,7 @@ async function main(): Promise<void> {
   const healthRows: Array<{ ms: number; status: number }> = [];
   const probes: ProbeResult[] = [];
   const health = healthSampler(baseUrl, healthRows);
+  const rl = rlFlusher(redisUrl);
   const work: Promise<unknown>[] = [];
 
   for (let vu = 0; vu < profile.browseVus; vu++) {
@@ -142,7 +189,7 @@ async function main(): Promise<void> {
     const q = questions[qi++];
     if (!q) return null;
     console.log(`[loadtest] probe ${q.id}: ${q.q.slice(0, 60)}...`);
-    return researchProbe(baseUrl, q.id, q.q, `203.0.113.${10 + (qi % 80)}`).then((r) => {
+    return researchProbe(baseUrl, q.id, q.q).then((r) => {
       probes.push(r);
       console.log(
         `[loadtest] probe ${r.id}: t_results=${r.tResultsMs} t_complete=${r.tBuildCompleteMs} 202s=${r.n202} cuts=${r.nEdgeCuts}`,
@@ -185,6 +232,7 @@ async function main(): Promise<void> {
   await Promise.all(work);
   await Promise.all(rampProbes);
   health.stop();
+  await rl.stop();
 
   const out = {
     run: {
@@ -194,6 +242,8 @@ async function main(): Promise<void> {
       endedAt: new Date().toISOString(),
       baseUrl,
       questionSlice: `${qOffset}:${qCount}`,
+      rateLimitsNeutralized: true,
+      rlKeysCleared: rl.cleared(),
     },
     probes,
     browse: browseRows,
