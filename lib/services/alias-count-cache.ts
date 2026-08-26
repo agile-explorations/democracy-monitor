@@ -27,6 +27,7 @@ import {
 } from '@/lib/services/arm-cache';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 import { mapConcurrent, sleep } from '@/lib/utils/async';
+import { envInt } from '@/lib/utils/env';
 
 export interface ExpansionWindow {
   dateFrom?: string;
@@ -210,8 +211,10 @@ export async function warmAliasValidation(phrase: string, window: ExpansionWindo
 
 /** Same bound rationale as ARM_QUERY_CONCURRENCY (arm-cache.ts): leave the
  *  10-client pool headroom so no count statement runs slow enough to hit
- *  the 120s ceiling under a cold-cache burst (2026-08-24 incident). */
-const COUNT_QUERY_CONCURRENCY = 5;
+ *  the 120s ceiling under a cold-cache burst (2026-08-24 incident).
+ *  Env-overridable within [1,10] for dev sweeps and incident tuning
+ *  (#782 WO-3). */
+const COUNT_QUERY_CONCURRENCY = envInt('COUNT_QUERY_CONCURRENCY', 5, 1, 10);
 const COUNT_TIMEOUT_RETRY_DELAY_MS = 3_000;
 
 /** Count every candidate alias with bounded concurrency, order preserved.

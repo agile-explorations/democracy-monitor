@@ -129,6 +129,13 @@ async function main(): Promise<void> {
     const production = await countAliasCandidates(db, g.phrases, g.window, filters, cap);
     const batchMs = Date.now() - t0;
 
+    // Concurrency sweeps (#782 WO-3) only need the production arm's
+    // wall-clock; the sequential reference exists for verdict parity.
+    if (process.argv.includes('--skip-reference')) {
+      console.log(`  timing: production=${batchMs}ms (reference skipped)`);
+      continue;
+    }
+
     const t1 = Date.now();
     const truth: Array<{ phrase: string; matches: number }> = [];
     for (const phrase of g.phrases) {
