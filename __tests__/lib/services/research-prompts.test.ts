@@ -328,9 +328,22 @@ describe('enumeration instruction (#751)', () => {
     expect(prompt).toContain('court cases by');
   });
 
+  it('requires a prose overview ahead of the grouped enumeration (2026-08-25)', () => {
+    const prompt = buildSinglePassPrompt(
+      'What executive orders address collective bargaining?',
+      [makeDoc()],
+      null,
+    );
+    expect(prompt).toContain('STRUCTURE: open the EXPERT answer with a prose overview');
+    expect(prompt).toContain('without giving it a label or heading of its own.');
+    expect(prompt).toContain('do not append a separate synthesis section at');
+    expect(prompt).toContain('Open with the prose overview, then the grouped enumeration.');
+  });
+
   it('omits the addendum for analytical questions', () => {
     const prompt = buildSinglePassPrompt('Is the impoundment of funds legal?', [makeDoc()], null);
     expect(prompt).not.toContain('comprehensive enumeration');
+    expect(prompt).not.toContain('STRUCTURE: open the EXPERT answer');
   });
 });
 
