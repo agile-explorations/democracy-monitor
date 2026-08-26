@@ -12,11 +12,14 @@ export const GUARANTEED_SLOTS = 30;
 /** Docs any single arm may place in the guaranteed pool. Bounds breadth:
  *  no term, however many matches, can flood the pool (#762 neutrality). */
 export const PER_ARM_CAP = 2;
-/** Roster bound = the arms that can actually place documents plus slack
- *  for empty-result arms: GUARANTEED_SLOTS/PER_ARM_CAP = 15 contributors.
- *  Measured (#762 candidate run 1): 48 concurrent cold arm queries
- *  saturated the DB pool — 121s arms stage; slot-justified width only. */
-export const MAX_ROSTER_ARMS = 18;
+/** Roster bound, re-derived from the WO-2 contribution sweep (#782,
+ *  2026-08-26, 20 questions / 946 arm-instances): the non-judge
+ *  "sharpest-first" fill seats were dominated by hot-entity junk that
+ *  never contributed a final doc anywhere ("Director Comey" ran in 13
+ *  questions, 0 finals). 12 = all 10 judge-vetted seats + 2 fill.
+ *  History: 18 was slot math (GUARANTEED_SLOTS/PER_ARM_CAP + slack);
+ *  before that, 48 unbounded arms cost a 121s arm stage (#762). */
+export const MAX_ROSTER_ARMS = 12;
 
 export interface SlotArm {
   phrase: string;

@@ -110,4 +110,14 @@ describe('composeRoster priority seats (2026-08-24 gate miss)', () => {
     const aliases = [alias('big', 500), alias('mid', 50), alias('small', 5)];
     expect(composeRoster(aliases, [], 2, 10).map((a) => a.phrase)).toEqual(['small', 'mid']);
   });
+
+  it('default roster cap is 12: ten judge seats plus two fill (#782 WO-2)', () => {
+    const aliases = Array.from({ length: 30 }, (_, i) => alias(`a${i}`, i + 1));
+    const judgePicks = aliases.slice(10, 20).map((a) => a.phrase);
+    const roster = composeRoster(aliases, judgePicks);
+    expect(roster).toHaveLength(12);
+    // All ten judge picks keep their seats; only two fill seats remain.
+    expect(roster.slice(0, 10).map((a) => a.phrase)).toEqual(judgePicks);
+    expect(roster.slice(10).map((a) => a.phrase)).toEqual(['a0', 'a1']);
+  });
 });

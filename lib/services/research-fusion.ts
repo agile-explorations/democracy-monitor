@@ -49,8 +49,19 @@ export async function runResearchAliasArms(
   return { aliases, arms };
 }
 
+/** Arm-execution admission ceiling, re-derived empirically (#782 WO-2
+ *  sweep, 2026-08-26): phrases with 600+ corpus matches contributed a
+ *  final doc in only 28% of instances and just 3 arm-only docs across 50
+ *  instances — their RRF weight is too low to surface results, but their
+ *  GIN probes are the most expensive. Validation admission (MAX_MATCH_CAP
+ *  = 1000, alias-count-cache.ts) is unchanged: broad aliases still count
+ *  and display; they just don't RUN as arms. */
+export const ARM_MATCH_CEILING = 600;
+
 /** Run keyword arms for already-validated aliases (LLM-proposed or
- *  corpus-mined #750) through the shared per-alias arm cache. */
+ *  corpus-mined #750) through the shared per-alias arm cache. Aliases
+ *  over ARM_MATCH_CEILING get an empty arm without touching the DB —
+ *  the result stays index-aligned with the input (callers map by index). */
 export async function runArmsForAliases(
   aliases: ValidatedAlias[],
   dateFrom?: string,
@@ -61,8 +72,9 @@ export async function runArmsForAliases(
   const filters = researchCandidateFilters(dateFrom, dateTo, tier);
   const armParams = { dateFrom: dateFrom ?? null, dateTo: dateTo ?? null, tier: tier ?? null };
   const paramsHash = hashArmParams(armParams);
+  const runnable = aliases.filter((a) => a.matches <= ARM_MATCH_CEILING);
   const rowLists = await runKeyedArms(
-    aliases.map((a) => ({
+    runnable.map((a) => ({
       kind: 'research' as const,
       phrase: a.phrase,
       paramsHash,
@@ -70,13 +82,14 @@ export async function runArmsForAliases(
       query: buildAliasArmQuery(a, filters),
     })),
   );
-  return rowLists.map((rows, i) => ({
-    items: rows.map((r) => ({
+  const rowsByPhrase = new Map(runnable.map((a, i) => [a.phrase, rowLists[i]]));
+  return aliases.map((a) => ({
+    items: (rowsByPhrase.get(a.phrase) ?? []).map((r) => ({
       id: Number(r.id),
       sourceType: r.source_type as string,
       matchedAlias: (r.matched_alias as string) || undefined,
     })),
-    weight: armWeight(aliases[i].matches),
+    weight: armWeight(a.matches),
   }));
 }
 
