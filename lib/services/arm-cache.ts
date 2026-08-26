@@ -138,13 +138,15 @@ export function isStatementTimeout(err: unknown): boolean {
   return false;
 }
 
-/** Concurrent arm statements are capped WELL below the pool's 10 clients:
- *  10-wide fan-out under a cold cache thrashed the then-1-CPU DB until 1s
- *  queries blew the 120s ceiling and arms silently vanished (2026-08-24
- *  incident). Env-overridable within [1,10] for dev sweeps and incident
- *  tuning (#782 WO-3); the default is the derived value for the current
- *  DB tier. */
-const ARM_QUERY_CONCURRENCY = envInt('ARM_QUERY_CONCURRENCY', 5, 1, 10);
+/** Concurrent arm statements, derived empirically per DB tier (#782 WO-3).
+ *  History: 10-wide fan-out under a cold cache thrashed the then-1-CPU DB
+ *  until 1s queries blew the 120s ceiling and arms silently vanished
+ *  (2026-08-24 incident) — cut to 5. On basic-4gb (2 CPU), a cold P0 at 8
+ *  cut the parallel-stage tails 50-70% (alias-arms p95 216s→64s) with zero
+ *  degraded arms; warm-regime work is CPU-bound and insensitive. 8 leaves
+ *  the 10-client pool two clients of headroom. Env-overridable within
+ *  [1,10] for sweeps and incident tuning. */
+const ARM_QUERY_CONCURRENCY = envInt('ARM_QUERY_CONCURRENCY', 8, 1, 10);
 const TIMEOUT_RETRY_DELAY_MS = 3_000;
 
 /** Execute keyed alias arms with bounded concurrency, tolerating per-arm

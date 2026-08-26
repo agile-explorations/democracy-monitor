@@ -209,12 +209,11 @@ export async function warmAliasValidation(phrase: string, window: ExpansionWindo
   await cachedAliasCount(db, phrase, window, filters, cap, true);
 }
 
-/** Same bound rationale as ARM_QUERY_CONCURRENCY (arm-cache.ts): leave the
- *  10-client pool headroom so no count statement runs slow enough to hit
- *  the 120s ceiling under a cold-cache burst (2026-08-24 incident).
- *  Env-overridable within [1,10] for dev sweeps and incident tuning
- *  (#782 WO-3). */
-const COUNT_QUERY_CONCURRENCY = envInt('COUNT_QUERY_CONCURRENCY', 5, 1, 10);
+/** Same derivation as ARM_QUERY_CONCURRENCY (arm-cache.ts, #782 WO-3):
+ *  8 on the 2-CPU basic-4gb tier — cold-regime I/O overlap is where the
+ *  win is; warm counts are CPU-bound and insensitive. Env-overridable
+ *  within [1,10] for sweeps and incident tuning. */
+const COUNT_QUERY_CONCURRENCY = envInt('COUNT_QUERY_CONCURRENCY', 8, 1, 10);
 const COUNT_TIMEOUT_RETRY_DELAY_MS = 3_000;
 
 /** Count every candidate alias with bounded concurrency, order preserved.
