@@ -15,6 +15,7 @@
 import { sql } from 'drizzle-orm';
 import { DISCUSSION_SOURCE_TYPES } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { halfvecDistanceDoc } from '@/lib/services/vector-expr';
 
 type Matcher = (text: string) => boolean;
 
@@ -194,7 +195,7 @@ async function vectorArm(vec: string, c: ComboCase, limit: number): Promise<Doc[
     WHERE ${BASE_FILTERS}
       AND d.published_at >= ${c.dateFrom} AND d.published_at <= ${c.dateTo}
       ${tierFilter(c.discussionOnly)}
-    ORDER BY d.embedding <=> ${vec}::vector
+    ORDER BY ${halfvecDistanceDoc(vec)}
     LIMIT ${limit}`);
   return rows.rows as unknown as Doc[];
 }

@@ -2,21 +2,22 @@
  * CLI: npx tsx lib/cron/prewarm-indexes.ts   (also: pnpm db:prewarm)
  *
  * Re-warms the big search indexes after the weekly pg_dump evicts them from
- * cache (#722): the ~3.1 GB HNSW embedding index otherwise serves a week of
- * random cold reads (the "post-dump HNSW evictions" latency multiplier).
- * pg_prewarm 'read' mode pulls pages through the OS page cache — the index
- * exceeds shared_buffers, so the OS cache is the one that matters. Invoked by
- * the dump runner right after a successful dump, BEFORE the slower B2
- * uploads; best-effort there (a prewarm failure never fails the dump).
- * Exit 0 = warmed (or index absent, logged); exit 1 = failed.
+ * cache (#722): the FTS GIN (~0.6 GB) and the halfvec HNSW (~1.4 GB, #724)
+ * otherwise serve a week of random cold reads (the "post-dump HNSW
+ * evictions" latency multiplier). pg_prewarm 'read' mode pulls pages
+ * through the OS page cache — the indexes exceed shared_buffers, so the OS
+ * cache is the one that matters. Invoked by the dump runner as the LAST
+ * post-dump step (after the B2 uploads and the alias replay, so this warm
+ * wins page-cache retention); best-effort there (a prewarm failure never
+ * fails the dump). Exit 0 = warmed (or index absent, logged); exit 1 = failed.
  */
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 
-/** Warm order matters: the two indexes TOGETHER (~4.1 GB) exceed effective
- *  cache (~3.75 GB), so the LAST index warmed wins retention — the HNSW goes
- *  last because vector traversal is the dominant cold cost. NOTE: run this
+/** Warm order matters: with the page cache partially occupied by live
+ *  traffic, the LAST index warmed wins retention — the HNSW goes last
+ *  because vector traversal is the dominant cold cost. NOTE: run this
  *  only when the cache is already cold (post-dump); an ad-hoc mid-week run
  *  DISPLACES the live working set and makes queries slower until traffic
  *  re-warms it (measured 2026-08-15: 42s → 60s on the heaviest question). */
