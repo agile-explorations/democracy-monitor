@@ -12,6 +12,27 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-LOAD, WP5 measurement rounds (#779 #782, v1.16.9) — ✅ WO-5 shipped 2026-08-27; sprint close-out (#783, #724) pending the budget decision
+
+**Origin**: Round A (basic-4gb) passed stability but failed the cold-novel latency budget (30/60s): p50 100s / p95 229s, one probe (workforce-1c) never finishing. Attribution named the alias machinery — expansion validation → alias arms → mining, stacked serially — so WP5 became a sequence of eval-gated work orders on that path.
+
+**Work orders, measured**:
+
+- **WO-1** batched validation SQL — implemented, verdict-parity verified, **refuted by timing** (single statement 1.0–1.4× the concurrent per-phrase path) and reverted; `bench:validation-counts` kept.
+- **WO-3** arm/count concurrency 5→8 — **adopted**: cold alias-arms p95 216→64s, lead p50 100→84s; both knobs env-overridable.
+- **WO-2** contribution-derived arm pruning (ceiling 600, roster 18→12) — **reverted on the eval gate**: pair [73,81] (variance regression vs the tight [78,78] instrument) with three questions failing both runs; arms carry redundancy value static cuts destroy.
+- **WO-5** stage overlap — four variants and a same-day A/A control decided the final shape "D": expansion (LLM propose + validation counts) runs first and alone; then alias arms overlap vectors → mining under a **per-request DB budget of 8 statements per window** (`DB_CONCURRENCY_PER_WINDOW`, AsyncLocalStorage-scoped). Retrieval decisions byte-identical (golden guard). **The DNF class is fixed**: 1c finished in 3/3 capped runs (232→205→189s) and failed in 4/4 uncapped incl. the control (375s); the overlapped half ran 149s vs 207s same-day. Ungated overlap (counts beside vector scans) and parallel-window expansion were net-negative; a process-wide cap throttled the era path.
+
+**Spec deviations**: the WO-2 plan's "eval mean ≥75 passes" was overruled by variance — the instrument's tightness ([78,78]) is part of the gate now. The WO-5 plan modeled a 20–25% p50 cut from overlap; the tier's I/O behavior falsified the model and the shipped result is "no regression + DNF fixed", not the modeled cut.
+
+**Key decisions (owner)**: WO-2 reverted rather than tuned; WO-5 continued through the per-window and D iterations after mid-cycle re-framing; D shipped as v1.16.9 on "a failing query class fixed with decisions provably unchanged beats an unmeasurable few seconds"; `docs/GLOSSARY.md` created at the owner's request — shorthand (p50, DNF, probe ids, run labels) must be defined where the owner can read it.
+
+**Lessons** (promoted to PROJECT*KNOWLEDGE): (1) **The cold instrument is storage-I/O-bound, not CPU-bound** — Render metrics show the dev Postgres at ≤0.2 of 2 vCPU during every run; the \_unchanged* expansion stage varied 35–103s for identical work 25 minutes apart because the page cache (2.3–4.1 GB, churning) decides everything. Single cold runs cannot resolve effects under ~±40%; **A/B must be interleaved A/B/A/B in one session, medians compared, with a same-day control** — never one run each, never against yesterday. (2) This reframes Round B: the residual is page-cache-shaped, so RAM (the 8 GB tier), not CPU, is the lever the data points at. (3) A scheduling-only change needs a shape guard: `pnpm retrieval:golden` diffs `candidatesPreRerank` + `alsoSearched` and labels known noise (uncached reranker order, trace narrowing draw, salience picks on multi-era questions). (4) Detached promises in a DAG must be marked observed or an early rejection kills the process. (5) `.env.dev.local`'s `RENDER_SERVICE_ID` is prod's — verify which service an API call targets before trusting a secret it returns (the chain held prod's CRON_SECRET for an hour).
+
+**Open**: WO-4 (chip-wall UX) unstarted; #783 close-out (#724 tier decision now informed by the I/O finding; regression-gate adoption with the interleaved rule); budget decision (30/60s vs measured p50 ~85–115s / heaviest ~190s on this tier).
+
+---
+
 ## Sprint R-DRAWS + R-ADMIT + gate incident day (#773–#776 #778 #779, milestones 122–123, v1.16.1–v1.16.5) — ✅ GATE PASSED 2026-08-24: replicated pair [78, 78], mean 78/107 ≥ 75
 
 **Origin**: R-SLOTS left the pair at [70,71]; R-DRAWS (union-of-two-expansion-draws + prod-deficit fixes, v1.16.1) lifted it to [73,75] — one point short. R-ADMIT (#776 question-conditioned nomination channel + #775 per-class quotas, v1.16.2) targeted IM3's never-nominated due-process canon.
@@ -78,22 +99,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Open follow-ups**: live-site caches stale until Monday cron rolls the data week (owner has flush one-liner); Monday cron verifies pass 4 + discovery; #739 (GAO) is the next gate mover — FW3 0/3 is a SOURCE-GAP.
 
 ---
-
-## Sprint arc R-JOURNALIST → R-DECOMP → R-SALIENCE: journalist-test retrieval (#733–#760, milestones 116–117, v1.10.0–v1.12.0) — ✅ deployed + flag-on prod eval 2026-08-19
-
-**Origin**: the 2026-08-18 Journalist Test found the corpus 97% complete but answers passing only 47% of CORE ground-truth items. Outreach paused; a ≥70% CORE gate was set. One continuous three-sprint arc followed (2026-08-18→19), including one production incident and two architecture pivots — all owner-gated at each turn.
-
-**Planned vs built**: R-JOURNALIST's six fixes (expansion entities, instrument dedup, rerank instruction, content repairs incl. ~22.5k doc re-extraction/re-embed, coverage manifest, committed eval harness) shipped v1.10.0/v1.10.1 and improved the frozen-matcher holdout 120→130 — but the answer-level score stayed ~50%. The measured ceiling of the whole single-query architecture (depth-60, no rerank cut, enumeration prompting) was 64%: 38 of 39 remaining misses never reached the retrieval pool at any depth. R-DECOMP built aspect decomposition, then a read-and-follow-up loop; instrumented tracing killed both (below). R-SALIENCE — a weekly offline hot-entity index (novelty-ranked: term recurrence ÷ baseline recurrence), judge-selected salience arms into guaranteed slots, enumeration synthesis (60 docs/8192) behind an ENUMERATION_MODE flag — is what shipped: **local acceptance 70/107 (65%), prod 63/107 (59%), vs 53/107 corrected baseline; zero per-question regressions; prod stable**. Gate path to ≥70%: #760 (era-path salience + per-era index + extraction classes + judge stability) → #740 (criminal dockets; H3 is unreachable without it) → #739 (GAO).
-
-**Production incident (2026-08-19)**: v1.11.0's loop builds crashed prod instances (prewarm verified 0/12; builds died uncached); the v1.11.1 "kill-switch" release ALSO destabilized prod because the flag gated only the classifier while widened mining ran in every build's common path. Resolved by v1.11.2 full revert (tree verified == v1.10.1). Lessons now standing: **a kill-switch must cover every shared-path change or the release must be additive-only outside the flag**; **local probe wall-times are deploy gates, not link artifacts**; the hardened prewarm's verify-or-fail pass caught the incident and later greenlit the safe rollout — alerting-by-default pays.
-
-**Key measured findings (the arc's real yield)**:
-
-- Marquee-item discovery is a **salience problem, not similarity**: targets sat at vector sim 0.39–0.44 vs a 0.57 rank-60 cutoff; phrase-embedding sim ranked junk above J.G.G. v. Trump on the question about it; every query-time discovery channel (LLM expansion → cutoff-blind; pool mining/reading → self-referential) failed measurably. Corpus-wide recurrence, computed offline weekly, is the missing signal — and **novelty (term ÷ baseline recurrence) is what separates news from era-invariant legal boilerplate** (Ashcroft v. Iqbal, EO 12866 topped raw frequency).
-- **Weighted RRF cannot be trusted to deliver entity arms**: a perfect arm carried targets at positions 0–8 and fusion dropped every one under co-validated generic-arm dilution → guaranteed slots, never a vote.
-- **Four same-shaped cap-ordering bugs** (slice-before-validate, chunk concat-then-cap, freq-rank starving freq-1 gold, doc-join refilling its own genre) — when a system repeats one failure shape at every joint, it is a pipeline of compensations; replace, don't tune.
-- The retrieval pipeline is **inherently nondeterministic** (old-vs-old doc overlap 10/30): equivalence gates must be band-form, and single eval runs carry ±4–6 aggregate items.
-
-**Spend**: content repairs ~$1 embeddings; eval/ceiling/probe runs ≈ $15 total across the arc; salience index $0/week (no LLM); judge ~$0.001/question-week.
-
-**Open follow-ups**: #760 (mechanisms incl. per-era index + judge stability + weekly validation-cost fix BEFORE the 08-24 cron), #740, #739, #742. Deferred by design: low-recurrence question-specific items (documented as out of scope — chasing them would overfit the eval).

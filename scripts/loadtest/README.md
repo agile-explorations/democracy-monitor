@@ -102,6 +102,11 @@ throttled the era path — hence per-window.
 
 ## Rules
 
+- **Interleave A/B runs.** The tier is storage-I/O-bound (DB CPU ≤0.2 of 2
+  vCPU during runs); identical work varied 35–103s between runs 25 min
+  apart. Any perf comparison needs A/B/A/B in one session, medians
+  compared, and a same-day control run of the old code — one run each, or
+  today-vs-yesterday, is not an experiment (learned on WO-5, 2026-08-27).
 - **Never against prod.** The guard fails closed; don't work around it.
 - The 14 eval questions and 12 prewarm questions are measurement
   instruments — the bank asserts disjointness at startup; never add them.

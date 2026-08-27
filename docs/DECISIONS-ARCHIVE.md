@@ -4,6 +4,27 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint arc R-JOURNALIST → R-DECOMP → R-SALIENCE: journalist-test retrieval (#733–#760, milestones 116–117, v1.10.0–v1.12.0) — ✅ deployed + flag-on prod eval 2026-08-19
+
+**Origin**: the 2026-08-18 Journalist Test found the corpus 97% complete but answers passing only 47% of CORE ground-truth items. Outreach paused; a ≥70% CORE gate was set. One continuous three-sprint arc followed (2026-08-18→19), including one production incident and two architecture pivots — all owner-gated at each turn.
+
+**Planned vs built**: R-JOURNALIST's six fixes (expansion entities, instrument dedup, rerank instruction, content repairs incl. ~22.5k doc re-extraction/re-embed, coverage manifest, committed eval harness) shipped v1.10.0/v1.10.1 and improved the frozen-matcher holdout 120→130 — but the answer-level score stayed ~50%. The measured ceiling of the whole single-query architecture (depth-60, no rerank cut, enumeration prompting) was 64%: 38 of 39 remaining misses never reached the retrieval pool at any depth. R-DECOMP built aspect decomposition, then a read-and-follow-up loop; instrumented tracing killed both (below). R-SALIENCE — a weekly offline hot-entity index (novelty-ranked: term recurrence ÷ baseline recurrence), judge-selected salience arms into guaranteed slots, enumeration synthesis (60 docs/8192) behind an ENUMERATION_MODE flag — is what shipped: **local acceptance 70/107 (65%), prod 63/107 (59%), vs 53/107 corrected baseline; zero per-question regressions; prod stable**. Gate path to ≥70%: #760 (era-path salience + per-era index + extraction classes + judge stability) → #740 (criminal dockets; H3 is unreachable without it) → #739 (GAO).
+
+**Production incident (2026-08-19)**: v1.11.0's loop builds crashed prod instances (prewarm verified 0/12; builds died uncached); the v1.11.1 "kill-switch" release ALSO destabilized prod because the flag gated only the classifier while widened mining ran in every build's common path. Resolved by v1.11.2 full revert (tree verified == v1.10.1). Lessons now standing: **a kill-switch must cover every shared-path change or the release must be additive-only outside the flag**; **local probe wall-times are deploy gates, not link artifacts**; the hardened prewarm's verify-or-fail pass caught the incident and later greenlit the safe rollout — alerting-by-default pays.
+
+**Key measured findings (the arc's real yield)**:
+
+- Marquee-item discovery is a **salience problem, not similarity**: targets sat at vector sim 0.39–0.44 vs a 0.57 rank-60 cutoff; phrase-embedding sim ranked junk above J.G.G. v. Trump on the question about it; every query-time discovery channel (LLM expansion → cutoff-blind; pool mining/reading → self-referential) failed measurably. Corpus-wide recurrence, computed offline weekly, is the missing signal — and **novelty (term ÷ baseline recurrence) is what separates news from era-invariant legal boilerplate** (Ashcroft v. Iqbal, EO 12866 topped raw frequency).
+- **Weighted RRF cannot be trusted to deliver entity arms**: a perfect arm carried targets at positions 0–8 and fusion dropped every one under co-validated generic-arm dilution → guaranteed slots, never a vote.
+- **Four same-shaped cap-ordering bugs** (slice-before-validate, chunk concat-then-cap, freq-rank starving freq-1 gold, doc-join refilling its own genre) — when a system repeats one failure shape at every joint, it is a pipeline of compensations; replace, don't tune.
+- The retrieval pipeline is **inherently nondeterministic** (old-vs-old doc overlap 10/30): equivalence gates must be band-form, and single eval runs carry ±4–6 aggregate items.
+
+**Spend**: content repairs ~$1 embeddings; eval/ceiling/probe runs ≈ $15 total across the arc; salience index $0/week (no LLM); judge ~$0.001/question-week.
+
+**Open follow-ups**: #760 (mechanisms incl. per-era index + judge stability + weekly validation-cost fix BEFORE the 08-24 cron), #740, #739, #742. Deferred by design: low-recurrence question-specific items (documented as out of scope — chasing them would overfit the eval).
+
+---
+
 ## Sprint R-WITNESS: witness-stance editorial program + follow-ons (v1.9.51–v1.9.56) — ✅ deployed + prod-smoked 2026-08-18
 
 **Origin**: owner: "The site feels decidedly partisan. I wish it were more solidly bearing witness to a shift away from Classic American Democracy … without judgement about that shift." The program reframed every reader-facing surface from danger vocabulary to **departure-from-documented-baseline** vocabulary — precision without valence, never euphemism — while leaving every stored enum, prompt baseline, and historical record untouched. Follow-ons the same night: owner screenshots flagged the overview chart's stale vocabulary and the heatmap's indistinguishable colors; owner asked for the same assessment info on Research cards and for the markdown docs to join the vocabulary; a smoke-test mishap surfaced a real API trap.
