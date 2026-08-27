@@ -26,7 +26,26 @@ const NAMESPACES = [
   'rl:*',
 ];
 
+/** `--keep=<pattern,...>` leaves those namespaces intact — e.g. keep
+ *  `search:qexp:*` so a shape check reuses the cached LLM draw, or keep
+ *  `search:arm:*,search:vcount:*,search:vtotal:*` to measure a build against
+ *  the Monday replay's pre-paid arms and counts (#788). Pure. */
+export function patternsToReset(all: string[], keepArg: string | undefined): string[] {
+  const keep = new Set(
+    (keepArg ?? '')
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean),
+  );
+  return all.filter((p) => !keep.has(p));
+}
+
 async function main(): Promise<void> {
+  const keepArg = process.argv.find((a) => a.startsWith('--keep='))?.slice('--keep='.length);
+  const patterns = patternsToReset(NAMESPACES, keepArg);
+  if (patterns.length < NAMESPACES.length) {
+    console.log(`keeping: ${NAMESPACES.filter((p) => !patterns.includes(p)).join(', ')}`);
+  }
   const url = process.env.LOADTEST_REDIS_URL;
   if (!url) {
     console.error('LOADTEST_REDIS_URL is required (dev keyvalue EXTERNAL connection string)');
@@ -43,7 +62,7 @@ async function main(): Promise<void> {
   });
   await redis.connect();
   const counts: Record<string, number> = {};
-  for (const pattern of NAMESPACES) {
+  for (const pattern of patterns) {
     let cursor = '0';
     const keys: string[] = [];
     do {

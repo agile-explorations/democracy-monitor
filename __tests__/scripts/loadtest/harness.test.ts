@@ -118,3 +118,15 @@ describe('interleaved-protocol gate (#786)', () => {
     ).toEqual({ rows: 2, armHitRate: 0.5, countHitRate: 0.5 });
   });
 });
+
+describe('reset --keep (#788)', () => {
+  it('excludes exactly the kept namespaces', async () => {
+    const { patternsToReset } = await import('@/scripts/loadtest/reset-caches');
+    const all = ['search:arm:*', 'search:vcount:*', 'search:qexp:*', 'rl:*'];
+    expect(patternsToReset(all, 'search:arm:*, search:vcount:*')).toEqual([
+      'search:qexp:*',
+      'rl:*',
+    ]);
+    expect(patternsToReset(all, undefined)).toEqual(all);
+  });
+});
