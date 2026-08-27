@@ -42,6 +42,14 @@ setting env vars via the API: a PUT stores the value but does NOT
 restart the service — trigger an explicit deploy
 (`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
 
+## Dev deploys do NOT run migrations
+
+The dev web service's effective build command is `pnpm install && pnpm build`
+(no `db:init`, whatever the API reports — verified in the build log
+2026-08-27). After deploying a schema change to dev, apply it yourself:
+`source .env.dev.local && export DATABASE_URL && pnpm db:migrate` (retry on
+`lock timeout` — the index-drop migration waits at most 5s for its lock).
+
 ## Runbook (one measurement round)
 
 1. Restore + standardize the dev DB **via an internal Render job** (the
