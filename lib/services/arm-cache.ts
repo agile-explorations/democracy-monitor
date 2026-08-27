@@ -21,7 +21,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
 import { slowAliases } from '@/lib/db/schema';
-import { mapConcurrent, sleep } from '@/lib/utils/async';
+import { createLimiter, mapConcurrent, sleep } from '@/lib/utils/async';
 import { envInt } from '@/lib/utils/env';
 
 type Db = ReturnType<typeof getDb>;
@@ -46,6 +46,14 @@ export interface KeyedArm {
 export const SLOW_ARM_MS = 5_000;
 /** Cache slightly past the data week so Monday replay overlaps, never gaps. */
 export const ARM_CACHE_TTL_SECONDS = 8 * 86400;
+
+/** Process-wide gate on arm + validation-count statements (#782 WO-5).
+ *  Stage overlap lets the LLM-alias arms and the mined validation counts
+ *  run at the same time (8 + 8 per window); this caps their SUM so the
+ *  contention A/B is one knob. 0 (default) = off — the per-stage limits
+ *  alone apply, exactly the WO-3 behavior. */
+const DB_WORK_CONCURRENCY = envInt('DB_WORK_CONCURRENCY', 0, 0, 32);
+export const dbWorkGate = createLimiter(DB_WORK_CONCURRENCY);
 
 /** Case-insensitive phrase identity for cache keys. Pure. */
 export function hashPhrase(phrase: string): string {
@@ -115,13 +123,15 @@ export async function runCachedArm(
   }
   const started = Date.now();
   const rows = (
-    await db.transaction(async (tx) => {
-      // Safety ceiling only — nothing legitimate gets near it (worst
-      // observed arm: 37s); a runaway alias must not pin the 1-CPU DB.
-      // Literal because SET LOCAL cannot take a bind parameter.
-      await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
-      return tx.execute(arm.query);
-    })
+    await dbWorkGate(() =>
+      db.transaction(async (tx) => {
+        // Safety ceiling only — nothing legitimate gets near it (worst
+        // observed arm: 37s); a runaway alias must not pin the 1-CPU DB.
+        // Literal because SET LOCAL cannot take a bind parameter.
+        await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
+        return tx.execute(arm.query);
+      }),
+    )
   ).rows as Record<string, unknown>[];
   const durationMs = Date.now() - started;
   await cacheSet(key, rows, ARM_CACHE_TTL_SECONDS);

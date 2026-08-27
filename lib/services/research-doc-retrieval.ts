@@ -70,22 +70,25 @@ async function retrieveSingleWindow(
   debug?: boolean,
 ): Promise<RetrievalResult> {
   const t0 = Date.now();
-  const alsoSearched = await collectAlsoSearched(
-    query,
-    [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
-    tier,
-  );
-  const expansionMs = Date.now() - t0;
-  const t1 = Date.now();
-  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
-    query,
-    contextDocs * 2,
-    embedding,
-    w ? w.from : dateFrom,
-    w ? w.to : dateTo,
-    tier,
-  );
-  const searchMs = Date.now() - t1;
+  // Expansion and seed start together (#782 WO-5); the seed joins the
+  // in-flight validation instead of waiting for it.
+  const [expansion, search] = await Promise.all([
+    collectAlsoSearched(
+      query,
+      [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
+      tier,
+    ).then((aliases) => ({ aliases, ms: Date.now() - t0 })),
+    searchResearchWithMeta(
+      query,
+      contextDocs * 2,
+      embedding,
+      w ? w.from : dateFrom,
+      w ? w.to : dateTo,
+      tier,
+    ).then((r) => ({ ...r, ms: Date.now() - t0 })),
+  ]);
+  const { aliases: alsoSearched, ms: expansionMs } = expansion;
+  const { documents: candidates, minedAliases, ms: searchMs } = search;
   const t2 = Date.now();
   const docs = await rerankForTier(query, candidates, contextDocs, tier);
   const rerankMs = Date.now() - t2;
@@ -190,6 +193,33 @@ interface EraRetrievalParams {
 const ERA_SALIENCE_RESERVE_DIVISOR = 4;
 const ERA_SALIENCE_RESERVE_MAX = 5;
 
+/** One era window's seed sweep. Seed-internal stage rows (#782 WO-5) are
+ *  era-prefixed so a comparative build's windows attribute separately
+ *  instead of as one opaque row each. */
+async function searchEraWindow(
+  p: EraRetrievalParams,
+  w: ReturnType<typeof intersectEraWindows>[number],
+  slots: number,
+  sinks: { eraMined: ValidatedAlias[]; windowTimings: WindowTiming[] },
+) {
+  const s0 = Date.now();
+  const seedStages: WindowTiming[] = [];
+  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
+    p.query,
+    slots * 2,
+    p.embedding,
+    w.from,
+    w.to,
+    p.tier,
+    undefined,
+    undefined,
+    seedStages,
+  );
+  sinks.eraMined.push(...minedAliases);
+  sinks.windowTimings.push(...seedStages.map((s) => ({ ...s, key: `${w.era.key}:${s.key}` })));
+  return { candidates, minedAliases, searchMs: Date.now() - s0 };
+}
+
 /** One era window's retrieve + rerank (+ optional era-scoped salience
  *  stage, #760), accumulating shared collectors. */
 async function retrieveEraWindow(
@@ -203,17 +233,7 @@ async function retrieveEraWindow(
     debugCandidates: ReturnType<typeof toCandidateSummary>[] | null;
   },
 ): Promise<ResearchDocument[]> {
-  const s0 = Date.now();
-  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
-    p.query,
-    slots * 2,
-    p.embedding,
-    w.from,
-    w.to,
-    p.tier,
-  );
-  sinks.eraMined.push(...minedAliases);
-  const searchMs = Date.now() - s0;
+  const { candidates, minedAliases, searchMs } = await searchEraWindow(p, w, slots, sinks);
   if (sinks.debugCandidates) {
     sinks.debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
   }
@@ -245,6 +265,20 @@ async function retrieveEraWindow(
   return docs;
 }
 
+function buildStrata(
+  windows: ReturnType<typeof intersectEraWindows>,
+  perEra: ResearchDocument[][],
+): RetrievalStratum[] {
+  return windows.map((w, i) => ({
+    key: w.era.key,
+    label: w.era.label,
+    from: w.from,
+    to: w.to,
+    docCount: perEra[i].length,
+    ...(w.dateConflict ? { dateConflict: true } : {}),
+  }));
+}
+
 /** Comparative path: each era competes only with itself for its slot share. */
 async function retrieveEraStratified(
   p: EraRetrievalParams,
@@ -255,33 +289,30 @@ async function retrieveEraStratified(
   const t0 = Date.now();
   const slots = Math.floor(contextDocs / p.eras.length);
   const windows = intersectEraWindows(p.eras, p.dateFrom, p.dateTo);
-  // Expansion first (#726): warms the per-window alias caches so the window
-  // searches below hit them — the timings then cleanly separate API-bound
-  // expansion from database-bound retrieval.
-  const alsoSearched = await collectAlsoSearched(p.query, windows, p.tier);
-  const expansionMs = Date.now() - t0;
+  // Expansion and the window searches start together (#782 WO-5): each
+  // window's seed joins its own in-flight validation, and the windows
+  // expand in parallel instead of serially.
   const debugCandidates: ReturnType<typeof toCandidateSummary>[] = [];
   const windowTimings: WindowTiming[] = [];
-  const tRetrieve = Date.now();
   const eraMined: ValidatedAlias[] = [];
-  const perEra = await Promise.all(
-    windows.map((w) =>
-      retrieveEraWindow(p, w, slots, salience, {
-        eraMined,
-        windowTimings,
-        debugCandidates: debug ? debugCandidates : null,
-      }),
-    ),
-  );
-  const retrieveWallMs = Date.now() - tRetrieve;
-  const strata: RetrievalStratum[] = windows.map((w, i) => ({
-    key: w.era.key,
-    label: w.era.label,
-    from: w.from,
-    to: w.to,
-    docCount: perEra[i].length,
-    ...(w.dateConflict ? { dateConflict: true } : {}),
-  }));
+  const [expansion, retrieval] = await Promise.all([
+    collectAlsoSearched(p.query, windows, p.tier).then((aliases) => ({
+      aliases,
+      ms: Date.now() - t0,
+    })),
+    Promise.all(
+      windows.map((w) =>
+        retrieveEraWindow(p, w, slots, salience, {
+          eraMined,
+          windowTimings,
+          debugCandidates: debug ? debugCandidates : null,
+        }),
+      ),
+    ).then((perEra) => ({ perEra, ms: Date.now() - t0 })),
+  ]);
+  const { aliases: alsoSearched, ms: expansionMs } = expansion;
+  const { perEra, ms: retrieveWallMs } = retrieval;
+  const strata = buildStrata(windows, perEra);
   const timings: RetrievalTimings = {
     expansionMs,
     retrieveWallMs,

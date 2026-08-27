@@ -58,6 +58,7 @@ pnpm crec:build-fragments      # Split multi-topic CREC granules into fragment d
 pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison)
 pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
+pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.

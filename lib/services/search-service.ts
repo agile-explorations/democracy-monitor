@@ -137,43 +137,69 @@ export async function searchResearchWithMeta(
   const embedding = precomputedEmbedding ?? (await embedQueryCached(query));
   if (!embedding) return { documents: [], minedAliases: [] };
 
-  const db = getDb();
   const vectorStr = `[${embedding.join(',')}]`;
-
   try {
-    if (tierFilter !== 'all') {
-      return await searchSingleTierWithMeta(
-        db,
-        query,
-        vectorStr,
-        topK,
-        dateFrom,
-        dateTo,
-        tierFilter,
-        extraAliases,
-        miningConfig,
-      );
-    }
-    const { documents, minedAliases } = await searchResearchAllTiers(
+    return await searchResearchPool(
+      { query, vectorStr, topK, dateFrom, dateTo, tierFilter },
+      extraAliases,
+      miningConfig,
+      stageSink,
+    );
+  } catch (err) {
+    // #598: throw, never return [] — see searchExplore's catch for rationale.
+    console.error('[search] Research search failed:', err);
+    throw err;
+  }
+}
+
+interface ResearchPoolParams {
+  query: string;
+  vectorStr: string;
+  topK: number;
+  dateFrom?: string;
+  dateTo?: string;
+  tierFilter: ResearchTierFilter;
+}
+
+/** Tier dispatch for the research seed: a single tier fuses its own pool;
+ *  'all' fuses per-tier pools and composes them (#702). */
+async function searchResearchPool(
+  p: ResearchPoolParams,
+  extraAliases?: ValidatedAlias[],
+  miningConfig?: ExtractionConfig,
+  stageSink?: SeedStageTiming[],
+): Promise<{ documents: ResearchDocument[]; minedAliases: ValidatedAlias[] }> {
+  const db = getDb();
+  const { query, vectorStr, topK, dateFrom, dateTo, tierFilter } = p;
+  if (tierFilter !== 'all') {
+    return searchSingleTierWithMeta(
       db,
       query,
       vectorStr,
       topK,
       dateFrom,
       dateTo,
+      tierFilter,
       extraAliases,
       miningConfig,
       stageSink,
     );
-    const withSnippets = await timedStage('seed-snippets', stageSink, () =>
-      attachMatchSnippets(documents),
-    );
-    return { documents: withSnippets, minedAliases };
-  } catch (err) {
-    // #598: throw, never return [] — see searchExplore's catch for rationale.
-    console.error('[search] Research search failed:', err);
-    throw err;
   }
+  const { documents, minedAliases } = await searchResearchAllTiers(
+    db,
+    query,
+    vectorStr,
+    topK,
+    dateFrom,
+    dateTo,
+    extraAliases,
+    miningConfig,
+    stageSink,
+  );
+  const withSnippets = await timedStage('seed-snippets', stageSink, () =>
+    attachMatchSnippets(documents),
+  );
+  return { documents: withSnippets, minedAliases };
 }
 
 /** Fetch research documents by id, preserving input order (#552). */

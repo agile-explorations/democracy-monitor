@@ -113,7 +113,8 @@
     "apply:annotation-corrections": "tsx scripts/apply-annotation-corrections.ts",
     "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky",
-    "bench:validation-counts": "tsx scripts/validation-count-bench.ts"
+    "bench:validation-counts": "tsx scripts/validation-count-bench.ts",
+    "retrieval:golden": "tsx scripts/retrieval-golden-diff.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.73.0",

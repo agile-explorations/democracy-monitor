@@ -11,20 +11,27 @@ import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 
 /** Corpus-validated aliases (phrase + corpus match count) for the windows
- *  searched (#702, counts #713) — cache hits, since searchResearch already
- *  ran the same expansion internally. Multi-window merges keep the max count. */
+ *  searched (#702, counts #713). Runs concurrently with the seed sweep,
+ *  which derives the same expansion internally — the two share one in-
+ *  flight validation per (query, window) (#782 WO-5). Windows expand in
+ *  parallel; the merge keeps window order and the max count, so the output
+ *  is identical to the former serial loop. */
 export async function collectAlsoSearched(
   query: string,
   windows: Array<{ from?: string; to?: string }>,
   tier: ResearchTierFilter,
 ): Promise<ValidatedAlias[]> {
+  const perWindow = await Promise.all(
+    windows.map((w) =>
+      expandAndValidate(query, {
+        dateFrom: w.from,
+        dateTo: w.to,
+        tier: tier === 'all' ? undefined : tier,
+      }),
+    ),
+  );
   const byPhrase = new Map<string, number>();
-  for (const w of windows) {
-    const aliases = await expandAndValidate(query, {
-      dateFrom: w.from,
-      dateTo: w.to,
-      tier: tier === 'all' ? undefined : tier,
-    });
+  for (const aliases of perWindow) {
     for (const a of aliases) {
       byPhrase.set(a.phrase, Math.max(byPhrase.get(a.phrase) ?? 0, a.matches));
     }
@@ -62,10 +69,11 @@ export interface WindowTiming {
   rerankMs: number;
 }
 
-/** Phase breakdown of one docsOnly retrieval build (#726): expansion runs
- *  FIRST (warming its caches) so the window searches below are ~pure DB
- *  work — separating external-API-bound from database-bound time, the split
- *  the cold-cache program (#724) decides on. */
+/** Phase breakdown of one docsOnly retrieval build (#726). Expansion and
+ *  the window searches overlap since #782 WO-5, so `expansionMs` is the
+ *  time-to-validated-aliases and no longer a disjoint slice of `totalMs`;
+ *  the seed's own `seed-expansion` stage row carries the same number from
+ *  inside the search. */
 export interface RetrievalTimings {
   expansionMs: number;
   /** Wall-clock of the (parallel) window retrieval block. */

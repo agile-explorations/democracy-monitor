@@ -267,17 +267,18 @@ export async function retrieveEnumerationLoop(
   const t0 = Date.now();
   const timings: WindowTiming[] = [];
 
-  // Expansion first (#726 convention): warms the alias caches the seed
-  // search re-derives internally, and yields the transparency chips.
-  const expansionTerms = await collectAlsoSearched(
-    p.query,
-    [{ from: p.dateFrom, to: p.dateTo }],
-    p.tier,
-  );
-  const expansionMs = Date.now() - t0;
-
+  // Expansion and seed start together (#782 WO-5): the seed derives the same
+  // expansion internally and joins the in-flight validation, so the vector
+  // queries and mining extraction no longer wait behind the LLM + counts.
   const s0 = Date.now();
-  const seed = await runTimedSeed(p, contextDocs, timings);
+  const [expansion, seed] = await Promise.all([
+    collectAlsoSearched(p.query, [{ from: p.dateFrom, to: p.dateTo }], p.tier).then((terms) => ({
+      terms,
+      ms: Date.now() - t0,
+    })),
+    runTimedSeed(p, contextDocs, timings),
+  ]);
+  const { terms: expansionTerms, ms: expansionMs } = expansion;
 
   const { novelSalience, armPool } = await runTimedArmStage(
     p,

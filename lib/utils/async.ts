@@ -26,3 +26,44 @@ export async function mapConcurrent<T, R>(
   await Promise.all(workers);
   return results;
 }
+
+const inFlight = new Map<string, Promise<unknown>>();
+
+/**
+ * In-flight dedupe (#782 WO-5): concurrent callers with the same key share
+ * ONE invocation of `fn`; the entry clears when it settles, so the next call
+ * after completion runs fresh (the caller's own result cache decides
+ * whether that is a hit). Rejections propagate to every joiner. Process-
+ * local — it coalesces work inside one server instance, not across them.
+ */
+export function singleflight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<T>;
+  const run = fn().finally(() => {
+    if (inFlight.get(key) === run) inFlight.delete(key);
+  });
+  inFlight.set(key, run);
+  return run;
+}
+
+/** A bounded-concurrency gate shared across callers (#782 WO-5): at most
+ *  `limit` wrapped functions run at once; the rest queue FIFO. `limit <= 0`
+ *  returns a pass-through, so an unset knob costs nothing. */
+export function createLimiter(limit: number): <T>(fn: () => Promise<T>) => Promise<T> {
+  if (limit <= 0) return (fn) => fn();
+  let active = 0;
+  const waiters: Array<() => void> = [];
+  const release = () => {
+    active -= 1;
+    waiters.shift()?.();
+  };
+  return async (fn) => {
+    if (active >= limit) await new Promise<void>((resolve) => waiters.push(resolve));
+    active += 1;
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  };
+}

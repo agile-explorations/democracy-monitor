@@ -19,6 +19,7 @@ import { getDb } from '@/lib/db';
 import {
   ARM_CACHE_TTL_SECONDS,
   dataWeekStamp,
+  dbWorkGate,
   hashArmParams,
   hashPhrase,
   ledgerSlowAliasWork,
@@ -90,13 +91,15 @@ async function cappedCount(
   where: ReturnType<typeof sql>,
   cap: number,
 ): Promise<number> {
-  const r = await db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
-    return tx.execute(sql`
+  const r = await dbWorkGate(() =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
+      return tx.execute(sql`
     SELECT count(*) AS n FROM (
       SELECT 1 FROM documents d WHERE ${where} LIMIT ${cap}
     ) capped`);
-  });
+    }),
+  );
   return Number((r.rows[0] as { n: string }).n);
 }
 
