@@ -120,7 +120,7 @@ overlap the vectors → mining chain; era builds emit the same rows prefixed
 
 ### Cache telemetry (since #787)
 
-Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered, most recently demanded first, under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
+Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered — arms first, then ordinary counts, zero-match "junk" counts (≥30s) last, most recently demanded first within a tier — under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
 
 ### DB budget knobs (since WO-5)
 

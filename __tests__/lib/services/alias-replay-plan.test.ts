@@ -1,27 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { planReplay, summarizeReplay } from '@/lib/services/alias-replay-plan';
+import { planReplay, replayTier, summarizeReplay } from '@/lib/services/alias-replay-plan';
 
 const now = new Date('2026-08-31T05:30:00Z');
 const day = 86400 * 1000;
 
 describe('planReplay (#788)', () => {
-  it('keeps rows seen inside the window, most recently demanded first, cost as tie-break', () => {
+  it('classifies tiers by kind and the junk-count threshold', () => {
+    expect(replayTier({ kind: 'research', lastDurationMs: 90000 })).toBe(0);
+    expect(replayTier({ kind: 'validation', lastDurationMs: 29999 })).toBe(1);
+    expect(replayTier({ kind: 'validation', lastDurationMs: 30000 })).toBe(2);
+  });
+
+  it('orders arms → ordinary counts → junk counts, then recency, then cost; drops stale rows', () => {
     const rows = [
       {
-        phrase: 'cheap-recent',
-        kind: 'research',
-        lastDurationMs: 300,
+        phrase: 'junk-count-recent',
+        kind: 'validation',
+        lastDurationMs: 61000,
         lastSeenAt: new Date(now.getTime() - day),
       },
       {
-        phrase: 'costly-older',
+        phrase: 'count-older',
         kind: 'validation',
         lastDurationMs: 9000,
         lastSeenAt: new Date(now.getTime() - 3 * day),
       },
       {
-        phrase: 'costly-recent',
+        phrase: 'count-recent',
         kind: 'validation',
+        lastDurationMs: 2000,
+        lastSeenAt: new Date(now.getTime() - day),
+      },
+      {
+        phrase: 'arm-older',
+        kind: 'research',
+        lastDurationMs: 300,
+        lastSeenAt: new Date(now.getTime() - 5 * day),
+      },
+      {
+        phrase: 'arm-recent-cheap',
+        kind: 'research',
+        lastDurationMs: 300,
+        lastSeenAt: new Date(now.getTime() - day),
+      },
+      {
+        phrase: 'arm-recent-costly',
+        kind: 'explore',
         lastDurationMs: 9000,
         lastSeenAt: new Date(now.getTime() - day),
       },
@@ -33,9 +57,12 @@ describe('planReplay (#788)', () => {
       },
     ];
     expect(planReplay(rows, now, 8).map((r) => r.phrase)).toEqual([
-      'costly-recent',
-      'cheap-recent',
-      'costly-older',
+      'arm-recent-costly',
+      'arm-recent-cheap',
+      'arm-older',
+      'count-recent',
+      'count-older',
+      'junk-count-recent',
     ]);
   });
 
