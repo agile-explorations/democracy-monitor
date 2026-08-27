@@ -53,7 +53,10 @@ const RETRY_WAIT_MS = 30_000;
 const MAX_ATTEMPTS = 6;
 const FETCH_TIMEOUT_MS = 300_000;
 
+/** `--flag value` or `--flag=value`. */
 function argValue(args: string[], flag: string): string | undefined {
+  const eq = args.find((a) => a.startsWith(`${flag}=`));
+  if (eq) return eq.slice(flag.length + 1);
   const i = args.indexOf(flag);
   return i >= 0 ? args[i + 1] : undefined;
 }
