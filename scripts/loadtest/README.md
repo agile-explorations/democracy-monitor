@@ -5,6 +5,23 @@ guard refuses any target matching the prod stack. The lead metric is the
 wall-clock a first-time user waits for a **non-cached novel Research
 search**, uncontended (owner-defined, 2026-08-25).
 
+## Budget and gate (owner decision 2026-08-27, #786)
+
+`LEAD_BUDGET` (`profiles.ts`): **cold-novel p50 ≤ 120s, p95 ≤ 240s, zero
+DNF probes**, evaluated on per-probe medians across interleaved runs. The
+suite is the pre-outreach and post-retrieval-change regression gate:
+
+```
+pnpm loadtest:collect --gate reports/A1.json,reports/A2.json   # PASS/FAIL, nonzero exit on FAIL
+pnpm loadtest:collect --compare reports/A1.json,reports/A2.json reports/B1.json,reports/B2.json
+```
+
+Why medians and interleaving: the tier is storage-I/O-bound, and identical
+work varied 35–103s between runs 25 minutes apart (WO-5, 2026-08-27). An
+A/B comparison is `reset → A → reset → B → reset → A → reset → B` in one
+session with a same-day control of the old code; one run each, or
+today-vs-yesterday, is not an experiment.
+
 ## Environment (never committed)
 
 ```
@@ -87,6 +104,10 @@ extraction) · `seed-alias-arms` (LLM-alias arm execution) · `seed-mining`
 `seed-extra-arms` · `seed-fuse-hydrate` · `seed-snippets`. Alias arms
 overlap the vectors → mining chain; era builds emit the same rows prefixed
 `<era>:`.
+
+### Cache telemetry (since #787)
+
+Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered, most expensive first, under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
 
 ### DB budget knobs (since WO-5)
 

@@ -18,6 +18,10 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 Cross-sprint constraints that apply to all future work. Not tied to any single sprint — these are project-level invariants.
 
+### Search performance gate (R-LOAD, 2026-08-27)
+
+- Lead budget: cold-novel Research search **p50 ≤ 120s, p95 ≤ 240s, zero DNF** on per-probe medians across interleaved runs (`LEAD_BUDGET`, `pnpm loadtest:collect --gate`). Run before outreach and after any retrieval-shape change, dev only. The 30/60s aspiration is storage-I/O-bound on basic-4gb; the tier lever is RAM (page cache), decided by Round B (#790).
+
 ### Data sources
 
 - **No RSS feeds or general website scraping — with a narrow, probe-gated HTML exception.** Many agency websites (OPM, DOD, State, Treasury, gao.gov, DHS budget pages) are behind WAFs that block automated access; data sources default to structured government APIs (GovInfo, Federal Register, CourtListener, FEC, LegiScan, DOJ API). Approved exceptions (owner-approved, each probe-verified before shipping): OIG report listings (oig.dhs.gov, oversight.gov, R-DHS-OIG/R-OVERSIGHT-GOV) and DHS/ICE/CBP **newsroom** HTML (dhs.gov/news-releases, ice.gov/newsroom, cbp.gov/newsroom — #605, probe-verified 2026-08-07). Exception discipline: project UA (`DemocracyMonitor/1.0 (civic monitoring)`), ≥2s politeness delays, a liveness/WAF re-probe (`backfill:dhs-press --canary`) before any bulk run, and **robots.txt compliance** — every consumed/planned host is registered in `lib/data/robots-registry.ts` and audited programmatically on every weekly snapshot (plus `pnpm validate:robots` on demand); a Disallowed path is never crawled (the dhs.gov `/archive/` lesson, 2026-08-08 — that content is re-sourced from the Internet Archive instead). Do not propose RSS feeds or scraping of other properties as solutions to data gaps without the same probe-gated owner approval.
