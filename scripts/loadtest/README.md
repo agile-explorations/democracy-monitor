@@ -95,8 +95,13 @@ differences. **Drift** (exit 1) = `candidatesPreRerank` (ids + arm
 provenance, era-order-invariant) or the `alsoSearched` term SET.
 **Noise** (reported, not gating) = final `documents` order (uncached
 gpt-4o-mini reranker) and the trace's `validated` list (the trace re-runs
-the uncached narrowing proposal). Capture with warm caches so the LLM draw
-is shared. Known limit: on multi-era comparative questions the salience
+the uncached narrowing proposal). Capture with the LLM-draw namespaces WARM — `search:qemb:*` (question
+embedding), `search:qexp:*` (proposal), `search:qexpv:*` (validated terms; a
+cold one re-runs the uncached narrowing proposal) and `search:qjudge:*`
+(salience picks): when arms must be cold, reset with
+`--keep=search:qemb:*,search:qexp:*,search:qexpv:*,search:qjudge:*`. A full
+reset re-rolls every draw and reports 0/19 "drift" that is pure noise
+(learned 2026-08-27); same-code warm pairs are the stability check. Known limit: on multi-era comparative questions the salience
 judge's shortlist moves with the reranked pool, so `alsoSearched` can gain
 or lose a few salience picks between runs of identical code (measured
 2026-08-27: 1 of 19 questions per pair) — read a lone `alsoSearched` drift
@@ -115,7 +120,7 @@ overlap the vectors → mining chain; era builds emit the same rows prefixed
 
 ### Cache telemetry (since #787)
 
-Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered, most expensive first, under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
+Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered, most recently demanded first, under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
 
 ### DB budget knobs (since WO-5)
 
