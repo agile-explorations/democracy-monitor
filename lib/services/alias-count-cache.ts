@@ -19,13 +19,13 @@ import { getDb } from '@/lib/db';
 import {
   ARM_CACHE_TTL_SECONDS,
   dataWeekStamp,
-  dbWorkGate,
   hashArmParams,
   hashPhrase,
   ledgerSlowAliasWork,
   isStatementTimeout,
   SLOW_ARM_MS,
 } from '@/lib/services/arm-cache';
+import { dbWorkGate } from '@/lib/services/db-work-gate';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 import { mapConcurrent, sleep } from '@/lib/utils/async';
 import { envInt } from '@/lib/utils/env';

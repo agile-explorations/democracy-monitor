@@ -22,6 +22,7 @@
 import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { dbWorkGate } from '@/lib/services/db-work-gate';
 import {
   extractEntityPhrases,
   LIGHT_EXTRACTION,
@@ -62,13 +63,15 @@ async function fetchAndExtract(
   if (!isDbAvailable() || candidateIds.length === 0) return [];
   const db = getDb();
   const ids = candidateIds.slice(0, MINING_CANDIDATE_LIMIT);
-  const rows = await db.execute(sql`
+  const rows = await dbWorkGate(() =>
+    db.execute(sql`
     SELECT d.title, LEFT(d.content, ${config.contentChars}) as body
     FROM documents d
     WHERE d.id IN (${sql.join(
       ids.map((i) => sql`${i}`),
       sql`, `,
-    )})`);
+    )})`),
+  );
   const texts = (rows.rows as Array<{ title: string | null; body: string | null }>).map(
     (r) => `${r.title ?? ''}\n${r.body ?? ''}`,
   );

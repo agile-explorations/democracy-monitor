@@ -9,6 +9,7 @@
  */
 
 import type { NextApiRequest } from 'next';
+import { withRequestDbGate } from '@/lib/services/db-work-gate';
 import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EraWindow } from '@/lib/services/era-extraction';
 import {
@@ -121,61 +122,75 @@ function resolveEras(req: NextApiRequest, query: string): EraWindow[] | null {
   return requested && requested.length > 0 ? requested : extractComparisonEras(query);
 }
 
+/** Request → retrieval parameters. Range phrases in the question ("since
+ *  January 2025") become a date floor when the user has not set explicit
+ *  dates; surfaced in the response so the page can show what was inferred. */
+function parseRetrievalRequest(req: NextApiRequest, query: string) {
+  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
+  return {
+    inferredFrom,
+    dateFrom: (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined,
+    dateTo: req.query.dateTo as string | undefined,
+    tier: (req.query.tier as ResearchTierFilter | undefined) ?? 'all',
+    budget: budgetForQuestion(query),
+    eras: resolveEras(req, query),
+  };
+}
+
 export async function retrieveResearchDocs(
   req: NextApiRequest,
   query: string,
   embedding: number[],
   debug?: boolean,
 ): Promise<RetrievalResult> {
-  // Range phrases in the question ("since January 2025") become a date floor
-  // when the user has not set explicit dates; surfaced in the response so
-  // the page can show what was inferred.
-  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
-  const dateFrom = (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined;
-  const dateTo = req.query.dateTo as string | undefined;
-  const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-  const budget = budgetForQuestion(query);
-  const eras = resolveEras(req, query);
+  const { inferredFrom, dateFrom, dateTo, tier, budget, eras } = parseRetrievalRequest(req, query);
   if (eras && eras.length >= 2) {
-    return retrieveEraStratified(
-      { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
-      budget.contextDocs,
-      // Era-window salience arms (#760) only on the enumeration budget —
-      // the analytical path stays byte-identical to v1.10.1 semantics.
-      budget.mode === 'enumeration',
-      debug,
+    // One DB budget per window (#782 WO-5): the eras search side by side.
+    return withRequestDbGate(eras.length, () =>
+      retrieveEraStratified(
+        { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
+        budget.contextDocs,
+        // Era-window salience arms (#760) only on the enumeration budget —
+        // the analytical path stays byte-identical to v1.10.1 semantics.
+        budget.mode === 'enumeration',
+        debug,
+      ),
     );
   }
 
   // Enumeration questions (#758): single seed sweep + salience arms from
   // the hot-entity index into guaranteed slots. A single remaining era chip
   // narrows the window like the single path does.
+  const w = eras?.[0];
   if (budget.mode === 'enumeration') {
-    const w = eras?.[0];
-    return retrieveEnumerationLoop(
-      {
-        query,
-        embedding,
-        dateFrom: w ? w.from : dateFrom,
-        dateTo: w ? w.to : dateTo,
-        tier,
-        inferredFrom,
-      },
-      budget.contextDocs,
-      debug,
+    return withRequestDbGate(1, () =>
+      retrieveEnumerationLoop(
+        {
+          query,
+          embedding,
+          dateFrom: w ? w.from : dateFrom,
+          dateTo: w ? w.to : dateTo,
+          tier,
+          inferredFrom,
+        },
+        budget.contextDocs,
+        debug,
+      ),
     );
   }
 
-  return retrieveSingleWindow(
-    query,
-    embedding,
-    eras?.[0],
-    dateFrom,
-    dateTo,
-    tier,
-    inferredFrom,
-    budget.contextDocs,
-    debug,
+  return withRequestDbGate(1, () =>
+    retrieveSingleWindow(
+      query,
+      embedding,
+      w,
+      dateFrom,
+      dateTo,
+      tier,
+      inferredFrom,
+      budget.contextDocs,
+      debug,
+    ),
   );
 }
 

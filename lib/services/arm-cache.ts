@@ -21,7 +21,8 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
 import { slowAliases } from '@/lib/db/schema';
-import { createLimiter, mapConcurrent, sleep } from '@/lib/utils/async';
+import { dbWorkGate } from '@/lib/services/db-work-gate';
+import { mapConcurrent, sleep } from '@/lib/utils/async';
 import { envInt } from '@/lib/utils/env';
 
 type Db = ReturnType<typeof getDb>;
@@ -46,14 +47,6 @@ export interface KeyedArm {
 export const SLOW_ARM_MS = 5_000;
 /** Cache slightly past the data week so Monday replay overlaps, never gaps. */
 export const ARM_CACHE_TTL_SECONDS = 8 * 86400;
-
-/** Process-wide gate on arm + validation-count statements (#782 WO-5).
- *  Stage overlap lets the LLM-alias arms and the mined validation counts
- *  run at the same time (8 + 8 per window); this caps their SUM so the
- *  contention A/B is one knob. 0 (default) = off — the per-stage limits
- *  alone apply, exactly the WO-3 behavior. */
-const DB_WORK_CONCURRENCY = envInt('DB_WORK_CONCURRENCY', 0, 0, 32);
-export const dbWorkGate = createLimiter(DB_WORK_CONCURRENCY);
 
 /** Case-insensitive phrase identity for cache keys. Pure. */
 export function hashPhrase(phrase: string): string {

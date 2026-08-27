@@ -89,6 +89,18 @@ the same rows prefixed `<era>:`. `expansion_ms` is now time-to-validated-
 aliases and OVERLAPS `retrieve_wall_ms` — compare stage rows, not the two
 top-level columns, across pre/post-WO-5 reports.
 
+### DB budget knobs (since WO-5)
+
+`DB_CONCURRENCY_PER_WINDOW` (default 8, [1,16]): concurrent DB statements
+one research window may hold across ALL its stages (validation counts,
+vector scans, alias/mined arms, mining text fetch); a request's budget is
+this × its window count, so a 3-era comparative gets 24 — the envelope
+each path had before the overlap. `DB_WORK_CONCURRENCY` (default 0 = off):
+optional process-wide ceiling on top, for incidents/sweeps. Measured
+2026-08-27: ungated overlap oversubscribed the 2-vCPU DB; a process-wide
+cap of 8 fixed single-window builds (1c finished for the first time) but
+throttled the era path — hence per-window.
+
 ## Rules
 
 - **Never against prod.** The guard fails closed; don't work around it.
