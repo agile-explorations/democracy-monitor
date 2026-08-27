@@ -57,7 +57,7 @@ services:
 
 databases:
   - name: epd-db-dev
-    plan: basic-4gb # Production DB is ~5.9GB; needs room for backfills
+    plan: 2c-8g # Round B (#790, 2026-08-27): 2 CPU / 8 GB — page-cache experiment vs prod's 2c-4g (basic-4gb). Revert to 2c-4g unless prod upgrades.
     databaseName: epd_dev
     postgresMajorVersion: '17'
     # NOTE: Enable pgvector extension manually after database creation
