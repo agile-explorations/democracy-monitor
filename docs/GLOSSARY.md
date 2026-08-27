@@ -37,13 +37,13 @@ Report files live in `scripts/loadtest/reports/<date>-<profile>-<label>.json`.
 
 ## Probe questions (the 5 P0 probes, `scripts/loadtest/questions.json`)
 
-| Id                    | Question                                                                                       | Shape                                                  |
-| --------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **workforce-1a** (1a) | What government documents describe Schedule F reclassification since 2025?                     | enumeration, single window                             |
-| **workforce-1b** (1b) | How have federal agencies implemented Schedule F reclassification, and what pushback followed? | comparative → 3 era windows                            |
-| **workforce-1c** (1c) | Which court rulings and executive actions address Schedule F reclassification?                 | enumeration, heaviest probe; the recurring DNF (~305s) |
-| **workforce-1d** (1d) | What congressional responses have there been to Schedule F reclassification?                   | enumeration                                            |
-| **workforce-2a** (2a) | What government documents describe reduction-in-force directives since 2025?                   | enumeration, lightest probe                            |
+| Id                    | Question                                                                                       | Shape                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **workforce-1a** (1a) | What government documents describe Schedule F reclassification since 2025?                     | enumeration, single window                                                                    |
+| **workforce-1b** (1b) | How have federal agencies implemented Schedule F reclassification, and what pushback followed? | analytical (non-enumeration), single window, heavy expansion (~64s of validation counts cold) |
+| **workforce-1c** (1c) | Which court rulings and executive actions address Schedule F reclassification?                 | enumeration, heaviest probe; the recurring DNF (~305s)                                        |
+| **workforce-1d** (1d) | What congressional responses have there been to Schedule F reclassification?                   | enumeration                                                                                   |
+| **workforce-2a** (2a) | What government documents describe reduction-in-force directives since 2025?                   | enumeration, lightest probe                                                                   |
 
 ## Eval questions (the 14 "journalist test" questions, `scripts/completeness-checklists.json`)
 
