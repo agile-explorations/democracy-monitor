@@ -67,3 +67,36 @@ export function createLimiter(limit: number): <T>(fn: () => Promise<T>) => Promi
     }
   };
 }
+
+/**
+ * mapConcurrent with a stop condition checked before each item starts
+ * (#788): items not started once `shouldStop()` is true are skipped, so a
+ * time-budgeted job ends promptly without abandoning in-flight work.
+ * Returns results in input order (`undefined` for skipped items) and the
+ * skipped count.
+ */
+export async function mapConcurrentUntil<T, R>(
+  items: T[],
+  concurrency: number,
+  shouldStop: () => boolean,
+  fn: (item: T) => Promise<R>,
+): Promise<{ results: Array<R | undefined>; skipped: number }> {
+  const results: Array<R | undefined> = new Array(items.length);
+  let nextIndex = 0;
+  let skipped = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const idx = nextIndex++;
+      if (shouldStop()) {
+        skipped += 1;
+        continue;
+      }
+      results[idx] = await fn(items[idx]);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
+  await Promise.all(workers);
+  return { results, skipped };
+}
