@@ -11,7 +11,7 @@
  * shape-drift guard, any difference escalates to the full eval pair.
  *
  * Usage:
- *   npx tsx scripts/retrieval-golden-diff.ts --base URL --out FILE [--loadtest N] [--eval] [--pace MS]
+ *   npx tsx scripts/retrieval-golden-diff.ts --base URL --out FILE [--loadtest N] [--eval] [--skip=A,B] [--pace MS]
  *   npx tsx scripts/retrieval-golden-diff.ts --diff A.json B.json
  */
 
@@ -23,13 +23,14 @@ import { diffShapes } from '@/lib/utils/retrieval-golden';
 import type { RetrievalShape as Shape } from '@/lib/utils/retrieval-golden';
 
 const USAGE = `Usage:
-  npx tsx scripts/retrieval-golden-diff.ts --base URL --out FILE [--loadtest N] [--eval] [--pace MS]
+  npx tsx scripts/retrieval-golden-diff.ts --base URL --out FILE [--loadtest N] [--eval] [--skip=A,B] [--pace MS]
   npx tsx scripts/retrieval-golden-diff.ts --diff A.json B.json
 
   --base URL      Server to capture from (dev). Debug builds skip the payload cache.
   --out FILE      Capture output (JSON).
   --loadtest N    First N questions of scripts/loadtest/questions.json (default 5 = the P0 probes).
   --eval          Add the 14 completeness-eval questions (scripts/completeness-checklists.json).
+  --skip=A,B      Leave out question ids (e.g. one whose debug build exceeds the 60s edge cut).
   --pace MS       Pause between questions (default 15000 — stays under the 20 req / 5 min limit).
   --diff A B      Compare two captures; exit 1 on retrieval-shape drift (candidates or validated terms).
                   Reranker order and the trace's narrowing draw are reported as noise, not drift.`;
@@ -69,7 +70,8 @@ function loadQuestions(args: string[]): Question[] {
     ) as { questions: Question[] };
     out.push(...checklists.questions);
   }
-  return out;
+  const skip = new Set((argValue(args, '--skip') ?? '').split(',').map((x) => x.trim()));
+  return out.filter((q) => !skip.has(q.id));
 }
 
 interface DebugPayload {
