@@ -74,7 +74,8 @@ function loadQuestions(args: string[]): Question[] {
 
 interface DebugPayload {
   documents?: Array<{ id: number }>;
-  alsoSearched?: Array<{ phrase: string }>;
+  /** Plain strings on the wire; tolerate the object form too. */
+  alsoSearched?: Array<string | { phrase: string }>;
   trace?: {
     expansion?: Array<{ window: { key: string }; validated: Array<{ phrase: string }> }>;
     candidatesPreRerank?: Array<{ id: number; matchedAlias?: string; era?: string }>;
@@ -125,7 +126,7 @@ function toShape(item: Question, body: DebugPayload): Shape {
       window: e.window.key,
       phrases: e.validated.map((v) => v.phrase),
     })),
-    alsoSearched: (body.alsoSearched ?? []).map((a) => a.phrase),
+    alsoSearched: (body.alsoSearched ?? []).map((a) => (typeof a === 'string' ? a : a.phrase)),
   };
 }
 

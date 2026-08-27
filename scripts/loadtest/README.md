@@ -62,6 +62,33 @@ restart the service — trigger an explicit deploy
 3. Commit the finalized report JSONs. Two-tier comparison:
    `pnpm loadtest:collect --compare reports/A.json reports/B.json`.
 
+## Retrieval-shape golden guard (#782 WO-5)
+
+`pnpm retrieval:golden --base <dev url> --out FILE [--loadtest N] [--eval]`
+captures each question's `?debug=1` retrieval shape; `--diff A B` classifies
+differences. **Drift** (exit 1) = `candidatesPreRerank` (ids + arm
+provenance, era-order-invariant) or the `alsoSearched` term SET.
+**Noise** (reported, not gating) = final `documents` order (uncached
+gpt-4o-mini reranker) and the trace's `validated` list (the trace re-runs
+the uncached narrowing proposal). Capture with warm caches so the LLM draw
+is shared. Known limit: on multi-era comparative questions the salience
+judge's shortlist moves with the reranked pool, so `alsoSearched` can gain
+or lose a few salience picks between runs of identical code (measured
+2026-08-27: 1 of 19 questions per pair) — read a lone `alsoSearched` drift
+on a comparative question against `candidatesPreRerank` before acting.
+Baselines + WO-5 captures live in `reports/golden/`.
+
+### Seed stage rows (since WO-5)
+
+`seed-expansion` (LLM propose + validation counts, runs alongside the vector
+queries) · `seed-vector-<tier>` · `seed-mining-prep` (candidate text fetch +
+extraction) · `seed-alias-arms` (LLM-alias arm execution) · `seed-mining`
+(known-filter → mined validation → mined arms, alongside alias arms) ·
+`seed-extra-arms` · `seed-fuse-hydrate` · `seed-snippets`. Era builds emit
+the same rows prefixed `<era>:`. `expansion_ms` is now time-to-validated-
+aliases and OVERLAPS `retrieve_wall_ms` — compare stage rows, not the two
+top-level columns, across pre/post-WO-5 reports.
+
 ## Rules
 
 - **Never against prod.** The guard fails closed; don't work around it.

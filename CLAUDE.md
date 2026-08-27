@@ -269,6 +269,7 @@ The weekly dump cron triggers `POST /api/cron/dump` which runs `pg_dump -Fc` to 
 
 ### Spec documents
 
+- **`docs/GLOSSARY.md`** — Plain-language definitions of measurement/search-perf shorthand (p50/p95, DNF, probe and eval question ids, run labels, stage names). Update it whenever a new label or id appears in a report; expand terms on first use in messages.
 - **`docs/PROJECT_KNOWLEDGE.md`** — Shared institutional knowledge: architecture decisions, sprint log, current state, module patterns, database gotchas
 - **`docs/internal/SYSTEM SPECIFICATION V3 ADDENDUM.md`** — Backend requirements (Sprints A–J), risk reminders, schema changes
 - **`docs/internal/UI DESIGN SPECIFICATION V3.md`** — Full UI redesign spec (Phases 1–5), component specs, API endpoint requirements

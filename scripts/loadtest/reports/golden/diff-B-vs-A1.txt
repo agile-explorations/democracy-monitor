@@ -1,0 +1,21 @@
+workforce-1a: identical
+workforce-1b: identical [noise: documents (reranker order)]
+workforce-1c: identical
+workforce-1d: identical [noise: trace validated (narrowing draw)]
+workforce-2a: identical
+FW1: identical [noise: trace validated (narrowing draw)]
+FW2: identical
+FW3: identical [noise: trace validated (narrowing draw)]
+FW4: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order); trace validated (narrowing draw)]
+IM1: identical
+IM2: identical [noise: documents (reranker order); trace validated (narrowing draw)]
+IM3: identical
+IM4: identical [noise: documents (reranker order)]
+RL1: identical
+RL2: identical [noise: trace validated (narrowing draw)]
+RL3: identical [noise: documents (reranker order); trace validated (narrowing draw)]
+RL4: identical [noise: documents (reranker order)]
+H2: identical [noise: trace validated (narrowing draw)]
+H3: identical
+
+18/19 identical (A 2026-08-27T14:31:16.839Z vs B 2026-08-27T15:19:57.249Z)

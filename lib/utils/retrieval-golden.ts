@@ -42,7 +42,11 @@ export function diffShapes(a: RetrievalShape, b: RetrievalShape): ShapeDiff {
   if (!same(byEra(a.candidates), byEra(b.candidates))) {
     drift.push('candidatesPreRerank (ids/provenance)');
   }
-  if (!same(a.alsoSearched, b.alsoSearched)) drift.push('alsoSearched (validated terms)');
+  // Set comparison: the chip list merges per-era mined/salience terms in
+  // era COMPLETION order, so order is not a retrieval decision.
+  if (!same([...a.alsoSearched].sort(), [...b.alsoSearched].sort())) {
+    drift.push('alsoSearched (validated terms)');
+  }
   if (!same(a.documents, b.documents)) noise.push('documents (reranker order)');
   if (!same(a.validated, b.validated)) noise.push('trace validated (narrowing draw)');
   return { drift, noise };

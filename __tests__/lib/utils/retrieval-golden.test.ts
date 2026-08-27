@@ -37,6 +37,15 @@ describe('diffShapes (#782 WO-5 golden guard)', () => {
     expect(diffShapes(base, { ...base, alsoSearched: [] }).drift).toEqual([
       'alsoSearched (validated terms)',
     ]);
+    expect(diffShapes(base, { ...base, alsoSearched: ['schedule f', 'opm'] }).drift).toEqual([
+      'alsoSearched (validated terms)',
+    ]);
+  });
+
+  it('ignores alsoSearched order (era completion order is not a decision)', () => {
+    const twoTerms = { ...base, alsoSearched: ['opm', 'schedule f'] };
+    const reordered = { ...twoTerms, alsoSearched: ['schedule f', 'opm'] };
+    expect(diffShapes(twoTerms, reordered).drift).toEqual([]);
   });
 
   it('reports reranker order and the trace narrowing draw as noise, not drift', () => {
