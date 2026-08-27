@@ -31,6 +31,7 @@ import {
   windowFilters,
 } from '@/lib/services/alias-count-cache';
 import { classifyQuestionMode } from '@/lib/services/question-classifier';
+import { singleflight } from '@/lib/utils/async';
 
 export type { ExpansionWindow } from '@/lib/services/alias-count-cache';
 export {
@@ -94,22 +95,28 @@ export async function proposeAliases(query: string): Promise<string[]> {
   const key = CacheKeys.queryExpansion(hashExpansionKey(query));
   const cached = await cacheGet<string[]>(key);
   if (cached) return cached;
-  try {
-    const results = await Promise.all(
-      Array.from({ length: EXPANSION_DRAWS }, () =>
-        provider.complete(EXPANSION_PROMPT(query), {
-          temperature: 0,
-          model: EXPANSION_MODEL,
-        }),
-      ),
-    );
-    const aliases = unionDraws(results.map((r) => parseAliasResponse(r.content)));
-    await cacheSet(key, aliases, EXPANSION_CACHE_TTL);
-    return aliases;
-  } catch (err) {
-    console.warn('[query-expansion] proposal failed (falling back to vector-only):', err);
-    return [];
-  }
+  // In-flight dedupe (#782 WO-5): the seed and the chip collector now start
+  // together, and era windows expand in parallel — every concurrent caller
+  // must share ONE pair of draws, or they would each pay the LLM and could
+  // even receive different proposals.
+  return singleflight(key, async () => {
+    try {
+      const results = await Promise.all(
+        Array.from({ length: EXPANSION_DRAWS }, () =>
+          provider.complete(EXPANSION_PROMPT(query), {
+            temperature: 0,
+            model: EXPANSION_MODEL,
+          }),
+        ),
+      );
+      const aliases = unionDraws(results.map((r) => parseAliasResponse(r.content)));
+      await cacheSet(key, aliases, EXPANSION_CACHE_TTL);
+      return aliases;
+    } catch (err) {
+      console.warn('[query-expansion] proposal failed (falling back to vector-only):', err);
+      return [];
+    }
+  });
 }
 
 /** Union draws preserving order: draw-1 terms first, then novel draw-2
@@ -345,18 +352,24 @@ export async function expandAndValidate(
   const key = CacheKeys.queryExpansionValidated(hashExpansionKey(query, window));
   const cached = await cacheGet<ValidatedAlias[]>(key);
   if (cached) return cached;
-  // Belt to the per-count tolerance (#729 hotfix): ANY validation failure
-  // degrades to pure-vector retrieval — the module's failure-safe contract.
-  // The failure result is NOT cached, so the next request retries.
-  let validated: ValidatedAlias[];
-  try {
-    validated = (await expandDiagnosticWithRetry(query, window)).validated;
-  } catch (err) {
-    console.warn('[query-expansion] validation failed (vector-only fallback):', err);
-    return [];
-  }
-  await cacheSet(key, validated, EXPANSION_CACHE_TTL);
-  return validated;
+  // Concurrent callers for the same (query, window) share one validation
+  // pass (#782 WO-5) — the seed's internal expansion and the caller's chip
+  // collection run at the same time now, and validation counts are the
+  // single most expensive stage of a cold build.
+  return singleflight(key, async () => {
+    // Belt to the per-count tolerance (#729 hotfix): ANY validation failure
+    // degrades to pure-vector retrieval — the module's failure-safe contract.
+    // The failure result is NOT cached, so the next request retries.
+    let validated: ValidatedAlias[];
+    try {
+      validated = (await expandDiagnosticWithRetry(query, window)).validated;
+    } catch (err) {
+      console.warn('[query-expansion] validation failed (vector-only fallback):', err);
+      return [];
+    }
+    await cacheSet(key, validated, EXPANSION_CACHE_TTL);
+    return validated;
+  });
 }
 
 /** Full expansion with diagnostics for the debug trace (#718) — uncached

@@ -58,6 +58,7 @@ pnpm crec:build-fragments      # Split multi-topic CREC granules into fragment d
 pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison)
 pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
+pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
@@ -268,6 +269,7 @@ The weekly dump cron triggers `POST /api/cron/dump` which runs `pg_dump -Fc` to 
 
 ### Spec documents
 
+- **`docs/GLOSSARY.md`** — Plain-language definitions of measurement/search-perf shorthand (p50/p95, DNF, probe and eval question ids, run labels, stage names). Update it whenever a new label or id appears in a report; expand terms on first use in messages.
 - **`docs/PROJECT_KNOWLEDGE.md`** — Shared institutional knowledge: architecture decisions, sprint log, current state, module patterns, database gotchas
 - **`docs/internal/SYSTEM SPECIFICATION V3 ADDENDUM.md`** — Backend requirements (Sprints A–J), risk reminders, schema changes
 - **`docs/internal/UI DESIGN SPECIFICATION V3.md`** — Full UI redesign spec (Phases 1–5), component specs, API endpoint requirements

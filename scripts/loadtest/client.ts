@@ -32,19 +32,25 @@ const POST_BUDGET_LIMIT_MS = 900_000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** One browser-faithful research probe for a single novel question. */
+/** One browser-faithful research probe for a single novel question.
+ *
+ *  No synthetic client-IP header: onrender.com transits Cloudflare, which
+ *  rejects any client-supplied `cf-connecting-ip` outright (403 error 1000 —
+ *  discovered on the first real P0, 2026-08-26; lib/utils/rate-limit.ts
+ *  documents the same behavior). All probes therefore share the runner's
+ *  real IP; the runner neutralizes per-IP rate limits by clearing `rl:*`
+ *  continuously instead (see rlFlusher in runner.ts). */
 export async function researchProbe(
   baseUrl: string,
   id: string,
   question: string,
-  syntheticIp: string,
 ): Promise<ProbeResult> {
   const url = `${baseUrl}/api/search?${new URLSearchParams({
     q: question,
     mode: 'research',
     docsOnly: '1',
   })}`;
-  const headers = { 'cf-connecting-ip': syntheticIp };
+  const headers = {};
   const out: ProbeResult = {
     id,
     hash: hashQuery(question),

@@ -43,3 +43,92 @@ describe('mapConcurrent', () => {
     ).rejects.toThrow('boom');
   });
 });
+
+describe('singleflight (#782 WO-5)', () => {
+  it('shares one invocation among concurrent callers with the same key', async () => {
+    const { singleflight } = await import('@/lib/utils/async');
+    let calls = 0;
+    let release!: (v: string) => void;
+    const fn = () => {
+      calls++;
+      return new Promise<string>((r) => (release = r));
+    };
+    const a = singleflight('k1', fn);
+    const b = singleflight('k1', fn);
+    release('shared');
+    expect(await Promise.all([a, b])).toEqual(['shared', 'shared']);
+    expect(calls).toBe(1);
+  });
+
+  it('runs fresh once the in-flight call has settled', async () => {
+    const { singleflight } = await import('@/lib/utils/async');
+    let calls = 0;
+    const fn = async () => ++calls;
+    expect(await singleflight('k2', fn)).toBe(1);
+    expect(await singleflight('k2', fn)).toBe(2);
+  });
+
+  it('keys are independent', async () => {
+    const { singleflight } = await import('@/lib/utils/async');
+    const [x, y] = await Promise.all([
+      singleflight('k3', async () => 'x'),
+      singleflight('k4', async () => 'y'),
+    ]);
+    expect([x, y]).toEqual(['x', 'y']);
+  });
+
+  it('propagates a rejection to every joiner and clears the entry', async () => {
+    const { singleflight } = await import('@/lib/utils/async');
+    const failing = () => Promise.reject(new Error('boom'));
+    const a = singleflight('k5', failing);
+    const b = singleflight('k5', failing);
+    await expect(a).rejects.toThrow('boom');
+    await expect(b).rejects.toThrow('boom');
+    expect(await singleflight('k5', async () => 'recovered')).toBe('recovered');
+  });
+});
+
+describe('createLimiter (#782 WO-5)', () => {
+  it('never runs more than the limit at once and preserves results', async () => {
+    const { createLimiter } = await import('@/lib/utils/async');
+    const gate = createLimiter(2);
+    let running = 0;
+    let maxRunning = 0;
+    const task = (n: number) =>
+      gate(async () => {
+        running++;
+        maxRunning = Math.max(maxRunning, running);
+        await new Promise((r) => setTimeout(r, 5));
+        running--;
+        return n;
+      });
+    const out = await Promise.all([1, 2, 3, 4, 5].map(task));
+    expect(out).toEqual([1, 2, 3, 4, 5]);
+    expect(maxRunning).toBe(2);
+  });
+
+  it('releases the slot when a task throws', async () => {
+    const { createLimiter } = await import('@/lib/utils/async');
+    const gate = createLimiter(1);
+    await expect(gate(async () => Promise.reject(new Error('x')))).rejects.toThrow('x');
+    expect(await gate(async () => 'next')).toBe('next');
+  });
+
+  it('a non-positive limit is a pass-through', async () => {
+    const { createLimiter } = await import('@/lib/utils/async');
+    const gate = createLimiter(0);
+    let running = 0;
+    let maxRunning = 0;
+    await Promise.all(
+      [1, 2, 3].map(() =>
+        gate(async () => {
+          running++;
+          maxRunning = Math.max(maxRunning, running);
+          await new Promise((r) => setTimeout(r, 5));
+          running--;
+        }),
+      ),
+    );
+    expect(maxRunning).toBe(3);
+  });
+});

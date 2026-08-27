@@ -1,0 +1,21 @@
+workforce-1a: DRIFT — alsoSearched (validated terms)
+workforce-1b: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order)]
+workforce-1c: DRIFT — alsoSearched (validated terms)
+workforce-1d: DRIFT — alsoSearched (validated terms) [noise: trace validated (narrowing draw)]
+workforce-2a: DRIFT — alsoSearched (validated terms)
+FW1: DRIFT — alsoSearched (validated terms)
+FW2: DRIFT — alsoSearched (validated terms)
+FW3: DRIFT — alsoSearched (validated terms)
+FW4: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order); trace validated (narrowing draw)]
+IM1: DRIFT — alsoSearched (validated terms)
+IM2: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order); trace validated (narrowing draw)]
+IM3: DRIFT — alsoSearched (validated terms)
+IM4: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order); trace validated (narrowing draw)]
+RL1: DRIFT — alsoSearched (validated terms)
+RL2: DRIFT — alsoSearched (validated terms) [noise: trace validated (narrowing draw)]
+RL3: DRIFT — alsoSearched (validated terms) [noise: documents (reranker order); trace validated (narrowing draw)]
+RL4: DRIFT — alsoSearched (validated terms)
+H2: DRIFT — alsoSearched (validated terms) [noise: trace validated (narrowing draw)]
+H3: DRIFT — alsoSearched (validated terms) [noise: trace validated (narrowing draw)]
+
+0/19 identical (A 2026-08-27T15:19:57.249Z vs B 2026-08-27T15:29:41.333Z)

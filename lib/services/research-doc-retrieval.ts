@@ -9,6 +9,7 @@
  */
 
 import type { NextApiRequest } from 'next';
+import { withRequestDbGate } from '@/lib/services/db-work-gate';
 import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EraWindow } from '@/lib/services/era-extraction';
 import {
@@ -70,6 +71,8 @@ async function retrieveSingleWindow(
   debug?: boolean,
 ): Promise<RetrievalResult> {
   const t0 = Date.now();
+  // Expansion first (#726; re-confirmed by #782 WO-5): validation counts
+  // run alone, then the seed hits their caches.
   const alsoSearched = await collectAlsoSearched(
     query,
     [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
@@ -118,61 +121,75 @@ function resolveEras(req: NextApiRequest, query: string): EraWindow[] | null {
   return requested && requested.length > 0 ? requested : extractComparisonEras(query);
 }
 
+/** Request → retrieval parameters. Range phrases in the question ("since
+ *  January 2025") become a date floor when the user has not set explicit
+ *  dates; surfaced in the response so the page can show what was inferred. */
+function parseRetrievalRequest(req: NextApiRequest, query: string) {
+  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
+  return {
+    inferredFrom,
+    dateFrom: (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined,
+    dateTo: req.query.dateTo as string | undefined,
+    tier: (req.query.tier as ResearchTierFilter | undefined) ?? 'all',
+    budget: budgetForQuestion(query),
+    eras: resolveEras(req, query),
+  };
+}
+
 export async function retrieveResearchDocs(
   req: NextApiRequest,
   query: string,
   embedding: number[],
   debug?: boolean,
 ): Promise<RetrievalResult> {
-  // Range phrases in the question ("since January 2025") become a date floor
-  // when the user has not set explicit dates; surfaced in the response so
-  // the page can show what was inferred.
-  const inferredFrom = !req.query.dateFrom ? extractDateFloor(query) : null;
-  const dateFrom = (req.query.dateFrom as string | undefined) ?? inferredFrom ?? undefined;
-  const dateTo = req.query.dateTo as string | undefined;
-  const tier = (req.query.tier as ResearchTierFilter | undefined) ?? 'all';
-  const budget = budgetForQuestion(query);
-  const eras = resolveEras(req, query);
+  const { inferredFrom, dateFrom, dateTo, tier, budget, eras } = parseRetrievalRequest(req, query);
   if (eras && eras.length >= 2) {
-    return retrieveEraStratified(
-      { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
-      budget.contextDocs,
-      // Era-window salience arms (#760) only on the enumeration budget —
-      // the analytical path stays byte-identical to v1.10.1 semantics.
-      budget.mode === 'enumeration',
-      debug,
+    // One DB budget per window (#782 WO-5): the eras search side by side.
+    return withRequestDbGate(eras.length, () =>
+      retrieveEraStratified(
+        { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
+        budget.contextDocs,
+        // Era-window salience arms (#760) only on the enumeration budget —
+        // the analytical path stays byte-identical to v1.10.1 semantics.
+        budget.mode === 'enumeration',
+        debug,
+      ),
     );
   }
 
   // Enumeration questions (#758): single seed sweep + salience arms from
   // the hot-entity index into guaranteed slots. A single remaining era chip
   // narrows the window like the single path does.
+  const w = eras?.[0];
   if (budget.mode === 'enumeration') {
-    const w = eras?.[0];
-    return retrieveEnumerationLoop(
-      {
-        query,
-        embedding,
-        dateFrom: w ? w.from : dateFrom,
-        dateTo: w ? w.to : dateTo,
-        tier,
-        inferredFrom,
-      },
-      budget.contextDocs,
-      debug,
+    return withRequestDbGate(1, () =>
+      retrieveEnumerationLoop(
+        {
+          query,
+          embedding,
+          dateFrom: w ? w.from : dateFrom,
+          dateTo: w ? w.to : dateTo,
+          tier,
+          inferredFrom,
+        },
+        budget.contextDocs,
+        debug,
+      ),
     );
   }
 
-  return retrieveSingleWindow(
-    query,
-    embedding,
-    eras?.[0],
-    dateFrom,
-    dateTo,
-    tier,
-    inferredFrom,
-    budget.contextDocs,
-    debug,
+  return withRequestDbGate(1, () =>
+    retrieveSingleWindow(
+      query,
+      embedding,
+      w,
+      dateFrom,
+      dateTo,
+      tier,
+      inferredFrom,
+      budget.contextDocs,
+      debug,
+    ),
   );
 }
 
@@ -190,6 +207,33 @@ interface EraRetrievalParams {
 const ERA_SALIENCE_RESERVE_DIVISOR = 4;
 const ERA_SALIENCE_RESERVE_MAX = 5;
 
+/** One era window's seed sweep. Seed-internal stage rows (#782 WO-5) are
+ *  era-prefixed so a comparative build's windows attribute separately
+ *  instead of as one opaque row each. */
+async function searchEraWindow(
+  p: EraRetrievalParams,
+  w: ReturnType<typeof intersectEraWindows>[number],
+  slots: number,
+  sinks: { eraMined: ValidatedAlias[]; windowTimings: WindowTiming[] },
+) {
+  const s0 = Date.now();
+  const seedStages: WindowTiming[] = [];
+  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
+    p.query,
+    slots * 2,
+    p.embedding,
+    w.from,
+    w.to,
+    p.tier,
+    undefined,
+    undefined,
+    seedStages,
+  );
+  sinks.eraMined.push(...minedAliases);
+  sinks.windowTimings.push(...seedStages.map((s) => ({ ...s, key: `${w.era.key}:${s.key}` })));
+  return { candidates, minedAliases, searchMs: Date.now() - s0 };
+}
+
 /** One era window's retrieve + rerank (+ optional era-scoped salience
  *  stage, #760), accumulating shared collectors. */
 async function retrieveEraWindow(
@@ -203,17 +247,7 @@ async function retrieveEraWindow(
     debugCandidates: ReturnType<typeof toCandidateSummary>[] | null;
   },
 ): Promise<ResearchDocument[]> {
-  const s0 = Date.now();
-  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
-    p.query,
-    slots * 2,
-    p.embedding,
-    w.from,
-    w.to,
-    p.tier,
-  );
-  sinks.eraMined.push(...minedAliases);
-  const searchMs = Date.now() - s0;
+  const { candidates, minedAliases, searchMs } = await searchEraWindow(p, w, slots, sinks);
   if (sinks.debugCandidates) {
     sinks.debugCandidates.push(...candidates.map((d) => toCandidateSummary(d, w.era.key)));
   }
@@ -245,6 +279,20 @@ async function retrieveEraWindow(
   return docs;
 }
 
+function buildStrata(
+  windows: ReturnType<typeof intersectEraWindows>,
+  perEra: ResearchDocument[][],
+): RetrievalStratum[] {
+  return windows.map((w, i) => ({
+    key: w.era.key,
+    label: w.era.label,
+    from: w.from,
+    to: w.to,
+    docCount: perEra[i].length,
+    ...(w.dateConflict ? { dateConflict: true } : {}),
+  }));
+}
+
 /** Comparative path: each era competes only with itself for its slot share. */
 async function retrieveEraStratified(
   p: EraRetrievalParams,
@@ -255,15 +303,15 @@ async function retrieveEraStratified(
   const t0 = Date.now();
   const slots = Math.floor(contextDocs / p.eras.length);
   const windows = intersectEraWindows(p.eras, p.dateFrom, p.dateTo);
-  // Expansion first (#726): warms the per-window alias caches so the window
-  // searches below hit them — the timings then cleanly separate API-bound
-  // expansion from database-bound retrieval.
+  // Expansion first (#726; re-confirmed by #782 WO-5): the per-window
+  // validation counts run one window at a time, alone; the window searches
+  // below then hit their caches and run side by side.
   const alsoSearched = await collectAlsoSearched(p.query, windows, p.tier);
   const expansionMs = Date.now() - t0;
   const debugCandidates: ReturnType<typeof toCandidateSummary>[] = [];
   const windowTimings: WindowTiming[] = [];
-  const tRetrieve = Date.now();
   const eraMined: ValidatedAlias[] = [];
+  const tRetrieve = Date.now();
   const perEra = await Promise.all(
     windows.map((w) =>
       retrieveEraWindow(p, w, slots, salience, {
@@ -274,14 +322,7 @@ async function retrieveEraStratified(
     ),
   );
   const retrieveWallMs = Date.now() - tRetrieve;
-  const strata: RetrievalStratum[] = windows.map((w, i) => ({
-    key: w.era.key,
-    label: w.era.label,
-    from: w.from,
-    to: w.to,
-    docCount: perEra[i].length,
-    ...(w.dateConflict ? { dateConflict: true } : {}),
-  }));
+  const strata = buildStrata(windows, perEra);
   const timings: RetrievalTimings = {
     expansionMs,
     retrieveWallMs,

@@ -1,0 +1,1338 @@
+{
+  "run": {
+    "profile": "p0",
+    "label": "db-basic4gb-control",
+    "startedAt": "2026-08-27T17:57:03.585Z",
+    "endedAt": "2026-08-27T18:17:21.687Z",
+    "baseUrl": "https://democracy-monitor-dev.onrender.com",
+    "questionSlice": "0:50",
+    "rateLimitsNeutralized": true,
+    "rlKeysCleared": 5
+  },
+  "probes": [
+    {
+      "id": "workforce-1a",
+      "hash": "b649255f0c7cf4ac",
+      "tResultsMs": 92450,
+      "tBuildCompleteMs": 92450,
+      "docCount": 60,
+      "n202": 4,
+      "nEdgeCuts": 1,
+      "n429": 0
+    },
+    {
+      "id": "workforce-1b",
+      "hash": "9cd28a0d9b0d5c24",
+      "tResultsMs": 148834,
+      "tBuildCompleteMs": 148834,
+      "docCount": 30,
+      "n202": 11,
+      "nEdgeCuts": 1,
+      "n429": 0
+    },
+    {
+      "id": "workforce-1c",
+      "hash": "5398ee781803fdf3",
+      "tResultsMs": null,
+      "tBuildCompleteMs": 375142,
+      "docCount": 60,
+      "n202": 13,
+      "nEdgeCuts": 1,
+      "n429": 3
+    },
+    {
+      "id": "workforce-1d",
+      "hash": "a892e7f04f332494",
+      "tResultsMs": 92457,
+      "tBuildCompleteMs": 92457,
+      "docCount": 60,
+      "n202": 4,
+      "nEdgeCuts": 1,
+      "n429": 0
+    },
+    {
+      "id": "workforce-2a",
+      "hash": "fb5877d10c96136b",
+      "tResultsMs": 34785,
+      "tBuildCompleteMs": 34785,
+      "docCount": 60,
+      "n202": 0,
+      "nEdgeCuts": 0,
+      "n429": 0
+    }
+  ],
+  "browse": [],
+  "health": [
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 92,
+      "status": 200
+    },
+    {
+      "ms": 85,
+      "status": 200
+    },
+    {
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "ms": 77,
+      "status": 200
+    },
+    {
+      "ms": 103,
+      "status": 200
+    },
+    {
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "ms": 109,
+      "status": 200
+    },
+    {
+      "ms": 119,
+      "status": 200
+    },
+    {
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 154,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "ms": 94,
+      "status": 200
+    },
+    {
+      "ms": 91,
+      "status": 200
+    },
+    {
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 77,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 102,
+      "status": 200
+    },
+    {
+      "ms": 168,
+      "status": 200
+    },
+    {
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "ms": 89,
+      "status": 200
+    },
+    {
+      "ms": 79,
+      "status": 200
+    },
+    {
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "ms": 76,
+      "status": 200
+    },
+    {
+      "ms": 103,
+      "status": 200
+    },
+    {
+      "ms": 149,
+      "status": 200
+    },
+    {
+      "ms": 101,
+      "status": 200
+    },
+    {
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 143,
+      "status": 200
+    },
+    {
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 106,
+      "status": 200
+    },
+    {
+      "ms": 102,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "ms": 106,
+      "status": 200
+    },
+    {
+      "ms": 90,
+      "status": 200
+    },
+    {
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "ms": 98,
+      "status": 200
+    },
+    {
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "ms": 88,
+      "status": 200
+    },
+    {
+      "ms": 136,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 106,
+      "status": 200
+    },
+    {
+      "ms": 131,
+      "status": 200
+    },
+    {
+      "ms": 87,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 101,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 122,
+      "status": 200
+    },
+    {
+      "ms": 102,
+      "status": 200
+    },
+    {
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "ms": 88,
+      "status": 200
+    },
+    {
+      "ms": 155,
+      "status": 200
+    },
+    {
+      "ms": 85,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "ms": 88,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 79,
+      "status": 200
+    },
+    {
+      "ms": 106,
+      "status": 200
+    },
+    {
+      "ms": 100,
+      "status": 200
+    },
+    {
+      "ms": 115,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 89,
+      "status": 200
+    },
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 92,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 95,
+      "status": 200
+    },
+    {
+      "ms": 89,
+      "status": 200
+    },
+    {
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "ms": 90,
+      "status": 200
+    },
+    {
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "ms": 87,
+      "status": 200
+    },
+    {
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "ms": 103,
+      "status": 200
+    },
+    {
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "ms": 104,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "ms": 108,
+      "status": 200
+    },
+    {
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "ms": 90,
+      "status": 200
+    },
+    {
+      "ms": 108,
+      "status": 200
+    },
+    {
+      "ms": 98,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 72,
+      "status": 200
+    },
+    {
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "ms": 104,
+      "status": 200
+    },
+    {
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "ms": 35,
+      "status": 200
+    },
+    {
+      "ms": 173,
+      "status": 200
+    },
+    {
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "ms": 100,
+      "status": 200
+    },
+    {
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "ms": 102,
+      "status": 200
+    },
+    {
+      "ms": 92,
+      "status": 200
+    },
+    {
+      "ms": 107,
+      "status": 200
+    },
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 101,
+      "status": 200
+    },
+    {
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "ms": 91,
+      "status": 200
+    },
+    {
+      "ms": 189,
+      "status": 200
+    },
+    {
+      "ms": 118,
+      "status": 200
+    },
+    {
+      "ms": 116,
+      "status": 200
+    },
+    {
+      "ms": 96,
+      "status": 200
+    },
+    {
+      "ms": 81,
+      "status": 200
+    },
+    {
+      "ms": 85,
+      "status": 200
+    },
+    {
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "ms": 77,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 85,
+      "status": 200
+    },
+    {
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "ms": 90,
+      "status": 200
+    },
+    {
+      "ms": 85,
+      "status": 200
+    },
+    {
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "ms": 77,
+      "status": 200
+    },
+    {
+      "ms": 88,
+      "status": 200
+    },
+    {
+      "ms": 110,
+      "status": 200
+    },
+    {
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "ms": 114,
+      "status": 200
+    },
+    {
+      "ms": 91,
+      "status": 200
+    },
+    {
+      "ms": 92,
+      "status": 200
+    }
+  ],
+  "summary": {
+    "leadMetric": {
+      "coldNovelP50Ms": 92457,
+      "coldNovelP95Ms": 148834
+    },
+    "research": {
+      "launched": 5,
+      "completedInBudget": 4,
+      "dnf240s": 1,
+      "tResultsMs": {
+        "p50": 92457,
+        "p95": 148834,
+        "max": 148834
+      },
+      "tBuildCompleteMs": {
+        "p50": 92457,
+        "p95": 375142
+      }
+    },
+    "stages": {
+      "seed": {
+        "p50": 59399,
+        "p95": 182686
+      },
+      "seed-extra-arms": {
+        "p50": 0,
+        "p95": 0
+      },
+      "seed-alias-arms": {
+        "p50": 30137,
+        "p95": 74477
+      },
+      "seed-vector-action": {
+        "p50": 4041,
+        "p95": 5574
+      },
+      "seed-vector-discussion": {
+        "p50": 13634,
+        "p95": 14158
+      },
+      "seed-mining": {
+        "p50": 45349,
+        "p95": 107796
+      },
+      "seed-fuse-hydrate": {
+        "p50": 258,
+        "p95": 289
+      },
+      "seed-snippets": {
+        "p50": 331,
+        "p95": 415
+      },
+      "arms": {
+        "p50": 5717,
+        "p95": 24156
+      },
+      "judge": {
+        "p50": 1842,
+        "p95": 3296
+      },
+      "arm-fanout": {
+        "p50": 3982,
+        "p95": 22339
+      },
+      "hydrate-compose": {
+        "p50": 35,
+        "p95": 84
+      },
+      "window": {
+        "p50": 66987,
+        "p95": 66987
+      }
+    },
+    "browse": {},
+    "health": {
+      "p50Ms": 85,
+      "p95Ms": 131,
+      "maxMs": 189,
+      "over5s": 0
+    }
+  },
+  "timingRows": [
+    {
+      "id": 1668,
+      "measuredAt": "2026-08-27T18:11:27.296Z",
+      "query": "What government documents describe reduction-in-force directives since 2025?",
+      "queryHash": "fb5877d10c96136b",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 412,
+      "expansionMs": 6910,
+      "retrieveWallMs": 27290,
+      "totalMs": 34200,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 21572
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 283
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 2963
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 14158
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 6941
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 142
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 331
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 5717
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 1709
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 3982
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 26
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": true,
+      "flagReason": "retrieveWallMs=27290ms exceeds 15000ms; totalMs=34200ms exceeds 30000ms"
+    },
+    {
+      "id": 1667,
+      "measuredAt": "2026-08-27T18:10:22.513Z",
+      "query": "What congressional responses have there been to Schedule F reclassification?",
+      "queryHash": "a892e7f04f332494",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 3,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 1666,
+      "measuredAt": "2026-08-27T18:10:22.005Z",
+      "query": "What congressional responses have there been to Schedule F reclassification?",
+      "queryHash": "a892e7f04f332494",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 438,
+      "expansionMs": 43803,
+      "retrieveWallMs": 47551,
+      "totalMs": 91354,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 43178
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 2946
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 11372
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 30137
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 12368
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 258
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 415
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 4371
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 3296
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 1040
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 35
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": true,
+      "flagReason": "expansionMs=43803ms exceeds 15000ms; retrieveWallMs=47551ms exceeds 15000ms; totalMs=91354ms exceeds 30000ms"
+    },
+    {
+      "id": 1665,
+      "measuredAt": "2026-08-27T18:08:20.065Z",
+      "query": "Which court rulings and executive actions address Schedule F reclassification?",
+      "queryHash": "5398ee781803fdf3",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 4,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 1664,
+      "measuredAt": "2026-08-27T18:07:15.178Z",
+      "query": "Which court rulings and executive actions address Schedule F reclassification?",
+      "queryHash": "5398ee781803fdf3",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 455,
+      "expansionMs": 102876,
+      "retrieveWallMs": 206843,
+      "totalMs": 309719,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 182686
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 4041
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 13630
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 74477
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 107796
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 289
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 123
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 24156
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 1733
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 22339
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 84
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": true,
+      "flagReason": "expansionMs=102876ms exceeds 15000ms; retrieveWallMs=206843ms exceeds 15000ms; totalMs=309719ms exceeds 30000ms"
+    },
+    {
+      "id": 1663,
+      "measuredAt": "2026-08-27T18:01:34.917Z",
+      "query": "How have federal agencies implemented Schedule F reclassification, and what pushback followed?",
+      "queryHash": "9cd28a0d9b0d5c24",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 3,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 1662,
+      "measuredAt": "2026-08-27T18:01:29.482Z",
+      "query": "How have federal agencies implemented Schedule F reclassification, and what pushback followed?",
+      "queryHash": "9cd28a0d9b0d5c24",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 30,
+      "embedMs": 446,
+      "expansionMs": 73492,
+      "retrieveWallMs": 66987,
+      "totalMs": 142823,
+      "windows": [
+        {
+          "key": "window",
+          "rerankMs": 2343,
+          "searchMs": 66987
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": true,
+      "flagReason": "expansionMs=73492ms exceeds 15000ms; retrieveWallMs=66987ms exceeds 15000ms; totalMs=142823ms exceeds 30000ms"
+    },
+    {
+      "id": 1661,
+      "measuredAt": "2026-08-27T17:58:36.075Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 4,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 1660,
+      "measuredAt": "2026-08-27T17:58:30.846Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 947,
+      "expansionMs": 23506,
+      "retrieveWallMs": 62260,
+      "totalMs": 85766,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 59399
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 5574
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 6887
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 13634
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 45349
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 203
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 212
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 2860
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 1842
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 989
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 29
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "e8ee16bdd3558c884996962bae38e61a450e020d",
+      "flagged": true,
+      "flagReason": "expansionMs=23506ms exceeds 15000ms; retrieveWallMs=62260ms exceeds 15000ms; totalMs=85766ms exceeds 30000ms"
+    }
+  ]
+}

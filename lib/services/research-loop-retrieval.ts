@@ -267,8 +267,10 @@ export async function retrieveEnumerationLoop(
   const t0 = Date.now();
   const timings: WindowTiming[] = [];
 
-  // Expansion first (#726 convention): warms the alias caches the seed
-  // search re-derives internally, and yields the transparency chips.
+  // Expansion first (#726 convention, re-confirmed by #782 WO-5): its
+  // validation counts are CPU-bound and must not compete with the seed's
+  // scans. The seed's internal expansion is then a cache hit (or joins the
+  // in-flight one), and the terms feed the transparency chips.
   const expansionTerms = await collectAlsoSearched(
     p.query,
     [{ from: p.dateFrom, to: p.dateTo }],

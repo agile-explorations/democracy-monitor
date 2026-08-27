@@ -14,6 +14,17 @@ LOADTEST_REDIS_URL  dev keyvalue EXTERNAL connection string (enable external
 CRON_SECRET         dev value — lets collect.ts read /api/health/search-timings
 ```
 
+## Dev-parity pre-flight (before any round)
+
+Same tag as prod, same DB tier, `plan: standard` web, `healthCheckPath`
+set — and the **same behavior flags**: `ENUMERATION_MODE=on` must be set
+on the dev service (prod runs it; without it every "What documents…"
+probe silently takes the 30-doc analytical path and the round measures
+the wrong system — caught on the first Round A, 2026-08-26). When
+setting env vars via the API: a PUT stores the value but does NOT
+restart the service — trigger an explicit deploy
+(`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
+
 ## Runbook (one measurement round)
 
 1. Restore + standardize the dev DB **via an internal Render job** (the
@@ -51,13 +62,55 @@ CRON_SECRET         dev value — lets collect.ts read /api/health/search-timing
 3. Commit the finalized report JSONs. Two-tier comparison:
    `pnpm loadtest:collect --compare reports/A.json reports/B.json`.
 
+## Retrieval-shape golden guard (#782 WO-5)
+
+`pnpm retrieval:golden --base <dev url> --out FILE [--loadtest N] [--eval]`
+captures each question's `?debug=1` retrieval shape; `--diff A B` classifies
+differences. **Drift** (exit 1) = `candidatesPreRerank` (ids + arm
+provenance, era-order-invariant) or the `alsoSearched` term SET.
+**Noise** (reported, not gating) = final `documents` order (uncached
+gpt-4o-mini reranker) and the trace's `validated` list (the trace re-runs
+the uncached narrowing proposal). Capture with warm caches so the LLM draw
+is shared. Known limit: on multi-era comparative questions the salience
+judge's shortlist moves with the reranked pool, so `alsoSearched` can gain
+or lose a few salience picks between runs of identical code (measured
+2026-08-27: 1 of 19 questions per pair) — read a lone `alsoSearched` drift
+on a comparative question against `candidatesPreRerank` before acting.
+Baselines + WO-5 captures live in `reports/golden/`.
+
+### Seed stage rows (since WO-5)
+
+`seed-expansion` (LLM propose + validation counts; runs FIRST and alone —
+usually a cache hit, the caller already expanded) · `seed-vector-<tier>` · `seed-mining-prep` (candidate text fetch +
+extraction) · `seed-alias-arms` (LLM-alias arm execution) · `seed-mining`
+(known-filter → mined validation → mined arms, alongside alias arms) ·
+`seed-extra-arms` · `seed-fuse-hydrate` · `seed-snippets`. Alias arms
+overlap the vectors → mining chain; era builds emit the same rows prefixed
+`<era>:`.
+
+### DB budget knobs (since WO-5)
+
+`DB_CONCURRENCY_PER_WINDOW` (default 8, [1,16]): concurrent DB statements
+one research window may hold across ALL its stages (validation counts,
+vector scans, alias/mined arms, mining text fetch); a request's budget is
+this × its window count, so a 3-era comparative gets 24 — the envelope
+each path had before the overlap. `DB_WORK_CONCURRENCY` (default 0 = off):
+optional process-wide ceiling on top, for incidents/sweeps. Measured
+2026-08-27: ungated overlap oversubscribed the 2-vCPU DB; a process-wide
+cap of 8 fixed single-window builds (1c finished for the first time) but
+throttled the era path — hence per-window.
+
 ## Rules
 
 - **Never against prod.** The guard fails closed; don't work around it.
 - The 14 eval questions and 12 prewarm questions are measurement
   instruments — the bank asserts disjointness at startup; never add them.
-- Synthetic `cf-connecting-ip` headers are a dev-only rate-limit bypass
-  (dev sits off Cloudflare, so the header is client-controlled there).
+- Rate limits are neutralized by the runner clearing `rl:*` every 30s
+  (recorded as `rateLimitsNeutralized` in the run metadata). Synthetic
+  `cf-connecting-ip` headers do NOT work: `onrender.com` transits
+  Cloudflare, which 403s any client-supplied `cf-connecting-ip`
+  (error 1000; learned on the first real P0, 2026-08-26) — so all
+  harness traffic shares the runner's real IP.
 - A probe still 202-polling at 900s is an **incident** (wedged inflight
   slot or dead build), not a data point.
 - Deploys during a run invalidate it (cutover kills in-flight builds and

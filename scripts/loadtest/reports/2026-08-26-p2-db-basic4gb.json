@@ -1,0 +1,4849 @@
+{
+  "run": {
+    "profile": "p2",
+    "label": "db-basic4gb",
+    "startedAt": "2026-08-26T15:12:10.387Z",
+    "endedAt": "2026-08-26T15:22:42.503Z",
+    "baseUrl": "https://democracy-monitor-dev.onrender.com",
+    "questionSlice": "0:50",
+    "rateLimitsNeutralized": true,
+    "rlKeysCleared": 21
+  },
+  "probes": [
+    {
+      "id": "workforce-1a",
+      "hash": "b649255f0c7cf4ac",
+      "tResultsMs": 92319,
+      "tBuildCompleteMs": 92319,
+      "docCount": 60,
+      "n202": 4,
+      "nEdgeCuts": 1,
+      "n429": 0
+    }
+  ],
+  "browse": [
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 88,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 254,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 335,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 338,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 3428,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 216,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 958,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 91,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 845,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1007,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 76,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 800,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 356,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 650,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 105,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 196,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 191,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 700,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 287,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 235,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 726,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 644,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 233,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 824,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 352,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 689,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 172,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 175,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 66,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 742,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 98,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 678,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 238,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 664,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 295,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 288,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 800,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 205,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 231,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 254,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 656,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 193,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 686,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 678,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 664,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 615,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 1034,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1138,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 187,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 212,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 275,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 737,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 715,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 703,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 768,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 180,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 240,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 205,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 223,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 5660,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 76,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1499,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1207,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 283,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 229,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 2801,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 297,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 202,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 663,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 66,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 147,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 297,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 348,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 312,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 921,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 736,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 691,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 227,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 747,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 291,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 213,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 236,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1426,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1411,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 106,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 282,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 221,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1142,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 319,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 861,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 702,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 220,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 290,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 850,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 662,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 164,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 2115,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 383,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 513,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 625,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 630,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 190,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 123,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 668,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 232,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 199,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 669,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 249,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 94,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 666,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 470,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1193,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 646,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 636,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 201,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 232,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 864,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 626,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 221,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 256,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 315,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 661,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 303,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 633,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 633,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 103,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 640,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 684,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 256,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 188,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 620,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 131,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 210,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 75,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 275,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 318,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 187,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 704,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 110,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 634,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 647,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 773,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 194,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 636,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 277,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 206,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 269,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 264,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 771,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 107,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 637,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 254,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 727,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 634,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 201,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 632,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 211,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 196,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 99,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 247,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 706,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 687,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 623,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 708,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 66,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 383,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 281,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 151,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1024,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 636,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 688,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 738,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 163,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 196,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 645,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 666,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 158,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 268,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 188,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 664,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 699,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 347,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 702,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 712,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 841,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 309,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 215,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 282,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 111,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 673,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 229,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 72,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 79,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 660,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 173,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 97,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 251,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 704,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 209,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 703,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 692,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 663,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 455,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 487,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 766,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 722,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 197,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 179,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 654,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 232,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 221,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 637,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 623,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 187,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 303,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 667,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 155,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 707,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 689,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 91,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 263,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 775,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 141,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 664,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 180,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 198,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 726,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 713,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 200,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 304,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 628,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 636,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 151,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1043,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 623,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 632,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 189,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 168,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 199,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 104,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 641,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 212,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 213,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 716,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 745,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 186,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 323,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 742,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 307,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 656,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 656,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 238,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 68,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 629,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 344,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 188,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 656,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 171,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 193,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 247,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 664,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 83,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 768,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 802,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 178,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 31,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 121,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1079,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1094,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 478,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 78,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 684,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 238,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 186,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 191,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 120,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 172,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 185,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 80,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 617,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 635,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 634,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 696,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 662,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 301,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 423,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 367,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 223,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 190,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 172,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 686,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 618,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 31,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 621,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 70,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 628,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 679,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 342,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 353,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 180,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 206,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 240,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 139,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 916,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 999,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 771,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 765,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 251,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 376,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 185,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 289,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 810,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 189,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 633,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 736,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 798,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 728,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 93,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 352,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 516,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 214,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 267,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 1118,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 33,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 321,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 84,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 715,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 640,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 644,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 718,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 58,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 676,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 275,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 764,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 148,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 198,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 169,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 319,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 775,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 662,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 765,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 651,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 234,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 194,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 170,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 711,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 212,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 86,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 654,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 141,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 214,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 625,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 843,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 822,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 67,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 185,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 189,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 253,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 224,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 628,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 35,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 632,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 443,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 759,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 622,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 174,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 103,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 645,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 163,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 202,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 188,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 700,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 682,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 658,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 172,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 698,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 653,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 279,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 60,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 61,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 201,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 377,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 466,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 54,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 73,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 693,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 646,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 55,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/categories/summary",
+      "ms": 56,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/stats/document-count",
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/overview/summary",
+      "ms": 194,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 630,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/search",
+      "ms": 675,
+      "status": 200
+    },
+    {
+      "endpoint": "/api/health/meta",
+      "ms": 42,
+      "status": 200
+    }
+  ],
+  "health": [
+    {
+      "ms": 360,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "ms": 95,
+      "status": 200
+    },
+    {
+      "ms": 59,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 46,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 62,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 35,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 261,
+      "status": 200
+    },
+    {
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 69,
+      "status": 200
+    },
+    {
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "ms": 74,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 50,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 71,
+      "status": 200
+    },
+    {
+      "ms": 64,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 65,
+      "status": 200
+    },
+    {
+      "ms": 131,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 53,
+      "status": 200
+    },
+    {
+      "ms": 34,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "ms": 49,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 57,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 94,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 134,
+      "status": 200
+    },
+    {
+      "ms": 82,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 63,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 41,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 179,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 51,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 36,
+      "status": 200
+    },
+    {
+      "ms": 127,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 171,
+      "status": 200
+    },
+    {
+      "ms": 38,
+      "status": 200
+    },
+    {
+      "ms": 32,
+      "status": 200
+    },
+    {
+      "ms": 40,
+      "status": 200
+    },
+    {
+      "ms": 37,
+      "status": 200
+    },
+    {
+      "ms": 163,
+      "status": 200
+    },
+    {
+      "ms": 77,
+      "status": 200
+    },
+    {
+      "ms": 52,
+      "status": 200
+    },
+    {
+      "ms": 47,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    },
+    {
+      "ms": 44,
+      "status": 200
+    },
+    {
+      "ms": 43,
+      "status": 200
+    },
+    {
+      "ms": 48,
+      "status": 200
+    },
+    {
+      "ms": 152,
+      "status": 200
+    },
+    {
+      "ms": 45,
+      "status": 200
+    },
+    {
+      "ms": 39,
+      "status": 200
+    },
+    {
+      "ms": 42,
+      "status": 200
+    }
+  ],
+  "summary": {
+    "leadMetric": {
+      "coldNovelP50Ms": 92319,
+      "coldNovelP95Ms": 92319
+    },
+    "research": {
+      "launched": 1,
+      "completedInBudget": 1,
+      "dnf240s": 0,
+      "tResultsMs": {
+        "p50": 92319,
+        "p95": 92319,
+        "max": 92319
+      },
+      "tBuildCompleteMs": {
+        "p50": 92319,
+        "p95": 92319
+      }
+    },
+    "stages": {
+      "seed": {
+        "p50": 71308,
+        "p95": 71308
+      },
+      "seed-extra-arms": {
+        "p50": 0,
+        "p95": 0
+      },
+      "seed-alias-arms": {
+        "p50": 5078,
+        "p95": 5078
+      },
+      "seed-vector-action": {
+        "p50": 8511,
+        "p95": 8511
+      },
+      "seed-vector-discussion": {
+        "p50": 14849,
+        "p95": 14849
+      },
+      "seed-mining": {
+        "p50": 57760,
+        "p95": 57760
+      },
+      "seed-fuse-hydrate": {
+        "p50": 849,
+        "p95": 849
+      },
+      "seed-snippets": {
+        "p50": 248,
+        "p95": 248
+      },
+      "arms": {
+        "p50": 5904,
+        "p95": 5904
+      },
+      "judge": {
+        "p50": 2464,
+        "p95": 2464
+      },
+      "arm-fanout": {
+        "p50": 3731,
+        "p95": 3731
+      },
+      "hydrate-compose": {
+        "p50": 87,
+        "p95": 87
+      }
+    },
+    "browse": {
+      "/api/stats/document-count": {
+        "p50": 43,
+        "p95": 168
+      },
+      "/api/health/meta": {
+        "p50": 44,
+        "p95": 103
+      },
+      "/api/overview/summary": {
+        "p50": 232,
+        "p95": 636
+      },
+      "/api/categories/summary": {
+        "p50": 61,
+        "p95": 188
+      },
+      "/api/search": {
+        "p50": 691,
+        "p95": 1193
+      }
+    },
+    "health": {
+      "p50Ms": 43,
+      "p95Ms": 152,
+      "maxMs": 360,
+      "over5s": 0
+    }
+  },
+  "timingRows": [
+    {
+      "id": 1064,
+      "measuredAt": "2026-08-26T15:24:25.520Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 3,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "d8e9bed45408d167d46ba05f57273c1d8f84feb5",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 1063,
+      "measuredAt": "2026-08-26T15:24:20.255Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 702,
+      "expansionMs": 17215,
+      "retrieveWallMs": 77212,
+      "totalMs": 94427,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 71308
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 919
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 5686
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 12465
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 57760
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 849
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 233
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 5904
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 2086
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 3731
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 87
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "d8e9bed45408d167d46ba05f57273c1d8f84feb5",
+      "flagged": true,
+      "flagReason": "expansionMs=17215ms exceeds 15000ms; retrieveWallMs=77212ms exceeds 15000ms; totalMs=94427ms exceeds 30000ms"
+    },
+    {
+      "id": 930,
+      "measuredAt": "2026-08-26T15:14:42.773Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "cache",
+      "docCount": null,
+      "embedMs": null,
+      "expansionMs": null,
+      "retrieveWallMs": null,
+      "totalMs": 3,
+      "windows": null,
+      "appVersion": "1.16.8",
+      "gitCommit": "d8e9bed45408d167d46ba05f57273c1d8f84feb5",
+      "flagged": false,
+      "flagReason": null
+    },
+    {
+      "id": 929,
+      "measuredAt": "2026-08-26T15:14:41.427Z",
+      "query": "What government documents describe Schedule F reclassification since 2025?",
+      "queryHash": "b649255f0c7cf4ac",
+      "params": {
+        "eras": null,
+        "mode": "research",
+        "tier": null,
+        "debug": false,
+        "dateTo": null,
+        "refresh": false,
+        "dateFrom": null
+      },
+      "served": "build",
+      "docCount": 60,
+      "embedMs": 816,
+      "expansionMs": 27001,
+      "retrieveWallMs": 62620,
+      "totalMs": 89621,
+      "windows": [
+        {
+          "key": "seed",
+          "rerankMs": 0,
+          "searchMs": 56850
+        },
+        {
+          "key": "seed-extra-arms",
+          "rerankMs": 0,
+          "searchMs": 0
+        },
+        {
+          "key": "seed-alias-arms",
+          "rerankMs": 0,
+          "searchMs": 5078
+        },
+        {
+          "key": "seed-vector-action",
+          "rerankMs": 0,
+          "searchMs": 8511
+        },
+        {
+          "key": "seed-vector-discussion",
+          "rerankMs": 0,
+          "searchMs": 14849
+        },
+        {
+          "key": "seed-mining",
+          "rerankMs": 0,
+          "searchMs": 41532
+        },
+        {
+          "key": "seed-fuse-hydrate",
+          "rerankMs": 0,
+          "searchMs": 221
+        },
+        {
+          "key": "seed-snippets",
+          "rerankMs": 0,
+          "searchMs": 248
+        },
+        {
+          "key": "arms",
+          "rerankMs": 0,
+          "searchMs": 5769
+        },
+        {
+          "key": "judge",
+          "rerankMs": 0,
+          "searchMs": 2464
+        },
+        {
+          "key": "arm-fanout",
+          "rerankMs": 0,
+          "searchMs": 3273
+        },
+        {
+          "key": "hydrate-compose",
+          "rerankMs": 0,
+          "searchMs": 32
+        }
+      ],
+      "appVersion": "1.16.8",
+      "gitCommit": "d8e9bed45408d167d46ba05f57273c1d8f84feb5",
+      "flagged": true,
+      "flagReason": "expansionMs=27001ms exceeds 15000ms; retrieveWallMs=62620ms exceeds 15000ms; totalMs=89621ms exceeds 30000ms"
+    }
+  ]
+}

@@ -25,8 +25,10 @@ import {
   isStatementTimeout,
   SLOW_ARM_MS,
 } from '@/lib/services/arm-cache';
+import { dbWorkGate } from '@/lib/services/db-work-gate';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 import { mapConcurrent, sleep } from '@/lib/utils/async';
+import { envInt } from '@/lib/utils/env';
 
 export interface ExpansionWindow {
   dateFrom?: string;
@@ -89,13 +91,15 @@ async function cappedCount(
   where: ReturnType<typeof sql>,
   cap: number,
 ): Promise<number> {
-  const r = await db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
-    return tx.execute(sql`
+  const r = await dbWorkGate(() =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL statement_timeout = 120000`);
+      return tx.execute(sql`
     SELECT count(*) AS n FROM (
       SELECT 1 FROM documents d WHERE ${where} LIMIT ${cap}
     ) capped`);
-  });
+    }),
+  );
   return Number((r.rows[0] as { n: string }).n);
 }
 
@@ -208,10 +212,11 @@ export async function warmAliasValidation(phrase: string, window: ExpansionWindo
   await cachedAliasCount(db, phrase, window, filters, cap, true);
 }
 
-/** Same bound rationale as ARM_QUERY_CONCURRENCY (arm-cache.ts): leave the
- *  10-client pool headroom so no count statement runs slow enough to hit
- *  the 120s ceiling under a cold-cache burst (2026-08-24 incident). */
-const COUNT_QUERY_CONCURRENCY = 5;
+/** Same derivation as ARM_QUERY_CONCURRENCY (arm-cache.ts, #782 WO-3):
+ *  8 on the 2-CPU basic-4gb tier — cold-regime I/O overlap is where the
+ *  win is; warm counts are CPU-bound and insensitive. Env-overridable
+ *  within [1,10] for sweeps and incident tuning. */
+const COUNT_QUERY_CONCURRENCY = envInt('COUNT_QUERY_CONCURRENCY', 8, 1, 10);
 const COUNT_TIMEOUT_RETRY_DELAY_MS = 3_000;
 
 /** Count every candidate alias with bounded concurrency, order preserved.

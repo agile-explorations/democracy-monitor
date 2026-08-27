@@ -11,20 +11,28 @@ import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 
 /** Corpus-validated aliases (phrase + corpus match count) for the windows
- *  searched (#702, counts #713) — cache hits, since searchResearch already
- *  ran the same expansion internally. Multi-window merges keep the max count. */
+ *  searched (#702, counts #713). Runs BEFORE the seed sweep, one window at
+ *  a time: validation counts are CPU-bound on the DB tier and measured
+ *  slower in parallel than in series (#782 WO-5). The seed then derives the
+ *  same expansion as a cache hit (or joins the in-flight one). Multi-window
+ *  merges keep window order and the max count. */
 export async function collectAlsoSearched(
   query: string,
   windows: Array<{ from?: string; to?: string }>,
   tier: ResearchTierFilter,
 ): Promise<ValidatedAlias[]> {
-  const byPhrase = new Map<string, number>();
+  const perWindow: ValidatedAlias[][] = [];
   for (const w of windows) {
-    const aliases = await expandAndValidate(query, {
-      dateFrom: w.from,
-      dateTo: w.to,
-      tier: tier === 'all' ? undefined : tier,
-    });
+    perWindow.push(
+      await expandAndValidate(query, {
+        dateFrom: w.from,
+        dateTo: w.to,
+        tier: tier === 'all' ? undefined : tier,
+      }),
+    );
+  }
+  const byPhrase = new Map<string, number>();
+  for (const aliases of perWindow) {
     for (const a of aliases) {
       byPhrase.set(a.phrase, Math.max(byPhrase.get(a.phrase) ?? 0, a.matches));
     }
@@ -64,8 +72,8 @@ export interface WindowTiming {
 
 /** Phase breakdown of one docsOnly retrieval build (#726): expansion runs
  *  FIRST (warming its caches) so the window searches below are ~pure DB
- *  work — separating external-API-bound from database-bound time, the split
- *  the cold-cache program (#724) decides on. */
+ *  work — separating external-API-bound from database-bound time. The
+ *  seed's `seed-expansion` row then records the cache hit. */
 export interface RetrievalTimings {
   expansionMs: number;
   /** Wall-clock of the (parallel) window retrieval block. */

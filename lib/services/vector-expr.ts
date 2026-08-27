@@ -14,6 +14,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { getDb } from '@/lib/db';
+import { dbWorkGate } from '@/lib/services/db-work-gate';
 
 type Db = ReturnType<typeof getDb>;
 type SqlQuery = ReturnType<typeof sql>;
@@ -30,11 +31,16 @@ type SqlQuery = ReturnType<typeof sql>;
  * SET LOCAL scopes both GUCs to this transaction.
  */
 export async function executeFilteredVectorQuery(db: Db, query: SqlQuery) {
-  return db.transaction(async (tx) => {
-    await tx.execute(sql`SET LOCAL hnsw.iterative_scan = relaxed_order`);
-    await tx.execute(sql`SET LOCAL hnsw.ef_search = 200`);
-    return tx.execute(query);
-  });
+  // Under the request's DB budget (#782 WO-5): vector scans beside a burst
+  // of validation counts ran 2x slower cold; sharing one gate lets them
+  // interleave instead of compete.
+  return dbWorkGate(() =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL hnsw.iterative_scan = relaxed_order`);
+      await tx.execute(sql`SET LOCAL hnsw.ef_search = 200`);
+      return tx.execute(query);
+    }),
+  );
 }
 
 /** Distance for queries whose FROM aliases documents as `d`. */
