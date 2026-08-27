@@ -4,6 +4,7 @@
  * aspect-stratified path (research-aspect-retrieval.ts) both consume these.
  */
 
+import type { CacheStats } from '@/lib/services/db-work-gate';
 import { expandAndValidate } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { rerankByRelevance, rerankTierBalanced } from '@/lib/services/relevance-rerank';
@@ -80,6 +81,8 @@ export interface RetrievalTimings {
   retrieveWallMs: number;
   windows: WindowTiming[];
   totalMs: number;
+  /** Arm / validation-count cache tally for this build (#787). */
+  cacheStats?: CacheStats;
 }
 
 /** Light pre-rerank candidate shape for the debug trace (#718). */

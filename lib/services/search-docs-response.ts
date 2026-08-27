@@ -220,6 +220,7 @@ export async function respondDocsOnlyBuild(
     ...timingRecord(req, query, build.queryHash, build.embedMs, retrieval.timings),
     docCount: retrieval.docs.length,
   });
+  logBuild(build.queryHash, retrieval);
   await respondDocsOnly(
     req,
     res,
@@ -228,6 +229,18 @@ export async function respondDocsOnlyBuild(
     build.docsCacheKey,
     build.debug,
     retrieval.candidates,
+  );
+}
+
+/** One line per build with the cache tally (#787) — the Render-logs view of
+ *  how much of a cold build the week's caches absorbed. */
+function logBuild(queryHash: string, retrieval: RetrievalResult): void {
+  const s = retrieval.timings.cacheStats;
+  const tally = s
+    ? `arms ${s.armHits}/${s.armHits + s.armMisses} hit, counts ${s.countHits}/${s.countHits + s.countMisses} hit`
+    : 'no cache tally';
+  console.log(
+    `[search] build ${queryHash}: ${retrieval.docs.length} docs in ${retrieval.timings.totalMs}ms — ${tally}`,
   );
 }
 

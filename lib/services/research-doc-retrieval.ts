@@ -9,7 +9,7 @@
  */
 
 import type { NextApiRequest } from 'next';
-import { withRequestDbGate } from '@/lib/services/db-work-gate';
+import { requestCacheStats, withRequestDbGate } from '@/lib/services/db-work-gate';
 import { ENUM_EXTRACTION } from '@/lib/services/entity-extraction';
 import type { EraWindow } from '@/lib/services/era-extraction';
 import {
@@ -136,6 +136,18 @@ function parseRetrievalRequest(req: NextApiRequest, query: string) {
   };
 }
 
+/** One DB budget per window (#782 WO-5) and one cache tally per build
+ *  (#787), attached to the timings the payload and the ledger carry. */
+function retrieveUnderBudget(
+  windows: number,
+  fn: () => Promise<RetrievalResult>,
+): Promise<RetrievalResult> {
+  return withRequestDbGate(windows, async () => {
+    const result = await fn();
+    return { ...result, timings: { ...result.timings, cacheStats: requestCacheStats() } };
+  });
+}
+
 export async function retrieveResearchDocs(
   req: NextApiRequest,
   query: string,
@@ -144,8 +156,7 @@ export async function retrieveResearchDocs(
 ): Promise<RetrievalResult> {
   const { inferredFrom, dateFrom, dateTo, tier, budget, eras } = parseRetrievalRequest(req, query);
   if (eras && eras.length >= 2) {
-    // One DB budget per window (#782 WO-5): the eras search side by side.
-    return withRequestDbGate(eras.length, () =>
+    return retrieveUnderBudget(eras.length, () =>
       retrieveEraStratified(
         { query, embedding, eras, dateFrom, dateTo, tier, inferredFrom },
         budget.contextDocs,
@@ -162,7 +173,7 @@ export async function retrieveResearchDocs(
   // narrows the window like the single path does.
   const w = eras?.[0];
   if (budget.mode === 'enumeration') {
-    return withRequestDbGate(1, () =>
+    return retrieveUnderBudget(1, () =>
       retrieveEnumerationLoop(
         {
           query,
@@ -178,7 +189,7 @@ export async function retrieveResearchDocs(
     );
   }
 
-  return withRequestDbGate(1, () =>
+  return retrieveUnderBudget(1, () =>
     retrieveSingleWindow(
       query,
       embedding,

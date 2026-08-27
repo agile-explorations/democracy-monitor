@@ -73,3 +73,15 @@ export const BROWSE_ENDPOINTS = [
   '/api/stats/document-count',
   '/api/search?mode=explore&q=executive%20order&page=1',
 ];
+
+/** Lead-metric budget (owner decision 2026-08-27, R-LOAD close-out #786):
+ *  cold, novel Research search, single user, on the current DB tier. Set
+ *  from measured behavior after WO-5 (p50 ~90–115s, p95 ~150–190s, DNF 0)
+ *  — the 30/60s aspiration was shown to be storage-I/O-bound on basic-4gb.
+ *  Evaluated on per-probe MEDIANS across interleaved runs (see README). */
+export const LEAD_BUDGET = {
+  p50Ms: 120_000,
+  p95Ms: 240_000,
+  /** Probes whose median run did not finish inside the client budget. */
+  maxDnf: 0,
+} as const;

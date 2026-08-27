@@ -5,6 +5,23 @@ guard refuses any target matching the prod stack. The lead metric is the
 wall-clock a first-time user waits for a **non-cached novel Research
 search**, uncontended (owner-defined, 2026-08-25).
 
+## Budget and gate (owner decision 2026-08-27, #786)
+
+`LEAD_BUDGET` (`profiles.ts`): **cold-novel p50 ≤ 120s, p95 ≤ 240s, zero
+DNF probes**, evaluated on per-probe medians across interleaved runs. The
+suite is the pre-outreach and post-retrieval-change regression gate:
+
+```
+pnpm loadtest:collect --gate reports/A1.json,reports/A2.json   # PASS/FAIL, nonzero exit on FAIL
+pnpm loadtest:collect --compare reports/A1.json,reports/A2.json reports/B1.json,reports/B2.json
+```
+
+Why medians and interleaving: the tier is storage-I/O-bound, and identical
+work varied 35–103s between runs 25 minutes apart (WO-5, 2026-08-27). An
+A/B comparison is `reset → A → reset → B → reset → A → reset → B` in one
+session with a same-day control of the old code; one run each, or
+today-vs-yesterday, is not an experiment.
+
 ## Environment (never committed)
 
 ```
@@ -24,6 +41,14 @@ the wrong system — caught on the first Round A, 2026-08-26). When
 setting env vars via the API: a PUT stores the value but does NOT
 restart the service — trigger an explicit deploy
 (`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
+
+## Dev deploys do NOT run migrations
+
+The dev web service's effective build command is `pnpm install && pnpm build`
+(no `db:init`, whatever the API reports — verified in the build log
+2026-08-27). After deploying a schema change to dev, apply it yourself:
+`source .env.dev.local && export DATABASE_URL && pnpm db:migrate` (retry on
+`lock timeout` — the index-drop migration waits at most 5s for its lock).
 
 ## Runbook (one measurement round)
 
@@ -70,8 +95,13 @@ differences. **Drift** (exit 1) = `candidatesPreRerank` (ids + arm
 provenance, era-order-invariant) or the `alsoSearched` term SET.
 **Noise** (reported, not gating) = final `documents` order (uncached
 gpt-4o-mini reranker) and the trace's `validated` list (the trace re-runs
-the uncached narrowing proposal). Capture with warm caches so the LLM draw
-is shared. Known limit: on multi-era comparative questions the salience
+the uncached narrowing proposal). Capture with the LLM-draw namespaces WARM — `search:qemb:*` (question
+embedding), `search:qexp:*` (proposal), `search:qexpv:*` (validated terms; a
+cold one re-runs the uncached narrowing proposal) and `search:qjudge:*`
+(salience picks): when arms must be cold, reset with
+`--keep=search:qemb:*,search:qexp:*,search:qexpv:*,search:qjudge:*`. A full
+reset re-rolls every draw and reports 0/19 "drift" that is pure noise
+(learned 2026-08-27); same-code warm pairs are the stability check. Known limit: on multi-era comparative questions the salience
 judge's shortlist moves with the reranked pool, so `alsoSearched` can gain
 or lose a few salience picks between runs of identical code (measured
 2026-08-27: 1 of 19 questions per pair) — read a lone `alsoSearched` drift
@@ -88,6 +118,10 @@ extraction) · `seed-alias-arms` (LLM-alias arm execution) · `seed-mining`
 overlap the vectors → mining chain; era builds emit the same rows prefixed
 `<era>:`.
 
+### Cache telemetry (since #787)
+
+Every build row in `search_timings` carries `cache_stats` (arm and validation-count hits/misses for that build); `collect` summarizes them as `cache.armHitRate` / `cache.countHitRate` over the run's build rows, and the Render log line `[search] build <hash>: … — arms h/n hit, counts h/n hit` shows it per build. The Monday post-dump replay (`pnpm aliases:replay`, #788) pre-pays every miss the previous data week ledgered — arms first, then ordinary counts, zero-match "junk" counts (≥30s) last, most recently demanded first within a tier — under `ALIAS_REPLAY_BUDGET_MS` (default 25 min) at `ALIAS_REPLAY_CONCURRENCY` (default 4) — a P0 on previously-seen questions should then report hit rates near 1.
+
 ### DB budget knobs (since WO-5)
 
 `DB_CONCURRENCY_PER_WINDOW` (default 8, [1,16]): concurrent DB statements
@@ -102,6 +136,11 @@ throttled the era path — hence per-window.
 
 ## Rules
 
+- **Interleave A/B runs.** The tier is storage-I/O-bound (DB CPU ≤0.2 of 2
+  vCPU during runs); identical work varied 35–103s between runs 25 min
+  apart. Any perf comparison needs A/B/A/B in one session, medians
+  compared, and a same-day control run of the old code — one run each, or
+  today-vs-yesterday, is not an experiment (learned on WO-5, 2026-08-27).
 - **Never against prod.** The guard fails closed; don't work around it.
 - The 14 eval questions and 12 prewarm questions are measurement
   instruments — the bank asserts disjointness at startup; never add them.

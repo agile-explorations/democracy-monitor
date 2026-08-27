@@ -13,6 +13,7 @@ import { sql } from 'drizzle-orm';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { searchTimings } from '@/lib/db/schema';
+import type { CacheStats } from '@/lib/services/db-work-gate';
 import { sendOpsAlert } from '@/lib/services/ops-alert-service';
 import pkg from '@/package.json';
 
@@ -48,6 +49,8 @@ export interface SearchTimingRecord {
   retrieveWallMs?: number;
   totalMs?: number;
   windows?: Array<{ key: string; searchMs: number; rerankMs: number }>;
+  /** Arm / validation-count cache tally of a build (#787). */
+  cacheStats?: CacheStats;
 }
 
 /** Threshold check — returns the human-readable reasons tripped, or null.
@@ -157,6 +160,7 @@ export async function recordSearchTiming(record: SearchTimingRecord): Promise<vo
       retrieveWallMs: record.retrieveWallMs ?? null,
       totalMs: record.totalMs ?? null,
       windows: record.windows ?? null,
+      cacheStats: record.cacheStats ?? null,
       appVersion: pkg.version,
       gitCommit: process.env.RENDER_GIT_COMMIT ?? null,
       flagged: reason != null,

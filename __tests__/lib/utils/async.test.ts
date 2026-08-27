@@ -132,3 +132,43 @@ describe('createLimiter (#782 WO-5)', () => {
     expect(maxRunning).toBe(3);
   });
 });
+
+describe('mapConcurrentUntil (#788)', () => {
+  it('skips items not yet started once the stop condition holds, finishing in-flight work', async () => {
+    const { mapConcurrentUntil } = await import('@/lib/utils/async');
+    let started = 0;
+    const { results, skipped } = await mapConcurrentUntil(
+      [1, 2, 3, 4, 5, 6],
+      2,
+      () => started >= 3,
+      async (n) => {
+        started++;
+        await new Promise((r) => setTimeout(r, 5));
+        return n * 10;
+      },
+    );
+    expect(results.filter((r) => r !== undefined)).toEqual([10, 20, 30]);
+    expect(skipped).toBe(3);
+  });
+
+  it('runs everything when the condition never holds and bounds concurrency', async () => {
+    const { mapConcurrentUntil } = await import('@/lib/utils/async');
+    let running = 0;
+    let peak = 0;
+    const { results, skipped } = await mapConcurrentUntil(
+      [1, 2, 3, 4],
+      2,
+      () => false,
+      async (n) => {
+        running++;
+        peak = Math.max(peak, running);
+        await new Promise((r) => setTimeout(r, 5));
+        running--;
+        return n;
+      },
+    );
+    expect(results).toEqual([1, 2, 3, 4]);
+    expect(skipped).toBe(0);
+    expect(peak).toBe(2);
+  });
+});

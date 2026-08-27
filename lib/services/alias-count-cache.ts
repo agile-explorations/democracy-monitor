@@ -6,8 +6,9 @@
  * text (measured ~60s on pathological topics). Counts here are cached per
  * (alias, window, data week), so recurring topics stop re-paying whatever
  * the wording; zero counts cache too (zero-match phrases scan the entire
- * candidate set — the worst case). Slow counts join the slow-alias ledger
- * for the Monday replay (warmAliasValidation is the replay entry point).
+ * candidate set — the worst case). Every real-demand miss joins the alias
+ * work ledger for the Monday replay (warmAliasValidation is the replay
+ * entry point, #788).
  */
 
 import { sql } from 'drizzle-orm';
@@ -25,7 +26,7 @@ import {
   isStatementTimeout,
   SLOW_ARM_MS,
 } from '@/lib/services/arm-cache';
-import { dbWorkGate } from '@/lib/services/db-work-gate';
+import { dbWorkGate, noteCacheEvent } from '@/lib/services/db-work-gate';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 import { mapConcurrent, sleep } from '@/lib/utils/async';
 import { envInt } from '@/lib/utils/env';
@@ -166,8 +167,10 @@ export async function cachedAliasCount(
   if (!forceRefresh) {
     const cached = await cacheGet<{ matches: number; cap: number }>(key);
     if (cached != null && cachedCountUsable(cached, cap)) {
+      noteCacheEvent('count', true);
       return Math.min(cached.matches, cap + 1);
     }
+    noteCacheEvent('count', false);
   }
   const quoted = `"${phrase.replace(/"/g, '')}"`;
   const matchFilter = sql`${filters}
@@ -189,12 +192,15 @@ export async function cachedAliasCount(
   }
   const durationMs = Date.now() - started;
   await cacheSet(key, { matches, cap }, ARM_CACHE_TTL_SECONDS);
-  if (durationMs > SLOW_ARM_MS) {
+  if (!forceRefresh) {
     ledgerSlowAliasWork(
       db,
       { kind: 'validation', phrase, paramsHash: windowHash, params: windowLedgerParams(window) },
       durationMs,
     );
+  }
+  if (durationMs > SLOW_ARM_MS) {
+    console.warn(`[query-expansion] slow count "${phrase}": ${durationMs}ms`);
   }
   return matches;
 }
