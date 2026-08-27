@@ -71,3 +71,45 @@ describe('withRequestDbGate / dbWorkGate', () => {
     );
   });
 });
+
+describe('cache tally (#787)', () => {
+  it('counts hits and misses per kind inside a request and snapshots them', async () => {
+    const { noteCacheEvent, requestCacheStats } = await import('@/lib/services/db-work-gate');
+    const stats = await withRequestDbGate(1, async () => {
+      noteCacheEvent('arm', true);
+      noteCacheEvent('arm', true);
+      noteCacheEvent('arm', false);
+      noteCacheEvent('count', false);
+      await Promise.resolve().then(() => noteCacheEvent('count', true)); // nested async stage
+      return requestCacheStats();
+    });
+    expect(stats).toEqual({ armHits: 2, armMisses: 1, countHits: 1, countMisses: 1 });
+  });
+
+  it('keeps concurrent requests on separate tallies and ignores events outside a request', async () => {
+    const { noteCacheEvent, requestCacheStats } = await import('@/lib/services/db-work-gate');
+    noteCacheEvent('arm', true); // outside: no-op
+    expect(requestCacheStats()).toBeUndefined();
+    const [a, b] = await Promise.all([
+      withRequestDbGate(1, async () => {
+        noteCacheEvent('arm', true);
+        await new Promise((r) => setTimeout(r, 5));
+        return requestCacheStats();
+      }),
+      withRequestDbGate(1, async () => {
+        noteCacheEvent('count', false);
+        return requestCacheStats();
+      }),
+    ]);
+    expect(a).toEqual({ armHits: 1, armMisses: 0, countHits: 0, countMisses: 0 });
+    expect(b).toEqual({ armHits: 0, armMisses: 0, countHits: 0, countMisses: 1 });
+  });
+
+  it('cacheHitRate reports per-kind rates and null for kinds with no work', async () => {
+    const { cacheHitRate } = await import('@/lib/services/db-work-gate');
+    expect(cacheHitRate({ armHits: 3, armMisses: 1, countHits: 0, countMisses: 0 })).toEqual({
+      arms: 0.75,
+      counts: null,
+    });
+  });
+});

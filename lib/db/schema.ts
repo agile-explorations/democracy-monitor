@@ -817,6 +817,13 @@ export const searchTimings = pgTable(
     retrieveWallMs: integer('retrieve_wall_ms'),
     totalMs: integer('total_ms'),
     windows: jsonb('windows').$type<Array<{ key: string; searchMs: number; rerankMs: number }>>(),
+    /** Arm / validation-count cache hits and misses of a build (#787). */
+    cacheStats: jsonb('cache_stats').$type<{
+      armHits: number;
+      armMisses: number;
+      countHits: number;
+      countMisses: number;
+    }>(),
     appVersion: varchar('app_version', { length: 20 }),
     gitCommit: varchar('git_commit', { length: 40 }),
     flagged: boolean('flagged').default(false).notNull(),
@@ -828,17 +835,18 @@ export const searchTimings = pgTable(
   ],
 );
 
-/** Slow-alias ledger (#729): alias arms whose live execution exceeded the
- *  slow threshold. The Monday post-dump replay re-runs these serially into
- *  the weekly arm cache so recurring pathological topics have no first-payer.
- *  Upserted on (phrase, kind, params_hash); rows age out of the replay by
- *  last_seen_at, never deleted automatically. */
+/** Alias work ledger (#729, widened by #788): one row per (phrase, kind,
+ *  window-params) that a real request executed as a cache miss — research
+ *  arm, explore arm, or expansion validation count — with its last live
+ *  duration. The Monday post-dump replay pre-pays these into the fresh data
+ *  week's cache, most expensive first, under a time budget. Rows age out of
+ *  the replay by `last_seen_at`, never deleted automatically. */
 export const slowAliases = pgTable(
   'slow_aliases',
   {
     id: serial('id').primaryKey(),
     phrase: text('phrase').notNull(),
-    /** Arm query shape: 'research' | 'explore'. */
+    /** 'research' | 'explore' (arm query shape) | 'validation' (count). */
     kind: varchar('kind', { length: 12 }).notNull(),
     paramsHash: varchar('params_hash', { length: 16 }).notNull(),
     /** The window/filter params needed to rebuild the arm query on replay. */

@@ -21,7 +21,7 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
 import { slowAliases } from '@/lib/db/schema';
-import { dbWorkGate } from '@/lib/services/db-work-gate';
+import { dbWorkGate, noteCacheEvent } from '@/lib/services/db-work-gate';
 import { mapConcurrent, sleep } from '@/lib/utils/async';
 import { envInt } from '@/lib/utils/env';
 
@@ -43,7 +43,8 @@ export interface KeyedArm {
   query: SqlChunk;
 }
 
-/** An arm slower than this live is ledgered for the Monday replay. */
+/** An arm or count slower than this live gets a warning line; every
+ *  real-demand cache miss is ledgered regardless (#788). */
 export const SLOW_ARM_MS = 5_000;
 /** Cache slightly past the data week so Monday replay overlaps, never gaps. */
 export const ARM_CACHE_TTL_SECONDS = 8 * 86400;
@@ -75,7 +76,11 @@ function armKey(arm: Pick<KeyedArm, 'kind' | 'phrase' | 'paramsHash'>): string {
 }
 
 /** Fire-and-forget ledger upsert — never blocks or fails the response.
- *  Shared by arm execution and validation counting (#729 follow-up). */
+ *  Shared by arm execution and validation counting (#729 follow-up). Since
+ *  #788 every real-demand cache miss lands here (not only slow ones): the
+ *  ledger is the demand record the Monday replay pre-pays into the fresh
+ *  data week. Replay refreshes never ledger themselves, so rows age out
+ *  by real `last_seen_at`. */
 export function ledgerSlowAliasWork(
   db: Db,
   work: Pick<KeyedArm, 'kind' | 'phrase' | 'paramsHash' | 'params'>,
@@ -112,7 +117,11 @@ export async function runCachedArm(
   const key = armKey(arm);
   if (!forceRefresh) {
     const cached = await cacheGet<Record<string, unknown>[]>(key);
-    if (cached) return cached;
+    if (cached) {
+      noteCacheEvent('arm', true);
+      return cached;
+    }
+    noteCacheEvent('arm', false);
   }
   const started = Date.now();
   const rows = (
@@ -128,7 +137,10 @@ export async function runCachedArm(
   ).rows as Record<string, unknown>[];
   const durationMs = Date.now() - started;
   await cacheSet(key, rows, ARM_CACHE_TTL_SECONDS);
-  if (durationMs > SLOW_ARM_MS) ledgerSlowAliasWork(db, arm, durationMs);
+  if (!forceRefresh) ledgerSlowAliasWork(db, arm, durationMs);
+  if (durationMs > SLOW_ARM_MS) {
+    console.warn(`[arm-cache] slow arm ${arm.kind}/${arm.phrase}: ${durationMs}ms`);
+  }
   return rows;
 }
 

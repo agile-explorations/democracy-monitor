@@ -1,0 +1,1 @@
+ALTER TABLE "search_timings" ADD COLUMN "cache_stats" jsonb;
