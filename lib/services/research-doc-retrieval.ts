@@ -71,25 +71,24 @@ async function retrieveSingleWindow(
   debug?: boolean,
 ): Promise<RetrievalResult> {
   const t0 = Date.now();
-  // Expansion and seed start together (#782 WO-5); the seed joins the
-  // in-flight validation instead of waiting for it.
-  const [expansion, search] = await Promise.all([
-    collectAlsoSearched(
-      query,
-      [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
-      tier,
-    ).then((aliases) => ({ aliases, ms: Date.now() - t0 })),
-    searchResearchWithMeta(
-      query,
-      contextDocs * 2,
-      embedding,
-      w ? w.from : dateFrom,
-      w ? w.to : dateTo,
-      tier,
-    ).then((r) => ({ ...r, ms: Date.now() - t0 })),
-  ]);
-  const { aliases: alsoSearched, ms: expansionMs } = expansion;
-  const { documents: candidates, minedAliases, ms: searchMs } = search;
+  // Expansion first (#726; re-confirmed by #782 WO-5): validation counts
+  // run alone, then the seed hits their caches.
+  const alsoSearched = await collectAlsoSearched(
+    query,
+    [w ? { from: w.from, to: w.to } : { from: dateFrom, to: dateTo }],
+    tier,
+  );
+  const expansionMs = Date.now() - t0;
+  const t1 = Date.now();
+  const { documents: candidates, minedAliases } = await searchResearchWithMeta(
+    query,
+    contextDocs * 2,
+    embedding,
+    w ? w.from : dateFrom,
+    w ? w.to : dateTo,
+    tier,
+  );
+  const searchMs = Date.now() - t1;
   const t2 = Date.now();
   const docs = await rerankForTier(query, candidates, contextDocs, tier);
   const rerankMs = Date.now() - t2;
@@ -304,29 +303,25 @@ async function retrieveEraStratified(
   const t0 = Date.now();
   const slots = Math.floor(contextDocs / p.eras.length);
   const windows = intersectEraWindows(p.eras, p.dateFrom, p.dateTo);
-  // Expansion and the window searches start together (#782 WO-5): each
-  // window's seed joins its own in-flight validation, and the windows
-  // expand in parallel instead of serially.
+  // Expansion first (#726; re-confirmed by #782 WO-5): the per-window
+  // validation counts run one window at a time, alone; the window searches
+  // below then hit their caches and run side by side.
+  const alsoSearched = await collectAlsoSearched(p.query, windows, p.tier);
+  const expansionMs = Date.now() - t0;
   const debugCandidates: ReturnType<typeof toCandidateSummary>[] = [];
   const windowTimings: WindowTiming[] = [];
   const eraMined: ValidatedAlias[] = [];
-  const [expansion, retrieval] = await Promise.all([
-    collectAlsoSearched(p.query, windows, p.tier).then((aliases) => ({
-      aliases,
-      ms: Date.now() - t0,
-    })),
-    Promise.all(
-      windows.map((w) =>
-        retrieveEraWindow(p, w, slots, salience, {
-          eraMined,
-          windowTimings,
-          debugCandidates: debug ? debugCandidates : null,
-        }),
-      ),
-    ).then((perEra) => ({ perEra, ms: Date.now() - t0 })),
-  ]);
-  const { aliases: alsoSearched, ms: expansionMs } = expansion;
-  const { perEra, ms: retrieveWallMs } = retrieval;
+  const tRetrieve = Date.now();
+  const perEra = await Promise.all(
+    windows.map((w) =>
+      retrieveEraWindow(p, w, slots, salience, {
+        eraMined,
+        windowTimings,
+        debugCandidates: debug ? debugCandidates : null,
+      }),
+    ),
+  );
+  const retrieveWallMs = Date.now() - tRetrieve;
   const strata = buildStrata(windows, perEra);
   const timings: RetrievalTimings = {
     expansionMs,

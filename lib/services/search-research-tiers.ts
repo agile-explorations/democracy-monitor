@@ -4,12 +4,10 @@
  * all-tiers candidate pools with LLM + corpus-mined arms, plus the
  * seed-internal stage timing channel (#780 WP1b).
  *
- * Stage overlap (#782 WO-5): the seed is a small DAG, not a sequence. The
- * LLM expansion (propose + validation counts) runs alongside the vector
- * queries and the mining extraction; once the validated aliases exist, the
- * LLM-alias arms run alongside mined validation + mined arms. Every stage
- * receives exactly the inputs it received when the stages ran in series —
- * only the scheduling changed.
+ * Stage overlap (#782 WO-5): after the LLM expansion (which runs alone),
+ * the LLM-alias arms run alongside the vector queries → mining extraction →
+ * mined validation + mined arms. Every stage receives exactly the inputs it
+ * received when the stages ran in series — only the scheduling changed.
  */
 
 import { composeTieredResults } from '@/lib/data/document-tiers';
@@ -17,6 +15,7 @@ import type { DocumentTier } from '@/lib/data/document-tiers';
 import type { getDb } from '@/lib/db';
 import type { ExtractionConfig } from '@/lib/services/entity-extraction';
 import { extractMiningPhrases, validateAndRunMined } from '@/lib/services/entity-mining';
+import type { MinedArms } from '@/lib/services/entity-mining';
 import type { FusionArm } from '@/lib/services/hybrid-fusion';
 import { expandAndValidate } from '@/lib/services/query-expansion-service';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
@@ -91,15 +90,52 @@ interface SeedRequest {
 
 type VectorResults = Array<{ rows: unknown[] }>;
 
-/** The stages that need nothing but the request: LLM expansion, the vector
- *  queries, the pre-validated extra arms, and — once the vector rows exist —
- *  the mining extraction. All start at t0. */
-function startIndependentStages(r: SeedRequest) {
+/** vectors → mining extraction → mined validation + mined arms; the mined
+ *  known-filter sees the validated LLM aliases plus the extra aliases. */
+function startMiningChain(
+  r: SeedRequest,
+  aliases: ValidatedAlias[],
+  vectorP: Promise<VectorResults>,
+): Promise<MinedArms> {
+  const { dateFrom, dateTo, tier } = r.window;
+  return observed(
+    vectorP
+      .then((results) =>
+        timedStage('seed-mining-prep', r.sink, () =>
+          extractMiningPhrases(
+            results.flatMap((v) => v.rows as Rows),
+            r.miningConfig,
+          ),
+        ),
+      )
+      .then((extracted) =>
+        timedStage('seed-mining', r.sink, () =>
+          validateAndRunMined(
+            extracted,
+            [...aliases, ...r.extraAliases],
+            { dateFrom, dateTo, tier },
+            r.miningConfig,
+          ),
+        ),
+      ),
+  );
+}
+
+/**
+ * The seed DAG (#782 WO-5, final shape):
+ *
+ *   expansion (alone) → [LLM-alias arms ∥ extra arms ∥ vectors → mining extraction → mined validation → mined arms]
+ *
+ * Expansion runs FIRST and alone: its validation counts are CPU-bound on
+ * the 2-vCPU tier and lose more to contention with the vector scans than
+ * overlapping them saves (probe 1b, four cold runs). The second half
+ * overlaps under the request's DB budget — the part that let the heaviest
+ * probe finish inside the client budget for the first time.
+ */
+async function runSeedDag(r: SeedRequest): Promise<SeedResult> {
   const { dateFrom, dateTo, tier, topK } = r.window;
-  const expansionP = observed(
-    timedStage('seed-expansion', r.sink, () =>
-      expandAndValidate(r.query, { dateFrom, dateTo, tier }),
-    ),
+  const aliases = await timedStage('seed-expansion', r.sink, () =>
+    expandAndValidate(r.query, { dateFrom, dateTo, tier }),
   );
   const vectorP: Promise<VectorResults> = observed(
     Promise.all(
@@ -113,48 +149,14 @@ function startIndependentStages(r: SeedRequest) {
       ),
     ),
   );
-  const extraArmsP = observed(
+  const minedP = startMiningChain(r, aliases, vectorP);
+  const [arms, extraArms, mined, vectorResults] = await Promise.all([
+    timedStage('seed-alias-arms', r.sink, () => runArmsForAliases(aliases, dateFrom, dateTo, tier)),
     timedStage('seed-extra-arms', r.sink, () =>
       runArmsForAliases(r.extraAliases, dateFrom, dateTo, tier),
     ),
-  );
-  const miningPrepP = observed(
-    vectorP.then((results) =>
-      timedStage('seed-mining-prep', r.sink, () =>
-        extractMiningPhrases(
-          results.flatMap((v) => v.rows as Rows),
-          r.miningConfig,
-        ),
-      ),
-    ),
-  );
-  return { expansionP, vectorP, extraArmsP, miningPrepP };
-}
-
-/**
- * The overlapped seed DAG (#782 WO-5):
- *
- *   t0: expansion ∥ vector queries → mining extraction ∥ extra arms
- *   aliases: LLM-alias arms ∥ (known-filter → mined validation → mined arms)
- */
-async function runSeedDag(r: SeedRequest): Promise<SeedResult> {
-  const { dateFrom, dateTo, tier } = r.window;
-  const stages = startIndependentStages(r);
-  const aliases = await stages.expansionP;
-  const [arms, mined, extraArms, vectorResults] = await Promise.all([
-    timedStage('seed-alias-arms', r.sink, () => runArmsForAliases(aliases, dateFrom, dateTo, tier)),
-    stages.miningPrepP.then((extracted) =>
-      timedStage('seed-mining', r.sink, () =>
-        validateAndRunMined(
-          extracted,
-          [...aliases, ...r.extraAliases],
-          { dateFrom, dateTo, tier },
-          r.miningConfig,
-        ),
-      ),
-    ),
-    stages.extraArmsP,
-    stages.vectorP,
+    minedP,
+    vectorP,
   ]);
   return {
     vectorRows: vectorResults.map((v) => v.rows as Rows),

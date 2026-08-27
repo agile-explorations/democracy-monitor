@@ -101,17 +101,35 @@ beforeEach(() => {
 const aliasesOf = (docs: Array<{ matchedAlias?: string }>) => docs.map((d) => d.matchedAlias);
 
 describe('seed DAG (#782 WO-5)', () => {
-  it('runs the vector queries and mining extraction while expansion is still pending', async () => {
+  it('runs expansion alone, then overlaps alias arms with vectors → mining', async () => {
     const expansion = deferred<typeof LLM>();
     vi.mocked(expandAndValidate).mockReturnValue(expansion.promise);
+    const arms = deferred<never[]>();
+    vi.mocked(runArmsForAliases).mockImplementation(async (aliases, _f, _t, tier) =>
+      aliases.length === 0
+        ? []
+        : ((await arms.promise) as never[]).concat([
+            {
+              items: [
+                { id: 100, sourceType: 's', matchedAlias: `${aliases[0].phrase}@${tier ?? 'all'}` },
+              ],
+              weight: 1,
+            },
+          ]),
+    );
     const run = searchResearchAllTiers({} as never, 'q', '[0]', 10);
     await tick();
+    expect(seen.vectorQueries).toBe(0); // nothing competes with the validation counts
+    expect(seen.extractionRan).toBe(false);
+    expansion.resolve(LLM);
+    await tick();
+    await tick();
+    // alias arms are still pending, yet the vector → mining chain has completed
     expect(seen.vectorQueries).toBe(2);
     expect(seen.extractionRan).toBe(true);
-    expect(seen.minedExisting).toBeUndefined(); // the known-filter waits for the aliases
-    expansion.resolve(LLM);
-    const out = await run;
     expect(seen.minedExisting).toBe('schedule f');
+    arms.resolve([]);
+    const out = await run;
     expect(out.minedAliases[0].phrase).toBe('mined-from-1+2|schedule f|all');
   });
 

@@ -80,14 +80,13 @@ Baselines + WO-5 captures live in `reports/golden/`.
 
 ### Seed stage rows (since WO-5)
 
-`seed-expansion` (LLM propose + validation counts, runs alongside the vector
-queries) · `seed-vector-<tier>` · `seed-mining-prep` (candidate text fetch +
+`seed-expansion` (LLM propose + validation counts; runs FIRST and alone —
+usually a cache hit, the caller already expanded) · `seed-vector-<tier>` · `seed-mining-prep` (candidate text fetch +
 extraction) · `seed-alias-arms` (LLM-alias arm execution) · `seed-mining`
 (known-filter → mined validation → mined arms, alongside alias arms) ·
-`seed-extra-arms` · `seed-fuse-hydrate` · `seed-snippets`. Era builds emit
-the same rows prefixed `<era>:`. `expansion_ms` is now time-to-validated-
-aliases and OVERLAPS `retrieve_wall_ms` — compare stage rows, not the two
-top-level columns, across pre/post-WO-5 reports.
+`seed-extra-arms` · `seed-fuse-hydrate` · `seed-snippets`. Alias arms
+overlap the vectors → mining chain; era builds emit the same rows prefixed
+`<era>:`.
 
 ### DB budget knobs (since WO-5)
 

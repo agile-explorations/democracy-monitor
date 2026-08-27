@@ -8,8 +8,8 @@ vi.mock('@/lib/services/relevance-rerank', () => ({
   rerankTierBalanced: vi.fn(),
 }));
 
-describe('collectAlsoSearched (#782 WO-5 parallel windows)', () => {
-  it('merges windows in window order with the max count, whatever order they settle in', async () => {
+describe('collectAlsoSearched (#782 WO-5: windows in series, merge in window order)', () => {
+  it('merges windows in window order with the max count', async () => {
     vi.mocked(expandAndValidate).mockImplementation(async (_q, w) => {
       if (w.dateFrom === '2017-01-20') {
         await new Promise((r) => setTimeout(r, 10));

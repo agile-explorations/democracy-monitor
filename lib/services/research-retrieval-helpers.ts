@@ -11,25 +11,26 @@ import type { RetrievalStratum } from '@/lib/services/search-response-types';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 
 /** Corpus-validated aliases (phrase + corpus match count) for the windows
- *  searched (#702, counts #713). Runs concurrently with the seed sweep,
- *  which derives the same expansion internally — the two share one in-
- *  flight validation per (query, window) (#782 WO-5). Windows expand in
- *  parallel; the merge keeps window order and the max count, so the output
- *  is identical to the former serial loop. */
+ *  searched (#702, counts #713). Runs BEFORE the seed sweep, one window at
+ *  a time: validation counts are CPU-bound on the DB tier and measured
+ *  slower in parallel than in series (#782 WO-5). The seed then derives the
+ *  same expansion as a cache hit (or joins the in-flight one). Multi-window
+ *  merges keep window order and the max count. */
 export async function collectAlsoSearched(
   query: string,
   windows: Array<{ from?: string; to?: string }>,
   tier: ResearchTierFilter,
 ): Promise<ValidatedAlias[]> {
-  const perWindow = await Promise.all(
-    windows.map((w) =>
-      expandAndValidate(query, {
+  const perWindow: ValidatedAlias[][] = [];
+  for (const w of windows) {
+    perWindow.push(
+      await expandAndValidate(query, {
         dateFrom: w.from,
         dateTo: w.to,
         tier: tier === 'all' ? undefined : tier,
       }),
-    ),
-  );
+    );
+  }
   const byPhrase = new Map<string, number>();
   for (const aliases of perWindow) {
     for (const a of aliases) {
@@ -69,11 +70,10 @@ export interface WindowTiming {
   rerankMs: number;
 }
 
-/** Phase breakdown of one docsOnly retrieval build (#726). Expansion and
- *  the window searches overlap since #782 WO-5, so `expansionMs` is the
- *  time-to-validated-aliases and no longer a disjoint slice of `totalMs`;
- *  the seed's own `seed-expansion` stage row carries the same number from
- *  inside the search. */
+/** Phase breakdown of one docsOnly retrieval build (#726): expansion runs
+ *  FIRST (warming its caches) so the window searches below are ~pure DB
+ *  work — separating external-API-bound from database-bound time. The
+ *  seed's `seed-expansion` row then records the cache hit. */
 export interface RetrievalTimings {
   expansionMs: number;
   /** Wall-clock of the (parallel) window retrieval block. */

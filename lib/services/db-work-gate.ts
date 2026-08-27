@@ -1,8 +1,8 @@
 /**
  * Database work gate (#782 WO-5).
  *
- * Stage overlap lets one build's expansion counts, vector queries, alias
- * arms and mined validation run at the same time. On the 2-vCPU basic-4gb
+ * Stage overlap lets one build's alias arms, vector queries and mined
+ * validation run at the same time (expansion runs first, alone). On the 2-vCPU basic-4gb
  * tier the database saturates near 8 concurrent statements: ungated
  * overlap re-queued the same I/O (vectors 2x slower beside counts; three
  * era windows expanding in parallel slower than serial), while a
