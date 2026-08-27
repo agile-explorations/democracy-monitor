@@ -839,7 +839,7 @@ export const searchTimings = pgTable(
  *  window-params) that a real request executed as a cache miss — research
  *  arm, explore arm, or expansion validation count — with its last live
  *  duration. The Monday post-dump replay pre-pays these into the fresh data
- *  week's cache, most expensive first, under a time budget. Rows age out of
+ *  week's cache, most recently demanded first, under a time budget. Rows age out of
  *  the replay by `last_seen_at`, never deleted automatically. */
 export const slowAliases = pgTable(
   'slow_aliases',

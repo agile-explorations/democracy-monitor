@@ -5,7 +5,7 @@ const now = new Date('2026-08-31T05:30:00Z');
 const day = 86400 * 1000;
 
 describe('planReplay (#788)', () => {
-  it('keeps rows seen inside the window, most expensive first', () => {
+  it('keeps rows seen inside the window, most recently demanded first, cost as tie-break', () => {
     const rows = [
       {
         phrase: 'cheap-recent',
@@ -14,10 +14,16 @@ describe('planReplay (#788)', () => {
         lastSeenAt: new Date(now.getTime() - day),
       },
       {
-        phrase: 'costly-recent',
+        phrase: 'costly-older',
         kind: 'validation',
         lastDurationMs: 9000,
         lastSeenAt: new Date(now.getTime() - 3 * day),
+      },
+      {
+        phrase: 'costly-recent',
+        kind: 'validation',
+        lastDurationMs: 9000,
+        lastSeenAt: new Date(now.getTime() - day),
       },
       {
         phrase: 'stale',
@@ -29,6 +35,7 @@ describe('planReplay (#788)', () => {
     expect(planReplay(rows, now, 8).map((r) => r.phrase)).toEqual([
       'costly-recent',
       'cheap-recent',
+      'costly-older',
     ]);
   });
 

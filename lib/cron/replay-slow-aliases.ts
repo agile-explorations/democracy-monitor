@@ -3,7 +3,7 @@
  *
  * Monday alias replay (#729, widened by #788): pre-pays every arm and
  * validation count a real request executed as a cache miss during the
- * previous data week into the FRESH week's cache — most expensive first,
+ * previous data week into the FRESH week's cache — most recently demanded first,
  * `ALIAS_REPLAY_CONCURRENCY` at a time, until `ALIAS_REPLAY_BUDGET_MS` is
  * spent (work not started by then is skipped, in-flight work finishes).
  * A novel wording of a known topic then hits instead of paying cold.
@@ -73,7 +73,7 @@ export async function replaySlowAliases(): Promise<void> {
     .select()
     .from(slowAliases)
     .where(gte(slowAliases.lastSeenAt, since))
-    .orderBy(desc(slowAliases.lastDurationMs));
+    .orderBy(desc(slowAliases.lastSeenAt), desc(slowAliases.lastDurationMs));
   const work = planReplay(rows, new Date(startedAt), REPLAY_WINDOW_DAYS);
   console.log(
     `[alias-replay] ${work.length} ledger row(s) in window; budget ${REPLAY_BUDGET_MS / 60000}m, concurrency ${REPLAY_CONCURRENCY}`,

@@ -11,14 +11,19 @@ export interface ReplayRow {
   lastSeenAt: Date;
 }
 
-/** Rows seen within `windowDays` of `now`, most expensive first — so a
- *  budget cut drops the cheapest work, which is also the least valuable
- *  to pre-pay. Pure. */
+/** Rows seen within `windowDays` of `now`, most RECENTLY demanded first
+ *  (cost as the tie-break). Recency is the reuse signal: a novel wording
+ *  of a topic people are asking about now hits these. Cost-first was
+ *  measured to spend the whole budget on 60s zero-match mined phrases
+ *  (2026-08-27 rehearsal) — the least reusable work. Pure. */
 export function planReplay<T extends ReplayRow>(rows: T[], now: Date, windowDays: number): T[] {
   const since = now.getTime() - windowDays * 86400 * 1000;
   return rows
     .filter((r) => r.lastSeenAt.getTime() >= since)
-    .sort((a, b) => b.lastDurationMs - a.lastDurationMs);
+    .sort(
+      (a, b) =>
+        b.lastSeenAt.getTime() - a.lastSeenAt.getTime() || b.lastDurationMs - a.lastDurationMs,
+    );
 }
 
 export interface ReplayTally {
