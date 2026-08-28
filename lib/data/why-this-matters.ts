@@ -54,7 +54,7 @@ export const WHY_PILLARS: WhyPillar[] = [
     erosionLooksLike:
       'Appropriated funds withheld from programs the administration dislikes; policy enacted through executive action after Congress declined to pass it; independent agencies directed to reach predetermined outcomes.',
     historyAnchor:
-      "Congress passed the Impoundment Control Act (1974) after President Nixon refused to spend funds it had appropriated — and courts have enforced the same limit against presidents of both parties since. When President Biden's student-loan cancellation exceeded statutory authority, the Supreme Court blocked it (2023), and the administration complied. The rule is the same rule.",
+      "Congress passed the Impoundment Control Act (1974) after President Nixon refused to spend funds it had appropriated — and courts have enforced the same limit against presidents of both parties since. When President Biden's student-loan cancellation exceeded statutory authority, the Supreme Court blocked it (2023), and the administration complied. The rule is the same rule. Agency rules have their own long-standing discipline: the Administrative Procedure Act (1946) requires agencies to publish a proposed rule and answer public comment before it binds anyone, and presidents of both parties have governed under it for eighty years.",
   },
   {
     id: 'watchers',
@@ -101,7 +101,7 @@ export const WHY_PILLARS: WhyPillar[] = [
     erosionLooksLike:
       'Reporters stripped of access for unfavorable coverage; datasets and statistics quietly withdrawn; FOIA offices defunded or rules rescinded; official information replaced by official messaging.',
     historyAnchor:
-      'The Freedom of Information Act (1966) was pushed through by congressional Democrats over the objections of a Democratic president — Lyndon Johnson signed it reluctantly. It has since been the primary tool of critics of every administration, in both directions.',
+      "The Freedom of Information Act (1966) was pushed through by congressional Democrats over the objections of a Democratic president — Lyndon Johnson signed it reluctantly. It has since been the primary tool of critics of every administration, in both directions. The press side rests on the First Amendment and on custom. When the Nixon administration went to court to stop the New York Times and Washington Post from publishing the Pentagon Papers, the Supreme Court refused (1971), the papers published, and the administration complied. After the Obama Justice Department secretly obtained Associated Press reporters' phone records (2013), the department tightened its own rules for subpoenaing journalists — a limit written by an administration against itself.",
   },
   {
     id: 'enforcement-powers',
@@ -115,7 +115,7 @@ export const WHY_PILLARS: WhyPillar[] = [
     erosionLooksLike:
       'Prosecutions selected by politics rather than evidence; removals or detentions without hearings; troops deployed against civilians; emergency powers that never sunset.',
     historyAnchor:
-      'The pattern is bipartisan. A Democratic administration interned Japanese Americans in 1942 under emergency powers. Surveillance systems built after 9/11 under a Republican president were inherited and expanded by his Democratic successor. Each side has, at some point, regretted what the other did with machinery it helped build.',
+      'The pattern is bipartisan. A Democratic administration interned Japanese Americans in 1942 under emergency powers. Surveillance systems built after 9/11 under a Republican president were inherited and expanded by his Democratic successor. Each side has, at some point, regretted what the other did with machinery it helped build. Two of the guardrails are older than most readers assume. Troops have been kept out of civilian law enforcement by the Posse Comitatus Act (1878), passed after federal soldiers were posted at Southern polling places during Reconstruction; its exception, the Insurrection Act, has been invoked sparingly and by presidents of both parties — Eisenhower at Little Rock (1957), George H. W. Bush in Los Angeles (1992). And the rule that the White House does not direct prosecutions is a post-Watergate custom: after the Saturday Night Massacre (1973), Attorney General Griffin Bell limited who in the White House could speak to the Justice Department about cases (1978), and attorneys general of both parties have reissued a version of that policy since.',
   },
 ];
 
