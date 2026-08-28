@@ -30,6 +30,22 @@ import { buildPublishedAtWindow } from '@/lib/utils/date-window';
  */
 export const RESEARCH_CONTENT_FETCH_CHARS = 5000;
 
+/**
+ * The ONE Pass-2 row a research result carries (#711): the unique key is
+ * (url, category, pass, model), so a second model's row would multiply the
+ * document in results and feed two annotations to synthesis. Latest
+ * assessment wins.
+ */
+export function latestPass2Join(alias: ReturnType<typeof sql>) {
+  return sql`LEFT JOIN LATERAL (
+        SELECT a.assessment, a.erosion_type, a.confidence, a.reasoning
+        FROM ai_document_assessments a
+        WHERE a.url = ${alias}.url AND a.category = ${alias}.category AND a.pass = 2
+        ORDER BY a.assessed_at DESC NULLS LAST, a.id DESC
+        LIMIT 1
+      ) ai ON true`;
+}
+
 export async function fetchResearchDocRowsByIds(
   ids: number[],
   vectorStr?: string,
@@ -46,8 +62,7 @@ export async function fetchResearchDocRowsByIds(
         ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
       FROM documents d
       LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
-      LEFT JOIN ai_document_assessments ai
-        ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
+      ${latestPass2Join(sql`d`)}
       WHERE d.id IN (${sql.join(
         ids.map((i) => sql`${i}`),
         sql`, `,
@@ -156,8 +171,7 @@ export function buildResearchQuery(vectorStr: string, query: string, opts: Resea
       LIMIT ${topK}
     ) r
     JOIN documents d2 ON d2.id = r.id
-    LEFT JOIN ai_document_assessments ai
-      ON ai.url = r.url AND ai.category = r.category AND ai.pass = 2
+    ${latestPass2Join(sql`r`)}
     ORDER BY r.combined_score DESC
   `;
 }

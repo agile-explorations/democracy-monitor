@@ -152,20 +152,15 @@ async function main(): Promise<void> {
 
 async function regenerateWeek(week: string, args: Args): Promise<void> {
   // Lazy imports to avoid loading AI providers until needed
-  const { loadAllLayerData, computePreviousWeekTotalDocs } =
+  const { loadAllLayerData, computePreviousWeekFacts, generateCheckedWeeklySummary } =
     await import('@/lib/services/narrative-pipeline');
-  const { generateMultiPassNarrative, generateMultiPassSummary, generateSinglePassNarrative } =
+  const { generateMultiPassNarrative, generateSinglePassNarrative } =
     await import('@/lib/services/narrative-multipass');
   const { isElevatedStatus, needsMultiPass } =
     await import('@/lib/services/narrative-generation-service');
   const { storeMultiPassNarratives, storeNarratives } =
     await import('@/lib/services/narrative-store');
   const { getPreviousWeekNarrative } = await import('@/lib/services/narrative-queries');
-  const {
-    buildWeeklySummaryDraftPrompt,
-    buildWeeklySummaryFeedbackPrompt,
-    buildWeeklySummaryRevisionPrompt,
-  } = await import('@/lib/services/narrative-prompts');
 
   // Load all layer data for the week
   const categories = await loadAllLayerData(week);
@@ -237,23 +232,22 @@ async function regenerateWeek(week: string, args: Args): Promise<void> {
     .filter((c) => isElevatedStatus(c.convergenceDetail) && !categoryNarratives.has(c.category))
     .map((c) => c.category);
 
+  const previous = await computePreviousWeekFacts(week);
   const input: WeeklySummaryInput = {
     weekOf: week,
     categories,
     categoryNarratives,
     failedCategories,
     previousWeekSummary,
-    previousWeekTotalDocs: await computePreviousWeekTotalDocs(week),
+    previousWeekTotalDocs: previous.totalDocs,
+    previousWeekElevatedCount: previous.elevatedCount,
+    previousWeekConfirmedCount: previous.confirmedCount,
   };
 
-  const result = await generateMultiPassSummary(
-    'weekly summary',
-    () => buildWeeklySummaryDraftPrompt(input),
-    (expert, pub) => buildWeeklySummaryFeedbackPrompt(expert, pub, input),
-    (expert, pub, feedback) => buildWeeklySummaryRevisionPrompt(expert, pub, feedback, input),
-  );
+  const { result, violations } = await generateCheckedWeeklySummary(input);
   await storeMultiPassNarratives(OVERVIEW_CATEGORY, week, result);
-  console.log('[regenerate] Weekly summary: stored (3-pass)');
+  console.log('[regenerate] Weekly summary: stored (3-pass, number-checked)');
+  for (const v of violations) console.warn(`[regenerate] NUMBER VIOLATION survived revision: ${v}`);
 
   if (args.resend) {
     const { sendCorrectionDigest } = await import('@/lib/services/subscriber-service');

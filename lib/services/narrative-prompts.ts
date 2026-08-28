@@ -227,8 +227,9 @@ function formatStableLine(category: string, docCount: number): string {
     : `${category}: Stable, ${docCount} documents, no structural or AI anomalies`;
 }
 
-/** Build a factual summary block that the LLM must cite exactly. */
-function buildFactualSummary(input: WeeklySummaryInput): string {
+/** Build a factual summary block that the LLM must cite exactly. Exported
+ *  for the deterministic number check (narrative-number-prompts.ts). */
+export function buildFactualSummary(input: WeeklySummaryInput): string {
   const elevated = input.categories.filter(
     (c) => c.convergenceDetail && c.convergenceDetail.status !== 'Stable',
   );
@@ -252,9 +253,19 @@ function buildFactualSummary(input: WeeklySummaryInput): string {
             '(recomputed from current data — authoritative over any document total quoted inside the previous-week summary text)',
         ]
       : []),
+    ...(input.previousWeekElevatedCount != null
+      ? [
+          `Categories Elevated or above previous week: ${input.previousWeekElevatedCount}` +
+            (input.previousWeekConfirmedCount != null
+              ? ` (${input.previousWeekConfirmedCount} at ConfirmedConcern)`
+              : '') +
+            ' (recomputed — use these, not counts quoted in the previous-week summary text)',
+        ]
+      : []),
     `Categories Elevated or above: ${elevated.length} (${elevated.map((c) => c.categoryTitle).join(', ')})`,
     `  — at ConfirmedConcern: ${confirmed.length}${confirmed.length > 0 ? ` (${confirmed.map((c) => c.categoryTitle).join(', ')})` : ''}`,
     `  — at Elevated (below ConfirmedConcern): ${elevatedOnly.length}${elevatedOnly.length > 0 ? ` (${elevatedOnly.map((c) => c.categoryTitle).join(', ')})` : ''}`,
+    `Categories Stable in total: ${stable.length} (with documents + zero documents)`,
     `Categories Stable WITH documents: ${stableWithDocs.length} (${stableWithDocs.map((c) => `${c.categoryTitle}: ${c.totalDocumentCount}`).join(', ')})`,
     `Categories with ZERO documents: ${zeroDocs.length}${zeroDocs.length > 0 ? ` (${zeroDocs.map((c) => c.categoryTitle).join(', ')})` : ''}`,
     `NOTE: "Stable" means no erosion concern was detected. It does NOT mean zero documents.`,

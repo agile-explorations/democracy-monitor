@@ -24,7 +24,11 @@ import {
   generateMultiPassNarrative,
   generateMultiPassSummary,
   generateSinglePassNarrative,
+  reviseSummaryOnce,
 } from './narrative-multipass';
+import { checkNarrativeNumbers, describeViolation } from './narrative-number-check';
+import type { NumberViolation } from './narrative-number-check';
+import { buildNumberViolationFeedback, weeklyFactualNumbers } from './narrative-number-prompts';
 import {
   buildTermSummaryDraftPrompt,
   buildTermSummaryFeedbackPrompt,
@@ -141,6 +145,25 @@ export function toNarrativeLayerData(
  * authoritative over any figure quoted inside the stored previous-week
  * summary text, which goes stale when late documents arrive.
  */
+/** Previous-week facts recomputed from current aggregates (#700): total
+ *  documents plus the status counts, so week-over-week statements have a
+ *  sanctioned source instead of the previous summary's prose. */
+export interface PreviousWeekFacts {
+  totalDocs: number | null;
+  elevatedCount: number | null;
+  confirmedCount: number | null;
+}
+
+export async function computePreviousWeekFacts(weekOf: string): Promise<PreviousWeekFacts> {
+  const prev = await loadAllLayerData(addDays(weekOf, -7));
+  if (prev.length === 0) return { totalDocs: null, elevatedCount: null, confirmedCount: null };
+  return {
+    totalDocs: prev.reduce((sum, c) => sum + (c.totalDocumentCount ?? 0), 0),
+    elevatedCount: prev.filter((c) => isElevatedStatus(c.convergenceDetail)).length,
+    confirmedCount: prev.filter((c) => c.convergenceDetail?.status === 'ConfirmedConcern').length,
+  };
+}
+
 export async function computePreviousWeekTotalDocs(weekOf: string): Promise<number | null> {
   const previousWeekCategories = await loadAllLayerData(addDays(weekOf, -7));
   if (previousWeekCategories.length === 0) return null;
@@ -175,6 +198,60 @@ async function generateWeeklySummary(input: WeeklySummaryInput): Promise<MultiPa
     (expert, pub) => buildWeeklySummaryFeedbackPrompt(expert, pub, input),
     (expert, pub, feedback) => buildWeeklySummaryRevisionPrompt(expert, pub, feedback, input),
   );
+}
+
+/** Deterministic number check over both versions of a summary (#700). */
+function violationsIn(
+  result: { expert: string; public: string },
+  allowed: Set<number>,
+): NumberViolation[] {
+  return [
+    ...checkNarrativeNumbers(result.expert, allowed),
+    ...checkNarrativeNumbers(result.public, allowed),
+  ];
+}
+
+export interface CheckedWeeklySummary {
+  result: MultiPassNarrativeResult;
+  /** Violations that survived the targeted revision — hold the digest. */
+  violations: string[];
+}
+
+/**
+ * Weekly summary with number discipline enforced in code (#700): generate,
+ * check every count/total against the FACTUAL block, run ONE targeted
+ * revision naming the offending figures if needed, re-check. What survives
+ * is returned for the digest gate; the summary is still stored so the site
+ * shows the week, and the hold reason names the figures.
+ */
+export async function generateCheckedWeeklySummary(
+  input: WeeklySummaryInput,
+): Promise<CheckedWeeklySummary> {
+  const allowed = weeklyFactualNumbers(input);
+  let result = await generateWeeklySummary(input);
+  let violations = violationsIn(result, allowed);
+  if (violations.length > 0) {
+    console.warn(
+      `[narratives]   weekly summary: ${violations.length} number violation(s) — revising once`,
+    );
+    const revised = await reviseSummaryOnce(
+      'weekly summary',
+      buildWeeklySummaryRevisionPrompt(
+        result.expert,
+        result.public,
+        buildNumberViolationFeedback(violations),
+        input,
+      ),
+    );
+    result = {
+      ...result,
+      expert: revised.expert,
+      public: revised.public,
+      finalModel: revised.model,
+    };
+    violations = violationsIn(result, allowed);
+  }
+  return { result, violations: violations.map(describeViolation) };
 }
 
 /** Generate incremental term summary (_term_summary) via 3-pass pipeline. */
@@ -263,20 +340,25 @@ async function generateSummaries(
   categories: NarrativeLayerData[],
   categoryNarratives: Map<string, { expert: string; public: string }>,
   failedCategories: string[],
-): Promise<void> {
+): Promise<string[]> {
   const previousWeekSummary = await getPreviousWeekNarrative(weekOf);
-  const previousWeekTotalDocs = await computePreviousWeekTotalDocs(weekOf);
+  const previous = await computePreviousWeekFacts(weekOf);
   const weeklyInput: WeeklySummaryInput = {
     weekOf,
     categories,
     categoryNarratives,
     failedCategories,
     previousWeekSummary,
-    previousWeekTotalDocs,
+    previousWeekTotalDocs: previous.totalDocs,
+    previousWeekElevatedCount: previous.elevatedCount,
+    previousWeekConfirmedCount: previous.confirmedCount,
   };
-  const weeklyResult = await generateWeeklySummary(weeklyInput);
-  await storeMultiPassNarratives(OVERVIEW_CATEGORY, weekOf, weeklyResult);
-  console.log('[narratives]   weekly summary: stored (3-pass)');
+  const { result, violations } = await generateCheckedWeeklySummary(weeklyInput);
+  await storeMultiPassNarratives(OVERVIEW_CATEGORY, weekOf, result);
+  console.log(
+    `[narratives]   weekly summary: stored (3-pass${violations.length > 0 ? `, ${violations.length} number violation(s) survived revision` : ''})`,
+  );
+  return violations;
 }
 
 /**
@@ -353,10 +435,16 @@ export async function regenerateTermSummaryIfStale(): Promise<'regenerated' | 'f
  *
  * Cascade: category narratives (multi-pass) → weekly summary.
  */
-export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
+export interface NarrativeWeekResult {
+  /** Weekly-summary number-check violations that survived revision (#700). */
+  numberViolations: string[];
+}
+
+export async function generateNarrativesForWeek(weekOf: string): Promise<NarrativeWeekResult> {
+  const none: NarrativeWeekResult = { numberViolations: [] };
   if (!isDbAvailable()) {
     console.log('[narratives] Skipping — database not available');
-    return;
+    return none;
   }
 
   console.log(`[narratives] Generating narratives for week ${weekOf}...`);
@@ -364,7 +452,7 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   const completeness = await checkAggregateCompleteness(weekOf);
   if (!completeness.ok) {
     console.error(`[narratives] ABORTING — stale data: ${completeness.message}`);
-    return;
+    return none;
   }
   if (completeness.docCategories > 0) {
     console.log(
@@ -376,7 +464,7 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
 
   if (categories.length === 0) {
     console.log('[narratives] No weekly aggregate data found — skipping');
-    return;
+    return none;
   }
 
   const elevated = categories.filter((c) => isElevatedStatus(c.convergenceDetail));
@@ -385,8 +473,14 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   const { narratives: categoryNarratives, failed: failedCategories } =
     await generateCategoryNarratives(categories, weekOf);
 
+  let numberViolations: string[] = [];
   try {
-    await generateSummaries(weekOf, categories, categoryNarratives, failedCategories);
+    numberViolations = await generateSummaries(
+      weekOf,
+      categories,
+      categoryNarratives,
+      failedCategories,
+    );
   } catch (err) {
     console.error('[narratives]   weekly summary: failed:', err);
   }
@@ -394,6 +488,7 @@ export async function generateNarrativesForWeek(weekOf: string): Promise<void> {
   console.log(
     `[narratives] Done — ${categoryNarratives.size} category narratives (${failedCategories.length} failed), weekly summary`,
   );
+  return { numberViolations };
 }
 
 /**

@@ -51,6 +51,7 @@ pnpm aggregates:backfill-gaps  # Create missing zero-doc weekly aggregate rows (
 pnpm nc:margins        # Capture/diff negative-control margins (--out FILE, --diff FILE)
 pnpm actor:backfill    # Erosion-actor attribution light pass (--baseline, --dry-run; baseline writes need approval)
 pnpm narratives:regenerate     # Regenerate narratives (--type weekly|term|all, --week)
+pnpm narratives:verify         # Deterministic number check over stored weekly summaries vs current data (#700; --from --to, --baseline, --json)
 pnpm backfill:opinions # Opinion-first CL backfill (bulk staging locally, CL API in prod; --from, --to, --dry-run)
 pnpm search:backfill-rank      # Backfill documents.search_rank_vector (keyset; trigger maintains new rows)
 pnpm audit:annotations         # Sampled P2 annotation-vs-document audit (#711; --confirm, --sample N, --out FILE)

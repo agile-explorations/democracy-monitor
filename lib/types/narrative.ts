@@ -166,6 +166,11 @@ export interface WeeklySummaryInput {
    * and goes stale when late documents arrive (#700).
    */
   previousWeekTotalDocs: number | null;
+  /** Previous week's Elevated-or-above and ConfirmedConcern counts, recomputed
+   *  from current aggregates (#700): the only sanctioned source for "up from
+   *  N last week" — never the previous-week summary prose. */
+  previousWeekElevatedCount?: number | null;
+  previousWeekConfirmedCount?: number | null;
 }
 
 /** A notable week grounding the term summary (deterministically ranked). */

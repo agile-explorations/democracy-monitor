@@ -170,6 +170,27 @@ export async function generateMultiPassNarrative(
 }
 
 /**
+ * One additional revision pass over an already-revised summary (#700): the
+ * deterministic number check found a violation the editorial pass missed, so
+ * the final model gets the exact figures to fix. Same model and system
+ * prompt as pass 3; the caller re-checks the result.
+ */
+export async function reviseSummaryOnce(
+  label: string,
+  prompt: string,
+): Promise<{ expert: string; public: string; model: string }> {
+  const claude = getProvider('anthropic');
+  const result = await runPass(
+    claude,
+    prompt,
+    { model: FINAL_MODEL, maxTokens: 4096, systemPrompt: SYSTEM_PROMPT_REVISION },
+    4,
+    `Pass 4 number-check revision [${label}]`,
+  );
+  return { ...parseDraftResponse(result.content), model: result.model };
+}
+
+/**
  * Generate a category-week narrative using a single Claude pass (no feedback/revision).
  * Used for Elevated status where the full 3-pass pipeline is unnecessary.
  */

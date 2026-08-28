@@ -3,12 +3,14 @@ import {
   formatTrajectorySummary,
   formatDocumentSection,
 } from '@/lib/services/narrative-format-helpers';
+import { weeklyFactualNumbers } from '@/lib/services/narrative-number-prompts';
 import {
   buildDraftPrompt,
   buildFeedbackPrompt,
   buildRevisionPrompt,
-  buildWeeklySummaryPrompt,
   buildTermSummaryPrompt,
+  buildWeeklySummaryDraftPrompt,
+  buildWeeklySummaryPrompt,
 } from '@/lib/services/narrative-prompts';
 import type { WeeklySummaryInput, TermSummaryInput } from '@/lib/types';
 import type { ConcernAssessment } from '@/lib/types/structural';
@@ -1454,5 +1456,25 @@ describe('buildWeeklySummaryPrompt — link preservation', () => {
   it('contains link preservation instruction', () => {
     const prompt = buildWeeklySummaryPrompt(makeWeeklyInput(), 'expert');
     expect(prompt).toContain('preserve its markdown link');
+  });
+});
+
+describe('previous-week status counts in the FACTUAL block (#700)', () => {
+  it('states the recomputed previous-week counts so "up from N" is checkable', () => {
+    const input = {
+      weekOf: '2026-08-17',
+      categories: [],
+      categoryNarratives: new Map(),
+      failedCategories: [],
+      previousWeekSummary: null,
+      previousWeekTotalDocs: 395,
+      previousWeekElevatedCount: 4,
+      previousWeekConfirmedCount: 1,
+    };
+    const prompt = buildWeeklySummaryDraftPrompt(input);
+    expect(prompt).toContain(
+      'Categories Elevated or above previous week: 4 (1 at ConfirmedConcern)',
+    );
+    expect([...weeklyFactualNumbers(input)]).toEqual(expect.arrayContaining([395, 4, 1]));
   });
 });
