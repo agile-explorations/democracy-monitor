@@ -11,7 +11,31 @@ import { getTurnstileToken } from '@/lib/hooks/useTurnstile';
 /** Refresh before the server's 6h TTL so a stream never opens on a stale pass. */
 export const PASS_FRESH_MS = 5 * 3600 * 1000;
 
-let lastPassAt = 0;
+/** The cookie is HttpOnly, so the page keeps its own note of when a pass
+ *  was obtained — in localStorage, so a reload does not re-run Turnstile
+ *  while the cookie is still valid (the cause of "a checkbox on every
+ *  search"). Stale or missing notes are harmless: the stream's refusal
+ *  triggers a reactive re-verify. */
+const STORAGE_KEY = 'dm_pass_at';
+
+function readStoredPassAt(): number {
+  try {
+    return Number(globalThis.localStorage?.getItem(STORAGE_KEY) ?? 0) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function storePassAt(at: number): void {
+  try {
+    if (at) globalThis.localStorage?.setItem(STORAGE_KEY, String(at));
+    else globalThis.localStorage?.removeItem(STORAGE_KEY);
+  } catch {
+    /* storage unavailable — memory only */
+  }
+}
+
+let lastPassAt = readStoredPassAt();
 
 /** Pure: does a pass obtained at `lastAt` still count as fresh at `now`? */
 export function passIsFresh(lastAt: number, now: number): boolean {
@@ -54,9 +78,16 @@ export async function ensurePass(
     throw new Error(body.error || 'Verification failed — please retry.');
   }
   lastPassAt = Date.now();
+  storePassAt(lastPassAt);
 }
 
-/** Test hook: forget the remembered pass time. */
+/** Forget the remembered pass (tests; also the right move after a refusal). */
 export function resetPassMemory(): void {
   lastPassAt = 0;
+  storePassAt(0);
+}
+
+/** Re-read the stored note (tests simulate a reload with this). */
+export function reloadPassMemory(): void {
+  lastPassAt = readStoredPassAt();
 }

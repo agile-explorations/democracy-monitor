@@ -4,6 +4,7 @@ import {
   isPassRequired,
   PASS_FRESH_MS,
   passIsFresh,
+  reloadPassMemory,
   resetPassMemory,
 } from '@/components/search/pass-gate';
 
@@ -57,5 +58,19 @@ describe('pass gate (#792)', () => {
     );
     await ensurePass();
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
+  });
+
+  it('remembers the pass across a reload via localStorage, and forgets it on reset', async () => {
+    const fetchMock = vi.fn(async () => ({ status: 204, json: async () => ({}) }));
+    vi.stubGlobal('fetch', fetchMock);
+    await ensurePass();
+    expect(Number(localStorage.getItem('dm_pass_at'))).toBeGreaterThan(0);
+    reloadPassMemory(); // simulates a page reload
+    await ensurePass();
+    expect(fetchMock).toHaveBeenCalledTimes(1); // no second Turnstile exchange
+    resetPassMemory();
+    expect(localStorage.getItem('dm_pass_at')).toBeNull();
+    await ensurePass();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
