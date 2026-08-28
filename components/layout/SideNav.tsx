@@ -105,7 +105,7 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
 
           <NavSection title="Start Here">
             <NavLink href="/about" label="About" />
-            <NavLink href="/why-this-matters" label="Why These 14 Categories Matter" />
+            <NavLink href="/why-this-matters" label="The Historical Norms of U.S. Democracy" />
           </NavSection>
 
           <NavSection title="Categories">

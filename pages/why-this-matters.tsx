@@ -67,8 +67,8 @@ export default function WhyThisMattersPage() {
   return (
     <>
       <SEOHead
-        title="Why These 14 Categories Matter"
-        description="Why the 14 categories Democracy Monitor tracks matter — the checks that bind every president, whichever party holds the office."
+        title="The Historical Norms of U.S. Democracy"
+        description="The long-standing rules and practices that bind every president, whichever party holds the office — the norms Democracy Monitor measures departure from."
         canonicalPath="/why-this-matters"
       />
 
@@ -77,9 +77,27 @@ export default function WhyThisMattersPage() {
       </Link>
 
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-2">
-        Why These 14 Categories Matter
+        The Historical Norms of U.S. Democracy
       </h1>
       <div className="max-w-3xl space-y-2 mb-8">
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          Every status on this site — <em>consistent with norms</em>, <em>notable departure</em>,{' '}
+          <em>sustained departure</em> — measures against something. This page is what. The norms
+          below are the long-standing rules and practices that have bound every president, whichever
+          party held the office. Some were written into law by both parties after an abuse; others
+          are customs presidents of both parties kept, usually because each expected to be out of
+          power one day.
+        </p>
+        <p className="text-sm text-dm-text-secondary leading-relaxed">
+          How we measure &ldquo;normal&rdquo; is a separate, narrower thing: a two-party baseline of
+          government documents from the Trump 2017–18 and Biden 2021–22 administrations, described
+          in the{' '}
+          <Link href="/system/methodology" className="text-dm-accent hover:underline">
+            methodology
+          </Link>
+          . The baseline is how we tell ordinary boundary-pushing from a departure; the norms on
+          this page are what that baseline exists to protect.
+        </p>
         <p className="text-sm text-dm-text-secondary leading-relaxed">
           Democracy Monitor tracks 14 categories of government activity. None of them is about
           whether the current administration&apos;s policies are good or bad — that debate belongs

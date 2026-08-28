@@ -60,7 +60,7 @@ export default function AboutPage() {
             releases, inspector-general reports, congressional records — and asks whether those
             documents indicate erosion of{' '}
             <Link href="/why-this-matters" className="text-dm-accent hover:underline">
-              14 pillars of classic American democracy
+              the historical norms of U.S. democracy
             </Link>
             . The same{' '}
             <Link href="/system/methodology" className="text-dm-accent hover:underline">
