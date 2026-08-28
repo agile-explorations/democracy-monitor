@@ -157,7 +157,9 @@ databases:
     # fitting in RAM. Any dashboard plan change MUST be mirrored here in the
     # same sitting; `pnpm validate:infra` diffs this file against the live
     # Render API to catch drift.
-    plan: 2c-8g # Round B (#790, 2026-08-27): 2 CPU / 8 GB — index working set (~2 GB) fits; novel builds ~35-40% faster, heaviest probe finishes with margin; owner decision.
+    # Round B (#790, 2026-08-27): 2 CPU / 8 GB — the ~2 GB index working set fits;
+    # novel builds ~35-40% faster, heaviest probe finishes with margin (owner decision).
+    plan: 2c-8g
     databaseName: epd
     postgresMajorVersion: '17'
 
