@@ -39,7 +39,7 @@ jobs:
             name=$(jq -r '.name' <<<"$row")
             url=$(jq -r '.url' <<<"$row")
             t0=$(date +%s)
-            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$url" || true)
+            code=$(curl -s -o /dev/null -H "Authorization: Bearer ${{ secrets.SEARCH_MACHINE_TOKEN }}" -w '%{http_code}' --max-time 90 "$url" || true)
             echo "warm ${name}: HTTP ${code:-000} in $(( $(date +%s) - t0 ))s"
             sleep 15
           done < <(jq -c '.[]' scripts/prewarm-questions.json)
@@ -51,7 +51,7 @@ jobs:
             url=$(jq -r '.url' <<<"$row" | sed 's/refresh=true/refresh=false/')
             ok=0
             for attempt in 1 2 3 4 5 6 7 8; do
-              code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$url" || true)
+              code=$(curl -s -o /dev/null -H "Authorization: Bearer ${{ secrets.SEARCH_MACHINE_TOKEN }}" -w '%{http_code}' --max-time 90 "$url" || true)
               if [ "$code" = "200" ]; then ok=1; break; fi
               echo "verify ${name}: attempt ${attempt} HTTP ${code:-000} — waiting"
               sleep 30

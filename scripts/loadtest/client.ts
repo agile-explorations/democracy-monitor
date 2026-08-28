@@ -40,6 +40,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  *  documents the same behavior). All probes therefore share the runner's
  *  real IP; the runner neutralizes per-IP rate limits by clearing `rl:*`
  *  continuously instead (see rlFlusher in runner.ts). */
+/** Machine credential for the search front door (#792) — read at call time
+ *  so a missing token degrades to 'no header' (dev with enforcement off). */
+export function machineAuthHeaders(): Record<string, string> {
+  const token = process.env.SEARCH_MACHINE_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function researchProbe(
   baseUrl: string,
   id: string,
@@ -50,7 +57,7 @@ export async function researchProbe(
     mode: 'research',
     docsOnly: '1',
   })}`;
-  const headers = {};
+  const headers = machineAuthHeaders();
   const out: ProbeResult = {
     id,
     hash: hashQuery(question),

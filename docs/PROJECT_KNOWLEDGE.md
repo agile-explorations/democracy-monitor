@@ -18,6 +18,10 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 Cross-sprint constraints that apply to all future work. Not tied to any single sprint — these are project-level invariants.
 
+### Search front door (R-HARDEN-SEARCH, 2026-08-27)
+
+- Every path that spends — an uncached research build (docsOnly miss, `debug=1`, full synthesis) and every `/api/search/stream` call — sits behind `requireSearchSource`: a Turnstile-issued `dm_pass` cookie for humans or the `SEARCH_MACHINE_TOKEN` bearer for our harnesses. Cached answers never ask. Verified at origin, so it holds when Cloudflare is bypassed. Then per-source slots (2 builds / 1 stream) and daily spend budgets (per source, then global with `503 search_paused`) — the breaker is a backstop, never the front door. New expensive endpoints must join this chain (`lib/services/search-build-admission.ts`).
+
 ### Search performance gate (R-LOAD, 2026-08-27)
 
 - Lead budget: cold-novel Research search **p50 ≤ 120s, p95 ≤ 240s, zero DNF** on per-probe medians across interleaved runs (`LEAD_BUDGET`, `pnpm loadtest:collect --gate`). Run before outreach and after any retrieval-shape change, dev only. The 30/60s aspiration is storage-I/O-bound on basic-4gb; the tier lever is RAM (page cache), decided by Round B (#790).

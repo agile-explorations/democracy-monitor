@@ -6,18 +6,15 @@ import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { budgetForQuestion } from '@/lib/services/question-classifier';
 import { retrieveResearchDocs } from '@/lib/services/research-doc-retrieval';
 import { synthesizeResearchAnswer } from '@/lib/services/research-synthesis-service';
+import { admitBuild, releaseBuild } from '@/lib/services/search-build-admission';
 import {
-  claimBuildSlot,
-  claimGlobalBuildSlot,
   docsCacheRefs,
   hashQuery,
-  releaseBuildSlot,
-  releaseGlobalBuildSlot,
-  respondBuilding,
   respondDocsOnlyBuild,
   respondEmpty,
   serveCachedDocs,
 } from '@/lib/services/search-docs-response';
+import { requireSearchSource } from '@/lib/services/search-pass';
 import type { CorpusStats } from '@/lib/services/search-research-queries';
 import { searchCorpusStats } from '@/lib/services/search-research-queries';
 import type { CachedResearchResult } from '@/lib/services/search-response-format';
@@ -149,25 +146,14 @@ async function handleResearch(
     return;
   }
 
-  // Build coalescing (#729): retries after an edge cut (and concurrent
-  // identical searches) wait-poll instead of starting a duplicate build.
+  // Front door (#792): everything past this line is an uncached build —
+  // docsOnly miss, debug trace, or the full-synthesis path — and needs a
+  // human pass or the machine token. Cached serves above never do.
+  const source = requireSearchSource(req, res);
+  if (!source) return;
   const coalesce = docsOnly && !debug;
-  if (coalesce && !(await claimBuildSlot(docsHash))) {
-    respondBuilding(res);
-    return;
-  }
-  // Global semaphore (#729 DOS hardening): distinct novel builds queue past
-  // a server-wide concurrency cap. The hash slot is released first so the
-  // retry can claim both when capacity frees.
-  let globalSlot: number | null = null;
-  if (coalesce) {
-    globalSlot = await claimGlobalBuildSlot();
-    if (globalSlot === null) {
-      releaseBuildSlot(docsHash);
-      respondBuilding(res);
-      return;
-    }
-  }
+  const admitted = await admitBuild(res, source, docsHash, coalesce);
+  if (!admitted) return;
   try {
     await runResearchBuild(req, res, query, {
       queryHash,
@@ -179,10 +165,7 @@ async function handleResearch(
       docsCacheKey,
     });
   } finally {
-    if (coalesce) {
-      releaseBuildSlot(docsHash);
-      if (globalSlot !== null) releaseGlobalBuildSlot(globalSlot);
-    }
+    releaseBuild(admitted);
   }
 }
 

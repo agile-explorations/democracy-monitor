@@ -25,6 +25,8 @@ today-vs-yesterday, is not an experiment.
 ## Environment (never committed)
 
 ```
+SEARCH_MACHINE_TOKEN dev value — the front door (#792): every harness request
+                    that starts a cold build or a stream sends it as a bearer
 LOADTEST_BASE_URL   dev web service URL (https://democracy-monitor-dev...)
 LOADTEST_REDIS_URL  dev keyvalue EXTERNAL connection string (enable external
                     access + IP allowlist in the Render dashboard)
@@ -41,6 +43,14 @@ the wrong system — caught on the first Round A, 2026-08-26). When
 setting env vars via the API: a PUT stores the value but does NOT
 restart the service — trigger an explicit deploy
 (`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
+
+## Dev lifecycle (#791)
+
+The owner keeps dev suspended between rounds. `RENDER_API_KEY=... pnpm dev:resume`
+brings the database then the web service back and waits for `/api/version`;
+`pnpm dev:suspend` reverses it; `pnpm dev:status` reports. A gate run is
+`dev:resume → (migrate by hand if the schema changed) → db:prewarm → runs →
+dev:suspend`.
 
 ## Dev deploys do NOT run migrations
 

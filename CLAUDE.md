@@ -58,6 +58,7 @@ pnpm crec:build-fragments      # Split multi-topic CREC granules into fragment d
 pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison)
 pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
+pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 ```
 
@@ -80,6 +81,8 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `RESEND_API_KEY` — Resend API key (optional; enables email newsletter)
 - `RESEND_FROM_EMAIL` — Sender address for emails (default: `Democracy Monitor <updates@democracymonitor.us>`)
 - `CRON_SECRET` — Bearer token shared between web service and dump cron job
+- `SEARCH_MACHINE_TOKEN` — Bearer token that lets our own harnesses (prewarm workflow, eval, loadtest, golden) through the search front door (#792); humans get a Turnstile-issued pass instead
+- `SEARCH_PASS_SECRET` — HMAC secret for the `dm_pass` cookie (falls back to `CRON_SECRET`)
 
 ### Local development
 

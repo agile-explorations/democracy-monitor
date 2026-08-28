@@ -106,3 +106,35 @@ export async function rateLimitHit(key: string, windowSeconds: number): Promise<
     return null;
   }
 }
+
+const memoryCounters = new Map<string, { count: number; expiresAt: number }>();
+
+/**
+ * Adjust a shared counter by `delta` (floored at 0), refreshing its TTL, and
+ * return the new value (#793). Redis-backed across instances; per-process
+ * memory fallback when Redis is unavailable — good enough for a
+ * concurrency slot, which only needs to be right within one process then.
+ */
+export async function counterAdjust(
+  key: string,
+  delta: number,
+  ttlSeconds: number,
+): Promise<number> {
+  const client = getRedis();
+  if (client) {
+    try {
+      const count = await client.incrby(key, delta);
+      if (count < 0) await client.set(key, '0', 'EX', ttlSeconds);
+      else await client.expire(key, ttlSeconds);
+      return Math.max(0, count);
+    } catch (err) {
+      console.warn('Redis INCRBY failed, falling back to memory counter:', err);
+    }
+  }
+  const now = Date.now();
+  const entry = memoryCounters.get(key);
+  const base = entry && entry.expiresAt > now ? entry.count : 0;
+  const count = Math.max(0, base + delta);
+  memoryCounters.set(key, { count, expiresAt: now + ttlSeconds * 1000 });
+  return count;
+}
