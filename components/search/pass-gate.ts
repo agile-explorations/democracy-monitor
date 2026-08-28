@@ -29,10 +29,21 @@ export async function isPassRequired(res: Pick<Response, 'status' | 'clone'>): P
   return body.code === 'pass_required';
 }
 
-/** Obtain (or refresh) the pass: Turnstile token → POST /api/search/pass. */
-export async function ensurePass(force = false): Promise<void> {
+/** Obtain (or refresh) the pass: Turnstile token → POST /api/search/pass.
+ *  `mount` places a visible challenge (if Cloudflare asks for one) under
+ *  the search box; `onWaiting` lets the page say so while it waits. */
+export async function ensurePass(
+  force = false,
+  opts: { mount?: HTMLElement | null; onWaiting?: (waiting: boolean) => void } = {},
+): Promise<void> {
   if (!force && passIsFresh(lastPassAt, Date.now())) return;
-  const turnstileToken = await getTurnstileToken();
+  opts.onWaiting?.(true);
+  let turnstileToken: string;
+  try {
+    turnstileToken = await getTurnstileToken(opts.mount);
+  } finally {
+    opts.onWaiting?.(false);
+  }
   const res = await fetch('/api/search/pass', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
