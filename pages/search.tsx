@@ -22,6 +22,15 @@ type TierFilterValue = 'all' | 'action' | 'discussion';
 
 /** A completed synthesis stream whose text had no parseable sections — model
  *  nondeterminism, retried once silently before surfacing an error. */
+/** The stream closed before sending anything — the server refused it
+ *  (most likely an expired pass); re-verify once, then retry. */
+class StreamRefusedError extends Error {
+  constructor() {
+    super('Answer stream refused');
+    this.name = 'StreamRefusedError';
+  }
+}
+
 class UnparseableSynthesisError extends Error {
   constructor() {
     super('The answer could not be generated from the response. Please try the search again.');
@@ -219,15 +228,18 @@ export default function SearchPage() {
       setDebugCapture(debugRef.current);
     }
     setLoading(false);
-    setSynthesizing(true);
 
     // Phase 2: Stream single-pass Sonnet synthesis via SSE. Pass the exact
     // ordered doc ids from phase 1 so [Doc N] citations always match the doc
     // cards (#552) and the stream skips a redundant vector search.
     try {
-      // Every stream is an uncached model call and needs the pass (#792);
-      // EventSource cannot react to a 403, so refresh proactively.
-      await ensurePass(false, { mount: passMountRef.current, onWaiting: setVerifying });
+      // Every stream is an uncached model call and needs the pass (#792).
+      // Verify BEFORE announcing "generating" — while a checkbox is pending
+      // nothing is being generated, and the page must say so.
+      const passOpts = { mount: passMountRef.current, onWaiting: setVerifying };
+      await ensurePass(false, passOpts);
+      if (!isCurrent()) return;
+      setSynthesizing(true);
       const streamParams = new URLSearchParams({ q });
       if (debugMode) streamParams.set('debug', '1');
       const df = urlParams.get('dateFrom');
@@ -246,11 +258,23 @@ export default function SearchPage() {
       // retry (same doc ids, so no redundant vector search) resolves nearly
       // all of them. Only the second failure surfaces to the user.
       const MAX_SYNTHESIS_ATTEMPTS = 2;
+      let reverified = false;
       for (let attempt = 1; attempt <= MAX_SYNTHESIS_ATTEMPTS; attempt++) {
         try {
           await attemptSynthesisStream(streamParams, isCurrent);
           break;
         } catch (err) {
+          // A refused stream (no data at all) usually means the pass expired
+          // or the note of it was stale: re-verify once and retry the same
+          // attempt — EventSource cannot show us the 403 itself.
+          if (err instanceof StreamRefusedError && !reverified && isCurrent()) {
+            reverified = true;
+            setSynthesizing(false);
+            await ensurePass(true, passOpts);
+            setSynthesizing(true);
+            attempt -= 1;
+            continue;
+          }
           const retryable = err instanceof UnparseableSynthesisError;
           if (!retryable || attempt === MAX_SYNTHESIS_ATTEMPTS || !isCurrent()) throw err;
           console.warn(`[search] synthesis unparseable — retrying (attempt ${attempt + 1})`);
@@ -267,9 +291,11 @@ export default function SearchPage() {
     const eventSource = new EventSource(`/api/search/stream?${streamParams.toString()}`);
     activeStream.current = eventSource;
     let accumulated = '';
+    let receivedAny = false;
 
     return new Promise<void>((resolve, reject) => {
       eventSource.onmessage = (event) => {
+        receivedAny = true;
         if (!isCurrent()) {
           eventSource.close();
           resolve();
@@ -356,7 +382,7 @@ export default function SearchPage() {
 
       eventSource.onerror = () => {
         eventSource.close();
-        reject(new Error('Stream connection lost'));
+        reject(receivedAny ? new Error('Stream connection lost') : new StreamRefusedError());
       };
     });
   };
@@ -542,7 +568,8 @@ export default function SearchPage() {
       <div ref={passMountRef} className="mb-2 empty:hidden" />
       {verifying && (
         <p className="mb-3 text-sm text-dm-text-muted" role="status">
-          Confirming you&apos;re human — if a checkbox appears above, please tick it to continue.
+          Waiting for you to confirm you&apos;re human — if a checkbox appears above, tick it to get
+          the answer.
         </p>
       )}
 
