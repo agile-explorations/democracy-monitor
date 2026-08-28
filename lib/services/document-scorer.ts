@@ -232,7 +232,11 @@ export function scoreDocumentBatch(items: ContentItem[], category: string): Docu
   return (
     items
       .filter((item) => !item.isError && !item.isWarning)
-      .filter((item) => (item.content ?? '').length >= SCORING_MIN_CONTENT_CHARS)
+      // Raw stored length when the item was rebuilt from a row (#667): the
+      // SQL eligibility G1a checks is on raw content, not the stripped copy.
+      .filter(
+        (item) => (item.contentLength ?? (item.content ?? '').length) >= SCORING_MIN_CONTENT_CHARS,
+      )
       // Out-of-scope opinions never enter document_scores (#587): weekly
       // documentCount aggregates from score rows, and the counting population
       // must stay method-consistent across collection changes.

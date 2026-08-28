@@ -69,6 +69,7 @@ export class AnthropicProvider implements AIProvider {
         .map((block) => block.text)
         .join(''),
       model: finalMessage.model,
+      stopReason: finalMessage.stop_reason,
       tokensUsed: {
         input: finalMessage.usage.input_tokens,
         output: finalMessage.usage.output_tokens,

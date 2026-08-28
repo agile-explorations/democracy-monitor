@@ -183,6 +183,7 @@ export async function getDocumentsForWeek(
       sourceType: documents.sourceType,
       sourceOrigin: documents.sourceOrigin,
       metadata: documents.metadata,
+      countingScope: documents.countingScope,
     })
     .from(documents)
     .where(
@@ -206,6 +207,10 @@ export async function getDocumentsForWeek(
       agency: meta?.agency as string | undefined,
       type: r.sourceType,
       sourceOrigin: r.sourceOrigin || undefined,
+      // Stored scope + raw length are authoritative over a re-derivation
+      // from the stripped copy (#667).
+      countingScope: r.countingScope,
+      contentLength: r.content?.length,
     };
   });
 }

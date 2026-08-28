@@ -8,6 +8,9 @@ export interface AICompletionOptions {
 export interface AICompletionResult {
   content: string;
   model: string;
+  /** Provider stop reason (e.g. end_turn, max_tokens, refusal) when known —
+   *  distinguishes an empty refusal from a zero-delta blip (#714). */
+  stopReason?: string | null;
   tokensUsed: {
     input: number;
     output: number;

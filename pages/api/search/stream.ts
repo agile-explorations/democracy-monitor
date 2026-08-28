@@ -7,7 +7,8 @@
  *   data: {"type":"chunk","text":"..."} — incremental LLM output
  *   data: {"type":"verification","totalQuotes":N,"verifiedCount":N,"unverified":[...]} — quote check (#707)
  *   data: {"type":"done","model":"...","latencyMs":N,"tokensUsed":{...}} — completion metadata
- *   data: {"type":"error","message":"..."} — error
+ *   data: {"type":"error","message":"...","code"?:"empty_synthesis"} — error; the code marks a
+ *         draw that produced no text twice (#714) — terminal, the server already retried
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -24,6 +25,7 @@ import { requireSearchSource } from '@/lib/services/search-pass';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
+import { synthesizeWithEmptyRetry } from '@/lib/services/synthesis-stream';
 import { requireDb, requireMethod } from '@/lib/utils/api-helpers';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
@@ -178,32 +180,41 @@ async function streamCompletion(
   clientGone: () => boolean,
 ) {
   const { prompt, docs, searchedPhrases } = retrieved;
-  const stream = provider.completeStream(prompt, {
-    model: SINGLE_PASS_MODEL,
-    maxTokens,
-    systemPrompt: SYSTEM_SINGLE_PASS,
-    // Low temperature: factual synthesis, not creative writing (#707).
-    temperature: SYNTHESIS_TEMPERATURE,
-  });
+  const startDraw = () =>
+    provider.completeStream(prompt, {
+      model: SINGLE_PASS_MODEL,
+      maxTokens,
+      systemPrompt: SYSTEM_SINGLE_PASS,
+      // Low temperature: factual synthesis, not creative writing (#707).
+      temperature: SYNTHESIS_TEMPERATURE,
+    });
 
-  let accumulated = '';
-  let result = await stream.next();
-  while (!result.done) {
-    if (clientGone()) {
-      // Client dropped (new search or navigation): stop the model call via
-      // the generator's finally-abort instead of billing to completion.
-      await stream.return(undefined as never);
-      console.log('[api/search/stream] client disconnected — synthesis aborted');
-      return;
-    }
-    accumulated += result.value;
-    sendEvent(res, { type: 'chunk', text: result.value });
-    result = await stream.next();
+  // An empty draw is redrawn once inside this request (#714); a client that
+  // dropped mid-stream aborts the model call instead of billing to completion.
+  const outcome = await synthesizeWithEmptyRetry(
+    startDraw,
+    (text) => sendEvent(res, { type: 'chunk', text }),
+    clientGone,
+  );
+  if (outcome.kind === 'aborted') {
+    console.log('[api/search/stream] client disconnected — synthesis aborted');
+    return;
+  }
+  if (outcome.kind === 'empty') {
+    console.error(
+      `[api/search/stream] empty synthesis after ${outcome.draws} draws (stop_reason=${outcome.stopReason ?? 'unknown'})`,
+    );
+    sendEvent(res, {
+      type: 'error',
+      code: 'empty_synthesis',
+      message: 'The model returned an empty answer twice. Please try the search again.',
+    });
+    return;
   }
 
+  const { accumulated, completion } = outcome;
   await verifyAndEmit(accumulated, docs, searchedPhrases, res);
 
-  const completion = result.value;
   sendEvent(res, {
     type: 'done',
     model: completion.model,

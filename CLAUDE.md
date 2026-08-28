@@ -59,6 +59,7 @@ pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary com
 pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
 pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
+pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 ```
 

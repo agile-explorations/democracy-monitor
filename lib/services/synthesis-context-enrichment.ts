@@ -55,9 +55,13 @@ const BOILERPLATE_FRAGMENT_PATTERNS = [
   /From the Federal Register Online/i,
   /\[FR Doc No/i,
   /Government Publishing Office/i,
-  /\[(Senate|House) (Hearing|Report)\b/i,
+  /\[(Senate|House|Joint) (Hearing|Report)\b/i,
   /^(Senate|House) Report \d/i,
   /BILLING CODE \d/i,
+  // Non-FR mastheads (#744): CPD package ids + CSS preamble, press headers.
+  /^DCPD\d+/,
+  /\{\s*(margin|font|padding|text-align)[^}]*\}/i,
+  /^For Immediate Release/i,
 ];
 
 /**
@@ -71,24 +75,90 @@ const BOILERPLATE_FRAGMENT_PATTERNS = [
 export function dropBoilerplateFragments(excerpt: string): string | null {
   const kept = excerpt
     .split(FRAGMENT_DELIMITER)
-    .filter((fragment) => !BOILERPLATE_FRAGMENT_PATTERNS.some((re) => re.test(fragment)));
+    .filter((fragment) => !BOILERPLATE_FRAGMENT_PATTERNS.some((re) => re.test(fragment)))
+    .map(trimSeparatorRuns)
+    .filter((fragment) => fragment.length > 0);
   const joined = kept.join(FRAGMENT_DELIMITER).trim();
   return joined.length >= 20 ? joined : null;
 }
 
-/** Headline source skipping the GPO masthead on FR rows (#744): the
- *  header's '[FR Doc No: …]' sentinel marks its end, and everything before
- *  it is catalog text that outranks real passages for almost any query. */
-function headlineSourceSql() {
+/** GPO rule lines ("-----", "=====", "_____") that end a masthead land at
+ *  the start of the offset source, so a headline window can open on them
+ *  (observed on FR and House-report rows, 2026-08-28). Trim runs of three
+ *  or more separator characters from either end; a single "- " bullet or
+ *  an em-dash inside prose is untouched. Exported for tests. */
+export function trimSeparatorRuns(fragment: string): string {
+  return fragment
+    .replace(/^[\s\-=_*]{3,}/, '')
+    .replace(/[\s\-=_*]{3,}$/, '')
+    .trim();
+}
+
+/** CPD CSS preamble lives in the first ~1500 chars (content-cleaners
+ *  measured max 1460); the last '}' in this window ends it. */
+const CPD_CSS_WINDOW_CHARS = 2000;
+/** CHRG front matter (content-cleaners stripChrgFrontMatter) as a Postgres
+ *  ARE: POSIX classes, no backslashes, and a bound of 250 — Postgres rejects
+ *  repetition counts above 255 ("invalid repetition count(s)"), which the
+ *  failure-tolerant enrichment path would swallow silently. Exported for the
+ *  syntax test. */
+export const CHRG_MASTHEAD_RE = '^[-[:space:]]*[^[]{0,250}[[](House|Senate|Joint) Hearing';
+/** DHS press header sentinel length ('Contact:'). */
+const DHS_CONTACT_SENTINEL_CHARS = 8;
+
+/**
+ * Headline source with each origin's masthead skipped (#744) — the SQL twin
+ * of `stripBoilerplate` (lib/utils/content-cleaners.ts), which runs at read
+ * time on the excerpt text but cannot reach ts_headline's input. Every
+ * origin's header outranks real passages for almost any query (agency
+ * names, "Federal Register", dates, hearing titles); skipping it makes the
+ * masthead unreachable instead of merely filtered after the fact. `d` is
+ * the documents alias; the fragment filter remains the belt. Exported for
+ * the Matched Passage path (hybrid-arms.ts), which shares the exposure.
+ */
+export function headlineSourceSql(maxChars: number = HEADLINE_CONTENT_CHARS) {
   return sql`
-    CASE WHEN d.source_origin = 'federal_register'
+    CASE
+      WHEN d.source_origin = 'federal_register'
            AND d.content LIKE 'Federal Register, Volume%'
            AND strpos(d.content, '[FR Doc No') > 0
-      THEN LEFT(substr(d.content, strpos(d.content, '[FR Doc No') + ${FR_DOC_NO_SKIP_CHARS}),
-        ${HEADLINE_CONTENT_CHARS})
-      ELSE LEFT(d.content, ${HEADLINE_CONTENT_CHARS})
+        THEN LEFT(substr(d.content, strpos(d.content, '[FR Doc No') + ${FR_DOC_NO_SKIP_CHARS}), ${maxChars})
+      WHEN d.source_origin = 'govinfo'
+           AND d.content ~ '^(Senate|House) Report'
+           AND strpos(d.content, '===') > 0
+        THEN LEFT(substr(d.content, strpos(d.content, '===')), ${maxChars})
+      WHEN d.source_origin = 'govinfo_cpd'
+           AND d.content LIKE 'DCPD%'
+           AND strpos(LEFT(d.content, ${CPD_CSS_WINDOW_CHARS}), '}') > 0
+        THEN LEFT(substr(d.content,
+          char_length(LEFT(d.content, ${CPD_CSS_WINDOW_CHARS}))
+            - strpos(reverse(LEFT(d.content, ${CPD_CSS_WINDOW_CHARS})), '}') + 2), ${maxChars})
+      WHEN d.source_origin = 'crec'
+           AND d.title IS NOT NULL AND char_length(d.title) > 0
+           AND LEFT(d.content, char_length(d.title)) = d.title
+        THEN LEFT(substr(d.content, char_length(d.title) + 1), ${maxChars})
+      WHEN d.source_origin = 'chrg'
+           AND d.content ~* ${CHRG_MASTHEAD_RE}
+           AND strpos(d.content, ']') > 0
+        THEN LEFT(substr(d.content, strpos(d.content, ']') + 1), ${maxChars})
+      WHEN d.source_origin = 'dhs_press'
+           AND d.content LIKE 'For Immediate Release%'
+           AND strpos(LEFT(d.content, 300), 'Contact:') > 0
+        THEN LEFT(substr(d.content, strpos(d.content, 'Contact:') + ${DHS_CONTACT_SENTINEL_CHARS}), ${maxChars})
+      ELSE LEFT(d.content, ${maxChars})
     END`;
 }
+
+/** Origins with a masthead branch in headlineSourceSql — exported so the
+ *  test can assert parity with the read-time cleaner's switch. */
+export const HEADLINE_OFFSET_ORIGINS = [
+  'federal_register',
+  'govinfo',
+  'govinfo_cpd',
+  'crec',
+  'chrg',
+  'dhs_press',
+] as const;
 
 interface ExcerptRow {
   id: number;
@@ -107,7 +177,9 @@ function applyExcerpts(docs: ResearchDocument[], rows: ExcerptRow[]): void {
       if (cleaned) doc.queryExcerpt = cleaned;
     }
     if (r.disposition_excerpt && r.disposition_excerpt.trim().length >= 20) {
-      doc.dispositionExcerpt = r.disposition_excerpt.trim();
+      // Ruling-language windows can elect masthead-adjacent text too (#744).
+      const cleaned = dropBoilerplateFragments(r.disposition_excerpt.trim());
+      if (cleaned) doc.dispositionExcerpt = cleaned;
     }
   }
 }

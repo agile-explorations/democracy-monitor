@@ -7,6 +7,7 @@ import {
   retryFailedAggregates,
   tryEnsureWeekHeadline,
   tryGenerateNarratives,
+  tryReconcileUnscoredDocs,
   tryRefreshTrackedCases,
   tryWarnUnfragmentedCrec,
   tryRegenerateTermSummary,
@@ -514,6 +515,7 @@ async function runPostCategorySteps(
 
   await tryRefreshTrackedCases(errors);
   await tryWarnUnfragmentedCrec(errors);
+  await tryReconcileUnscoredDocs(errors);
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);

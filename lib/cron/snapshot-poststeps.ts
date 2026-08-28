@@ -76,6 +76,31 @@ export async function tryGenerateNarratives(
 }
 
 /**
+ * Score reconciliation (#667): late-published documents (LegiScan, GovInfo,
+ * OIG, FR) land outside the two-week sweep; scoring them here, before the
+ * graph check, is what stops G1a from holding the digest every Monday.
+ * Returns the number of category-weeks reconciled.
+ */
+export async function tryReconcileUnscoredDocs(errors: string[]): Promise<number> {
+  try {
+    const { reconcileUnscoredDocs } = await import('@/lib/cron/score-reconciliation');
+    const result = await reconcileUnscoredDocs();
+    errors.push(...result.errors);
+    console.log(
+      `[snapshot] reconciled ${result.reconciled} category-week(s), ${result.docsScored} docs` +
+        (result.plan.deferred.length > 0 ? ` (${result.plan.deferred.length} deferred)` : '') +
+        (result.plan.baseline.length > 0
+          ? ` (${result.plan.baseline.length} baseline, skipped)`
+          : ''),
+    );
+    return result.reconciled;
+  } catch (err) {
+    errors.push(`score reconciliation failed to run: ${formatError(err)}`);
+    return 0;
+  }
+}
+
+/**
  * Post-run derivation-graph contract check (#571). Runs after every write the
  * snapshot performs so it sees the final state; error-severity violations are
  * appended to the cron error channel (and render on /system/health via
@@ -87,7 +112,10 @@ export async function tryValidateGraph(errors: string[]): Promise<number> {
     const results = await runGraphValidation();
     const failed = results.filter((r) => !r.pass && r.severity === 'error');
     for (const r of failed) {
-      errors.push(`validate:graph ${r.id} — ${r.violations} violations (${r.description})`);
+      const sample = r.sample?.length ? ` e.g. ${r.sample.join('; ')}` : '';
+      errors.push(
+        `validate:graph ${r.id} — ${r.violations} violations (${r.description})${sample}`,
+      );
     }
     console.log(
       `[snapshot] validate:graph: ${failed.length === 0 ? 'all invariants hold' : `${failed.length} VIOLATED`}`,

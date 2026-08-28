@@ -20,8 +20,10 @@ export const CacheKeys = {
    *  the v1.10.1 v2 namespace so a flag-off deploy hits the existing warm
    *  caches — no deploy-day rebuild stampede; enumeration doc sets differ
    *  and get their own v3 namespace. */
+  // v4/v5 (#744): matched-passage snippets skip mastheads; earlier
+  // generations carried header text.
   searchResearchDocs: (keyHash: string, enumeration = false) =>
-    `search:rdocs:${keyHash}:${enumeration ? 'v3' : 'v2'}`,
+    `search:rdocs:${keyHash}:${enumeration ? 'v5' : 'v4'}`,
   /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
    *  provider round-trip per cold search. Query text only, never documents. */
   queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,
