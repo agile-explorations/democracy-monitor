@@ -33,12 +33,14 @@ describe('pass gate (#792)', () => {
     expect(await isPassRequired(res(200, { code: 'pass_required' }))).toBe(false);
   });
 
-  it('exchanges a token for a pass once, then reuses it while fresh', async () => {
+  it('exchanges a token for a pass once, then reuses it while fresh, reporting the wait', async () => {
     const fetchMock = vi.fn(async () => ({ status: 204, json: async () => ({}) }));
     vi.stubGlobal('fetch', fetchMock);
-    await ensurePass();
+    const waits: boolean[] = [];
+    await ensurePass(false, { onWaiting: (w) => waits.push(w) });
     await ensurePass();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(waits).toEqual([true, false]);
     await ensurePass(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

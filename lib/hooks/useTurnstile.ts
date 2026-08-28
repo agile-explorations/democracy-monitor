@@ -29,11 +29,12 @@ declare global {
 
 export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-const TOKEN_TIMEOUT_MS = 30_000;
+/** Long enough for a person to notice and complete an interactive challenge. */
+const TOKEN_TIMEOUT_MS = 120_000;
 
 let scriptPromise: Promise<void> | null = null;
 let widgetId: string | null = null;
-let container: HTMLDivElement | null = null;
+let container: HTMLElement | null = null;
 let pending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null;
 
 /** Load api.js once (also resolves when the feedback form already did). */
@@ -64,8 +65,10 @@ function settle(fn: (p: NonNullable<typeof pending>) => void): void {
 
 /** A fresh Turnstile token from an invisible widget; '' when no site key is
  *  configured (enforcement is then off server-side too). Tokens are
- *  single-use — call again for each exchange. */
-export async function getTurnstileToken(): Promise<string> {
+ *  single-use — call again for each exchange. `mount` is where a challenge
+ *  appears if Cloudflare wants one: pass the element under the search box
+ *  so a person sees it in context (a fixed corner is the fallback). */
+export async function getTurnstileToken(mount?: HTMLElement | null): Promise<string> {
   if (!TURNSTILE_SITE_KEY) return '';
   await loadTurnstileScript();
   const api = window.turnstile;
@@ -85,11 +88,14 @@ export async function getTurnstileToken(): Promise<string> {
       api.reset(widgetId); // re-executes; the render callbacks below fire again
       return;
     }
-    container = document.createElement('div');
-    container.setAttribute('aria-live', 'polite');
-    container.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:50;';
-    document.body.appendChild(container);
-    widgetId = api.render(container, {
+    const host: HTMLElement = mount ?? document.createElement('div');
+    host.setAttribute('aria-live', 'polite');
+    if (!mount) {
+      host.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:50;';
+      document.body.appendChild(host);
+    }
+    container = host;
+    widgetId = api.render(host, {
       sitekey: TURNSTILE_SITE_KEY,
       appearance: 'interaction-only',
       callback: (token) => done((p) => p.resolve(token)),

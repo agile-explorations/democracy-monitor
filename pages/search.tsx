@@ -42,6 +42,9 @@ export default function SearchPage() {
   const [tierHintDismissed, setTierHintDismissed] = useState(false);
   const tierHint = suggestTierFromQuestion(query);
   const formRef = useRef<HTMLFormElement>(null);
+  /** Where a Turnstile challenge renders if Cloudflare asks for one (#792). */
+  const passMountRef = useRef<HTMLDivElement>(null);
+  const [verifying, setVerifying] = useState(false);
   const { history, addEntry, clearHistory } = useSearchHistory();
 
   const [researchResult, setResearchResult] = useState<ResearchResult | null>(null);
@@ -180,7 +183,7 @@ export default function SearchPage() {
     // Front door (#792): a cold build needs a verified pass; obtain one and
     // retry once. Cached answers never trigger this.
     if (await isPassRequired(docsRes)) {
-      await ensurePass(true);
+      await ensurePass(true, { mount: passMountRef.current, onWaiting: setVerifying });
       docsRes = await fetchDocsResilient(docsUrl, signal);
     }
     if (!docsRes.ok) {
@@ -224,7 +227,7 @@ export default function SearchPage() {
     try {
       // Every stream is an uncached model call and needs the pass (#792);
       // EventSource cannot react to a 403, so refresh proactively.
-      await ensurePass();
+      await ensurePass(false, { mount: passMountRef.current, onWaiting: setVerifying });
       const streamParams = new URLSearchParams({ q });
       if (debugMode) streamParams.set('debug', '1');
       const df = urlParams.get('dateFrom');
@@ -535,6 +538,13 @@ export default function SearchPage() {
           </button>
         </div>
       </form>
+      {/* Turnstile mount (#792): invisible unless Cloudflare wants a check. */}
+      <div ref={passMountRef} className="mb-2 empty:hidden" />
+      {verifying && (
+        <p className="mb-3 text-sm text-dm-text-muted" role="status">
+          Confirming you&apos;re human — if a checkbox appears above, please tick it to continue.
+        </p>
+      )}
 
       <SearchTips mode={mode} />
 
