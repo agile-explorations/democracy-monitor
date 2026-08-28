@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DateRangeSelect } from '@/components/search/DateRangeSelect';
 import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
 import { fetchDocsResilient, parseStreamingSections } from '@/components/search/helpers';
+import { ensurePass, isPassRequired } from '@/components/search/pass-gate';
 import { ResearchResults } from '@/components/search/ResearchResults';
 import { SearchDebugLog } from '@/components/search/SearchDebugLog';
 import type { SearchDebugCapture } from '@/components/search/SearchDebugLog';
@@ -174,7 +175,14 @@ export default function SearchPage() {
     // Resilient fetch (#729): survives the ~60s edge cut on pathological
     // first builds (server finishes + caches; we re-request) and wait-polls
     // 202 while another request builds this exact search.
-    const docsRes = await fetchDocsResilient(`/api/search?${docsParams.toString()}`, signal);
+    const docsUrl = `/api/search?${docsParams.toString()}`;
+    let docsRes = await fetchDocsResilient(docsUrl, signal);
+    // Front door (#792): a cold build needs a verified pass; obtain one and
+    // retry once. Cached answers never trigger this.
+    if (await isPassRequired(docsRes)) {
+      await ensurePass(true);
+      docsRes = await fetchDocsResilient(docsUrl, signal);
+    }
     if (!docsRes.ok) {
       const body = await docsRes.json().catch(() => ({}));
       throw new Error(body.error || `Search failed (${docsRes.status})`);
@@ -214,6 +222,9 @@ export default function SearchPage() {
     // ordered doc ids from phase 1 so [Doc N] citations always match the doc
     // cards (#552) and the stream skips a redundant vector search.
     try {
+      // Every stream is an uncached model call and needs the pass (#792);
+      // EventSource cannot react to a 403, so refresh proactively.
+      await ensurePass();
       const streamParams = new URLSearchParams({ q });
       if (debugMode) streamParams.set('debug', '1');
       const df = urlParams.get('dateFrom');

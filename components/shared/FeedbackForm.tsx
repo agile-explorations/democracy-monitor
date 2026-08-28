@@ -1,5 +1,7 @@
 import Script from 'next/script';
 import { useEffect, useRef, useState } from 'react';
+// Window.turnstile typing lives with the shared loader (#792).
+import '@/lib/hooks/useTurnstile';
 
 interface FeedbackFormProps {
   initialCategory?: string;
@@ -9,24 +11,6 @@ interface FeedbackFormProps {
 
 /** Public Turnstile site key; absent in dev/local, where the check is skipped. */
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-
-interface TurnstileApi {
-  render: (
-    el: HTMLElement,
-    opts: {
-      sitekey: string;
-      callback: (token: string) => void;
-      'expired-callback'?: () => void;
-      'error-callback'?: () => void;
-    },
-  ) => string;
-  reset: (id?: string) => void;
-}
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi;
-  }
-}
 
 const FEEDBACK_TYPES = [
   { value: 'data-issue', label: 'Missing or incorrect data' },

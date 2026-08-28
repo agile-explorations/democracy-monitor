@@ -7,6 +7,8 @@
  */
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+/** A hung siteverify must not hang the request; fail closed instead (#792). */
+const SITEVERIFY_TIMEOUT_MS = 5_000;
 
 export async function verifyTurnstile(
   token: string | undefined,
@@ -19,7 +21,11 @@ export async function verifyTurnstile(
   try {
     const body = new URLSearchParams({ secret, response: token });
     if (remoteIp) body.set('remoteip', remoteIp);
-    const res = await fetch(SITEVERIFY_URL, { method: 'POST', body });
+    const res = await fetch(SITEVERIFY_URL, {
+      method: 'POST',
+      body,
+      signal: AbortSignal.timeout(SITEVERIFY_TIMEOUT_MS),
+    });
     if (!res.ok) return false;
     const data = (await res.json()) as { success?: boolean };
     return data.success === true;

@@ -26,6 +26,7 @@ import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
 import { fetchResearchDocsByIds } from '@/lib/services/search-service';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
+import { machineAuthHeaders } from './loadtest/client';
 
 const SYSTEM =
   'You are a research analyst answering questions about U.S. government actions. ' +
@@ -121,7 +122,9 @@ async function fetchProdContext(question: (typeof QUESTIONS)[number]) {
     docsOnly: 'true',
     ...question.params,
   });
-  const res = await fetch(`https://democracymonitor.us/api/search?${qs}`);
+  const res = await fetch(`https://democracymonitor.us/api/search?${qs}`, {
+    headers: machineAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`docsOnly ${question.key}: HTTP ${res.status}`);
   const data = (await res.json()) as {
     documents: Array<{ id: number }>;

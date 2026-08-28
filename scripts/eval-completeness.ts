@@ -29,6 +29,7 @@ import { sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { machineAuthHeaders } from './loadtest/client';
 
 interface EvalQuestion {
   id: string;
@@ -91,7 +92,10 @@ async function fetchDocs(
   const url = `${base}/api/search?${qs({ q: item.q, mode: 'research', docsOnly: '1', ...item.params })}`;
   let res: Response;
   try {
-    res = await fetch(url, { signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS) });
+    res = await fetch(url, {
+      headers: machineAuthHeaders(),
+      signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS),
+    });
     // 202 MUST be checked before ok — res.ok covers all of 2xx, and a
     // coalescing body has no documents, which the empty-payload guard would
     // misread as a degraded build (bit run 2 on 2026-08-24).
@@ -128,7 +132,10 @@ async function streamAnswer(
   const ids = (docs.documents ?? []).map((d) => d.id).join(',');
   if (!ids) throw new Error(`${item.id}: no documents retrieved`);
   const url = `${base}/api/search/stream?${qs({ q: item.q, ids, dk: docs.docsKey ?? '', ...item.params })}`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(300_000) });
+  const res = await fetch(url, {
+    headers: machineAuthHeaders(),
+    signal: AbortSignal.timeout(300_000),
+  });
   if (!res.ok || !res.body) throw new Error(`${item.id} stream HTTP ${res.status}`);
   let answer = '';
   let buf = '';

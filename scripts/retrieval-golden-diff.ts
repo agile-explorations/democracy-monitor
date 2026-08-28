@@ -21,6 +21,7 @@ import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { diffShapes } from '@/lib/utils/retrieval-golden';
 import type { RetrievalShape as Shape } from '@/lib/utils/retrieval-golden';
+import { machineAuthHeaders } from './loadtest/client';
 
 const USAGE = `Usage:
   npx tsx scripts/retrieval-golden-diff.ts --base URL --out FILE [--loadtest N] [--eval] [--skip=A,B] [--pace MS]
@@ -97,6 +98,7 @@ async function fetchDebugBuild(base: string, item: Question, attempt = 0): Promi
   });
   try {
     const res = await fetch(`${base}/api/search?${params}`, {
+      headers: machineAuthHeaders(),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (res.status === 202) {
