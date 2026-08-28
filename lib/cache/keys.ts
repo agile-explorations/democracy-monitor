@@ -70,6 +70,8 @@ export const CacheKeys = {
   opsSearchTimingAlert: () => 'ops:search-timing-alert-cooldown:v1',
   opsPrewarmMopup: () => 'ops:prewarm-mopup-cooldown:v1',
   documentCount: () => 'stats:doc-count:v4',
+  /** Era-sliced Pass-1/Pass-2 rates for the methodology page (#772). */
+  methodologyVerdictRates: () => 'methodology:verdict-rates:v1',
   validateGraph: () => 'health:validate-graph:v1',
   validateGraphLive: () => 'health:validate-graph:live:v1',
   validateData: () => 'health:validate-data:v1',

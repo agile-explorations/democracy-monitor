@@ -5,8 +5,10 @@
  * opinion twice (same case, category and decision date, different URL —
  * 592 rows on 2026-08-28). Marks the older row of each group superseded
  * (retrieval_relevant=false, counting_scope=false where in scope,
- * metadata.supersededBy) — never deletes. Current term only; baseline-era
- * groups are reported and left alone (owner approval per invocation).
+ * metadata.supersededBy) and cascades its score + AI-review rows (the
+ * keeper revision carries its own); the document row itself is never
+ * deleted. Current term only; baseline-era groups are reported and left
+ * alone (owner approval per invocation).
  * Follow with `pnpm pipeline:repair --from <first touched week> --to <last>
  * --expect-flips` so the touched weeks re-aggregate behind the flip gate.
  */
@@ -14,7 +16,10 @@
 import { sql } from 'drizzle-orm';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { markSupersededRevisions } from '@/lib/services/opinion-revision-dedup';
+import {
+  cascadeSupersededDerivedRows,
+  markSupersededRevisions,
+} from '@/lib/services/opinion-revision-dedup';
 import { getWeekOfDate } from '@/lib/services/weekly-aggregator';
 import { checkHelp } from '@/lib/utils/cli-help';
 
@@ -53,16 +58,27 @@ async function main(): Promise<void> {
     `Usage: pnpm cl:dedupe-revisions [--dry-run | --confirm] [--from YYYY-MM-DD]
 
 Marks superseded CourtListener revision rows (same case/category/decision
-day, different URL); keeps the latest-fetched row. Never deletes.
+day, different URL); keeps the latest-fetched row. Cascades the superseded
+row's score + AI-review rows; never deletes document rows.
 
 Options:
   --dry-run       List groups and the rows that would be marked (default)
   --confirm       Apply the marks
+  --cascade       Remove score + AI-review rows of already-marked superseded docs
+                  (idempotent repair; combine with --confirm to apply)
   --from <date>   Earliest decision day to touch (default 2025-01-20; earlier
                   groups are counted, never touched)`,
   );
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const confirm = args.includes('--confirm');
+  if (args.includes('--cascade')) {
+    // Repair for rows marked before the marker cascaded derived rows.
+    const t = await cascadeSupersededDerivedRows(!confirm);
+    console.log(
+      `[cl-dedupe] ${confirm ? 'Removed' : 'Would remove'} derived rows of ${t.docs} superseded docs: ${t.scores} score rows, ${t.assessments} AI-review rows`,
+    );
+    process.exit(0);
+  }
   const fromIdx = args.indexOf('--from');
   const from = fromIdx >= 0 ? args[fromIdx + 1] : T2_INAUGURATION;
   if (from < T2_INAUGURATION) {

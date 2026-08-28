@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { PromptTransparency } from '@/components/system/PromptTransparency';
+import { VerdictRatesTable } from '@/components/system/VerdictRatesTable';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { CONCERN_LEVEL_THRESHOLDS } from '@/lib/data/concern-level-explanations';
 
@@ -74,10 +75,12 @@ export function SummaryContent() {
         <p>
           <strong>AI Content Assessment (sole active detection)</strong> — Two-pass AI review using
           different providers (OpenAI for screening, Anthropic for detailed review) to ensure
-          epistemic independence. Both passes receive up to 8,000 characters of boilerplate-stripped
-          content. Pass 2 also receives week-level context including peer document titles and flag
-          rate trajectory. Documents are classified from routine to clear departure (internal value:
-          clearly_concerning).
+          epistemic independence. The review&apos;s flag and departure rates for every era, and the
+          swap audit that tests whether names alone move a verdict, are published in the detailed
+          view under AI Document Review. Both passes receive up to 8,000 characters of
+          boilerplate-stripped content. Pass 2 also receives week-level context including peer
+          document titles and flag rate trajectory. Documents are classified from routine to clear
+          departure (internal value: clearly_concerning).
         </p>
         <p>
           <strong>Silence Detection (descriptive only)</strong> — Measures whether
@@ -491,6 +494,22 @@ export function DetailedContent() {
           under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast
           majority of routine documents while catching most documents that warrant closer review.
         </p>
+        <h3 className="text-sm font-semibold text-dm-text-primary mt-4">
+          The same review, every era, side by side
+        </h3>
+        <p>
+          The rates below are the same two-pass review applied to every analysis period. They differ
+          by era — that is the record and the reviewer combined, and the difference is not a finding
+          on its own. Two things are published so a reader can interrogate it: the numbers
+          themselves, and a <strong>swap audit</strong> — reviewed documents with the
+          administration-identifying names mechanically exchanged and re-reviewed, alongside an
+          unchanged re-run that measures the model&apos;s own draw-to-draw noise. A verdict that
+          flips on names alone is a reviewer effect; the audit&apos;s flip rate, net of that noise,
+          is reported on this page once each run completes. The two passes use different providers
+          (OpenAI screens, Anthropic reviews) precisely so that no single model&apos;s disposition
+          decides a status.
+        </p>
+        <VerdictRatesTable />
       </Section>
 
       {/* Thematic Drift */}
