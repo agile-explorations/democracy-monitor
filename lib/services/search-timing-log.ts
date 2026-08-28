@@ -11,6 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import { cacheGet, cacheSet } from '@/lib/cache';
+import { CacheKeys } from '@/lib/cache/keys';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { searchTimings } from '@/lib/db/schema';
 import type { CacheStats } from '@/lib/services/db-work-gate';
@@ -104,7 +105,7 @@ const MOPUP_COOLDOWN_SECONDS = 30 * 60;
 async function maybePrewarmMopUp(reason: string): Promise<void> {
   // Only retrieval-phase trips imply eviction; a slow embed does not.
   if (!/retrieveWallMs|totalMs/.test(reason)) return;
-  const cooldownKey = 'ops:prewarm-mopup-cooldown:v1';
+  const cooldownKey = CacheKeys.opsPrewarmMopup();
   if (await cacheGet<boolean>(cooldownKey)) return;
   await cacheSet(cooldownKey, true, MOPUP_COOLDOWN_SECONDS);
   const { prewarmSearchIndexes } = await import('@/lib/cron/prewarm-indexes');
@@ -113,7 +114,7 @@ async function maybePrewarmMopUp(reason: string): Promise<void> {
 }
 
 async function maybeAlert(record: SearchTimingRecord, reason: string): Promise<void> {
-  const cooldownKey = 'ops:search-timing-alert-cooldown:v1';
+  const cooldownKey = CacheKeys.opsSearchTimingAlert();
   if (await cacheGet<boolean>(cooldownKey)) {
     console.warn(`[search-timing] degradation flagged (alert in cooldown): ${reason}`);
     return;

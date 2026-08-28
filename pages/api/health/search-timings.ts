@@ -4,13 +4,14 @@
  * contain visitor query text, which must not be publicly enumerable.
  *
  * Query params: days (default 7, max 90), flagged=1 (flagged rows only),
- * limit (default 200, max 1000).
+ * limit (default 200, max 1000). Also reports today's spend budget state (#794).
  */
 
 import { desc, gte, and, eq } from 'drizzle-orm';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getDb } from '@/lib/db';
 import { searchTimings } from '@/lib/db/schema';
+import { readBudgetStatus } from '@/lib/services/search-spend-budget';
 import { requireDb, requireMethod, safeEqual } from '@/lib/utils/api-helpers';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
@@ -36,5 +37,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .where(where)
     .orderBy(desc(searchTimings.measuredAt))
     .limit(limit);
-  res.status(200).json({ days, flaggedOnly, count: rows.length, rows });
+  const budget = await readBudgetStatus();
+  res.status(200).json({ days, flaggedOnly, count: rows.length, budget, rows });
 }

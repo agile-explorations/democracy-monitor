@@ -49,6 +49,24 @@ export const CacheKeys = {
   /** Global uncached-build slots (#729 DOS hardening): caps CONCURRENT
    *  distinct builds server-wide; excess wait-polls via 202. */
   searchBuildSlot: (slot: number) => `search:buildslot:${slot}:v1`,
+  /** Per-source concurrent build/stream slots (#793): one pass or machine
+   *  token cannot monopolize the global build slots. */
+  searchSourceSlot: (kind: 'build' | 'stream', sourceId: string) =>
+    `search:srcslot:${kind}:${sourceId}:v1`,
+  /** Daily spend counters (#794): units are admitted builds and streams,
+   *  per source and global, fixed UTC-day windows. */
+  searchSpend: (unit: 'build' | 'stream', scopeId: string, day: string) =>
+    `search:spend:${unit}:${scopeId}:${day}:v1`,
+  /** Novel builds admitted this UTC hour (#794 alerting). */
+  opsBuildsHour: (hour: string) => `ops:search:builds:${hour}:v1`,
+  /** Alert cooldowns (#794): one alert per (unit, threshold, day) and one
+   *  per hourly spike. */
+  opsSpendAlert: (unit: 'build' | 'stream', level: string, day: string) =>
+    `ops:spend-alert:${unit}:${level}:${day}:v1`,
+  opsBuildSpikeAlert: () => 'ops:build-spike-alert-cooldown:v1',
+  /** Existing ops cooldowns, registered here (#794) instead of inline. */
+  opsSearchTimingAlert: () => 'ops:search-timing-alert-cooldown:v1',
+  opsPrewarmMopup: () => 'ops:prewarm-mopup-cooldown:v1',
   documentCount: () => 'stats:doc-count:v4',
   validateGraph: () => 'health:validate-graph:v1',
   validateGraphLive: () => 'health:validate-graph:live:v1',

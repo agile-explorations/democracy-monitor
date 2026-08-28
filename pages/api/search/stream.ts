@@ -19,6 +19,8 @@ import type { SynthesisBudget } from '@/lib/services/question-classifier';
 import { budgetForQuestion } from '@/lib/services/question-classifier';
 import { verifyAnswerQuotes } from '@/lib/services/quote-verification';
 import { buildSinglePassPrompt } from '@/lib/services/research-prompts';
+import { admitStream, releaseStream } from '@/lib/services/search-build-admission';
+import { requireSearchSource } from '@/lib/services/search-pass';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
 import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/search-service';
 import { enrichDocsForSynthesis } from '@/lib/services/synthesis-context-enrichment';
@@ -210,6 +212,21 @@ async function streamCompletion(
   });
 }
 
+/** SSE headers + client-disconnect tracking; returns the disconnect probe. */
+function openEventStream(res: NextApiResponse): () => boolean {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+  let disconnected = false;
+  res.once('close', () => {
+    disconnected = true;
+  });
+  return () => disconnected;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireMethod(req, res, 'GET')) return;
   if (!(await enforceRateLimit(req, res, RATE_LIMITS.search))) return;
@@ -221,23 +238,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
+  // Front door (#792): every stream is an uncached Sonnet call.
+  const source = requireSearchSource(req, res);
+  if (!source) return;
+
   const provider = new AnthropicProvider();
   if (!provider.isAvailable()) {
     res.status(503).json({ error: 'Anthropic API key not configured' });
     return;
   }
+  if (!(await admitStream(res, source))) return;
 
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
-
-  let disconnected = false;
-  res.once('close', () => {
-    disconnected = true;
-  });
+  const isDisconnected = openEventStream(res);
 
   try {
     const dateFrom = req.query.dateFrom as string | undefined;
@@ -257,12 +269,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.query.debug === '1') {
       sendEvent(res, { type: 'debug', synthesisPrompt: retrieved.prompt });
     }
-    await streamCompletion(provider, retrieved, budget.maxTokens, res, () => disconnected);
+    await streamCompletion(provider, retrieved, budget.maxTokens, res, isDisconnected);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Stream failed';
     console.error('[api/search/stream] Error:', err);
     sendEvent(res, { type: 'error', message });
   } finally {
+    releaseStream(source);
     res.end();
   }
 }
