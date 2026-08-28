@@ -39,6 +39,7 @@ pnpm scores:enrich      # Recompute structural/AI/thematic/concern scores from u
 pnpm review:backfill    # Backfill AI document review assessments (defaults to analysis periods; --baseline or --from/--to for custom)
 pnpm legiscan:bulk      # Download LegiScan bulk datasets (Congress baseline periods)
 pnpm cl:purge-noise     # Analyze/purge CL noise docs from civilLiberties (--confirm to delete)
+pnpm cl:dedupe-revisions # Mark superseded CourtListener revision rows (same case/category/day; --dry-run | --confirm; current term only) then pipeline:repair the touched weeks (#741)
 pnpm seed:apply     # Apply keyword changes from review decisions to assessment-rules.ts
 pnpm backtest       # Run historical backtesting
 pnpm structural:distributions  # Show per-category structural score distributions (Biden 2022)

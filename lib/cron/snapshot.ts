@@ -1,5 +1,6 @@
 import { snapshotChrgWindow } from '@/lib/cron/backfill-chrg';
 import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
+import { snapshotClOpinions } from '@/lib/cron/snapshot-cl-opinions';
 import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import {
@@ -431,11 +432,7 @@ async function ingestAndAssessSecondarySources(errors: string[]): Promise<number
   await snapshotChrgWindow();
   await snapshotRhetoric();
 
-  // Opinion-first CL pass: find opinions issued this week for ANY matching docket.
-  // Uses the CL API in production (bulk staging tables are absent there); falls
-  // back to staging when loaded (bulk backfill context).
-  const { opinionFirstPass } = await import('@/lib/services/cl-opinion-first-fetcher');
-  await opinionFirstPass(getLastCompletedWeek(), addDays(getLastCompletedWeek(), 6), false);
+  await snapshotClOpinions();
 
   // Assess stored CREC/bill/opinion docs (the per-category fetch path only
   // covers FR/DOJ) and re-aggregate with the fuller L2 set. Sweeps the last
