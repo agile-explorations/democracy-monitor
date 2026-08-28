@@ -12,6 +12,31 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CREDIBILITY: the last outreach gate (#667 #700 #711 #714 #744 #741 #772 + #796, milestone 126, v1.17.0–v1.17.3) — ✅ shipped 2026-08-28; runbooks: see close-out
+
+**Origin**: with the eval gate passed and R-LOAD/R-HARDEN-SEARCH shipped, seven open defects remained that a journalist checking our work would find first: a weekly summary with wrong numbers, a false annotation, a blank answer, a masthead quoted as a "passage", a held digest, an unexamined verdict asymmetry, and missing Supreme Court emergency-docket orders. Plan approved 2026-08-28 after a read-only production diagnostic that changed two premises (below).
+
+**Diagnostic findings that changed the plan**: (1) #667's stated cause (counting-scope recompute) had been fixed on Aug 2; the digest holds on Aug 3/10 came from late-published documents (LegiScan, GovInfo, OIG, FR) stored outside the two-week sweep with nothing to score them — invisible because G1a reported counts only. (2) #700's survey had missed a stored miscount (2026-07-27 "Four categories — [six names]"); a second (2026-07-20, "Five categories (…eight names…)") turned up once the check existed. (3) Prod era rates: P2 departure share Trump 2017–18 ≈ 30%, Biden 2021–22 ≈ 6.5%, current term ≈ 47%. (4) 592 superseded CourtListener revision rows corpus-wide (49 SCOTUS); `cluster_id` never persisted; first-amendment-only clusters skipped content routing.
+
+**Built**:
+
+- **v1.17.0 `8b81b17`** — W1 #667: `reconcileUnscoredDocs` before `validate:graph` (analysis periods, ≤30 category-weeks/run, baseline reported never touched), one shared `SCORE_ELIGIBLE_DOC_SQL`, G1a names its violators, stored `counting_scope` + raw `contentLength` threaded through every rebuilt item. W4 #714: `synthesizeWithEmptyRetry` (one invisible redraw, then `error: empty_synthesis`), `stopReason` on completions, eval captures never write a 0-char answer. W5 #744: per-origin masthead offsets in `headlineSourceSql`, disposition + Matched Passage paths filtered, separator-rule trimming, snippet cache key bumped, `pnpm verify:enrichment-sql`.
+- **v1.17.1 `87b89b0`** — W2 #700: `narrative-number-check` (counts/comparisons vs the FACTUAL block, enumerations vs their lists) → one targeted revision → digest hold naming the figures; previous-week status counts + total-Stable in the block; `pnpm narratives:verify`. W3 #711: latest-P2 lateral join.
+- **v1.17.2 `7a24f7b`** — W7 #741: `stat_Published + stat_Relating-to`; classifier runs for every cluster; `cl_cluster_ledger` (migration 0062) + pure planner + 42-day trailing pass (≤100 fetches); revision dedup on store (mark, never delete); `pnpm cl:dedupe-revisions`.
+- **v1.17.3 `f256b0e`** — W6 #772: `/api/methodology/verdict-rates` + table + copy on the methodology page; `pnpm audit:symmetry` (control re-run + token-swapped re-run per document, Wilson 95%). Plus the #741 cascade fix (superseded rows lose their score + AI-review rows in the same transaction).
+
+**Runbooks (prod)**: #700 regenerated 2026-07-27 (the check fired live and the revision cleared it) and 2026-07-20; both verify clean. #711: 400-row screener → 100 verified (40 TP / 59 FP) → **33 substantive corrections applied** (18 current, 15 baseline — owner option (a)); ≈ $3.10 vs $1.95 estimated (flagged share 25%, not 10%). #741: 592 rows marked + cascaded (74 score, 757 AI rows; G5/G1b 0); `pipeline:repair 2025-01-20..2026-08-17` — RESULT_FLIPS; canary week 2025-12-22 (Trump v. Illinois now in military + immigrationEnforcement; 4 AI calls = 4 rows) → fleet backfill — RESULT_FLEET. #772 swap audit — RESULT_SWAP.
+
+**Spec deviations**: none (no spec section; designs on the issues and the plan file).
+
+**Owner decisions**: #741 duplicates mark + repair (current term), all-status backfill yes (canary then fleet); #700 regenerate 07-27 and, once found, 07-20; #772 200-document swap audit; #711 option (a) incl. 15 baseline-era text corrections; each release approved after code review.
+
+**Lessons** (promoted to PROJECT_KNOWLEDGE): diagnose the current cause, not the issue's; count-only invariants are undiagnosable; `scored_at` is last-write; tune a deterministic LLM-output check on the real corpus before it gates (26 → 2 findings on 12 weeks); marking a document out must cascade or exempt its derived rows; SQL three-valued logic (`IS NOT FALSE`, shared helpers); Postgres regex bounds ≤ 255 and execution checks for failure-tolerant SQL; `\b` is not a boundary after a period.
+
+**Open**: #796 (CourtListener opinion captions as passages); full #767 bias program stays post-outreach unless the swap audit measures a real rate.
+
+---
+
 ## Sprint R-HARDEN-SEARCH: search-path abuse hardening (#791–#795, milestone 125, v1.16.11–v1.16.12) — ✅ shipped 2026-08-27; outreach gate
 
 **Origin**: with R-LOAD done, the owner asked whether a random-question DoS was now a real threat. Exploration answered: the site stays up (health pool + 3 global build slots, proven by Round A's P3), but Research can be denied to novel questions cheaply, and — the larger finding — `/api/search/stream` had no cache, no slots and ran an uncached Sonnet call per request behind only a per-IP 20/5-min limit; `debug=1` and full-synthesis builds bypassed the slots; every credential we had proved a _browser_, not our own harnesses. Cloudflare rules are bypassable via the onrender.com origin (#620/#623), so every control had to be origin-verified.

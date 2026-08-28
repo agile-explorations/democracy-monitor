@@ -14,7 +14,7 @@
  * through the shared AI call budget; the cap trips with exit 3.
  */
 
-import { appendFileSync, existsSync, readFileSync } from 'fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
@@ -135,6 +135,31 @@ async function verdictFor(row: SampleRow, text: string, title: string): Promise<
   return (result?.response.assessment as Verdict | undefined) ?? null;
 }
 
+/** Second unchanged draw for every ledger row without one; the ledger is
+ *  rewritten with `control2` filled in (rows keep their order). */
+async function runSecondControl(rows: SampleRow[], outFile: string, concurrency: number) {
+  const ledger = readLedger(outFile);
+  const byId = new Map(rows.map((r) => [r.rowId, r]));
+  const todo = ledger.filter((rec) => rec.control2 === undefined && byId.has(rec.rowId));
+  console.log(
+    `[audit-symmetry] second control: ${todo.length} documents (${ledger.length} in ledger)`,
+  );
+  let processed = 0;
+  try {
+    await mapConcurrent(todo, concurrency, async (rec) => {
+      const row = byId.get(rec.rowId)!;
+      rec.control2 = await verdictFor(row, row.content, row.title);
+      processed++;
+      if (processed % 20 === 0) console.log(`[audit-symmetry] ${processed}/${todo.length}...`);
+    });
+  } catch (err) {
+    if (!(err instanceof AiCallBudgetExceededError)) throw err;
+    console.error('[audit-symmetry] AI call cap reached — stopping (partial second control kept)');
+    process.exitCode = EXIT_CAP_TRIPPED;
+  }
+  writeFileSync(outFile, ledger.map((r) => JSON.stringify(r)).join('\n') + '\n');
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   checkHelp(
@@ -149,7 +174,9 @@ Options:
   --max-calls N     Hard AI-call cap (default sample × ${CALLS_PER_DOC} × ${CAP_FACTOR}); exit ${EXIT_CAP_TRIPPED} when hit
   --confirm         Make the AI calls (without it: precheck only)
   --out FILE        Ledger path (default .audit-symmetry.jsonl); resumable
-  --concurrency N   Parallel documents (default 2)`,
+  --concurrency N   Parallel documents (default 2)
+  --second-control  Add a second unchanged draw to every ledger row lacking one
+                    (one call per document) — the clean draw-noise measure`,
   );
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const sampleN = Number(argValue(args, '--sample') ?? DEFAULT_SAMPLE);
@@ -173,6 +200,12 @@ Options:
   }
 
   configureAiCallBudget(maxCalls);
+  if (args.includes('--second-control')) {
+    await runSecondControl(rows, outFile, concurrency);
+    const summary2 = summarizeSymmetry(readLedger(outFile));
+    for (const line of renderSymmetrySummary(summary2)) console.log(line);
+    return;
+  }
   const done = alreadyDone(outFile);
   const todo = rows.filter((r) => !done.has(r.rowId));
   console.log(`[audit-symmetry] ${todo.length} documents to run (${done.size} already in ledger)`);

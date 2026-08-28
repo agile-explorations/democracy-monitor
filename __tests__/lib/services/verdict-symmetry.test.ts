@@ -74,6 +74,21 @@ describe('summarizeSymmetry', () => {
     expect(s.controlConcernRate).toBeCloseTo(0.25);
     expect(s.netConcernFlipRate).toBeCloseTo(0.25);
     expect(s.byCategory.civilService).toEqual({ paired: 4, swapConcernFlips: 2 });
+    expect(s.netBasis).toBe('control-vs-stored');
+  });
+
+  it('nets against measured draw noise when a second control draw exists', () => {
+    const s = summarizeSymmetry([
+      { ...rec(1, 'routine', 'routine', 'clearly_concerning'), control2: 'routine' },
+      { ...rec(2, 'routine', 'routine', 'routine'), control2: 'clearly_concerning' },
+      { ...rec(3, 'routine', 'routine', 'clearly_concerning'), control2: 'routine' },
+      { ...rec(4, 'routine', 'routine', 'routine'), control2: 'routine' },
+    ]);
+    expect(s.doubleControl).toBe(4);
+    expect(s.drawNoiseConcernRate).toBeCloseTo(0.25);
+    expect(s.swapConcernFlipRate).toBeCloseTo(0.5);
+    expect(s.netBasis).toBe('draw-noise');
+    expect(s.netConcernFlipRate).toBeCloseTo(0.25);
   });
 
   it('wilson95 brackets the observed rate and stays inside [0, 1]', () => {
