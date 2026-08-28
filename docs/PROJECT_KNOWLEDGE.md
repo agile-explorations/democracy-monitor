@@ -18,6 +18,10 @@ For database connection details and ad-hoc query patterns, see your local `db-op
 
 Cross-sprint constraints that apply to all future work. Not tied to any single sprint — these are project-level invariants.
 
+### Render dev environment policy (owner, 2026-08-28)
+
+- The Render dev stack (web service + `epd-db-dev` + `epd-redis-dev`) stays **suspended** by default. Use the local environment (`pnpm dev`, local Postgres, `pnpm build && pnpm start`) for all testing that does not require the full Render environment. Resume (`pnpm dev:resume`) only for tests that require it — the load-test gate, golden captures against a prod-parity DB, Render-specific behavior — and **suspend immediately after testing completes** (`pnpm dev:suspend`). Dev deploys do not run migrations; apply by hand after a resume if the schema changed, then `pnpm db:prewarm` before measuring.
+
 ### Search front door (R-HARDEN-SEARCH, 2026-08-27)
 
 - **Lessons**: a global spend breaker is an outage switch unless per-source — the front door (origin-verified pass/token) comes first, the breaker is the backstop; "cached answers never ask" is the contract that keeps a front door acceptable; an invisible challenge can become visible — design placement, message and patience for the visible path before shipping the invisible one; dev carries no Turnstile keys, so mechanics verify on dev and the challenge UX only on prod; Turnstile ignores synthetic clicks, so automation cannot walk the human path.

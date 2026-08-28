@@ -44,9 +44,13 @@ setting env vars via the API: a PUT stores the value but does NOT
 restart the service — trigger an explicit deploy
 (`POST /v1/services/<id>/deploys`) and wait for it to reach `live`.
 
-## Dev lifecycle (#791)
+## Dev lifecycle (#791) — policy: suspended by default
 
-The owner keeps dev suspended between rounds. `RENDER_API_KEY=... pnpm dev:resume`
+Owner policy (2026-08-28): use the local environment for everything that
+does not require the full Render stack; resume dev ONLY for tests that
+require it (this suite, golden captures against prod-parity data,
+Render-specific behavior) and suspend it immediately after testing
+completes. The owner keeps dev suspended between rounds. `RENDER_API_KEY=... pnpm dev:resume`
 brings the database then the web service back and waits for `/api/version`;
 `pnpm dev:suspend` reverses it; `pnpm dev:status` reports. A gate run is
 `dev:resume → (migrate by hand if the schema changed) → db:prewarm → runs →
