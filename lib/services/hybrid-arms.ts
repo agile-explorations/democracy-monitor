@@ -16,6 +16,10 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
+import {
+  dropBoilerplateFragments,
+  headlineSourceSql,
+} from '@/lib/services/synthesis-context-enrichment';
 
 type SqlChunk = ReturnType<typeof sql>;
 
@@ -109,28 +113,38 @@ export async function fetchMatchSnippets(
     sql`, `,
   );
   try {
+    // Both the literal window and the headline fallback read the
+    // masthead-skipped source (#744): the GPO header names agencies and
+    // dates, so a phrase's FIRST occurrence was often inside it.
     const rows = await db.execute(sql`
       SELECT d.id,
         CASE WHEN loc.pos > 0 THEN
           (CASE WHEN loc.start_at > 1 THEN '… ' ELSE '' END)
-          || substring(d.content FROM loc.start_at FOR loc.win_len)
-          || (CASE WHEN loc.start_at + loc.win_len <= char_length(d.content) THEN ' …' ELSE '' END)
-        ELSE ts_headline('english', LEFT(d.content, ${HEADLINE_CONTENT_CHARS}),
+          || substring(src.body FROM loc.start_at FOR loc.win_len)
+          || (CASE WHEN loc.start_at + loc.win_len <= char_length(src.body) THEN ' …' ELSE '' END)
+        ELSE ts_headline('english', src.body,
           websearch_to_tsquery('english', v.q), ${HEADLINE_OPTS})
         END as match_snippet
       FROM (VALUES ${values}) AS v(id, q, phrase)
       JOIN documents d ON d.id = v.id
+      CROSS JOIN LATERAL (SELECT ${headlineSourceSql(HEADLINE_CONTENT_CHARS)} AS body) src
       CROSS JOIN LATERAL (
         SELECT p.pos,
           greatest(p.pos - ${SNIPPET_CONTEXT_CHARS}, 1) AS start_at,
           (p.pos - greatest(p.pos - ${SNIPPET_CONTEXT_CHARS}, 1))
             + char_length(v.phrase) + ${SNIPPET_CONTEXT_CHARS} AS win_len
-        FROM (SELECT position(lower(v.phrase) IN lower(d.content)) AS pos) p
+        FROM (SELECT position(lower(v.phrase) IN lower(src.body)) AS pos) p
       ) loc`);
     return new Map(
       (rows.rows as Array<{ id: number; match_snippet: string | null }>)
-        .filter((r) => r.match_snippet)
-        .map((r) => [Number(r.id), r.match_snippet as string]),
+        .map(
+          (r) =>
+            [
+              Number(r.id),
+              r.match_snippet ? dropBoilerplateFragments(r.match_snippet) : null,
+            ] as const,
+        )
+        .filter((entry): entry is readonly [number, string] => !!entry[1]),
     );
   } catch (err) {
     console.warn('[hybrid-arms] snippet batch failed (results ship without snippets):', err);

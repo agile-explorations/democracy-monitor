@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHRG_MASTHEAD_RE,
   DISPOSITION_HEADLINE_OPTS,
   dropBoilerplateFragments,
+  HEADLINE_OFFSET_ORIGINS,
+  headlineSourceSql,
   QUERY_HEADLINE_OPTS,
+  trimSeparatorRuns,
 } from '@/lib/services/synthesis-context-enrichment';
 
 /** Postgres deflist syntax: every entry is Key=Value where an empty value
@@ -62,5 +66,94 @@ describe('dropBoilerplateFragments (#744)', () => {
 
   it('returns null rather than a too-short residue', () => {
     expect(dropBoilerplateFragments(`${GPO_HEADER} ... short bit`)).toBeNull();
+  });
+});
+
+describe('non-FR mastheads (#744)', () => {
+  it('drops a CPD package id + CSS preamble fragment', () => {
+    expect(
+      dropBoilerplateFragments(
+        'DCPD202500412 .s1 {margin:0; font-size: 12pt} h1 {text-align:center}',
+      ),
+    ).toBeNull();
+  });
+
+  it('drops a joint-hearing masthead and a press header', () => {
+    expect(
+      dropBoilerplateFragments('OVERSIGHT OF DHS [Joint Hearing, 119-12] [From the'),
+    ).toBeNull();
+    expect(
+      dropBoilerplateFragments(
+        'For Immediate Release Office of the Press Secretary Contact: 202-282-8010',
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps a body passage that mentions a hearing in prose', () => {
+    const body =
+      'At the joint hearing the Secretary testified that the reprogramming had been reported to the committees';
+    expect(dropBoilerplateFragments(body)).toBe(body);
+  });
+});
+
+describe('headlineSourceSql (#744)', () => {
+  const rendered = () => {
+    const chunk = headlineSourceSql(150000) as unknown as {
+      queryChunks?: unknown[];
+      toQuery?: unknown;
+    };
+    return JSON.stringify(chunk);
+  };
+
+  it('has a masthead branch for every origin the read-time cleaner strips', () => {
+    const text = rendered();
+    for (const origin of HEADLINE_OFFSET_ORIGINS) {
+      expect(text, `no branch for ${origin}`).toContain(`d.source_origin = '${origin}'`);
+    }
+    expect(HEADLINE_OFFSET_ORIGINS).toEqual([
+      'federal_register',
+      'govinfo',
+      'govinfo_cpd',
+      'crec',
+      'chrg',
+      'dhs_press',
+    ]);
+  });
+
+  it('keeps the plain LEFT() fallback for every other origin', () => {
+    expect(rendered()).toContain('ELSE LEFT(d.content');
+  });
+});
+
+describe('Postgres regex constraints (#744)', () => {
+  it('keeps every bounded repetition at or below the Postgres ARE limit of 255', () => {
+    for (const m of CHRG_MASTHEAD_RE.matchAll(/\{(\d+),(\d+)\}/g)) {
+      expect(Number(m[2])).toBeLessThanOrEqual(255);
+    }
+  });
+
+  it('uses no backslash escapes (POSIX classes only) so the template literal cannot mangle it', () => {
+    expect(CHRG_MASTHEAD_RE).not.toContain('\\');
+  });
+});
+
+describe('trimSeparatorRuns (#744)', () => {
+  it('strips the GPO rule line a headline window opened on', () => {
+    expect(
+      dropBoilerplateFragments(
+        '------------------------------------------------------- DEPARTMENT OF JUSTICE Drug Enforcement Administration Decision and Order On December 30',
+      ),
+    ).toBe(
+      'DEPARTMENT OF JUSTICE Drug Enforcement Administration Decision and Order On December 30',
+    );
+    expect(trimSeparatorRuns('====================== VOTER ID ACT _______ July 15, 2026')).toBe(
+      'VOTER ID ACT _______ July 15, 2026',
+    );
+  });
+
+  it('leaves bullets and dashes inside prose alone', () => {
+    expect(trimSeparatorRuns('- the order directs agencies — including OPM — to act')).toBe(
+      '- the order directs agencies — including OPM — to act',
+    );
   });
 });

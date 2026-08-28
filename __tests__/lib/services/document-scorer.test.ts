@@ -715,3 +715,30 @@ describe('true positive fixture tests', () => {
     });
   }
 });
+
+describe('scoreDocumentBatch — eligibility floor on raw length (#667)', () => {
+  const longEnough =
+    'Executive order directs agencies to reclassify positions and reorganize offices across the department.';
+
+  it('scores a rebuilt item whose stripped copy is short but whose stored content was eligible', () => {
+    const items = [
+      {
+        title: 'Notice',
+        content: 'short after stripping',
+        contentLength: 540,
+        pubDate: '2025-06-02',
+      },
+    ];
+    expect(scoreDocumentBatch(items, 'civilService')).toHaveLength(1);
+  });
+
+  it('still skips a fresh item whose content is genuinely below the floor', () => {
+    const items = [{ title: 'Stub', content: 'too short', pubDate: '2025-06-02' }];
+    expect(scoreDocumentBatch(items, 'civilService')).toHaveLength(0);
+  });
+
+  it('keeps scoring ordinary long content without a threaded length', () => {
+    const items = [{ title: 'Order', content: longEnough, pubDate: '2025-06-02' }];
+    expect(scoreDocumentBatch(items, 'civilService')).toHaveLength(1);
+  });
+});

@@ -117,6 +117,7 @@
     "cl:bulk-backfill": "tsx scripts/cl-bulk-backfill.ts",
     "prepare": "husky",
     "bench:validation-counts": "tsx scripts/validation-count-bench.ts",
+    "verify:enrichment-sql": "tsx scripts/verify-enrichment-sql.ts",
     "retrieval:golden": "tsx scripts/retrieval-golden-diff.ts"
   },
   "dependencies": {

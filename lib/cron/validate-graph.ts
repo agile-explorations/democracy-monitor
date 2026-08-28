@@ -59,10 +59,30 @@ async function q(text: ReturnType<typeof sql>): Promise<Row[]> {
   return res.rows as Row[];
 }
 
-const ELIGIBLE_DOC = sql`d.content_type != 'metadata_only'
+/** Score-eligibility predicate over the `d` documents alias — the single
+ *  definition G1a, the scores backfill and the snapshot's reconciliation
+ *  (#667) all share, so "eligible by SQL but skipped by the scorer" cannot
+ *  reopen through drift between copies (#566). */
+export const SCORE_ELIGIBLE_DOC_SQL = sql`d.content_type != 'metadata_only'
   AND d.content IS NOT NULL AND length(d.content) >= 100
   AND d.retrieval_relevant IS NOT FALSE
   AND d.counting_scope IS NOT FALSE`;
+const ELIGIBLE_DOC = SCORE_ELIGIBLE_DOC_SQL;
+
+/** One G1a violator, readable in the cron error channel (#667): a count per
+ *  category was undiagnosable — three Mondays of digest holds were traced
+ *  only by hand. Exported for tests. */
+export function describeUnscoredDoc(row: {
+  id: unknown;
+  category: unknown;
+  source_origin: unknown;
+  published_at: unknown;
+}): string {
+  const published = String(row.published_at ?? '').slice(0, 10);
+  return `#${row.id} ${row.category} ${row.source_origin ?? 'unknown-origin'} ${published}`;
+}
+
+const G1A_SAMPLE_ROWS = 5;
 
 async function g1aEligibleDocsScored(): Promise<GraphInvariantResult> {
   const rows = await q(sql`
@@ -74,13 +94,30 @@ async function g1aEligibleDocsScored(): Promise<GraphInvariantResult> {
       AND d.category IN (SELECT DISTINCT category FROM weekly_aggregates)
     GROUP BY d.category ORDER BY n DESC`);
   const total = rows.reduce((acc, r) => acc + Number(r.n), 0);
+  const sample =
+    total === 0
+      ? []
+      : (
+          await q(sql`
+    SELECT d.id, d.category, d.source_origin, d.published_at
+    FROM documents d
+    LEFT JOIN document_scores s ON s.url = d.url AND s.category = d.category
+    WHERE s.url IS NULL AND ${ELIGIBLE_DOC}
+      AND d.published_at >= ${GRID_START}
+      AND d.category IN (SELECT DISTINCT category FROM weekly_aggregates)
+    ORDER BY d.published_at DESC LIMIT ${G1A_SAMPLE_ROWS}`)
+        ).map((r) =>
+          describeUnscoredDoc(
+            r as { id: unknown; category: unknown; source_origin: unknown; published_at: unknown },
+          ),
+        );
   return {
     id: 'G1a',
     severity: 'error',
     description: 'every eligible document has a score row',
     violations: total,
     pass: total === 0,
-    sample: rows.slice(0, 3).map((r) => `${r.category}: ${r.n}`),
+    sample,
   };
 }
 

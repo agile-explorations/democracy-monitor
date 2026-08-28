@@ -8,20 +8,17 @@
  * counts become accurate without touching enrichment (statuses, layer scores).
  *
  * Idempotent: storeDocumentScores upserts on (url, category); re-running
- * converges. Scoped to the 14 monitored categories — the `intent` pipeline
+ * converges. The weekly snapshot runs the same finder itself before its
+ * graph check (#667, lib/cron/score-reconciliation.ts); this CLI remains the
+ * manual/baseline-scoped repair. Scoped to the 14 monitored categories — the `intent` pipeline
  * has its own aggregation and is never keyword-scored.
  */
 
-import { sql } from 'drizzle-orm';
 import { getDocumentsForCategoryWeek } from '@/lib/cron/backfill-document-review';
-import { CATEGORIES } from '@/lib/data/categories';
-import { getDb, isDbAvailable } from '@/lib/db';
+import { findUnscoredPairs } from '@/lib/cron/score-reconciliation';
+import { isDbAvailable } from '@/lib/db';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import {
-  computeWeeklyAggregate,
-  getWeekOfDate,
-  storeWeeklyAggregate,
-} from '@/lib/services/weekly-aggregator';
+import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 interface BackfillScoresOptions {
@@ -29,45 +26,6 @@ interface BackfillScoresOptions {
   /** Inclusive publish-date ceiling; unbounded when omitted. */
   to?: string;
   dryRun: boolean;
-}
-
-/** Distinct (category, weekOf) pairs containing docs with no score row. */
-async function findAffectedWeeks(
-  from: string,
-  to?: string,
-): Promise<Array<{ category: string; weekOf: string }>> {
-  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
-  const db = getDb();
-  const categoryKeys = CATEGORIES.map((c) => c.key);
-  // Eligibility here MUST match the scorer's (#566): without the length
-  // floor, weeks holding permanently-ineligible stubs re-surface as
-  // "affected" on every run and get re-processed forever.
-  const rows = await db.execute(sql`
-    SELECT d.category, d.published_at
-    FROM documents d
-    LEFT JOIN document_scores s ON s.url = d.url AND s.category = d.category
-    WHERE s.url IS NULL
-      AND d.category IN (${sql.join(
-        categoryKeys.map((k) => sql`${k}`),
-        sql`, `,
-      )})
-      AND d.published_at >= ${from}
-      AND (${to ?? null}::date IS NULL OR d.published_at < ${to ?? null}::date + 1)
-      AND d.content_type != 'metadata_only'
-      AND length(coalesce(d.content, '')) >= 100
-      AND d.retrieval_relevant IS NOT FALSE
-      AND d.counting_scope IS NOT FALSE
-  `);
-
-  const pairs = new Map<string, { category: string; weekOf: string }>();
-  // db.execute returns raw driver values — published_at arrives as a string.
-  for (const r of rows.rows as Array<{ category: string; published_at: string }>) {
-    const weekOf = getWeekOfDate(r.published_at);
-    pairs.set(`${r.category}|${weekOf}`, { category: r.category, weekOf });
-  }
-  return [...pairs.values()].sort((a, b) =>
-    `${a.category}|${a.weekOf}`.localeCompare(`${b.category}|${b.weekOf}`),
-  );
 }
 
 export async function runScoresBackfill(options: BackfillScoresOptions): Promise<void> {
@@ -79,7 +37,7 @@ export async function runScoresBackfill(options: BackfillScoresOptions): Promise
     );
   }
 
-  const affected = await findAffectedWeeks(options.from, options.to);
+  const affected = await findUnscoredPairs(options.from, options.to);
   console.log(`[backfill-scores] ${affected.length} category-weeks with unscored docs`);
 
   for (const { category, weekOf } of affected) {

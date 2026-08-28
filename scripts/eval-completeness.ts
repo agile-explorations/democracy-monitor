@@ -27,6 +27,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import path from 'path';
 import { sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { dropBoilerplateFragments } from '@/lib/services/synthesis-context-enrichment';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { machineAuthHeaders } from './loadtest/client';
@@ -128,16 +129,19 @@ async function streamAnswer(
   base: string,
   item: EvalQuestion,
   docs: { documents?: Array<{ id: number }>; docsKey?: string },
-): Promise<string> {
+): Promise<{ answer: string; prompt: string | null }> {
   const ids = (docs.documents ?? []).map((d) => d.id).join(',');
   if (!ids) throw new Error(`${item.id}: no documents retrieved`);
-  const url = `${base}/api/search/stream?${qs({ q: item.q, ids, dk: docs.docsKey ?? '', ...item.params })}`;
+  // debug=1 (#718) carries the exact synthesis prompt, captured alongside
+  // the answer so passage lines can be audited for boilerplate (#744).
+  const url = `${base}/api/search/stream?${qs({ q: item.q, ids, dk: docs.docsKey ?? '', debug: '1', ...item.params })}`;
   const res = await fetch(url, {
     headers: machineAuthHeaders(),
     signal: AbortSignal.timeout(300_000),
   });
   if (!res.ok || !res.body) throw new Error(`${item.id} stream HTTP ${res.status}`);
   let answer = '';
+  let prompt: string | null = null;
   let buf = '';
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -150,20 +154,52 @@ async function streamAnswer(
     for (const line of lines) {
       if (!line.startsWith('data: ')) continue;
       try {
-        const ev = JSON.parse(line.slice(6)) as { type: string; text?: string };
+        const ev = JSON.parse(line.slice(6)) as {
+          type: string;
+          text?: string;
+          message?: string;
+          code?: string;
+          synthesisPrompt?: string;
+        };
         if (ev.type === 'chunk') answer += ev.text ?? '';
+        else if (ev.type === 'debug') prompt = ev.synthesisPrompt ?? null;
+        // A server-side error (incl. a twice-empty synthesis, #714) must not
+        // be captured as a 0-char answer and scored as a synthesis gap.
+        else if (ev.type === 'error')
+          throw new Error(
+            `${item.id} stream error${ev.code ? ` [${ev.code}]` : ''}: ${ev.message}`,
+          );
       } catch {
         /* keep-alives and partial frames are expected */
       }
     }
   }
-  return answer;
+  return { answer, prompt };
+}
+
+/** Passage lines the synthesis prompt attaches per document (#744). */
+const PASSAGE_LINE =
+  /^\s+(Relevant Passages|Disposition Passages|Matched Passage) \([^)]*\): "(.*)"$/;
+
+/** Prompt passage lines that still carry masthead text — the #744 check:
+ *  `dropBoilerplateFragments` would alter them. Exported-shape helper for
+ *  the summary; zero is the expectation after v1.17.0. */
+function countBoilerplatePassages(prompt: string): number {
+  let n = 0;
+  for (const line of prompt.split('\n')) {
+    const m = PASSAGE_LINE.exec(line);
+    if (!m) continue;
+    const passage = m[2];
+    if (dropBoilerplateFragments(passage) !== passage) n++;
+  }
+  return n;
 }
 
 async function capture(base: string, questions: EvalQuestion[], captureDir: string): Promise<void> {
   for (const q of questions) {
     const docsPath = path.join(captureDir, `${q.id}.docs.json`);
     const answerPath = path.join(captureDir, `${q.id}.answer.md`);
+    const promptPath = path.join(captureDir, `${q.id}.prompt.txt`);
     if (existsSync(answerPath)) {
       console.log(`  ${q.id}: capture exists, skipping`);
       continue;
@@ -172,20 +208,32 @@ async function capture(base: string, questions: EvalQuestion[], captureDir: stri
     const docs = (await fetchDocs(base, q)) as { documents?: Array<{ id: number }> };
     writeFileSync(docsPath, JSON.stringify(docs, null, 1));
     await sleep(3_000);
-    let answer = '';
-    for (let tries = 0; ; tries++) {
+    let answer: string | null = null;
+    let prompt: string | null = null;
+    for (let tries = 0; tries < 3 && answer === null; tries++) {
       try {
-        answer = await streamAnswer(base, q, docs);
-        break;
+        ({ answer, prompt } = await streamAnswer(base, q, docs));
       } catch (err) {
         // Mid-stream socket deaths (edge timeout) retry like fetchDocs does.
-        if (tries >= 2) throw err;
-        console.log(`  ${q.id}: stream failed, retry ${tries + 1} in 30s`);
+        console.log(
+          `  ${q.id}: stream failed (${(err as Error).message}), retry ${tries + 1} in 30s`,
+        );
         await sleep(30_000);
       }
     }
+    if (answer === null) {
+      // No answer file: the question scores as uncaptured and a re-run
+      // retries it, instead of a blank answer scoring as a synthesis gap.
+      console.error(`  ${q.id}: capture FAILED after 3 stream attempts — no answer file written`);
+      await sleep(PACING_MS);
+      continue;
+    }
     writeFileSync(answerPath, answer);
-    console.log(`  ${q.id}: docs=${docs.documents?.length ?? 0} answer=${answer.length}ch`);
+    if (prompt) writeFileSync(promptPath, prompt);
+    console.log(
+      `  ${q.id}: docs=${docs.documents?.length ?? 0} answer=${answer.length}ch` +
+        (prompt ? ` boilerplate passages=${countBoilerplatePassages(prompt)}` : ''),
+    );
     await sleep(PACING_MS);
   }
 }
@@ -342,6 +390,20 @@ Options:
   console.log(
     `  TOTAL CORE pass: ${totalOk}/${totalCore} (${Math.round((totalOk / totalCore) * 100)}%)`,
   );
+  // #744 guard: passage lines in captured prompts must never be mastheads.
+  let boilerplatePassages = 0;
+  let promptsSeen = 0;
+  for (const q of questions) {
+    const promptPath = path.join(captureDir, `${q.id}.prompt.txt`);
+    if (!existsSync(promptPath)) continue;
+    promptsSeen++;
+    boilerplatePassages += countBoilerplatePassages(readFileSync(promptPath, 'utf8'));
+  }
+  if (promptsSeen > 0) {
+    console.log(
+      `  Boilerplate passages in ${promptsSeen} captured prompts: ${boilerplatePassages}${boilerplatePassages > 0 ? ' (WARNING — #744 regression)' : ''}`,
+    );
+  }
   const misses = results.filter((r) => r.weight === 'CORE' && !r.verdict.startsWith('OK'));
   if (misses.length > 0) {
     console.log('\nCORE misses:');

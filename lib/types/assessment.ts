@@ -31,6 +31,14 @@ export interface ContentItem {
    * Undefined on freshly-fetched items → classify from full content.
    */
   countingScope?: boolean | null;
+  /**
+   * Raw stored content length, threaded when an item is rebuilt from a stored
+   * row whose content was boilerplate-stripped or sliced for assessment. The
+   * scorer's eligibility floor must agree with the SQL floor G1a and the
+   * scores backfill apply to RAW content (#667): a document that is eligible
+   * by SQL but skipped by the scorer holds the digest.
+   */
+  contentLength?: number;
   /** Extra metadata to store alongside the document (merged with auto-extracted fields). */
   metadata?: Record<string, unknown>;
 }

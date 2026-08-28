@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  describeUnscoredDoc,
   findOrphanCategories,
   LIVE_INVARIANT_IDS,
   runGraphValidation,
@@ -50,5 +51,24 @@ describe('runLiveInvariants (#650)', () => {
     expect(ids).not.toContain('G1a');
     expect(ids).not.toContain('G6');
     expect(results.every((r) => r.pass && r.violations === 0)).toBe(true);
+  });
+});
+
+describe('describeUnscoredDoc (G1a samples, #667)', () => {
+  it('renders id, category, origin and publish date so a hold names its documents', () => {
+    expect(
+      describeUnscoredDoc({
+        id: 2045265,
+        category: 'civilService',
+        source_origin: 'legiscan',
+        published_at: '2026-07-15T07:00:00.000Z',
+      }),
+    ).toBe('#2045265 civilService legiscan 2026-07-15');
+  });
+
+  it('tolerates a missing origin', () => {
+    expect(
+      describeUnscoredDoc({ id: 1, category: 'fiscal', source_origin: null, published_at: null }),
+    ).toBe('#1 fiscal unknown-origin ');
   });
 });

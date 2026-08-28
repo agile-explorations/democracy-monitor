@@ -154,9 +154,10 @@ export async function getDocumentsForCategoryWeek(
     pubDate: row.publishedAt?.toISOString(),
     type: row.sourceType,
     agency: (row.metadata as Record<string, string>)?.agency,
-    // Carry the stored counting-scope so the scorer trusts it instead of
-    // re-classifying the truncated content above (#667).
+    // Carry the stored counting-scope and raw length so the scorer trusts
+    // them instead of re-deriving from the truncated content above (#667).
     countingScope: row.countingScope,
+    contentLength: row.content?.length,
   }));
 }
 
