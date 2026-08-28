@@ -506,7 +506,10 @@ async function runPostCategorySteps(
     missedWeeksProcessed = incompleteWeeksList.length;
   }
 
-  const narrativesGenerated = await tryGenerateNarratives(currentWeek, errors);
+  const { generated: narrativesGenerated, numberViolations } = await tryGenerateNarratives(
+    currentWeek,
+    errors,
+  );
 
   await tryEnsureWeekHeadline(currentWeek, errors);
 
@@ -527,6 +530,7 @@ async function runPostCategorySteps(
         dataIntegrity: meta?.dataIntegrity ?? null,
         graphErrorViolations,
         unresolvedAggregateFailures: failedAggregates.length - aggregateRetries,
+        narrativeNumberViolations: numberViolations,
       },
       errors,
     );

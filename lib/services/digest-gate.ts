@@ -15,6 +15,10 @@ export interface DigestGateInput {
   graphErrorViolations: number;
   /** Weekly aggregate failures that survived the retry pass. */
   unresolvedAggregateFailures: number;
+  /** Weekly-summary number-check violations that survived the targeted
+   *  revision (#700): a figure not in the FACTUAL block, or a count word
+   *  that disagrees with its list. Never send a number we cannot source. */
+  narrativeNumberViolations?: string[];
 }
 
 export interface DigestGateResult {
@@ -37,6 +41,12 @@ export function evaluateDigestGate(input: DigestGateInput): DigestGateResult {
   if (input.unresolvedAggregateFailures > 0) {
     holdReasons.push(
       `${input.unresolvedAggregateFailures} weekly aggregate(s) failed to store after retry`,
+    );
+  }
+  const numberViolations = input.narrativeNumberViolations ?? [];
+  if (numberViolations.length > 0) {
+    holdReasons.push(
+      `${numberViolations.length} weekly-summary number violation(s): ${numberViolations.join(' | ')}`,
     );
   }
   return { send: holdReasons.length === 0, holdReasons };

@@ -55,14 +55,22 @@ export async function tryRegenerateTermSummary(errors: string[]): Promise<void> 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
 /** Generate the week's narratives, then retry any failures (non-fatal). */
+export interface NarrativeStepResult {
+  generated: boolean;
+  /** Weekly-summary number-check violations that survived revision (#700). */
+  numberViolations: string[];
+}
+
 export async function tryGenerateNarratives(
   currentWeek: string,
   errors: string[],
-): Promise<boolean> {
+): Promise<NarrativeStepResult> {
   let narrativesGenerated = false;
+  let numberViolations: string[] = [];
   try {
-    await generateNarrativesForWeek(currentWeek);
+    ({ numberViolations } = await generateNarrativesForWeek(currentWeek));
     narrativesGenerated = true;
+    for (const v of numberViolations) errors.push(`weekly summary number check: ${v}`);
   } catch (err) {
     errors.push(`Narrative generation failed: ${formatError(err)}`);
   }
@@ -72,7 +80,7 @@ export async function tryGenerateNarratives(
   } catch (err) {
     console.warn('[snapshot] Narrative retry failed:', err);
   }
-  return narrativesGenerated;
+  return { generated: narrativesGenerated, numberViolations };
 }
 
 /**
