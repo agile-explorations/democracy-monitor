@@ -27,6 +27,7 @@ import {
 import type { OpinionData } from '@/lib/services/courtlistener-fetcher';
 import { classifyOpinionToCategories } from '@/lib/services/crec-classifier';
 import { storeDocuments } from '@/lib/services/document-store';
+import { markSupersededRevisions } from '@/lib/services/opinion-revision-dedup';
 
 const CL_BASE_URL = 'https://www.courtlistener.com';
 const STAGING_TABLES = [
@@ -703,12 +704,11 @@ export function routeBulkOpinionCluster(
   if (match.baseMatch && baseCategories.length === 0 && /\bfirst amendment\b/i.test(opinionText)) {
     baseCategories.push('civilLiberties');
   }
-  const courtCategories =
-    match.courtQueries.size > 0
-      ? classifyOpinionToCategories(docket.caseName, opinionText).filter(
-          (c) => !baseCategories.includes(c),
-        )
-      : [];
+  // Content classification runs for every cluster (#741 parity with the API
+  // path): a base-matched National Guard order must reach military too.
+  const courtCategories = classifyOpinionToCategories(docket.caseName, opinionText).filter(
+    (c) => !baseCategories.includes(c),
+  );
   return { baseCategories, courtCategories };
 }
 
@@ -747,6 +747,7 @@ function storeOpinionClusters(
           docketId: parseInt(r.docket_id, 10),
           suitNature: r.nature_of_suit || undefined,
           clQueries: [...entry.courtQueries],
+          clusterId,
         },
       );
 
@@ -767,6 +768,17 @@ function storeOpinionClusters(
       }
       for (const category of courtCategories) {
         stored += dryRun ? 1 : await storeDocuments([opinionItem], category);
+      }
+      if (!dryRun) {
+        // Revision dedup (#741), same rule as the API path.
+        for (const category of [...baseCategories, ...courtCategories]) {
+          await markSupersededRevisions(
+            opinionItem.caseId!,
+            category,
+            opData.dateFiled,
+            opinionUrl,
+          );
+        }
       }
     }
     return stored;

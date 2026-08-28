@@ -62,8 +62,18 @@ describe('routeBulkOpinionCluster (#555)', () => {
     }
   });
 
-  it('returns nothing for unmatched clusters', () => {
+  it('content-routes even an unmatched cluster (#741: the classifier runs for every cluster)', () => {
     const result = routeBulkOpinionCluster(NO_MATCH, plainDocket, 'First Amendment text.');
+    expect(result.baseCategories).toEqual([]);
+    expect(result.courtCategories).toContain('civilLiberties');
+  });
+
+  it('returns nothing for an unmatched cluster whose text classifies to no category', () => {
+    const result = routeBulkOpinionCluster(
+      NO_MATCH,
+      plainDocket,
+      'The plan administrator denied benefits. Summary judgment is granted for defendant.',
+    );
     expect(result).toEqual({ baseCategories: [], courtCategories: [] });
   });
 });

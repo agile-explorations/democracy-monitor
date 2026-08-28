@@ -8,6 +8,7 @@ import {
 import {
   apiOpinionFirstPass,
   buildOpinionSearchUrl,
+  OPINION_STATUS_FLAGS,
 } from '@/lib/services/cl-opinion-first-fetcher';
 import type { ContentItem } from '@/lib/types';
 
@@ -28,6 +29,24 @@ vi.mock('@/lib/services/document-store', () => ({
     storedDocs.push({ items, category });
     return items.length;
   }),
+}));
+// Ledger (#741): an in-memory map so tests assert on recorded outcomes.
+const { ledgerState, ledgerWrites } = vi.hoisted(() => ({
+  ledgerState: new Map<number, { reason: string; attempts: number }>(),
+  ledgerWrites: [] as Array<{ clusterId: number; reason: string }>,
+}));
+vi.mock('@/lib/services/cl-cluster-ledger', () => ({
+  getClusterLedger: vi.fn(async (ids: number[]) => {
+    const out = new Map<number, { reason: string; attempts: number }>();
+    for (const id of ids) if (ledgerState.has(id)) out.set(id, ledgerState.get(id)!);
+    return out;
+  }),
+  recordClusterOutcome: vi.fn(async (row: { clusterId: number }, reason: string) => {
+    ledgerWrites.push({ clusterId: row.clusterId, reason });
+  }),
+}));
+vi.mock('@/lib/services/opinion-revision-dedup', () => ({
+  markSupersededRevisions: vi.fn(async () => []),
 }));
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -248,5 +267,99 @@ describe('court-scoped queries (#528)', () => {
     // One store call per category — the (url, category) upsert dedups any rerun.
     const urls = new Set(storedDocs.map((d) => d.items[0].link));
     expect(urls.size).toBe(1);
+  });
+});
+
+describe('emergency docket + per-cluster memory + routing (#741)', () => {
+  beforeEach(() => {
+    storedDocs.length = 0;
+    ledgerState.clear();
+    ledgerWrites.length = 0;
+  });
+
+  it('requests Relating-to (emergency-docket) opinions alongside Published', () => {
+    const url = buildOpinionSearchUrl({
+      court: 'scotus',
+      dateFrom: '2025-12-22',
+      dateTo: '2025-12-28',
+    });
+    expect(OPINION_STATUS_FLAGS).toEqual(['stat_Published', 'stat_Relating-to']);
+    expect(url).toContain('stat_Published=on');
+    expect(url).toContain('stat_Relating-to=on');
+  });
+
+  it('content-routes a cluster surfaced only by the first-amendment query', async () => {
+    // Only the 1A text search returns the cluster; the order is about a
+    // National Guard deployment → must reach military, not civilLiberties alone.
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/')) {
+        return jsonResponse({ next: null, results: url.includes('court=') ? [] : [cluster()] });
+      }
+      if (url.includes('/opinions/')) {
+        return jsonResponse({
+          id: 5001,
+          type: '020lead',
+          plain_text:
+            'The application to stay the order enjoining the federalization of the National Guard and its domestic deployment under the Insurrection Act is granted.',
+          absolute_url: '/opinion/1/trump-v-illinois/',
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }) as unknown as typeof fetch;
+
+    await apiOpinionFirstPass('2025-12-22', '2025-12-28', false);
+
+    const categories = storedDocs.map((d) => d.category);
+    expect(categories).toContain('civilLiberties');
+    expect(categories).toContain('military');
+    const meta = storedDocs[0].items[0].metadata as { clusterId?: number };
+    expect(meta.clusterId).toBe(1);
+  });
+
+  it('records no_text for a cluster whose text CL has not extracted yet, storing nothing', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/')) return jsonResponse({ next: null, results: [cluster()] });
+      if (url.includes('/opinions/')) {
+        return jsonResponse({
+          id: 5001,
+          type: '020lead',
+          plain_text: '',
+          absolute_url: '/opinion/1/x/',
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }) as unknown as typeof fetch;
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false, {
+      useLedger: true,
+    });
+
+    expect(result.opinionsStored).toBe(0);
+    expect(storedDocs).toHaveLength(0);
+    expect(ledgerWrites).toEqual([{ clusterId: 1, reason: 'no_text' }]);
+  });
+
+  it('skips a cluster the ledger already holds as stored, and records a fresh store', async () => {
+    ledgerState.set(1, { reason: 'stored', attempts: 1 });
+    mockFetch([cluster(), cluster({ cluster_id: 2, docket_id: 200, opinions: [{ id: 5002 }] })]);
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false, {
+      useLedger: true,
+    });
+
+    expect(result.docketsFound).toBe(1);
+    expect(ledgerWrites).toEqual([{ clusterId: 2, reason: 'stored' }]);
+  });
+
+  it('ignores the ledger when not asked to use it (backfill parity with the old behavior)', async () => {
+    ledgerState.set(1, { reason: 'stored', attempts: 1 });
+    mockFetch([cluster()]);
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false);
+
+    expect(result.docketsFound).toBe(1);
+    expect(ledgerWrites).toEqual([]);
   });
 });

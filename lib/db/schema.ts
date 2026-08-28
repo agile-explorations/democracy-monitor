@@ -707,6 +707,25 @@ export const chrgSeenLedger = pgTable(
 );
 
 /**
+ * CourtListener opinion clusters the opinion-first pass has attempted (#741),
+ * with the latest outcome and attempt count: stored | no_text (CL had not
+ * extracted the text yet — retried by the trailing window) | zero_categories
+ * (read, routed nowhere — never retried) | fetch_error (retried). Makes the
+ * pass's drops auditable and the trailing window cheap on re-run.
+ */
+export const clClusterLedger = pgTable('cl_cluster_ledger', {
+  clusterId: bigint('cluster_id', { mode: 'number' }).primaryKey(),
+  docketId: bigint('docket_id', { mode: 'number' }),
+  court: varchar('court', { length: 100 }),
+  caseName: text('case_name'),
+  dateFiled: date('date_filed'),
+  reason: varchar('reason', { length: 30 }).notNull(),
+  attempts: integer('attempts').notNull().default(1),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  lastTriedAt: timestamp('last_tried_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Robots.txt compliance audit trail (#685, owner directive 2026-08-08).
  * One row per host per audit run, carrying the RAW robots.txt text observed at
  * check time plus the per-path verdicts — the evidentiary record that lets us

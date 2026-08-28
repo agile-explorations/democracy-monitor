@@ -261,6 +261,8 @@ export function buildOpinionContentItem(
     suitNature?: string;
     /** Which CL queries surfaced this opinion (provenance for audits/purges). */
     clQueries?: string[];
+    /** CL cluster id (#741) — revisions get a new cluster; persisted for audits. */
+    clusterId?: number;
   },
 ): ContentItem {
   return {
@@ -277,6 +279,7 @@ export function buildOpinionContentItem(
       suitNature: parentDocket.suitNature,
       parentDocketUrl: `${CL_BASE_URL}/docket/${parentDocket.docketId}/`,
       ...(parentDocket.clQueries?.length ? { clQueries: parentDocket.clQueries } : {}),
+      ...(parentDocket.clusterId != null ? { clusterId: parentDocket.clusterId } : {}),
     },
   };
 }

@@ -25,6 +25,9 @@
 
 import { COURT_QUERIES, FIRST_AMENDMENT_QUERY } from '@/lib/data/court-queries';
 import { backfillOpinionsByDate, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
+import { getClusterLedger, recordClusterOutcome } from '@/lib/services/cl-cluster-ledger';
+import { planClusterAttempts } from '@/lib/services/cl-cluster-plan';
+import type { ClusterOutcome } from '@/lib/services/cl-cluster-plan';
 import {
   buildOpinionContentItem,
   buildOpinionDataFromSubOpinions,
@@ -37,6 +40,7 @@ import {
 } from '@/lib/services/courtlistener-fetcher';
 import { classifyOpinionToCategories } from '@/lib/services/crec-classifier';
 import { storeDocuments } from '@/lib/services/document-store';
+import { markSupersededRevisions } from '@/lib/services/opinion-revision-dedup';
 import { sleep } from '@/lib/utils/async';
 import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 import { isSameHostHttps } from '@/lib/utils/pagination';
@@ -44,6 +48,28 @@ import { isSameHostHttps } from '@/lib/utils/pagination';
 export interface OpinionFirstResult {
   docketsFound: number;
   opinionsStored: number;
+}
+
+/** Days the weekly trailing pass looks back (#741): CourtListener extracts
+ *  text days-to-weeks after indexing a cluster, so the week's own pass can
+ *  find a cluster with no text yet; the trailing pass retries it. */
+export const CL_TRAILING_WINDOW_DAYS = 42;
+/** Per-run fetch cap for the trailing pass — bounded CL API cost. */
+export const CL_TRAILING_MAX_FETCHES = 100;
+
+/** Precedential statuses the search returns (#741). CL defaults to Published
+ *  only, which hides "Relating-to" opinions — the emergency-docket orders
+ *  where executive-power confrontations concentrate (Trump v. Illinois:
+ *  0 results by default, 2 with the flag). */
+export const OPINION_STATUS_FLAGS = ['stat_Published', 'stat_Relating-to'] as const;
+
+export interface OpinionFirstOptions {
+  maxPages?: number;
+  /** Consult + write cl_cluster_ledger: skip stored/off-topic clusters,
+   *  retry no-text/fetch-error ones (snapshot passes). */
+  useLedger?: boolean;
+  /** Cap on clusters attempted this run (trailing pass). */
+  maxFetches?: number;
 }
 
 /** Keep only federal opinions (jurisdiction codes start with 'F': F, FD, FB, FS). */
@@ -95,6 +121,7 @@ export function buildOpinionSearchUrl(p: {
   if (p.court) qs.set('court', p.court);
   qs.set('filed_after', p.dateFrom);
   qs.set('filed_before', p.dateTo);
+  for (const flag of OPINION_STATUS_FLAGS) qs.set(flag, 'on');
   return `${CL_API_V4}/search/?${qs.toString()}`;
 }
 
@@ -182,20 +209,21 @@ async function collectMatchedClusters(
 }
 
 /**
- * Categories for a matched cluster: first-amendment → civilLiberties ∪ (for
- * court-scoped matches) content classification over caseName + opinion head.
- * Court-scoped matches with no classified category are NOT stored — the court
- * query alone is no relevance guarantee ("separation of powers" appears
- * rhetorically in ordinary opinions). In dry-run mode (no opinion text) the
- * content branch classifies on caseName only, so counts are lower bounds.
+ * Categories for a matched cluster: first-amendment → civilLiberties ∪ content
+ * classification over caseName + opinion head — for EVERY cluster (#741: a
+ * National Guard order surfaced only by the first-amendment query used to
+ * land in civilLiberties alone because the classifier ran only for
+ * court-scoped matches). Court-scoped matches with no classified category
+ * are NOT stored — the court query alone is no relevance guarantee
+ * ("separation of powers" appears rhetorically in ordinary opinions). In
+ * dry-run mode (no opinion text) the content branch classifies on caseName
+ * only, so counts are lower bounds.
  */
 function routeMatchedCluster(match: MatchedCluster, opinionText?: string): string[] {
   const cats = new Set<string>();
   const caseName = match.row.caseName ?? '';
   if (match.firstAmendment) cats.add('civilLiberties');
-  if (match.courtQueries.size > 0) {
-    for (const cat of classifyOpinionToCategories(caseName, opinionText)) cats.add(cat);
-  }
+  for (const cat of classifyOpinionToCategories(caseName, opinionText)) cats.add(cat);
   if (cats.size === 0 && opinionText && FIRST_AMENDMENT_TEXT_RE.test(opinionText)) {
     cats.add('civilLiberties');
   }
@@ -236,20 +264,20 @@ function opinionIdsOf(row: OpinionSearchResult): string[] {
 }
 
 /** Fetch one cluster's opinion text, route, and store it. Returns clusters found
- *  (1 if substantive opinion text was retrieved) and documents stored. */
+ *  (1 if substantive opinion text was retrieved), documents stored, and the
+ *  ledger outcome (#741). A stored revision marks the same case's earlier
+ *  same-day rows superseded. */
 async function storeClusterOpinion(
   match: MatchedCluster,
   fallbackDate: string,
-): Promise<{ found: number; stored: number }> {
+): Promise<{ found: number; stored: number; outcome: ClusterOutcome }> {
   const opinionIds = opinionIdsOf(match.row);
-  const opData = await buildOpinionDataFromSubOpinions(
-    opinionIds,
-    match.row.dateFiled ?? fallbackDate,
-  );
-  if (!opData) return { found: 0, stored: 0 };
+  const dateFiled = match.row.dateFiled ?? fallbackDate;
+  const opData = await buildOpinionDataFromSubOpinions(opinionIds, dateFiled);
+  if (!opData) return { found: 0, stored: 0, outcome: 'no_text' };
 
   const categories = routeMatchedCluster(match, opData.text);
-  if (categories.length === 0) return { found: 1, stored: 0 };
+  if (categories.length === 0) return { found: 1, stored: 0, outcome: 'zero_categories' };
 
   const item = buildOpinionContentItem(opData, {
     caseName: match.row.caseName ?? '(untitled case)',
@@ -257,10 +285,47 @@ async function storeClusterOpinion(
     docketId: match.row.docket_id!,
     suitNature: match.row.suitNature || undefined,
     clQueries: provenanceOf(match),
+    clusterId: match.row.cluster_id,
   });
   let stored = 0;
-  for (const category of categories) stored += await storeDocuments([item], category);
-  return { found: 1, stored };
+  for (const category of categories) {
+    stored += await storeDocuments([item], category);
+    const marks = await markSupersededRevisions(item.caseId!, category, dateFiled, item.link);
+    if (marks.length > 0) {
+      console.log(
+        `[cl-opinion-first] cluster ${match.row.cluster_id}: ${marks.length} earlier revision row(s) marked superseded in ${category}`,
+      );
+    }
+  }
+  return { found: 1, stored, outcome: 'stored' };
+}
+
+/** Ledger row shape for a matched cluster. */
+function ledgerRowOf(match: MatchedCluster) {
+  return {
+    clusterId: match.row.cluster_id!,
+    docketId: match.row.docket_id ?? null,
+    court: match.row.court ?? null,
+    caseName: match.row.caseName ?? null,
+    dateFiled: match.row.dateFiled ?? null,
+  };
+}
+
+/** Apply the ledger to the matched clusters: skip finals/exhausted, cap the run. */
+async function selectClustersToAttempt(
+  clusters: MatchedCluster[],
+  opts: OpinionFirstOptions,
+): Promise<MatchedCluster[]> {
+  if (!opts.useLedger) return clusters;
+  const ledger = await getClusterLedger(clusters.map((c) => c.row.cluster_id!));
+  const plan = planClusterAttempts(clusters, (c) => c.row.cluster_id!, ledger, {
+    maxFetches: opts.maxFetches,
+  });
+  console.log(
+    `[cl-opinion-first] ledger: ${plan.attempt.length} to attempt, ${plan.skippedFinal} already stored/off-topic, ` +
+      `${plan.skippedExhausted} retry-exhausted, ${plan.deferred} deferred (cap ${opts.maxFetches ?? '∞'})`,
+  );
+  return plan.attempt;
 }
 
 /**
@@ -279,11 +344,12 @@ export async function apiOpinionFirstPass(
   from: string,
   to: string,
   dryRun: boolean,
-  opts: { maxPages?: number } = {},
+  opts: OpinionFirstOptions = {},
 ): Promise<OpinionFirstResult> {
   const maxPages = opts.maxPages ?? CL_BACKFILL_MAX_PAGES;
-  const clusters = await collectMatchedClusters(from, to, maxPages);
-  console.log(`[cl-opinion-first] ${from}→${to}: ${clusters.length} matched opinion clusters`);
+  const matched = await collectMatchedClusters(from, to, maxPages);
+  console.log(`[cl-opinion-first] ${from}→${to}: ${matched.length} matched opinion clusters`);
+  const clusters = dryRun ? matched : await selectClustersToAttempt(matched, opts);
 
   let docketsFound = 0;
   let opinionsStored = 0;
@@ -303,14 +369,16 @@ export async function apiOpinionFirstPass(
     }
 
     try {
-      const { found, stored } = await storeClusterOpinion(match, to);
+      const { found, stored, outcome } = await storeClusterOpinion(match, to);
       if (found > 0) stats.bump(match, stored);
       docketsFound += found;
       opinionsStored += stored;
+      if (opts.useLedger) await recordClusterOutcome(ledgerRowOf(match), outcome);
     } catch (err) {
       console.warn(
         `[cl-opinion-first] cluster ${match.row.cluster_id} skipped: ${(err as Error).message}`,
       );
+      if (opts.useLedger) await recordClusterOutcome(ledgerRowOf(match), 'fetch_error');
     }
 
     if ((i + 1) % 100 === 0) {
@@ -338,9 +406,10 @@ export async function opinionFirstPass(
   from: string,
   to: string,
   dryRun: boolean,
+  opts: OpinionFirstOptions = {},
 ): Promise<OpinionFirstResult> {
   if (await isBulkOpinionDbAvailable()) {
     return backfillOpinionsByDate(from, to, dryRun);
   }
-  return apiOpinionFirstPass(from, to, dryRun);
+  return apiOpinionFirstPass(from, to, dryRun, opts);
 }
