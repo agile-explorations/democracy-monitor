@@ -12,6 +12,26 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-HARDEN-SEARCH: search-path abuse hardening (#791–#795, milestone 125, v1.16.11–v1.16.12) — ✅ shipped 2026-08-27; outreach gate
+
+**Origin**: with R-LOAD done, the owner asked whether a random-question DoS was now a real threat. Exploration answered: the site stays up (health pool + 3 global build slots, proven by Round A's P3), but Research can be denied to novel questions cheaply, and — the larger finding — `/api/search/stream` had no cache, no slots and ran an uncached Sonnet call per request behind only a per-IP 20/5-min limit; `debug=1` and full-synthesis builds bypassed the slots; every credential we had proved a _browser_, not our own harnesses. Cloudflare rules are bypassable via the onrender.com origin (#620/#623), so every control had to be origin-verified.
+
+**Built (v1.16.11 `5672b4e`, UX patch v1.16.12 `605353c`)**:
+
+- **W1 #792 front door** — signed HttpOnly `dm_pass` cookie (HMAC, 6 h, `Path=/api/search`) issued by `POST /api/search/pass` after Turnstile (siteverify 5 s timeout, fail-closed); `SEARCH_MACHINE_TOKEN` bearer for the prewarm workflow, eval, loadtest, golden guard; enforced at every uncached build and every stream; fail-open only when nothing is configured. Client: shared invisible-Turnstile loader, pass gate (403 → pass → one retry; refresh before a stream), `fetchDocsResilient`/`EventSource` untouched.
+- **W2 #793** per-source slots (2 builds / 1 stream, `429 source_busy`) on an atomic counter with memory fallback.
+- **W3 #794** spend units counted at admission (coalesced 202s never count): per source `429 daily_budget`, global `503 search_paused` for builds+streams only; alerts at 50%/100% and at 60 novel builds/hour; cooldown keys registered in `CacheKeys`; `/api/health/search-timings` reports the budget; fail-open when Redis is down.
+- Admission chain extracted (`search-build-admission.ts`): coalesce → global → source → spend, each rejection rolling back — the route file shrank.
+- **W0 #791** `dev:status|suspend|resume` via the Render API; **W4 #795** docs/glossary/env/standing constraint.
+
+**Verification**: dev 7/7 (403 without credential for build and stream; pass exchange 204; cookie and bearer admit; cached question 200 with no credential; budget counted exactly one build). Prod 5/5 after release, incl. a bogus token rejected by real Turnstile (400) and explore mode unaffected. Browser check on prod: Turnstile **escalated to a visible checkbox** for the automation-driven Chrome (expected — and Turnstile ignores synthetic clicks, so the human path is the owner's to confirm in a normal browser); it exposed a UX gap — corner widget, 30 s wait, no message — fixed in v1.16.12 (widget under the search box, "Confirming you're human" status, 120 s).
+
+**Owner decisions**: budgets (30/60 per source, 600/1,200 global per day); a dedicated machine token rather than reusing `CRON_SECRET` (least privilege — asked and answered); token set on all services + GitHub; Turnstile widget mode confirmed Managed; this item is an outreach gate; dev to be suspended between rounds via the new CLI once the perf work closes.
+
+**Lessons** (promoted to PROJECT_KNOWLEDGE): (1) a global spend breaker is an outage switch unless per-source — door lock first, breaker as backstop; (2) "cached answers never ask" is the UX contract that makes a front door acceptable; (3) an invisible challenge can become visible — design the visible path (placement, message, patience) before shipping the invisible one; (4) dev has no Turnstile keys, so pass mechanics verify on dev and the challenge UX only on prod; (5) a `.env.*.local` service id can point at the wrong environment — verify the target of every secret-returning API call.
+
+---
+
 ## Sprint R-LOAD close-out (#786–#790, v1.16.10, prod → 2c-8g) — ✅ shipped 2026-08-27; R-LOAD (#779) engineering complete
 
 **Origin**: with WO-5 shipped (v1.16.9) the owner made the budget decision: reset the cold-novel latency budget to what the product delivers and adopt the load suite as a gate; run Round B as a bounded experiment with a pre-agreed rule; drop the dead fp32 index. The owner also asked whether alias sub-results were cached across differently-worded questions (they are, #729) and what more could be done — which became cache telemetry (W2) and the demand-driven weekly warm (W3).
@@ -86,19 +106,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Measured, cut, and kept (the sprint's real story)**: three latency incidents drove scope: (1) 48-arm roster saturated the DB pool (121s arms stage) → slot-justified 18; (2) era-window arm extras ran per window against ≤5-slot reserves (RL3/RL4 could never finish a build) → reverted to #760 semantics [owner: ask-first feedback + retroactive approval]; (3) R5 (16-term expansion) + mining width drove 100–150s seeds → matrix attributed gains to slots not width → option-1 trim (owner decision). Acceptance was band-form replicated: baseline [68,72] → candidate [72,72] (zero interval regressions, IM4/RL2 above-interval replicating EXACTLY — slot guarantees also stabilized retrieval variance) → trimmed confirmation 76/107 (71%), the project's best single run.
 
 **Open residuals**: IM3's due-process canon still never nominated (0/40 arms both candidate runs — nomination ORDERING, not funnel width; next diagnosis); RL4 big-count items; outreach gate = replicated prod pair pending post-deploy.
-
-## Sprint R-GAO: GAO reports via Wayback (#739, milestone 120, v1.15.0–v1.15.1) — ✅ Phase A shipped 2026-08-21; Phase B (baselines-to-2017) completed + accepted 2026-08-22
-
-**Origin**: zero GAO documents in the corpus; gao.gov WAF-blocks non-browser fetches (403 on robots.txt → direct crawl forecloses under robots discipline); GovInfo GAOREPORTS dead since 2009 (#529). The Journalist Test flagged the 2026 GAO workforce series as journalist-noticeable absences and the coverage manifest disclosed the gap to every synthesis prompt.
-
-**Planned vs built**: as planned, with one owner-driven scope change during planning — the owner's "does T2-only really serve both features?" review flipped v1 from T2-only to **full backfill-to-2017 in two phases** (DHS-OIG/CHRG precedent: era-comparable search, real negative controls, no structural seam). Shipped Phase A: generic `wayback-cdx.ts` (extracted from dhs-press-archive, re-exported, + capture-window support), pure two-generation page parser (2017-era template verified to carry the same Highlights markers), historical/recent fetcher pair (weekly = capture-window keyed, so IA-late captures still arrive), `backfill:gao` CLI whose pre-T2 dateFrom is REJECTED without `--baselines` (the per-invocation baseline acknowledgment, mechanically enforced).
-
-**Results**: 887 docs stored (1,073 enumerated − 126 pre-T2 releases − 60 replay failures ≈ 5.6%); all 3 eval-flagged reports verified; review 863/863 P1, 57 flagged (6.6%), 11 clearly_concerning + 27 potentially_concerning; ~1,000 calls ≈ $5 vs $7 modeled (audit line now in the precheck template). Eval: **FW3's gao-workforce-1 CORE converted** (+ both SECONDARY GAO items), aggregate 66/107 flat-in-band vs the docket run, zero regressions vs the committed baseline.
-
-**Defects caught by verification**: (1) dry-run sample step expanded a placeholder 2000–2099 range into ~100 bogus CDX queries — hammered the archive until killed; samples now reuse the range enumeration. (2) og:title path skipped the brand-strip (313 stored titles cleaned). (3) **`ACTIVE_SOURCES` (lib/data/analysis-periods.ts) is a mandatory new-source registration point** that gates embedding, scoring, aggregation, AND baselines — two exploration passes missed it and the 887 docs were invisible to all four until embed-missing's "0 embedded" exposed it. Lesson: after any new-source ingest, verify each downstream population (embeddings count, score rows, aggregate counts) — "stored" proves only storage.
-
-**Phase B actuals (completed 2026-08-22, all steps owner-approved per invocation)**: 4,534 baseline docs stored (6,032 enumerated, 386 replay failures ≈ 7.5%; per-year 510–666, no thin years) → 5,421 total GAO docs spanning 2017–2026. Review: 4,289/4,289 P1, 84 flagged (**2.0% baseline vs 6.6% current-term — a 3× era difference, itself a calibration finding**), 27 confirmed, 409 audit samples; ≈ $19–20 vs $27–32 modeled. All embedded; 410 baseline weeks scored + re-aggregated; 30 confirmed rows actor-attributed (29 federal_executive). **Negative controls unchanged-or-improved across the entire change**; exactly **one baseline status flip** (executiveOversight 2019-03-11 → Elevated on GAO's Federal Ethics Programs report, potentially_concerning 0.72) — presented and **accepted by owner** (uniform-rules principle: baselines judged like the current term). Retroactive INSTRUMENT_CHANGES entry shipped; the T2-only seam never reached a release.
-
-~~**Phase B (parked for per-invocation approvals)**: baselines 2017–2025, 4,956 products sized by CDX, nc:margins before/after, ~$35–55 review, retroactive INSTRUMENT_CHANGES entry on completion. Until then executiveOversight has a T2-only GAO seam (validate:ingest shows baseline dashes).~~
-
----
