@@ -74,3 +74,13 @@ describe('extractDateFloor (#594 range phrases)', () => {
     expect(extractDateFloor('What court cases have challenged executive authority?')).toBeNull();
   });
 });
+
+describe('"the previous two" (owner question, 2026-08-28)', () => {
+  it('reads "current administration … the previous two" as all three eras', async () => {
+    const { extractComparisonEras } = await import('@/lib/services/era-extraction');
+    const eras = extractComparisonEras(
+      'Compare the current administration with the previous two on DOJ cases against political opponents.',
+    );
+    expect(eras?.map((e) => e.key)).toEqual(['trump_t1', 'biden', 'trump_t2']);
+  });
+});
