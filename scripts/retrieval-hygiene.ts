@@ -37,6 +37,7 @@ const USAGE = `Usage:
   --base URL     Server to capture from (prod: https://democracymonitor.us).
   --out FILE     Capture output (JSON of HygieneCapture[]).
   --set          Which bank to run (default all).
+  --only A,B     Capture only these question ids (re-capture stale rows).
   --refresh      Rebuild every pool on the server (refresh=true) — REQUIRED for a
                  gate run after a deploy: docsOnly pools are cached for 7 days, so
                  without it a capture measures whatever code built the cache.
@@ -81,19 +82,20 @@ async function capture(base: string, q: BankQuestion, refresh: boolean): Promise
   })}`;
   const headers = machineAuthHeaders();
   const t0 = Date.now();
-  let requestUrl = url;
   while (Date.now() - t0 < CLIENT_BUDGET_MS) {
     let res: Response;
     try {
-      res = await fetch(requestUrl, { headers, signal: AbortSignal.timeout(175_000) });
+      // Retries keep `refresh=true` on purpose: a plain poll after an edge
+      // cut is served the OLD cache while the refresh build is still in
+      // flight (N04-foia, 2026-08-29). The server coalesces the in-flight
+      // build (202) and, once it lands, one more build is the price of a
+      // guaranteed-fresh capture.
+      res = await fetch(url, { headers, signal: AbortSignal.timeout(175_000) });
     } catch {
-      // Edge cut: the build continues server-side — poll for it, don't rebuild.
-      requestUrl = url.replace('&refresh=true', '');
       await sleep(15_000);
       continue;
     }
     if (res.status === 202) {
-      requestUrl = url.replace('&refresh=true', '');
       const body = (await res.json().catch(() => ({}))) as { retryAfterMs?: number };
       await sleep(Math.max(8_000, body.retryAfterMs ?? 8_000));
       continue;
@@ -154,7 +156,8 @@ async function main(): Promise<void> {
   const out = arg(args, '--out');
   if (!base || !out) throw new Error(USAGE);
   const pace = Number(arg(args, '--pace') ?? 6000);
-  const bank = loadBank(arg(args, '--set') ?? 'all');
+  const only = arg(args, '--only')?.split(',');
+  const bank = loadBank(arg(args, '--set') ?? 'all').filter((q) => !only || only.includes(q.id));
   const refresh = args.includes('--refresh');
   const captures: HygieneCapture[] = [];
   for (const q of bank) {
