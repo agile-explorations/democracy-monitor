@@ -270,6 +270,38 @@ async function enrichPackages(
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Which found packages to enrich: drop the stored ones, keep order (GovInfo
+ *  returns oldest first, so a cap defers the newest — they are what next
+ *  week's window still holds). Pure — unit-tested (#798). */
+export function selectNewPackages(
+  found: string[],
+  excludePackageIds?: Set<string>,
+  maxNewFetches?: number,
+): { fetch: string[]; alreadyStored: number; deferred: number } {
+  const fresh = found.filter((id) => !excludePackageIds?.has(id));
+  const fetch = maxNewFetches != null ? fresh.slice(0, maxNewFetches) : fresh;
+  return {
+    fetch,
+    alreadyStored: found.length - fresh.length,
+    deferred: fresh.length - fetch.length,
+  };
+}
+
+/** How many CPD packages GovInfo holds for a window (one search call) —
+ *  the source-silence check (#798): zero across a 120-day window means the
+ *  feed or the API changed, not a quiet week. */
+export async function fetchCpdPackageCount(dateFrom: string, dateTo: string): Promise<number> {
+  const apiKey = getApiKey();
+  if (!apiKey) return 0;
+  const data = await searchCpd(
+    `collection:CPD publishdate:range(${dateFrom},${dateTo})`,
+    apiKey,
+    1,
+    '*',
+  );
+  return Number(data.count ?? 0);
+}
+
 /**
  * Fetch CPD documents for a date range with subject-based category routing.
  * Returns CpdDocument[] — the caller stores each item in its mapped categories.
@@ -279,6 +311,10 @@ export async function fetchCpdHistorical(params: {
   dateTo: string;
   maxPages?: number;
   fetchContent?: boolean;
+  /** Packages already stored — skipped before any per-package call (#798). */
+  excludePackageIds?: Set<string>;
+  /** Cap on packages enriched this call; the rest wait for the next run. */
+  maxNewFetches?: number;
 }): Promise<CpdDocument[]> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -289,9 +325,15 @@ export async function fetchCpdHistorical(params: {
   const { dateFrom, dateTo, maxPages = 20, fetchContent = true } = params;
   const query = `collection:CPD publishdate:range(${dateFrom},${dateTo})`;
 
-  const packageIds = await collectPackageIds(query, apiKey, maxPages);
+  const found = await collectPackageIds(query, apiKey, maxPages);
+  const plan = selectNewPackages(found, params.excludePackageIds, params.maxNewFetches);
+  const packageIds = plan.fetch;
+  console.log(
+    `[cpd-fetcher] Found ${found.length} packages for ${dateFrom}–${dateTo}: ${packageIds.length} new` +
+      (plan.alreadyStored ? `, ${plan.alreadyStored} already stored` : '') +
+      (plan.deferred ? `, ${plan.deferred} deferred (cap)` : ''),
+  );
   if (packageIds.length === 0) return [];
-  console.log(`[cpd-fetcher] Found ${packageIds.length} packages for ${dateFrom}–${dateTo}`);
 
   const { docs, unmappedCount } = await enrichPackages(packageIds, apiKey, fetchContent);
 
