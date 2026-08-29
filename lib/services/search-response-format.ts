@@ -128,6 +128,11 @@ export function buildDocsOnlyPayload(
 ): Record<string, unknown> {
   return {
     ...(docsKey ? { docsKey } : {}),
+    // Build stamp (#803): docsOnly pools are cached for a week, so a client
+    // that asked for a rebuild (refresh=true) and was edge-cut can tell a
+    // fresh pool from the stale one it would otherwise be served.
+    builtAt: new Date().toISOString(),
+    builtBy: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
     documents: formatDocList(allDocs),
     dateRange: computeDateRange(allDocs),
     queryConfidence: avgSimilarity,

@@ -82,19 +82,24 @@ async function capture(base: string, q: BankQuestion, refresh: boolean): Promise
   })}`;
   const headers = machineAuthHeaders();
   const t0 = Date.now();
+  // Refresh mode asks for the rebuild ONCE; every retry polls plain and is
+  // accepted only when the payload's build stamp (`builtAt`, #803) is newer
+  // than the request. A plain poll during the in-flight rebuild is served the
+  // old cache (N04-foia, 2026-08-29); re-sending refresh=true after every
+  // 202 spawned a rebuild per poll and never returned on a build longer than
+  // the edge cut. The stamp resolves both.
+  const plainUrl = url.replace('&refresh=true', '');
+  let requestUrl = url;
   while (Date.now() - t0 < CLIENT_BUDGET_MS) {
     let res: Response;
     try {
-      // Retries keep `refresh=true` on purpose: a plain poll after an edge
-      // cut is served the OLD cache while the refresh build is still in
-      // flight (N04-foia, 2026-08-29). The server coalesces the in-flight
-      // build (202) and, once it lands, one more build is the price of a
-      // guaranteed-fresh capture.
-      res = await fetch(url, { headers, signal: AbortSignal.timeout(175_000) });
+      res = await fetch(requestUrl, { headers, signal: AbortSignal.timeout(175_000) });
     } catch {
+      requestUrl = plainUrl;
       await sleep(15_000);
       continue;
     }
+    requestUrl = plainUrl;
     if (res.status === 202) {
       const body = (await res.json().catch(() => ({}))) as { retryAfterMs?: number };
       await sleep(Math.max(8_000, body.retryAfterMs ?? 8_000));
@@ -109,7 +114,13 @@ async function capture(base: string, q: BankQuestion, refresh: boolean): Promise
       documents?: Array<Record<string, unknown>>;
       alsoSearched?: string[];
       strata?: Array<{ label: string; docCount: number }>;
+      builtAt?: string;
     };
+    if (refresh && !(d.builtAt && Date.parse(d.builtAt) >= t0 - 5_000)) {
+      // Stale (or unstamped) cache while the rebuild is in flight — keep polling.
+      await sleep(15_000);
+      continue;
+    }
     return {
       id: q.id,
       q: q.question,

@@ -139,3 +139,14 @@ describe('buildDocsOnlyPayload', () => {
     expect(payload.searchedTerms).toEqual([{ phrase: 'Schedule F', matches: 42 }]);
   });
 });
+
+describe('docsOnly build stamp (#803)', () => {
+  it('stamps every payload with builtAt so a refresh poll can tell fresh from stale', async () => {
+    const { buildDocsOnlyPayload } = await import('@/lib/services/search-response-format');
+    const before = Date.now();
+    const payload = buildDocsOnlyPayload([], 0, null, null, []);
+    expect(typeof payload.builtAt).toBe('string');
+    expect(Date.parse(payload.builtAt as string)).toBeGreaterThanOrEqual(before - 1000);
+    expect(payload).toHaveProperty('builtBy');
+  });
+});
