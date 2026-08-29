@@ -84,7 +84,7 @@ export function parseJudgeResponse(content: string, candidatePhrases: string[]):
 }
 
 function hashJudgeKey(question: string, candidatePhrases: string[]): string {
-  // The shortlist is part of the key (v3): picks cached against one
+  // The shortlist is part of the key (v3); v4 = the #806 prompt. Picks cached against one
   // shortlist replayed against a different one during the 2026-08-24 gate
   // runs — the question channel's nominees changed but the stale picks won.
   const shortlistHash = createHash('sha256')
@@ -92,7 +92,7 @@ function hashJudgeKey(question: string, candidatePhrases: string[]): string {
     .digest('hex')
     .slice(0, 12);
   return createHash('sha256')
-    .update(['v3', dataWeekStamp(), question.toLowerCase().trim(), shortlistHash].join('|'))
+    .update(['v4', dataWeekStamp(), question.toLowerCase().trim(), shortlistHash].join('|'))
     .digest('hex')
     .slice(0, 16);
 }
