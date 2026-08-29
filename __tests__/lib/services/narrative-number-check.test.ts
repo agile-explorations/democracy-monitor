@@ -83,6 +83,23 @@ describe('extractCountClaims — what is NOT a claim (#700, tuned on 12 prod wee
     ).toEqual([]);
   });
 
+  it('skips a tally of categories that changed tier', () => {
+    const text =
+      'Seven categories moved upward (from Stable or Elevated to a higher tier) this week, while three categories returned to Stable.';
+    expect(extractCountClaims(text)).toEqual([]);
+    expect(
+      extractCountClaims(
+        'Though the overall count decreased, one category (Government Watchdogs) escalated to a higher concern level.',
+      ),
+    ).toEqual([]);
+  });
+
+  it('skips week-over-week deltas the model computed', () => {
+    const text =
+      '9 of 14 categories are Elevated or above with 6 at ConfirmedConcern—an increase of 3 elevated categories and 4 additional categories at the highest concern level.';
+    expect(extractCountClaims(text).map((c) => c.value)).toEqual([9, 14]);
+  });
+
   it('keeps headline "N of 14" counts and volume comparisons', () => {
     const claims = extractCountClaims(
       '7 of 14 monitored categories are elevated — up from 6 last week — based on 957 documents.',
@@ -178,6 +195,33 @@ describe('checkEnumerations (#700)', () => {
   it('accepts a consistent enumeration and titles containing "and"', () => {
     const text =
       'Two categories that were monitored this week — Political Campaigning Rules (Hatch Act) and Free and Fair Elections — produced no documents at all.';
+    expect(checkEnumerations(text)).toEqual([]);
+  });
+
+  it('reads a status breakdown as the sum of its sub-lists (2026-08-29 regeneration)', () => {
+    const text =
+      'This week, 4 of 14 monitored categories are Elevated or above—2 at ConfirmedConcern (Executive Actions, Immigration Enforcement) and 2 at Elevated (Using Military Inside the U.S., Press Freedom)—a sharp contraction from the previous week.';
+    expect(checkEnumerations(text)).toEqual([]);
+    const nine =
+      'This week, 9 of 14 monitored categories are Elevated or above — 7 at ConfirmedConcern (Government Watchdogs, Independent Agency Rules, Executive Actions, Free and Fair Elections, Federal Law Enforcement, Civil Rights & Liberties, Immigration Enforcement) and 2 at Elevated (Using Military Inside the U.S., Press Freedom). This represents a reduction.';
+    expect(checkEnumerations(nine)).toEqual([]);
+    // A title's own parenthetical inside a sub-list (the 2026-01-12 regeneration).
+    const nested =
+      'This week, 8 of 14 monitored categories are elevated or above — 5 at ConfirmedConcern (Government Watchdogs (Inspectors General), Executive Actions, Federal Law Enforcement, Civil Rights & Liberties, Immigration Enforcement) and 3 at Elevated (Using Military Inside the U.S., Press Freedom, Free and Fair Elections). The pattern persists.';
+    expect(checkEnumerations(nested)).toEqual([]);
+  });
+
+  it('still catches a status breakdown whose sub-lists do not add up to the head count', () => {
+    const text =
+      'This week, 5 of 14 monitored categories are Elevated or above—2 at ConfirmedConcern (Executive Actions, Immigration Enforcement) and 2 at Elevated (Using Military Inside the U.S., Press Freedom)—a sharp contraction.';
+    const v = checkEnumerations(text);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ value: 5, listed: 4 });
+  });
+
+  it('does not hold a declared-partial list ("including …") to the count', () => {
+    const text =
+      'The 8 stable categories with documents — including Following Court Orders, Government Watchdogs, and Independent Agency Rules — produced routine material.';
     expect(checkEnumerations(text)).toEqual([]);
   });
 
