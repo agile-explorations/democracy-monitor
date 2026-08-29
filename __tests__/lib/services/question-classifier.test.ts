@@ -65,6 +65,17 @@ describe('classifyQuestionMode', () => {
     ).toBe('enumeration');
   });
 
+  it('era-comparative questions about cases, investigations and indictments enumerate (owner, 2026-08-28)', () => {
+    for (const q of [
+      'To what extent has the DOJ brought cases against political opponents of the current administration, and to what extent have those cases appeared to be a weaponization by the administration of the DOJ against those political opponents? Provide a comparison across administrations.',
+      'Compare the cases the DOJ has brought against political opponents under the current administration with the previous two.',
+      'How did investigations of political opponents compare between the first and second Trump administrations?',
+      'Compare indictments of former officials under Biden and the second Trump administration.',
+    ]) {
+      expect(classifyQuestionMode(q), q).toBe('enumeration');
+    }
+  });
+
   it('keeps analytical questions analytical', () => {
     for (const q of [
       'Why did the administration remove inspectors general?',

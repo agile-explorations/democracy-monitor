@@ -33,7 +33,7 @@ const COMPARATIVE =
 // for the same three-era comparison as "across administrations" — without
 // the synonym the query silently ran single-window and recency-skewed.
 const ACROSS_ADMINS =
-  /\b(across|between|all( three)?) (administrations|presidencies|presidential terms|presidents)\b/i;
+  /\b(across|between|all( three)?) (administrations|presidencies|presidential terms|presidents)\b|\b(previous|prior|last) two( administrations| presidencies| terms)?\b/i;
 
 const ERA_PATTERNS: Array<[EraWindow['key'], RegExp]> = [
   [
