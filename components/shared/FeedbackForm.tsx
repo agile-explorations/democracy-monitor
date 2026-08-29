@@ -11,6 +11,9 @@ interface FeedbackFormProps {
   initialPageUrl?: string;
   /** Dispute of one document's AI reading (#815): locks the type, carries the context. */
   dispute?: DisputeContext | null;
+  /** Prefilled type and message from the query (e.g. the reader-audit invitation, #816). */
+  initialType?: string;
+  initialMessage?: string;
   onSubmitted?: () => void;
 }
 
@@ -28,12 +31,14 @@ export function FeedbackForm({
   initialCategory,
   initialPageUrl,
   dispute,
+  initialType,
+  initialMessage,
   onSubmitted,
 }: FeedbackFormProps) {
   const [type, setType] = useState<string>(
-    dispute ? 'dispute' : initialCategory ? 'data-issue' : 'suggestion',
+    dispute ? 'dispute' : (initialType ?? (initialCategory ? 'data-issue' : 'suggestion')),
   );
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(initialMessage ?? '');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');

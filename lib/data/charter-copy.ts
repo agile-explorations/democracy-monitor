@@ -64,5 +64,5 @@ export const STOPS_HEADING = 'Why this stops at the record';
 export const STOPS_PARAGRAPHS = [
   'This site stops at the record on purpose. What to do about what it shows belongs to the reader — to voters, and to the question the Constitution assigns to Congress, not to a website.',
   'Keeping the record is itself an act: against a news cycle whose memory is measured in hours, the record is what stays.',
-  'And our neutrality is licensed by conduct, not by claim: the same instruments point at every administration; our reviewer is tested by swapping the administrations’ names inside the documents it reads; its verdict rates are published for every era side by side; fifty of its readings a quarter are read by people who are not us; and when we are wrong we say so, on a page kept for that purpose.',
+  'And our neutrality is licensed by conduct, not by claim: the same instruments point at every administration; our reviewer is tested by swapping the administrations’ names inside the documents it reads; its verdict rates are published for every era side by side; fifty of its readings a quarter are set aside for readers who are not us — the first fifty are waiting for them now; and when we are wrong we say so, on a page kept for that purpose.',
 ] as const;

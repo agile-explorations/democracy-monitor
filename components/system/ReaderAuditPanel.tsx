@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { READER_AUDITS } from '@/lib/data/reader-audits';
 import type { ReaderAuditRecord } from '@/lib/data/reader-audits';
 
@@ -73,6 +74,13 @@ function ScoredTable({ a }: { a: ReaderAuditRecord }) {
   );
 }
 
+/** Prefilled feedback: a question with the reader-audit subject (#816). */
+export const READER_INVITE_HREF =
+  '/feedback?type=question&prefill=' +
+  encodeURIComponent(
+    'I would read fifty documents for the reader audit. How I can be reached, and anything about my background you should know:',
+  );
+
 export function ReaderAuditPanel() {
   return (
     <div className="my-3 space-y-2">
@@ -80,10 +88,20 @@ export function ReaderAuditPanel() {
         a.status === 'scored' && a.result ? (
           <ScoredTable key={a.id} a={a} />
         ) : (
-          <p key={a.id} className="text-sm text-dm-text-secondary">
-            Outside readers — {a.id}: {a.sample} verdicts, packet issued {fmtDate(a.packetIssued)};
-            results will appear here.
-          </p>
+          <div key={a.id} className="space-y-1">
+            <p className="text-sm text-dm-text-secondary">
+              Outside readers — {a.id}: {a.sample} verdicts, packet issued {fmtDate(a.packetIssued)}
+              ; results will appear here.
+            </p>
+            <p className="text-sm text-dm-text-secondary">
+              The {a.id} packet is ready and waiting for its readers. If you would read fifty
+              documents and say where the reviewer is wrong,{' '}
+              <Link href={READER_INVITE_HREF} className="text-dm-accent hover:underline">
+                tell us
+              </Link>
+              .
+            </p>
+          </div>
         ),
       )}
       <p className="text-xs text-dm-muted">
