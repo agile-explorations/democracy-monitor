@@ -1,7 +1,7 @@
 import type { ConcernLevel } from '@/lib/types/structural';
 
 /**
- * Witness-stance display vocabulary for weekly statuses (#732): the ladder
+ * Charter display vocabulary for weekly statuses (#732; good-repair framing #813): the ladder
  * measures DEPARTURE from documented baseline practice, not danger. Stored
  * status values (Stable/Elevated/Divergent/ConfirmedConcern) are unchanged —
  * this file is the single mapping layer for every surface that renders them.

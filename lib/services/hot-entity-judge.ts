@@ -21,9 +21,10 @@ import { createHash } from 'crypto';
 import { getProvider } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import { dataWeekStamp } from '@/lib/services/arm-cache';
 
-const JUDGE_MODEL = 'gpt-4o-mini';
+const JUDGE_MODEL = MODEL_ROSTER.retrievalHelpers.id;
 const JUDGE_CACHE_TTL = 7 * 86400;
 export const MAX_JUDGE_PICKS = 12;
 

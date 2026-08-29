@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { AccountabilityDiagram } from '@/components/why/AccountabilityDiagram';
+import { ApparatusInventory } from '@/components/why/ApparatusInventory';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
+import { STOPS_HEADING, STOPS_PARAGRAPHS, VISIBLE_THROUGH_A_LENS } from '@/lib/data/charter-copy';
 import { COMMON_QUESTIONS, WHY_PILLARS } from '@/lib/data/why-this-matters';
 import type { CommonQuestion, WhyPillar } from '@/lib/data/why-this-matters';
 
@@ -43,6 +45,37 @@ function PillarCard({ pillar }: { pillar: WhyPillar }) {
       </p>
       <p className="text-sm text-dm-muted leading-relaxed border-l-2 border-dm-accent/30 pl-3">
         {pillar.historyAnchor}
+      </p>
+    </section>
+  );
+}
+
+/** "Why this stops at the record" (#812) — owner-verbatim paragraphs, with the
+ *  conduct that licenses neutrality linked to where it is checkable. */
+function WhyThisStops() {
+  const link = 'text-dm-accent hover:underline';
+  return (
+    <section id="stops-at-the-record" className="space-y-3 scroll-mt-4">
+      <h3 className="text-base font-semibold text-dm-text-primary">{STOPS_HEADING}</h3>
+      {STOPS_PARAGRAPHS.map((text) => (
+        <p key={text.slice(0, 24)} className="text-sm text-dm-text-secondary leading-relaxed">
+          {text}
+        </p>
+      ))}
+      <p className="text-xs text-dm-muted">
+        Checkable at:{' '}
+        <Link href="/system/methodology#ai-document-review" className={link}>
+          the swap audit and era rates
+        </Link>
+        ,{' '}
+        <Link href="/system/methodology#reader-audit" className={link}>
+          the outside readers
+        </Link>
+        , and{' '}
+        <Link href="/system/reversals" className={link}>
+          the reversals ledger
+        </Link>
+        .
       </p>
     </section>
   );
@@ -123,8 +156,9 @@ export default function WhyThisMattersPage() {
         </p>
       </div>
 
-      {/* Epistemic charter (owner-approved verbatim 2026-08-17): the witness
-          stance — document the shift, pass no judgment on it. */}
+      {/* Epistemic charter (owner-approved verbatim 2026-08-17; apparatus and
+          stopping-point sections 2026-08-29, #812): a record kept in good
+          repair — document the shift, publish the lens, correct the record. */}
       <section id="charter" className="max-w-3xl space-y-3 mb-10 scroll-mt-4">
         <h2 className="text-lg font-semibold text-dm-text-primary">
           What this site is — and is not
@@ -133,7 +167,7 @@ export default function WhyThisMattersPage() {
           America is changing how it governs itself. Across the documentary record — executive
           orders, court filings, agency rules, inspector-general reports, congressional debate — you
           can watch authority moving: toward the presidency, past the referees, out of institutions
-          that once checked it. This site exists to make that movement visible. Nothing more.
+          that once checked it. {VISIBLE_THROUGH_A_LENS}
         </p>
         <p className="text-sm text-dm-text-secondary leading-relaxed">
           We do not claim the shift is good or bad. The reasons for it are complex — some of it
@@ -152,6 +186,7 @@ export default function WhyThisMattersPage() {
           machine-checked. Where the record shows a departure from long-standing practice, we say so
           plainly. Where it doesn&apos;t, we say that too.
         </p>
+        <ApparatusInventory />
         <p className="text-sm text-dm-text-secondary leading-relaxed">
           Why keep watch at all, if we pass no judgment? Because some of what is changing took two
           and a half centuries to build and may not be rebuildable on any timeline that matters to
@@ -159,6 +194,7 @@ export default function WhyThisMattersPage() {
           quickly, without a record of what stood before, forecloses the option of changing course.
           This site is that record.
         </p>
+        <WhyThisStops />
         <p className="text-sm text-dm-text-secondary leading-relaxed border-l-2 border-dm-accent/30 pl-3">
           One commitment above the rest: the same instruments point at every administration. The
           same review reads Biden-era and Trump-era documents under identical rules; our baselines,

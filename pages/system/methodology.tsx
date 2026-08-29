@@ -2,9 +2,14 @@ import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { PromptTransparency } from '@/components/system/PromptTransparency';
+import { ReaderAuditPanel } from '@/components/system/ReaderAuditPanel';
 import { VerdictRatesTable } from '@/components/system/VerdictRatesTable';
+import { PASS2_PROMPT_VERSION } from '@/lib/ai/prompts/document-review-pass2';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { BASELINE_CONFIGS } from '@/lib/data/baselines';
+import { STANCE_SENTENCE, STANCE_TAIL } from '@/lib/data/charter-copy';
 import { CONCERN_LEVEL_THRESHOLDS } from '@/lib/data/concern-level-explanations';
+import { PASS2_INSTRUCTIONS_URL } from '@/lib/data/repo-links';
 
 function ConcernLevel({
   color,
@@ -37,6 +42,26 @@ function ConcernLevel({
   );
 }
 
+/** Baseline table rows from the instrument's own configuration (#812): the
+ *  labels here are the windows the code measures against, not a paraphrase. */
+const BASELINE_ROLES: Record<string, string> = {
+  biden_2022: 'Primary baseline — chosen for stability and comprehensive source coverage',
+  biden_2021: 'First-year-in-term comparison',
+  biden_2023: 'Late-term comparison',
+  biden_2024: 'Election-year comparison',
+  trump_2017: 'Cross-administration, first year',
+  trump_2018: 'Cross-administration, same cycle year as primary',
+  trump_2019: 'Cross-administration, late term',
+  trump_2020: 'Cross-administration, election year',
+};
+function baselineRows(): string[][] {
+  return BASELINE_CONFIGS.map((b) => [
+    b.label,
+    `${b.from} to ${b.to} (year ${b.cycleYear} of term)`,
+    BASELINE_ROLES[b.id] ?? '',
+  ]);
+}
+
 export function SummaryContent() {
   return (
     <>
@@ -55,13 +80,15 @@ export function SummaryContent() {
           published thresholds.
         </p>
         <p>
-          The stance behind every measurement here is witness, not verdict: document the shift in
-          how America governs itself without judging it — see{' '}
+          {STANCE_SENTENCE} — see{' '}
           <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
             what this site is, and is not
           </Link>
-          . The same instruments point at every administration; this page is where that claim is
-          checkable.
+          . {STANCE_TAIL} When it is wrong, the{' '}
+          <Link href="/system/reversals" className="text-dm-accent hover:underline">
+            reversals ledger
+          </Link>{' '}
+          says so.
         </p>
       </Section>
 
@@ -188,13 +215,15 @@ export function DetailedContent() {
           published thresholds.
         </p>
         <p>
-          The stance behind every measurement here is witness, not verdict: document the shift in
-          how America governs itself without judging it — see{' '}
+          {STANCE_SENTENCE} — see{' '}
           <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
             what this site is, and is not
           </Link>
-          . The same instruments point at every administration; this page is where that claim is
-          checkable.
+          . {STANCE_TAIL} When it is wrong, the{' '}
+          <Link href="/system/reversals" className="text-dm-accent hover:underline">
+            reversals ledger
+          </Link>{' '}
+          says so.
         </p>
       </Section>
 
@@ -468,7 +497,16 @@ export function DetailedContent() {
             novel, within baseline; possible departure; or clear departure (internal values:
             routine, novel_not_concerning, potentially_concerning, clearly_concerning). Using a
             different AI provider for each pass ensures that the two assessments are epistemically
-            independent.
+            independent.{' '}
+            <a
+              href={PASS2_INSTRUCTIONS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-dm-accent hover:underline"
+            >
+              The instructions the reviewer receives
+            </a>{' '}
+            are public (version <code>{PASS2_PROMPT_VERSION}</code>).
           </li>
         </ul>
         <p>
@@ -571,6 +609,19 @@ export function DetailedContent() {
           documented change. The full ledger is on issue #772.
         </p>
         <VerdictRatesTable />
+        <h3
+          id="reader-audit"
+          className="text-sm font-semibold text-dm-text-primary mt-4 scroll-mt-4"
+        >
+          Read by people who are not us
+        </h3>
+        <p>
+          Each quarter, fifty of the reviewer&apos;s readings are drawn at random and read by two
+          outside readers who see the document, the reading, and the reviewer&apos;s reasoning, and
+          record whether they agree — and if not, what they would have said. Agreement is reported
+          as-is; the readings both readers reject go to the reversals ledger.
+        </p>
+        <ReaderAuditPanel />
       </Section>
 
       {/* Thematic Drift */}
@@ -667,23 +718,7 @@ export function DetailedContent() {
           All anomaly detection requires a reference period for comparison. The system maintains
           eight historical baselines — every year of the two preceding administrations:
         </p>
-        <DataTable
-          headers={['Baseline', 'Period', 'Role']}
-          rows={[
-            [
-              'Biden 2022',
-              'Year 2 of term',
-              'Primary baseline — chosen for stability and comprehensive source coverage',
-            ],
-            ['Biden 2021', 'Year 1 of term', 'First-year-in-term comparison'],
-            ['Biden 2023', 'Year 3 of term', 'Late-term comparison'],
-            ['Biden 2024', 'Year 4 of term', 'Election-year comparison'],
-            ['Trump 2017', 'Year 1 of term', 'Cross-administration, first year'],
-            ['Trump 2018', 'Year 2 of term', 'Cross-administration, same cycle year as primary'],
-            ['Trump 2019', 'Year 3 of term', 'Cross-administration, late term'],
-            ['Trump 2020', 'Year 4 of term', 'Cross-administration, election year'],
-          ]}
-        />
+        <DataTable headers={['Baseline', 'Period', 'Role']} rows={baselineRows()} />
         <p>
           All eight baselines cover the same core data sources (Federal Register, CourtListener,
           DOJ, GovInfo, FEC, LegiScan, OIG) under uniform routing and filtering rules — see the

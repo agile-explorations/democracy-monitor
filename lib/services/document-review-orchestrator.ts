@@ -1,6 +1,7 @@
 import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
@@ -33,9 +34,9 @@ export type { Layer2Options } from './document-review-week-context';
 export { retryMissingPass2 } from './document-review-retry';
 
 const DEFAULT_PASS1_PROVIDER = 'openai';
-const DEFAULT_PASS1_MODEL = 'gpt-4o-mini';
+const DEFAULT_PASS1_MODEL = MODEL_ROSTER.pass1Screen.id;
 const DEFAULT_PASS2_PROVIDER = 'anthropic';
-const DEFAULT_PASS2_MODEL = 'claude-sonnet-4-5-20250929';
+const DEFAULT_PASS2_MODEL = MODEL_ROSTER.pass2Review.id;
 const PASS1_CONCURRENCY = 5;
 const PASS2_CONCURRENCY = 3;
 

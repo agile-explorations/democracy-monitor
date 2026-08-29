@@ -64,6 +64,7 @@ pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter 
 pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
+pnpm audit:readers     # Two-outside-reader audit of 50 Pass-2 readings (#816; --sample N --seed ID --out DIR | --score A.json B.json)
 pnpm retrieval:hygiene # Pool-hygiene battery on the never-tuned-on question bank (#803; --base URL --out FILE [--set novel|outreach|all] [--refresh: REQUIRED after a deploy — pools cache 7d] [--gate] | --diff A B)
 ```
 
@@ -221,7 +222,7 @@ Every sprint **MUST** follow this process. It may **ONLY** be skipped with expli
 5. **Create milestone & issues** — Create a GitHub Milestone for the sprint (if it doesn't exist). Create one GitHub Issue per work item with appropriate labels and assign it to the milestone. This must happen **before** implementation begins.
 6. **Implementation** — Do the work. Reference GitHub Issue numbers in commits (e.g., `Fixes #12`).
 7. **Post-sprint code review** — First run `pnpm lint`, `pnpm lint:patterns`, and `pnpm lint:unused` to catch mechanical violations. Then review all files created or modified in the sprint against the checklist below (focusing on judgment items: naming, SOLID, DRY, testability). Report findings to the user before making fixes. The results of the code review **MUST** be presented to the user for approval.
-8. **Commit** — Stage, format, and commit only after the review is clean
+8. **Commit** — Stage, format, and commit only after the review is clean. If the sprint corrected, reversed, held, or regenerated anything already published, add the entry to `lib/data/reversals-ledger.ts` (`/system/reversals`) in the same release.
 9. **Retrospective** — Update `docs/DECISIONS.md` with a sprint entry covering: what was planned vs what was built, spec deviations (with section refs), key decisions and rationale, lessons learned. Keep only the last ~5 sprints in `docs/DECISIONS.md`; move older entries to `docs/DECISIONS-ARCHIVE.md`. Annotate `FUTURE_ROADMAP.md` if the sprint delivered one of its items. Update the sprint log in `docs/PROJECT_KNOWLEDGE.md` and promote any reusable lessons to the "Lessons learned" section. The results of the retrospective **MUST** be presented to the user for approval.
 10. **Push** — Push to remote. The retrospective may surface issues worth fixing before the code leaves local; if so, loop back to steps 7–8 first.
 11. **Close issues & milestone** — Close each completed GitHub Issue (with commit SHA in the close comment). Close the milestone once all issues are resolved. Detach any remaining open issues from the milestone before closing it.

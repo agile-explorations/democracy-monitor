@@ -12,6 +12,22 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-GOOD-REPAIR: the charter says what it brings; the record shows when it was wrong; the reading can be contradicted (#812–#819, milestone 129, v1.19.0) — ✅ built 2026-08-29; charter copy owner-verbatim
+
+**Origin**: an outside critique read the site against Engaged Buddhism — Glassman's three tenets, Nhất Hạnh's refusal of sides, Faure on the rhetoric of immediacy, Hakuin's buji — and landed four pressures the owner accepted: "This site exists to make that movement visible. Nothing more" conceals an apparatus (fourteen categories, a norms page, eight baselines, a two-model reviewer with five mechanisms, _departure_ on screen over `concerning`/`erosion` in the exports); "bearing witness" is doing work "keeping an instrument in good repair" would do more accurately (Greyston, not the street retreat); the charter says why watch but not why stop at the record, and the conduct that licenses neutrality (swap audit, era rates, corrections, reversals) was nowhere on the page; and one person plus a model with no one positioned to say "your reading of this document is off."
+
+**Owner decisions** (AskUserQuestion, 2026-08-29): framing "a record kept in good repair" (witness reserved for the corpus); a standing reversals ledger updated per release; sangha before the send (dispute link on every reviewed document + a first two-outside-reader audit of 50 verdicts); drafts by Claude, owner edits, verbatim ships.
+
+**Built**: W1 #812 `components/why/ApparatusInventory.tsx` rendered from `CATEGORIES`, `BASELINE_CONFIGS`, `ASSESSMENT_LABELS`/`EROSION_TYPE_LABELS`, and a new `lib/data/model-roster.ts` that the orchestrators now import (the inventory cannot drift from the code); "Nothing more" replaced; "Why this stops at the record"; methodology Baselines table from `BASELINE_CONFIGS` (its hard-coded single years had disagreed with the config's two-year labels); Pass-2 instructions deep-linked with `PASS2_PROMPT_VERSION`. W2 #813 stance from one constant in both reading levels. W3 #814 `/system/reversals` seeded with 15 dated, evidence-linked entries; release-ritual step in CLAUDE.md. W4 #815 `feedback.metadata` (migration 0063), type `dispute`, own rate policy, `DisputeLink` on the week table (documents.id now carried), research citations (`ResearchDocCard` split out for size) and explore cards; `/feedback?type=dispute` prefilled mode; prefilled GitHub issue as the second path. W5 #816 `pnpm audit:readers` packet + decisions template + Cohen's κ scoring; `ReaderAuditPanel` beside the era rates (2026-Q3 in progress). W6 #817 closed on evidence: 0 untitled cases, 0 RECAP composites, titles cleaner than tracked captions — no change. Follow-up #819 filed (reversals recorded in the database).
+
+**Spec deviations**: W6 not built (premise refuted by the sizing query); `narrative-prompts.ts` keeps its internal "witness tone" instruction to the narrative model — a prompt, not public copy; changing it would alter generation and is out of scope.
+
+**Lessons** (promoted to PROJECT_KNOWLEDGE): publish the lens from the lens; a claim of neutrality is licensed by a page of reversals, not a sentence; check the premise before building the fix.
+
+**Open**: owner names the two readers (packet issued with `pnpm audit:readers --sample 50 --seed 2026-Q3`); first dispute end-to-end on prod after deploy; #819.
+
+---
+
 ## Sprint R-POOL-HYGIENE: clean the research pool, and an instrument that would have caught it (#799–#805, milestone 127, v1.18.0–v1.18.2) — ✅ shipped 2026-08-29; gate accepted under intent; W1b filed
 
 **Origin**: re-validating the 18 outreach questions before the send found the served top-10 polluted on the rule-of-law questions (RL1: five "SES Performance Review Board Membership" notices; RL2: GAO "Working Dogs" at #2). The owner asked two questions the plan had to answer: is the search optimized for the original 12 and fragile on novel questions, and why did no instrument catch this? A 12-question novel battery (written for the run, in no eval/outreach/holdout/loadtest set) plus the 19 outreach questions, all docsOnly on prod, answered both: the pollution was uniform (top-10 alias-only 30% novel / 40% outreach), the tail was question-blind by construction ("Public Law 119-21" on 29 of 31 questions), and every quality instrument ran on the same 14 questions and scored presence-anywhere, never the served order. The #702 holdout's seven cases had become the tailored outreach questions.

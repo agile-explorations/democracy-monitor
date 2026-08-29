@@ -15,9 +15,10 @@
 
 import { getProvider } from '@/lib/ai/provider';
 import { composeTieredResults } from '@/lib/data/document-tiers';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import type { ResearchDocument } from '@/lib/services/search-service';
 
-const RERANK_MODEL = 'gpt-4o-mini';
+const RERANK_MODEL = MODEL_ROSTER.retrievalHelpers.id;
 const RERANK_TIMEOUT_MS = 8_000;
 const MAX_CANDIDATES = 60;
 const EXCERPT_CHARS = 160;

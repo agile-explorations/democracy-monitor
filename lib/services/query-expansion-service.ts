@@ -20,6 +20,7 @@ import { createHash } from 'crypto';
 import { getProvider } from '@/lib/ai/provider';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { ExpansionWindow } from '@/lib/services/alias-count-cache';
 import {
@@ -40,7 +41,7 @@ export {
   windowFilters,
 } from '@/lib/services/alias-count-cache';
 
-const EXPANSION_MODEL = 'gpt-4o-mini';
+const EXPANSION_MODEL = MODEL_ROSTER.retrievalHelpers.id;
 const EXPANSION_CACHE_TTL = 7 * 86400;
 const MAX_ALIASES = 12;
 // #763 R5 (16-term enumeration expansion) was measured and dropped: the

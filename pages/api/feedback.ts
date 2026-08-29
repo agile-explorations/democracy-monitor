@@ -14,18 +14,40 @@ import { requireDb } from '@/lib/utils/api-helpers';
 import { attachResponses } from '@/lib/utils/feedback-responses';
 import { enforceRateLimit, getClientIp, RATE_LIMITS } from '@/lib/utils/rate-limit';
 
-const VALID_TYPES = ['suggestion', 'data-issue', 'question', 'other'] as const;
+const VALID_TYPES = ['suggestion', 'data-issue', 'question', 'other', 'dispute'] as const;
 
-const FeedbackSchema = z.object({
-  email: z.email().optional(),
-  category: z.string().max(50).optional(),
-  type: z.enum(VALID_TYPES),
-  message: z.string().min(1, 'Message is required').max(5000, 'Message too long (max 5000 chars)'),
-  pageUrl: z.string().max(500).optional(),
-  // Cloudflare Turnstile token; optional here because dev/local runs without
-  // keys — verifyTurnstile enforces it whenever TURNSTILE_SECRET_KEY is set.
-  turnstileToken: z.string().optional(),
+/** A dispute of one document's AI reading (#815) — structured so the public
+ *  list can show what was disputed and the ledger can answer it. */
+export const DisputeMetadataSchema = z.object({
+  documentId: z.number().int().positive().nullable().optional(),
+  url: z.string().max(1000).nullable().optional(),
+  title: z.string().min(1).max(300),
+  category: z.string().min(1).max(50),
+  weekOf: z.string().max(10).nullable().optional(),
+  verdict: z.string().min(1).max(40),
+  erosionType: z.string().max(40).nullable().optional(),
+  surface: z.enum(['week', 'research', 'explore']),
 });
+
+const FeedbackSchema = z
+  .object({
+    email: z.email().optional(),
+    category: z.string().max(50).optional(),
+    type: z.enum(VALID_TYPES),
+    message: z
+      .string()
+      .min(1, 'Message is required')
+      .max(5000, 'Message too long (max 5000 chars)'),
+    pageUrl: z.string().max(500).optional(),
+    // Cloudflare Turnstile token; optional here because dev/local runs without
+    // keys — verifyTurnstile enforces it whenever TURNSTILE_SECRET_KEY is set.
+    turnstileToken: z.string().optional(),
+    metadata: DisputeMetadataSchema.optional(),
+  })
+  .refine((f) => f.type !== 'dispute' || f.metadata != null, {
+    message: 'A dispute must say which document and which reading it disputes',
+    path: ['metadata'],
+  });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse): Promise<void> {
   if (!requireDb(res)) return;
@@ -34,7 +56,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return handleGet(res);
   }
   if (req.method === 'POST') {
-    if (!(await enforceRateLimit(req, res, RATE_LIMITS.email))) return;
+    const policy = req.body?.type === 'dispute' ? RATE_LIMITS.dispute : RATE_LIMITS.email;
+    if (!(await enforceRateLimit(req, res, policy))) return;
     return handlePost(req, res);
   }
   res.status(405).json({ error: 'Method not allowed' });
@@ -50,6 +73,7 @@ async function handleGet(res: NextApiResponse): Promise<void> {
         category: feedback.category,
         message: feedback.message,
         createdAt: feedback.createdAt,
+        metadata: feedback.metadata,
       })
       .from(feedback)
       .where(eq(feedback.approved, true))
@@ -87,6 +111,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse): Promise<vo
         type: parsed.data.type,
         message: parsed.data.message,
         pageUrl: parsed.data.pageUrl || null,
+        metadata: parsed.data.type === 'dispute' ? (parsed.data.metadata ?? null) : null,
       })
       .returning({ id: feedback.id });
 
