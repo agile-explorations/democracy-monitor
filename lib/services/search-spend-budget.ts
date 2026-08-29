@@ -21,11 +21,19 @@ import { envInt } from '@/lib/utils/env';
 
 export type SpendUnit = 'build' | 'stream';
 export type SpendScope = 'source' | 'global';
+/** Which per-source ceiling applies: a human/open source, or our own
+ *  machine token (#803: a gate day runs golden + prewarm + hygiene +
+ *  eval on the same credential — ~65 novel builds, over the public 30). */
+export type SpendSourceKind = 'source' | 'machine';
 
-export const SPEND_LIMITS: Record<SpendScope, Record<SpendUnit, number>> = {
+export const SPEND_LIMITS: Record<SpendScope | 'machine', Record<SpendUnit, number>> = {
   source: {
     build: envInt('SEARCH_SPEND_SOURCE_BUILDS', 30, 1, 100_000),
     stream: envInt('SEARCH_SPEND_SOURCE_STREAMS', 60, 1, 100_000),
+  },
+  machine: {
+    build: envInt('SEARCH_SPEND_MACHINE_BUILDS', 200, 1, 100_000),
+    stream: envInt('SEARCH_SPEND_MACHINE_STREAMS', 200, 1, 100_000),
   },
   global: {
     build: envInt('SEARCH_SPEND_GLOBAL_BUILDS', 600, 1, 1_000_000),
@@ -97,6 +105,7 @@ export async function admitSpend(
   unit: SpendUnit,
   sourceId: string,
   now: Date = new Date(),
+  kind: SpendSourceKind = 'source',
 ): Promise<SpendVerdict> {
   const day = dayStamp(now);
   const [source, global] = await Promise.all([
@@ -122,7 +131,7 @@ export async function admitSpend(
     );
   }
   if (!budgetEnabled()) return { ok: true };
-  return evaluateBudget({ source, global }, { source: SPEND_LIMITS.source[unit], global: limit });
+  return evaluateBudget({ source, global }, { source: SPEND_LIMITS[kind][unit], global: limit });
 }
 
 async function trackBuildSpike(now: Date): Promise<void> {
