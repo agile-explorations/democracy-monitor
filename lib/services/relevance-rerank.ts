@@ -113,6 +113,21 @@ async function rankAll(question: string, docs: ResearchDocument[]): Promise<Rese
 }
 
 /**
+ * Rank a pool IN PLACE (#800): every document stays, only the order changes.
+ * The overfetch-then-cut rerankers below skip the model when nothing is to
+ * be cut, which is exactly the enumeration pool's case (60 in, 60 out) —
+ * the 2026-08-29 gate refresh showed `pool-rerank 0ms` and RL1's notices
+ * still first. Original order on any failure.
+ */
+export async function rerankInPlace(
+  question: string,
+  docs: ResearchDocument[],
+): Promise<ResearchDocument[]> {
+  if (docs.length < 2) return docs;
+  return rankAll(question, docs);
+}
+
+/**
  * Re-rank candidates by bearing-on-question and keep the top `keep`.
  * Falls back to the first `keep` of the original order on any failure.
  */
