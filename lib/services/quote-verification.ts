@@ -54,6 +54,10 @@ export interface QuoteVerificationResult {
     /** Two or more non-cited context documents contain the quote — likely a
      *  term of art; the citation probably marks the claim's source (#720). */
     ambiguousIn?: number[];
+    /** Times this identical quote + citation pairing was flagged in the
+     *  answer (an answer that quotes a phrase three times gets one entry
+     *  marked ×3, 2026-08-28). */
+    count?: number;
     /** Nearest actual document text (raw), when the quote's opening words
      *  could be anchored in a cited document (#718). */
     nearest?: { citation: number; text: string };
@@ -198,7 +202,23 @@ function resolveMisses(
       unverified.push(buildMiss(q, containing, idByCitation, rawById));
     }
   }
-  return { corrections, fixes, unverified };
+  return { corrections, fixes, unverified: dedupeMisses(unverified) };
+}
+
+/** Collapse identical (quote, citations) misses into one entry with a
+ *  count — the same phrase quoted three times is one finding, not three.
+ *  Exported for tests. */
+export function dedupeMisses(
+  misses: QuoteVerificationResult['unverified'],
+): QuoteVerificationResult['unverified'] {
+  const byKey = new Map<string, QuoteVerificationResult['unverified'][number]>();
+  for (const m of misses) {
+    const key = `${normalizeForMatch(m.quote)}|${[...m.citations].sort().join(',')}`;
+    const seen = byKey.get(key);
+    if (seen) seen.count = (seen.count ?? 1) + 1;
+    else byKey.set(key, { ...m });
+  }
+  return [...byKey.values()];
 }
 
 /** Fetch title+content haystacks for a set of document ids. */

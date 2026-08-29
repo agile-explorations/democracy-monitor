@@ -7,7 +7,7 @@ import {
   normalizeForMatch,
   quoteAppearsIn,
 } from '@/lib/services/quote-matching';
-import { findQuoteElsewhere } from '@/lib/services/quote-verification';
+import { dedupeMisses, findQuoteElsewhere } from '@/lib/services/quote-verification';
 
 describe('extractQuotedClaims', () => {
   it('pairs quotes with same-sentence citations', () => {
@@ -393,5 +393,44 @@ describe('CREC page markers in stored text (#718 v1.9.33)', () => {
     expect(quoteAppearsIn('the explicit authority to assist the Federal Government', source)).toBe(
       true,
     );
+  });
+});
+
+describe('editorial brackets, adjacent brackets, duplicate misses (2026-08-28)', () => {
+  it('matches a quote against a source with editorial insertions ("[v]ocalize[d]")', () => {
+    const source = normalizeForMatch(
+      'Witnesses were asked if this FBI employee had “[v]ocalize[d] support for President Trump.” In addition, [sic] investigators asked about [the] rally.',
+    );
+    expect(quoteAppearsIn('vocalized support for President Trump', source)).toBe(true);
+    expect(quoteAppearsIn('investigators asked about the rally', source)).toBe(true);
+  });
+
+  it('pairs a quote with the bracket adjacent to it when the sentence holds two brackets', () => {
+    const answer =
+      'A member called it a “nakedly political prosecution” [Doc 38] and the committee report [Doc 35] agreed.';
+    const [q] = extractQuotedClaims(answer);
+    expect(q.citations).toEqual([38, 35]);
+    expect(q.citationSpan).toBeDefined();
+    expect(answer.slice(q.citationSpan!.start, q.citationSpan!.end)).toBe('[Doc 38]');
+  });
+
+  it('records no span when neither bracket is adjacent to the quote', () => {
+    const answer =
+      'The report described a “nakedly political prosecution” funded federally [Doc 38] and cited [Doc 35].';
+    const [q] = extractQuotedClaims(answer);
+    expect(q.citationSpan).toBeUndefined();
+  });
+
+  it('collapses identical misses into one entry with a count', () => {
+    const miss = { quote: 'vocalized support for President Trump', citations: [45] };
+    const out = dedupeMisses([
+      miss,
+      { ...miss },
+      { ...miss },
+      { quote: 'other phrase here', citations: [45] },
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0].count).toBe(3);
+    expect(out[1].count).toBeUndefined();
   });
 });

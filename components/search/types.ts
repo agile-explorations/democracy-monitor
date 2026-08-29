@@ -47,6 +47,8 @@ export interface ResearchResult {
       foundIn?: number;
       /** 2+ non-cited docs contain the quote — term-of-art note (#720). */
       ambiguousIn?: number[];
+      /** Identical quote + citation flagged this many times in the answer. */
+      count?: number;
       nearest?: { citation: number; text: string };
     }>;
   } | null;
