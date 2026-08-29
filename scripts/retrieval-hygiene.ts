@@ -30,13 +30,16 @@ import type { HygieneCapture } from '@/lib/utils/retrieval-hygiene';
 import { machineAuthHeaders } from './loadtest/client';
 
 const USAGE = `Usage:
-  pnpm retrieval:hygiene --base URL --out FILE [--set novel|outreach|all] [--gate] [--pace MS]
+  pnpm retrieval:hygiene --base URL --out FILE [--set novel|outreach|all] [--refresh] [--gate] [--pace MS]
   pnpm retrieval:hygiene --diff A.json B.json
   pnpm retrieval:hygiene --report FILE
 
   --base URL     Server to capture from (prod: https://democracymonitor.us).
   --out FILE     Capture output (JSON of HygieneCapture[]).
   --set          Which bank to run (default all).
+  --refresh      Rebuild every pool on the server (refresh=true) — REQUIRED for a
+                 gate run after a deploy: docsOnly pools are cached for 7 days, so
+                 without it a capture measures whatever code built the cache.
   --gate         Exit 1 when the run breaches DEFAULT_THRESHOLDS.
   --pace MS      Pause after a cached answer (default 6000; cold builds pace themselves).
   --diff A B     Per-question deltas between two captures.
@@ -68,24 +71,29 @@ function loadBank(set: string): BankQuestion[] {
 
 /** One browser-faithful docsOnly capture: re-request on edge cut, wait-poll
  *  on 202 (another build in flight), back off on 429 (per-source slots). */
-async function capture(base: string, q: BankQuestion): Promise<HygieneCapture> {
+async function capture(base: string, q: BankQuestion, refresh: boolean): Promise<HygieneCapture> {
   const url = `${base}/api/search?${new URLSearchParams({
     mode: 'research',
     docsOnly: 'true',
     q: q.question,
+    ...(refresh ? { refresh: 'true' } : {}),
     ...(q.params ?? {}),
   })}`;
   const headers = machineAuthHeaders();
   const t0 = Date.now();
+  let requestUrl = url;
   while (Date.now() - t0 < CLIENT_BUDGET_MS) {
     let res: Response;
     try {
-      res = await fetch(url, { headers, signal: AbortSignal.timeout(175_000) });
+      res = await fetch(requestUrl, { headers, signal: AbortSignal.timeout(175_000) });
     } catch {
+      // Edge cut: the build continues server-side — poll for it, don't rebuild.
+      requestUrl = url.replace('&refresh=true', '');
       await sleep(15_000);
       continue;
     }
     if (res.status === 202) {
+      requestUrl = url.replace('&refresh=true', '');
       const body = (await res.json().catch(() => ({}))) as { retryAfterMs?: number };
       await sleep(Math.max(8_000, body.retryAfterMs ?? 8_000));
       continue;
@@ -147,9 +155,10 @@ async function main(): Promise<void> {
   if (!base || !out) throw new Error(USAGE);
   const pace = Number(arg(args, '--pace') ?? 6000);
   const bank = loadBank(arg(args, '--set') ?? 'all');
+  const refresh = args.includes('--refresh');
   const captures: HygieneCapture[] = [];
   for (const q of bank) {
-    const c = await capture(base, q);
+    const c = await capture(base, q, refresh);
     captures.push(c);
     console.log(
       `[hygiene] ${q.id.padEnd(16)} docs=${c.docs.length} ${c.ms != null ? `${(c.ms / 1000).toFixed(0)}s` : ''} ${c.error ?? ''}`,

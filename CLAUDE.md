@@ -64,7 +64,7 @@ pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter 
 pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
-pnpm retrieval:hygiene # Pool-hygiene battery on the never-tuned-on question bank (#803; --base URL --out FILE [--set novel|outreach|all] [--gate] | --diff A B)
+pnpm retrieval:hygiene # Pool-hygiene battery on the never-tuned-on question bank (#803; --base URL --out FILE [--set novel|outreach|all] [--refresh: REQUIRED after a deploy — pools cache 7d] [--gate] | --diff A B)
 ```
 
 Package manager is **pnpm**. Test framework is **Vitest** with jsdom environment.
