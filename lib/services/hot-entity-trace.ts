@@ -12,13 +12,17 @@ export function logSalienceOutcome(o: {
   eras: EntityEra[];
   poolRows: Array<{ phrase: string }>;
   questionRows: Array<{ phrase: string }>;
-  shortlist: Array<{ phrase: string }>;
+  shortlist: Array<{ phrase: string; channel?: string }>;
   picks: string[] | null;
   arms: Array<{ phrase: string }>;
 }): void {
+  // Global-channel nominees are barred from the mechanical top-up (#799);
+  // the count shows how much of the shortlist that rule touched.
+  const globalExcluded = o.shortlist.filter((r) => r.channel === 'global').length;
   console.log(
     `[salience] eras=${o.eras.join('+')} pool=${o.poolRows.length} q=${o.questionRows.length} ` +
       `shortlist=${o.shortlist.length} judge=${o.picks ? o.picks.length + ' picks' : 'NULL(fallback)'} ` +
+      `global-excluded=${globalExcluded} ` +
       `arms=${o.arms.length}: ${o.arms.map((a) => a.phrase).join(' | ')}`,
   );
   if (process.env.SALIENCE_TRACE === '1') {

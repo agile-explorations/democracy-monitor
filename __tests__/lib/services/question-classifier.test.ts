@@ -76,6 +76,16 @@ describe('classifyQuestionMode', () => {
     }
   });
 
+  it('era-comparative funding/legislation questions enumerate (#801)', () => {
+    for (const q of [
+      'How has congressional funding legislation for ICE and CBP compared across the last three administrations?',
+      'How have appropriations riders on immigration enforcement differed across administrations?',
+      'How did inspector general reports on detention compare between the first and second Trump administrations?',
+    ]) {
+      expect(classifyQuestionMode(q), q).toBe('enumeration');
+    }
+  });
+
   it('keeps analytical questions analytical', () => {
     for (const q of [
       'Why did the administration remove inspectors general?',

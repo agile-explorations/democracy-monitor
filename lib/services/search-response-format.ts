@@ -61,6 +61,7 @@ export function formatDocList(docs: ResearchDocument[]) {
     p2Summary: doc.p2Summary,
     ...(doc.matchSnippet ? { matchSnippet: doc.matchSnippet } : {}),
     ...(doc.matchedAlias ? { matchedAlias: doc.matchedAlias } : {}),
+    ...(doc.provenance ? { provenance: doc.provenance } : {}),
   }));
 }
 

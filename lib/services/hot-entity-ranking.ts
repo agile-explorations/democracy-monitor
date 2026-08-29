@@ -151,6 +151,11 @@ export function rankHotEntities(
 }
 
 // Pure entity-ranking primitives (moved from hot-entity-selection, 2026-08-24).
+/** Nomination channel (#799): which signal put an entity on the shortlist.
+ *  `global` is question-blind (era-wide breadth) and may reach the judge,
+ *  but never the judge-bypassing mechanical top-up. */
+export type NominationChannel = 'pool' | 'question' | 'category' | 'global';
+
 export interface EntityRow {
   phrase: string;
   entityClass: string;
@@ -158,6 +163,7 @@ export interface EntityRow {
   ftsMatches: number;
   docFreqTerm: number;
   docFreqBaseline: number;
+  channel?: NominationChannel;
 }
 
 export interface PoolEntityRow extends EntityRow {

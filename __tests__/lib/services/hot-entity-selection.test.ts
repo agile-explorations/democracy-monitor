@@ -12,6 +12,7 @@ import {
   rankPoolEntities,
   stabilityFloor,
   stratifyByClass,
+  topUpEligible,
 } from '@/lib/services/hot-entity-selection';
 
 const entity = (
@@ -205,6 +206,38 @@ describe('finalizeArms mechanical top-up (#762)', () => {
     expect(arms.map((a) => a.phrase)).toContain('J.G.G. v. Trump');
   });
 
+  it('never draws the top-up from the question-blind global channel (#799)', () => {
+    // Global-channel breadth leaders outrank every question-conditioned
+    // nominee on breadth score — the 2026-08-29 battery's "Public Law 119-21".
+    const giants = Array.from({ length: 8 }, (_, i) => ({
+      ...row(`giant-${i}`, 'statute'),
+      categories: ['fiscal', 'executiveActions', 'rulemaking', 'civilService', 'elections'],
+      docFreqTerm: 500,
+      channel: 'global' as const,
+    }));
+    const locals = Array.from({ length: 6 }, (_, i) => ({
+      ...row(`local-${i}`, 'caption'),
+      docFreqTerm: 20,
+      channel: 'question' as const,
+    }));
+    expect(topUpEligible([...giants, ...locals]).map((r) => r.phrase)).toEqual(
+      locals.map((l) => l.phrase),
+    );
+    const arms = finalizeArms([...giants, ...locals], [], [], []).map((a) => a.phrase);
+    expect(arms.filter((p) => p.startsWith('giant-'))).toEqual([]);
+    for (const l of locals) expect(arms).toContain(l.phrase);
+  });
+
+  it('still runs a global-channel entity the judge picked (#799)', () => {
+    const giant = {
+      ...row('United States v. Comey', 'caption'),
+      docFreqTerm: 500,
+      channel: 'global' as const,
+    };
+    const arms = finalizeArms([giant, row('other')], ['United States v. Comey'], [], []);
+    expect(arms.map((a) => a.phrase)).toContain('United States v. Comey');
+  });
+
   it('caps the widened roster at MAX_SALIENCE_ARMS_ENUM', () => {
     const shortlist = Array.from({ length: 40 }, (_, i) => row(`e-${String(i).padStart(2, '0')}`));
     const arms = finalizeArms(shortlist, null, [], []);
@@ -244,6 +277,26 @@ describe('stratifyByClass (#775)', () => {
     const out = stratifyByClass(rows, 3);
     expect(out.filter((r) => r.entityClass === 'caption').length).toBe(3);
     expect(out.filter((r) => r.entityClass === 'person').length).toBe(3);
+  });
+});
+
+describe('nominateShortlist channel tags (#799)', () => {
+  it('tags each nominee with its channel, keeping the most question-conditioned one', () => {
+    const shared = entity('shared');
+    const shortlist = nominateShortlist(
+      [poolRow('shared', 3), poolRow('pool-only', 2)],
+      [entity('cat-only'), entity('shared')],
+      [],
+      [entity('global-only'), entity('shared')],
+      [entity('q-only')],
+    );
+    const channelOf = Object.fromEntries(shortlist.map((r) => [r.phrase, r.channel]));
+    expect(channelOf['shared']).toBe('pool');
+    expect(channelOf['pool-only']).toBe('pool');
+    expect(channelOf['q-only']).toBe('question');
+    expect(channelOf['cat-only']).toBe('category');
+    expect(channelOf['global-only']).toBe('global');
+    expect(shared.channel).toBeUndefined(); // inputs are not mutated
   });
 });
 

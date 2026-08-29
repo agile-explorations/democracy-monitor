@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { SlotArm } from '@/lib/services/research-loop-retrieval';
 import {
   composeArmSlotPool,
   composeRoster,
+  composeWithArms,
+  enumPoolRerankEnabled,
+  orderArmPoolByCosine,
   PER_ARM_CAP,
 } from '@/lib/services/research-loop-retrieval';
+import type { ResearchDocument } from '@/lib/services/search-service';
 
 const arm = (phrase: string, matches: number, ids: number[]): SlotArm => ({
   phrase,
@@ -109,5 +113,71 @@ describe('composeRoster priority seats (2026-08-24 gate miss)', () => {
   it('without priority phrases degrades to the sharpest-first slice', () => {
     const aliases = [alias('big', 500), alias('mid', 50), alias('small', 5)];
     expect(composeRoster(aliases, [], 2, 10).map((a) => a.phrase)).toEqual(['small', 'mid']);
+  });
+});
+
+const doc = (
+  id: number,
+  cosineSimilarity: number,
+  provenance: 'seed' | 'arm' = 'seed',
+): ResearchDocument =>
+  ({
+    id,
+    title: `doc-${id}`,
+    content: null,
+    url: `https://example.gov/${id}`,
+    publishedAt: '2025-01-01',
+    sourceType: 'Rule',
+    tier: 'action',
+    sourceOrigin: 'federal_register',
+    caseId: null,
+    category: 'rulemaking',
+    cosineSimilarity,
+    finalScore: null,
+    documentClass: null,
+    p2Assessment: null,
+    p2ErosionType: null,
+    p2Confidence: null,
+    p2Summary: null,
+    provenance,
+  }) as ResearchDocument;
+
+describe('arm-pool order and composition (#800)', () => {
+  it('orders the arm pool by cosine, stable on ties', () => {
+    const pool = [doc(1, 0.2, 'arm'), doc(2, 0.6, 'arm'), doc(3, 0.6, 'arm'), doc(4, 0.4, 'arm')];
+    expect(orderArmPoolByCosine(pool).map((d) => d.id)).toEqual([2, 3, 4, 1]);
+    expect(pool.map((d) => d.id)).toEqual([1, 2, 3, 4]); // input untouched
+  });
+
+  it('keeps the slot guarantee (membership) while putting the best arm docs first', () => {
+    const seed = [doc(10, 0.9), doc(11, 0.8), doc(12, 0.7), doc(13, 0.6)];
+    const arms = [doc(20, 0.1, 'arm'), doc(21, 0.5, 'arm')];
+    const out = composeWithArms(seed, arms, 4);
+    expect(out).toHaveLength(4);
+    expect(out.map((d) => d.id)).toContain(20);
+    expect(out.map((d) => d.id)).toContain(21);
+    // the higher-cosine arm doc takes the first arm slot
+    expect(out.map((d) => d.id).indexOf(21)).toBeLessThan(out.map((d) => d.id).indexOf(20));
+  });
+
+  it('degrades to the seed when there is no arm pool', () => {
+    const seed = [doc(1, 0.9), doc(2, 0.8)];
+    expect(composeWithArms(seed, [], 1).map((d) => d.id)).toEqual([1]);
+  });
+});
+
+describe('ENUM_POOL_RERANK knob (#800)', () => {
+  const prev = process.env.ENUM_POOL_RERANK;
+  afterEach(() => {
+    if (prev === undefined) delete process.env.ENUM_POOL_RERANK;
+    else process.env.ENUM_POOL_RERANK = prev;
+  });
+  it('is on by default and only "off" disables it', () => {
+    delete process.env.ENUM_POOL_RERANK;
+    expect(enumPoolRerankEnabled()).toBe(true);
+    process.env.ENUM_POOL_RERANK = 'off';
+    expect(enumPoolRerankEnabled()).toBe(false);
+    process.env.ENUM_POOL_RERANK = 'on';
+    expect(enumPoolRerankEnabled()).toBe(true);
   });
 });

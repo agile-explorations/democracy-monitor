@@ -302,6 +302,12 @@ describe('source-coverage manifest (#737)', () => {
     expect(prompt).toContain('reports and testimonies');
     expect(prompt).not.toMatch(/NOT ingested:[^.]*GAO/);
   });
+
+  it('names USCIS policy guidance as non-ingested so the model can say so (#802)', () => {
+    const prompt = buildSinglePassPrompt('q', [makeDoc()], null);
+    expect(prompt).toMatch(/NOT ingested:[\s\S]*USCIS policy[\s\S]*guidance/);
+    expect(prompt).toContain('USCIS policy memoranda are not among ingested sources');
+  });
 });
 
 describe('excerpt budget coupling (#736)', () => {

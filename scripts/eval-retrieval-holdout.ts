@@ -10,6 +10,12 @@
  * original 10 cases only and re-validate on a fresh holdout.
  *
  * Usage: npx tsx scripts/eval-retrieval-holdout.ts
+ *
+ * 2026-08-29 (#803): these seven cases are now the tailored outreach
+ * questions — validated, prewarmed, and iterated on since #702 — so they no
+ * longer hold anything out. The held-out set is scripts/hygiene-questions.json
+ * (`pnpm retrieval:hygiene`); a truth-matched refresh of this harness on that
+ * bank is a follow-up sprint (S2 in the R-POOL-HYGIENE plan).
  */
 
 import type { ResearchDocument } from '@/lib/services/search-service';

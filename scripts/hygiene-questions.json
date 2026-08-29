@@ -1,0 +1,270 @@
+{
+  "_comment": "Pool-hygiene question bank (#803). NOVEL questions are never used for tuning; rotate a third out per retrieval sprint (retired questions may join the tuning sets), written BEFORE the sprint's code changes. OUTREACH questions are the tuned-on set and are reported, not held out.",
+  "novel": [
+    {
+      "id": "N01-military",
+      "category": "military",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What court rulings and executive actions address the use of the Insurrection Act or federal troops in U.S. cities since 2020?",
+      "params": {}
+    },
+    {
+      "id": "N02-fiscal",
+      "category": "fiscal",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "Which agencies have withheld or delayed congressionally appropriated funds since January 2025, and what did GAO or the courts say about it?",
+      "params": {}
+    },
+    {
+      "id": "N03-media",
+      "category": "mediaFreedom",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "How have FCC and FTC actions toward media companies and broadcasters changed across administrations?",
+      "params": {}
+    },
+    {
+      "id": "N04-foia",
+      "category": "infoAvailability",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What executive orders and rules have changed how federal agencies handle FOIA requests and public data since 2017?",
+      "params": {}
+    },
+    {
+      "id": "N05-courts",
+      "category": "judicialIndependence",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What government documents address compliance with or defiance of federal court orders by executive agencies since 2025?",
+      "params": {}
+    },
+    {
+      "id": "N06-elections",
+      "category": "elections",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "How has the Department of Justice handled voting rights enforcement and election-related prosecutions across the last three administrations?",
+      "params": {}
+    },
+    {
+      "id": "N07-doj-staff",
+      "category": "civilService",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What actions have been taken to remove or reassign career employees at the Justice Department and FBI, and what congressional oversight followed?",
+      "params": {}
+    },
+    {
+      "id": "N08-ieepa",
+      "category": "executiveActions",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What documents describe the use of emergency powers, including tariffs declared under IEEPA, and the court challenges to them?",
+      "params": {}
+    },
+    {
+      "id": "N09-leaks",
+      "category": "mediaFreedom",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What congressional hearings and inspector general reports address surveillance of journalists or leak investigations?",
+      "params": {}
+    },
+    {
+      "id": "N10-dereg",
+      "category": "rulemaking",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "How have federal agencies changed environmental and public-health rulemaking through deregulatory executive orders since 2025?",
+      "params": {}
+    },
+    {
+      "id": "N11-pardons",
+      "category": "lawEnforcement",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What government documents address pardons or commutations for political allies and January 6 defendants?",
+      "params": {}
+    },
+    {
+      "id": "N12-speech",
+      "category": "civilLiberties",
+      "written": "2026-08-29",
+      "tunedOn": false,
+      "question": "What actions and court cases involve the revocation of visas or deportation of students and scholars for their speech since 2025?",
+      "params": {}
+    }
+  ],
+  "outreach": [
+    {
+      "id": "FW1",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "Which members of Congress have spoken on the floor about Schedule F or reclassifying federal employees, and what concerns did they raise?",
+      "params": {
+        "tier": "discussion"
+      }
+    },
+    {
+      "id": "FW2",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What OPM and OMB actions have been taken regarding federal workforce restructuring since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "FW3",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What government documents reference both federal workforce reduction and inspector general oversight?",
+      "params": {}
+    },
+    {
+      "id": "FW4",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "How did congressional responses to the 2020 Schedule F executive order compare to responses to the 2025 reinstatement?",
+      "params": {}
+    },
+    {
+      "id": "IM1",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What congressional floor speeches have addressed the expansion of 287(g) agreements between ICE and local law enforcement since 2025?",
+      "params": {
+        "tier": "discussion",
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "IM2",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "How did detention-related rulemaking under the Biden administration compare to both Trump administrations?",
+      "params": {}
+    },
+    {
+      "id": "IM3",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What government documents reference both immigration enforcement and due process protections?",
+      "params": {}
+    },
+    {
+      "id": "IM4",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "How have congressional responses to immigration enforcement actions differed between the first and second Trump administrations?",
+      "params": {}
+    },
+    {
+      "id": "RL1",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What firings or removals of inspectors general have occurred across federal agencies, and what congressional responses have there been?",
+      "params": {}
+    },
+    {
+      "id": "RL2",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "What court opinions and executive branch documents address the President's power to remove independent agency officials?",
+      "params": {}
+    },
+    {
+      "id": "RL3",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "How has the use of executive orders and presidential memoranda to modify federal agency independence compared across administrations since 2017?",
+      "params": {}
+    },
+    {
+      "id": "RL4",
+      "category": null,
+      "written": "2026-07-28",
+      "tunedOn": true,
+      "question": "How have DOJ press releases about civil rights enforcement differed across administrations?",
+      "params": {}
+    },
+    {
+      "id": "T-Katz",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What executive actions, proposed rules, and congressional responses address political control over federal grant funding since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "T-Wagner",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What court filings and executive orders address the termination of federal employee collective bargaining agreements since March 2025?",
+      "params": {
+        "dateFrom": "2025-03-01"
+      }
+    },
+    {
+      "id": "T-Natanson",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What interagency agreements and memoranda authorize sharing federal data with immigration enforcement, and what court challenges have they drawn since January 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "T-Aleaziz",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What federal actions, court filings, and congressional statements address penalties for local jurisdictions that decline immigration enforcement cooperation?",
+      "params": {}
+    },
+    {
+      "id": "T-Ainsley",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What government documents and court filings address ICE vehicle pursuits and traffic stops, and how have enforcement directives about them changed since 2025?",
+      "params": {
+        "dateFrom": "2025-01-20"
+      }
+    },
+    {
+      "id": "T-Beavers",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "How has congressional funding legislation for ICE and CBP compared across the last three administrations?",
+      "params": {}
+    },
+    {
+      "id": "T-Schwellenbach",
+      "category": null,
+      "written": "2026-08-10",
+      "tunedOn": true,
+      "question": "What congressional statements and government reports address DHS Inspector General independence across administrations since 2017?",
+      "params": {}
+    }
+  ]
+}

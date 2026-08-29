@@ -1,0 +1,808 @@
+[
+  {
+    "id": "N01-military",
+    "q": "What court rulings and executive actions address the use of the Insurrection Act or federal troops in U.S. cities since 2020?",
+    "ms": 51364,
+    "strata": null,
+    "alsoSearched": [
+      "Insurrection Act",
+      "Executive Order 13925",
+      "Executive Order 13950",
+      "Trump v. New York",
+      "Biden v. Texas",
+      "Federal Troops",
+      "Military Assistance",
+      "Operation Legend",
+      "Operation Warp Speed",
+      "National Guard deployment",
+      "Civil unrest response",
+      "Executive Order 13224",
+      "Executive Order 14333",
+      "Executive Order 13581",
+      "Executive Order 13863",
+      "Operation Midway Blitz",
+      "Executive Order 14159",
+      "Executive Order 14148",
+      "Nationality Act of 1952",
+      "Executive Order 14078",
+      "Executive Order 13886",
+      "Governmental Reorganization Act",
+      "LLC v. BBK Tobacco",
+      "Menora v. Ill",
+      "Executive Order 14257",
+      "Public Law 118-159",
+      "Executive Order 14193",
+      "Executive Order 14195",
+      "Executive Order 14219",
+      "Newsom v. Trump",
+      "Trump v. CASA",
+      "Operation Metro Surge",
+      "Operation Epic Fury",
+      "United States v. Comey",
+      "Executive Order 13769",
+      "Executive Order 14168",
+      "One Big Beautiful Bill Act",
+      "Public Law 119-21",
+      "White House Coronavirus Task Force",
+      "Director Comey",
+      "Government Efficiency' Deregulatory Initiative"
+    ],
+    "docs": [
+      {
+        "id": 1194173,
+        "cosineSimilarity": 0.4428281830533788,
+        "matchedAlias": "Executive Order 13224",
+        "title": "Continuation of the National Emergency With Respect to Perso"
+      },
+      {
+        "id": 2025386,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Menora v. Ill",
+        "title": "Dane Harrel v. Kwame Raoul"
+      },
+      {
+        "id": 2021809,
+        "cosineSimilarity": 0.45455290046071917,
+        "matchedAlias": "National Guard deployment",
+        "title": "DC v. Donald Trump"
+      },
+      {
+        "id": 2045256,
+        "cosineSimilarity": 0,
+        "matchedAlias": "LLC v. BBK Tobacco",
+        "title": "Dane Harrel v. Kwame Raoul"
+      },
+      {
+        "id": 2021744,
+        "cosineSimilarity": 0.43943114314228204,
+        "matchedAlias": "National Guard deployment",
+        "title": "District of Columbia v. Trump"
+      },
+      {
+        "id": 1193608,
+        "cosineSimilarity": 0.46774611605601923,
+        "matchedAlias": "Executive Order 14333",
+        "title": "Declaring a Crime Emergency in the District of Columbia"
+      },
+      {
+        "id": 1626085,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 13925",
+        "title": "Executive Order 13925—Preventing Online Censorship"
+      },
+      {
+        "id": 1140575,
+        "cosineSimilarity": 0.49578576817160513,
+        "matchedAlias": "Operation Midway Blitz",
+        "title": "State of Illinois v. Donald J. Trump"
+      },
+      {
+        "id": 1575622,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 13886",
+        "title": "Continuation of the National Emergency With Respect to Perso"
+      },
+      {
+        "id": 1193615,
+        "cosineSimilarity": 0.47249977771130014,
+        "matchedAlias": "Executive Order 14333",
+        "title": "Additional Measures To Address the Crime Emergency in the Di"
+      },
+      {
+        "id": 2021686,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Newsom v. Trump",
+        "title": "Newsom v. Trump"
+      },
+      {
+        "id": 1297559,
+        "cosineSimilarity": 0.5823946217871504,
+        "matchedAlias": "Insurrection Act",
+        "title": "Insurrection Act of 2025"
+      },
+      {
+        "id": 1299490,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 13950",
+        "title": "To restrict executive agencies from acting in contravention "
+      },
+      {
+        "id": 1298375,
+        "cosineSimilarity": 0.5468261329944879,
+        "matchedAlias": "Insurrection Act",
+        "title": "Insurrection Act of 2025"
+      },
+      {
+        "id": 1194115,
+        "cosineSimilarity": 0.42593306595970937,
+        "matchedAlias": "Executive Order 13581",
+        "title": "Continuation of the National Emergency With Respect to Signi"
+      }
+    ]
+  },
+  {
+    "id": "N04-foia",
+    "q": "What executive orders and rules have changed how federal agencies handle FOIA requests and public data since 2017?",
+    "ms": 184,
+    "strata": null,
+    "alsoSearched": [
+      "Executive Order 13873",
+      "Executive Order 13960",
+      "FOIA Improvement Act",
+      "Office of Information Policy",
+      "Executive Order 13526",
+      "Executive Order 13777",
+      "Executive Order 13901",
+      "Executive Order 13920",
+      "Transparency Initiative",
+      "Transparency in Government",
+      "Foreign Intelligence Surveillance Act of 1978",
+      "Buy American Act",
+      "Amendments Act of 2008",
+      "Public Law 110-261",
+      "Surveillance Act of 1978",
+      "Intelligence Surveillance Act of 1978",
+      "Public Law 114-185",
+      "Executive Order 14219",
+      "Government Efficiency' Deregulatory Initiative",
+      "Eckert v. City",
+      "FDA v. All",
+      "Executive Order 14294",
+      "Executive Order 14148",
+      "Executive Order 14168",
+      "Executive Order 14154",
+      "Executive Order 13991",
+      "Executive Order 14241",
+      "Executive Order 14151",
+      "Public Law 118-63",
+      "Public Law 119-21",
+      "Public Law 115-439",
+      "One Big Beautiful Bill Act",
+      "Executive Order 14257",
+      "Public Law 118-159",
+      "White House Coronavirus Task Force",
+      "Director Comey"
+    ],
+    "docs": [
+      {
+        "id": 2002935,
+        "cosineSimilarity": 0.35608092941253944,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the FISA Amendments Act of 2008 to extend the autho"
+      },
+      {
+        "id": 1129371,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Eckert v. City",
+        "title": "Eckert v. City of Buffalo"
+      },
+      {
+        "id": 1987894,
+        "cosineSimilarity": 0.33030609822789714,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "A bill to amend the FISA Amendments Act of 2008 to extend th"
+      },
+      {
+        "id": 1479074,
+        "cosineSimilarity": 0.425498540572935,
+        "matchedAlias": "Executive Order 13901",
+        "title": "Adjustments of Certain Rates of Pay"
+      },
+      {
+        "id": 1351362,
+        "cosineSimilarity": 0.3672069755702583,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the FISA Amendments Act of 2008 to extend the autho"
+      },
+      {
+        "id": 1570164,
+        "cosineSimilarity": 0.35676124659291486,
+        "matchedAlias": "Executive Order 13920",
+        "title": "Securing the United States Bulk-Power System"
+      },
+      {
+        "id": 1987282,
+        "cosineSimilarity": 0.3636369746660334,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the FISA Amendments Act of 2008 to extend the autho"
+      },
+      {
+        "id": 1468430,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Public Law 115-439",
+        "title": "FIRE GRANTS AND SAFETY ACT OF 2023"
+      },
+      {
+        "id": 1842793,
+        "cosineSimilarity": 0.35238012936764107,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "PROVIDING FOR CONSIDERATION OF THE BILL (H.R. 8035) TO AMEND"
+      },
+      {
+        "id": 1627357,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 13960",
+        "title": "Executive Order 13960—Promoting the Use of Trustworthy Artif"
+      },
+      {
+        "id": 1303261,
+        "cosineSimilarity": 0.3417791393951405,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the Foreign Intelligence Surveillance Act of 1978 t"
+      },
+      {
+        "id": 1155235,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 14241",
+        "title": "Executive Order 14261—Reinvigorating America's Beautiful Cle"
+      },
+      {
+        "id": 1987250,
+        "cosineSimilarity": 0.36665431871518095,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the FISA Amendments Act of 2008 to extend the autho"
+      },
+      {
+        "id": 1471590,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Public Law 118-63",
+        "title": "CONTINUING APPROPRIATIONS AND EXTENSIONS ACT, 2025"
+      },
+      {
+        "id": 2006145,
+        "cosineSimilarity": 0.35608092941253944,
+        "matchedAlias": "Foreign Intelligence Surveillance Act of 1978",
+        "title": "To amend the FISA Amendments Act of 2008 to extend the autho"
+      }
+    ]
+  },
+  {
+    "id": "N06-elections",
+    "q": "How has the Department of Justice handled voting rights enforcement and election-related prosecutions across the last three administrations?",
+    "ms": 164,
+    "strata": null,
+    "alsoSearched": [
+      "Biden v. Texas",
+      "Shelby County v. Holder",
+      "Voting Rights Enforcement",
+      "Executive Order 14019",
+      "H.R.1",
+      "National Voter Registration Act",
+      "Election Integrity Initiative",
+      "Voting Section",
+      "Election Monitoring",
+      "Civil Rights Enforcement",
+      "Voting Rights Litigation",
+      "Executive Order 14248",
+      "Ohio v. LaRose",
+      "NAACP v. Marshall",
+      "Brnovich v. Democratic National Committee",
+      "Ohio LUIS V. GUTIERREZ",
+      "South Carolina v. Katzenbach",
+      "McGirt v. Oklahoma"
+    ],
+    "docs": [
+      {
+        "id": 1443618,
+        "cosineSimilarity": 0.647407741762092,
+        "matchedAlias": null,
+        "title": "Justice Department Releases Information on Efforts to Protec"
+      },
+      {
+        "id": 512513,
+        "cosineSimilarity": 0.5819351608875782,
+        "matchedAlias": null,
+        "title": "Justice Department Sues Four Additional States and One Local"
+      },
+      {
+        "id": 512516,
+        "cosineSimilarity": 0.46619205520392704,
+        "matchedAlias": "Civil Rights Enforcement",
+        "title": "Department of Justice Rule Restores Equal Protection for All"
+      },
+      {
+        "id": 1442038,
+        "cosineSimilarity": 0.5946136606618898,
+        "matchedAlias": "Voting Section",
+        "title": "Justice Department Issues New Guidance on Federal Law Regard"
+      },
+      {
+        "id": 1454086,
+        "cosineSimilarity": 0.527723469383593,
+        "matchedAlias": "Ohio v. LaRose",
+        "title": "Justice Department Files Statements of Interest in Two Votin"
+      },
+      {
+        "id": 2147251,
+        "cosineSimilarity": 0.5838801867585917,
+        "matchedAlias": "Election Monitoring",
+        "title": "Justice Department to Conduct Election Monitoring in Florida"
+      },
+      {
+        "id": 2138271,
+        "cosineSimilarity": 0.5253832518712229,
+        "matchedAlias": "Election Monitoring",
+        "title": "Justice Department to Conduct Election Monitoring in Minneso"
+      },
+      {
+        "id": 2044739,
+        "cosineSimilarity": 0.5701242164584257,
+        "matchedAlias": "Election Monitoring",
+        "title": "Justice Department Announces Monitoring of Polling Sites in "
+      },
+      {
+        "id": 512391,
+        "cosineSimilarity": 0.48180538233515735,
+        "matchedAlias": "Executive Order 14248",
+        "title": "Court Enters Consent Order Requiring North Carolina to Fix I"
+      },
+      {
+        "id": 512736,
+        "cosineSimilarity": 0.5072235108181925,
+        "matchedAlias": "Executive Order 14248",
+        "title": "Justice Department Files Help America Vote Act Lawsuit Again"
+      },
+      {
+        "id": 512767,
+        "cosineSimilarity": 0.533843943981592,
+        "matchedAlias": "National Voter Registration Act",
+        "title": "Justice Department Files Statement of Interest in Illinois C"
+      },
+      {
+        "id": 512738,
+        "cosineSimilarity": 0.518423200010542,
+        "matchedAlias": "National Voter Registration Act",
+        "title": "Justice Department Files Statement of Interest in Oregon Ele"
+      },
+      {
+        "id": 512843,
+        "cosineSimilarity": 0.5536818565929689,
+        "matchedAlias": null,
+        "title": "Justice Department Sues Four States for Failure to Produce V"
+      },
+      {
+        "id": 1164429,
+        "cosineSimilarity": 0.5602077654640157,
+        "matchedAlias": null,
+        "title": "Justice Department Sues Five Additional States for Failure t"
+      },
+      {
+        "id": 1357692,
+        "cosineSimilarity": 0.5247629172508015,
+        "matchedAlias": null,
+        "title": "Justice Department Sues Idaho for Failure to Produce Voter R"
+      }
+    ]
+  },
+  {
+    "id": "FW1",
+    "q": "Which members of Congress have spoken on the floor about Schedule F or reclassifying federal employees, and what concerns did they raise?",
+    "ms": 130,
+    "strata": null,
+    "alsoSearched": [
+      "Schedule F",
+      "H.R. 6395",
+      "H.R. 7608",
+      "S. 1260",
+      "Rep. Jerry Nadler",
+      "Sen. Elizabeth Warren",
+      "Rep. Alexandria Ocasio-Cortez",
+      "Rep. Jim Jordan",
+      "Sen. Rand Paul",
+      "H.R. 3684",
+      "Equal COLA Act",
+      "Congressional Accountability Act",
+      "Congressional Accountability Act of 1995",
+      "Federal Employee Fair Treatment Act of 2017",
+      "Legislative Branch Appropriations Act",
+      "Ethics Reform Act",
+      "Patronage System Act",
+      "Consolidated Omnibus Budget Reconciliation Act of 1986",
+      "DOJ v. House Comm",
+      "Trump v. CASA",
+      "Executive Order 14257",
+      "Public Law 118-159",
+      "Executive Order 14219",
+      "Executive Order 14193",
+      "Safer Federal Workforce Task Force",
+      "Bipartisan Budget Act of 2019",
+      "Executive Order 14148",
+      "Executive Order 14195",
+      "Executive Order 13769",
+      "Executive Order 14168",
+      "Executive Order 14194",
+      "Executive Order 14156",
+      "One Big Beautiful Bill Act",
+      "Public Law 119-21",
+      "White House Coronavirus Task Force",
+      "Director Comey"
+    ],
+    "docs": [
+      {
+        "id": 2051556,
+        "cosineSimilarity": 0.4917850816801216,
+        "matchedAlias": "Congressional Accountability Act",
+        "title": "Preventing Sexual Harassment in the Congressional Workplace:"
+      },
+      {
+        "id": 1303892,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Federal Employee Fair Treatment Act of 2017",
+        "title": "Federal Employee Fair Treatment Act of 2017"
+      },
+      {
+        "id": 2092622,
+        "cosineSimilarity": 0.4814869346196362,
+        "matchedAlias": "Legislative Branch Appropriations Act",
+        "title": "LEGISLATIVE BRANCH APPROPRIATIONS ACT, 2025"
+      },
+      {
+        "id": 1303527,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Equal COLA Act",
+        "title": "Equal COLA Act"
+      },
+      {
+        "id": 2089304,
+        "cosineSimilarity": 0.38457540968655546,
+        "matchedAlias": "Rep. Jerry Nadler",
+        "title": "SEC. 12. SEVERABILITY."
+      },
+      {
+        "id": 1416441,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Rep. Jerry Nadler",
+        "title": "PROTECT OUR COMMUNITIES FROM DUIS ACT"
+      },
+      {
+        "id": 1347153,
+        "cosineSimilarity": 0.5889834168352309,
+        "matchedAlias": "Schedule F",
+        "title": "PREVENTING A PATRONAGE SYSTEM ACT OF 2021"
+      },
+      {
+        "id": 1360082,
+        "cosineSimilarity": 0,
+        "matchedAlias": "DOJ v. House Comm",
+        "title": "RESOLUTION RECOMMENDING THAT THE HOUSE OF REPRESENTATIVES FI"
+      },
+      {
+        "id": 1167040,
+        "cosineSimilarity": 0.5323854747063981,
+        "matchedAlias": "Equal COLA Act",
+        "title": "Introductory Statement on S. 624"
+      },
+      {
+        "id": 1359041,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Sen. Rand Paul",
+        "title": "DUPLICATION SCORING ACT OF 2023"
+      },
+      {
+        "id": 1188496,
+        "cosineSimilarity": 0.31766901294762695,
+        "matchedAlias": "Rep. Jerry Nadler",
+        "title": "PRESIDENTIAL ELECTION REFORM ACT"
+      },
+      {
+        "id": 1571060,
+        "cosineSimilarity": 0,
+        "matchedAlias": "H.R. 7608",
+        "title": "PROVIDING FOR CONSIDERATION OF THE BILL (H.R. 7608) MAKING A"
+      },
+      {
+        "id": 1181410,
+        "cosineSimilarity": 0.514836731563063,
+        "matchedAlias": "Federal Employee Fair Treatment Act of 2017",
+        "title": "FEDERAL EMPLOYEE FAIR TREATMENT ACT OF 2017"
+      },
+      {
+        "id": 1414168,
+        "cosineSimilarity": 0.5181007184931474,
+        "matchedAlias": "Equal COLA Act",
+        "title": "Introductory Statement on S. 3194"
+      },
+      {
+        "id": 1187726,
+        "cosineSimilarity": 0.5141760895383395,
+        "matchedAlias": "Equal COLA Act",
+        "title": "STATEMENTS ON INTRODUCED BILLS AND JOINT RESOLUTIONS"
+      }
+    ]
+  },
+  {
+    "id": "RL1",
+    "q": "What firings or removals of inspectors general have occurred across federal agencies, and what congressional responses have there been?",
+    "ms": 123,
+    "strata": null,
+    "alsoSearched": [
+      "IG Act",
+      "H.R. 7608",
+      "H.R. 2662",
+      "H.R. 6395",
+      "H.R. 1500",
+      "H.R. 3684",
+      "Michael Atkinson",
+      "Glenn Fine",
+      "H.R. 7073",
+      "Inspector General removals",
+      "Free Enterprise Fund v. Public Company Accounting Oversight",
+      "Public Law 107-56",
+      "Single Audit Act",
+      "Seila Law LLC v. Consumer Financial Protection Bureau",
+      "Inspector General Reform Act",
+      "Inspector General Reform Act of 2008",
+      "Inspector General Access Act",
+      "Background The Inspector General Act of 1978",
+      "Inspector General Access Act of 2025",
+      "False Claims Act",
+      "Puente v. City",
+      "Gritchen v. Collier",
+      "Trump v. Cook",
+      "Anti-Corruption Bureau Creation Act",
+      "Public Law 118-159",
+      "Public Law 119-21",
+      "Executive Order 14219",
+      "Executive Order 14148",
+      "Executive Order 14156",
+      "Executive Order 14158",
+      "Executive Order 13991",
+      "Executive Order 14249",
+      "Executive Order 14257",
+      "United States v. Comey",
+      "One Big Beautiful Bill Act",
+      "White House Coronavirus Task Force",
+      "Director Comey",
+      "Government Efficiency' Deregulatory Initiative"
+    ],
+    "docs": [
+      {
+        "id": 1191474,
+        "cosineSimilarity": 0.4896053014852604,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 1338858,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Inspector General Access Act of 2025",
+        "title": "STATEMENTS ON INTRODUCED BILLS AND JOINT RESOLUTIONS"
+      },
+      {
+        "id": 1416451,
+        "cosineSimilarity": 0.5037765138112119,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 1417464,
+        "cosineSimilarity": 0,
+        "matchedAlias": "H.R. 7073",
+        "title": "NEXT GENERATION PIPELINES RESEARCH AND DEVELOPMENT ACT"
+      },
+      {
+        "id": 1417681,
+        "cosineSimilarity": 0.4633974176287686,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 1327579,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Background The Inspector General Act of 1978",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 1297628,
+        "cosineSimilarity": 0.49424906659196266,
+        "matchedAlias": "Inspector General Access Act",
+        "title": "Inspector General Access Act of 2025"
+      },
+      {
+        "id": 2057841,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Anti-Corruption Bureau Creation Act",
+        "title": "STATEMENTS ON INTRODUCED BILLS AND JOINT RESOLUTIONS"
+      },
+      {
+        "id": 1223456,
+        "cosineSimilarity": 0.5187111554934793,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 2057852,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Trump v. Cook",
+        "title": "Introductory Statement on S. 5183"
+      },
+      {
+        "id": 1298563,
+        "cosineSimilarity": 0.4800996132718779,
+        "matchedAlias": "Inspector General Access Act",
+        "title": "Inspector General Access Act of 2025"
+      },
+      {
+        "id": 1571060,
+        "cosineSimilarity": 0,
+        "matchedAlias": "H.R. 7608",
+        "title": "PROVIDING FOR CONSIDERATION OF THE BILL (H.R. 7608) MAKING A"
+      },
+      {
+        "id": 1297032,
+        "cosineSimilarity": 0.5162826998144825,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      },
+      {
+        "id": 1300894,
+        "cosineSimilarity": 0,
+        "matchedAlias": "H.R. 2662",
+        "title": "Providing for consideration of the bill (H.R. 2662) to amend"
+      },
+      {
+        "id": 1319915,
+        "cosineSimilarity": 0.49903496636618305,
+        "matchedAlias": "Inspector General Reform Act",
+        "title": "Senior Executive Service Performance Review Board Membership"
+      }
+    ]
+  },
+  {
+    "id": "RL2",
+    "q": "What court opinions and executive branch documents address the President's power to remove independent agency officials?",
+    "ms": 127,
+    "strata": null,
+    "alsoSearched": [
+      "President's removal power",
+      "independent agency officials",
+      "Humphrey's Executor v. United States",
+      "Morrison v. Olson",
+      "Executive Order 13781",
+      "Vacancies Act",
+      "Executive Order 13957",
+      "Free Enterprise Fund v. PCAOB",
+      "Seila Law LLC v. Consumer Financial Protection Bureau",
+      "Free Enterprise Fund v. Public Company Accounting Oversight",
+      "Executive Order 14003",
+      "Collins v. Yellen",
+      "Myers v. United States",
+      "Executive Order 14219",
+      "National Labor Relations Act",
+      "Dellinger v. Bessent",
+      "Seila Law LLC v. CFPB",
+      "Executive Order 14171",
+      "Harris v. Bessent",
+      "Trump v. Wilcox",
+      "Wilcox v. Trump",
+      "Executive Order 14148",
+      "Patronage System Act",
+      "Trump v. Cook",
+      "Trump v. Slaughter",
+      "United States v. Comey",
+      "Executive Order 14154",
+      "Executive Order 14156",
+      "Executive Order 14230",
+      "One Big Beautiful Bill Act",
+      "Executive Order 14257",
+      "Public Law 118-159",
+      "Public Law 119-21",
+      "White House Coronavirus Task Force",
+      "Director Comey",
+      "Government Efficiency' Deregulatory Initiative",
+      "Electoral Count Reform Act"
+    ],
+    "docs": [
+      {
+        "id": 2020605,
+        "cosineSimilarity": 0.4841000287044097,
+        "matchedAlias": "President's removal power",
+        "title": "Gwynne Wilcox v. Donald Trump"
+      },
+      {
+        "id": 2143144,
+        "cosineSimilarity": 0,
+        "matchedAlias": "independent agency officials",
+        "title": "Working Dogs: Federal Agencies Need to Better Address Health"
+      },
+      {
+        "id": 2036044,
+        "cosineSimilarity": 0.42067221612915473,
+        "matchedAlias": "President's removal power",
+        "title": "Seila Law LLC v. Consumer Financial Protection Bureau"
+      },
+      {
+        "id": 1154247,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 14171",
+        "title": "Executive Order 14171—Restoring Accountability to Policy-Inf"
+      },
+      {
+        "id": 2020525,
+        "cosineSimilarity": 0.5968305947339841,
+        "matchedAlias": "President's removal power",
+        "title": "Cathy Harris v. Scott Bessent"
+      },
+      {
+        "id": 2036064,
+        "cosineSimilarity": 0.4341322433032333,
+        "matchedAlias": "President's removal power",
+        "title": "Seila Law LLC v. Consumer Financial Protection Bureau"
+      },
+      {
+        "id": 2057852,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Trump v. Cook",
+        "title": "Introductory Statement on S. 5183"
+      },
+      {
+        "id": 2020408,
+        "cosineSimilarity": 0.472149099488284,
+        "matchedAlias": "Humphrey's Executor v. United States",
+        "title": "Harris v. Bessent"
+      },
+      {
+        "id": 1347147,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Patronage System Act",
+        "title": "PREVENTING A PATRONAGE SYSTEM ACT OF 2021"
+      },
+      {
+        "id": 2020363,
+        "cosineSimilarity": 0.48405877982079126,
+        "matchedAlias": "Seila Law LLC v. Consumer Financial Protection Bureau",
+        "title": "Dellinger v. Bessent"
+      },
+      {
+        "id": 2020405,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Wilcox v. Trump",
+        "title": "Wilcox v. Trump"
+      },
+      {
+        "id": 2027918,
+        "cosineSimilarity": 0.47789754726247813,
+        "matchedAlias": "President's removal power",
+        "title": "Vhs Acquisition Subsidiary Number 7, Inc. v. National Labor "
+      },
+      {
+        "id": 1359733,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Vacancies Act",
+        "title": "DEPARTMENT OF LABOR SUCCESSION ACT"
+      },
+      {
+        "id": 2026998,
+        "cosineSimilarity": 0.5188154758547666,
+        "matchedAlias": "President's removal power",
+        "title": "Consum Research v. Consum Prod Sfty"
+      },
+      {
+        "id": 1193368,
+        "cosineSimilarity": 0,
+        "matchedAlias": "Executive Order 14003",
+        "title": "Initial Rescissions of Harmful Executive Orders and Actions"
+      }
+    ]
+  }
+]
