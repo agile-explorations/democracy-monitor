@@ -526,20 +526,29 @@ export function DetailedContent() {
             reviewer usually found it <em>less</em> concerning
           </strong>{' '}
           (19 verdicts down, 3 up), almost entirely in the borderline &quot;possible departure&quot;
-          tier — clear departures were judged the same either way. We tested only this direction; we
-          have not yet tested whether earlier-era documents renamed to the current administration
-          are judged more harshly, so this audit does not show that.
+          tier — clear departures were judged the same either way.
         </p>
         <p>
-          What it does show is a reviewer effect: the names carry weight they should not. Whether
-          that is a prior about the administration, or the reviewer discounting text that reads as
-          implausible once renamed (a 2025 document about a Biden-era program), the audit cannot yet
-          say. The effect is smaller than the difference in departure rates between eras shown in
-          the table, and it sits in the tier that decides &quot;notable departure&quot; weeks, not
-          the clear-departure counts behind &quot;sustained departure&quot;. We publish it rather
-          than adjust the reviewer quietly: every status on this site was produced by the reviewer
-          as it is, and any calibration will be its own documented change. The full ledger is on
-          issue #772.
+          We then ran the mirror test: 190 documents from the Biden 2021–22 baseline, renamed to the
+          current administration. Those verdicts moved in 4.2% of documents (range 2–8%), four up
+          and four down, with zero movement on the unchanged re-run. Renaming a document to the
+          current administration did <em>not</em> make the reviewer harsher. So this is not a
+          general tilt against one party&apos;s name: the effect is specific to current-term
+          documents, which lose their borderline verdicts once the names no longer fit the events
+          they describe.
+        </p>
+        <p>
+          What the two tests together show is a reviewer effect that runs in one direction: the
+          names carry weight they should not, and the likeliest reading is that the reviewer leans
+          on what it knows about the current administration when a borderline document names it — a
+          2025 document about a program it associates with this administration reads as
+          &quot;possible departure&quot;, and the same text under the other name reads as routine.
+          The effect is smaller than the difference in departure rates between eras shown in the
+          table, and it sits in the tier that decides &quot;notable departure&quot; weeks, not the
+          clear-departure counts behind &quot;sustained departure&quot;. We publish it rather than
+          adjust the reviewer quietly: every status on this site was produced by the reviewer as it
+          is, and any calibration will be its own documented change. The full ledger is on issue
+          #772.
         </p>
         <VerdictRatesTable />
       </Section>
