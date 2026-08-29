@@ -269,7 +269,7 @@ export function ResearchResults({
           Official government documents
           {hasAnswer ? ' \u2014 the basis for the answer above.' : '.'}
         </p>
-        <AlsoSearchedChips phrases={result.alsoSearched} />
+        <AlsoSearchedChips phrases={result.contributingAliases ?? result.alsoSearched} />
         <div className="space-y-2">
           {result.documents.map((doc) => (
             <ResearchDocCard key={doc.id} doc={doc} />

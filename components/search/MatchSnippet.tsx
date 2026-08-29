@@ -80,7 +80,7 @@ export function AlsoSearchedChips({ phrases }: { phrases?: string[] }) {
   return (
     <div
       className="flex flex-wrap items-center gap-1.5 mb-4 text-[11px]"
-      title="Your wording expanded into the record's own terms — only terms verified to appear in the corpus are searched."
+      title="Your wording expanded into the record's own terms. Every term shown surfaced at least one of the documents below; the full searched list is in the API response."
     >
       <span className="text-dm-muted">Also searched:</span>
       {phrases.map((p) => (

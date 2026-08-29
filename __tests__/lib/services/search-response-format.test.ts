@@ -150,3 +150,24 @@ describe('docsOnly build stamp (#803)', () => {
     expect(payload).toHaveProperty('builtBy');
   });
 });
+
+describe('contributingAliases (#806)', () => {
+  it('keeps only searched aliases that surfaced a pool document, case-insensitively', async () => {
+    const { contributingAliases, buildDocsOnlyPayload } =
+      await import('@/lib/services/search-response-format');
+    const docs = [
+      { id: 1, matchedAlias: 'Schedule F' },
+      { id: 2, matchedAlias: 'executive order 13957' },
+      { id: 3 },
+    ] as never[];
+    const terms = [
+      { phrase: 'Schedule F', matches: 69 },
+      { phrase: 'Executive Order 13957', matches: 22 },
+      { phrase: 'One Big Beautiful Bill Act', matches: 460 },
+    ];
+    expect(contributingAliases(docs, terms)).toEqual(['Schedule F', 'Executive Order 13957']);
+    const payload = buildDocsOnlyPayload(docs, 0.5, null, null, terms);
+    expect(payload.alsoSearched).toHaveLength(3);
+    expect(payload.contributingAliases).toEqual(['Schedule F', 'Executive Order 13957']);
+  });
+});
