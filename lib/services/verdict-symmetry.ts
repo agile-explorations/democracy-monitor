@@ -93,6 +93,10 @@ export interface SymmetryRecord {
   original: Verdict;
   control: Verdict | null;
   swapped: Verdict | null;
+  /** Second unchanged draw (same prompt as `control`): the clean measure of
+   *  draw-to-draw noise. The control-vs-stored comparison is confounded by
+   *  prompt format (stored verdicts used the contextual prompt). */
+  control2?: Verdict | null;
 }
 
 export interface SymmetrySummary {
@@ -109,8 +113,15 @@ export interface SymmetrySummary {
   swapConcernFlips: number;
   towardMoreConcerning: number;
   towardLessConcerning: number;
-  /** Net rate: swap concern-flip rate minus control concern-disagreement rate. */
+  /** Pairs with a second control draw. */
+  doubleControl: number;
+  /** Second control draw crossed the concerning line vs the first (pure draw noise). */
+  drawNoiseConcernFlips: number;
+  drawNoiseConcernRate: number | null;
+  /** Net rate: swap concern-flip rate minus draw noise (when measured), else
+   *  minus the control-vs-stored rate (an upper bound on noise). */
   netConcernFlipRate: number;
+  netBasis: 'draw-noise' | 'control-vs-stored';
   swapConcernFlipRate: number;
   controlConcernRate: number;
   /** Wilson 95% interval for the swap concern-flip rate. */
@@ -129,6 +140,27 @@ export function wilson95(k: number, n: number): [number, number] {
   return [Math.max(0, center - half), Math.min(1, center + half)];
 }
 
+/** Fold one paired record into the running summary. */
+function tallyPair(s: SymmetrySummary, r: SymmetryRecord): void {
+  const control = r.control as Verdict;
+  const swapped = r.swapped as Verdict;
+  if (control !== r.original) s.controlLabelDisagreement++;
+  if (isConcerning(control) !== isConcerning(r.original)) s.controlConcernDisagreement++;
+  if (swapped !== control) s.swapLabelFlips++;
+  if (r.control2) {
+    s.doubleControl++;
+    if (isConcerning(r.control2) !== isConcerning(control)) s.drawNoiseConcernFlips++;
+  }
+  const cat = (s.byCategory[r.category] ??= { paired: 0, swapConcernFlips: 0 });
+  cat.paired++;
+  if (isConcerning(swapped) !== isConcerning(control)) {
+    s.swapConcernFlips++;
+    cat.swapConcernFlips++;
+    if (SEVERITY[swapped] > SEVERITY[control]) s.towardMoreConcerning++;
+    else s.towardLessConcerning++;
+  }
+}
+
 export function summarizeSymmetry(records: SymmetryRecord[]): SymmetrySummary {
   const paired = records.filter((r) => r.control && r.swapped);
   const s: SymmetrySummary = {
@@ -140,31 +172,26 @@ export function summarizeSymmetry(records: SymmetryRecord[]): SymmetrySummary {
     swapConcernFlips: 0,
     towardMoreConcerning: 0,
     towardLessConcerning: 0,
+    doubleControl: 0,
+    drawNoiseConcernFlips: 0,
+    drawNoiseConcernRate: null,
     netConcernFlipRate: 0,
+    netBasis: 'control-vs-stored',
     swapConcernFlipRate: 0,
     controlConcernRate: 0,
     wilson95: [0, 0],
     byCategory: {},
   };
-  for (const r of paired) {
-    const control = r.control as Verdict;
-    const swapped = r.swapped as Verdict;
-    if (control !== r.original) s.controlLabelDisagreement++;
-    if (isConcerning(control) !== isConcerning(r.original)) s.controlConcernDisagreement++;
-    if (swapped !== control) s.swapLabelFlips++;
-    const cat = (s.byCategory[r.category] ??= { paired: 0, swapConcernFlips: 0 });
-    cat.paired++;
-    if (isConcerning(swapped) !== isConcerning(control)) {
-      s.swapConcernFlips++;
-      cat.swapConcernFlips++;
-      if (SEVERITY[swapped] > SEVERITY[control]) s.towardMoreConcerning++;
-      else s.towardLessConcerning++;
-    }
-  }
+  for (const r of paired) tallyPair(s, r);
   if (s.paired > 0) {
     s.swapConcernFlipRate = s.swapConcernFlips / s.paired;
     s.controlConcernRate = s.controlConcernDisagreement / s.paired;
-    s.netConcernFlipRate = Math.max(0, s.swapConcernFlipRate - s.controlConcernRate);
+    if (s.doubleControl > 0) {
+      s.drawNoiseConcernRate = s.drawNoiseConcernFlips / s.doubleControl;
+      s.netBasis = 'draw-noise';
+    }
+    const noise = s.drawNoiseConcernRate ?? s.controlConcernRate;
+    s.netConcernFlipRate = Math.max(0, s.swapConcernFlipRate - noise);
     s.wilson95 = wilson95(s.swapConcernFlips, s.paired);
   }
   return s;
@@ -179,7 +206,10 @@ export function renderSymmetrySummary(s: SymmetrySummary): string[] {
     `  control re-run vs stored verdict: label disagreement ${pct(s.paired ? s.controlLabelDisagreement / s.paired : 0)}, concern-line disagreement ${pct(s.controlConcernRate)} (model noise)`,
     `  swapped vs control: label flips ${pct(s.paired ? s.swapLabelFlips / s.paired : 0)}, concern-line flips ${pct(s.swapConcernFlipRate)} [Wilson 95% ${pct(s.wilson95[0])}–${pct(s.wilson95[1])}]`,
     `  direction of concern-line flips: ${s.towardMoreConcerning} toward more concerning, ${s.towardLessConcerning} toward less`,
-    `  NET concern-flip rate (swap − noise): ${pct(s.netConcernFlipRate)}`,
+    s.drawNoiseConcernRate != null
+      ? `  draw noise (second unchanged draw vs first): concern-line disagreement ${pct(s.drawNoiseConcernRate)} on ${s.doubleControl} pairs`
+      : '  draw noise: not measured (run --second-control)',
+    `  NET concern-flip rate (swap − ${s.netBasis}): ${pct(s.netConcernFlipRate)}`,
   ];
   for (const [cat, c] of Object.entries(s.byCategory).sort()) {
     lines.push(`    ${cat}: ${c.swapConcernFlips}/${c.paired}`);
