@@ -75,6 +75,7 @@ function WarningList({ warnings }: { warnings: Unverified[] }) {
           {u.citations.map((n) => (
             <CiteLink key={n} n={n} />
           ))}
+          {(u.count ?? 1) > 1 && <span className="text-dm-muted"> (×{u.count})</span>}
           {u.foundIn != null && (
             <span className="block text-dm-text-secondary/90">
               <span className="text-dm-muted">

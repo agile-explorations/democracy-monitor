@@ -36,6 +36,11 @@ export function normalizeForMatch(text: string): string {
       // stored text ("the explicit [[Page S3465]] authority") — never present
       // in quotes, so stripping is effectively haystack-side (2026-08-14).
       .replace(/\[\[Page [^\]]*\]\]/gi, ' ')
+      // Editorial insertions in sources ("[v]ocalize[d] support", "[the]
+      // President", "[sic]"): keep the inserted letters, drop the brackets
+      // and any [sic] — answers quote the readable form (2026-08-28).
+      .replace(/\[sic\]/gi, '')
+      .replace(/\[([^[\]]{1,40})\]/g, '$1')
       .replace(/[–—]/g, '-')
       .replace(/\[…\]|…|\.\.\./g, ' ')
       // Hyphens are deleted outright (not collapsed): stored text hyphenates
@@ -147,22 +152,40 @@ export function extractQuotedClaims(answer: string): ExtractedQuote[] {
     results.push({
       quote,
       citations: rightCitations ?? leftCitations ?? [],
-      ...bracketSpan(window),
+      ...bracketSpan(window, rightCitations ? 'right' : 'left'),
     });
   }
   return results;
 }
 
-/** The absolute span of the citation bracket in a pairing window — only when
- *  the window holds exactly ONE bracket group, so a rewrite cannot clobber a
- *  neighboring citation (#720). */
+/** Only punctuation/whitespace may sit between a quote and the bracket that
+ *  is "adjacent" to it: `” [38]`, `,” [38]`, `[38] “…`. */
+const ADJACENT_GAP = /^[\s,.;:)\]]*$/;
+
+/** The absolute span of the citation bracket in a pairing window: the single
+ *  bracket group when there is one, else the group ADJACENT to the quote
+ *  (immediately after it in a right window, immediately before it in a left
+ *  window) — the one the quote unambiguously pairs with. Any other
+ *  multi-bracket layout yields no span, so a rewrite can never clobber a
+ *  neighboring citation (#720; adjacency added 2026-08-28 after a verbatim
+ *  "wrong citation" went uncorrected because the sentence held two brackets). */
 function bracketSpan(
   window: { offset: number; text: string } | null,
+  side: 'right' | 'left',
 ): { citationSpan: { start: number; end: number } } | Record<string, never> {
   if (!window) return {};
   const brackets = [...window.text.matchAll(CITATION_GROUP_PATTERN)];
-  if (brackets.length !== 1) return {};
-  const m = brackets[0]!;
+  let m: RegExpMatchArray | undefined;
+  if (brackets.length === 1) m = brackets[0];
+  else if (brackets.length > 1) {
+    const candidate = side === 'right' ? brackets[0]! : brackets[brackets.length - 1]!;
+    const gap =
+      side === 'right'
+        ? window.text.slice(0, candidate.index!)
+        : window.text.slice(candidate.index! + candidate[0].length);
+    if (ADJACENT_GAP.test(gap)) m = candidate;
+  }
+  if (!m) return {};
   return {
     citationSpan: { start: window.offset + m.index!, end: window.offset + m.index! + m[0].length },
   };
