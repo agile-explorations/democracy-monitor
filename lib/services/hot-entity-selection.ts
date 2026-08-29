@@ -39,7 +39,7 @@ import type {
   PoolEntityRow,
 } from '@/lib/services/hot-entity-ranking';
 import { rankCategoryEntities, stratifyByClass } from '@/lib/services/hot-entity-ranking';
-import { logSalienceOutcome } from '@/lib/services/hot-entity-trace';
+import { logSalienceOutcome, logSalienceSkipped } from '@/lib/services/hot-entity-trace';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 
 export type {
@@ -295,6 +295,20 @@ export function stabilityFloor(shortlist: EntityRow[], poolCount: number): Entit
   return [...fromPool, ...captions];
 }
 
+/** Does this window carry any question-conditioned evidence — pool docs that
+ *  mention tracked entities, or entities whose mention docs match the
+ *  question's own words? Without either, the shortlist would be entirely
+ *  category/global (question-blind) and the judge still returned 12 picks
+ *  (`pool=0 q=0 → 12 picks`, the comparative-question baseline windows in
+ *  the 2026-08-29 battery). No evidence → no salience arms (#806). Pure. */
+export function hasQuestionEvidence(
+  poolRows: PoolEntityRow[],
+  questionRows: EntityRow[],
+  minMentions: number = MIN_POOL_MENTIONS,
+): boolean {
+  return questionRows.length > 0 || poolRows.some((r) => r.poolMentions >= minMentions);
+}
+
 /** Nominees eligible for the judge-bypassing top-up (#799): every channel
  *  but `global`. The 2026-08-29 battery measured the global channel's
  *  era-wide breadth leaders ("Public Law 119-21" on 29 of 31 questions,
@@ -374,6 +388,12 @@ export async function selectSalienceArms(
       queryGlobalTop(eras),
       queryQuestionMatch(question, eras),
     ]);
+    if (!hasQuestionEvidence(poolRows, questionRows)) {
+      logSalienceSkipped(eras, poolRows.length);
+      return NO_SALIENCE;
+    }
+    // Global (era-wide, question-blind) nominees reach the judge only beside
+    // question-conditioned ones — guaranteed by the evidence gate above.
     const shortlist = nominateShortlist(
       poolRows,
       stratifyByClass(categoryRows),

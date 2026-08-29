@@ -57,7 +57,10 @@ export interface RunMetrics {
 }
 
 export interface HygieneThresholds {
-  /** Gate: mean top-10 arm share across the run (0–1). */
+  /** Gate: mean top-10 cosine across the run — the headline (owner, 2026-08-29):
+   *  arm share penalizes relevant arm docs (IM1's 287(g) hits), cosine does not. */
+  minTop10Cosine: number;
+  /** Advisory-level gate: mean top-10 arm share across the run (0–1). */
   maxTop10ArmShare: number;
   /** Gate: aliases shared by ≥ aliasShareMin questions. */
   maxSharedAliases: number;
@@ -67,10 +70,12 @@ export interface HygieneThresholds {
   aliasShareMin: number;
 }
 
-/** Starting thresholds (#803): the 2026-08-29 baseline measured 30–40% /
- *  67 / 84 on 31 questions; the sprint targets are ≤15% / ≤10 / ≤25. */
+/** Thresholds (#803, re-based #806): the 2026-08-29 baseline measured
+ *  cosine 0.30 / arm share 36% / 67 shared aliases / 84 recurring docs on 31
+ *  questions; v1.18.1 reached 0.49 / 19% with the tail unchanged. */
 export const DEFAULT_THRESHOLDS: HygieneThresholds = {
-  maxTop10ArmShare: 0.15,
+  minTop10Cosine: 0.45,
+  maxTop10ArmShare: 0.3,
   maxSharedAliases: 10,
   maxRecurringDocs: 25,
   docRecurrenceMin: 3,
@@ -140,6 +145,8 @@ export function runMetrics(
 /** Gate verdict: every failing threshold, named. Empty = pass. */
 export function gateFailures(m: RunMetrics, t: HygieneThresholds = DEFAULT_THRESHOLDS): string[] {
   const out: string[] = [];
+  if (m.meanTop10Cosine < t.minTop10Cosine)
+    out.push(`top-10 mean cosine ${m.meanTop10Cosine.toFixed(2)} < ${t.minTop10Cosine.toFixed(2)}`);
   if (m.meanTop10ArmShare > t.maxTop10ArmShare)
     out.push(`top-10 arm share ${pct(m.meanTop10ArmShare)} > ${pct(t.maxTop10ArmShare)}`);
   if (m.sharedAliases.length > t.maxSharedAliases)

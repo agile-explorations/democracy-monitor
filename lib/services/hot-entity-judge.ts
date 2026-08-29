@@ -52,7 +52,9 @@ export function buildJudgePrompt(question: string, candidates: JudgeCandidate[])
     `about litigation, rights, and process even when you cannot recall the case. ` +
     `Choose ONLY from the list, copy phrases EXACTLY, most ` +
     `relevant first, at most ${MAX_JUDGE_PICKS}. Skip entities that are merely from ` +
-    `the same broad policy area. Return ONLY a JSON array of phrase strings.\n\n` +
+    `the same broad policy area. An entity that would fit most questions about this ` +
+    `era — an omnibus law, a marquee executive order, a task force — does not fit ` +
+    `this one unless the question is about it. Return ONLY a JSON array of phrase strings.\n\n` +
     `Question: "${question}"\n\nEntities:\n${list}`
   );
 }

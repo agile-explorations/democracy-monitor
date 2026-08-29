@@ -6,6 +6,19 @@ import {
 } from '@/lib/services/hot-entity-judge';
 
 describe('buildJudgePrompt', () => {
+  it('tells the judge that an era-wide entity does not fit a question that is not about it (#806)', () => {
+    const prompt = buildJudgePrompt('q', [
+      {
+        phrase: 'Public Law 119-21',
+        entityClass: 'statute',
+        categories: ['fiscal'],
+        docFreqTerm: 257,
+      },
+    ]);
+    expect(prompt).toMatch(/would fit most questions about this era/);
+    expect(prompt).toMatch(/unless the question is about it/);
+  });
+
   it('labels each candidate with class, categories, and recurrence', () => {
     const prompt = buildJudgePrompt('What documents address X?', [
       {
