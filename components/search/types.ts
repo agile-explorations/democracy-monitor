@@ -21,6 +21,9 @@ export interface ResearchResult {
   inferredDateFrom?: string | null;
   /** Corpus-validated alias terms the hybrid arms searched (#702). */
   alsoSearched?: string[];
+  /** Searched aliases that surfaced at least one document (#806): what the
+   *  chips show. `alsoSearched` remains the full searched list. */
+  contributingAliases?: string[];
   /** Deterministic quote verification vs stored document content (#707). */
   quoteVerification?: {
     /** Verification could not run (DB error) — rendered distinctly so a

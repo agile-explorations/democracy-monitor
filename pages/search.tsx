@@ -212,6 +212,7 @@ export default function SearchPage() {
       strata: docsData.strata ?? null,
       inferredDateFrom: docsData.inferredDateFrom ?? null,
       alsoSearched: docsData.alsoSearched ?? undefined,
+      contributingAliases: docsData.contributingAliases ?? undefined,
     };
     if (!isCurrent()) return;
     setResearchResult(baseResult);

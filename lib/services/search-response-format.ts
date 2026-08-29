@@ -40,6 +40,17 @@ export function emptyResearchResponse(docsOnly: boolean) {
   };
 }
 
+/** Searched aliases that surfaced at least one pool document (#806 C): the
+ *  reader-facing "also searched" list. Every corpus-validated alias is still
+ *  searched and still reaches the synthesis prompt (`alsoSearched` /
+ *  `searchedTerms`), but on the 2026-08-29 battery only 52% of searched
+ *  aliases contributed a document — the rest were chips with nothing behind
+ *  them (an omnibus law searched on 23 questions, contributing on 3). Pure. */
+export function contributingAliases(docs: ResearchDocument[], terms: ValidatedAlias[]): string[] {
+  const used = new Set(docs.map((d) => d.matchedAlias?.toLowerCase()).filter(Boolean));
+  return terms.map((t) => t.phrase).filter((p) => used.has(p.toLowerCase()));
+}
+
 export function formatDocList(docs: ResearchDocument[]) {
   return docs.map((doc, i) => ({
     citationIndex: i + 1,
@@ -84,7 +95,11 @@ export function formatResearchResponse(
     // alsoSearched (bare phrases) is the UI-chip field; searchedTerms adds
     // corpus match counts for synthesis transparency (#713).
     ...(searchedTerms.length > 0
-      ? { alsoSearched: searchedTerms.map((t) => t.phrase), searchedTerms }
+      ? {
+          alsoSearched: searchedTerms.map((t) => t.phrase),
+          searchedTerms,
+          contributingAliases: contributingAliases(allDocs, searchedTerms),
+        }
       : {}),
   };
 
@@ -139,7 +154,11 @@ export function buildDocsOnlyPayload(
     ...(strata ? { strata } : {}),
     ...(inferredFrom ? { inferredDateFrom: inferredFrom } : {}),
     ...(searchedTerms.length > 0
-      ? { alsoSearched: searchedTerms.map((t) => t.phrase), searchedTerms }
+      ? {
+          alsoSearched: searchedTerms.map((t) => t.phrase),
+          searchedTerms,
+          contributingAliases: contributingAliases(allDocs, searchedTerms),
+        }
       : {}),
   };
 }
