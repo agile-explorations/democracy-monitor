@@ -36,6 +36,14 @@ export default function FeedbackPage() {
   const router = useRouter();
   const category = router.query.category as string | undefined;
   const dispute = parseDisputeQuery(router.query);
+  const one = (k: string) => {
+    const v = router.query[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  const initialType = ['suggestion', 'data-issue', 'question', 'other'].includes(one('type') ?? '')
+    ? one('type')
+    : undefined;
+  const initialMessage = one('prefill')?.slice(0, 1000);
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -77,10 +85,16 @@ export default function FeedbackPage() {
 
       <div className="max-w-2xl space-y-8">
         <FeedbackForm
-          key={dispute ? `dispute-${dispute.documentId ?? dispute.title}` : 'feedback'}
+          key={
+            dispute
+              ? `dispute-${dispute.documentId ?? dispute.title}`
+              : `feedback-${initialType ?? ''}-${initialMessage ?? ''}`
+          }
           initialCategory={category}
           initialPageUrl={typeof window !== 'undefined' ? window.location.href : undefined}
           dispute={dispute}
+          initialType={initialType}
+          initialMessage={initialMessage}
           onSubmitted={fetchFeedback}
         />
 
