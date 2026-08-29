@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { CaseContext } from '@/components/shared/CaseContext';
+import { DisputeLink } from '@/components/shared/DisputeLink';
 import { CATEGORIES } from '@/lib/data/categories';
 import { CardAssessment } from './ExploreCardAssessment';
 import { formatDate } from './helpers';
@@ -100,6 +101,19 @@ function GroupedDocCard({ group }: { group: GroupedDoc }) {
       )}
 
       <CaseContext caseId={group.caseId} />
+      {group.categories[0]?.aiAssessment && (
+        <DisputeLink
+          ctx={{
+            documentId: group.categories[0].id,
+            url: group.url,
+            title: group.title,
+            category: group.categories[0].category,
+            verdict: group.categories[0].aiAssessment,
+            erosionType: group.categories[0].aiErosionType,
+            surface: 'explore',
+          }}
+        />
+      )}
     </div>
   );
 }

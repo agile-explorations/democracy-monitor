@@ -126,6 +126,7 @@ export async function getDocumentExplanation(url: string): Promise<DocumentExpla
 }
 
 interface ScoredDocRow {
+  id?: number | null;
   url: string;
   title: string | null;
   caseId: string | null;
@@ -160,6 +161,7 @@ function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
     matches: row.matches,
     suppressed: row.suppressed,
   });
+  if (row.id != null) explained.id = row.id;
   if (row.p1Relevant != null) {
     explained.ai = {
       flagged: row.p1Relevant === true,
@@ -203,6 +205,7 @@ type AssessmentAlias = ReturnType<typeof alias<typeof aiDocumentAssessments, str
 function scoredDocColumns(p1: AssessmentAlias, p2: AssessmentAlias) {
   return {
     url: documentScores.url,
+    id: documents.id,
     title: sql<string>`${documents.title}`.as('doc_title'),
     caseId: documents.caseId,
     sourceType: documents.sourceType,

@@ -7,6 +7,7 @@
  */
 
 import { getProvider } from '@/lib/ai/provider';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import { classifyQuestionMode, ENUMERATION_MAX_TOKENS } from '@/lib/services/question-classifier';
 import type { AICompletionResult } from '@/lib/types';
@@ -23,10 +24,10 @@ import type { ResearchDocument } from './search-service';
 // Constants
 // ---------------------------------------------------------------------------
 
-const DRAFT_MODEL = 'claude-opus-4-6';
-const FEEDBACK_MODEL = 'gpt-4o';
-const FINAL_MODEL = 'claude-opus-4-6';
-const SINGLE_PASS_MODEL = 'claude-sonnet-4-6';
+const DRAFT_MODEL = MODEL_ROSTER.synthesisDraft.id;
+const FEEDBACK_MODEL = MODEL_ROSTER.narrativeCritique.id;
+const FINAL_MODEL = MODEL_ROSTER.synthesisDraft.id;
+const SINGLE_PASS_MODEL = MODEL_ROSTER.synthesisSinglePass.id;
 
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = [1000, 3000, 8000];

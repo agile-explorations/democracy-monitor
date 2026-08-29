@@ -16,7 +16,7 @@ const { insertReturning, approvedRow } = vi.hoisted(() => ({
 
 vi.mock('@/lib/utils/api-helpers', () => ({ requireDb: () => true }));
 vi.mock('@/lib/utils/rate-limit', () => ({
-  RATE_LIMITS: { email: {} },
+  RATE_LIMITS: { email: {}, dispute: {} },
   enforceRateLimit: vi.fn(async () => true),
   getClientIp: () => '1.2.3.4',
 }));
@@ -92,5 +92,39 @@ describe('POST /api/feedback (moderation + Turnstile)', () => {
     await handler(get(), res);
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([{ ...approvedRow, responses: [] }]);
+  });
+});
+
+describe('disputes (#815)', () => {
+  it('rejects a dispute that does not say which document and reading it disputes', async () => {
+    vi.mocked(verifyTurnstile).mockResolvedValue(true);
+    const res = buildRes();
+    await handler(post({ type: 'dispute', message: 'wrong', turnstileToken: 't' }), res);
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('stores a dispute with its structured context', async () => {
+    vi.mocked(verifyTurnstile).mockResolvedValue(true);
+    const res = buildRes();
+    await handler(
+      post({
+        type: 'dispute',
+        message: 'The order restores a prior practice; see section 3.',
+        turnstileToken: 't',
+        metadata: {
+          documentId: 5,
+          url: 'https://example.gov/x',
+          title: 'Some order',
+          category: 'rulemaking',
+          weekOf: '2025-02-17',
+          verdict: 'clearly_concerning',
+          erosionType: 'formal_override',
+          surface: 'week',
+        },
+      }),
+      res,
+    );
+    expect(res.statusCode).toBe(200);
+    expect(insertReturning).toHaveBeenCalled();
   });
 });

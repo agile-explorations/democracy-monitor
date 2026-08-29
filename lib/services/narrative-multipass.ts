@@ -6,6 +6,7 @@
  */
 
 import { getProvider } from '@/lib/ai/provider';
+import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import type {
   AICompletionResult,
   MultiPassNarrativeResult,
@@ -14,9 +15,9 @@ import type {
 } from '@/lib/types';
 import { buildDraftPrompt, buildFeedbackPrompt, buildRevisionPrompt } from './narrative-prompts';
 
-const DRAFT_MODEL = 'claude-opus-4-6';
-const FEEDBACK_MODEL = 'gpt-4o';
-const FINAL_MODEL = 'claude-opus-4-6';
+const DRAFT_MODEL = MODEL_ROSTER.narrativeDraft.id;
+const FEEDBACK_MODEL = MODEL_ROSTER.narrativeCritique.id;
+const FINAL_MODEL = MODEL_ROSTER.narrativeDraft.id;
 
 const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = [1000, 3000, 8000];

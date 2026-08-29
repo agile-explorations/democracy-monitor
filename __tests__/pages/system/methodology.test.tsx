@@ -1,5 +1,6 @@
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { STANCE_SENTENCE } from '@/lib/data/charter-copy';
 import { CONCERN_LEVEL_THRESHOLDS } from '@/lib/data/concern-level-explanations';
 import { DetailedContent, SummaryContent } from '@/pages/system/methodology';
 
@@ -26,6 +27,17 @@ describe('methodology page — concern-status calculation', () => {
     const { container } = render(<DetailedContent />);
     for (const t of thresholds) {
       expect(container.textContent).toContain(t);
+    }
+  });
+});
+
+describe('methodology page — the stance, both reading levels (#813)', () => {
+  it('states the good-repair stance identically in summary and detailed views', () => {
+    for (const View of [SummaryContent, DetailedContent]) {
+      const { container } = render(<View />);
+      const t = container.textContent ?? '';
+      expect(t).toContain(STANCE_SENTENCE);
+      expect(t).not.toContain('witness, not verdict');
     }
   });
 });

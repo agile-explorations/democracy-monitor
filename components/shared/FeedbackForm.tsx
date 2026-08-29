@@ -2,10 +2,15 @@ import Script from 'next/script';
 import { useEffect, useRef, useState } from 'react';
 // Window.turnstile typing lives with the shared loader (#792).
 import '@/lib/hooks/useTurnstile';
+import { ASSESSMENT_LABELS, EROSION_TYPE_LABELS } from '@/lib/data/assessment-labels';
+import type { DisputeContext } from '@/lib/utils/dispute-link';
+import { disputeIssueUrl } from '@/lib/utils/dispute-link';
 
 interface FeedbackFormProps {
   initialCategory?: string;
   initialPageUrl?: string;
+  /** Dispute of one document's AI reading (#815): locks the type, carries the context. */
+  dispute?: DisputeContext | null;
   onSubmitted?: () => void;
 }
 
@@ -19,8 +24,15 @@ const FEEDBACK_TYPES = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: FeedbackFormProps) {
-  const [type, setType] = useState<string>(initialCategory ? 'data-issue' : 'suggestion');
+export function FeedbackForm({
+  initialCategory,
+  initialPageUrl,
+  dispute,
+  onSubmitted,
+}: FeedbackFormProps) {
+  const [type, setType] = useState<string>(
+    dispute ? 'dispute' : initialCategory ? 'data-issue' : 'suggestion',
+  );
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -59,9 +71,10 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
           type,
           message: message.trim(),
           email: email.trim() || undefined,
-          category: initialCategory || undefined,
+          category: dispute?.category ?? initialCategory ?? undefined,
           pageUrl: initialPageUrl || undefined,
           turnstileToken: turnstileToken || undefined,
+          ...(dispute ? { metadata: dispute } : {}),
         }),
       });
       if (res.ok) {
@@ -90,9 +103,13 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
   if (status === 'success') {
     return (
       <div className="rounded-lg border border-dm-border bg-dm-card p-5">
-        <p className="text-sm text-green-400 font-medium">Thank you for your feedback!</p>
+        <p className="text-sm text-green-400 font-medium">
+          {dispute ? 'Thank you — your dispute is in the queue.' : 'Thank you for your feedback!'}
+        </p>
         <p className="text-xs text-dm-text-secondary mt-1">
-          We review all submissions and use them to improve the project.
+          {dispute
+            ? 'Disputes are read by a person, published here once reviewed, and answered in the reversals ledger when they change a reading.'
+            : 'We review all submissions and use them to improve the project.'}
         </p>
       </div>
     );
@@ -103,26 +120,30 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
       onSubmit={handleSubmit}
       className="rounded-lg border border-dm-border bg-dm-card p-5 space-y-4"
     >
-      <div>
-        <label
-          htmlFor="feedback-type"
-          className="block text-xs font-medium text-dm-text-primary mb-1"
-        >
-          Type
-        </label>
-        <select
-          id="feedback-type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary"
-        >
-          {FEEDBACK_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-      </div>
+      {dispute ? (
+        <DisputeContextBox dispute={dispute} />
+      ) : (
+        <div>
+          <label
+            htmlFor="feedback-type"
+            className="block text-xs font-medium text-dm-text-primary mb-1"
+          >
+            Type
+          </label>
+          <select
+            id="feedback-type"
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary"
+          >
+            {FEEDBACK_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label
@@ -139,9 +160,11 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
           rows={5}
           maxLength={5000}
           placeholder={
-            initialCategory
-              ? `Know of a government action in this category that we missed? Describe it here...`
-              : 'Describe your feedback, suggestion, or question...'
+            dispute
+              ? 'Why is this reading wrong? Point to the passage, the practice it is measured against, or what the reviewer missed...'
+              : initialCategory
+                ? `Know of a government action in this category that we missed? Describe it here...`
+                : 'Describe your feedback, suggestion, or question...'
           }
           className="w-full px-3 py-1.5 text-xs rounded border border-dm-border bg-dm-bg text-dm-text-primary resize-y"
         />
@@ -189,8 +212,50 @@ export function FeedbackForm({ initialCategory, initialPageUrl, onSubmitted }: F
         }
         className="px-4 py-1.5 text-xs font-medium rounded-md bg-dm-accent text-white hover:bg-dm-accent/90 transition-colors disabled:opacity-50"
       >
-        {status === 'loading' ? 'Submitting...' : 'Submit feedback'}
+        {status === 'loading' ? 'Submitting...' : dispute ? 'Submit dispute' : 'Submit feedback'}
       </button>
     </form>
+  );
+}
+
+/** What is being disputed, shown above the message box (#815). */
+function DisputeContextBox({ dispute }: { dispute: DisputeContext }) {
+  return (
+    <div className="rounded border border-dm-border bg-dm-bg p-3 text-xs space-y-1">
+      <p className="text-dm-muted">Disputing the reviewer&apos;s reading of</p>
+      <p className="text-dm-text-primary font-medium">
+        {dispute.url ? (
+          <a
+            href={dispute.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-dm-accent"
+          >
+            {dispute.title}
+          </a>
+        ) : (
+          dispute.title
+        )}
+      </p>
+      <p className="text-dm-text-secondary">
+        Reading: {ASSESSMENT_LABELS[dispute.verdict] ?? dispute.verdict}
+        {dispute.erosionType && dispute.erosionType !== 'routine'
+          ? ` · ${EROSION_TYPE_LABELS[dispute.erosionType] ?? dispute.erosionType}`
+          : ''}
+        {dispute.weekOf ? ` · week of ${dispute.weekOf}` : ''} · {dispute.category}
+      </p>
+      <p className="text-dm-muted">
+        Prefer GitHub?{' '}
+        <a
+          href={disputeIssueUrl(dispute)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-dm-accent hover:underline"
+        >
+          Open this dispute as a public issue
+        </a>
+        .
+      </p>
+    </div>
   );
 }

@@ -607,6 +607,10 @@ export const feedback = pgTable(
     type: varchar('type', { length: 20 }).notNull(),
     message: text('message').notNull(),
     pageUrl: text('page_url'),
+    /** Structured context for a dispute of one document's AI reading (#815):
+     *  { documentId, url, title, category, weekOf, verdict, erosionType,
+     *  surface }. Null for every other feedback type. */
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
     // Moderation gate (#668): new submissions default to unapproved and are
     // hidden from the public GET until a moderator approves via the CLI. The
     // grandfather step in the migration sets existing rows to true.

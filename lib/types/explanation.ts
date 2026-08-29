@@ -21,6 +21,8 @@ export interface DocumentAIAssessment {
 /** Explanation of how a single document was scored. */
 export interface DocumentExplanation {
   url: string;
+  /** documents.id — carried so a reader can dispute this document's reading (#815). */
+  id?: number;
   title: string;
   documentClass: DocumentClass;
   classMultiplier: number;

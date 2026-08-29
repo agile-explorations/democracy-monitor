@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { CaseContext } from '@/components/shared/CaseContext';
+import { DisputeLink } from '@/components/shared/DisputeLink';
 import {
   getAIFlag,
   getAssessment,
@@ -198,6 +199,21 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                     </a>
                     {(doc.sourceType === 'judicial_opinion' ||
                       doc.sourceType === 'court_opinion') && <CaseContext caseId={doc.caseId} />}
+                    {doc.ai?.assessment && (
+                      <DisputeLink
+                        className="block mt-0.5"
+                        ctx={{
+                          documentId: doc.id ?? null,
+                          url: doc.url,
+                          title: doc.title,
+                          category,
+                          weekOf,
+                          verdict: doc.ai.assessment,
+                          erosionType: doc.ai.erosionType,
+                          surface: 'week',
+                        }}
+                      />
+                    )}
                   </td>
                   <td className="px-3 py-2 text-dm-text-secondary hidden sm:table-cell">
                     {doc.documentClass}

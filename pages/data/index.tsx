@@ -2,10 +2,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
+import { GITHUB_REPO } from '@/lib/data/repo-links';
 import { formatDumpDate, formatDumpSize } from '@/lib/services/dump-info';
 import type { DumpInfo } from '@/lib/services/dump-info';
-
-const GITHUB_REPO = 'https://github.com/agile-explorations/democracy-monitor';
 
 /**
  * Freshness stamp for the served database dump (#641). Fetched client-side so the
