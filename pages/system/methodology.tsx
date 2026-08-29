@@ -204,38 +204,53 @@ export function DetailedContent() {
           Democracy Monitor ingests documents from multiple source types, covering different facets
           of government activity:
         </p>
+        <p>
+          Every source is fetched by the weekly ingest run (Mondays); the cadence column describes
+          how the source itself publishes, and where a source publishes with a delay, how far back
+          each run looks so late documents still land in their proper week.
+        </p>
         <DataTable
-          headers={['Source', 'What It Provides', 'Update Cadence']}
+          headers={['Source', 'What It Provides', 'Source Cadence / Look-back']}
           rows={[
             [
               'Federal Register',
-              'Executive orders, proposed and final rules, notices, presidential documents',
-              'Daily',
+              'Executive orders, proclamations, proposed and final rules, notices, presidential documents',
+              'Published daily; fetched weekly',
             ],
             [
-              'GovInfo',
-              'Congressional reports, public laws, presidential documents (CPD)',
-              'Every few days',
+              'GovInfo — Congressional Reports',
+              'House and Senate committee reports (CRPT collection)',
+              'Published continuously; fetched weekly',
+            ],
+            [
+              'GovInfo — Compilation of Presidential Documents (CPD)',
+              'Remarks, interviews, letters, statements, and the CPD renditions of orders and proclamations',
+              'GPO loads documents roughly seven weeks after their issue date, so each weekly run re-reads a 120-day window (disclosed August 2026: a one-week window had ingested nothing after January 7, 2026; the gap was backfilled)',
             ],
             [
               'CourtListener',
-              'Federal court opinions, plus case docket metadata (RECAP) feeding the litigation tracker',
-              'Every few days',
+              'Federal court opinions — every Supreme Court opinion including emergency-docket orders, plus circuit and D.D.C. opinions matching executive-power and First Amendment queries — and case docket metadata (RECAP) feeding the litigation tracker',
+              'Published continuously; fetched weekly with a 42-day look-back for opinions whose text CourtListener extracts late',
+            ],
+            [
+              'GAO',
+              'Government Accountability Office reports (recovered through the Internet Archive; gao.gov blocks automated access)',
+              'Published continuously; fetched weekly',
             ],
             [
               'DOJ Press Releases',
               'Department of Justice press releases across divisions',
-              'Every few days',
+              'Published daily; fetched weekly',
             ],
             [
               'DHS/ICE/CBP Press Releases',
               'Operational press releases from DHS headquarters, ICE (full newsroom, including local enforcement operations), and CBP (national media releases)',
-              'Weekly',
+              'Published daily; fetched weekly',
             ],
             [
               'Congressional Record (CREC)',
               'Senate and House floor speeches with speaker attribution',
-              'Daily when in session',
+              'Published daily when in session; fetched weekly',
             ],
             [
               'Congressional Hearings (CHRG)',
@@ -245,13 +260,17 @@ export function DetailedContent() {
             [
               'Inspector General (OIG)',
               'Audit reports and investigations from 11 Inspectors General: HHS, DOJ, SSA, and DHS directly; OPM, TIGTA, Treasury, State, EAC, FEC, and the Intelligence Community via oversight.gov',
-              'Every few days',
+              'Published continuously; fetched weekly',
             ],
-            ['LegiScan', 'Federal legislative bill tracking via bulk datasets', 'Periodic'],
+            [
+              'LegiScan',
+              'Federal legislative bill tracking via bulk datasets',
+              'Weekly bulk dataset; bills can carry dates weeks in the past, which the weekly run reconciles',
+            ],
             [
               'FEC',
               'Federal Election Commission advisory opinions and Matters Under Review',
-              'Weekly',
+              'Checked weekly; the Commission has issued no advisory opinion since April 30, 2025 and opened no enforcement matter in 2026, so the feed is current but empty',
             ],
           ]}
         />
