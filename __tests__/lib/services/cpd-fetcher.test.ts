@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summaryToContentItem } from '@/lib/services/cpd-fetcher';
+import { selectNewPackages, summaryToContentItem } from '@/lib/services/cpd-fetcher';
 
 describe('summaryToContentItem', () => {
   it('converts a CPD summary to a ContentItem with correct fields', () => {
@@ -118,5 +118,26 @@ describe('summaryToContentItem branch coverage (#718 gate)', () => {
       dcpdCategory: 'Remarks',
       subjects: ['Immigration', 'Labor'],
     });
+  });
+});
+
+describe('selectNewPackages (#798 trailing window)', () => {
+  const found = ['DCPD-202600230', 'DCPD-202600231', 'DCPD-202600232', 'DCPD-202600233'];
+
+  it('drops already-stored packages and keeps GovInfo order', () => {
+    const plan = selectNewPackages(found, new Set(['DCPD-202600230', 'DCPD-202600232']));
+    expect(plan.fetch).toEqual(['DCPD-202600231', 'DCPD-202600233']);
+    expect(plan.alreadyStored).toBe(2);
+    expect(plan.deferred).toBe(0);
+  });
+
+  it('caps new fetches and reports what it deferred', () => {
+    const plan = selectNewPackages(found, undefined, 3);
+    expect(plan.fetch).toHaveLength(3);
+    expect(plan.deferred).toBe(1);
+  });
+
+  it('is a no-op filter when nothing is stored and no cap is given', () => {
+    expect(selectNewPackages(found)).toEqual({ fetch: found, alreadyStored: 0, deferred: 0 });
   });
 });

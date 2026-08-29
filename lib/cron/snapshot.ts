@@ -1,6 +1,7 @@
 import { snapshotChrgWindow } from '@/lib/cron/backfill-chrg';
 import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { snapshotClOpinions } from '@/lib/cron/snapshot-cl-opinions';
+import { snapshotCpdWindow } from '@/lib/cron/snapshot-cpd';
 import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import {
@@ -19,8 +20,6 @@ import {
 } from '@/lib/cron/snapshot-poststeps';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
-import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
-import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { fetchCrecRecent } from '@/lib/services/crec-fetcher';
 import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
 import type { CronRunStatus } from '@/lib/services/cron-run-store';
@@ -260,49 +259,6 @@ async function snapshotRhetoric(): Promise<void> {
   }
 }
 
-/** Store and score a single CPD document across its mapped categories. */
-async function storeCpdDoc(doc: CpdDocument): Promise<number> {
-  let stored = 0;
-  for (const category of doc.categories) {
-    stored += await storeDocuments([doc.item], category);
-    await storeDocumentScores(scoreDocumentBatch([doc.item], category));
-  }
-  return stored;
-}
-
-/** Fetch presidential documents from GovInfo CPD for the completed week. */
-async function snapshotCpd(): Promise<void> {
-  console.log('[snapshot] Fetching CPD presidential documents...');
-  const weekOf = getLastCompletedWeek();
-  const weekEnd = addDays(weekOf, 6);
-  try {
-    const docs = await fetchCpdHistorical({
-      dateFrom: weekOf,
-      dateTo: weekEnd,
-      fetchContent: true,
-    });
-    if (docs.length === 0) {
-      console.log('[snapshot] CPD: no new documents');
-      return;
-    }
-
-    let stored = 0;
-    const affectedCategories = new Set<string>();
-    for (const doc of docs) {
-      stored += await storeCpdDoc(doc);
-      doc.categories.forEach((c) => affectedCategories.add(c));
-    }
-
-    // Aggregation (with L2) happens in the assessStoredWeek post-step, which
-    // sweeps all stored docs for the week — no per-source re-aggregation here.
-    console.log(
-      `[snapshot] CPD: ${docs.length} documents → ${stored} rows across ${affectedCategories.size} categories`,
-    );
-  } catch (err) {
-    console.error('[snapshot] CPD fetch failed:', err);
-  }
-}
-
 /** Fetch recent CREC floor speeches, classify into categories, store + score. */
 async function snapshotCrec(): Promise<void> {
   console.log('[snapshot] Fetching CREC (Congressional Record)...');
@@ -427,7 +383,7 @@ async function assessStoredWeek(weekOf: string, errors: string[]): Promise<numbe
  * assess the completed week's stored docs. Returns categories assessed.
  */
 async function ingestAndAssessSecondarySources(errors: string[]): Promise<number> {
-  await snapshotCpd();
+  await snapshotCpdWindow(errors);
   await snapshotCrec();
   await snapshotChrgWindow();
   await snapshotRhetoric();
