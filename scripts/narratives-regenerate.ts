@@ -156,7 +156,7 @@ async function regenerateWeek(week: string, args: Args): Promise<void> {
     await import('@/lib/services/narrative-pipeline');
   const { generateMultiPassNarrative, generateSinglePassNarrative } =
     await import('@/lib/services/narrative-multipass');
-  const { isElevatedStatus, needsMultiPass } =
+  const { buildStableTemplate, isElevatedStatus, needsMultiPass } =
     await import('@/lib/services/narrative-generation-service');
   const { storeMultiPassNarratives, storeNarratives } =
     await import('@/lib/services/narrative-store');
@@ -182,7 +182,10 @@ async function regenerateWeek(week: string, args: Args): Promise<void> {
     console.log(`[regenerate] Deleted ${deleted} existing narrative rows for ${args.category}`);
 
     if (!isElevatedStatus(data.convergenceDetail)) {
-      console.log(`[regenerate] ${args.category} is Stable — skipping (use template)`);
+      // Stable weeks carry the template narrative; the rows were just deleted,
+      // so store it (the pipeline's own path) rather than leave the week empty.
+      await storeNarratives(args.category, week, buildStableTemplate(data.categoryTitle, week));
+      console.log(`[regenerate] ${args.category} is Stable — stored the template narrative`);
       return;
     }
 

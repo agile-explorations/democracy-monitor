@@ -59,20 +59,25 @@ function argValue(args: string[], flag: string): string | undefined {
   return i >= 0 ? args[i + 1] : undefined;
 }
 
-/** Deterministic era-stratified sample of current-term P2 rows whose text is swappable. */
+/** Deterministic sample of P2 rows in [from, to) whose text is swappable —
+ *  the current term by default; the mirror arm passes a baseline era. */
 async function selectSample(
   n: number,
+  from: string,
+  to: string,
 ): Promise<{ rows: SampleRow[]; matched: number; withContent: number }> {
   const db = getDb();
   const matched = await db.execute(sql`
     SELECT count(*) AS n FROM ai_document_assessments a
-    WHERE a.pass = 2 AND NOT a.is_audit_sample AND a.week_of >= ${T2_INAUGURATION}::date`);
+    WHERE a.pass = 2 AND NOT a.is_audit_sample
+      AND a.week_of >= ${from}::date AND a.week_of < ${to}::date`);
   const candidates = await db.execute(sql`
     SELECT a.id AS row_id, a.category, a.url, a.assessment, a.signals, a.erosion_type,
       d.title, d.source_type, d.source_origin, LEFT(d.content, ${CONTENT_CHARS * 2}) AS content
     FROM ai_document_assessments a
     JOIN documents d ON d.url = a.url AND d.category = a.category
-    WHERE a.pass = 2 AND NOT a.is_audit_sample AND a.week_of >= ${T2_INAUGURATION}::date
+    WHERE a.pass = 2 AND NOT a.is_audit_sample
+      AND a.week_of >= ${from}::date AND a.week_of < ${to}::date
       AND d.content IS NOT NULL AND length(d.content) >= 400 AND d.retrieval_relevant IS NOT FALSE
     ORDER BY md5(a.id::text || 'audit-772')
     LIMIT ${n * 4}`);
@@ -176,7 +181,9 @@ Options:
   --out FILE        Ledger path (default .audit-symmetry.jsonl); resumable
   --concurrency N   Parallel documents (default 2)
   --second-control  Add a second unchanged draw to every ledger row lacking one
-                    (one call per document) — the clean draw-noise measure`,
+                    (one call per document) — the clean draw-noise measure
+  --from/--to DATE  Sample window (default: the current term). The mirror arm:
+                    --from 2021-01-20 --to 2023-01-20 (Biden-era documents renamed to Trump)`,
   );
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const sampleN = Number(argValue(args, '--sample') ?? DEFAULT_SAMPLE);
@@ -187,7 +194,9 @@ Options:
   const outFile = argValue(args, '--out') ?? '.audit-symmetry.jsonl';
   const concurrency = Number(argValue(args, '--concurrency') ?? 2);
 
-  const { rows, matched, withContent } = await selectSample(sampleN);
+  const from = argValue(args, '--from') ?? T2_INAUGURATION;
+  const to = argValue(args, '--to') ?? '2100-01-01';
+  const { rows, matched, withContent } = await selectSample(sampleN, from, to);
   console.log(
     `[audit-symmetry] three numbers — source-matched P2 rows: ${matched}; scanned with content: ${withContent}; assessable (swappable) in sample: ${rows.length}`,
   );

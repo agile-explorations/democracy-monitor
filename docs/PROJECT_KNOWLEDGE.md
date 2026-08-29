@@ -364,6 +364,8 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 - **Marking a document out is not enough — cascade or exempt its derived rows.** Status counts read assessment rows by week/category without joining documents; a marked-only superseded row kept double-counting and produced 757 G5 + 74 G1b violations that would have held the next digest.
 - **SQL three-valued logic: use the shared filter helpers.** `retrieval_relevant <> false` drops every NULL row (most of the corpus); `retrievalRelevantOnly()` (`IS NOT FALSE`) is the only correct spelling. The dedupe dry run said "0 rows" until this was fixed.
 - **Postgres regex repetition bounds cap at 255** (`{0,300}` is "invalid repetition count(s)"); in a failure-tolerant path the error would have been swallowed. Execute new SQL against a real database before shipping (`pnpm verify:enrichment-sql`).
+- **A regeneration must be delete-and-replace, never delete-then-skip.** `narratives:regenerate --category` deleted a Stable week's rows and then skipped storing the template, leaving two categories with no narrative for the current week (caught by G4's re-check, 2026-08-28). Any "regenerate" path must store the fallback artifact on every branch that follows a delete.
+- **A repair range ends at the last completed week.** `pipeline:repair --to <today>` created aggregate rows for the in-progress week and the overview (`MAX(week_of)`) showed a partial week as latest; the rows had to be deleted by hand (owner-approved).
 - **`\b` is not a boundary after a period.** Token swaps for names like "Jr." need letter-lookarounds; the case-insensitive flag makes `(?<![A-Z])` match lowercase too.
 
 ### Performance measurement (R-LOAD WP5, 2026-08-27)

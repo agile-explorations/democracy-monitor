@@ -509,6 +509,38 @@ export function DetailedContent() {
           (OpenAI screens, Anthropic reviews) precisely so that no single model&apos;s disposition
           decides a status.
         </p>
+        <p>
+          <strong>Swap audit, 2026-08-28.</strong> We took 200 documents from the current term that
+          the reviewer had already judged and that name the administration, changed only the names —
+          Trump to Biden, Vance to Harris, the party names — and asked the reviewer to judge them
+          again. Everything else stayed the same: the actions, the dates, the agencies, the
+          quotations. If the reviewer judged actions and not names, the verdicts should not have
+          moved.
+        </p>
+        <p>
+          They moved in about one document in nine (11.6%; the plausible range is 8–17%). Judging
+          the same unchanged text twice moves a verdict only 1.5% of the time, so the swap itself
+          accounts for roughly 10 points. The movement was one-directional:{' '}
+          <strong>
+            when a current-term document was made to read as the other administration&apos;s, the
+            reviewer usually found it <em>less</em> concerning
+          </strong>{' '}
+          (19 verdicts down, 3 up), almost entirely in the borderline &quot;possible departure&quot;
+          tier — clear departures were judged the same either way. We tested only this direction; we
+          have not yet tested whether earlier-era documents renamed to the current administration
+          are judged more harshly, so this audit does not show that.
+        </p>
+        <p>
+          What it does show is a reviewer effect: the names carry weight they should not. Whether
+          that is a prior about the administration, or the reviewer discounting text that reads as
+          implausible once renamed (a 2025 document about a Biden-era program), the audit cannot yet
+          say. The effect is smaller than the difference in departure rates between eras shown in
+          the table, and it sits in the tier that decides &quot;notable departure&quot; weeks, not
+          the clear-departure counts behind &quot;sustained departure&quot;. We publish it rather
+          than adjust the reviewer quietly: every status on this site was produced by the reviewer
+          as it is, and any calibration will be its own documented change. The full ledger is on
+          issue #772.
+        </p>
         <VerdictRatesTable />
       </Section>
 
