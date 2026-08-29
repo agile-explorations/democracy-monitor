@@ -5,6 +5,7 @@ import {
   composeRoster,
   composeWithArms,
   enumPoolRerankEnabled,
+  mergeArmPoolByCosine,
   orderArmPoolByCosine,
   PER_ARM_CAP,
 } from '@/lib/services/research-loop-retrieval';
@@ -158,6 +159,14 @@ describe('arm-pool order and composition (#800)', () => {
     expect(out.map((d) => d.id)).toContain(21);
     // the higher-cosine arm doc takes the first arm slot
     expect(out.map((d) => d.id).indexOf(21)).toBeLessThan(out.map((d) => d.id).indexOf(20));
+  });
+
+  it('merges era-window arm docs by cosine rank instead of interleaving (#800)', () => {
+    const seed = [doc(10, 0.9), doc(11, 0.7), doc(12, 0.5), doc(13, 0.3), doc(14, 0.2)];
+    const arms = [doc(20, 0.1, 'arm'), doc(21, 0.6, 'arm')];
+    const out = mergeArmPoolByCosine(seed, arms, 5);
+    expect(out.map((d) => d.id)).toEqual([10, 11, 21, 12, 20]);
+    expect(out).toHaveLength(5);
   });
 
   it('degrades to the seed when there is no arm pool', () => {

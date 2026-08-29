@@ -38,13 +38,13 @@ import type { EntityEra } from '@/lib/services/hot-entity-ranking';
 import { erasForWindow } from '@/lib/services/hot-entity-ranking';
 import { selectSalienceArms } from '@/lib/services/hot-entity-selection';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
+import { rerankInPlace } from '@/lib/services/relevance-rerank';
 import type { ArmHit } from '@/lib/services/research-fusion';
 import { runArmsForAliases } from '@/lib/services/research-fusion';
 import type { RetrievalResult, WindowTiming } from '@/lib/services/research-retrieval-helpers';
 import {
   collectAlsoSearched,
   mergeSearchedTerms,
-  rerankForTier,
   toCandidateSummary,
 } from '@/lib/services/research-retrieval-helpers';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -85,6 +85,32 @@ export function orderArmPoolByCosine(armPool: ResearchDocument[]): ResearchDocum
     .map((x) => x.d);
 }
 
+/** Era-window composition (#800): the window's docs are already reranked,
+ *  so arm docs are merged in by cosine rank rather than interleaved into
+ *  every even position (which put 5 arm docs in each window's top-10).
+ *  Membership is the slot guarantee: the arm pool is kept whole and the
+ *  seed yields its tail. Pure; exported for tests. */
+export function mergeArmPoolByCosine(
+  seedDocs: ResearchDocument[],
+  armPool: ResearchDocument[],
+  keep: number,
+): ResearchDocument[] {
+  const seedKeep = Math.max(0, keep - armPool.length);
+  const seed = seedDocs.slice(0, seedKeep);
+  const armIds = new Set(armPool.map((d) => d.id));
+  const merged: ResearchDocument[] = [];
+  const arms = orderArmPoolByCosine(armPool);
+  let ai = 0;
+  for (const s of seed) {
+    if (armIds.has(s.id)) continue;
+    while (ai < arms.length && arms[ai].cosineSimilarity > s.cosineSimilarity)
+      merged.push(arms[ai++]);
+    merged.push(s);
+  }
+  while (ai < arms.length) merged.push(arms[ai++]);
+  return merged.slice(0, keep);
+}
+
 /** Reserve the arm pool's slots; without one, the seed composition stands.
  *  Pure; exported for tests (#800). */
 export function composeWithArms(
@@ -116,12 +142,12 @@ export function enumPoolRerankEnabled(): boolean {
 async function rerankComposedPool(
   query: string,
   docs: ResearchDocument[],
-  contextDocs: number,
-  tier: ResearchTierFilter,
 ): Promise<ResearchDocument[]> {
   if (!enumPoolRerankEnabled() || docs.length === 0) return docs;
   try {
-    const reranked = await rerankForTier(query, docs, contextDocs, tier);
+    // In place, not overfetch-then-cut: nothing is cut here, and the cutting
+    // rerankers skip the model when nothing is (v1.18.0 ran 0 ms).
+    const reranked = await rerankInPlace(query, docs);
     return reranked.length === docs.length ? reranked : docs;
   } catch (err) {
     console.warn('[research-loop] pool rerank failed (cosine order kept):', err);
@@ -202,17 +228,7 @@ export async function applySalienceStage(opts: {
   const picked = composeArmSlotPool(roster, keptIds, PER_ARM_CAP, opts.reserve);
   const pool = await hydrateArmPool(picked, opts.embedding);
   if (pool.length === 0) return { docs: opts.docs, salience };
-  const composed = composeAspectPools(
-    [
-      {
-        kept: opts.docs.slice(0, keep - pool.length),
-        overflow: opts.docs.slice(keep - pool.length),
-      },
-      { kept: orderArmPoolByCosine(pool), overflow: [] },
-    ],
-    keep,
-  ).docs;
-  return { docs: composed, salience };
+  return { docs: mergeArmPoolByCosine(opts.docs, pool, keep), salience };
 }
 
 /** Salience selection + full arm roster + bounded slot pool (#762). */
@@ -339,7 +355,7 @@ export async function retrieveEnumerationLoop(
   for (const d of seed.documents) d.provenance ??= 'seed';
   const composed = composeWithArms(seed.documents, armPool, contextDocs);
   const r0 = Date.now();
-  const docs = await rerankComposedPool(p.query, composed, contextDocs, p.tier);
+  const docs = await rerankComposedPool(p.query, composed);
   timings.push({ key: 'pool-rerank', searchMs: 0, rerankMs: Date.now() - r0 });
 
   return {

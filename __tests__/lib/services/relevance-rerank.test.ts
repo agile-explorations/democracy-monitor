@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { parseRanking, rerankByRelevance } from '@/lib/services/relevance-rerank';
+import { parseRanking, rerankByRelevance, rerankInPlace } from '@/lib/services/relevance-rerank';
 
 const completeMock = vi.fn();
 vi.mock('@/lib/ai/provider', () => ({
@@ -53,6 +53,25 @@ describe('rerankByRelevance', () => {
   it('is a no-op when candidates already fit', async () => {
     const docs = [doc(1, 'A')];
     expect(await rerankByRelevance('q', docs, 2)).toEqual(docs);
+  });
+});
+
+describe('rerankInPlace (#800)', () => {
+  it('ranks the whole pool even when nothing is cut', async () => {
+    completeMock.mockResolvedValueOnce({ content: '[3,1,2]', tokensUsed: { input: 1, output: 1 } });
+    const docs = [doc(1, 'A'), doc(2, 'B'), doc(3, 'C')];
+    const out = await rerankInPlace('q', docs);
+    expect(out.map((d: { title: string }) => d.title)).toEqual(['C', 'A', 'B']);
+  });
+  it('keeps the original order on failure and skips the model for a single doc', async () => {
+    completeMock.mockRejectedValueOnce(new Error('boom'));
+    const docs = [doc(1, 'A'), doc(2, 'B')];
+    expect((await rerankInPlace('q', docs)).map((d: { title: string }) => d.title)).toEqual([
+      'A',
+      'B',
+    ]);
+    const single = [doc(1, 'A')];
+    expect(await rerankInPlace('q', single)).toEqual(single);
   });
 });
 
