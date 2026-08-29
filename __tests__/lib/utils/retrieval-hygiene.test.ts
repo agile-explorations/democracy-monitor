@@ -44,9 +44,11 @@ describe('pool-hygiene metrics (#803) on the 2026-08-29 battery fixture', () => 
   it('gates on the thresholds and names every failure', () => {
     const m = runMetrics(captures);
     const failures = gateFailures(m);
+    expect(failures.some((f) => f.startsWith('top-10 mean cosine'))).toBe(true);
     expect(failures.some((f) => f.startsWith('top-10 arm share'))).toBe(true);
     const lax: HygieneThresholds = {
       ...DEFAULT_THRESHOLDS,
+      minTop10Cosine: 0,
       maxTop10ArmShare: 1,
       maxSharedAliases: 1000,
       maxRecurringDocs: 1000,

@@ -10,6 +10,7 @@ import {
   nominateShortlist,
   rankCategoryEntities,
   rankPoolEntities,
+  hasQuestionEvidence,
   stabilityFloor,
   stratifyByClass,
   topUpEligible,
@@ -328,5 +329,16 @@ describe('question-channel shortlist ordering (#776)', () => {
   it('dedupes question nominees against later channels', () => {
     const out = nominateShortlist([], [e('shared')], [], [], [e('shared')]);
     expect(out.length).toBe(1);
+  });
+});
+
+describe('question-evidence gate (#806)', () => {
+  it('has evidence with a question-channel nominee or a pool doc that mentions an entity', () => {
+    expect(hasQuestionEvidence([], [entity('J.G.G. v. Trump')])).toBe(true);
+    expect(hasQuestionEvidence([poolRow('Laken Riley Act', 2)], [])).toBe(true);
+  });
+  it('has no evidence when the pool is empty or only incidental and the question matched nothing', () => {
+    expect(hasQuestionEvidence([], [])).toBe(false);
+    expect(hasQuestionEvidence([poolRow('stray', 1)], [])).toBe(false);
   });
 });

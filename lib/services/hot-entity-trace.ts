@@ -35,3 +35,11 @@ export function logSalienceOutcome(o: {
     );
   }
 }
+
+/** The evidence gate fired (#806): no pool doc mentions a tracked entity and
+ *  the question's words matched none — the window runs seed-only. */
+export function logSalienceSkipped(eras: EntityEra[], poolRows: number): void {
+  console.log(
+    `[salience] eras=${eras.join('+')} pool=${poolRows} q=0 — no question evidence, salience skipped (#806)`,
+  );
+}
