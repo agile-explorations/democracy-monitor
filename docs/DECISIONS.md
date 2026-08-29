@@ -12,7 +12,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-CREDIBILITY: the last outreach gate (#667 #700 #711 #714 #744 #741 #772 + #796, milestone 126, v1.17.0–v1.17.3) — ✅ shipped 2026-08-28; runbooks: see close-out
+## Sprint R-CREDIBILITY: the last outreach gate (#667 #700 #711 #714 #744 #741 #772 + #796 #797, milestone 126, v1.17.0–v1.17.4) — ✅ shipped 2026-08-28; all runbooks complete
 
 **Origin**: with the eval gate passed and R-LOAD/R-HARDEN-SEARCH shipped, seven open defects remained that a journalist checking our work would find first: a weekly summary with wrong numbers, a false annotation, a blank answer, a masthead quoted as a "passage", a held digest, an unexamined verdict asymmetry, and missing Supreme Court emergency-docket orders. Plan approved 2026-08-28 after a read-only production diagnostic that changed two premises (below).
 
@@ -29,11 +29,11 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Spec deviations**: none (no spec section; designs on the issues and the plan file).
 
-**Owner decisions**: #741 duplicates mark + repair (current term), all-status backfill yes (canary then fleet); #700 regenerate 07-27 and, once found, 07-20; #772 200-document swap audit; #711 option (a) incl. 15 baseline-era text corrections; each release approved after code review.
+**Owner decisions**: #741 duplicates mark + repair (current term), all-status backfill yes (canary then fleet), the 7 backfill flips accepted, the L2 remainder finished (≈ $4.50), the in-progress-week aggregate rows deleted, one baseline count corrected by hand; #700 regenerate 07-27 and, once found, 07-20, plus the four 2026-08-17 narratives after the backfill; #772 200-document swap audit, then the second control arm and the mirror arm on the finding, the note rewritten in plain language so it cannot read as "renaming to Trump raises concern"; #711 option (a) incl. 15 baseline-era text corrections; each release approved after code review.
 
 **Lessons** (promoted to PROJECT_KNOWLEDGE): diagnose the current cause, not the issue's; count-only invariants are undiagnosable; `scored_at` is last-write; tune a deterministic LLM-output check on the real corpus before it gates (26 → 2 findings on 12 weeks); marking a document out must cascade or exempt its derived rows; SQL three-valued logic (`IS NOT FALSE`, shared helpers); Postgres regex bounds ≤ 255 and execution checks for failure-tolerant SQL; `\b` is not a boundary after a period.
 
-**Open**: #796 (CourtListener opinion captions as passages); full #767 bias program stays post-outreach unless the swap audit measures a real rate.
+**Open**: #796 (CourtListener opinion captions as passages); #797 (SCOTUS removal-power opinions route to no category — Trump v. Cook); #767 calibration as its own post-outreach sprint, now with a measured, direction-specific effect to calibrate against. **Outreach gates: all passed** (eval 78/107, R-LOAD, R-HARDEN-SEARCH, R-CREDIBILITY).
 
 ---
 
