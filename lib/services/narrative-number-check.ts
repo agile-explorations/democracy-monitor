@@ -92,7 +92,15 @@ const PAIR_UNIT_AFTER =
 const STATUS_CONTEXT =
   /\b(?:elevated|confirmedconcern|confirmed concern|stable|monitored|zero documents|no documents|highest concern|concern level|of 14)\b/i;
 const ANALYTIC_QUALIFIER =
-  /^\s*(?:of\s+(?:\d+|[a-z]+)\s+)?(?:[a-z-]+\s+)*?(?:different|separate|distinct|various|multiple|tracked|affected|re-elevated|de-escalated|activated|newly)\b/i;
+  /^\s*(?:of\s+(?:\d+|[a-z]+)\s+)?(?:[a-z-]+\s+)*?(?:different|separate|distinct|various|multiple|tracked|affected|re-elevated|de-escalated|activated|newly|additional|more|fewer|extra|other)\b/i;
+/** "Seven categories moved upward": how many categories changed tier is the
+ *  model's own tally over the two status lists, not a block figure. */
+const MOVEMENT_AFTER_NOUN =
+  /^\s*(?:\([^)]*\)\s*)?(?:that\s+|which\s+)?(?:moved|rose|fell|climbed|dropped|shifted|escalated|de-escalated|returned|improved|worsened|changed|went|flipped|transitioned)\b/i;
+/** "an increase of 3 elevated categories", "up by 4": a week-over-week
+ *  delta the model computed from two block figures — not itself in the block. */
+const DELTA_BEFORE =
+  /\b(?:increase|decrease|rise|drop|gain|loss|change|jump|decline|up|down)\s+(?:of|by)\s*$/i;
 /** Up to two qualifiers between the number and its noun ("14 monitored
  *  categories"), optionally through an "of <M>" ("12 of 14 categories"). */
 const COUNT_NOUN_AFTER = new RegExp(
@@ -143,7 +151,7 @@ export function extractCountClaims(text: string, opts: CountCheckOptions = {}): 
     if (isDateComponent(clean, start, end)) continue;
     const after = clean.slice(end, end + 48);
     const before = clean.slice(Math.max(0, start - 24), start);
-    if (HEDGE_BEFORE.test(before)) continue;
+    if (HEDGE_BEFORE.test(before) || DELTA_BEFORE.test(before)) continue;
     const noun = COUNT_NOUN_AFTER.exec(after);
     if (noun) {
       // "five of seven elevated categories": a subset of a block figure the
@@ -152,6 +160,7 @@ export function extractCountClaims(text: string, opts: CountCheckOptions = {}): 
       if (nounOf(noun[2]) === 'categories') {
         const sentence = clean.slice(Math.max(0, start - SENTENCE_WINDOW), end + SENTENCE_WINDOW);
         if (ANALYTIC_QUALIFIER.test(after) || !STATUS_CONTEXT.test(sentence)) continue;
+        if (MOVEMENT_AFTER_NOUN.test(after.slice(noun[0].length))) continue;
       }
       claims.push({
         kind: 'count',
@@ -219,6 +228,8 @@ const ENUMERATION_HEAD = new RegExp(
 const ENUMERATION_TAIL =
   /(?:[—–]|(?<![A-Z])\.(?:\s|$)|\s+(?:are|remain|were|is|stand|sit|had|have|show|showed|moved|produced)\b)/;
 const ENUMERATION_SCAN_CHARS = 600;
+const PARTIAL_LIST_OPENER =
+  /^\s*(?:including|such as|among them|notably|for example|e\.g\.|led by)\b/i;
 
 /** The list segment after an opener: balanced-paren for "(", tail regex otherwise. */
 function listSegment(window: string, opener: string): string {
@@ -232,6 +243,25 @@ function listSegment(window: string, opener: string): string {
     else if (window[i] === ')' && --depth === 0) return window.slice(0, i);
   }
   return window;
+}
+/** A status breakdown inside a list: "2 at ConfirmedConcern (A, B) and 2 at
+ *  Elevated (C, D)". The head count is then the sum of the parenthesized
+ *  sub-lists, not the items of the breakdown itself. Each sub-list is closed
+ *  by paren balancing so a title's own parenthetical ("Government Watchdogs
+ *  (Inspectors General)") cannot end it early. */
+const STATUS_SUBGROUP_HEAD = new RegExp(
+  `\\b(?:\\d+|${NUMBER_WORD_ALT})\\s+(?:(?:remain(?:ing)?|are|still|now)\\s+)?(?:at|in)\\s+(?:confirmed ?concern|elevated|stable)\\b[^()]{0,40}?\\(`,
+  'gi',
+);
+
+/** Sub-lists of a status breakdown, or [] when the segment has none. */
+function statusSubgroups(segment: string): string[] {
+  const subs: string[] = [];
+  for (const m of segment.matchAll(STATUS_SUBGROUP_HEAD)) {
+    const open = (m.index ?? 0) + m[0].length;
+    subs.push(listSegment(segment.slice(open), '('));
+  }
+  return subs;
 }
 const TITLE_PLACEHOLDER = '§';
 
@@ -282,11 +312,17 @@ export function findEnumerations(text: string, titles: string[] = DEFAULT_TITLES
     const value = parseNumber(m[1]);
     const listStart = (m.index ?? 0) + m[0].length;
     const window = clean.slice(listStart, listStart + ENUMERATION_SCAN_CHARS);
+    // "8 stable categories — including A, B —": a partial list by declaration.
+    if (PARTIAL_LIST_OPENER.test(window)) continue;
     const segment = listSegment(window, m[0].trimEnd().slice(-1));
     // A list is a list only when at least two KNOWN titles anchor it; the
     // item count then tolerates the model's short forms.
     if (countCategoryTitles(segment, titles) < 2) continue;
-    const listed = countListItems(segment, titles);
+    const subgroups = statusSubgroups(segment);
+    const listed =
+      subgroups.length > 0
+        ? subgroups.reduce((sum, sub) => sum + countListItems(sub, titles), 0)
+        : countListItems(segment, titles);
     if (listed >= 2) {
       found.push({
         index: m.index ?? 0,
