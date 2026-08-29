@@ -538,17 +538,18 @@ export function DetailedContent() {
           they describe.
         </p>
         <p>
-          What the two tests together show is a reviewer effect that runs in one direction: the
-          names carry weight they should not, and the likeliest reading is that the reviewer leans
-          on what it knows about the current administration when a borderline document names it — a
-          2025 document about a program it associates with this administration reads as
-          &quot;possible departure&quot;, and the same text under the other name reads as routine.
-          The effect is smaller than the difference in departure rates between eras shown in the
-          table, and it sits in the tier that decides &quot;notable departure&quot; weeks, not the
-          clear-departure counts behind &quot;sustained departure&quot;. We publish it rather than
-          adjust the reviewer quietly: every status on this site was produced by the reviewer as it
-          is, and any calibration will be its own documented change. The full ledger is on issue
-          #772.
+          In both tests, a borderline &quot;possible departure&quot; verdict had about a one-in-four
+          chance of becoming &quot;routine&quot; once the names were changed (24% and 25%); routine
+          verdicts almost never moved (2–3%). The current term has many more borderline documents —
+          71 of 199 in the sample, against 8 of 189 in the Biden-era sample — which is why the
+          effect shows there. The lesson is about the borderline tier: those verdicts carry a wide
+          margin of error, and a name change is one of the things that can tip them. It is not about
+          one administration&apos;s name. The effect is smaller than the difference in departure
+          rates between eras shown in the table, and it sits in the tier that decides &quot;notable
+          departure&quot; weeks, not the clear-departure counts behind &quot;sustained
+          departure&quot;. We publish it rather than adjust the reviewer quietly: every status on
+          this site was produced by the reviewer as it is, and any calibration will be its own
+          documented change. The full ledger is on issue #772.
         </p>
         <VerdictRatesTable />
       </Section>
