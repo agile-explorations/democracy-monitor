@@ -44,6 +44,7 @@ import type { RetrievalResult, WindowTiming } from '@/lib/services/research-retr
 import {
   collectAlsoSearched,
   mergeSearchedTerms,
+  rerankForTier,
   toCandidateSummary,
 } from '@/lib/services/research-retrieval-helpers';
 import type { ResearchDocument, ResearchTierFilter } from '@/lib/services/search-service';
@@ -52,23 +53,41 @@ import { fetchResearchDocsByIds, searchResearchWithMeta } from '@/lib/services/s
 export { composeArmSlotPool, composeRoster, PER_ARM_CAP } from '@/lib/services/arm-slot-compose';
 export type { SlotArm } from '@/lib/services/arm-slot-compose';
 
-/** Hydrate picked arm hits into docs, carrying alias/snippet provenance. */
-async function hydrateArmPool(picked: ArmHit[]): Promise<ResearchDocument[]> {
+/** Hydrate picked arm hits into docs, carrying alias/snippet provenance.
+ *  With the query embedding (#800) the docs carry their real cosine
+ *  similarity — the 2026-08-29 battery found every arm-slot doc served at
+ *  cosine 0, unorderable and halving the reported query confidence. */
+async function hydrateArmPool(picked: ArmHit[], embedding?: number[]): Promise<ResearchDocument[]> {
   if (picked.length === 0) return [];
-  const docs = await fetchResearchDocsByIds(picked.map((h) => h.id));
+  const vectorStr = embedding ? `[${embedding.join(',')}]` : undefined;
+  const docs = await fetchResearchDocsByIds(
+    picked.map((h) => h.id),
+    vectorStr,
+  );
   const hitById = new Map(picked.map((h) => [h.id, h]));
   for (const doc of docs) {
     const hit = hitById.get(doc.id);
     if (hit?.matchedAlias) doc.matchedAlias = hit.matchedAlias;
     if (hit?.matchSnippet) doc.matchSnippet = hit.matchSnippet;
+    doc.provenance = 'arm';
   }
   // Preserve slot order (fetch returns arbitrary order).
   const order = new Map(picked.map((h, i) => [h.id, i]));
   return docs.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
-/** Reserve the arm pool's slots; without one, the seed composition stands. */
-function composeWithArms(
+/** Arm pool in relevance order (#800): membership is the slot guarantee;
+ *  order is the reader's. Stable on ties so slot order still breaks them. */
+export function orderArmPoolByCosine(armPool: ResearchDocument[]): ResearchDocument[] {
+  return armPool
+    .map((d, i) => ({ d, i }))
+    .sort((a, b) => b.d.cosineSimilarity - a.d.cosineSimilarity || a.i - b.i)
+    .map((x) => x.d);
+}
+
+/** Reserve the arm pool's slots; without one, the seed composition stands.
+ *  Pure; exported for tests (#800). */
+export function composeWithArms(
   seedDocs: ResearchDocument[],
   armPool: ResearchDocument[],
   contextDocs: number,
@@ -78,10 +97,36 @@ function composeWithArms(
   return composeAspectPools(
     [
       { kept: seedDocs.slice(0, seedKeep), overflow: seedDocs.slice(seedKeep) },
-      { kept: armPool, overflow: [] },
+      { kept: orderArmPoolByCosine(armPool), overflow: [] },
     ],
     contextDocs,
   ).docs;
+}
+
+/** Final relevance pass over the composed pool (#800): the enumeration path
+ *  was the only research path that never ran the reranker, so its served
+ *  order — which IS the citation order — was a structural seed/arm
+ *  interleave with no relevance signal. Membership is untouched (the
+ *  reranker keeps all `contextDocs`); on timeout or error the cosine-ordered
+ *  composition stands. `ENUM_POOL_RERANK=off` restores the interleave. */
+export function enumPoolRerankEnabled(): boolean {
+  return process.env.ENUM_POOL_RERANK !== 'off';
+}
+
+async function rerankComposedPool(
+  query: string,
+  docs: ResearchDocument[],
+  contextDocs: number,
+  tier: ResearchTierFilter,
+): Promise<ResearchDocument[]> {
+  if (!enumPoolRerankEnabled() || docs.length === 0) return docs;
+  try {
+    const reranked = await rerankForTier(query, docs, contextDocs, tier);
+    return reranked.length === docs.length ? reranked : docs;
+  } catch (err) {
+    console.warn('[research-loop] pool rerank failed (cosine order kept):', err);
+    return docs;
+  }
 }
 
 /** Dedupe aliases across sources by lowercase phrase, preserving order. */
@@ -135,6 +180,8 @@ export async function applySalienceStage(opts: {
   alreadySearched: ValidatedAlias[];
   reserve: number;
   extraArms?: ValidatedAlias[];
+  /** Query embedding (#800): arm docs get a real cosine when supplied. */
+  embedding?: number[];
 }): Promise<{ docs: ResearchDocument[]; salience: ValidatedAlias[] }> {
   const selection = await selectSalienceArms(
     opts.query,
@@ -153,7 +200,7 @@ export async function applySalienceStage(opts: {
   const keep = opts.docs.length;
   const keptIds = new Set(opts.docs.slice(0, keep - opts.reserve).map((d) => d.id));
   const picked = composeArmSlotPool(roster, keptIds, PER_ARM_CAP, opts.reserve);
-  const pool = await hydrateArmPool(picked);
+  const pool = await hydrateArmPool(picked, opts.embedding);
   if (pool.length === 0) return { docs: opts.docs, salience };
   const composed = composeAspectPools(
     [
@@ -161,7 +208,7 @@ export async function applySalienceStage(opts: {
         kept: opts.docs.slice(0, keep - pool.length),
         overflow: opts.docs.slice(keep - pool.length),
       },
-      { kept: pool, overflow: [] },
+      { kept: orderArmPoolByCosine(pool), overflow: [] },
     ],
     keep,
   ).docs;
@@ -206,7 +253,7 @@ async function runArmStage(
   const maxReserve = Math.min(GUARANTEED_SLOTS, Math.floor(contextDocs / 2));
   const keptSeedIds = new Set(seed.documents.slice(0, contextDocs - maxReserve).map((d) => d.id));
   const picked = composeArmSlotPool(roster, keptSeedIds, PER_ARM_CAP, maxReserve);
-  const armPool = await hydrateArmPool(picked);
+  const armPool = await hydrateArmPool(picked, p.embedding);
   const stageTimings: WindowTiming[] = [
     { key: 'judge', searchMs: judgeMs, rerankMs: 0 },
     { key: 'arm-fanout', searchMs: fanoutMs, rerankMs: 0 },
@@ -289,7 +336,11 @@ export async function retrieveEnumerationLoop(
     timings,
   );
 
-  const docs = composeWithArms(seed.documents, armPool, contextDocs);
+  for (const d of seed.documents) d.provenance ??= 'seed';
+  const composed = composeWithArms(seed.documents, armPool, contextDocs);
+  const r0 = Date.now();
+  const docs = await rerankComposedPool(p.query, composed, contextDocs, p.tier);
+  timings.push({ key: 'pool-rerank', searchMs: 0, rerankMs: Date.now() - r0 });
 
   return {
     docs,

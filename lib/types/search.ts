@@ -84,6 +84,10 @@ export interface ResearchDocument {
   matchSnippet?: string;
   /** The corpus-validated alias whose arm surfaced this doc (#702). */
   matchedAlias?: string;
+  /** How the doc entered the pool (#800): the vector/fusion seed sweep or a
+   *  guaranteed arm slot. Lets instruments tell arm docs apart now that
+   *  both carry a real cosine. */
+  provenance?: 'seed' | 'arm';
   /** Query-matched verbatim excerpt for synthesis grounding (#707). */
   queryExcerpt?: string;
   /** Ruling-language excerpt for judicial opinions (#707). */

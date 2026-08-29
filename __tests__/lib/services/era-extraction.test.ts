@@ -84,3 +84,27 @@ describe('"the previous two" (owner question, 2026-08-28)', () => {
     expect(eras?.map((e) => e.key)).toEqual(['trump_t1', 'biden', 'trump_t2']);
   });
 });
+
+describe('"the last three administrations" (#801, outreach re-validation 2026-08-29)', () => {
+  it('reads "across the last three administrations" as all three eras', () => {
+    expect(
+      keys(
+        'How has congressional funding legislation for ICE and CBP compared across the last three administrations?',
+      ),
+    ).toEqual(['trump_t1', 'biden', 'trump_t2']);
+    expect(keys('How did enforcement differ across the past three presidencies?')).toEqual([
+      'trump_t1',
+      'biden',
+      'trump_t2',
+    ]);
+    expect(keys('Compare detention policy over the last three administrations.')).toEqual([
+      'trump_t1',
+      'biden',
+      'trump_t2',
+    ]);
+  });
+  it('still does not stratify "across states" or "across agencies"', () => {
+    expect(keys('How has enforcement varied across the states?')).toBeNull();
+    expect(keys('How do the last three agencies compare on FOIA backlogs?')).toBeNull();
+  });
+});

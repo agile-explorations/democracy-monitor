@@ -49,7 +49,7 @@ const LIST_MARKER =
  *  era stratification itself fires, so a plain "How did the court rule"
  *  can never match. */
 const COMPARATIVE_SPECIES =
-  /\b(responses|actions|orders|rulings|documents|policies|prosecutions|cases|investigations|indictments|rulemaking|enforcement|speeches|releases)\b/i;
+  /\b(responses|actions|orders|rulings|documents|policies|prosecutions|cases|investigations|indictments|rulemaking|enforcement|speeches|releases|legislation|appropriations|funding|bills|statements|reports)\b/i;
 
 /**
  * Classify a research question. Pure given the environment; both search

@@ -38,6 +38,11 @@ function releaseQueueSlots(a: Pick<BuildAdmission, 'globalSlot' | 'coalesce' | '
   if (a.globalSlot !== null) releaseGlobalBuildSlot(a.globalSlot);
 }
 
+/** Our own harness credential gets the machine ceiling (#803); everyone else the public one. */
+function spendKind(source: SearchSource): 'source' | 'machine' {
+  return source.kind === 'machine' ? 'machine' : 'source';
+}
+
 export async function admitBuild(
   res: NextApiResponse,
   source: SearchSource,
@@ -65,7 +70,7 @@ export async function admitBuild(
     respondSourceBusy(res, 'build');
     return null;
   }
-  const spend = await admitSpend('build', source.id);
+  const spend = await admitSpend('build', source.id, new Date(), spendKind(source));
   if (!spend.ok) {
     void releaseSourceSlot('build', source.id);
     releaseQueueSlots(queue);
@@ -86,7 +91,7 @@ export async function admitStream(res: NextApiResponse, source: SearchSource): P
     respondSourceBusy(res, 'stream');
     return false;
   }
-  const spend = await admitSpend('stream', source.id);
+  const spend = await admitSpend('stream', source.id, new Date(), spendKind(source));
   if (!spend.ok) {
     void releaseSourceSlot('stream', source.id);
     respondSpend(res, spend);

@@ -32,8 +32,11 @@ const COMPARATIVE =
 // Synonyms matter (#729 follow-up): "across presidential terms" clearly asks
 // for the same three-era comparison as "across administrations" — without
 // the synonym the query silently ran single-window and recency-skewed.
+// "across the last three administrations" (#801, Beavers's outreach question):
+// an optional determiner/qualifier run before the noun, and "three" beside
+// "two" — both resolve to the same three windows.
 const ACROSS_ADMINS =
-  /\b(across|between|all( three)?) (administrations|presidencies|presidential terms|presidents)\b|\b(previous|prior|last) two( administrations| presidencies| terms)?\b/i;
+  /\b(across|between|all( three)?) (?:the )?(?:(?:last|past|previous|prior|most recent|three|all) ){0,2}(administrations|presidencies|presidential terms|presidents)\b|\b(previous|prior|last|past) (two( administrations| presidencies| terms)?|three( administrations| presidencies| terms))\b/i;
 
 const ERA_PATTERNS: Array<[EraWindow['key'], RegExp]> = [
   [

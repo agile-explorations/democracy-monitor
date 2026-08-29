@@ -66,6 +66,21 @@ describe('spend budget (#794) — pure parts', () => {
   });
 });
 
+describe('spend budget — machine sources (#803)', () => {
+  it('holds the machine credential to its own, higher ceiling', async () => {
+    const now = new Date('2026-08-29T20:00:00Z');
+    // Past the public source limit but within the machine limit.
+    for (let i = 0; i < SPEND_LIMITS.source.build + 1; i++) {
+      await admitSpend('build', 'machine:1.2.3.4', now, 'machine');
+    }
+    const machine = await admitSpend('build', 'machine:1.2.3.4', now, 'machine');
+    expect(machine).toEqual({ ok: true });
+    const human = await admitSpend('build', 'machine:1.2.3.4', now, 'source');
+    expect(human).toMatchObject({ code: 'daily_budget' });
+    expect(SPEND_LIMITS.machine.build).toBeGreaterThan(SPEND_LIMITS.source.build);
+  });
+});
+
 describe('spend budget (#794) — admission and alerts', () => {
   it('counts per source and globally, and pauses only that source past its budget', async () => {
     const limit = SPEND_LIMITS.source.build;

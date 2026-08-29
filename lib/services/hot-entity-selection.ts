@@ -32,12 +32,21 @@ import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type { JudgeCandidate } from '@/lib/services/hot-entity-judge';
 import { judgeShortlist } from '@/lib/services/hot-entity-judge';
-import type { EntityEra, EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-ranking';
+import type {
+  EntityEra,
+  EntityRow,
+  NominationChannel,
+  PoolEntityRow,
+} from '@/lib/services/hot-entity-ranking';
 import { rankCategoryEntities, stratifyByClass } from '@/lib/services/hot-entity-ranking';
 import { logSalienceOutcome } from '@/lib/services/hot-entity-trace';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 
-export type { EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-ranking';
+export type {
+  EntityRow,
+  NominationChannel,
+  PoolEntityRow,
+} from '@/lib/services/hot-entity-ranking';
 export {
   CATEGORY_CLASS_QUOTA,
   categoryFillScore,
@@ -129,18 +138,20 @@ export function nominateShortlist(
   const excluded = new Set(excludePhrases.map((ph) => ph.toLowerCase()));
   const shortlist: EntityRow[] = [];
   const seen = new Set<string>();
-  const push = (r: EntityRow) => {
+  // Channel order is also channel precedence (#799): a nominee reached by
+  // several channels keeps the most question-conditioned one.
+  const push = (channel: NominationChannel) => (r: EntityRow) => {
     const key = r.phrase.toLowerCase();
     if (excluded.has(key) || seen.has(key)) return;
     seen.add(key);
-    shortlist.push(r);
+    shortlist.push({ ...r, channel });
   };
-  rankPoolEntities(poolRows).slice(0, SHORTLIST_POOL).forEach(push);
+  rankPoolEntities(poolRows).slice(0, SHORTLIST_POOL).forEach(push('pool'));
   // #776: question-conditioned nominees precede the question-blind
   // channels — they carry the strongest relevance signal.
-  questionRows.slice(0, SHORTLIST_QUESTION).forEach(push);
-  rankCategoryEntities(categoryRows).slice(0, SHORTLIST_CATEGORY).forEach(push);
-  rankCategoryEntities(globalRows).slice(0, SHORTLIST_GLOBAL).forEach(push);
+  questionRows.slice(0, SHORTLIST_QUESTION).forEach(push('question'));
+  rankCategoryEntities(categoryRows).slice(0, SHORTLIST_CATEGORY).forEach(push('category'));
+  rankCategoryEntities(globalRows).slice(0, SHORTLIST_GLOBAL).forEach(push('global'));
   return shortlist;
 }
 
@@ -284,6 +295,16 @@ export function stabilityFloor(shortlist: EntityRow[], poolCount: number): Entit
   return [...fromPool, ...captions];
 }
 
+/** Nominees eligible for the judge-bypassing top-up (#799): every channel
+ *  but `global`. The 2026-08-29 battery measured the global channel's
+ *  era-wide breadth leaders ("Public Law 119-21" on 29 of 31 questions,
+ *  EO 14219 on 28) riding into the top-up of nearly every question — they
+ *  are question-blind by construction, so they must earn a seat from the
+ *  judge. Untagged rows (older callers, tests) stay eligible. Pure. */
+export function topUpEligible(shortlist: EntityRow[]): EntityRow[] {
+  return shortlist.filter((r) => r.channel !== 'global');
+}
+
 /** Floor ∪ judge picks ∪ top mechanical nominees (#762), deduped and
  *  capped. The judge orders the best twelve; the mechanical top-up ensures
  *  high-ranked nominees run as arms even when the judge passes them over —
@@ -309,7 +330,8 @@ export function finalizeArms(
   // shortlist position — shortlist-head order re-amplified the pool
   // channel's genre floods (IM3's habeas mill outranked the due-process
   // canon 15 captions deep despite 4x lower breadth).
-  const topUp = rankCategoryEntities(shortlist).slice(0, MECHANICAL_TOP_UP);
+  // #799: the top-up never draws from the question-blind global channel.
+  const topUp = rankCategoryEntities(topUpEligible(shortlist)).slice(0, MECHANICAL_TOP_UP);
   const seen = new Set<string>();
   const chosen: EntityRow[] = [];
   for (const r of [...floor, ...judged.slice(0, MAX_SALIENCE_ARMS), ...topUp]) {

@@ -202,9 +202,14 @@ async function searchResearchPool(
   return { documents: withSnippets, minedAliases };
 }
 
-/** Fetch research documents by id, preserving input order (#552). */
-export async function fetchResearchDocsByIds(ids: number[]): Promise<ResearchDocument[]> {
-  const rows = await fetchResearchDocRowsByIds(ids);
+/** Fetch research documents by id, preserving input order (#552). With the
+ *  query vector (#800) every doc carries its real cosine similarity; without
+ *  it the column is 0 — fine for the synthesis re-fetch, never for ranking. */
+export async function fetchResearchDocsByIds(
+  ids: number[],
+  vectorStr?: string,
+): Promise<ResearchDocument[]> {
+  const rows = await fetchResearchDocRowsByIds(ids, vectorStr);
   return rows.map(mapToResearchDoc);
 }
 

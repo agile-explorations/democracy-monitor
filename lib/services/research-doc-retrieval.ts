@@ -277,6 +277,7 @@ async function retrieveEraWindow(
       docs,
       alreadySearched: minedAliases,
       reserve: Math.min(ERA_SALIENCE_RESERVE_MAX, Math.floor(slots / ERA_SALIENCE_RESERVE_DIVISOR)),
+      embedding: p.embedding,
     });
     docs = staged.docs;
     sinks.eraMined.push(...staged.salience);
