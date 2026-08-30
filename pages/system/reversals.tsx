@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { DataTable, Section } from '@/components/system/ContentHelpers';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
+import { GOOD_REPAIR_PHRASE, LEDGER_TAGLINE } from '@/lib/data/charter-copy';
 import { ledgerCounts, REVERSAL_KIND_LABELS, REVERSALS_LEDGER } from '@/lib/data/reversals-ledger';
 import type { ReversalEntry, ReversalKind } from '@/lib/data/reversals-ledger';
 
@@ -154,7 +155,11 @@ export default function ReversalsPage() {
       <Link href="/" className="text-xs text-dm-accent hover:underline">
         &larr; Back to overview
       </Link>
-      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-6">Reversals</h1>
+      <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-1">Reversals</h1>
+      <p className="text-sm text-dm-text-secondary mb-6">
+        <span className="text-dm-text-primary font-medium">{GOOD_REPAIR_PHRASE}</span>{' '}
+        {LEDGER_TAGLINE}
+      </p>
       <div className="max-w-3xl space-y-2">
         {readingLevel === 'summary' ? <SummaryContent /> : <DetailedContent />}
       </div>

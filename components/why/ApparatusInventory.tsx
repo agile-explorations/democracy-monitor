@@ -130,7 +130,12 @@ export function ApparatusInventory() {
         <Link href="/system/reversals" className={link}>
           {APPARATUS_CLOSE.link}
         </Link>{' '}
-        {APPARATUS_CLOSE.tail}
+        {APPARATUS_CLOSE.tail} The full inventory — every model, every stored name, every prompt
+        version —{' '}
+        <Link href="/system/lens" className={link}>
+          is its own page
+        </Link>
+        .
       </p>
     </section>
   );

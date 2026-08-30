@@ -4,7 +4,14 @@ import { AccountabilityDiagram } from '@/components/why/AccountabilityDiagram';
 import { ApparatusInventory } from '@/components/why/ApparatusInventory';
 import { CATEGORIES } from '@/lib/data/categories';
 import { keyToSlug } from '@/lib/data/category-slugs';
-import { STOPS_HEADING, STOPS_PARAGRAPHS, VISIBLE_THROUGH_A_LENS } from '@/lib/data/charter-copy';
+import {
+  STOPS_CLOSE,
+  STOPS_HEADING,
+  STOPS_LEAD,
+  STOPS_PROOFS,
+  STOPS_PROOFS_INTRO,
+  VISIBLE_THROUGH_A_LENS,
+} from '@/lib/data/charter-copy';
 import { COMMON_QUESTIONS, WHY_PILLARS } from '@/lib/data/why-this-matters';
 import type { CommonQuestion, WhyPillar } from '@/lib/data/why-this-matters';
 
@@ -50,33 +57,26 @@ function PillarCard({ pillar }: { pillar: WhyPillar }) {
   );
 }
 
-/** "Why this stops at the record" (#812) — owner-verbatim paragraphs, with the
- *  conduct that licenses neutrality linked to where it is checkable. */
+/** "Why this stops at the record" (#812; reordered per the 2026-08-29 copy review):
+ *  the license first, the five proofs as a list with their evidence linked,
+ *  the reader's part last. Owner-verbatim text in lib/data/charter-copy.ts. */
 function WhyThisStops() {
   const link = 'text-dm-accent hover:underline';
   return (
     <section id="stops-at-the-record" className="space-y-3 scroll-mt-4">
       <h3 className="text-base font-semibold text-dm-text-primary">{STOPS_HEADING}</h3>
-      {STOPS_PARAGRAPHS.map((text) => (
-        <p key={text.slice(0, 24)} className="text-sm text-dm-text-secondary leading-relaxed">
-          {text}
-        </p>
-      ))}
-      <p className="text-xs text-dm-muted">
-        Checkable at:{' '}
-        <Link href="/system/methodology#ai-document-review" className={link}>
-          the swap audit and era rates
-        </Link>
-        ,{' '}
-        <Link href="/system/methodology#reader-audit" className={link}>
-          the outside readers
-        </Link>
-        , and{' '}
-        <Link href="/system/reversals" className={link}>
-          the reversals ledger
-        </Link>
-        .
-      </p>
+      <p className="text-sm text-dm-text-secondary leading-relaxed">{STOPS_LEAD}</p>
+      <p className="text-sm text-dm-text-secondary leading-relaxed">{STOPS_PROOFS_INTRO}</p>
+      <ul className="list-disc list-outside ml-5 space-y-1">
+        {STOPS_PROOFS.map((p) => (
+          <li key={p.href + p.text.slice(0, 16)} className="text-sm text-dm-text-secondary">
+            <Link href={p.href} className={link}>
+              {p.text}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm text-dm-text-secondary leading-relaxed">{STOPS_CLOSE}</p>
     </section>
   );
 }
