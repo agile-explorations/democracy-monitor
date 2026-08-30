@@ -24,39 +24,41 @@ export const APPARATUS_HEADING = 'What we decided before reading a single docume
 export const APPARATUS_INTRO =
   'Every measurement on this site passes through choices we made first. We publish them so you can see through the lens — or around it.';
 
-export const APPARATUS_ITEMS = {
-  categories: {
+/** The six things decided first — one line each on the charter; the tables
+ *  live on /system/lens (owner, 2026-08-29: "six short lines, then the link"). */
+export const APPARATUS_LINES = [
+  {
     lead: 'Fourteen categories',
-    text: 'of institutional practice, chosen by us:',
-    tail: 'A departure outside these fourteen is invisible here.',
+    text: 'of institutional practice, chosen by us. A departure outside them is invisible here.',
   },
-  norms: {
+  {
     lead: 'A page of historical norms,',
     text: 'written by us, that says what "long-standing practice" means in each — this page.',
   },
-  baselines: {
+  {
     lead: 'Eight baseline years',
-    text: 'against which every departure is measured:',
-    tail: 'There is no baseline before 2017.',
+    text: 'against which every departure is measured. There is no baseline before 2017.',
   },
-  reviewer: {
+  {
     lead: 'A two-pass reviewer.',
-    text: 'A screening model flags documents; a reviewing model classifies each flagged document as one of four readings and names one of five mechanisms. Two companies’ models, on purpose. Neither model’s priors are inspectable by us; the instructions each receives are public.',
+    text: 'Two companies’ models, on purpose; neither model’s priors are inspectable by us, and the instructions each receives are public.',
   },
-  words: {
+  {
     lead: 'The words on the screen.',
-    text: 'We say departure. The instrument’s stored names — concern for a departure, erosion for a mechanism — predate this page and remain in every export.',
+    text: 'We say departure; the instrument’s stored names — concern, erosion — predate this page and remain in every export.',
   },
-  prose: {
-    lead: 'Prose written by models.',
-    text: 'Weekly summaries and research answers are drafted and critiqued by the models below, then checked by code for their numbers and quotations before anything is published.',
+  {
+    lead: 'Prose written by models,',
+    text: 'checked by code for its numbers and quotations before anything is published.',
   },
-} as const;
+] as const;
 
 export const APPARATUS_CLOSE = {
-  lead: 'Each of these can be wrong.',
-  link: 'The reversals ledger',
+  lead: 'Each of these can be wrong;',
+  link: 'the reversals ledger',
   tail: 'records when they were.',
+  inventory: 'The full inventory — every model, every stored name, every prompt version —',
+  inventoryLink: 'is its own page',
 } as const;
 
 export const STOPS_HEADING = 'Why this stops at the record';
