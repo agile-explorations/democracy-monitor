@@ -12,7 +12,18 @@ const RESEARCH_STAGES: Array<{ at: number; label: string }> = [
   { at: 9, label: 'Fusing and ranking candidates (comparisons search each era separately)' },
   { at: 16, label: 'Selecting the most relevant documents and extracting matched passages' },
   { at: 26, label: 'Still working — novel questions bypass every cache and take the longest' },
+  {
+    at: 60,
+    label:
+      'A first-time question builds its record once — usually a minute or two, occasionally longer — and is cached for the next reader',
+  },
 ];
+
+/** Set the expectation before the wait is felt (#809 S3 interim): the 18
+ *  outreach links are pre-warmed, but a reader's own first question builds
+ *  cold, and cold builds measured 39–258 s on 2026-08-29. */
+export const FIRST_TIME_NOTICE =
+  'First-time questions take longer: the record is built once, then cached for everyone.';
 
 // Explore runs the same expansion + hybrid search but skips era stratification
 // and passage selection, so it is usually far quicker — shorter timers.
@@ -49,6 +60,7 @@ export function SearchProgressStages({ mode = 'research' }: { mode?: 'research' 
         ))}
       </ul>
       <p className="mt-2 text-xs text-dm-muted/70">{Math.floor(elapsed)}s elapsed</p>
+      {mode === 'research' && <p className="mt-1 text-xs text-dm-muted/70">{FIRST_TIME_NOTICE}</p>}
     </div>
   );
 }

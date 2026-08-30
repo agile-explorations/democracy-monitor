@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SearchProgressStages } from '@/components/search/SearchProgressStages';
+import { FIRST_TIME_NOTICE, SearchProgressStages } from '@/components/search/SearchProgressStages';
 
 describe('SearchProgressStages (#723)', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -42,5 +42,16 @@ describe('SearchProgressStages (#723)', () => {
     });
     expect(screen.getByText(/Ranking documents and fetching category assessments/)).toBeTruthy();
     expect(screen.queryByText(/each era separately/)).toBeNull();
+  });
+});
+
+describe('SearchProgressStages — cold-build expectation (#809)', () => {
+  it('tells a research reader that first-time questions build once and are cached', () => {
+    const { container } = render(<SearchProgressStages mode="research" />);
+    expect(container.textContent).toContain(FIRST_TIME_NOTICE);
+  });
+  it('does not show the research notice for explore', () => {
+    const { container } = render(<SearchProgressStages mode="explore" />);
+    expect(container.textContent).not.toContain(FIRST_TIME_NOTICE);
   });
 });
