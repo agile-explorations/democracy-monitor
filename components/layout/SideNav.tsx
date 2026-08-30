@@ -9,6 +9,7 @@ const SYSTEM_LINKS = [
   { href: '/system/health', label: 'Health' },
   { href: '/system/architecture', label: 'Architecture' },
   { href: '/system/methodology', label: 'Methodology' },
+  { href: '/system/lens', label: 'The lens' },
   { href: '/system/reversals', label: 'Reversals' },
   { href: '/system/roadmap', label: 'Roadmap' },
 ];

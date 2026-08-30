@@ -17,12 +17,12 @@ export const STANCE_TAIL =
 
 /** Replaces "This site exists to make that movement visible. Nothing more." */
 export const VISIBLE_THROUGH_A_LENS =
-  'This site exists to make that movement visible — through a lens we describe below, and hold lightly.';
+  'This site exists to make that movement visible — through a lens we chose, describe below, and correct in public.';
 
 export const APPARATUS_HEADING = 'What we decided before reading a single document';
 
 export const APPARATUS_INTRO =
-  'Every measurement on this site passes through choices we made first. These choices are the lens. We publish the lens so you can see through it, or around it.';
+  'Every measurement on this site passes through choices we made first. We publish them so you can see through the lens — or around it.';
 
 export const APPARATUS_ITEMS = {
   categories: {
@@ -61,8 +61,39 @@ export const APPARATUS_CLOSE = {
 
 export const STOPS_HEADING = 'Why this stops at the record';
 
-export const STOPS_PARAGRAPHS = [
-  'This site stops at the record on purpose. What to do about what it shows belongs to the reader — to voters, and to the question the Constitution assigns to Congress, not to a website.',
-  'Keeping the record is itself an act: against a news cycle whose memory is measured in hours, the record is what stays.',
-  'And our neutrality is licensed by conduct, not by claim: the same instruments point at every administration; our reviewer is tested by swapping the administrations’ names inside the documents it reads; its verdict rates are published for every era side by side; fifty of its readings a quarter are set aside for readers who are not us — the first fifty are waiting for them now; and when we are wrong we say so, on a page kept for that purpose.',
+/** Opens with the license, not the disclaimer (copy review, 2026-08-29). */
+export const STOPS_LEAD =
+  'Keeping the record is itself an act. Against a news cycle whose memory is measured in hours, the record is what stays.';
+
+export const STOPS_PROOFS_INTRO = 'Our neutrality is licensed by conduct, not by claim:';
+
+/** The five proofs — each one a link to where it can be checked. */
+export const STOPS_PROOFS = [
+  {
+    text: 'the same instruments point at every administration',
+    href: '/system/methodology#baselines',
+  },
+  {
+    text: 'our reviewer is tested by swapping the administrations’ names inside the documents it reads',
+    href: '/system/methodology#ai-document-review',
+  },
+  {
+    text: 'its verdict rates are published for every era side by side',
+    href: '/system/methodology#ai-document-review',
+  },
+  {
+    text: 'fifty of its readings a quarter are set aside for readers who are not us — the first fifty are waiting for them now',
+    href: '/system/methodology#reader-audit',
+  },
+  {
+    text: 'when we are wrong we say so, on a page kept for that purpose',
+    href: '/system/reversals',
+  },
 ] as const;
+
+export const STOPS_CLOSE =
+  'What to do about what it shows belongs to the reader — to voters, and to the question the Constitution assigns to Congress, not to a website.';
+
+/** The recurring phrase (methodology, charter, ledger header). */
+export const GOOD_REPAIR_PHRASE = 'A record kept in good repair.';
+export const LEDGER_TAGLINE = 'This page is the repair log.';

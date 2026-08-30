@@ -81,8 +81,8 @@ export function SummaryContent() {
         </p>
         <p>
           {STANCE_SENTENCE} — see{' '}
-          <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
-            what this site is, and is not
+          <Link href="/why-this-matters#apparatus" className="text-dm-accent hover:underline">
+            what we decided first
           </Link>
           . {STANCE_TAIL} When it is wrong, the{' '}
           <Link href="/system/reversals" className="text-dm-accent hover:underline">
@@ -216,8 +216,8 @@ export function DetailedContent() {
         </p>
         <p>
           {STANCE_SENTENCE} — see{' '}
-          <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
-            what this site is, and is not
+          <Link href="/why-this-matters#apparatus" className="text-dm-accent hover:underline">
+            what we decided first
           </Link>
           . {STANCE_TAIL} When it is wrong, the{' '}
           <Link href="/system/reversals" className="text-dm-accent hover:underline">
