@@ -12,7 +12,7 @@ const FRAMING =
   'Pattern comparison against published comparative-politics regime categories ' +
   "(Levitsky & Way 2010, 'Competitive Authoritarianism'; V-Dem framework). " +
   'Describes which published pattern the documentary record most resembles — ' +
-  "not a judgment. See /why-this-matters#charter for this site's stance.";
+  "not a judgment. See /charter for this site's stance.";
 
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   try {

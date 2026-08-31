@@ -1,5 +1,6 @@
 /**
- * Content for the /why-this-matters page (#549).
+ * Content for the /norms and /questions pages (#549; split out of
+ * /why-this-matters in R-CHARTER-2, #820/#821).
  *
  * Framing rule for every sentence: never "the President shouldn't" — always
  * "these rules bind whoever you voted against, too." Each pillar answers a

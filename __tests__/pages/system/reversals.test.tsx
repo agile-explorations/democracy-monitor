@@ -55,7 +55,7 @@ describe('reversals page (#814)', () => {
     const { container } = render(<ReversalsPage />);
     expect(container.textContent).toContain('updated with every release');
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    expect(hrefs).toContain('/why-this-matters#charter');
+    expect(hrefs).toContain('/charter');
   });
 });
 

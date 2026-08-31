@@ -1,6 +1,6 @@
 /**
  * Charter prose (#812, #813) — owner-verbatim. The 2026-08-17 charter on
- * /why-this-matters was approved sentence by sentence; the sections added on
+ * /charter (formerly on /why-this-matters) was approved sentence by sentence; the sections added on
  * 2026-08-29 (the apparatus inventory, "Why this stops at the record", the
  * renamed stance) follow the same rule: drafts here, the owner edits, what
  * ships is the owner's text. Lists inside the inventory render from the
@@ -28,14 +28,24 @@ export const APPARATUS_INTRO =
 
 /** The six things decided first — one line each on the charter; the tables
  *  live on /system/lens (owner, 2026-08-29: "six short lines, then the link"). */
-export const APPARATUS_LINES = [
+interface ApparatusLine {
+  lead: string;
+  text: string;
+  /** Optional short link at the end (style rule: links carry the destination). */
+  linkText?: string;
+  href?: string;
+}
+
+export const APPARATUS_LINES: readonly ApparatusLine[] = [
   {
     lead: 'Fourteen categories',
     text: 'of institutional practice, chosen by us. A departure outside them is invisible here.',
   },
   {
     lead: 'A page of historical norms,',
-    text: 'written by us, that says what "long-standing practice" means in each — the norms below.',
+    text: 'written by us, that says what "long-standing practice" means in each.',
+    linkText: 'The norms',
+    href: '/norms',
   },
   {
     lead: 'Eight baseline years',
@@ -53,7 +63,7 @@ export const APPARATUS_LINES = [
     lead: 'Prose written by models,',
     text: 'checked by code for its numbers and quotations before anything is published.',
   },
-] as const;
+];
 
 export const APPARATUS_CLOSE = {
   lead: 'Each of these can be wrong;',
@@ -90,12 +100,12 @@ export const CATCH_BULLETS = [
   {
     text: 'Our reviewer is tested by swapping the administrations’ names inside the documents it reads, and we publish what moves — including when it moves against us.',
     linkText: 'See the swap audit',
-    href: '/system/methodology#ai-document-review',
+    href: '/system/self-tests#swap-audit',
   },
   {
     text: 'Its verdict rates are published for every era, side by side.',
     linkText: 'See the rates',
-    href: '/system/methodology#ai-document-review',
+    href: '/system/self-tests#era-rates',
   },
   {
     text: 'Fifty of its readings a quarter go to readers who are not us. The first fifty are ready, and we are still looking for the readers.',
@@ -118,6 +128,12 @@ export const CATCH_BULLETS = [
     href: '/system/reversals',
   },
 ] as const;
+
+/** /system/self-tests (editorial guidance §3.2, 2026-08-30, #822): H1 and
+ *  intro for the page holding the era rates, swap audit, and reader audit. */
+export const SELF_TESTS_HEADING = 'What happens when we test ourselves';
+export const SELF_TESTS_INTRO =
+  'A reviewer that reads this administration’s documents more harshly than the last one’s is either detecting a real difference or expressing a preference. There is no way to settle that by argument, so we test it and publish what the tests return — including when they return something we would rather they didn’t.';
 
 /** The recurring phrase (methodology, charter, ledger header). */
 export const GOOD_REPAIR_PHRASE = 'A record kept in good repair.';

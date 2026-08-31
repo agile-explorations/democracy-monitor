@@ -208,3 +208,33 @@ export function ArchiveItemListJsonLd({ items }: { items: ArchiveItem[] }) {
     </Head>
   );
 }
+
+// ---------------------------------------------------------------------------
+// FAQPage (/questions)
+// ---------------------------------------------------------------------------
+
+interface FaqItem {
+  question: string;
+  answer: string[];
+}
+
+export function FaqJsonLd({ items }: { items: readonly FaqItem[] }) {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: items.map((q) => ({
+      '@type': 'Question',
+      name: q.question,
+      acceptedAnswer: { '@type': 'Answer', text: q.answer.join('\n\n') },
+    })),
+  };
+
+  return (
+    <Head>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(data) }}
+      />
+    </Head>
+  );
+}

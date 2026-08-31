@@ -15,7 +15,7 @@ import {
  * Pass 1 — Draft prompt for Claude Opus.
  * Generates both expert and public narratives in a single call.
  */
-/** Witness-tone rules (site charter, /why-this-matters#charter — #732):
+/** Witness-tone rules (site charter, /charter — #732):
  *  bearing witness to departures from baseline practice, never judging them.
  *  Shared by the weekly draft and term-summary prompts. */
 export function witnessToneRules(): string[] {

@@ -3,7 +3,7 @@
  * and actors (#537; witness-stance vocabulary #732). Shared by the week
  * document table, category assessment panel, and Explore cards.
  *
- * CHARTER RULE (/why-this-matters#charter — a record kept in good repair): display language
+ * CHARTER RULE (/charter — a record kept in good repair): display language
  * describes departure from documented baseline practice — precision without
  * valence. Stored enum values (clearly_concerning, erosion types, ...) are
  * UNCHANGED — 100+ weeks of data, prompts, and eval baselines depend on

@@ -72,7 +72,7 @@ export default function LensPage() {
         description="Everything Democracy Monitor decided before reading a single document — categories, baselines, readings, mechanisms, models, and prompt versions — rendered from the code that runs."
         canonicalPath="/system/lens"
       />
-      <Link href="/why-this-matters#apparatus" className="text-xs text-dm-accent hover:underline">
+      <Link href="/charter#apparatus" className="text-xs text-dm-accent hover:underline">
         &larr; The charter
       </Link>
       <h1 className="text-xl font-bold text-dm-text-primary mt-4 mb-1">{APPARATUS_HEADING}</h1>

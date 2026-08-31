@@ -8,7 +8,7 @@ import {
   VISIBLE_THROUGH_A_LENS,
 } from '@/lib/data/charter-copy';
 import { READER_INVITE_HREF } from '@/lib/data/reader-audits';
-import WhyThisMattersPage from '@/pages/why-this-matters';
+import CharterPage from '@/pages/charter';
 
 vi.mock('next/head', () => ({
   default: ({ children }: { children: React.ReactNode }) => children,
@@ -21,20 +21,18 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-/** The charter's apparatus inventory renders from the instrument's own
- *  constants (#812): if a category, baseline, reading, mechanism or model
- *  changes in code, this page changes with it — and "Nothing more" is gone. */
-describe('/why-this-matters — the charter publishes its lens (#812)', () => {
-  const text = () => render(<WhyThisMattersPage />).container.textContent ?? '';
-
-  it('no longer claims to bring nothing', () => {
-    const t = text();
+/** The charter on its own page (R-CHARTER-2, #820): the apparatus inventory
+ *  renders from the instrument's own constants (#812) and the conduct list
+ *  points at the pages where each claim is checkable. */
+describe('/charter — the quotable page (#820)', () => {
+  it('publishes the lens and does not claim to bring nothing', () => {
+    const t = render(<CharterPage />).container.textContent ?? '';
     expect(t).not.toContain('Nothing more');
     expect(t).toContain(VISIBLE_THROUGH_A_LENS);
   });
 
-  it('names the six things decided first and links the full inventory (owner: six lines, then the link)', () => {
-    const { container } = render(<WhyThisMattersPage />);
+  it('names the six things decided first and links the norms and the full inventory', () => {
+    const { container } = render(<CharterPage />);
     const t = container.textContent ?? '';
     for (const l of APPARATUS_LINES) expect(t).toContain(l.lead);
     // The tables (ids, stored names, model lists) live on /system/lens, not here.
@@ -42,10 +40,11 @@ describe('/why-this-matters — the charter publishes its lens (#812)', () => {
     expect(t).not.toContain('clearly_concerning');
     const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toContain('/system/lens');
+    expect(hrefs).toContain('/norms');
   });
 
   it('says why it stops at the record and where that claim is checkable', () => {
-    const { container } = render(<WhyThisMattersPage />);
+    const { container } = render(<CharterPage />);
     const t = container.textContent ?? '';
     expect(t).toContain(STOPS_WHY);
     expect(t).toContain(STOPS_KEEPING);
@@ -56,7 +55,8 @@ describe('/why-this-matters — the charter publishes its lens (#812)', () => {
     expect(t).not.toContain('What erosion looks like');
     const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toContain('/system/reversals');
-    expect(hrefs).toContain('/system/lens');
+    expect(hrefs).toContain('/system/self-tests#swap-audit');
+    expect(hrefs).toContain('/system/self-tests#era-rates');
     expect(hrefs).toContain('/system/methodology#limitations');
     expect(hrefs).toContain(READER_INVITE_HREF);
   });

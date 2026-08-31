@@ -25,7 +25,13 @@ function staticEntries(): SitemapEntry[] {
   return [
     { loc: '/', changefreq: 'daily', priority: '1.0' },
     { loc: '/search', changefreq: 'weekly', priority: '0.6' },
+    { loc: '/charter', changefreq: 'monthly', priority: '0.7' },
+    { loc: '/norms', changefreq: 'monthly', priority: '0.7' },
+    { loc: '/questions', changefreq: 'monthly', priority: '0.6' },
     { loc: '/system/methodology', changefreq: 'monthly', priority: '0.4' },
+    { loc: '/system/self-tests', changefreq: 'weekly', priority: '0.5' },
+    { loc: '/system/lens', changefreq: 'monthly', priority: '0.4' },
+    { loc: '/system/reversals', changefreq: 'weekly', priority: '0.5' },
     { loc: '/system/health', changefreq: 'daily', priority: '0.3' },
     { loc: '/system/architecture', changefreq: 'monthly', priority: '0.3' },
   ];

@@ -24,6 +24,14 @@ export function ApparatusInventory() {
         {APPARATUS_LINES.map((l) => (
           <li key={l.lead} className="text-sm text-dm-text-secondary leading-relaxed">
             <strong className="text-dm-text-primary">{l.lead}</strong> {l.text}
+            {l.href && (
+              <>
+                {' '}
+                <Link href={l.href} className={link}>
+                  {l.linkText}
+                </Link>
+              </>
+            )}
           </li>
         ))}
       </ul>
