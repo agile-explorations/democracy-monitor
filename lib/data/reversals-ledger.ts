@@ -48,6 +48,15 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
     date: '2026-08-31',
+    kind: 'policy',
+    scope: 'Research answers — retrieval index quality gate',
+    what: 'The rebuilt salience index (junk case citations and extraction artifacts removed) was accepted with two aspirational pool-hygiene thresholds still unmet: 81 aliases shared across four or more questions (limit 10) and 74 documents recurring in three or more pools (limit 25).',
+    why: 'Both conditions predate the change — the previous accepted index measured 76 and 86 — and the metrics this change could have moved both improved (top-ten arm share 20%→18%, mean relevance 0.49→0.50). The cross-question tail the unmet limits measure is separately scheduled work; the owner accepted the gate under its intent and this entry records the choice.',
+    evidence: [issue(827, 5479014538)],
+    release: 'v1.21.2',
+  },
+  {
+    date: '2026-08-31',
     kind: 'flip',
     scope: 'Rulemaking — week of July 6, 2026',
     count: 1,
