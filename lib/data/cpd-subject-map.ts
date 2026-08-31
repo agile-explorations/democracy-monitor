@@ -11,6 +11,9 @@
  * Source: GovInfo CPD collection, NARA controlled vocabulary.
  * Vocabulary enumerated from 150+ sampled documents across 5 analysis periods.
  * 164 mapped terms, 91 expected-unmapped terms; validated at 100% coverage on 22-doc sample.
+ * +16 terms 2026-08-31 from the 57-package skip review (owner-approved exact strings —
+ * IEEPA emergency continuations, monument actions, EO 14406/14408 subjects, Iran/Venezuela
+ * military operations, 'United States Trade Representative' spelling variant).
  */
 
 /**
@@ -24,6 +27,26 @@
  */
 export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> = new Map([
   // --- executiveActions ---
+  // 2026-08-31 skip review (#798 follow-up, owner-approved exact strings):
+  // IEEPA national-emergency continuations + Antiquities Act monument actions.
+  ['Belarus, U.S. national emergency continuation', ['executiveActions']],
+  ['Central African Republic,  U.S. national emergency continuation', ['executiveActions']], // double space in NARA data
+  [
+    'Hostage-taking and wrongful detention of U.S. nationals abroad, U.S. national emergency',
+    ['executiveActions'],
+  ],
+  ['Iraq, U.S. national emergency continuation', ['executiveActions']],
+  ['Mali, U.S. national emergency continuation', ['executiveActions']],
+  ['North Korea, U.S. national emergency continuation', ['executiveActions']],
+  [
+    'Transnational criminal organizations, U.S. national emergency continuation',
+    ['executiveActions'],
+  ],
+  ['Western Balkans, U.S. national emergency continuation', ['executiveActions']],
+  ['Yemen, U.S. national emergency continuation', ['executiveActions']],
+  ['Public and Tribal lands, conservation and management', ['executiveActions']],
+  ['Utah, Bears Ears National Monument', ['executiveActions']],
+  ['Utah, Grand Staircase-Escalante National Monument', ['executiveActions']],
   ['Presidency, U.S', ['executiveActions']],
   ['Legislation, enacted', ['executiveActions']],
   ['Legislation, proposed', ['executiveActions']],
@@ -123,6 +146,8 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['Migration flows, international cooperation', ['immigrationEnforcement']],
 
   // --- fiscal ---
+  ["America's financial system, restoring integrity", ['fiscal']], // 2026-08-31 skip review
+  ['United States Trade Representative', ['fiscal']], // NARA spelling variant of 'U.S. Trade Representative'
   ['Taxation', ['fiscal']],
   ['Tax Code reform', ['fiscal']],
   ['Tax avoidance and underpayment, enforcement efforts', ['fiscal']],
@@ -142,6 +167,8 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['Balanced Budget and Emergency Deficit Control Act of 1985', ['fiscal']],
 
   // --- military ---
+  ['Iran, U.S. military operations', ['military']], // 2026-08-31 skip review
+  ['Venezuela, U.S. military capture and exfiltration of President Maduro', ['military']],
   ['Armed Forces, U.S', ['military']],
   ['Defense and national security', ['military']],
   ['Defense and national  security', ['military']], // typo in NARA data
@@ -173,6 +200,8 @@ export const CPD_SUBJECT_TO_CATEGORIES: ReadonlyMap<string, readonly string[]> =
   ['Central Intelligence Agency', ['military']],
 
   // --- rulemaking ---
+  ['Federal regulations, reduction efforts', ['rulemaking']], // 2026-08-31 skip review
+  ['Chemical manufacturing security, regulatory relief', ['rulemaking']],
   ['Environment', ['rulemaking']],
   ['Environmental Protection Agency', ['rulemaking']],
   ['Energy', ['rulemaking']],
