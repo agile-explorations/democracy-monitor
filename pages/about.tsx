@@ -39,7 +39,7 @@ export default function AboutPage() {
             itself — executive orders, Federal Register rules, court opinions, agency press
             releases, inspector-general reports, congressional records — and asks whether those
             documents show departures from{' '}
-            <Link href="/why-this-matters" className="text-dm-accent hover:underline">
+            <Link href="/norms" className="text-dm-accent hover:underline">
               the historical norms of U.S. democracy
             </Link>
             . The same{' '}
@@ -53,7 +53,7 @@ export default function AboutPage() {
             The half-life of news touching on democracy is now measured in hours. Some of what is
             changing took two and a half centuries to build and may not be rebuildable on any
             timeline that matters to the people alive now. This site is the{' '}
-            <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+            <Link href="/charter" className="text-dm-accent hover:underline">
               record of what stood before
             </Link>
             .
@@ -94,6 +94,13 @@ export default function AboutPage() {
             </Link>{' '}
             — every choice we made before reading a single document: the categories, the baseline
             years, the models, the exact prompt versions.
+          </p>
+          <p className="text-sm text-dm-text-secondary leading-relaxed">
+            <Link href="/system/self-tests" className="text-dm-accent hover:underline font-medium">
+              Self-tests
+            </Link>{' '}
+            — what happens when we test ourselves: the swap audit, the era rates side by side, and
+            the readings read by people who are not us.
           </p>
           <p className="text-sm text-dm-text-secondary leading-relaxed">
             <Link href="/system/reversals" className="text-dm-accent hover:underline font-medium">

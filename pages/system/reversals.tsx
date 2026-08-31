@@ -29,7 +29,7 @@ function Intro() {
       This page lists every time the site corrected, reversed, held, or regenerated something it had
       published — with the date, the reason, and the record where each change is documented. It is
       updated with every release. It exists because{' '}
-      <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+      <Link href="/charter" className="text-dm-accent hover:underline">
         what this site claims
       </Link>{' '}
       is licensed by conduct: the record changes when it is wrong.

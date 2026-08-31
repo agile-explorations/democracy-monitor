@@ -10,6 +10,7 @@ const SYSTEM_LINKS = [
   { href: '/system/architecture', label: 'Architecture' },
   { href: '/system/methodology', label: 'Methodology' },
   { href: '/system/lens', label: 'The lens' },
+  { href: '/system/self-tests', label: 'Self-tests' },
   { href: '/system/reversals', label: 'Reversals' },
   { href: '/system/roadmap', label: 'Roadmap' },
 ];
@@ -107,7 +108,9 @@ export function SideNav({ open, onClose }: { open: boolean; onClose: () => void 
 
           <NavSection title="Start Here">
             <NavLink href="/about" label="About" />
-            <NavLink href="/why-this-matters" label="The Historical Norms of U.S. Democracy" />
+            <NavLink href="/charter" label="The charter" />
+            <NavLink href="/norms" label="Historical norms" />
+            <NavLink href="/questions" label="Common questions" />
           </NavSection>
 
           <NavSection title="Categories">

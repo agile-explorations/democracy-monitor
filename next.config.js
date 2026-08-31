@@ -74,18 +74,23 @@ const nextConfig = {
       ['immigrationEnforcement', 'immigration-enforcement'],
     ];
 
-    return slugRedirects.flatMap(([old, slug]) => [
-      {
-        source: `/category/${old}`,
-        destination: `/category/${slug}`,
-        permanent: true,
-      },
-      {
-        source: `/category/${old}/week/:date`,
-        destination: `/category/${slug}/week/:date`,
-        permanent: true,
-      },
-    ]);
+    return [
+      // R-CHARTER-2 (#820): the pillars kept the page; the charter moved to
+      // /charter and the FAQ to /questions (hash forwarder on /norms).
+      { source: '/why-this-matters', destination: '/norms', permanent: true },
+      ...slugRedirects.flatMap(([old, slug]) => [
+        {
+          source: `/category/${old}`,
+          destination: `/category/${slug}`,
+          permanent: true,
+        },
+        {
+          source: `/category/${old}/week/:date`,
+          destination: `/category/${slug}/week/:date`,
+          permanent: true,
+        },
+      ]),
+    ];
   },
 };
 module.exports = nextConfig;

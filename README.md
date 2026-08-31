@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and congressional records, then uses AI content assessment to identify where the documentary record departs from documented baseline practice. The site bears witness to institutional change without judging it — see the [epistemic charter](https://democracymonitor.us/why-this-matters#charter).
+A real-time dashboard that monitors signals of executive-power centralization across U.S. government institutions. It reads official government documents, court filings, press releases, and congressional records, then uses AI content assessment to identify where the documentary record departs from documented baseline practice. The site bears witness to institutional change without judging it — see the [epistemic charter](https://democracymonitor.us/charter).
 
 ## What It Does
 

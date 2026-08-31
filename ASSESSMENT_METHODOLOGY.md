@@ -2,7 +2,7 @@
 
 Democracy Monitor is an open-source system that tracks signs of executive-power centralization across U.S. government institutions. It reads publicly available government documents — federal regulations, court filings, press releases, legislative reports — and uses AI content assessment as its primary detection method — supported by three descriptive context methods (structural anomaly, silence detection, thematic drift) — to identify when institutional norms may be shifting.
 
-The system is designed to surface patterns worth human examination, not render definitive judgments. It measures **departure from documented baseline practice** and leaves the evaluation of those departures to the reader — see the [epistemic charter](https://democracymonitor.us/why-this-matters#charter). All assessments trace to specific documents, reproducible metrics, and published thresholds. Display language on the site uses departure vocabulary; the internal enum names shown in backticks below appear unchanged in the published data and the code.
+The system is designed to surface patterns worth human examination, not render definitive judgments. It measures **departure from documented baseline practice** and leaves the evaluation of those departures to the reader — see the [epistemic charter](https://democracymonitor.us/charter). All assessments trace to specific documents, reproducible metrics, and published thresholds. Display language on the site uses departure vocabulary; the internal enum names shown in backticks below appear unchanged in the published data and the code.
 
 ## Data Sources
 

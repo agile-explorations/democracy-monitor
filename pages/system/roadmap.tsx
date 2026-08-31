@@ -379,7 +379,7 @@ export default function RoadmapPage() {
           <p>
             The project&apos;s stance — what it claims, why it stops at the record, how to catch it
             being wrong — lives on{' '}
-            <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+            <Link href="/charter" className="text-dm-accent hover:underline">
               the charter
             </Link>
             . Two principles are specific to building it:
