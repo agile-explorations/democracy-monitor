@@ -4,6 +4,30 @@ Archived sprint retrospectives. For recent sprints, see `DECISIONS.md`.
 
 ---
 
+## Sprint R-LOAD close-out (#786–#790, v1.16.10, prod → 2c-8g) — ✅ shipped 2026-08-27; R-LOAD (#779) engineering complete
+
+**Origin**: with WO-5 shipped (v1.16.9) the owner made the budget decision: reset the cold-novel latency budget to what the product delivers and adopt the load suite as a gate; run Round B as a bounded experiment with a pre-agreed rule; drop the dead fp32 index. The owner also asked whether alias sub-results were cached across differently-worded questions (they are, #729) and what more could be done — which became cache telemetry (W2) and the demand-driven weekly warm (W3).
+
+**Built (v1.16.10, `821f67a`)**:
+
+- **W1 #786** — `LEAD_BUDGET` p50 ≤ 120s / p95 ≤ 240s / zero DNF on per-probe medians across interleaved runs; `collect --gate` (nonzero on FAIL), multi-report `--compare`, reset `--keep=<namespaces>`, camelCase aggregation bug fixed; protocol in the loadtest README.
+- **W2 #787** — per-build arm/count cache tally (AsyncLocalStorage request context) → `search_timings.cache_stats` (migration 0060), `[search] build …` log line, `collect` hit rates.
+- **W3 #788** — every real-demand miss ledgered; Monday replay pre-pays the previous week under `ALIAS_REPLAY_BUDGET_MS` (25 min) at concurrency 4, tiered arms → counts → junk-class counts (≥30 s), recency within a tier.
+- **W4 #789** — fp32 HNSW index dropped by a journal-registered custom migration with `lock_timeout 5s` (applied on prod at deploy, first attempt); halfvec index registered for fresh DBs.
+- **W5 #790 / #724** — Round B: dev on 2c-8g, prewarm, two attested-cold P0s. Pair medians p50 76.3s / p95 124.5s / DNF 0 (4 GB same day: 116/189) — passes the gate, **misses the pre-agreed upgrade rule (p50 < 60 ∧ p95 < 120)**; run 2 (retained page cache) p50 19s / p95 47s. **Owner chose to upgrade prod anyway** for the margin on the heaviest questions, the retention behavior, and weekly corpus growth ($75 → $100/mo). Mirrored in render.yaml/render-dev.yaml in the same sitting; `validate:infra` green.
+
+**Measured along the way**: (1) the warm-arms ceiling — a cold question whose arms and counts are pre-paid builds in **p50 20.6s / p95 34.6s** (arm hit rate 0.95, count 0.90; cold floor of the metric is ~0.3 from intra-build reuse); (2) ledger economics — zero-match "junk" mined-phrase counts (≥30 s) were 91% of replay cost with the lowest reuse, which killed cost-first ordering (431 of 4,804 rows warmed in 30 min) and produced the tiers; (3) the golden guard must keep `qemb/qexp/qexpv/qjudge` warm — a full reset re-rolls every LLM draw and reports 0/19 "drift" that is pure noise; a same-code warm pair (D/E) showed `candidatesPreRerank` identical 18/18.
+
+**Spec deviations / process**: the prod migration by hand was blocked by the auto-mode classifier — the release build applied it instead (safe: expand–contract satisfied, lock timeout fails fast); dev's build command does **not** run migrations (API says `db:init`, build log says otherwise) — applied by hand, documented; the golden tool's `--flag=value` form was unsupported (fixed) and one question (IM3) exceeds the 60 s edge cut on the debug path because a pathological count hits the 120 s statement timeout — `--skip` added; the Round B decision rule was set before the run and the owner overrode it consciously with stated reasons — that is the rule working, not failing.
+
+**Owner decisions**: budget numbers; prod DROP approval; Round B rule and the override; **dev environment to be shut down once the perf/load work closes** — which makes the regression gate on-demand (dev-only guard; ~90 min to spin up via Blueprint + internal restore job); a DoS-hardening item (Turnstile on cold builds, per-source build cap of 2, spend breaker as backstop, alerting) proposed as an outreach gate under #778 — decision pending.
+
+**Lessons** (promoted to PROJECT_KNOWLEDGE): replay value = P(reuse) × cost, never cost alone; the golden guard's warm-namespace prerequisite; dev deploys don't migrate; a global spend breaker is a self-inflicted outage switch unless per-source — backstop, not door lock; Monday 2026-08-31 is the first real read of the weekly warm (`[alias-replay] warmed …` in `dump_runs.log_tail`, `cache_stats` through the week) and of prod on 8 GB.
+
+---
+
+---
+
 ## Sprint R-LOAD, WP5 measurement rounds (#779 #782, v1.16.9) — ✅ WO-5 shipped 2026-08-27; sprint close-out (#783, #724) pending the budget decision
 
 **Origin**: Round A (basic-4gb) passed stability but failed the cold-novel latency budget (30/60s): p50 100s / p95 229s, one probe (workforce-1c) never finishing. Attribution named the alias machinery — expansion validation → alias arms → mining, stacked serially — so WP5 became a sequence of eval-gated work orders on that path.

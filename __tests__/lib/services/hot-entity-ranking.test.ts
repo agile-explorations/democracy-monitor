@@ -5,11 +5,12 @@ import {
   eraForDate,
   erasForWindow,
   hotEntityScore,
+  mergeDocCounts,
   mergeDocExtraction,
   rankHotEntities,
   RECENT_WEIGHT,
 } from '@/lib/services/hot-entity-ranking';
-import type { HotEntityEntry } from '@/lib/services/hot-entity-ranking';
+import type { CountEntry, HotEntityEntry } from '@/lib/services/hot-entity-ranking';
 
 const CUTOFF = '2026-06-24T00:00:00Z';
 
@@ -90,6 +91,95 @@ describe('rankHotEntities', () => {
   it('applies the doc-frequency floor and the cap', () => {
     const acc = new Map([entry('A v. B', 1, 0), entry('C v. D', 5, 0), entry('E v. F', 4, 0)]);
     expect(rankHotEntities(acc, 2, 1).map((e) => e.phrase)).toEqual(['C v. D']);
+  });
+});
+
+describe('mergeDocCounts — pass-A lean accumulator (#826/#827)', () => {
+  it('counts like mergeDocExtraction and never allocates heavy fields', () => {
+    const counts = new Map<string, CountEntry>();
+    const heavy = new Map<string, HotEntityEntry>();
+    const docs = [
+      { id: 1, title: 'Doe v. Noem', publishedAt: '2025-03-01T00:00:00Z' },
+      { id: 2, title: 'Order on motions', publishedAt: '2026-08-01T00:00:00Z' },
+    ];
+    for (const d of docs) {
+      mergeDocCounts(counts, d, [phrase('Doe v. Noem')], CUTOFF);
+      mergeDocExtraction(heavy, d, [phrase('Doe v. Noem')], CUTOFF);
+    }
+    const lean = counts.get('doe v. noem')!;
+    const full = heavy.get('doe v. noem')!;
+    expect(lean.docFreqTerm).toBe(full.docFreqTerm);
+    expect(lean.docFreqRecent).toBe(full.docFreqRecent);
+    expect('mentionDocIds' in lean).toBe(false);
+  });
+
+  it('anchors a caption when any doc title carries it, and stays anchored', () => {
+    const acc = new Map<string, CountEntry>();
+    mergeDocCounts(
+      acc,
+      { title: 'Opinion citing precedent', publishedAt: null },
+      [phrase('Baze v. Rees')],
+      CUTOFF,
+    );
+    expect(acc.get('baze v. rees')!.titleAnchored).toBe(false);
+    mergeDocCounts(
+      acc,
+      { title: 'Baze v Rees — order', publishedAt: null },
+      [phrase('Baze v. Rees')],
+      CUTOFF,
+    );
+    mergeDocCounts(
+      acc,
+      { title: 'Another citing doc', publishedAt: null },
+      [phrase('Baze v. Rees')],
+      CUTOFF,
+    );
+    expect(acc.get('baze v. rees')!.titleAnchored).toBe(true);
+  });
+
+  it('ranking drops never-anchored captions and keeps anchored and non-caption entries', () => {
+    const mk = (
+      p: string,
+      cls: CountEntry['entityClass'],
+      anchored: boolean,
+    ): [string, CountEntry] => [
+      p.toLowerCase(),
+      {
+        phrase: p,
+        entityClass: cls,
+        docFreqTerm: 50,
+        docFreqRecent: 0,
+        docFreqBaseline: 0,
+        titleAnchored: anchored,
+      },
+    ];
+    const acc = new Map([
+      mk('Baze v. Rees', 'caption', false),
+      mk('Doe v. Noem', 'caption', true),
+      mk('Alien Enemies Act', 'statute', false),
+    ]);
+    const ranked = rankHotEntities(acc, 2, 10).map((e) => e.phrase);
+    expect(ranked).toContain('Doe v. Noem');
+    expect(ranked).toContain('Alien Enemies Act');
+    expect(ranked).not.toContain('Baze v. Rees');
+  });
+
+  it('legacy HotEntityEntry fixtures without the flag still rank (undefined passes)', () => {
+    const acc = new Map<string, HotEntityEntry>([
+      [
+        'cook v. trump',
+        {
+          phrase: 'Cook v. Trump',
+          entityClass: 'caption',
+          docFreqTerm: 9,
+          docFreqRecent: 0,
+          docFreqBaseline: 0,
+          mentionDocIds: [1],
+          categoryCounts: {},
+        },
+      ],
+    ]);
+    expect(rankHotEntities(acc, 2, 10).map((e) => e.phrase)).toEqual(['Cook v. Trump']);
   });
 });
 

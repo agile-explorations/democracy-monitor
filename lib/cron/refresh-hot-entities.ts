@@ -1,12 +1,18 @@
 /**
- * Weekly hot-entity salience index refresh (#757, per-era #760).
+ * Weekly hot-entity salience index refresh (#757, per-era #760,
+ * two-pass #826/#827).
  *
- * One sweep over ALL analysis-period documents, accumulated per era
- * (trump_t1 / biden / trump_t2); each era's entities are ranked by
- * CROSS-era novelty (recurrence in this era ÷ recurrence in the others —
- * era-invariant legal boilerplate collapses in every era symmetrically),
- * validated through the alias machinery, and full-replaced into
- * hot_entities + hot_entity_docs.
+ * Memory-bounded two-pass sweep: pass A accumulates lean COUNT entries only
+ * (the sweep's memory scales with distinct-phrase count — 379k at 411k docs
+ * — so the heavy fields must not ride along); ranking picks the ≤1500/400/400
+ * winners per era from counts; pass B re-scans the same id ranges collecting
+ * mentionDocIds + categoryCounts for winners only. Each era's entities are
+ * ranked by CROSS-era novelty (recurrence in this era ÷ recurrence in the
+ * others — era-invariant legal boilerplate collapses in every era
+ * symmetrically), validated through the alias machinery, and full-replaced
+ * into hot_entities + hot_entity_docs. Caption-class entities additionally
+ * require title anchoring (#827): the corpus must HAVE the case, not merely
+ * cite it.
  *
  * Validation reuse (#760, pre-cron fix): corpus FTS counts are stored on
  * the table and reused by phrase across refreshes — only NOVEL phrases pay
@@ -31,13 +37,15 @@ import { getDb, isDbAvailable } from '@/lib/db';
 import { documents, hotEntities, hotEntityDocs } from '@/lib/db/schema';
 import { dataWeekStamp } from '@/lib/services/arm-cache';
 import { extractEntityPhrases, WIDE_EXTRACTION } from '@/lib/services/entity-extraction';
-import type { EntityEra, HotEntityEntry } from '@/lib/services/hot-entity-ranking';
+import type { ExtractedPhrase } from '@/lib/services/entity-extraction';
+import type { CountEntry, EntityEra, HotEntityEntry } from '@/lib/services/hot-entity-ranking';
 import {
   applyCrossEraFrequencies,
   ENTITY_ERAS,
   eraForDate,
   MAX_HOT_ENTITIES,
   MAX_HOT_ENTITIES_BASELINE_ERA,
+  mergeDocCounts,
   mergeDocExtraction,
   rankHotEntities,
   RECENT_WINDOW_WEEKS,
@@ -66,15 +74,22 @@ interface RefreshResult {
   junctionRows: number;
 }
 
-type EraAccumulators = Record<EntityEra, Map<string, HotEntityEntry>>;
-
-function emptyAccumulators(): EraAccumulators {
-  return { trump_t1: new Map(), biden: new Map(), trump_t2: new Map() };
+interface SweptDoc {
+  id: number;
+  title: string;
+  publishedAt: string | null;
+  category: string | null;
+  era: EntityEra;
 }
 
-/** One batched id-range sweep over every analysis-period doc, merged into
- *  the accumulator of the doc's era. Texts are never accumulated. */
-async function sweepAllEras(accs: EraAccumulators, maxDocs?: number): Promise<number> {
+/** One batched id-range scan over every analysis-period doc, invoking the
+ *  callback with each doc's extracted phrases. Texts are never accumulated;
+ *  what the callback keeps is the pass's memory footprint. */
+async function scanDocs(
+  label: string,
+  onDoc: (doc: SweptDoc, phrases: ExtractedPhrase[]) => void,
+  maxDocs?: number,
+): Promise<number> {
   // nosemgrep: opengrep.cron-needs-env-config
   const db = getDb();
   const scope = and(
@@ -91,7 +106,6 @@ async function sweepAllEras(accs: EraAccumulators, maxDocs?: number): Promise<nu
   const { lo, hi } = bounds[0] ?? { lo: null, hi: null };
   if (lo == null || hi == null) return 0;
 
-  const recentCutoff = new Date(Date.now() - RECENT_WINDOW_WEEKS * 7 * 86400_000).toISOString();
   let scanned = 0;
   let batches = 0;
   for (let start = lo; start <= hi; start += BATCH_SIZE) {
@@ -112,12 +126,12 @@ async function sweepAllEras(accs: EraAccumulators, maxDocs?: number): Promise<nu
         ...WIDE_EXTRACTION,
         minDocFrequency: 1,
       });
-      mergeDocExtraction(accs[eraForDate(row.publishedAt)], row, phrases, recentCutoff);
+      onDoc({ ...row, era: eraForDate(row.publishedAt) }, phrases);
       scanned++;
       if (maxDocs && scanned >= maxDocs) return scanned;
     }
     batches++;
-    if (batches % 25 === 0) console.log(`[hot-entities] scanned ${scanned} docs`);
+    if (batches % 25 === 0) console.log(`[hot-entities] ${label}: scanned ${scanned} docs`);
   }
   return scanned;
 }
@@ -203,38 +217,92 @@ async function writeIndex(
   return { written, junctionRows, weekStamp };
 }
 
+function emptyByEra<T>(make: () => T): Record<EntityEra, T> {
+  return { trump_t1: make(), biden: make(), trump_t2: make() };
+}
+
+function printDryRunTop(rankedCounts: Record<EntityEra, CountEntry[]>): void {
+  for (const era of ENTITY_ERAS) {
+    console.log(`[hot-entities] dry run — ${era} top 10:`);
+    for (const e of rankedCounts[era].slice(0, 10)) {
+      console.log(
+        `   ${e.phrase} [${e.entityClass}] era=${e.docFreqTerm} others=${e.docFreqBaseline}`,
+      );
+    }
+  }
+}
+
+/** Pass B (#826): re-scan collecting heavy fields for ranked winners only;
+ *  ranked order and count fields stay with pass A, the ranking authority. */
+async function collectHeavyForWinners(
+  rankedCounts: Record<EntityEra, CountEntry[]>,
+  recentCutoff: string,
+  maxDocs?: number,
+): Promise<Record<EntityEra, HotEntityEntry[]>> {
+  const winnerKeys = emptyByEra<Set<string>>(() => new Set());
+  for (const era of ENTITY_ERAS) {
+    for (const e of rankedCounts[era]) winnerKeys[era].add(e.phrase.toLowerCase());
+  }
+  const heavyAccs = emptyByEra<Map<string, HotEntityEntry>>(() => new Map());
+  await scanDocs(
+    'pass B',
+    (doc, phrases) => {
+      const wanted = phrases.filter((p) => winnerKeys[doc.era].has(p.phrase.toLowerCase()));
+      if (wanted.length > 0) mergeDocExtraction(heavyAccs[doc.era], doc, wanted, recentCutoff);
+    },
+    maxDocs,
+  );
+  return Object.fromEntries(
+    ENTITY_ERAS.map((era) => [
+      era,
+      rankedCounts[era].flatMap((c) => {
+        const heavy = heavyAccs[era].get(c.phrase.toLowerCase());
+        if (!heavy) return [];
+        return [
+          {
+            ...heavy,
+            docFreqTerm: c.docFreqTerm,
+            docFreqRecent: c.docFreqRecent,
+            docFreqBaseline: c.docFreqBaseline,
+          },
+        ];
+      }),
+    ]),
+  ) as Record<EntityEra, HotEntityEntry[]>;
+}
+
 export async function refreshHotEntities(opts: RefreshOptions): Promise<RefreshResult> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const t0 = Date.now();
-  const accs = emptyAccumulators();
-  const docsScanned = await sweepAllEras(accs, opts.maxDocs);
-  applyCrossEraFrequencies(accs);
-  const rankedByEra = Object.fromEntries(
+  const recentCutoff = new Date(Date.now() - RECENT_WINDOW_WEEKS * 7 * 86400_000).toISOString();
+
+  // Pass A: lean counts only — the accumulator that scales with the corpus.
+  const countAccs = emptyByEra<Map<string, CountEntry>>(() => new Map());
+  const docsScanned = await scanDocs(
+    'pass A',
+    (doc, phrases) => mergeDocCounts(countAccs[doc.era], doc, phrases, recentCutoff),
+    opts.maxDocs,
+  );
+  applyCrossEraFrequencies(countAccs);
+  const rankedCounts = Object.fromEntries(
     ENTITY_ERAS.map((era) => [
       era,
       rankHotEntities(
-        accs[era],
+        countAccs[era],
         WIDE_EXTRACTION.minDocFrequency,
         era === 'trump_t2' ? MAX_HOT_ENTITIES : MAX_HOT_ENTITIES_BASELINE_ERA,
       ),
     ]),
-  ) as Record<EntityEra, HotEntityEntry[]>;
-  const phrasesExtracted = ENTITY_ERAS.reduce((n, era) => n + accs[era].size, 0);
-  const rankedTotal = ENTITY_ERAS.reduce((n, era) => n + rankedByEra[era].length, 0);
+  ) as Record<EntityEra, CountEntry[]>;
+  const phrasesExtracted = ENTITY_ERAS.reduce((n, era) => n + countAccs[era].size, 0);
+  const rankedTotal = ENTITY_ERAS.reduce((n, era) => n + rankedCounts[era].length, 0);
   console.log(
     `[hot-entities] scanned=${docsScanned} phrases=${phrasesExtracted} ranked=${ENTITY_ERAS.map(
-      (e) => `${e}:${rankedByEra[e].length}`,
+      (e) => `${e}:${rankedCounts[e].length}`,
     ).join(' ')} (${Math.round((Date.now() - t0) / 1000)}s)`,
   );
   if (opts.dryRun) {
-    for (const era of ENTITY_ERAS) {
-      console.log(`[hot-entities] dry run — ${era} top 10:`);
-      for (const e of rankedByEra[era].slice(0, 10)) {
-        console.log(
-          `   ${e.phrase} [${e.entityClass}] era=${e.docFreqTerm} others=${e.docFreqBaseline}`,
-        );
-      }
-    }
+    printDryRunTop(rankedCounts);
     return {
       docsScanned,
       phrasesExtracted,
@@ -245,6 +313,8 @@ export async function refreshHotEntities(opts: RefreshOptions): Promise<RefreshR
       junctionRows: 0,
     };
   }
+
+  const rankedByEra = await collectHeavyForWinners(rankedCounts, recentCutoff, opts.maxDocs);
 
   const allPhrases = ENTITY_ERAS.flatMap((era) => rankedByEra[era].map((e) => e.phrase));
   const { counts, freshCounts } = await resolveFtsCounts(allPhrases);
@@ -271,7 +341,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv,
-    'Refresh the hot-entity salience index (#757/#760)\nUsage: pnpm entities:refresh [--dry-run] [--max-docs=N]',
+    'Refresh the hot-entity salience index (#757/#760/#826)\nUsage: pnpm entities:refresh [--dry-run] [--max-docs=N]',
   );
   const dryRun = process.argv.includes('--dry-run');
   const maxDocsArg = process.argv.find((a) => a.startsWith('--max-docs='))?.split('=')[1];

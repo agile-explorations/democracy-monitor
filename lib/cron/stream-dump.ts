@@ -1,6 +1,10 @@
 /**
  * CLI: npx tsx lib/cron/stream-dump.ts <runId>   (spawned detached by
  * POST /api/cron/dump; runId is a dump_runs row already in 'running' state)
+ *      npx tsx lib/cron/stream-dump.ts --standalone   (#828: the weekly-dump
+ * cron container runs the dump itself — creating its own dump_runs row —
+ * so a web-service deploy can never kill an in-flight dump again; the
+ * 2026-08-31 v1.20.1 cutover killed run 3 at 7.46 GB)
  *
  * Diskless weekly dump (#731): pg_dump -Fc streams STRAIGHT to B2 — no local
  * staging, so the persistent disk (which foreclosed Render zero-downtime
@@ -19,7 +23,8 @@ import { createHash } from 'crypto';
 import { PassThrough } from 'stream';
 import type { Readable } from 'stream';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt, lt } from 'drizzle-orm';
+import { DUMP_HEARTBEAT_STALE_MS } from '@/lib/cron/dump-config';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { dumpRuns } from '@/lib/db/schema';
 import type { B2Config } from '@/lib/services/b2-backup';
@@ -189,13 +194,56 @@ async function postDumpSteps(): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
+/** #828 standalone mode: reclaim stale rows, refuse behind a live runner,
+ *  insert this run's own row — the same contract as the HTTP trigger. */
+async function acquireStandaloneRun(db: Db): Promise<number | null> {
+  const staleBefore = new Date(Date.now() - DUMP_HEARTBEAT_STALE_MS);
+  const live = await db
+    .select({ id: dumpRuns.id })
+    .from(dumpRuns)
+    .where(and(eq(dumpRuns.status, 'running'), gt(dumpRuns.heartbeatAt, staleBefore)))
+    .limit(1);
+  if (live.length > 0) {
+    log(`standalone: run ${live[0].id} already live — exiting without starting another`);
+    return null;
+  }
+  await db
+    .update(dumpRuns)
+    .set({ status: 'failed', error: 'runner died (stale heartbeat)', finishedAt: new Date() })
+    .where(and(eq(dumpRuns.status, 'running'), lt(dumpRuns.heartbeatAt, staleBefore)));
+  const startedAt = new Date();
+  const inserted = await db
+    .insert(dumpRuns)
+    .values({ status: 'running', startedAt, heartbeatAt: startedAt })
+    .returning({ id: dumpRuns.id });
+  return inserted[0].id;
+}
+
+/** Run id from argv, or a self-acquired row in --standalone mode (#828). */
+async function resolveRunId(db: Db): Promise<number | null> {
+  if (process.argv.includes('--standalone')) {
+    const acquired = await acquireStandaloneRun(db);
+    if (acquired !== null) {
+      log(`standalone dump run ${acquired} started on this container (#828)`);
+    }
+    return acquired;
+  }
   const runId = Number(process.argv[2]);
-  if (!Number.isInteger(runId)) throw new Error('usage: stream-dump.ts <runId>');
+  if (!Number.isInteger(runId)) {
+    throw new Error('usage: stream-dump.ts <runId> | --standalone');
+  }
+  return runId;
+}
+
+async function main(): Promise<void> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not set');
   // CLI entry (require.main block) calls loadEnvConfig before main runs.
   // nosemgrep: opengrep.cron-needs-env-config
   const db = getDb();
+  const runId = await resolveRunId(db);
+  if (runId === null) {
+    process.exit(0);
+  }
   const started = Date.now();
 
   const backupCfg = readB2Config();
