@@ -132,9 +132,14 @@ export default function AboutPage() {
           <h2 className="text-lg font-semibold text-dm-text-primary">Who is behind this</h2>
           <p className="text-sm text-dm-text-secondary leading-relaxed">
             Democracy Monitor is built and run by one person, Michael Kelly, a semi-retired software
-            engineer who had an idea about putting AI to work in a way that might serve the public
-            good. It is not backed by a party, a campaign, or an advocacy organization. The code,
-            the methodology, and the data are all open —{' '}
+            engineer, as a project of Agile Explorations LLC — a one-person software company. It is
+            not backed by a party, a campaign, or an advocacy organization, and has no staff, no
+            client, and no outside funding; the costs are paid by the company, and the{' '}
+            <Link href="/support" className="text-dm-accent hover:underline">
+              Support
+            </Link>{' '}
+            page is where readers can offset them. The code, the methodology, and the data are all
+            open —{' '}
             <a
               href="https://github.com/agile-explorations/democracy-monitor"
               className="text-dm-accent hover:underline"
