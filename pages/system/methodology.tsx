@@ -7,7 +7,7 @@ import { VerdictRatesTable } from '@/components/system/VerdictRatesTable';
 import { PASS2_PROMPT_VERSION } from '@/lib/ai/prompts/document-review-pass2';
 import { useReadingLevel } from '@/lib/contexts/ReadingLevelContext';
 import { BASELINE_CONFIGS } from '@/lib/data/baselines';
-import { STANCE_SENTENCE, STANCE_TAIL } from '@/lib/data/charter-copy';
+import { STANCE_END, STANCE_MID, STANCE_SENTENCE, STANCE_TAIL } from '@/lib/data/charter-copy';
 import { CONCERN_LEVEL_THRESHOLDS } from '@/lib/data/concern-level-explanations';
 import { PASS2_INSTRUCTIONS_URL } from '@/lib/data/repo-links';
 
@@ -80,15 +80,15 @@ export function SummaryContent() {
           published thresholds.
         </p>
         <p>
-          {STANCE_SENTENCE} — see{' '}
-          <Link href="/why-this-matters#apparatus" className="text-dm-accent hover:underline">
-            what we decided first
-          </Link>
-          . {STANCE_TAIL} When it is wrong, the{' '}
-          <Link href="/system/reversals" className="text-dm-accent hover:underline">
-            reversals ledger
+          {STANCE_SENTENCE}{' '}
+          <Link href="/system/lens" className="text-dm-accent hover:underline">
+            the lens
           </Link>{' '}
-          says so.
+          {STANCE_MID} {STANCE_TAIL}{' '}
+          <Link href="/system/reversals" className="text-dm-accent hover:underline">
+            the reversals ledger
+          </Link>{' '}
+          {STANCE_END}
         </p>
       </Section>
 
@@ -96,8 +96,8 @@ export function SummaryContent() {
       <Section title="Detection Architecture" id="detection-architecture">
         <p>
           Democracy Monitor uses <strong>one active detection method</strong> (AI document review)
-          that drives concern status, plus three <strong>descriptive context methods</strong> that
-          provide narrative grounding without influencing the status determination.
+          that drives the weekly status, plus three <strong>descriptive context methods</strong>{' '}
+          that provide narrative grounding without influencing the status determination.
         </p>
         <p>
           <strong>AI Content Assessment (sole active detection)</strong> — Two-pass AI review using
@@ -115,7 +115,7 @@ export function SummaryContent() {
           (courts, Congress) remain active. Uses an 8-week intra-administration rolling window;
           categories that average under 3 documents a week use a presence-rate test over 16 weeks
           instead, since week-to-week zeros are normal for rare-event categories. Provides narrative
-          context but does not drive concern status.
+          context but does not drive the weekly status.
         </p>
         <p>
           <strong>Structural Anomaly (descriptive only)</strong> — Deterministic, metadata-only
@@ -215,15 +215,15 @@ export function DetailedContent() {
           published thresholds.
         </p>
         <p>
-          {STANCE_SENTENCE} — see{' '}
-          <Link href="/why-this-matters#apparatus" className="text-dm-accent hover:underline">
-            what we decided first
-          </Link>
-          . {STANCE_TAIL} When it is wrong, the{' '}
-          <Link href="/system/reversals" className="text-dm-accent hover:underline">
-            reversals ledger
+          {STANCE_SENTENCE}{' '}
+          <Link href="/system/lens" className="text-dm-accent hover:underline">
+            the lens
           </Link>{' '}
-          says so.
+          {STANCE_MID} {STANCE_TAIL}{' '}
+          <Link href="/system/reversals" className="text-dm-accent hover:underline">
+            the reversals ledger
+          </Link>{' '}
+          {STANCE_END}
         </p>
       </Section>
 
@@ -368,7 +368,7 @@ export function DetailedContent() {
           rule in every period. One inherent difference remains and cannot be repaired: public
           court-record archives digitized fewer documents for 2017–2018 than for later years, so
           court-document volume in those years reflects the source archives themselves. Weekly
-          concern statuses use fixed, absolute criteria within each week and are unaffected. A full
+          weekly statuses use fixed, absolute criteria within each week and are unaffected. A full
           accounting is maintained in the project&apos;s coverage-parity audit.
         </p>
         <p>
@@ -528,28 +528,29 @@ export function DetailedContent() {
           </li>
         </ul>
         <p>
-          Pass 2 also records two descriptive classifications for each concerning document: the{' '}
-          <strong>mechanism of change</strong> (formal override, operational hollowing, or
-          noncompliance/refusal — stored as the &quot;erosion type&quot;) and the{' '}
-          <strong>actor</strong> — which institutional actor performs the erosion-relevant action:
-          the federal executive, Congress, the judiciary, or a state/local government. The actor is
-          whoever performs the action, not the document&apos;s author or venue: a court opinion
-          documenting a federal agency&apos;s defiance of court orders attributes to the federal
-          executive, while a ruling that itself removes a protection attributes to the judiciary.
-          Actor attribution is context only — it does not change how any document is assessed or how
-          weekly concern status is computed. To guarantee that, attribution runs as a separate
-          lightweight classification pass, fully decoupled from the assessment prompt: a controlled
-          experiment showed that embedding attribution in the assessment prompt measurably shifted
-          outcomes, so the assessment prompt is kept unchanged. How attribution should shape the
-          dashboard&apos;s headline framing is an open product question that will be decided from
-          the attributed data itself.
+          Pass 2 also records two descriptive classifications for each flagged document: the{' '}
+          <strong>mechanism of change</strong> — a field of five values: formal override,
+          operational hollowing, noncompliance/refusal, plus <em>routine</em> and <em>unclear</em>,
+          which record that no mechanism applies or could not be determined (stored as the
+          &quot;erosion type&quot;) — and the <strong>actor</strong> — which institutional actor
+          performs the erosion-relevant action: the federal executive, Congress, the judiciary, or a
+          state/local government. The actor is whoever performs the action, not the document&apos;s
+          author or venue: a court opinion documenting a federal agency&apos;s defiance of court
+          orders attributes to the federal executive, while a ruling that itself removes a
+          protection attributes to the judiciary. Actor attribution is context only — it does not
+          change how any document is assessed or how weekly status is computed. To guarantee that,
+          attribution runs as a separate lightweight classification pass, fully decoupled from the
+          assessment prompt: a controlled experiment showed that embedding attribution in the
+          assessment prompt measurably shifted outcomes, so the assessment prompt is kept unchanged.
+          How attribution should shape the dashboard&apos;s headline framing is an open product
+          question that will be decided from the attributed data itself.
         </p>
         <p>
           An audit sample (3% of unflagged documents) is independently reviewed by Pass 2 to
-          estimate false negative rates — how many concerning documents Pass 1 might be missing.
-          Across historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to
-          under 1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast
-          majority of routine documents while catching most documents that warrant closer review.
+          estimate false negative rates — how many departures Pass 1 might be missing. Across
+          historical baselines, the audit false negative rate ranges from 0% (Biden 2021) to under
+          1% (Trump 2017–2018), indicating that Pass 1 screening correctly filters the vast majority
+          of routine documents while catching most documents that warrant closer review.
         </p>
         <h3 className="text-sm font-semibold text-dm-text-primary mt-4">
           The same review, every era, side by side
@@ -708,7 +709,7 @@ export function DetailedContent() {
         <p>
           AI document review is the <strong>sole active detection method</strong> driving concern
           status. Structural anomaly, silence detection, and thematic drift provide descriptive
-          context but do not influence the concern status.
+          context but do not influence the weekly status.
         </p>
       </Section>
 
@@ -739,7 +740,7 @@ export function DetailedContent() {
           Keywords were Democracy Monitor&apos;s original detection mechanism, but as the detection
           architecture evolved, their role changed. Keywords now serve as{' '}
           <strong>contextual annotations</strong> — they help explain what the system is detecting,
-          but they do not drive the concern status.
+          but they do not drive the weekly status.
         </p>
         <p>
           Each category has curated keyword dictionaries organized by severity tier (capture, drift,

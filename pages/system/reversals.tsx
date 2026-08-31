@@ -59,12 +59,15 @@ function LedgerRow({ e }: { e: ReversalEntry }) {
   return (
     <tr className="border-b border-dm-border/50 align-top">
       <td className="px-3 py-2 whitespace-nowrap text-dm-text-secondary">{formatDate(e.date)}</td>
-      <td className="px-3 py-2 text-dm-text-secondary">
+      <td className="px-3 py-2 text-dm-text-secondary whitespace-nowrap">
         <span className="text-[11px] uppercase tracking-wide text-dm-muted">
-          {REVERSAL_KIND_LABELS[e.kind]} · {e.scope}
-          {e.count != null ? ` · ${e.count.toLocaleString()}` : ''}
+          {REVERSAL_KIND_LABELS[e.kind]}
         </span>
-        <div className="text-dm-text-primary">{e.what}</div>
+        <div className="text-[11px] text-dm-muted">{e.scope}</div>
+      </td>
+      <td className="px-3 py-2 text-dm-text-primary">{e.what}</td>
+      <td className="px-3 py-2 text-dm-text-secondary whitespace-nowrap">
+        {e.count != null ? e.count.toLocaleString() : '—'}
       </td>
       <td className="px-3 py-2 text-dm-text-secondary">{e.why}</td>
       <td className="px-3 py-2 text-dm-text-secondary">
@@ -81,7 +84,7 @@ function LedgerTable({ entries }: { entries: ReversalEntry[] }) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
-            {['Date', 'What changed', 'Why', 'Evidence'].map((h) => (
+            {['Date', 'Kind', 'What changed', 'Scale', 'Why', 'Evidence'].map((h) => (
               <th
                 key={h}
                 className="text-left px-3 py-2 border-b border-dm-border text-dm-text-primary font-semibold"
@@ -101,11 +104,30 @@ function LedgerTable({ entries }: { entries: ReversalEntry[] }) {
   );
 }
 
+/** The trust payload is a number (editorial guidance, 2026-08-30): lead the
+ *  summary with the totals, computed from the ledger so they cannot go stale. */
+function countsLead(counts: Record<ReversalKind, number>): string {
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const earliest = REVERSALS_LEDGER[REVERSALS_LEDGER.length - 1]?.date ?? '';
+  const since = earliest
+    ? new Date(earliest + 'T00:00:00Z').toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+    : '';
+  const parts = KINDS.filter((k) => counts[k] > 0).map(
+    (k) => `${counts[k]} ${REVERSAL_KIND_LABELS[k].toLowerCase()}${counts[k] === 1 ? '' : 's'}`,
+  );
+  return `${total} entries since ${since}: ${parts.join(', ')}. Newest first.`;
+}
+
 export function SummaryContent() {
   const counts = ledgerCounts(REVERSALS_LEDGER);
   return (
     <>
       <Section title="The record of our own changes" id="overview">
+        <p className="text-dm-text-primary">{countsLead(counts)}</p>
         <Intro />
         <DataTable
           headers={['Kind', 'Entries']}
@@ -159,6 +181,15 @@ export default function ReversalsPage() {
       <p className="text-sm text-dm-text-secondary mb-6">
         <span className="text-dm-text-primary font-medium">{GOOD_REPAIR_PHRASE}</span>{' '}
         {LEDGER_TAGLINE}
+      </p>
+      <p className="text-sm text-dm-text-secondary mb-2 max-w-3xl">
+        Nothing here is quietly edited. A release that corrects, reverses, holds, or regenerates
+        anything adds an entry before it ships.
+      </p>
+      <p className="text-sm text-dm-text-secondary mb-6 max-w-3xl">
+        If you think a reading of a specific document is wrong, dispute it on that document — every
+        reviewed document carries the link. Disputes are published once reviewed, and when one
+        changes a reading, the change appears here with your objection attached.
       </p>
       <div className="max-w-3xl space-y-2">
         {readingLevel === 'summary' ? <SummaryContent /> : <DetailedContent />}

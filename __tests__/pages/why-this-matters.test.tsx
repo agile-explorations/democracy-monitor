@@ -2,11 +2,12 @@ import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   APPARATUS_LINES,
-  STOPS_CLOSE,
-  STOPS_LEAD,
-  STOPS_PROOFS,
+  CATCH_BULLETS,
+  STOPS_KEEPING,
+  STOPS_WHY,
   VISIBLE_THROUGH_A_LENS,
 } from '@/lib/data/charter-copy';
+import { READER_INVITE_HREF } from '@/lib/data/reader-audits';
 import WhyThisMattersPage from '@/pages/why-this-matters';
 
 vi.mock('next/head', () => ({
@@ -46,13 +47,17 @@ describe('/why-this-matters — the charter publishes its lens (#812)', () => {
   it('says why it stops at the record and where that claim is checkable', () => {
     const { container } = render(<WhyThisMattersPage />);
     const t = container.textContent ?? '';
-    expect(t).toContain(STOPS_LEAD);
-    expect(t).toContain(STOPS_CLOSE);
-    for (const p of STOPS_PROOFS) expect(t).toContain(p.text);
+    expect(t).toContain(STOPS_WHY);
+    expect(t).toContain(STOPS_KEEPING);
+    for (const b of CATCH_BULLETS) expect(t).toContain(b.text);
     expect(t).toContain('is its own page');
+    expect(t).not.toContain('One commitment above the rest');
+    expect(t).not.toContain('two-party baseline');
+    expect(t).not.toContain('What erosion looks like');
     const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toContain('/system/reversals');
     expect(hrefs).toContain('/system/lens');
-    expect(hrefs).toContain('/system/methodology#reader-audit');
+    expect(hrefs).toContain('/system/methodology#limitations');
+    expect(hrefs).toContain(READER_INVITE_HREF);
   });
 });
