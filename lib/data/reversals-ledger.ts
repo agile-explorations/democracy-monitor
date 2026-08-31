@@ -48,6 +48,26 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
     date: '2026-08-31',
+    kind: 'flip',
+    scope: 'Rulemaking — week of July 6, 2026',
+    count: 1,
+    what: 'The week\u2019s status changed from consistent-with-norms to notable departure, and its narrative was regenerated, after a newly ingested proclamation was read as a clear departure. The executive-actions narrative for the week of July 13 was regenerated for the same ingest (two monument proclamations); its status did not change.',
+    why: 'Sixteen newly approved subject mappings let the Compilation of Presidential Documents route twenty previously skipped documents \u2014 emergency-power renewals, monument modifications, deregulatory orders \u2014 into the record; one of them moved a published week\u2019s status. The repair ran under the flip gate and full validation.',
+    evidence: [issue(798), issue(777)],
+    release: 'v1.20.3',
+  },
+  {
+    date: '2026-08-31',
+    kind: 'correction',
+    scope: 'Weekly aggregates — in-progress week',
+    count: 14,
+    what: 'Fourteen aggregate rows created early for the in-progress week (August 31) were deleted; the weekly snapshot rebuilds them from complete data.',
+    why: 'A repair scope mistakenly included the current week, giving it premature status rows \u2014 the same artifact corrected on August 28.',
+    evidence: [issue(777)],
+    release: 'v1.20.3',
+  },
+  {
+    date: '2026-08-31',
     kind: 'hold',
     scope: 'Weekly digest — week of 2026-08-24',
     what: 'The weekly digest email was held past its Monday send and released the same day, after repair.',
