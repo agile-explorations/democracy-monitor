@@ -475,7 +475,6 @@ async function runPostCategorySteps(
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);
-  await tryRefreshHotEntities(errors);
   if (narrativesGenerated) {
     await gateAndSendDigest(
       currentWeek,
@@ -488,6 +487,10 @@ async function runPostCategorySteps(
       errors,
     );
   }
+
+  // The heaviest step runs genuinely last (#777): an OOM in the hot-entity
+  // sweep now costs only the salience index — the digest gate already ran.
+  await tryRefreshHotEntities(errors);
 
   return {
     aggregateRetries,

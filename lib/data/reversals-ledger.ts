@@ -47,6 +47,15 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-08-31',
+    kind: 'hold',
+    scope: 'Weekly digest — week of 2026-08-24',
+    what: 'The weekly digest email was held past its Monday send and released the same day, after repair.',
+    why: 'The snapshot process was killed out of memory before the digest gate ran — and the gate would have held regardless: a late-archived 2024 GAO report had been scored into a baseline week whose aggregate had not been recomputed, one derivation-graph violation. The week was re-derived under the flip gate (zero status changes), validation came back clean, and the digest went out.',
+    evidence: [issue(777)],
+    release: 'v1.20.1',
+  },
+  {
     date: '2026-08-29',
     kind: 'policy',
     scope: 'Research answers — release gate',

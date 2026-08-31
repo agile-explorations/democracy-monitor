@@ -94,16 +94,18 @@ services:
   - type: cron
     name: weekly-snapshot
     runtime: node
+    plan: standard # 2 GB (#777): the 08-24 fix raised V8's heap but left the 512 MB default plan — the container, not V8, OOM-killed on 08-31
     autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 3 * * 1'
     buildCommand: pnpm install
     startCommand: npx tsx lib/cron/snapshot.ts
     envVars:
-      # 2026-08-24 OOM: the weekly hot-entity sweep outgrew node's default
-      # heap (~250MB) as the corpus passed 300k scanned docs; a
-      # memory-bounded sweep is the durable fix (backlog).
+      # 2026-08-24/08-31 OOMs (#777): the hot-entity sweep outgrew the
+      # defaults past 300k scanned docs. The heap ceiling must stay well
+      # under the container plan above; a memory-bounded sweep is the
+      # durable fix (backlog, #777).
       - key: NODE_OPTIONS
-        value: --max-old-space-size=1024
+        value: --max-old-space-size=1536
       - key: DATABASE_URL
         fromDatabase:
           name: epd-db
