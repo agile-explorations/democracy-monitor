@@ -58,3 +58,10 @@ describe('reversals page (#814)', () => {
     expect(hrefs).toContain('/why-this-matters#charter');
   });
 });
+
+describe('count lead (editorial guidance, 2026-08-30)', () => {
+  it('opens with the computed totals in the shared header, whatever the reading level', () => {
+    const { container } = render(<ReversalsPage />);
+    expect(container.textContent).toMatch(/\d+ entries since [A-Z][a-z]+ \d{4}:/);
+  });
+});
