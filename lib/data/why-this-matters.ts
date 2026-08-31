@@ -182,8 +182,8 @@ export const COMMON_QUESTIONS: CommonQuestion[] = [
     id: 'every-president',
     question: "Doesn't every president push the limits? Isn't this just politics as usual?",
     answer: [
-      'Presidents of both parties test their boundaries — which is exactly why measurement matters more than anecdote. This system was calibrated against normal governance: it read tens of thousands of government documents from the Trump 2017–18 and Biden 2021–22 administrations to establish what ordinary boundary-pushing looks like, from both parties, before assessing anything as unusual.',
-      "That makes 'everyone does it' a testable claim here rather than a conversation-ender. When a week is flagged, it is because documents describe actions that stand out against that two-party baseline — and every flag links to the documents, so you can read them and disagree. Most weeks, under every administration we have measured, come back Stable.",
+      'Presidents of both parties test their boundaries, which is exactly why measurement beats anecdote. The same reviewer that reads this administration’s documents has read the Trump 2017–2021 and Biden 2021–2025 records under identical instructions, and those rates are published side by side in the methodology.',
+      "That makes 'everyone does it' a testable claim here rather than a conversation-ender — and you can see how it tested. Under the two administrations before this one, most weeks came back consistent with norms: 69% and 87% of category-weeks (Trump 2017–21, Biden 2021–25) as of August 2026. Under this one, most don't — 30%. Every flag links to the documents behind it, so you can read them and disagree.",
     ],
   },
   {
@@ -191,7 +191,7 @@ export const COMMON_QUESTIONS: CommonQuestion[] = [
     question: "Why should I trust this site? Isn't it just another partisan project?",
     answer: [
       "Don't trust it — check it. The code is open source, the methodology is published in full, every assessment links to the government documents behind it, and the complete database is downloadable. Anyone can rerun the analysis and disagree in detail. Criticism that survives that kind of scrutiny is the only endorsement worth having.",
-      'The strongest evidence we can offer: the same AI review — same prompts, same thresholds — ran against Biden-administration documents, and those assessments are published here alongside the current ones. Most weeks come back Stable under every administration. A monitor that flagged everything would be a monitor that told you nothing.',
+      'The strongest evidence we can offer: the same AI review — same prompts, same thresholds — ran against Biden-administration documents, and those assessments are published here alongside the current ones. The rates differ by era — most weeks under the two previous administrations came back consistent with norms; fewer do now — and a monitor that flagged everything would be a monitor that told you nothing.',
     ],
   },
 ];

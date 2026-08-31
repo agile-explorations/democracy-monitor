@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { READER_AUDITS } from '@/lib/data/reader-audits';
+import { READER_AUDITS, READER_INVITE_HREF } from '@/lib/data/reader-audits';
 import type { ReaderAuditRecord } from '@/lib/data/reader-audits';
 
 /**
@@ -74,13 +74,6 @@ function ScoredTable({ a }: { a: ReaderAuditRecord }) {
   );
 }
 
-/** Prefilled feedback: a question with the reader-audit subject (#816). */
-export const READER_INVITE_HREF =
-  '/feedback?type=question&prefill=' +
-  encodeURIComponent(
-    'I would read fifty documents for the reader audit. How I can be reached, and anything about my background you should know:',
-  );
-
 export function ReaderAuditPanel() {
   return (
     <div className="my-3 space-y-2">
@@ -112,3 +105,5 @@ export function ReaderAuditPanel() {
     </div>
   );
 }
+
+export { READER_INVITE_HREF };

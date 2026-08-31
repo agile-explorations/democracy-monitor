@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { SEOHead } from '@/components/shared/SEOHead';
 import { Section } from '@/components/system/ContentHelpers';
+import { READER_INVITE_HREF } from '@/lib/data/reader-audits';
 
 export default function RoadmapPage() {
   return (
     <>
       <SEOHead
         title="Roadmap"
-        description="What Democracy Monitor is building next: authoritarian infrastructure monitoring, rhetoric-action analysis, democracy index evidence mapping, and more."
+        description="What Democracy Monitor is building next: durable-power infrastructure, rhetoric-versus-action analysis, budget-versus-actual spending, democracy index evidence mapping, and state-level coverage."
         canonicalPath="/system/roadmap"
       />
 
@@ -49,6 +50,25 @@ export default function RoadmapPage() {
         </Section>
 
         <h2 className="text-base font-semibold text-dm-text-primary mb-4">What&apos;s Next</h2>
+        <p className="text-sm text-dm-text-secondary leading-relaxed mb-4">
+          The sections below are the build order, each with its status. First, the standing
+          commitment that shapes all of them:
+        </p>
+
+        <Section title="What we won't build" id="what-we-wont-build">
+          <p>
+            No calls to action. No petitions, no scorecards ranking officials, no endorsements, no
+            &ldquo;take action&rdquo; button, no email list that asks you to do anything but read.
+          </p>
+          <p>
+            The record is the product. What to do about it is yours. If you ever find this site
+            telling you what to do, that is a defect —{' '}
+            <Link href="/feedback" className="text-dm-accent hover:underline">
+              report it
+            </Link>
+            .
+          </p>
+        </Section>
 
         <Section title="Detection Quality & Platform Hardening" id="detection-quality">
           <p className="italic text-dm-muted text-xs mb-2">In progress</p>
@@ -61,8 +81,10 @@ export default function RoadmapPage() {
           </p>
         </Section>
 
-        <Section title="Durable-Power Infrastructure" id="authoritarian-infrastructure">
+        <span id="authoritarian-infrastructure" />
+        <Section title="Durable-Power Infrastructure" id="durable-power-infrastructure">
           <p>
+            <p className="italic text-dm-muted text-xs mb-2">Next up</p>
             Nobody systematically tracks whether the government is building operational capacity
             that would outlast the president assembling it — not what officials say, and not what
             policies are announced, but whether the personnel, surveillance technology, enforcement
@@ -135,6 +157,9 @@ export default function RoadmapPage() {
 
         <Section title="Rhetoric vs. Action Analysis" id="rhetoric-action">
           <p>
+            <p className="italic text-dm-muted text-xs mb-2">
+              Under consideration — tell us if this matters to you
+            </p>
             Democratic erosion often follows a pattern: officials first say something, then the
             government does something. A president calls an agency &ldquo;corrupt and
             wasteful&rdquo; — weeks later, thousands of employees are placed on leave. A secretary
@@ -172,6 +197,9 @@ export default function RoadmapPage() {
 
         <Section title="Following the Money" id="following-the-money">
           <p className="italic text-dm-muted text-xs mb-2">
+            <p className="italic text-dm-muted text-xs mb-2">
+              Filed, not scheduled — investigation complete
+            </p>
             Under consideration — tell us if this matters to you
           </p>
           <p>
@@ -202,7 +230,7 @@ export default function RoadmapPage() {
           </ol>
           <p>
             This would touch several other items on this page: it adds the funding backbone that{' '}
-            <a href="#authoritarian-infrastructure" className="text-dm-accent hover:underline">
+            <a href="#durable-power-infrastructure" className="text-dm-accent hover:underline">
               Durable-Power Infrastructure
             </a>{' '}
             needs (tracking whether enforcement capacity is being <em>funded</em>, not just
@@ -229,6 +257,9 @@ export default function RoadmapPage() {
 
         <Section title="Democracy Index Evidence Mapping" id="democracy-index-mapping">
           <p>
+            <p className="italic text-dm-muted text-xs mb-2">
+              Under consideration — tell us if this matters to you
+            </p>
             V-Dem and Freedom House produce the most widely cited assessments of democratic health
             worldwide. What they cannot provide is the evidentiary trail: which specific government
             actions support their assessments? We plan to map their indicators to Democracy
@@ -246,6 +277,9 @@ export default function RoadmapPage() {
 
         <Section title="Project 2025 Implementation Tracking" id="project-2025">
           <p>
+            <p className="italic text-dm-muted text-xs mb-2">
+              Under consideration — tell us if this matters to you
+            </p>
             Existing trackers (
             <a
               href="https://project2025.observer"
@@ -274,6 +308,7 @@ export default function RoadmapPage() {
 
         <Section title="State-Level Research Corpus" id="state-level">
           <p>
+            <p className="italic text-dm-muted text-xs mb-2">Filed, not scheduled</p>
             Significant threats to democratic governance originate at state legislatures, state
             courts, and governors&apos; offices. We plan to extend the document repository to cover
             state-level bills, court opinions, and executive orders, beginning with states that
@@ -287,6 +322,24 @@ export default function RoadmapPage() {
         </Section>
 
         <Section title="How You Can Help" id="how-to-help">
+          <p>
+            <strong>Read fifty documents and tell us where we&apos;re wrong.</strong> Each quarter,
+            fifty of the reviewer&apos;s readings go to two people who are not us. The 2026-Q3
+            packet is ready and waiting for its readers.{' '}
+            <Link href={READER_INVITE_HREF} className="text-dm-accent hover:underline">
+              Volunteer
+            </Link>
+            .
+          </p>
+          <p>
+            <strong>Dispute a specific reading.</strong> Every reviewed document carries a way to
+            say the reading is wrong. Disputes are published once reviewed, and the ones that change
+            a reading go in the{' '}
+            <Link href="/system/reversals" className="text-dm-accent hover:underline">
+              reversals ledger
+            </Link>
+            .
+          </p>
           <p>
             <strong>Use the site and tell us what&apos;s missing.</strong> The most valuable
             feedback comes from domain experts who know the events and can tell us what we got right
@@ -324,14 +377,12 @@ export default function RoadmapPage() {
 
         <Section title="Principles" id="principles">
           <p>
-            <strong>Open methodology.</strong> Every assessment traces to specific documents. The AI
-            prompts, scoring thresholds, and detection methodology are published and versioned. When
-            we change the methodology, we document why.
-          </p>
-          <p>
-            <strong>Nonpartisan analysis.</strong> The system reads government documents from all
-            administrations using the same methodology. Biden-era documents are assessed with the
-            same prompts and thresholds as Trump-era documents. The data shows what it shows.
+            The project&apos;s stance — what it claims, why it stops at the record, how to catch it
+            being wrong — lives on{' '}
+            <Link href="/why-this-matters#charter" className="text-dm-accent hover:underline">
+              the charter
+            </Link>
+            . Two principles are specific to building it:
           </p>
           <p>
             <strong>Credit others.</strong> Where existing organizations do excellent work, we
@@ -339,9 +390,16 @@ export default function RoadmapPage() {
             of civic technology, academic research, and investigative journalism.
           </p>
           <p>
-            <strong>Honest about limitations.</strong> The system is experimental. AI assessments
-            can be wrong. Congressional floor speeches are partisan. Some categories have more data
-            than others. We document these limitations alongside every assessment.
+            <strong>Honest about limitations.</strong> The system&apos;s blind spots are listed in
+            our own words on the{' '}
+            <Link href="/system/methodology#limitations" className="text-dm-accent hover:underline">
+              methodology page
+            </Link>
+            , and every correction is published in the{' '}
+            <Link href="/system/reversals" className="text-dm-accent hover:underline">
+              reversals ledger
+            </Link>
+            .
           </p>
         </Section>
       </div>

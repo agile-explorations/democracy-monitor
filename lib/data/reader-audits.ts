@@ -24,3 +24,11 @@ export interface ReaderAuditRecord {
 export const READER_AUDITS: ReaderAuditRecord[] = [
   { id: '2026-Q3', status: 'in_progress', packetIssued: '2026-08-29', sample: 50 },
 ];
+
+/** Prefilled feedback for volunteering as a reader (#816): the one place a
+ *  reader can do the thing the copy describes. */
+export const READER_INVITE_HREF =
+  '/feedback?type=question&prefill=' +
+  encodeURIComponent(
+    'I would read fifty documents for the reader audit. How I can be reached, and anything about my background you should know:',
+  );

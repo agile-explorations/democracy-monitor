@@ -10,14 +10,16 @@
 
 /** Methodology overview, both reading levels (one constant so they cannot diverge). */
 export const STANCE_SENTENCE =
-  'The stance behind every measurement here is a record kept in good repair, not a verdict: document the shift in how America governs itself, publish the lens it is seen through, and correct the record when it is wrong';
+  'The stance here is a record kept in good repair, not a verdict. We document the shift, we publish';
+export const STANCE_MID = 'it is seen through, and we correct the record when it is wrong.';
 
 export const STANCE_TAIL =
-  'The same instruments point at every administration; this page is where that claim is checkable.';
+  'The same instruments point at every administration — this page is where that claim is checkable, and';
+export const STANCE_END = 'is where it has failed.';
 
 /** Replaces "This site exists to make that movement visible. Nothing more." */
 export const VISIBLE_THROUGH_A_LENS =
-  'This site exists to make that movement visible — through a lens we chose, describe below, and correct in public.';
+  'This site exists to make that movement visible — through a lens we built, publish below, and correct in public.';
 
 export const APPARATUS_HEADING = 'What we decided before reading a single document';
 
@@ -33,11 +35,11 @@ export const APPARATUS_LINES = [
   },
   {
     lead: 'A page of historical norms,',
-    text: 'written by us, that says what "long-standing practice" means in each — this page.',
+    text: 'written by us, that says what "long-standing practice" means in each — the norms below.',
   },
   {
     lead: 'Eight baseline years',
-    text: 'against which every departure is measured. There is no baseline before 2017.',
+    text: '— every year of the two preceding administrations — so the same reviewer’s rates can be compared era to era. There is no baseline before 2017.',
   },
   {
     lead: 'A two-pass reviewer.',
@@ -63,38 +65,59 @@ export const APPARATUS_CLOSE = {
 
 export const STOPS_HEADING = 'Why this stops at the record';
 
-/** Opens with the license, not the disclaimer (copy review, 2026-08-29). */
-export const STOPS_LEAD =
-  'Keeping the record is itself an act. Against a news cycle whose memory is measured in hours, the record is what stays.';
+/** The stopping point and the conduct list as two sections (editorial
+ *  guidance, 2026-08-30): why the record is sufficient, then how the
+ *  neutrality claim is checkable. */
+export const STOPS_WHY =
+  'Why keep watch at all, if we pass no judgment? Because some of what is changing took two and a half centuries to build and may not be rebuildable on any timeline that matters to the people alive now. A country is free to renovate its institutions. But renovation done quickly, without a record of what stood before, forecloses the option of changing course. This site is that record.';
 
-export const STOPS_PROOFS_INTRO = 'Our neutrality is licensed by conduct, not by claim:';
+export const STOPS_KEEPING =
+  'Keeping it is itself the act. Against a news cycle whose memory is measured in hours, the record is what stays. What to do about what it shows belongs to the reader — to voters, and to the question the Constitution assigns to Congress, not to a website.';
 
-/** The five proofs — each one a link to where it can be checked. */
-export const STOPS_PROOFS = [
+export const CATCH_HEADING = 'How to catch us';
+
+export const CATCH_INTRO = 'Neutrality is a claim anyone can make. Ours is licensed by conduct:';
+
+/** Claim in plain text, short link at the end (style rule: links carry the
+ *  destination, not the sentence). href 'READER_INVITE' resolves to the
+ *  volunteer prefill at render time. */
+export const CATCH_BULLETS = [
   {
-    text: 'the same instruments point at every administration',
+    text: 'The same instruments point at every administration.',
+    linkText: 'See the baselines',
     href: '/system/methodology#baselines',
   },
   {
-    text: 'our reviewer is tested by swapping the administrations’ names inside the documents it reads',
+    text: 'Our reviewer is tested by swapping the administrations’ names inside the documents it reads, and we publish what moves — including when it moves against us.',
+    linkText: 'See the swap audit',
     href: '/system/methodology#ai-document-review',
   },
   {
-    text: 'its verdict rates are published for every era side by side',
+    text: 'Its verdict rates are published for every era, side by side.',
+    linkText: 'See the rates',
     href: '/system/methodology#ai-document-review',
   },
   {
-    text: 'fifty of its readings a quarter are set aside for readers who are not us — the first fifty are waiting for them now',
-    href: '/system/methodology#reader-audit',
+    text: 'Fifty of its readings a quarter go to readers who are not us. The first fifty are ready, and we are still looking for the readers.',
+    linkText: 'Volunteer',
+    href: 'READER_INVITE',
   },
   {
-    text: 'when we are wrong we say so, on a page kept for that purpose',
+    text: 'The flags we raised under previous administrations are still published, unedited.',
+    linkText: null,
+    href: null,
+  },
+  {
+    text: 'What this system cannot see is listed in our own words.',
+    linkText: 'Limitations',
+    href: '/system/methodology#limitations',
+  },
+  {
+    text: 'When we are wrong, we say so — on a page kept for that purpose.',
+    linkText: 'Reversals',
     href: '/system/reversals',
   },
 ] as const;
-
-export const STOPS_CLOSE =
-  'What to do about what it shows belongs to the reader — to voters, and to the question the Constitution assigns to Congress, not to a website.';
 
 /** The recurring phrase (methodology, charter, ledger header). */
 export const GOOD_REPAIR_PHRASE = 'A record kept in good repair.';
