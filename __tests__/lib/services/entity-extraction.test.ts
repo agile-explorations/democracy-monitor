@@ -116,6 +116,83 @@ describe('WIDE config — offline hot-entity sweep (#757)', () => {
   });
 });
 
+describe('caption truncation artifacts (#827)', () => {
+  it('rejects captions truncated at an abbreviation period', () => {
+    const texts = [
+      'In Frengler v. Gen. Motors the claim failed.',
+      'The court cited Frengler v. Gen. Motors again.',
+    ];
+    const phrases = extractEntityPhrases(texts, LIGHT_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).toEqual([]);
+  });
+
+  it('rejects a caption whose whole left side is a suffix abbreviation', () => {
+    const texts = [
+      "Nat'l Educ. Ass'n v. Trump was decided.",
+      "The ruling in Educ. Ass'n v. Trump stands.",
+    ];
+    const phrases = extractEntityPhrases(texts, LIGHT_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).toEqual([]);
+  });
+
+  it('keeps full captions with trailing corporate words and multi-token abbreviated sides', () => {
+    const texts = [
+      "Noble v. Chrysler Motors Corp and Teachers Ass'n v. Trump were cited.",
+      "See Noble v. Chrysler Motors Corp; also Teachers Ass'n v. Trump.",
+    ];
+    const phrases = extractEntityPhrases(texts, LIGHT_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).toContain('Noble v. Chrysler Motors Corp');
+    expect(phrases).toContain("Teachers Ass'n v. Trump");
+  });
+});
+
+describe('second-order artifacts from the first #827 prod dry-run', () => {
+  it('rejects sentence-start and document-term person bigrams', () => {
+    const texts = [
+      'When Judge ruled, the Amended Omnibus was filed; prosecutors charged Individual Supplemental forms per Methodology The report cites.',
+      'When Judge considered the Amended Omnibus, investigators charged Individual Supplemental again under Methodology The framework.',
+    ];
+    const phrases = extractEntityPhrases(texts, WIDE_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).not.toContain('When Judge');
+    expect(phrases).not.toContain('Methodology The');
+    expect(phrases).not.toContain('Amended Omnibus');
+    expect(phrases).not.toContain('Individual Supplemental');
+  });
+
+  it('folds possessive person mentions into the base name', () => {
+    const texts = [
+      "Investigators charged Hillary Clinton's aide and later charged Hillary Clinton directly.",
+      "The probe that charged Hillary Clinton's team also charged Hillary Clinton again.",
+    ];
+    const out = extractEntityPhrases(texts, WIDE_EXTRACTION);
+    const clinton = out.filter((e) => e.phrase.toLowerCase().startsWith('hillary clinton'));
+    expect(clinton).toHaveLength(1);
+    expect(clinton[0].phrase).toBe('Hillary Clinton');
+  });
+
+  it('rejects possessive-pronoun statute leads', () => {
+    const texts = [
+      'My Inflation Reduction Act delivered results.',
+      'He praised My Inflation Reduction Act again.',
+    ];
+    const phrases = extractEntityPhrases(texts, WIDE_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).not.toContain('My Inflation Reduction Act');
+    expect(phrases).toContain('Inflation Reduction Act');
+  });
+});
+
+describe('person artifact prefixes (#827)', () => {
+  it('rejects document-artifact bigrams and keeps real names', () => {
+    const texts = [
+      'Prosecutors charged Image Jose in the filing; they also charged Maria Gonzalez that week.',
+      'The grand jury charged Image Jose again, and later charged Maria Gonzalez too.',
+    ];
+    const phrases = extractEntityPhrases(texts, WIDE_EXTRACTION).map((e) => e.phrase);
+    expect(phrases).not.toContain('Image Jose');
+    expect(phrases).toContain('Maria Gonzalez');
+  });
+});
+
 describe('WIDE config — task forces and initiatives (#760)', () => {
   it('extracts named task forces and initiatives with class tags', () => {
     const texts = [

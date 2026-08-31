@@ -79,7 +79,7 @@ const CAPTION_RE = new RegExp(
 /** Capitalized sentence words absorbed to the caption's left ("Following
  *  Newsom v. Trump") — stripped so spellings merge on the caption proper. */
 const LEADING_CONNECTORS =
-  /^(?:In|The|Following|See|After|Before|Under|But|And|Also|However|Both|With|From|As|On|At|By|For|To|That|This|When|While|Since|Like|Per|Of|Or|If|Compare|Contra|Unlike) /;
+  /^(?:In|The|Following|See|After|Before|Under|But|And|Also|However|Both|With|From|As|On|At|By|For|To|That|This|When|While|Since|Like|Per|Of|Or|If|Compare|Contra|Unlike|My|Our|Your|His|Her|Their) /;
 const EO_RE = /Executive Order \d{5}/g;
 const OPERATION_RE = /Operation [A-Z][A-Za-z]+(?:['’][sS])?(?: [A-Z][A-Za-z]+){0,2}/g;
 const PUBLIC_LAW_RE = /Public Law \d{2,3}-\d{1,4}/g;
@@ -101,16 +101,23 @@ const PERSON_CONTEXT_RE = new RegExp(
 
 /** Caption fragments that are not case names (list styles, OCR noise). */
 const CAPTION_STOPWORDS = /\b(Chapter|Section|Article|Volume|Part|Title) v\.?/i;
+/** #827 truncation artifacts: the caption regex confines dots to acronyms,
+ *  so "Gen. Motors" breaks at the period ("Frengler v. Gen"). A caption
+ *  whose LAST token is one of these dangling fragments is a truncation. */
+const CAPTION_TRUNCATED_TAIL = /^(?:Gen|Fed|Dep|Nat|Int|Sec|Univ|Ass)$/;
+/** A caption whose entire LEFT side is a single suffix abbreviation lost
+ *  its leading words at a dot boundary ("[Teachers] Ass'n v. Trump"). */
+const CAPTION_TRUNCATED_HEAD = /^(?:Ass['’]n|Dep['’]t|Nat['’]l|Int['’]l|Sec['’]y|Comm['’]n)$/;
 /** Statute matches that are generic references or FR-preamble boilerplate
  *  (every rule recites the procedural cluster — their document frequency
  *  outranks the topical statutes the mining exists to find). */
 const STATUTE_STOPWORDS =
-  /^(?:The|This|That|Said|Such|An?|Any|Each|Every|No|Under|Whereas|Pursuant) |^(?:Administrative Procedure|National Defense Authorization|Paperwork Reduction|Congressional Review|Regulatory Flexibility|National Environmental Policy|Federal Advisory Committee|Government Paperwork Elimination|Small Business Regulatory Enforcement Fairness|Business Regulatory Enforcement Fairness)\b.*Act|^Unfunded Mandates Reform Act/i;
+  /^(?:The|This|That|Said|Such|An?|Any|Each|Every|No|Under|Whereas|Pursuant|My|Our|Your|His|Her|Their) |^(?:Administrative Procedure|National Defense Authorization|Paperwork Reduction|Congressional Review|Regulatory Flexibility|National Environmental Policy|Federal Advisory Committee|Government Paperwork Elimination|Small Business Regulatory Enforcement Fairness|Business Regulatory Enforcement Fairness)\b.*Act|^Unfunded Mandates Reform Act/i;
 /** Person-context bigrams that are institutions, honorifics, or legal
  *  boilerplate nouns, not people ("The Court", "Federal Rule", "Civil
  *  Procedure" all matched the first sweep). */
 const PERSON_STOPWORDS =
-  /^(?:United States|White House|Supreme Court|District Court|Attorney General|Justice Department|Homeland Security|Federal Bureau|Grand Jury|New York|Los Angeles|El Salvador|District Judge|Chief Judge|President Trump|President Biden|Mr|Mrs|Ms|Dr)\b|^(?:The|This|That|Federal|Civil|Criminal|Judicial|National|Executive|Congressional) /i;
+  /^(?:United States|White House|Supreme Court|District Court|Attorney General|Justice Department|Homeland Security|Federal Bureau|Grand Jury|New York|Los Angeles|El Salvador|District Judge|Chief Judge|President Trump|President Biden|Mr|Mrs|Ms|Dr)\b|^(?:The|This|That|Federal|Civil|Criminal|Judicial|National|Executive|Congressional|Image|Exhibit|Figure|Page|Docket|Photo|Table|Appendix|When|Whether|Which|While|Where|Should|Would|Could|Amended|Individual|Supplemental|Joint|Proposed|Revised|Big) /i;
 
 export type EntityClass =
   | 'caption'
@@ -150,7 +157,13 @@ function normalizePhrase(raw: string, kind: EntityClass): string | null {
     if (phrase.split(' ').length < 3) return null; // one qualifier alone is too weak an arm
   }
   if (phrase.length < MIN_PHRASE_CHARS || phrase.length > MAX_PHRASE_CHARS) return null;
-  if (kind === 'caption' && CAPTION_STOPWORDS.test(phrase)) return null;
+  if (kind === 'caption') {
+    if (CAPTION_STOPWORDS.test(phrase)) return null;
+    const tokens = phrase.split(' ');
+    if (CAPTION_TRUNCATED_TAIL.test(tokens[tokens.length - 1])) return null;
+    const vIdx = tokens.findIndex((t) => /^[vV]\.?$/.test(t));
+    if (vIdx === 1 && CAPTION_TRUNCATED_HEAD.test(tokens[0])) return null;
+  }
   return phrase;
 }
 
@@ -186,7 +199,12 @@ function collectMatches(
   }
   if (!wide) return;
   for (const m of text.matchAll(PERSON_CONTEXT_RE)) {
-    const name = (m[1] ?? m[2] ?? '').replace(/\s+/g, ' ').trim();
+    const name = (m[1] ?? m[2] ?? '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/['’][sS]$/, '');
+    // "Methodology The", "Guidance A" — a determiner is never a surname.
+    if (/ (?:The|A|An|Of|For)$/.test(name)) continue;
     if (!name || name.length < MIN_PHRASE_CHARS || PERSON_STOPWORDS.test(name)) continue;
     const key = name.toLowerCase();
     if (seen.has(key)) continue;

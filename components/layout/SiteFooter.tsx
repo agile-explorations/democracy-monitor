@@ -24,7 +24,7 @@ export function SiteFooter() {
           <span>Open Source on GitHub</span>
         </a>
         <span className="text-dm-border">·</span>
-        <span>MIT License</span>
+        <span>MIT License &middot; A project of Agile Explorations LLC</span>
         <span className="text-dm-border">·</span>
         <Link href="/about" className="hover:text-dm-text-secondary transition-colors">
           About

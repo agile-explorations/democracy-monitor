@@ -80,14 +80,41 @@ services:
   - type: cron
     name: weekly-dump
     runtime: node
-    plan: starter
+    plan: starter # streaming peaks ~200 MB by design (25 MB x 4 x 2 parts)
     autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 5 * * 1'
-    buildCommand: echo "trigger only"
-    startCommand: ./scripts/weekly-dump.sh
+    # #828: the dump runs ON this container — a web-service deploy can no
+    # longer kill an in-flight dump (v1.20.1 killed run 3 at 7.46 GB).
+    # scripts/weekly-dump.sh remains the manual HTTP-trigger path.
+    buildCommand: pnpm install
+    startCommand: npx tsx lib/cron/stream-dump.ts --standalone
     envVars:
-      - key: SITE_URL
-        value: https://democracymonitor.us
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      # Post-dump steps (alias replay + prewarm, #729/#722) run here too.
+      - key: REDIS_URL
+        fromService:
+          name: epd-redis
+          type: keyvalue
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: B2_ENDPOINT
+        sync: false
+      - key: B2_BUCKET
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APP_KEY
+        sync: false
+      - key: B2_DOWNLOAD_BUCKET
+        sync: false
+      - key: B2_DOWNLOAD_KEY_ID
+        sync: false
+      - key: B2_DOWNLOAD_APP_KEY
+        sync: false
       - key: CRON_SECRET
         sync: false
 

@@ -51,6 +51,32 @@ export const MAX_MENTION_DOCS = 500;
 export const RECENT_WEIGHT = 2;
 export const RECENT_WINDOW_WEEKS = 8;
 
+/** Pass-A lean accumulator entry (#826): everything ranking needs and
+ *  nothing else — the sweep's memory scales with entry COUNT (379k phrases
+ *  at 411k docs), so heavy fields (mentionDocIds, categoryCounts) are
+ *  collected in pass B for ranked winners only. */
+export interface CountEntry {
+  phrase: string;
+  entityClass: EntityClass;
+  docFreqTerm: number;
+  docFreqRecent: number;
+  docFreqBaseline: number;
+  /** #827: true once the caption appears in some document's TITLE — the
+   *  corpus HAS this case, rather than merely citing it. Only meaningful
+   *  for caption-class entries. */
+  titleAnchored: boolean;
+}
+
+/** The minimal shape ranking operates on — CountEntry and HotEntityEntry both satisfy it. */
+export interface RankableEntry {
+  phrase: string;
+  entityClass: EntityClass;
+  docFreqTerm: number;
+  docFreqRecent: number;
+  docFreqBaseline: number;
+  titleAnchored?: boolean;
+}
+
 export interface HotEntityEntry {
   phrase: string;
   entityClass: EntityClass;
@@ -76,6 +102,44 @@ export function topCategories(e: HotEntityEntry): string[] {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, MAX_ENTITY_CATEGORIES)
     .map(([c]) => c);
+}
+
+/** Normalize for title-anchoring: lowercase, uniform " v. " (same family
+ *  as the accumulator key normalization in entity-extraction). */
+function normalizeForAnchor(text: string): string {
+  return text.toLowerCase().replace(/ v\.? /g, ' v. ');
+}
+
+/** Pass A (#826): merge one document's phrases into the lean count
+ *  accumulator. Sets titleAnchored for captions found in the doc title. */
+export function mergeDocCounts(
+  acc: Map<string, CountEntry>,
+  doc: { title: string; publishedAt: string | null },
+  phrases: ExtractedPhrase[],
+  recentCutoffIso: string,
+): void {
+  const isRecent = Boolean(doc.publishedAt && doc.publishedAt >= recentCutoffIso);
+  const titleNorm = normalizeForAnchor(doc.title ?? '');
+  for (const p of phrases) {
+    const key = p.phrase.toLowerCase();
+    const anchored =
+      p.entityClass === 'caption' && titleNorm.includes(normalizeForAnchor(p.phrase));
+    const entry = acc.get(key);
+    if (entry) {
+      entry.docFreqTerm++;
+      if (isRecent) entry.docFreqRecent++;
+      if (anchored) entry.titleAnchored = true;
+    } else {
+      acc.set(key, {
+        phrase: p.phrase,
+        entityClass: p.entityClass,
+        docFreqTerm: 1,
+        docFreqRecent: isRecent ? 1 : 0,
+        docFreqBaseline: 0,
+        titleAnchored: anchored,
+      });
+    }
+  }
 }
 
 /** Merge one document's extracted phrases into the sweep accumulator. */
@@ -115,8 +179,8 @@ export function mergeDocExtraction(
  *  denominator (#760): cross-era novelty collapses era-invariant boilerplate
  *  symmetrically — Ashcroft v. Iqbal recurs in every era and scores ~0 in
  *  all of them; the Alien Enemies Act recurs only in trump_t2 and tops it. */
-export function applyCrossEraFrequencies(
-  accs: Record<EntityEra, Map<string, HotEntityEntry>>,
+export function applyCrossEraFrequencies<T extends RankableEntry>(
+  accs: Record<EntityEra, Map<string, T>>,
 ): void {
   for (const era of ENTITY_ERAS) {
     for (const [key, entry] of accs[era]) {
@@ -133,21 +197,27 @@ export function applyCrossEraFrequencies(
 /** Novelty-weighted salience: term recurrence divided by baseline presence
  *  (era-invariant boilerplate collapses toward zero), log-damped, with a
  *  mild recency boost. Ties broken by phrase for deterministic output. */
-export function hotEntityScore(e: HotEntityEntry): number {
+export function hotEntityScore(e: RankableEntry): number {
   const novelty = e.docFreqTerm / (1 + e.docFreqBaseline);
   const recencyBoost = 1 + RECENT_WEIGHT * (e.docFreqRecent / e.docFreqTerm);
   return novelty * Math.log(e.docFreqTerm + 1) * recencyBoost;
 }
 
-export function rankHotEntities(
-  acc: Map<string, HotEntityEntry>,
+export function rankHotEntities<T extends RankableEntry>(
+  acc: Map<string, T>,
   minDocFreq: number,
   max: number = MAX_HOT_ENTITIES,
-): HotEntityEntry[] {
-  return [...acc.values()]
-    .filter((e) => e.docFreqTerm >= minDocFreq)
-    .sort((a, b) => hotEntityScore(b) - hotEntityScore(a) || a.phrase.localeCompare(b.phrase))
-    .slice(0, max);
+): T[] {
+  return (
+    [...acc.values()]
+      .filter((e) => e.docFreqTerm >= minDocFreq)
+      // #827 (owner-approved): a caption enters the index only when some doc's
+      // own title carries it — cited-precedent noise (Baze v. Rees ×163) is
+      // never title-anchored. Entries that predate the flag (undefined) pass.
+      .filter((e) => e.entityClass !== 'caption' || e.titleAnchored !== false)
+      .sort((a, b) => hotEntityScore(b) - hotEntityScore(a) || a.phrase.localeCompare(b.phrase))
+      .slice(0, max)
+  );
 }
 
 // Pure entity-ranking primitives (moved from hot-entity-selection, 2026-08-24).
