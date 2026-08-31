@@ -80,7 +80,7 @@ services:
   - type: cron
     name: weekly-dump
     runtime: node
-    plan: starter # streaming peaks ~200 MB by design (25 MB x 4 x 2 parts)
+    plan: standard # 2 GB (#828): the proof job was oomKilled at 512Mi — node/tsx baseline + two 100 MB multipart buffers exceeds starter; cron billing is per runtime-second, so this costs pennies
     autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
     schedule: '0 5 * * 1'
     # #828: the dump runs ON this container — a web-service deploy can no
