@@ -12,6 +12,24 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-CHARTER-2: the charter gets its own page; the self-tests get theirs; the FAQ becomes findable (#820–#824, milestone 130, v1.20.0) — ✅ built 2026-08-30; copy owner-approved
+
+**Origin**: the 2026-08-30 editorial guidance §3 (its P1/P2 copy fixes shipped v1.19.2–v1.19.6): `/why-this-matters` carried the charter, the apparatus inventory, the stopping point, the conduct list, six pillars and eight FAQ answers under a URL, an H1 and a meta description in disagreement; the swap audit — "the most persuasive thing on this site" — sat at 60% depth inside the methodology; the FAQ was invisible at the bottom of a long page despite independent search value; and each pillar's most persuasive paragraph (the history) was the only unlabeled one.
+
+**Owner decisions** (AskUserQuestion, 2026-08-30): rename the pillars page to `/norms` with a permanent redirect from `/why-this-matters`; label the history paragraphs `Precedent:`.
+
+**Built**: W1 #820 `pages/charter.tsx` — the charter paragraphs, `ApparatusInventory`, "Why this stops at the record" and "How to catch us", all moved verbatim (the apparatus norms bullet, which said "the norms below", now ends in a "The norms" link via optional `linkText`/`href` on `ApparatusLine`); `pages/norms.tsx` with `useSplitAnchorForwarder` — hash fragments never reach the server, so the redirect lands with the old anchor intact and the client forwards charter-family anchors to `/charter` and FAQ ids to `/questions`, pillar ids staying put; permanent redirect in `next.config.js` (Next emits 308, the fragment-preserving equivalent of 301); in-repo link sweep (About, reversals, roadmap, lens back-link, intent-API `FRAMING`, dashboard CTA, `WhyThisMattersLine`, README, ASSESSMENT*METHODOLOGY, GLOSSARY); Start Here nav = About / The charter / Historical norms / Common questions. W2 #821 `pages/questions.tsx` with stable anchor ids and `FaqJsonLd` (FAQPage rich results). W3 #822 `pages/system/self-tests.tsx` — era rates + swap audit + reader audit moved verbatim under `#era-rates`/`#swap-audit`/`#reader-audit`, `SELF_TESTS*\*`owner-verbatim in`charter-copy.ts`; methodology collapsed to a two-sentence pointer in both reading levels; `CATCH_BULLETS` 2→`#swap-audit`, 3→`#era-rates`(the two-links-one-anchor problem gone); About gains a Self-tests line; SideNav System gains Self-tests. W4 #823`Precedent:`labels on all six pillars; sitemap gains`/charter` `/norms` `/questions` `/system/self-tests` `/system/lens` `/system/reversals`. W5 #824 GLOSSARY +5 rows, PROJECT_KNOWLEDGE sprint entry + lesson. Four new page test suites (11 tests); net −285 lines — content moved, not rewritten.
+
+**Key decisions**: no ledger entry — nothing corrected or reversed, content moved with redirects. The forwarder test records navigations as output state (an array asserted with `toEqual`) after OpenGrep's `no-mock-call-assertions` rejected `toHaveBeenCalledWith` — the rule held and the test is better for it.
+
+**Spec deviations**: the `/questions` intro dropped the guidance draft's "each linking to the record behind it" — FAQ answers carry no links, and the shipped line doesn't overclaim.
+
+**Lessons** (promoted to PROJECT_KNOWLEDGE): hash fragments never reach the server — splitting a page with externally linked anchors needs a client forwarder on the redirect target plus an in-repo sweep; one claim keeps one home, linked from everywhere else.
+
+**Open**: prod verification after v1.20.0 (four URLs, the redirect, the sitemap); external links to `/why-this-matters#charter` (README quoters, the intent API's old FRAMING strings in cached responses) arrive via 308 + forwarder.
+
+---
+
 ## Sprint R-GOOD-REPAIR: the charter says what it brings; the record shows when it was wrong; the reading can be contradicted (#812–#819, milestone 129, v1.19.0) — ✅ built 2026-08-29; charter copy owner-verbatim
 
 **Origin**: an outside critique read the site against Engaged Buddhism — Glassman's three tenets, Nhất Hạnh's refusal of sides, Faure on the rhetoric of immediacy, Hakuin's buji — and landed four pressures the owner accepted: "This site exists to make that movement visible. Nothing more" conceals an apparatus (fourteen categories, a norms page, eight baselines, a two-model reviewer with five mechanisms, _departure_ on screen over `concerning`/`erosion` in the exports); "bearing witness" is doing work "keeping an instrument in good repair" would do more accurately (Greyston, not the street retreat); the charter says why watch but not why stop at the record, and the conduct that licenses neutrality (swap audit, era rates, corrections, reversals) was nowhere on the page; and one person plus a model with no one positioned to say "your reading of this document is off."
@@ -114,56 +132,3 @@ This file captures what was planned vs what was built, spec deviations, key deci
 **Lessons** (promoted to PROJECT_KNOWLEDGE): replay value = P(reuse) × cost, never cost alone; the golden guard's warm-namespace prerequisite; dev deploys don't migrate; a global spend breaker is a self-inflicted outage switch unless per-source — backstop, not door lock; Monday 2026-08-31 is the first real read of the weekly warm (`[alias-replay] warmed …` in `dump_runs.log_tail`, `cache_stats` through the week) and of prod on 8 GB.
 
 ---
-
-## Sprint R-LOAD, WP5 measurement rounds (#779 #782, v1.16.9) — ✅ WO-5 shipped 2026-08-27; sprint close-out (#783, #724) pending the budget decision
-
-**Origin**: Round A (basic-4gb) passed stability but failed the cold-novel latency budget (30/60s): p50 100s / p95 229s, one probe (workforce-1c) never finishing. Attribution named the alias machinery — expansion validation → alias arms → mining, stacked serially — so WP5 became a sequence of eval-gated work orders on that path.
-
-**Work orders, measured**:
-
-- **WO-1** batched validation SQL — implemented, verdict-parity verified, **refuted by timing** (single statement 1.0–1.4× the concurrent per-phrase path) and reverted; `bench:validation-counts` kept.
-- **WO-3** arm/count concurrency 5→8 — **adopted**: cold alias-arms p95 216→64s, lead p50 100→84s; both knobs env-overridable.
-- **WO-2** contribution-derived arm pruning (ceiling 600, roster 18→12) — **reverted on the eval gate**: pair [73,81] (variance regression vs the tight [78,78] instrument) with three questions failing both runs; arms carry redundancy value static cuts destroy.
-- **WO-5** stage overlap — four variants and a same-day A/A control decided the final shape "D": expansion (LLM propose + validation counts) runs first and alone; then alias arms overlap vectors → mining under a **per-request DB budget of 8 statements per window** (`DB_CONCURRENCY_PER_WINDOW`, AsyncLocalStorage-scoped). Retrieval decisions byte-identical (golden guard). **The DNF class is fixed**: 1c finished in 3/3 capped runs (232→205→189s) and failed in 4/4 uncapped incl. the control (375s); the overlapped half ran 149s vs 207s same-day. Ungated overlap (counts beside vector scans) and parallel-window expansion were net-negative; a process-wide cap throttled the era path.
-
-**Spec deviations**: the WO-2 plan's "eval mean ≥75 passes" was overruled by variance — the instrument's tightness ([78,78]) is part of the gate now. The WO-5 plan modeled a 20–25% p50 cut from overlap; the tier's I/O behavior falsified the model and the shipped result is "no regression + DNF fixed", not the modeled cut.
-
-**Key decisions (owner)**: WO-2 reverted rather than tuned; WO-5 continued through the per-window and D iterations after mid-cycle re-framing; D shipped as v1.16.9 on "a failing query class fixed with decisions provably unchanged beats an unmeasurable few seconds"; `docs/GLOSSARY.md` created at the owner's request — shorthand (p50, DNF, probe ids, run labels) must be defined where the owner can read it.
-
-**Lessons** (promoted to PROJECT*KNOWLEDGE): (1) **The cold instrument is storage-I/O-bound, not CPU-bound** — Render metrics show the dev Postgres at ≤0.2 of 2 vCPU during every run; the \_unchanged* expansion stage varied 35–103s for identical work 25 minutes apart because the page cache (2.3–4.1 GB, churning) decides everything. Single cold runs cannot resolve effects under ~±40%; **A/B must be interleaved A/B/A/B in one session, medians compared, with a same-day control** — never one run each, never against yesterday. (2) This reframes Round B: the residual is page-cache-shaped, so RAM (the 8 GB tier), not CPU, is the lever the data points at. (3) A scheduling-only change needs a shape guard: `pnpm retrieval:golden` diffs `candidatesPreRerank` + `alsoSearched` and labels known noise (uncached reranker order, trace narrowing draw, salience picks on multi-era questions). (4) Detached promises in a DAG must be marked observed or an early rejection kills the process. (5) `.env.dev.local`'s `RENDER_SERVICE_ID` is prod's — verify which service an API call targets before trusting a secret it returns (the chain held prod's CRON_SECRET for an hour).
-
-**Open**: WO-4 (chip-wall UX) unstarted; #783 close-out (#724 tier decision now informed by the I/O finding; regression-gate adoption with the interleaved rule); budget decision (30/60s vs measured p50 ~85–115s / heaviest ~190s on this tier).
-
----
-
-## Sprint R-DRAWS + R-ADMIT + gate incident day (#773–#776 #778 #779, milestones 122–123, v1.16.1–v1.16.5) — ✅ GATE PASSED 2026-08-24: replicated pair [78, 78], mean 78/107 ≥ 75
-
-**Origin**: R-SLOTS left the pair at [70,71]; R-DRAWS (union-of-two-expansion-draws + prod-deficit fixes, v1.16.1) lifted it to [73,75] — one point short. R-ADMIT (#776 question-conditioned nomination channel + #775 per-class quotas, v1.16.2) targeted IM3's never-nominated due-process canon.
-
-**The incident day (2026-08-24) — five production defects found and fixed in one diagnostic chain**, each one exposed by the gate runs and diagnosed from prod evidence (Render logs API access added mid-day; it turned two-hour inferences into ten-minute queries):
-
-1. **Health-check starvation** (v1.16.3): cold enumeration builds saturated the shared pg pool (default max 10, bare Promise.all arm fan-out); /api/health/live's SELECT 1 queued past Render's 5s budget → healthy instances evicted → sitewide 502s from ONE sequential eval client. Fix: dedicated single-connection health pool. Memory was flat at 10% — the diagnosis, not the graph's first suggestion, named the mechanism.
-2. **Silent statement-timeout degradation** (v1.16.4): 10-wide fan-out under cold cache pushed 1s FTS statements past their own 120s ceiling (57014); every kill silently dropped an arm/alias — builds "succeeded" with 60 docs while randomly missing retrieval. Fix: mapConcurrent(5) + one delayed retry + DEGRADED summary logs. Cold-run timeout kills: continuous storms → zero.
-3. **Duplicate-build spiral** (v1.16.4): 240s coalescing slot TTL < 300–1,100s cold builds → retries spawned concurrent twins that compounded the contention that made them slow. TTL → 900s.
-4. **Empty-payload cache poisoning** (#778 residual): a degraded zero-doc build caches for the week and serves instant empties. Server-side never-cache-empty guard queued to R-LOAD.
-5. **Salience admission triple-defect** (v1.16.5, the gate-decisive one, found via new stage tracing + full local repro): (a) judge cache key omitted the shortlist — stale picks replayed verbatim against different nominees; (b) the question channel's single combined LIMIT let baseline-era omnibus granules (they match any long question's AND terms) bury current-era entities; (c) the roster's sharpest-first 18-seat slice cut judge picks (Trump v. J.G.G., 31 matches) for swarms of sub-20-match junk captions. Fixes: shortlist-hashed key (v3), per-era question queries with recency-first merge, composeRoster priority seats (10 of 18, judge's relevance order).
-
-**Gate protocol hardening en route** (eval-harness + scripts): silent-flush failure caught (a no-op cache flush served week-old captures as a "fresh" run — verified-flush with printed counts now mandatory); capture-dir wipe + 6h measuredAt freshness guard; blind prewarm (single pass, docs>0-verified, 202-checked-before-res.ok, ~20-min coalescing patience); res.json() inside the retry try. Standing rule: prewarm is never re-rolled — re-rolling would draw-shop the gate.
-
-**Result**: [74, 75] under degraded conditions → **[78, 78] clean** — and ten of fourteen questions scored identically across the pair (the rest ±1): the instrument itself is now tight. IM3 2/7 → 4/7 in both runs with the canon in arms.
-
-**Lessons** (promoted to PROJECT_KNOWLEDGE): silent failure-tolerance struck FIVE more times in one day — every catch-and-degrade needs a log line the day it's written; res.ok includes 202; observability changes debugging economics (logs API, [salience] stage line, SALIENCE_TRACE); a measurement gate is only as good as its environment controls (flush verification, freshness guards, contention-free windows).
-
-**Owner decisions**: option-1 (engineering cycle then fresh pair) after the 74.5 miss; ask-before-scope-change honored throughout; R-LOAD confirmed pre-outreach with cold-novel-search latency as the lead budget; outreach-gate label + #779 umbrella created.
-
----
-
-## Sprint R-SLOTS: retrieval slot economics (#762 #763, milestone 121, v1.16.0) — ✅ shipped 2026-08-23
-
-**Origin**: the scatter diagnostic classified 36/40 remaining CORE eval misses as never-candidate — documents in corpus, no query reaches them. Root causes measured: no slot guarantee for non-salience arms (a 608-match 'Title IX' arm contributed 0 candidates — RRF dilution + the reservation slice); selection funnel dropping indexed entities (Laken Riley Act docFreq 160 never an arm); era artifact (Bolton in trump_t1); synthesis losing the enumeration instruction in the two-pass path. Owner constraints throughout: corpus-scale sustainable, content-neutral (no curated lists, no per-question logic).
-
-**Built**: composeArmSlotPool — bounded round-robin slots (PER_ARM_CAP=2, 30/60 slots) for ALL productive arms + the seed-exclusion bug fix; widened selection (judge ∪ floor ∪ top-8 mechanical, cap 20) + cross-era nomination (era-blind pool join, erasForWindow); statute-aware ENUM mining (validate-then-slice); synthesis per-doc accounting in draft AND revision prompts with lifted caps. All behind classifyQuestionMode — flag-off byte-identity guarded by tests; Explore and analytical paths untouched.
-
-**Measured, cut, and kept (the sprint's real story)**: three latency incidents drove scope: (1) 48-arm roster saturated the DB pool (121s arms stage) → slot-justified 18; (2) era-window arm extras ran per window against ≤5-slot reserves (RL3/RL4 could never finish a build) → reverted to #760 semantics [owner: ask-first feedback + retroactive approval]; (3) R5 (16-term expansion) + mining width drove 100–150s seeds → matrix attributed gains to slots not width → option-1 trim (owner decision). Acceptance was band-form replicated: baseline [68,72] → candidate [72,72] (zero interval regressions, IM4/RL2 above-interval replicating EXACTLY — slot guarantees also stabilized retrieval variance) → trimmed confirmation 76/107 (71%), the project's best single run.
-
-**Open residuals**: IM3's due-process canon still never nominated (0/40 arms both candidate runs — nomination ORDERING, not funnel width; next diagnosis); RL4 big-count items; outreach gate = replicated prod pair pending post-deploy.
