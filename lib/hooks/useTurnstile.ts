@@ -35,7 +35,26 @@ const TOKEN_TIMEOUT_MS = 120_000;
 let scriptPromise: Promise<void> | null = null;
 let widgetId: string | null = null;
 let container: HTMLElement | null = null;
+/** True when we created the fallback fixed-corner host ourselves. */
+let ownHost = false;
 let pending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null;
+
+/** Tear the widget down after a token is consumed (tokens are single-use):
+ *  the visible checkbox otherwise lingers and resets to "unchecked" when
+ *  its token expires, reading as "verify again" to a person who already
+ *  holds a valid pass (VPN report, 2026-08-31). Removing the iframe
+ *  empties the mount, whose `empty:hidden` styling hides it. */
+function destroyWidget(): void {
+  const api = window.turnstile;
+  if (widgetId && api?.remove) api.remove(widgetId);
+  // Empty the mount ourselves too — `empty:hidden` must not depend on the
+  // vendor API's DOM hygiene.
+  container?.replaceChildren();
+  if (ownHost && container?.parentElement) container.parentElement.removeChild(container);
+  widgetId = null;
+  container = null;
+  ownHost = false;
+}
 
 /** Load api.js once (also resolves when the feedback form already did). */
 export function loadTurnstileScript(): Promise<void> {
@@ -84,21 +103,27 @@ export async function getTurnstileToken(mount?: HTMLElement | null): Promise<str
       clearTimeout(timer);
       settle(fn);
     };
-    if (widgetId) {
+    if (widgetId && container?.isConnected) {
       api.reset(widgetId); // re-executes; the render callbacks below fire again
       return;
     }
+    if (widgetId) destroyWidget(); // stale widget on a detached node — start over
     const host: HTMLElement = mount ?? document.createElement('div');
     host.setAttribute('aria-live', 'polite');
     if (!mount) {
       host.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:50;';
       document.body.appendChild(host);
+      ownHost = true;
     }
     container = host;
     widgetId = api.render(host, {
       sitekey: TURNSTILE_SITE_KEY,
       appearance: 'interaction-only',
-      callback: (token) => done((p) => p.resolve(token)),
+      callback: (token) =>
+        done((p) => {
+          destroyWidget();
+          p.resolve(token);
+        }),
       'error-callback': () =>
         done((p) => p.reject(new Error('Verification failed — please retry.'))),
       'expired-callback': () =>
