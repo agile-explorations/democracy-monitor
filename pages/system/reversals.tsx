@@ -127,7 +127,6 @@ export function SummaryContent() {
   return (
     <>
       <Section title="The record of our own changes" id="overview">
-        <p className="text-dm-text-primary">{countsLead(counts)}</p>
         <Intro />
         <DataTable
           headers={['Kind', 'Entries']}
@@ -181,6 +180,9 @@ export default function ReversalsPage() {
       <p className="text-sm text-dm-text-secondary mb-6">
         <span className="text-dm-text-primary font-medium">{GOOD_REPAIR_PHRASE}</span>{' '}
         {LEDGER_TAGLINE}
+      </p>
+      <p className="text-sm text-dm-text-primary mb-2 max-w-3xl">
+        {countsLead(ledgerCounts(REVERSALS_LEDGER))}
       </p>
       <p className="text-sm text-dm-text-secondary mb-2 max-w-3xl">
         Nothing here is quietly edited. A release that corrects, reverses, holds, or regenerates
