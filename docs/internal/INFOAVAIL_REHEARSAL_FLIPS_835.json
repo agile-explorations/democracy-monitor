@@ -1,0 +1,1998 @@
+{
+  "flips": [
+    {
+      "key": "infoAvailability|2017-01-30",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2017-02-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2017-11-06",
+      "pre": "ConfirmedConcern",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2018-05-28",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2021-04-26",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2025-01-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-03-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-04-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-05-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-06-09",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2025-08-11",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2025-08-25",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2025-09-08",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2025-12-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-01-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-02-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-03-02",
+      "pre": "Elevated",
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2026-06-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-07-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-08-17",
+      "pre": "Elevated",
+      "post": "Stable"
+    }
+  ],
+  "appeared": [
+    {
+      "key": "executiveOversight|1993-09-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1993-10-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1993-10-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1993-11-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1993-12-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-01-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-01-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-01-31",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-02-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-02-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-03-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-03-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-04-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-04-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-05-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-05-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-06-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-06-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-07-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-08-01",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-08-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-09-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-09-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-12-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1994-12-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-01-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-02-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-02-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-03-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-03-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-03-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-04-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-04-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-05-01",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-05-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-05-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-06-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-06-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-07-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-07-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-07-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-07-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-08-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-08-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-09-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-09-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-10-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-10-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-10-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-11-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-12-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1995-12-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-02-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-02-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-03-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-04-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-04-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-04-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-05-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-05-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-05-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-06-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-06-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-07-01",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-07-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-07-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-07-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-07-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-08-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-08-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-08-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-09-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-09-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-09-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-10-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-10-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-10-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-11-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-12-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1996-12-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-01-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-02-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-02-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-02-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-03-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-03-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-04-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-04-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-05-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-05-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-05-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-05-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-06-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-06-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-06-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-06-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-07-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-07-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-08-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-08-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-09-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-09-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-10-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-10-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-10-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-11-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-11-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1997-12-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-01-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-01-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-01-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-02-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-02-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-03-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-03-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-03-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-05-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-05-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-06-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-06-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-07-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-07-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-07-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-07-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-08-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-09-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-09-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-10-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-11-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-11-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-12-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-12-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1998-12-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-01-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-02-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-03-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-03-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-03-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-03-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-04-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-04-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-05-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-05-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-05-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-06-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-06-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-06-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-07-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-07-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-08-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-09-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-09-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-09-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-10-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-10-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-10-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-11-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-11-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-12-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|1999-12-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-01-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-01-31",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-02-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-02-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-02-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-03-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-03-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-03-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-04-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-04-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-05-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-05-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-06-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-06-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-06-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-06-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-07-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-08-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-09-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-09-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-09-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-09-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-10-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-10-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-12-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2000-12-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-01-01",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-01-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-01-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-02-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-02-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-03-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-03-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-04-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-04-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-05-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-06-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-06-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-06-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-06-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-07-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-07-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-07-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-07-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-08-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-08-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-09-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-09-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-10-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-10-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-11-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-11-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-11-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2001-12-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-01-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-01-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-03-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-04-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-04-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-05-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-06-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-07-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-07-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-08-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-08-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-09-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-10-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-10-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-11-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2002-12-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-01-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-03-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-04-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-04-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-05-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-05-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-05-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-06-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-06-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-06-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-07-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-07-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-07-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-08-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-09-01",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-09-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-09-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-09-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-10-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-10-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-10-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-10-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2003-11-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-01-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-01-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-02-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-02-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-03-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-03-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-04-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-05-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-05-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-05-31",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-06-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-06-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-06-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-07-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-07-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-07-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-08-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-08-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-08-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-09-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-10-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-11-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-11-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-12-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2004-12-20",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-01-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-01-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-02-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-02-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-03-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-03-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-03-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-04-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-04-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-04-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-04-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-05-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-05-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-06-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-06-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-07-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-07-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-07-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-09-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-10-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-10-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-11-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-11-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-12-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-12-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2005-12-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-01-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-01-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-01-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-02-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-02-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-03-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-03-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-04-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-04-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-04-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-05-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-05-15",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-05-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-06-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-06-19",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-06-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-07-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-07-31",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-08-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-08-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-09-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-09-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-10-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-11-06",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-11-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-11-27",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2006-12-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-01-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-02-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-03-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-03-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-04-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-04-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-05-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-05-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-05-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-06-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-06-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-06-25",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-07-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-07-30",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-08-13",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-09-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-09-17",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-09-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-10-22",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-10-29",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-11-05",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2007-12-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-01-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-01-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-01-28",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-02-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-02-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-02-18",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-03-03",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-03-10",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-03-24",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-03-31",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-04-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-04-14",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-04-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-05-12",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-05-26",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-06-02",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-06-09",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-06-16",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-06-23",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-07-07",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-07-21",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-08-04",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-08-11",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "executiveOversight|2008-09-08",
+      "pre": null,
+      "post": "Stable"
+    },
+    {
+      "key": "infoAvailability|2026-08-31",
+      "pre": null,
+      "post": "Stable"
+    }
+  ],
+  "nulled": 0,
+  "nulledByCat": {}
+}

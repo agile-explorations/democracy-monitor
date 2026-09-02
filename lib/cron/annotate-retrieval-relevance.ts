@@ -1,7 +1,9 @@
 /**
- * Historical retrieval-relevance annotation for mediaFreedom FR docs (#544).
+ * Historical retrieval-relevance annotation for a category's FR docs
+ * (#544 mediaFreedom; generalized for #834 infoAvailability — any category
+ * with a RETRIEVAL_RELEVANCE_PATTERNS entry).
  *
- * Classifies every stored mediaFreedom federal_register document with the
+ * Classifies every stored federal_register document in the category with the
  * SAME filter + pattern version used at fetch time (#541), then:
  *   - kept:   documents.retrieval_relevant = true
  *   - dropped: documents.retrieval_relevant = false
@@ -23,11 +25,11 @@
  * Idempotent + resumable: only rows with retrieval_relevant IS NULL are
  * processed; re-runs after interruption or as a post-deploy sweep are safe.
  *
- * Usage:
+ * Usage (mf:annotate = --category mediaFreedom; ia:annotate = infoAvailability):
  *   pnpm mf:annotate --dry-run          # classify + report, no writes
  *   pnpm mf:annotate                    # full annotation + cascade + repair
- *   pnpm mf:annotate --limit 500        # bounded run (still resumable)
- *   pnpm mf:annotate --skip-repair      # skip the aggregate-repair phase
+ *   pnpm ia:annotate --limit 500        # bounded run (still resumable)
+ *   pnpm ia:annotate --skip-repair      # skip the aggregate-repair phase
  */
 import { and, eq, isNull, sql, inArray } from 'drizzle-orm';
 import { PATTERN_VERSION } from '@/lib/data/retrieval-relevance-patterns';
@@ -39,12 +41,14 @@ import {
   frDropLedger,
   p2025Matches,
 } from '@/lib/db/schema';
-import { assessRetrievalRelevance } from '@/lib/services/retrieval-relevance-filter';
+import {
+  assessRetrievalRelevance,
+  hasRelevanceFilter,
+} from '@/lib/services/retrieval-relevance-filter';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { chunk } from '@/lib/utils/collections';
 import { addDays, getMonday, toDateString } from '@/lib/utils/date-utils';
 
-const CATEGORY = 'mediaFreedom';
 const FR_API = 'https://www.federalregister.gov/api/v1/documents';
 const FR_BATCH_SIZE = 20;
 const FR_DELAY_MS = 300;
@@ -52,6 +56,7 @@ const FR_DELAY_MS = 300;
 const REPAIR_FROM = '2017-01-20';
 
 interface Args {
+  category: string;
   dryRun: boolean;
   limit?: number;
   skipRepair: boolean;
@@ -67,18 +72,23 @@ function parseArgs(): Args {
   const argv = process.argv.slice(2);
   checkHelp(
     argv,
-    `Usage: pnpm mf:annotate [--dry-run] [--limit N] [--skip-repair]
+    `Usage: pnpm mf:annotate|ia:annotate [--dry-run] [--limit N] [--skip-repair]
 
-Annotates mediaFreedom FR docs with retrieval relevance (#544).
+Annotates a category's FR docs with retrieval relevance (#544/#834).
+--category K   category with a configured pattern set (default mediaFreedom)
 --dry-run      classify and report only, no writes
 --limit N      process at most N unannotated docs (resumable)
 --skip-repair  skip the weekly-aggregate repair phase`,
   );
-  const args: Args = { dryRun: false, skipRepair: false };
+  const args: Args = { category: 'mediaFreedom', dryRun: false, skipRepair: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--dry-run') args.dryRun = true;
+    else if (argv[i] === '--category') args.category = argv[++i];
     else if (argv[i] === '--limit') args.limit = parseInt(argv[++i], 10);
     else if (argv[i] === '--skip-repair') args.skipRepair = true;
+  }
+  if (!hasRelevanceFilter(args.category)) {
+    throw new Error(`No retrieval-relevance pattern set configured for '${args.category}'`);
   }
   return args;
 }
@@ -110,7 +120,7 @@ async function fetchAbstracts(docNumbers: string[]): Promise<Map<string, string 
       if (d.document_number) result.set(d.document_number, d.abstract ?? null);
     }
   } catch (err) {
-    console.warn(`[mf:annotate] FR API batch failed (${docNumbers.length} docs):`, err);
+    console.warn(`[annotate] FR API batch failed (${docNumbers.length} docs):`, err);
   }
   return result;
 }
@@ -122,7 +132,7 @@ interface Classified {
   abstractFetched: boolean;
 }
 
-async function classifyBatch(batch: CandidateDoc[]): Promise<Classified[]> {
+async function classifyBatch(category: string, batch: CandidateDoc[]): Promise<Classified[]> {
   const numbered = batch
     .map((doc) => ({ doc, num: docNumberFromUrl(doc.url) }))
     .filter((x): x is { doc: CandidateDoc; num: string } => x.num !== null);
@@ -131,7 +141,7 @@ async function classifyBatch(batch: CandidateDoc[]): Promise<Classified[]> {
   return batch.map((doc) => {
     const num = docNumberFromUrl(doc.url);
     const abstract = num ? (abstracts.get(num) ?? null) : null;
-    const verdict = assessRetrievalRelevance(CATEGORY, { title: doc.title, abstract });
+    const verdict = assessRetrievalRelevance(category, { title: doc.title, abstract });
     return {
       doc,
       relevant: verdict.relevant,
@@ -142,7 +152,7 @@ async function classifyBatch(batch: CandidateDoc[]): Promise<Classified[]> {
 }
 
 /** Annotate + cascade one classified batch inside a transaction. */
-async function writeBatch(classified: Classified[]): Promise<void> {
+async function writeBatch(category: string, classified: Classified[]): Promise<void> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block
   const db = getDb();
   const kept = classified.filter((c) => c.relevant);
@@ -165,7 +175,7 @@ async function writeBatch(classified: Classified[]): Promise<void> {
       await tx
         .insert(frDropLedger)
         .values({
-          category: CATEGORY,
+          category,
           signalUrl: 'historical-annotation',
           url: doc.url,
           title: doc.title,
@@ -179,19 +189,19 @@ async function writeBatch(classified: Classified[]): Promise<void> {
       // assessments (known schema issue); p2025_matches keys on document_id.
       await tx
         .delete(documentScores)
-        .where(and(eq(documentScores.url, doc.url), eq(documentScores.category, CATEGORY)));
+        .where(and(eq(documentScores.url, doc.url), eq(documentScores.category, category)));
       await tx
         .delete(aiDocumentAssessments)
         .where(
-          and(eq(aiDocumentAssessments.url, doc.url), eq(aiDocumentAssessments.category, CATEGORY)),
+          and(eq(aiDocumentAssessments.url, doc.url), eq(aiDocumentAssessments.category, category)),
         );
       await tx.delete(p2025Matches).where(eq(p2025Matches.documentId, doc.id));
     }
   });
 }
 
-/** Upsert fresh aggregates for every mediaFreedom week in range (stale-week repair). */
-async function repairAggregates(dryRun: boolean): Promise<number> {
+/** Upsert fresh aggregates for every category week in range (stale-week repair). */
+async function repairAggregates(category: string, dryRun: boolean): Promise<number> {
   const { computeWeeklyAggregate, storeWeeklyAggregate } =
     await import('@/lib/services/weekly-aggregator');
   const today = toDateString(new Date());
@@ -199,7 +209,7 @@ async function repairAggregates(dryRun: boolean): Promise<number> {
   let count = 0;
   while (week <= today) {
     if (!dryRun) {
-      const agg = await computeWeeklyAggregate(CATEGORY, week);
+      const agg = await computeWeeklyAggregate(category, week);
       await storeWeeklyAggregate(agg);
     }
     count++;
@@ -219,7 +229,7 @@ async function main(): Promise<void> {
     .from(documents)
     .where(
       and(
-        eq(documents.category, CATEGORY),
+        eq(documents.category, args.category),
         eq(documents.sourceOrigin, 'federal_register'),
         isNull(documents.retrievalRelevant),
         sql`${documents.url} IS NOT NULL`,
@@ -230,7 +240,7 @@ async function main(): Promise<void> {
     .then((rows) => rows.filter((r): r is CandidateDoc => r.url !== null));
 
   console.log(
-    `[mf:annotate] ${candidates.length} unannotated ${CATEGORY} FR docs` +
+    `[annotate:${args.category}] ${candidates.length} unannotated FR docs` +
       `${args.dryRun ? ' (DRY RUN)' : ''} — pattern v${PATTERN_VERSION}`,
   );
 
@@ -241,7 +251,7 @@ async function main(): Promise<void> {
   const keptTitles: string[] = [];
 
   for (const batch of chunk(candidates, FR_BATCH_SIZE)) {
-    const classified = await classifyBatch(batch);
+    const classified = await classifyBatch(args.category, batch);
     for (const c of classified) {
       if (c.relevant) {
         kept++;
@@ -250,22 +260,26 @@ async function main(): Promise<void> {
       if (!c.abstractFetched) titleOnly++;
       reasons[c.reason] = (reasons[c.reason] ?? 0) + 1;
     }
-    if (!args.dryRun) await writeBatch(classified);
+    if (!args.dryRun) await writeBatch(args.category, classified);
     if ((kept + dropped) % 1000 < FR_BATCH_SIZE) {
-      console.log(`[mf:annotate] ${kept + dropped}/${candidates.length} classified...`);
+      console.log(
+        `[annotate:${args.category}] ${kept + dropped}/${candidates.length} classified...`,
+      );
     }
     await new Promise((r) => setTimeout(r, FR_DELAY_MS));
   }
 
-  console.log(`[mf:annotate] Done: ${kept} kept, ${dropped} dropped, ${titleOnly} title-only`);
-  console.log(`[mf:annotate] Reasons:`, JSON.stringify(reasons));
-  console.log(`[mf:annotate] Kept titles (≤50):`);
+  console.log(
+    `[annotate:${args.category}] Done: ${kept} kept, ${dropped} dropped, ${titleOnly} title-only`,
+  );
+  console.log(`[annotate:${args.category}] Reasons:`, JSON.stringify(reasons));
+  console.log(`[annotate:${args.category}] Kept titles (≤50):`);
   for (const t of keptTitles) console.log(`  - ${t}`);
 
   if (!args.skipRepair) {
-    const weeks = await repairAggregates(args.dryRun);
+    const weeks = await repairAggregates(args.category, args.dryRun);
     console.log(
-      `[mf:annotate] Aggregate repair: ${weeks} ${CATEGORY} weeks ${args.dryRun ? 'would be' : ''} recomputed`,
+      `[annotate:${args.category}] Aggregate repair: ${weeks} weeks ${args.dryRun ? 'would be' : ''} recomputed`,
     );
   }
 }

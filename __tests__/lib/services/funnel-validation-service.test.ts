@@ -13,6 +13,7 @@ vi.mock('@/lib/services/funnel-validation-queries', () => ({
   queryFrDrops: vi.fn(),
   queryP1Flagged: vi.fn(),
   queryP2Confirmed: vi.fn(),
+  queryCategoryHealth: vi.fn(),
 }));
 
 describe('resolveWindow', () => {
@@ -105,6 +106,7 @@ describe('runFunnelValidation', () => {
     vi.mocked(isDbAvailable).mockReturnValue(true);
     vi.mocked(queries.queryFrDrops).mockResolvedValue([]);
     vi.mocked(queries.queryP2Confirmed).mockResolvedValue([]);
+    vi.mocked(queries.queryCategoryHealth).mockResolvedValue([]);
   });
 
   it('assembles sources and flags a P1 collapse against a healthy sibling', async () => {

@@ -6,6 +6,8 @@
  */
 
 import { isDbAvailable } from '@/lib/db';
+import { evaluateCategoryHealth } from './category-health-checks';
+import type { CategoryHealthResult } from './category-health-checks';
 import { evaluateFunnel } from './funnel-collapse-checks';
 import type {
   FunnelCollapseResult,
@@ -13,6 +15,7 @@ import type {
   SourceFunnel,
 } from './funnel-collapse-checks';
 import {
+  queryCategoryHealth,
   queryFrDrops,
   queryP1Flagged,
   queryP2Confirmed,
@@ -21,6 +24,10 @@ import {
 import type { StageCountRow } from './funnel-validation-queries';
 
 const DEFAULT_WINDOW_DAYS = 90;
+/** Health checks (#840) need more audit samples than 90 days holds for small
+ *  categories (mediaFreedom accrues ~16 audits/90d vs a 25-sample floor), so
+ *  they run on their own longer window ending at the funnel window's end. */
+const HEALTH_WINDOW_DAYS = 182;
 const FEDERAL_REGISTER = 'federal_register';
 const UNKNOWN_ORIGIN = 'unknown';
 const MS_PER_DAY = 86_400_000;
@@ -35,6 +42,9 @@ export interface FunnelReport {
   window: FunnelWindow;
   sources: SourceFunnel[];
   collapses: FunnelCollapseResult[];
+  /** Per-category detection-health warns (#840), on their own 182-day window. */
+  health: CategoryHealthResult[];
+  healthWindow: FunnelWindow;
 }
 
 export interface FunnelOptions {
@@ -127,5 +137,13 @@ export async function runFunnelValidation(opts: FunnelOptions = {}): Promise<Fun
 
   const sources = assembleSources(retrieved, frDrops, p1, p2);
   const collapses = evaluateFunnel(sources, opts.thresholds);
-  return { window, sources, collapses };
+
+  const healthFrom = new Date(new Date(to).getTime() - HEALTH_WINDOW_DAYS * MS_PER_DAY)
+    .toISOString()
+    .slice(0, 10);
+  const healthWindow: FunnelWindow = { from: healthFrom, to, days: HEALTH_WINDOW_DAYS };
+  const healthInputs = await queryCategoryHealth(healthFrom, to, category);
+  const health = evaluateCategoryHealth(healthInputs);
+
+  return { window, sources, collapses, health, healthWindow };
 }

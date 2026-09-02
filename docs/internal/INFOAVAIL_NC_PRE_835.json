@@ -1,0 +1,191 @@
+{
+  "capturedAt": "2026-09-02T03:11:45.471Z",
+  "controls": [
+    {
+      "id": "NC-1",
+      "description": "Biden 2022 P1 flag rate per category (target 1–15%, fail >20%)",
+      "pass": true,
+      "actual": "worst: elections at 19.3%",
+      "threshold": "≤20% per category",
+      "details": [
+        {
+          "category": "civilLiberties",
+          "value": 0.07244236606776602,
+          "pass": true
+        },
+        {
+          "category": "civilService",
+          "value": 0.06060606060606061,
+          "pass": true
+        },
+        {
+          "category": "elections",
+          "value": 0.19348659003831417,
+          "pass": true
+        },
+        {
+          "category": "executiveActions",
+          "value": 0.022634791454730418,
+          "pass": true
+        },
+        {
+          "category": "executiveOversight",
+          "value": 0.05752212389380531,
+          "pass": true
+        },
+        {
+          "category": "fiscal",
+          "value": 0.036334913112164295,
+          "pass": true
+        },
+        {
+          "category": "hatch",
+          "value": 0.4230769230769231,
+          "pass": true
+        },
+        {
+          "category": "immigrationEnforcement",
+          "value": 0.09259259259259259,
+          "pass": true
+        },
+        {
+          "category": "infoAvailability",
+          "value": 0.019444113086007395,
+          "pass": true
+        },
+        {
+          "category": "judicialIndependence",
+          "value": 0.09603340292275574,
+          "pass": true
+        },
+        {
+          "category": "lawEnforcement",
+          "value": 0.04030226700251889,
+          "pass": true
+        },
+        {
+          "category": "mediaFreedom",
+          "value": 0.012795657231485071,
+          "pass": true
+        },
+        {
+          "category": "military",
+          "value": 0.03236607142857143,
+          "pass": true
+        },
+        {
+          "category": "rulemaking",
+          "value": 0.06713780918727916,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "NC-2",
+      "description": "Biden 2022 P2 confirmation rate (target 20–60%, fail >70% or <5%)",
+      "pass": true,
+      "actual": "6.9%",
+      "threshold": "5–70%"
+    },
+    {
+      "id": "NC-3",
+      "description": "Biden 2022 weeks at federal-executive Elevated+ per category (actor-scoped, #536)",
+      "pass": true,
+      "actual": "worst: executiveOversight at 13.5%",
+      "threshold": "≤14% (≥20 docs/week) or ≤15% (<20 docs/week); 0 unattributed",
+      "details": [
+        {
+          "category": "civilLiberties",
+          "value": 0.09615384615384616,
+          "pass": true
+        },
+        {
+          "category": "civilService",
+          "value": 0,
+          "pass": true
+        },
+        {
+          "category": "elections",
+          "value": 0,
+          "pass": true
+        },
+        {
+          "category": "executiveActions",
+          "value": 0.019230769230769232,
+          "pass": true
+        },
+        {
+          "category": "executiveOversight",
+          "value": 0.1346153846153846,
+          "pass": true
+        },
+        {
+          "category": "fiscal",
+          "value": 0,
+          "pass": true
+        },
+        {
+          "category": "hatch",
+          "value": 0.019230769230769232,
+          "pass": true
+        },
+        {
+          "category": "immigrationEnforcement",
+          "value": 0.038461538461538464,
+          "pass": true
+        },
+        {
+          "category": "infoAvailability",
+          "value": 0.019230769230769232,
+          "pass": true
+        },
+        {
+          "category": "judicialIndependence",
+          "value": 0.019230769230769232,
+          "pass": true
+        },
+        {
+          "category": "lawEnforcement",
+          "value": 0.019230769230769232,
+          "pass": true
+        },
+        {
+          "category": "mediaFreedom",
+          "value": 0,
+          "pass": true
+        },
+        {
+          "category": "military",
+          "value": 0,
+          "pass": true
+        },
+        {
+          "category": "rulemaking",
+          "value": 0.019230769230769232,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "id": "NC-4",
+      "description": "Biden 2021 transition P1 flag rate < Trump T2 week 1",
+      "pass": true,
+      "actual": "Biden T1: 6.0%, Trump T2: 11.7%",
+      "threshold": "Biden < Trump"
+    },
+    {
+      "id": "NC-5",
+      "description": "Biden 2022 P2 clearly_concerning rate (fail >5%)",
+      "pass": true,
+      "actual": "3.0%",
+      "threshold": "≤5%"
+    },
+    {
+      "id": "NC-6",
+      "description": "Trump T2 P1 routine (not flagged) rate (fail <50%)",
+      "pass": true,
+      "actual": "92.0%",
+      "threshold": "≥50%"
+    }
+  ]
+}

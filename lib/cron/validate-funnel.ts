@@ -96,6 +96,16 @@ function printReport(report: FunnelReport): void {
   } else {
     console.log('\n  No error-tier collapses.');
   }
+
+  // Detection-health warns (#840): audit-FN + discussion-share, own window.
+  console.log(
+    `\nDetection health (${report.healthWindow.from} → ${report.healthWindow.to}, warn-tier only):`,
+  );
+  if (report.health.length === 0) {
+    console.log('  all categories within thresholds');
+  } else {
+    for (const h of report.health) console.log(`  ⚠ ${h.id}: ${h.reason}`);
+  }
 }
 
 if (require.main === module) {
