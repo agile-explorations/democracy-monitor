@@ -668,8 +668,8 @@
     "was_confirmed": false,
     "snippet": "Federal Register, Volume 90 Issue 27 (Tuesday, February 11, 2025) [Federal Register Volume 90, Number 27 (Tuesday, February 11, 2025)] [Rules and Regulations] [Page 9283] From the Federal Register Online via the Government Publishing Office [ www.gpo.gov ] [FR Doc No: 2025-02485] =====================================================================",
     "stratum": "flagged",
-    "label": "off",
-    "label_method": "hand"
+    "label": "on",
+    "label_method": "owner-class-ruling-2026-09-01"
   },
   {
     "url": "https://www.federalregister.gov/documents/2025/12/16/2025-23093/protecting-american-investors-from-foreign-owned-and-politically-motivated-proxy-advisors",
@@ -836,8 +836,8 @@
     "was_confirmed": false,
     "snippet": "Federal Register, Volume 91 Issue 30 (Friday, February 13, 2026) [Federal Register Volume 91, Number 30 (Friday, February 13, 2026)] [Rules and Regulations] [Pages 6757-6760] From the Federal Register Online via the Government Publishing Office [ www.gpo.gov ] [FR Doc No: 2026-02882] =================================================================",
     "stratum": "flagged",
-    "label": "off",
-    "label_method": "hand"
+    "label": "on",
+    "label_method": "owner-class-ruling-2026-09-01"
   },
   {
     "url": "https://www.federalregister.gov/documents/2025/03/19/2025-04490/materials-and-equipment-technical-advisory-committee-notice-of-partially-closed-meeting",
@@ -872,8 +872,8 @@
     "was_confirmed": false,
     "snippet": "Federal Register, Volume 90 Issue 142 (Monday, July 28, 2025) [Federal Register Volume 90, Number 142 (Monday, July 28, 2025)] [Proposed Rules] [Pages 35488-35490] From the Federal Register Online via the Government Publishing Office [ www.gpo.gov ] [FR Doc No: 2025-14138] ======================================================================= ----",
     "stratum": "flagged",
-    "label": "off",
-    "label_method": "hand"
+    "label": "on",
+    "label_method": "owner-class-ruling-2026-09-01"
   },
   {
     "url": "https://www.federalregister.gov/documents/2025/12/03/2025-21800/notice-of-partially-closed-federal-advisory-committee-meeting",
@@ -944,8 +944,8 @@
     "was_confirmed": false,
     "snippet": "Federal Register, Volume 90 Issue 55 (Monday, March 24, 2025) [Federal Register Volume 90, Number 55 (Monday, March 24, 2025)] [Rules and Regulations] [Page 13416] From the Federal Register Online via the Government Publishing Office [ www.gpo.gov ] [FR Doc No: 2025-04979] ======================================================================= ----",
     "stratum": "flagged",
-    "label": "off",
-    "label_method": "hand"
+    "label": "on",
+    "label_method": "owner-class-ruling-2026-09-01"
   },
   {
     "url": "https://www.federalregister.gov/documents/2025/03/14/2025-04090/notice-of-intent-to-grant-an-exclusive-co-exclusive-or-partially-exclusive-patent-license",

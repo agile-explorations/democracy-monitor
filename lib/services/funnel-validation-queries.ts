@@ -33,7 +33,10 @@ export interface StageCountRow {
   count: number;
 }
 
-function categoryFilter(column: typeof documents.category, category?: string) {
+function categoryFilter(
+  column: typeof documents.category | typeof aiDocumentAssessments.category,
+  category?: string,
+) {
   return category ? eq(column, category) : inArray(column, MONITORING_KEYS);
 }
 
@@ -177,4 +180,101 @@ export async function queryP2Confirmed(
       ),
     )
     .groupBy(documents.category, documents.sourceOrigin);
+}
+
+export interface CategoryHealthRow {
+  category: string;
+  auditTotal: number;
+  auditFn: number;
+  confirmedTotal: number;
+  confirmedCrec: number;
+}
+
+/**
+ * Q5 — per-category detection-health inputs (#840): audit-sample false
+ * negatives (P2 on P1-unflagged docs) and the CREC share of non-audit
+ * confirmations. Windowed on `week_of` (both checks are about assessment
+ * behavior, not publication recency); no content column is touched, so the
+ * detoast constraint does not apply. Returns one row per category present.
+ */
+async function queryAuditStats(from: string, to: string, category?: string) {
+  const db = getDb();
+  return db
+    .select({
+      category: aiDocumentAssessments.category,
+      auditTotal: sql<number>`count(*)::int`,
+      auditFn: sql<number>`count(*) filter (where ${aiDocumentAssessments.assessment} in ('potentially_concerning', 'clearly_concerning'))::int`,
+    })
+    .from(aiDocumentAssessments)
+    .where(
+      and(
+        eq(aiDocumentAssessments.pass, 2),
+        eq(aiDocumentAssessments.isAuditSample, true),
+        gte(aiDocumentAssessments.weekOf, from),
+        lt(aiDocumentAssessments.weekOf, to),
+        categoryFilter(aiDocumentAssessments.category, category),
+      ),
+    )
+    .groupBy(aiDocumentAssessments.category);
+}
+
+async function queryConfirmedTierStats(from: string, to: string, category?: string) {
+  const db = getDb();
+  return db
+    .select({
+      category: aiDocumentAssessments.category,
+      confirmedTotal: sql<number>`count(distinct ${aiDocumentAssessments.url})::int`,
+      confirmedCrec: sql<number>`count(distinct ${aiDocumentAssessments.url}) filter (where ${documents.sourceOrigin} = 'crec')::int`,
+    })
+    .from(aiDocumentAssessments)
+    .innerJoin(
+      documents,
+      and(
+        eq(documents.url, aiDocumentAssessments.url),
+        eq(documents.category, aiDocumentAssessments.category),
+      ),
+    )
+    .where(
+      and(
+        eq(aiDocumentAssessments.pass, 2),
+        eq(aiDocumentAssessments.isAuditSample, false),
+        sql`${aiDocumentAssessments.assessment} in ('potentially_concerning', 'clearly_concerning')`,
+        gte(aiDocumentAssessments.weekOf, from),
+        lt(aiDocumentAssessments.weekOf, to),
+        categoryFilter(aiDocumentAssessments.category, category),
+      ),
+    )
+    .groupBy(aiDocumentAssessments.category);
+}
+
+export async function queryCategoryHealth(
+  from: string,
+  to: string,
+  category?: string,
+): Promise<CategoryHealthRow[]> {
+  const [audit, tier] = await Promise.all([
+    queryAuditStats(from, to, category),
+    queryConfirmedTierStats(from, to, category),
+  ]);
+
+  const byCat = new Map<string, CategoryHealthRow>();
+  const ensure = (cat: string): CategoryHealthRow => {
+    let row = byCat.get(cat);
+    if (!row) {
+      row = { category: cat, auditTotal: 0, auditFn: 0, confirmedTotal: 0, confirmedCrec: 0 };
+      byCat.set(cat, row);
+    }
+    return row;
+  };
+  for (const r of audit) {
+    const row = ensure(r.category);
+    row.auditTotal = r.auditTotal;
+    row.auditFn = r.auditFn;
+  }
+  for (const r of tier) {
+    const row = ensure(r.category);
+    row.confirmedTotal = r.confirmedTotal;
+    row.confirmedCrec = r.confirmedCrec;
+  }
+  return [...byCat.values()];
 }

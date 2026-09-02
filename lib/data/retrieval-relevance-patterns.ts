@@ -17,9 +17,19 @@
  *   100/100 with exclusions, pending holdout verification). Includes
  *   adversarial-review additions: news media / members of the media
  *   (28 CFR 50.10 media-subpoena case) and prepublication review.
+ * - v2 (2026-09-01): infoAvailability set (#832, R-INFOAVAIL). Derived
+ *   against the 187-doc #548 sample (187/187 under the owner's 2026-09-01
+ *   class rulings) and gated on a fresh 46-doc owner-adjudicated holdout
+ *   (zero false drops, two accepted false keeps). Owner class rulings
+ *   encoded: Privacy Act implementation/exemption rules ON (SORN notices
+ *   stay excluded via the exemption/implementation carve-out); PRA
+ *   collection DISCONTINUANCES ON while routine renewals stay excluded
+ *   (the #551 data-suppression signal must never be filtered);
+ *   public-facing disclosure regimes ON, bilateral (FCRA, tax-filing)
+ *   OFF; embedded-transparency program rules OFF.
  */
 
-export const PATTERN_VERSION = 1;
+export const PATTERN_VERSION = 2;
 
 export interface RelevancePatternSet {
   /** Document is kept only if title or abstract matches at least one. */
@@ -44,5 +54,48 @@ export const RETRIEVAL_RELEVANCE_PATTERNS: Partial<Record<string, RelevancePatte
       /leak (investigation|prosecution)/i,
     ],
     exclude: [/advisory committee/i, /information collection/i, /meeting/i],
+  },
+  infoAvailability: {
+    allow: [
+      /freedom of information|FOIA/i,
+      /national environmental policy act|\bNEPA\b|environmental (impact )?analysis/i,
+      /members of the (news )?media|news media/i,
+      /\bregistry\b/i,
+      /data system\b/i,
+      /transparency/i,
+      /disclosure/i,
+      /public participation/i,
+      /reporting requirement/i,
+      /records release|determination on records/i,
+      /public dissemination/i,
+      /withhold(ing)? .{0,40}(information|records)/i,
+      /public records|access to (public )?(records|information)|records access/i,
+      /open government/i,
+      /declassif/i,
+      // PRA discontinuances are the #551 data-suppression signal (owner rule).
+      /information collection[\s\S]{0,80}discontinu|discontinu[\s\S]{0,80}information collection/i,
+      // Privacy Act implementation/exemption rules change who can access
+      // which government records (owner class ruling 2026-09-01).
+      /privacy act/i,
+    ],
+    exclude: [
+      /advisory committee/i,
+      /information collection (activities|request)(?![\s\S]{0,120}discontinu)/i,
+      /proposed collection; comment request(?![\s\S]{0,120}discontinu)/i,
+      /self-regulatory organization/i,
+      /airworthiness directive/i,
+      // SORN notices drop; Privacy Act implementation/exemption rules survive.
+      /^(?![\s\S]*(?:exemption|implementation))[\s\S]*system of records/i,
+      /\bmeeting\b/i,
+      /matching program/i,
+      /fair credit reporting act/i,
+      /charitable contribution/i,
+      /submi(ssion|tted) (for|to) omb(?![\s\S]{0,160}discontinu)/i,
+      /technical correction/i,
+      /prospective payment system/i,
+      /price index adjustment/i,
+      /notice of availability/i,
+      /intent to prepare/i,
+    ],
   },
 };

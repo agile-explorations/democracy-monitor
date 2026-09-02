@@ -37,69 +37,102 @@ function Intro() {
   );
 }
 
+/** Label each evidence link the way GitHub does: issues as "#832", comments
+ *  as "#833 comment" with a per-issue ordinal when one issue carries several.
+ *  Non-issue links (the DECISIONS files, also on GitHub) keep their filename. */
+export function evidenceLabels(urls: string[]): string[] {
+  const commentOrdinals = new Map<string, number>();
+  return urls.map((u) => {
+    const issue = u.match(/\/issues\/(\d+)/)?.[1];
+    if (!issue) return u.replace(/^.*\//, '');
+    if (!u.includes('#issuecomment-')) return `#${issue}`;
+    const ordinal = (commentOrdinals.get(issue) ?? 0) + 1;
+    commentOrdinals.set(issue, ordinal);
+    const several = urls.filter((o) => o.includes(`/issues/${issue}#issuecomment-`)).length > 1;
+    return several ? `#${issue} comment ${ordinal}` : `#${issue} comment`;
+  });
+}
+
 function EvidenceLinks({ urls }: { urls: string[] }) {
+  const labels = evidenceLabels(urls);
+  // Rendered as flex items so the row can wrap BETWEEN links — adjacent
+  // inline links with margin spacing have no whitespace to break at and
+  // overflow narrow viewports as one unbreakable run.
+  // Separator rides inside the preceding link's nowrap group, so wrapped
+  // lines end with a separator instead of starting with an orphaned one.
   return (
-    <span className="space-x-2">
+    <>
       {urls.map((u, i) => (
-        <a
-          key={u}
-          href={u}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-dm-accent hover:underline whitespace-nowrap"
-        >
-          {u.includes('#issuecomment-') ? `comment ${i + 1}` : u.replace(/^.*\//, '')}
-        </a>
-      ))}
-    </span>
-  );
-}
-
-function LedgerRow({ e }: { e: ReversalEntry }) {
-  return (
-    <tr className="border-b border-dm-border/50 align-top">
-      <td className="px-3 py-2 whitespace-nowrap text-dm-text-secondary">{formatDate(e.date)}</td>
-      <td className="px-3 py-2 text-dm-text-secondary whitespace-nowrap">
-        <span className="text-[11px] uppercase tracking-wide text-dm-muted">
-          {REVERSAL_KIND_LABELS[e.kind]}
+        <span key={u} className="whitespace-nowrap">
+          <a
+            href={u}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-dm-accent hover:underline"
+          >
+            {labels[i]}
+          </a>
+          {i < urls.length - 1 && <span className="text-dm-muted ml-2">·</span>}
         </span>
-        <div className="text-[11px] text-dm-muted">{e.scope}</div>
-      </td>
-      <td className="px-3 py-2 text-dm-text-primary">{e.what}</td>
-      <td className="px-3 py-2 text-dm-text-secondary whitespace-nowrap">
-        {e.count != null ? e.count.toLocaleString() : '—'}
-      </td>
-      <td className="px-3 py-2 text-dm-text-secondary">{e.why}</td>
-      <td className="px-3 py-2 text-dm-text-secondary">
-        <EvidenceLinks urls={e.evidence} />
-        {e.release && <div className="text-[11px] text-dm-muted">{e.release}</div>}
-      </td>
-    </tr>
+      ))}
+    </>
   );
 }
 
-function LedgerTable({ entries }: { entries: ReversalEntry[] }) {
+/** Small uppercase label used above each prose block and inline chips. */
+function FieldLabel({ children }: { children: string }) {
+  return <span className="text-[11px] uppercase tracking-wide text-dm-muted">{children}</span>;
+}
+
+/** One ledger entry as a block: header line, then What/Why side by side on
+ *  wider screens and stacked on narrow ones, evidence links beneath. A
+ *  six-column table cannot fit two prose paragraphs inside the page's
+ *  max-w-3xl at any tuning — the entry-block layout never overflows and
+ *  never needs a horizontal scroll. */
+function LedgerEntry({ e }: { e: ReversalEntry }) {
   return (
-    <div className="overflow-x-auto my-3">
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr>
-            {['Date', 'Kind', 'What changed', 'Scale', 'Why', 'Evidence'].map((h) => (
-              <th
-                key={h}
-                className="text-left px-3 py-2 border-b border-dm-border text-dm-text-primary font-semibold"
-              >
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((e) => (
-            <LedgerRow key={`${e.date}-${e.scope}-${e.what.slice(0, 24)}`} e={e} />
-          ))}
-        </tbody>
-      </table>
+    <article className="border-b border-dm-border/50 py-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <span className="text-sm text-dm-text-primary font-medium whitespace-nowrap">
+          {formatDate(e.date)}
+        </span>
+        <FieldLabel>{REVERSAL_KIND_LABELS[e.kind]}</FieldLabel>
+        <span className="text-[11px] text-dm-muted">{e.scope}</span>
+        {e.count != null && (
+          <span className="text-[11px] text-dm-muted whitespace-nowrap">
+            scale {e.count.toLocaleString()}
+          </span>
+        )}
+        {e.release && <span className="text-[11px] text-dm-muted">{e.release}</span>}
+      </div>
+      <div className="mt-2 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+        <div>
+          <div className="mb-1">
+            <FieldLabel>What changed</FieldLabel>
+          </div>
+          <p className="text-sm text-dm-text-primary">{e.what}</p>
+        </div>
+        <div>
+          <div className="mb-1">
+            <FieldLabel>Why</FieldLabel>
+          </div>
+          <p className="text-sm text-dm-text-secondary">{e.why}</p>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <FieldLabel>Evidence (in GitHub issues)</FieldLabel>
+        <EvidenceLinks urls={e.evidence} />
+      </div>
+    </article>
+  );
+}
+
+function LedgerList({ entries }: { entries: ReversalEntry[] }) {
+  return (
+    <div className="my-3">
+      {entries.map((e) => (
+        <LedgerEntry key={`${e.date}-${e.scope}-${e.what.slice(0, 24)}`} e={e} />
+      ))}
     </div>
   );
 }
@@ -134,7 +167,7 @@ export function SummaryContent() {
         />
       </Section>
       <Section title="Most recent" id="recent">
-        <LedgerTable entries={REVERSALS_LEDGER.slice(0, 5)} />
+        <LedgerList entries={REVERSALS_LEDGER.slice(0, 5)} />
         <p className="text-xs text-dm-muted">
           Switch to the detailed reading level for the full ledger.
         </p>
@@ -158,7 +191,7 @@ export function DetailedContent() {
         </p>
       </Section>
       <Section title="Ledger" id="ledger">
-        <LedgerTable entries={REVERSALS_LEDGER} />
+        <LedgerList entries={REVERSALS_LEDGER} />
       </Section>
     </>
   );

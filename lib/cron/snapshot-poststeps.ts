@@ -191,13 +191,18 @@ export async function tryStoreDataReport(errors: string[]): Promise<void> {
 export async function tryValidateFunnel(errors: string[]): Promise<number> {
   try {
     const { runFunnelValidation } = await import('@/lib/services/funnel-validation-service');
-    const { collapses } = await runFunnelValidation();
+    const { collapses, health } = await runFunnelValidation();
     const failed = collapses.filter((c) => c.severity === 'error');
     for (const c of failed) {
       errors.push(`validate:funnel ${c.id} — ${c.reason}`);
     }
+    // Detection-health warns (#840) are calibration signals: logged for the
+    // owner's Monday review, never pushed to the error channel.
+    for (const h of health) {
+      console.log(`[snapshot] detection-health ⚠ ${h.id}: ${h.reason}`);
+    }
     console.log(
-      `[snapshot] validate:funnel: ${failed.length === 0 ? 'no source collapses' : `${failed.length} COLLAPSE(S)`}`,
+      `[snapshot] validate:funnel: ${failed.length === 0 ? 'no source collapses' : `${failed.length} COLLAPSE(S)`} · ${health.length} health warn(s)`,
     );
     return failed.length;
   } catch (err) {

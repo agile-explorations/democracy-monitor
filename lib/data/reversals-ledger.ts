@@ -47,6 +47,23 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-02',
+    kind: 'correction',
+    scope: 'Government Information Availability category',
+    count: 20,
+    what: 'A relevance filter removed 68,375 off-topic Federal Register documents from the category, 32 misrouted documents were re-assessed under their correct categories, and twenty weekly statuses changed — all downward (nine Confirmed Concern weeks became Elevated, one became Stable, ten Elevated weeks became Stable). Narratives for the affected and active weeks were regenerated.',
+    why: 'A measurement audit found the category flooded with unrelated documents (a random sample was on-topic zero times in one hundred) while nearly half its confirmed detections were real signals filed under the wrong category — double-counted there and invisible in their proper place. Every filter decision was validated against an owner-adjudicated sample and a fresh holdout with zero false drops; the exact status changes were accepted by the owner before production ran, and production matched the rehearsal exactly. The removed documents remain in the corpus; only their category assignment changed.',
+    evidence: [issue(832), issue(833, 5502611594), issue(835, 5504374948), issue(835, 5508949640)],
+  },
+  {
+    date: '2026-09-02',
+    kind: 'audit',
+    scope: 'All 14 categories — detection health',
+    what: 'A cross-category audit measured where the system under-finds concerns (audit-sample false-negative rates of 14–25% in five categories) and where confirmations rest heavily on floor speeches (over half in six categories). The findings are tracked publicly and two standing checks were added to the weekly validation so both measures are watched continuously.',
+    why: 'Outreach makes detection credibility load-bearing; the audit was commissioned to find both under- and over-finding before readers do. Fixes are scheduled and reported openly rather than applied silently.',
+    evidence: [issue(836), issue(838), issue(840, 5507166850)],
+  },
+  {
     date: '2026-08-31',
     kind: 'policy',
     scope: 'Research answers — retrieval index quality gate',
