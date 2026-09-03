@@ -48,6 +48,20 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
     date: '2026-09-02',
+    kind: 'policy',
+    scope: 'All categories — graded evidence rule',
+    count: 395,
+    what: 'The strongest weekly status now requires at least one confirmed government ACTION: discussion documents (floor speeches, hearings, remarks) still count in full toward "Notable departure" but count at half weight toward "Sustained departure," which additionally demands a primary instrument. Three hundred ninety-five historical weeks whose strongest status rested only on floor speeches were graded down one step to "Notable departure"; no week fell further, and none of the known-event detections were lost.',
+    why: 'An audit found more than half of confirmed detections in six categories resting on floor speeches — opposition rhetoric characterizing events rather than instruments of government. The owner chose to anchor the strongest claim to actions while keeping discussions counted. The full-corpus change was rehearsed, the complete week list was reviewed and accepted by the owner before production ran, and every affected week now discloses its evidence mix beside its status.',
+    evidence: [
+      issue(837, 5511589064),
+      issue(842, 5513912173),
+      issue(845, 5514651359),
+      issue(845, 5518997298),
+    ],
+  },
+  {
+    date: '2026-09-02',
     kind: 'correction',
     scope: 'Government Information Availability category',
     count: 20,

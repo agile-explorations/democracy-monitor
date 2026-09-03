@@ -15,7 +15,7 @@ echo "Dumping database (excluding documents table data)..."
 pg_dump -Fc --no-owner --no-privileges --exclude-table-data=documents "${DB_URL}" > "${DUMP_FILE}"
 
 echo "Exporting documents table (excluding embedding column)..."
-psql "${DB_URL}" -c "\copy (SELECT id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at, retrieval_relevant, counting_scope, parent_id FROM documents) TO STDOUT WITH CSV HEADER" | gzip > "${DOCS_CSV}"
+psql "${DB_URL}" -c "\copy (SELECT id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at, retrieval_relevant, counting_scope, parent_id, evidence_tier FROM documents) TO STDOUT WITH CSV HEADER" | gzip > "${DOCS_CSV}"
 
 echo "Exporting embeddings..."
 psql "${DB_URL}" -c "\copy (SELECT id, embedding FROM documents WHERE embedding IS NOT NULL) TO STDOUT WITH BINARY" | gzip > "${EMBEDDINGS}"

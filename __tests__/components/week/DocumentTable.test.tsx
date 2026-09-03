@@ -167,3 +167,23 @@ describe('DocumentTable', () => {
     expect(link?.textContent).toBe('Alpha Doc');
   });
 });
+
+describe('evidence-tier badges (#843, graded evidence)', () => {
+  it('badges action and discussion documents distinctly, honoring the override', () => {
+    const tiered = [
+      makeDoc({ url: 'https://x/a', title: 'An Executive Order', sourceType: 'executive_order' }),
+      makeDoc({ url: 'https://x/b', title: 'A Floor Speech', sourceType: 'floor_speech' }),
+      makeDoc({
+        url: 'https://x/c',
+        title: 'Resolution Text In The Record',
+        sourceType: 'floor_speech',
+        evidenceTier: 'action',
+      }),
+    ];
+    const { getAllByText } = render(
+      <DocumentTable documents={tiered} category="executiveActions" weekOf="2025-02-03" />,
+    );
+    expect(getAllByText('action')).toHaveLength(2);
+    expect(getAllByText('discussion')).toHaveLength(1);
+  });
+});

@@ -36,6 +36,9 @@ export interface DocumentExplanation {
   /** cl:<docketId> for CourtListener docs — powers the docket-context disclosure. */
   caseId?: string | null;
   sourceType?: string | null;
+  /** Evidence-tier override (#843): with sourceType, resolves the
+   *  action/discussion badge via tierForDocument. */
+  evidenceTier?: string | null;
 }
 
 /** Snapshot of the scoring configuration used at explanation time. */

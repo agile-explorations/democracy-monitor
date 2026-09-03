@@ -55,7 +55,7 @@ export async function fetchResearchDocRowsByIds(
   const cosineExpr = vectorStr ? sql`1 - (d.embedding <=> ${vectorStr}::vector)` : sql`0`;
   try {
     const results = await db.execute(sql`
-      SELECT d.id, d.title, LEFT(d.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d.url, d.published_at, d.source_type,
+      SELECT d.id, d.title, LEFT(d.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d.url, d.published_at, d.source_type, d.evidence_tier,
         d.source_origin, d.case_id, d.category,
         ${cosineExpr} as cosine_similarity, ds.final_score, ds.document_class,
         ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
@@ -96,9 +96,10 @@ function buildTierFilter(tier?: DocumentTier) {
     [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),
     sql`, `,
   );
+  // evidence_tier override (#841): NULL derives from source_type as before.
   return tier === 'action'
-    ? sql`AND d.source_type NOT IN (${types})`
-    : sql`AND d.source_type IN (${types})`;
+    ? sql`AND (d.evidence_tier = 'action' OR (d.evidence_tier IS NULL AND d.source_type NOT IN (${types})))`
+    : sql`AND (d.evidence_tier = 'discussion' OR (d.evidence_tier IS NULL AND d.source_type IN (${types})))`;
 }
 
 /** Joined list of legacy origins excluded from all search retrieval. */

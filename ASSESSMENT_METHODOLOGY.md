@@ -128,6 +128,17 @@ AI document review is the primary active detection method, combined into a weekl
 
 Structural anomaly, silence detection, and thematic drift provide descriptive context but do not influence the weekly status. This architecture was adopted after empirical validation showed that non-AI methods could not reliably distinguish signal from noise.
 
+### Graded evidence: actions and discussions (September 2026)
+
+Every document in the record is one of two kinds, and both are labeled wherever documents are listed: an **action** — an instrument of government (an executive order, rule, judicial opinion, bill, enforcement release, inspector-general report, or text entered into the Congressional Record such as resolution text, appropriations statements, and presidential messages) — or a **discussion** of government actions (a floor speech, hearing, or presidential remarks). The boundary is the instrument, not the speaker.
+
+Both kinds count toward the weekly status, deliberately and unequally:
+
+- **Discussions count in full toward "Notable departure."** Congress debating a change in norms is itself worth attention, and a week evidenced only by floor speeches can reach Elevated.
+- **"Sustained departure" is anchored to actions.** The strongest status this site publishes requires at least one action-tier document confirmed by the AI review, and discussion documents count at **half weight** toward its thresholds. A week whose only departure evidence is rhetoric — however heated — is held at "Notable departure," and the page says so.
+
+This choice was made after a September 2026 audit found more than half of confirmed detections in six categories resting on floor speeches. Discussions about changing norms matter and remain counted; the site reserves its strongest claim for weeks where the government _did_ something, not only where it was said to have. When the rule was adopted, every affected historical week was re-evaluated in rehearsal, the complete list of status changes was reviewed and accepted before publication, and the change is recorded on the public reversals ledger. Each week's page discloses its evidence mix (actions and discussions confirmed) alongside the status.
+
 ## Baselines
 
 All anomaly detection requires a reference period for comparison. The system maintains eight historical baselines — every year of the two preceding administrations:

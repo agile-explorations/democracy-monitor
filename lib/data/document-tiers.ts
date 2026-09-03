@@ -28,6 +28,63 @@ export function tierForSourceType(sourceType: string | null | undefined): Docume
   return sourceType && DISCUSSION_SOURCE_TYPES.has(sourceType) ? 'discussion' : 'action';
 }
 
+/**
+ * CREC action subtypes (#841, R-GRADED-EVIDENCE): Congressional Record
+ * granules stored as `floor_speech` that are instruments READ INTO the
+ * record, not speeches — resolution text, appropriations/explanatory
+ * statements, presidential messages, committee-report text. Positive
+ * identification only: a speakerless title that matches none of these stays
+ * discussion, because speaker extraction fails on some genuine speeches
+ * ("(Mr. X asked and was given permission…)" preambles) and a speech must
+ * never be promoted to action by accident.
+ */
+const CREC_ACTION_SUBTYPES: ReadonlyArray<[string, RegExp]> = [
+  ['resolution_text', /^(senate|house) (joint |concurrent )?resolution/i],
+  ['explanatory_statement', /explanatory statement/i],
+  [
+    'appropriations_text',
+    /appropriations (act|bill)|^title [ivx]+--|^division [a-z]--|^sec(tion)?\.? ?\d|\(including transfer of funds\)/i,
+  ],
+  [
+    'presidential_message',
+    /message from the president|--pm ?\d|^presidential message|^report of the continuation|^report relative to|^report to advise|^designation of .{0,60} as acting/i,
+  ],
+  ['committee_report_text', /^report on (the )?resolution|^conference report/i],
+];
+
+/** Subtype name for a speakerless CREC floor_speech title, or null. */
+export function crecActionSubtype(title: string | null | undefined): string | null {
+  if (!title) return null;
+  for (const [name, re] of CREC_ACTION_SUBTYPES) if (re.test(title)) return name;
+  return null;
+}
+
+/** Ingest-time tier for a content item (#842): CREC floor_speech granules
+ *  with no extractable speaker and a positive action-subtype title are
+ *  action-tier; everything else derives from source_type. */
+export function tierForIngestItem(args: {
+  sourceType: string | null | undefined;
+  hasSpeaker: boolean;
+  title: string | null | undefined;
+}): DocumentTier {
+  if (args.sourceType === 'floor_speech' && !args.hasSpeaker && crecActionSubtype(args.title)) {
+    return 'action';
+  }
+  return tierForSourceType(args.sourceType);
+}
+
+export interface TierableDocument {
+  sourceType?: string | null;
+  evidenceTier?: string | null;
+}
+
+/** Tier with the stored override (#841): `evidence_tier` wins when set;
+ *  otherwise the source-type map applies as before. */
+export function tierForDocument(doc: TierableDocument): DocumentTier {
+  if (doc.evidenceTier === 'action' || doc.evidenceTier === 'discussion') return doc.evidenceTier;
+  return tierForSourceType(doc.sourceType);
+}
+
 /** Human-readable badge labels for search-result source types. */
 export const SOURCE_TYPE_LABELS: Record<string, string> = {
   judicial_opinion: 'Opinion',

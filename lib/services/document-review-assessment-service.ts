@@ -3,6 +3,7 @@ import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
 import { buildPass2Prompt, PASS2_SYSTEM_PROMPT } from '@/lib/ai/prompts/document-review-pass2';
 import type { Pass1Response, Pass2Response } from '@/lib/ai/schemas/document-review-response';
 import { parsePass1Response, parsePass2Response } from '@/lib/ai/schemas/document-review-response';
+import { DISCUSSION_CONFIRMATION_WEIGHT } from '@/lib/methodology/scoring-config';
 import { assertAiCallBudget, recordAiCall } from '@/lib/services/ai-call-budget';
 import type { AIProvider, ContentItem } from '@/lib/types';
 import { EROSION_ACTORS } from '@/lib/types/structural';
@@ -27,6 +28,11 @@ export interface Pass2Result {
   response: Pass2Response;
   meta: AssessmentMeta;
   isAuditSample: boolean;
+  /** Evidence tier of the assessed document (#842 graded evidence). Absent
+   *  on legacy callers — treated as discussion-tier-conservative? No:
+   *  absent means tier unknown; the summary then omits graded fields and
+   *  synthesis falls back to ungraded thresholds. */
+  tier?: 'action' | 'discussion';
 }
 
 /** Retry temperature when a temp-0 response is unparseable (breaks deterministic failures). */
@@ -261,6 +267,7 @@ export function computeAIAssessmentSummary(
 
   const concernDistribution = computeConcernDistribution(nonAuditPass2);
   const actorConfirmations = computeActorConfirmations(nonAuditPass2);
+  const graded = computeGradedCounts(nonAuditPass2);
   const concerningCount =
     concernDistribution.potentiallyConcerning + concernDistribution.clearlyConcerning;
   const concernRate = nonAuditPass2.length > 0 ? concerningCount / nonAuditPass2.length : 0;
@@ -275,6 +282,7 @@ export function computeAIAssessmentSummary(
     flagRateZScore,
     concernDistribution,
     actorConfirmations,
+    ...graded,
     concernRate,
     auditSample: {
       sampled: auditPass2.length,
@@ -283,6 +291,33 @@ export function computeAIAssessmentSummary(
     },
     pass1Model,
     pass2Model,
+  };
+}
+
+/**
+ * Graded evidence counts (#842): action/discussion split of confirmed docs
+ * and the tier-weighted per-class counts the graded thresholds consume.
+ * When any result lacks a tier (legacy caller), graded fields are omitted
+ * and synthesis falls back to the ungraded thresholds.
+ */
+function computeGradedCounts(nonAuditPass2: Pass2Result[]): Partial<AIAssessmentSummary> {
+  if (nonAuditPass2.some((r) => r.tier === undefined)) return {};
+  let actionConfirmed = 0;
+  let discussionConfirmed = 0;
+  const weighted = { potentiallyConcerning: 0, clearlyConcerning: 0 };
+  for (const r of nonAuditPass2) {
+    const a = r.response.assessment;
+    if (!isConcerning(a)) continue;
+    const w = r.tier === 'action' ? 1 : DISCUSSION_CONFIRMATION_WEIGHT;
+    if (r.tier === 'action') actionConfirmed++;
+    else discussionConfirmed++;
+    if (a === 'potentially_concerning') weighted.potentiallyConcerning += w;
+    else weighted.clearlyConcerning += w;
+  }
+  return {
+    actionConfirmedCount: actionConfirmed,
+    discussionConfirmedCount: discussionConfirmed,
+    weightedConcern: weighted,
   };
 }
 
