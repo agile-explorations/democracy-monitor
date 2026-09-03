@@ -248,9 +248,11 @@ function listSegment(window: string, opener: string): string {
  *  Elevated (C, D)". The head count is then the sum of the parenthesized
  *  sub-lists, not the items of the breakdown itself. Each sub-list is closed
  *  by paren balancing so a title's own parenthetical ("Government Watchdogs
- *  (Inspectors General)") cannot end it early. */
+ *  (Inspectors General)") cannot end it early. Public summaries phrase the
+ *  tiers as levels — "3 at the highest level (…) and 5 at an intermediate
+ *  level (…)" — so an article + "… level" heads a sub-list too. */
 const STATUS_SUBGROUP_HEAD = new RegExp(
-  `\\b(?:\\d+|${NUMBER_WORD_ALT})\\s+(?:(?:remain(?:ing)?|are|still|now)\\s+)?(?:at|in)\\s+(?:confirmed ?concern|elevated|stable)\\b[^()]{0,40}?\\(`,
+  `\\b(?:\\d+|${NUMBER_WORD_ALT})\\s+(?:(?:remain(?:ing)?|are|still|now)\\s+)?(?:at|in)\\s+(?:confirmed ?concern|elevated|stable|(?:the|an?)\\s+(?:[a-z-]+\\s+){1,3}?level)\\b[^()]{0,40}?\\(`,
   'gi',
 );
 

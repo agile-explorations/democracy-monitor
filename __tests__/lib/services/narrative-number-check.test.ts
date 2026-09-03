@@ -211,6 +211,23 @@ describe('checkEnumerations (#700)', () => {
     expect(checkEnumerations(nested)).toEqual([]);
   });
 
+  it("reads the public phrasing's level sub-groups as sub-lists (the 2026-03-02 regeneration)", () => {
+    const text =
+      'Overall, 8 of 14 monitored categories show signs of concern — 3 at the highest level (Government Watchdogs, Civil Rights & Liberties, Immigration Enforcement) and 5 at an intermediate level (Government Worker Protections, Following Court Orders, Independent Agency Rules, Executive Actions, Federal Law Enforcement) — down from 10 last week.';
+    expect(checkEnumerations(text)).toEqual([]);
+    const concernLevel =
+      'Of those, 8 categories show signs of concern — 4 at the highest concern level (Government Watchdogs, Executive Actions, Civil Rights & Liberties, Immigration Enforcement) and 4 at an elevated level (Spending Money Congress Approved, Following Court Orders, Free and Fair Elections, Federal Law Enforcement). Six categories are Stable.';
+    expect(checkEnumerations(concernLevel)).toEqual([]);
+  });
+
+  it('still catches a level-phrased breakdown whose sub-lists do not add up', () => {
+    const text =
+      'Overall, 6 of 14 monitored categories show signs of concern — 3 at the highest level (Government Watchdogs, Civil Rights & Liberties, Immigration Enforcement) and 2 at an intermediate level (Following Court Orders, Executive Actions) — down from 10 last week.';
+    const v = checkEnumerations(text);
+    expect(v).toHaveLength(1);
+    expect(v[0]).toMatchObject({ value: 6, listed: 5 });
+  });
+
   it('still catches a status breakdown whose sub-lists do not add up to the head count', () => {
     const text =
       'This week, 5 of 14 monitored categories are Elevated or above—2 at ConfirmedConcern (Executive Actions, Immigration Enforcement) and 2 at Elevated (Using Military Inside the U.S., Press Freedom)—a sharp contraction.';
