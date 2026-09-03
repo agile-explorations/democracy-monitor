@@ -554,6 +554,12 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
       'NULL/true = inside the counting population. false = a court-category judicial opinion outside the documented counting rule (classifier v1: every SCOTUS opinion; circuit/D.D.C. opinions containing executive-power phrases). Applied uniformly to ALL eras so document counts are method-consistent across the February 2026 collection change. Out-of-scope opinions stay stored and remain AI-review evidence — this flag governs counting only.',
   },
   {
+    name: 'evidence_tier',
+    type: 'text|null',
+    description:
+      "Evidence-tier override for the action/discussion distinction (2026-09, graded evidence). NULL = the tier derives from source_type (floor speeches, hearings, remarks, and nomination debates are discussion; everything else is action). 'action' marks Congressional Record granules stored as floor_speech that are instruments READ INTO the record rather than speeches — resolution text, appropriations and explanatory statements, presidential messages, committee-report text — identified positively by title class on speakerless granules. Speeches are never promoted.",
+  },
+  {
     name: 'search_vector',
     type: 'tsvector (database-managed)',
     description:

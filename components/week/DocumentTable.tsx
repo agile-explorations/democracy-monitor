@@ -17,15 +17,17 @@ import {
   EROSION_TYPE_LABELS,
   EROSION_TYPE_TIPS,
 } from '@/lib/data/assessment-labels';
+import { tierForDocument } from '@/lib/data/document-tiers';
 import type { DocumentExplanation } from '@/lib/types/explanation';
 import { escapeCell } from '@/lib/utils/csv';
 
 function toCsvString(docs: DocumentExplanation[]): string {
-  const header = 'Title,URL,Class,AI Flagged,Assessment,Erosion Type,Erosion Actor,Reasoning';
+  const header = 'Title,URL,Tier,Class,AI Flagged,Assessment,Erosion Type,Erosion Actor,Reasoning';
   const rows = docs.map((d) =>
     [
       escapeCell(d.title),
       escapeCell(d.url),
+      tierForDocument({ sourceType: d.sourceType, evidenceTier: d.evidenceTier }),
       d.documentClass,
       getAIFlag(d),
       getAssessment(d),
@@ -68,6 +70,27 @@ interface DocumentTableProps {
   documents: DocumentExplanation[];
   category: string;
   weekOf: string;
+}
+
+/** Action/discussion evidence badge (#843, graded evidence): a reader can
+ *  see at a glance whether each document IS a government action or DISCUSSES
+ *  one — the distinction the graded status rule weighs. */
+function TierChip({ doc }: { doc: DocumentExplanation }) {
+  const tier = tierForDocument({ sourceType: doc.sourceType, evidenceTier: doc.evidenceTier });
+  return (
+    <span
+      className={`ml-1.5 align-middle inline-block text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded border ${
+        tier === 'action' ? 'border-dm-accent/50 text-dm-accent' : 'border-dm-border text-dm-muted'
+      }`}
+      title={
+        tier === 'action'
+          ? 'A government action — an instrument (order, rule, opinion, bill, report, or text entered into the record)'
+          : 'Discussion of government actions (floor speech, hearing, remarks) — counts toward Elevated at full weight and toward Confirmed Concern at reduced weight'
+      }
+    >
+      {tier}
+    </span>
+  );
 }
 
 const ASSESSMENT_COLORS: Record<string, string> = {
@@ -197,6 +220,7 @@ export function DocumentTable({ documents, category, weekOf }: DocumentTableProp
                     >
                       {doc.title}
                     </a>
+                    <TierChip doc={doc} />
                     {(doc.sourceType === 'judicial_opinion' ||
                       doc.sourceType === 'court_opinion') && <CaseContext caseId={doc.caseId} />}
                     {doc.ai?.assessment && (

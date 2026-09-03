@@ -56,7 +56,7 @@ export async function fetchRowsForDocKeys(
     ? sql`ts_rank_cd(d.search_vector, websearch_to_tsquery('english', ${query}))`
     : sql`NULL::float`;
   const results = await db.execute(sql`
-    SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category, d.case_id,
+    SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.evidence_tier, d.source_origin, d.category, d.case_id,
       LEFT(d.content, 250) as snippet,
       ${cosineExpr} as cosine_similarity,
       ${textRankExpr} as text_rank,

@@ -8,7 +8,7 @@
 
 import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
-import { composeTieredResults, tierForSourceType } from '@/lib/data/document-tiers';
+import { composeTieredResults, tierForDocument } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import type {
   ExploreSearchResult,
@@ -230,7 +230,10 @@ export function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument
     url: row.url as string | null,
     publishedAt: row.published_at ? String(row.published_at) : null,
     sourceType: row.source_type as string,
-    tier: tierForSourceType(row.source_type as string),
+    tier: tierForDocument({
+      sourceType: row.source_type as string,
+      evidenceTier: row.evidence_tier as string | null,
+    }),
     sourceOrigin: row.source_origin as string | null,
     caseId: row.case_id as string | null,
     category: row.category as string,
@@ -272,7 +275,7 @@ export async function findSimilarDocuments(
       executeFilteredVectorQuery(
         db,
         sql`
-        SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.source_origin, d.category,
+        SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.evidence_tier, d.source_origin, d.category,
           LEFT(d.content, 250) as snippet, 1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
           NULL as text_rank, ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
           ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed,

@@ -4,8 +4,9 @@
  */
 
 import { and, eq, gte, lt } from 'drizzle-orm';
+import { tierForDocument } from '@/lib/data/document-tiers';
 import { getDb } from '@/lib/db';
-import { aiDocumentAssessments } from '@/lib/db/schema';
+import { aiDocumentAssessments, documents } from '@/lib/db/schema';
 import { computeAIAssessmentSummary } from '@/lib/services/document-review-assessment-service';
 import type { Pass1Result, Pass2Result } from '@/lib/services/document-review-assessment-service';
 import { getBaselineAIFlagRate } from '@/lib/services/document-review-store';
@@ -37,6 +38,8 @@ type Pass2Row = {
   model: string;
   provider: string;
   isAuditSample: boolean | null;
+  docSourceType: string | null;
+  docEvidenceTier: string | null;
 };
 
 function toPass1Result(r: Pass1Row): Pass1Result {
@@ -56,6 +59,7 @@ function toPass2Result(r: Pass2Row): Pass2Result {
   return {
     url: r.url,
     isAuditSample: r.isAuditSample ?? false,
+    tier: tierForDocument({ sourceType: r.docSourceType, evidenceTier: r.docEvidenceTier }),
     response: {
       assessment: (r.assessment ?? 'routine') as Pass2Result['response']['assessment'],
       confidence: r.confidence ?? 0,
@@ -113,8 +117,17 @@ async function fetchPassRows(category: string, weekOf: string) {
       model: aiDocumentAssessments.model,
       provider: aiDocumentAssessments.provider,
       isAuditSample: aiDocumentAssessments.isAuditSample,
+      docSourceType: documents.sourceType,
+      docEvidenceTier: documents.evidenceTier,
     })
     .from(aiDocumentAssessments)
+    .leftJoin(
+      documents,
+      and(
+        eq(documents.url, aiDocumentAssessments.url),
+        eq(documents.category, aiDocumentAssessments.category),
+      ),
+    )
     .where(and(range, eq(aiDocumentAssessments.pass, 2)));
 
   return { pass1Rows, pass2Rows };

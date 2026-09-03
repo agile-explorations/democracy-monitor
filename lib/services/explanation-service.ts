@@ -131,6 +131,7 @@ interface ScoredDocRow {
   title: string | null;
   caseId: string | null;
   sourceType: string | null;
+  evidenceTier: string | null;
   documentClass: string;
   classMultiplier: number;
   severityScore: number;
@@ -173,6 +174,7 @@ function toDocumentExplanation(row: ScoredDocRow): DocumentExplanation {
   }
   explained.caseId = row.caseId ?? null;
   explained.sourceType = row.sourceType ?? null;
+  explained.evidenceTier = row.evidenceTier ?? null;
   return explained;
 }
 
@@ -209,6 +211,7 @@ function scoredDocColumns(p1: AssessmentAlias, p2: AssessmentAlias) {
     title: sql<string>`${documents.title}`.as('doc_title'),
     caseId: documents.caseId,
     sourceType: documents.sourceType,
+    evidenceTier: documents.evidenceTier,
     documentClass: documentScores.documentClass,
     classMultiplier: documentScores.classMultiplier,
     severityScore: documentScores.severityScore,

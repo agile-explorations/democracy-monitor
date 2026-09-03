@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { tierForIngestItem, tierForSourceType } from '@/lib/data/document-tiers';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
@@ -43,7 +44,7 @@ export function inferSourceOrigin(item: ContentItem): string | null {
 }
 
 /** Extract speaker name from CREC metadata, if present. */
-function extractSpeaker(item: ContentItem): string | null {
+export function extractSpeaker(item: ContentItem): string | null {
   const speakers = item.metadata?.speakers as Array<{ memberName: string }> | undefined;
   return speakers?.[0]?.memberName ?? null;
 }
@@ -76,7 +77,21 @@ function buildDocumentRow(item: ContentItem, category: string) {
     // tracked_cases instead of persisting as metadata-only stubs).
     contentType: item.contentType ?? 'full_text',
     countingScope: itemCountingScope(item, category),
+    evidenceTier: itemEvidenceTier(item),
   };
+}
+
+/** Evidence-tier override at ingest (#841): speakerless CREC floor_speech
+ *  granules that are instruments read into the record get 'action'; every
+ *  other document keeps NULL and derives its tier from source_type. */
+function itemEvidenceTier(item: ContentItem): string | null {
+  const tier = tierForIngestItem({
+    sourceType: item.type,
+    hasSpeaker: extractSpeaker(item) !== null,
+    title: item.title,
+  });
+  // Only store an override where it DIFFERS from the source_type derivation.
+  return tier !== tierForSourceType(item.type) ? tier : null;
 }
 
 // Docket-activity items (court_opinion) no longer persist as metadata-only

@@ -1,0 +1,1984 @@
+{
+  "flips": [
+    {
+      "key": "executiveOversight|2020-09-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2018-07-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-12-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-11-30",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2021-07-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-07-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-07-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2021-12-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2019-04-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-01-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2023-07-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2024-05-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2022-09-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-10-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-01-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-03-19",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2023-11-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-03-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-03-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-07-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-03-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-07-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-04-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-12-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-12-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2018-03-19",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2024-05-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2024-07-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-06-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-07-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2026-05-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-03-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-08-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2017-02-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-12-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-09-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-10-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-02-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-10-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-04-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-12-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-12-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-04-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-09-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2026-07-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2017-06-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2019-04-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2024-06-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2017-11-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2018-04-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-03-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2017-03-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-01-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-05-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2025-05-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-09-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-05-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-07-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-11-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2025-06-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-07-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-06-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-09-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2025-09-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-05-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2025-12-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2019-07-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-07-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2019-07-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2023-04-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2026-05-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-03-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2026-06-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-03-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-11-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2026-08-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2020-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-12-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2019-09-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2020-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-04-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2020-09-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2020-05-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-06-19",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2026-06-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-01-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2025-06-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2023-11-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2020-05-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-09-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-04-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-05-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-09-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-11-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-09-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2023-06-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-12-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-09-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2018-06-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-01-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2019-03-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-01-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2021-07-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-02-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2020-01-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-05-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-10-28",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2020-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-05-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2019-06-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-11-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-07-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-02-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-09-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2025-06-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2020-09-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2025-10-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-09-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2018-05-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2025-09-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2025-10-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-02-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-05-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2026-06-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-12-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-12-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-08-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2026-03-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-08-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2017-07-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2025-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2018-11-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-09-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2025-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2017-05-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2018-07-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-05-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2023-04-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2017-09-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-07-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2020-01-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-02-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2023-04-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-12-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2023-02-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-10-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-05-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2019-07-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2019-07-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-07-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-12-30",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2026-03-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-09-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2024-06-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2025-06-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-01-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-02-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-06-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-02-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-05-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2017-02-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2026-01-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-08-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-08-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-10-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-04-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-02-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-07-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-11-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-05-19",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-11-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-06-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-12-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2017-12-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-12-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2020-12-28",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2021-01-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2019-01-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-07-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-06-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-09-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-09-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-10-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-05-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-12-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2025-12-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-07-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2025-09-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-07-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-09-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-04-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2026-04-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2018-06-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "fiscal|2026-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-01-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-02-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-06-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "hatch|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-06-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-07-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-12-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-12-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-06-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-03-19",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-04-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-05-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-05-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-06-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-07-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-11-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-01-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-02-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-03-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2018-11-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-05-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-07-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-12-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2019-12-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "hatch|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-05-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2017-06-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2021-03-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-07-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-08-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-09-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-09-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-12-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-04-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-11-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2020-09-07",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2025-06-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-04-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2018-06-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-11-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-06-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2025-09-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "judicialIndependence|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2021-06-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-01-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-05-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-07-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2019-04-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2020-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-04-28",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2025-07-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "infoAvailability|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-01-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-04-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-05-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2019-12-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2020-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2020-09-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2023-12-04",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "rulemaking|2025-09-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2018-06-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-01-14",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-01-28",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-07-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-05-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-07-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2020-09-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2025-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2026-07-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2026-01-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-11-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2018-04-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2025-02-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilService|2026-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2018-06-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-06-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-07-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-06-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2019-07-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "civilLiberties|2020-06-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2025-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2025-02-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2025-09-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2025-10-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-02-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-02-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-03-30",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-03-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-04-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-05-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "elections|2026-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2017-01-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2017-02-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2017-03-06",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2018-05-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2018-07-30",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-06-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-05-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-09-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2020-01-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2019-12-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2020-01-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveActions|2020-05-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-05-15",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-05-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-06-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-07-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-09-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2017-12-18",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2018-05-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-03-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-06-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-10-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2020-01-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "executiveOversight|2019-11-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "hatch|2026-08-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2017-09-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-02-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-03-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-07-30",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-10-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2018-12-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-01-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-03-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-04-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-06-17",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-05-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-06-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-07-22",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2019-09-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-02-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-07-20",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-07-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2020-09-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2025-05-26",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "immigrationEnforcement|2025-11-03",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2024-07-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2024-11-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-02-24",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-05-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-06-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-08-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-09-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-09-29",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2025-12-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-01-12",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-03-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-06-01",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "lawEnforcement|2026-07-27",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2018-07-16",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-02-10",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-05-05",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-03-31",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-04-28",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-06-09",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2025-07-21",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2026-04-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "mediaFreedom|2026-06-08",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2018-04-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2018-08-13",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2019-02-11",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2019-02-25",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2019-09-23",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    },
+    {
+      "key": "military|2019-09-02",
+      "pre": "ConfirmedConcern",
+      "post": "Elevated"
+    }
+  ],
+  "byKind": {
+    "ConfirmedConcern→Elevated": 395
+  },
+  "nulled": 0,
+  "appeared": 0
+}

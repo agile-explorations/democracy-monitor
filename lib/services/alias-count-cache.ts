@@ -73,7 +73,9 @@ export function windowFilters(w: ExpansionWindow) {
       sql`, `,
     );
     conditions.push(
-      w.tier === 'action' ? sql`d.source_type NOT IN (${types})` : sql`d.source_type IN (${types})`,
+      w.tier === 'action'
+        ? sql`(d.evidence_tier = 'action' OR (d.evidence_tier IS NULL AND d.source_type NOT IN (${types})))`
+        : sql`(d.evidence_tier = 'discussion' OR (d.evidence_tier IS NULL AND d.source_type IN (${types})))`,
     );
   }
   return sql.join(conditions, sql` AND `);

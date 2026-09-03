@@ -44,6 +44,22 @@ export function ConcernHeader({ synthesis }: ConcernHeaderProps) {
         </div>
       </div>
 
+      {/* Graded evidence mix (#843): what stands behind this status, by tier. */}
+      {synthesis.evidenceMix && (
+        <p className="text-[11px] text-dm-text-secondary mt-2">
+          Confirmed evidence: {synthesis.evidenceMix.actionConfirmed} action
+          {synthesis.evidenceMix.actionConfirmed === 1 ? '' : 's'} {'\u00b7'}{' '}
+          {synthesis.evidenceMix.discussionConfirmed} discussion
+          {synthesis.evidenceMix.discussionConfirmed === 1 ? '' : 's'}
+          {synthesis.evidenceMix.ccGateApplied && (
+            <span className="text-dm-muted">
+              {' '}
+              — held at Elevated: Confirmed Concern requires at least one action-tier document
+            </span>
+          )}
+        </p>
+      )}
+
       {/* Explanation */}
       <p className="text-[11px] text-dm-muted mt-2">
         {CONCERN_LEVEL_EXPLANATIONS[synthesis.status] ?? ''}

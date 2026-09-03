@@ -12,6 +12,16 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-GRADED-EVIDENCE: the strongest claim now requires an action (#837, #841–#845, milestone 134, v1.23.0) — ✅ built 2026-09-02
+
+**Planned vs built**: the #837 decision (owner: graded — CC requires ≥1 action-tier confirmation; discussions counted at reduced weight; visible action/discussion distinction on category pages; the choice explicit on the methodology page) built as five work items in one day on the R-INFOAVAIL machinery: #841 CREC subtype override (evidence_tier column, five positive title classes, 13,771 promoted, speeches never promoted — speakerless includes failed-extraction speeches, discovered by diagnostic); #842 graded synthesis; #843 tier badges + evidence-mix disclosure; #844 methodology copy; #845 rehearsed acceptance package.
+
+**Key decision the calibration forced**: variant B over the naive design. Full-corpus simulation (7,029 weeks, strict per-event minimum-status check) showed weighting BOTH thresholds Stabled ~510 Elevated weeks and broke known-event detection at every weight — contradicting "discussions should be counted." Variant B keeps Elevated thresholds raw (discussion counts in full toward attention) and grades only the CC path (weight 0.5 + ≥1-action gate). Result: the flip surface is purely CC→Elevated — 395 weeks (T1 252 / Biden 28 / T2 115), zero collateral, 39/39 + NC 6/6 preserved, NC margins bit-identical. The real 14-category enrichment replicated the simulation exactly.
+
+**Lessons learned**: (1) Calibrate against the corpus before trusting a threshold design — the "obvious" implementation violated the owner's stated intent measurably. (2) Simulation bugs announce themselves as impossible results (day-one EO week → Stable); chase the impossibility, found three: audit-sample NULL semantics (`= false` excludes legacy NULLs — use `IS NOT TRUE`), SQL three-valued logic (`NOT(x OR y)` with NULLs silently empties a filter — write both branches positively), equality-vs-range week joins (enrichment uses a Monday-window RANGE). (3) `while read` drops the last line of files without trailing newlines (bit the narrative fleet; two units recovered). (4) Optional summary fields + fallback semantics let a scoring change deploy with zero behavior change until re-enrichment — the whole legacy suite stayed green untouched.
+
+---
+
 ## Sprint R-INFOAVAIL + R-DETECT-HEALTH: the transparency category told the truth about itself, and the audit that followed (#832–#835 milestone 132; #836–#840 milestone 133; v1.22.0) — ✅ built 2026-09-01/02
 
 **Planned vs built**: Planned as the #548 index's parked recommendation — a designed filter+reroute for infoAvailability. Built exactly that (criteria → allowlist v3 → owner-adjudicated 46-doc holdout at zero false drops → reroute of 32 confirmed strays → 70,925-doc annotation with cascade → 20 owner-accepted status flips, prod replicating the rehearsal digit-for-digit) — plus an unplanned second act: an owner-commissioned 14-category detection-health audit that spun off milestone 133 (public findings index #836, evidence-tier decision #837, R-CALIBRATE #838, distinct-count rollups #839, funnel health checks #840 — built same session) and two reader-facing repairs to the reversals page.

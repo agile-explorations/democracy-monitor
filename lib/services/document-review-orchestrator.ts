@@ -1,8 +1,10 @@
 import type { Pass2WeekContext } from '@/lib/ai/prompts/document-review-pass2';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
+import { tierForIngestItem } from '@/lib/data/document-tiers';
 import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import { AUDIT_SAMPLE_RATE } from '@/lib/methodology/scoring-config';
+import { extractSpeaker } from '@/lib/services/document-store';
 import type { ContentItem } from '@/lib/types';
 import type { AIAssessmentSummary } from '@/lib/types/structural';
 import { mapConcurrent } from '@/lib/utils/async';
@@ -126,12 +128,28 @@ export async function runLayer2Assessment(
 
   return computeAIAssessmentSummary(
     pass1Results,
-    pass2Results,
+    withEvidenceTiers(pass2Results, items),
     baseline?.rate ?? 0,
     baseline?.stdDev ?? 0.05,
     resolved.p1Model,
     resolved.p2Model,
   );
+}
+
+/** Graded evidence (#842): tag each P2 result with its document's tier so
+ *  the summary carries action/discussion confirmation counts. */
+function withEvidenceTiers(pass2Results: Pass2Result[], items: ContentItem[]): Pass2Result[] {
+  const tierByUrl = new Map(
+    items.map((i) => [
+      i.link ?? i.title,
+      tierForIngestItem({
+        sourceType: i.type,
+        hasSpeaker: extractSpeaker(i) !== null,
+        title: i.title,
+      }),
+    ]),
+  );
+  return pass2Results.map((r) => ({ ...r, tier: r.tier ?? tierByUrl.get(r.url) }));
 }
 
 async function runPass2FromPass1(

@@ -72,6 +72,13 @@ export type ConcernLevel = 'Stable' | 'Elevated' | 'Divergent' | 'ConfirmedConce
 /** Result of erosion concern assessment for a category-week. */
 export interface ConcernAssessment {
   status: ConcernLevel;
+  /** Graded evidence mix (#842/#843): confirmed docs by tier and whether the
+   *  ConfirmedConcern action gate capped the status. Absent pre-graded. */
+  evidenceMix?: {
+    actionConfirmed: number;
+    discussionConfirmed: number;
+    ccGateApplied: boolean;
+  };
   /** Structural anomaly — descriptive context, does not drive concern level */
   structuralElevated: boolean;
   /** AI document review — sole detection mechanism driving concern level */
@@ -138,6 +145,18 @@ export interface AIAssessmentSummary {
   flagRate: number;
   baselineFlagRate: number;
   flagRateZScore: number;
+  /** Graded evidence (#842): action-tier confirmed docs (potentially +
+   *  clearly). Absent on summaries stored before the graded rule; consumers
+   *  fall back to ungraded behavior. */
+  actionConfirmedCount?: number;
+  /** Discussion-tier confirmed docs — counted at DISCUSSION_CONFIRMATION_WEIGHT. */
+  discussionConfirmedCount?: number;
+  /** Tier-weighted counts the graded thresholds consume (#842):
+   *  action + weight × discussion, per verdict class. */
+  weightedConcern?: {
+    potentiallyConcerning: number;
+    clearlyConcerning: number;
+  };
   concernDistribution: {
     routine: number;
     novelNotConcerning: number;

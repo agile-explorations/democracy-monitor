@@ -87,6 +87,13 @@ export const documents = pgTable(
      *  statistics, embeddings, and drift, but kept stored and still eligible
      *  as L2 assessment evidence. */
     countingScope: boolean('counting_scope'),
+    /** Evidence-tier OVERRIDE (#841, R-GRADED-EVIDENCE). NULL = derive the
+     *  action/discussion tier from source_type as before; 'action' marks
+     *  speakerless CREC text that is an instrument read into the record
+     *  (resolution text, appropriations/explanatory statements, presidential
+     *  messages) rather than a speech. Set by the CREC subtype classifier at
+     *  ingest and by the #841 backfill; speeches never gain an override. */
+    evidenceTier: text('evidence_tier'),
   },
   (table) => [
     unique('uq_documents_url_category').on(table.url, table.category),

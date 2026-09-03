@@ -247,6 +247,22 @@ export const AI_FLAG_RATE_THRESHOLD = 1.5;
 /** Minimum clearly_concerning docs to trigger Elevated (1 is sufficient). */
 export const P2_ELEVATED_MIN_CLEARLY = 1;
 
+/**
+ * Graded evidence (#842, R-GRADED-EVIDENCE, owner decision 2026-09-02):
+ * discussion-tier confirmations (floor speeches, hearings, remarks) COUNT
+ * toward the P2 thresholds but at reduced weight — discussions about
+ * changing norms matter, primary instruments matter more. Action-tier
+ * confirmations count at weight 1.0.
+ */
+export const DISCUSSION_CONFIRMATION_WEIGHT = 0.5;
+
+/**
+ * Graded evidence hard gate (#842): a week may reach ConfirmedConcern only
+ * with at least this many ACTION-tier confirmed documents; otherwise the
+ * threshold outcome is capped at Elevated.
+ */
+export const CC_MIN_ACTION_CONFIRMATIONS = 1;
+
 /** Minimum potentially_concerning docs to trigger Elevated (without clearly_concerning). */
 export const P2_ELEVATED_MIN_POTENTIALLY = 2;
 
