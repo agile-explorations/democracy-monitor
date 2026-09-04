@@ -26,7 +26,6 @@ const FETCH_DELAY_MS = 300;
 const UNSCOPED_CROSS_AGENCY = new Set([
   'fr_inspector_general',
   'fr_oversight',
-  'fr_ig_personnel',
   'fr_foia',
   'fr_open_data',
   'fr_foia_regulations',

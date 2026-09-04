@@ -252,3 +252,61 @@ describe('assessRetrievalRelevance — infoAvailability', () => {
     ).toBe(true);
   });
 });
+
+describe('assessRetrievalRelevance — executiveOversight (exclude-driven, #847)', () => {
+  it('keeps unmatched titles by default (exclude mode)', () => {
+    const r = assessRetrievalRelevance('executiveOversight', {
+      title: "Withdrawing the Attorney General's Delegation of Authority",
+    });
+    expect(r).toEqual({ relevant: true, reason: 'default-keep' });
+  });
+
+  it('keeps every current-term P2-confirmed FR doc (the protected holdout)', () => {
+    const confirmed = [
+      'Notice of Designation of Policy-Making Positions',
+      'Improving Performance, Accountability and Responsiveness in the Civil Service',
+      'Policy Regarding Obtaining Information From, or Records of, Members of the News Media',
+      'Vistra Operations Company, LLC; Perry Nuclear Power Plant, Unit No. 1; Exemption',
+      'Streamlining Probationary and Trial Period Appeals',
+      'Review of State Bar Complaints and Allegations Against Department of Justice Attorneys',
+    ];
+    for (const title of confirmed) {
+      expect(assessRetrievalRelevance('executiveOversight', { title }).relevant).toBe(true);
+    }
+  });
+
+  it('drops the measured boilerplate noise classes', () => {
+    const noise = [
+      'Privacy Act of 1974; System of Records',
+      'Agency Information Collection Activities; Submission to the Office of Management and Budget for Review',
+      'Medicare Program; FY 2027 Hospice Wage Index and Payment Rate Update',
+      'Television Broadcasting Services Las Vegas, Nevada',
+      'Petition for Reconsideration of Action in Rulemaking Proceeding',
+      'Sunshine Act Meetings',
+      'Delete, Delete, Delete',
+      'International Trademark Classification Changes',
+      'Auction of FM Broadcasting Construction Permits Scheduled for February 2, 2027',
+      'Rate Adjustments for Indian Irrigation Projects',
+    ];
+    for (const title of noise) {
+      const r = assessRetrievalRelevance('executiveOversight', { title });
+      expect(r).toEqual({ relevant: false, reason: 'excluded' });
+    }
+  });
+
+  it('rescues an excluded title when the doc is visibly about oversight institutions', () => {
+    expect(
+      assessRetrievalRelevance('executiveOversight', {
+        title:
+          'Agency Information Collection Activities: Office of Inspector General Hotline Complaints',
+      }),
+    ).toEqual({ relevant: true, reason: 'allow-match' });
+    expect(
+      assessRetrievalRelevance('executiveOversight', {
+        title: 'Privacy Act of 1974; System of Records',
+        abstract:
+          'A new system of records covering Office of Inspector General investigative files.',
+      }).relevant,
+    ).toBe(true);
+  });
+});

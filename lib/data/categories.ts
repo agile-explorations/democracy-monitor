@@ -164,11 +164,14 @@ export const CATEGORIES: Category[] = [
       },
       {
         id: 'fr_oversight',
-        name: 'Oversight & Accountability',
-        // nosemgrep: opengrep.unscoped-fr-signal — oversight bodies exist cross-agency; terms tightened to IG/GAO/boards
-        url: '/api/federal-register?term=%22inspector+general%22+|+%22government+accountability%22+|+%22oversight+board%22',
+        name: 'Oversight Boards',
+        // #846: "government accountability" dropped (185 current-term docs bought 1
+        // confirmation — GAO citations in arbitrary rules are the match surface);
+        // "inspector general" removed as a duplicate of fr_inspector_general.
+        // nosemgrep: opengrep.unscoped-fr-signal — oversight boards exist cross-agency
+        url: '/api/federal-register?term=%22oversight+board%22',
         type: 'federal_register',
-        note: 'Broader oversight and accountability documents',
+        note: 'Oversight board establishment, membership, and authority documents',
       },
       {
         id: 'fr_presdoc_oversight',
@@ -177,14 +180,9 @@ export const CATEGORIES: Category[] = [
         type: 'federal_register',
         note: 'Executive orders and memoranda affecting government oversight',
       },
-      {
-        id: 'fr_ig_personnel',
-        name: 'IG Personnel Changes',
-        // nosemgrep: opengrep.unscoped-fr-signal — IG personnel changes happen cross-agency
-        url: '/api/federal-register?term=%22inspector+general%22+(removal+|+vacancy+|+acting+|+appointment)',
-        type: 'federal_register',
-        note: 'Inspector General removals, vacancies, and appointments',
-      },
+      // fr_ig_personnel retired (#846): its parenthesized term was invalid FR
+      // query syntax — the API silently dropped the parenthetical, making the
+      // signal a byte-identical duplicate of fr_inspector_general.
       {
         id: 'gi_congressional_reports',
         name: 'Congressional Reports (GovInfo)',

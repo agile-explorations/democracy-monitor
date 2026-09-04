@@ -17,7 +17,7 @@ export interface RelevanceInput {
 export interface RelevanceResult {
   relevant: boolean;
   /** Source of the decision, for the drop ledger. */
-  reason: 'no-filter-for-category' | 'allow-match' | 'no-allow-match' | 'excluded';
+  reason: 'no-filter-for-category' | 'allow-match' | 'no-allow-match' | 'excluded' | 'default-keep';
 }
 
 /** True when the category has a retrieval relevance pattern set configured. */
@@ -30,6 +30,17 @@ export function assessRetrievalRelevance(category: string, doc: RelevanceInput):
   if (!patterns) return { relevant: true, reason: 'no-filter-for-category' };
 
   const text = `${doc.title}\n${doc.abstract ?? ''}`;
+  if (patterns.mode === 'exclude') {
+    // Exclude-driven (#847): keep by default, drop title-identified noise
+    // classes; an allow match on title/abstract rescues from exclusion.
+    if (!patterns.exclude.some((re) => re.test(doc.title))) {
+      return { relevant: true, reason: 'default-keep' };
+    }
+    if (patterns.allow.some((re) => re.test(text))) {
+      return { relevant: true, reason: 'allow-match' };
+    }
+    return { relevant: false, reason: 'excluded' };
+  }
   if (!patterns.allow.some((re) => re.test(text))) {
     return { relevant: false, reason: 'no-allow-match' };
   }

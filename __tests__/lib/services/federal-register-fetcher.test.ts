@@ -229,7 +229,6 @@ describe('signal URL regression', () => {
     const allowedUnscoped = new Set([
       'executiveOversight/fr_inspector_general',
       'executiveOversight/fr_oversight',
-      'executiveOversight/fr_ig_personnel',
       'infoAvailability/fr_foia',
       'infoAvailability/fr_open_data',
       'mediaFreedom/fr_foia_regulations',
