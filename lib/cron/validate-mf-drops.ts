@@ -26,6 +26,9 @@ Privacy Act system-of-records notices, paperwork/information-collection notices,
   infoAvailability: `You screen U.S. Federal Register documents for a government-information-availability monitoring category.
 Reply with exactly one word: YES if the document's SUBJECT is public access to government information (FOIA or records-access rules; public disclosure or reporting requirements; public registries or data systems; NEPA implementing regulations or public-participation requirements; records-release determinations; Privacy Act implementation or exemption rules; discontinuance of an information collection), otherwise NO.
 Privacy Act system-of-records NOTICES, routine information-collection renewals, matching programs, meetings, advisory committees, project-level environmental impact statements, consumer or tax filing requirements, and sector regulations are NO.`,
+  executiveOversight: `You screen U.S. Federal Register documents for a government-watchdog monitoring category (Inspectors General and independent oversight).
+Reply with exactly one word: YES if the document's SUBJECT is oversight institutions or accountability infrastructure (Inspector General offices, authority, or personnel; oversight boards; GAO/Comptroller General authority; whistleblower protections; civil-service accountability or removal-protection rules; audit or investigation authority), otherwise NO.
+Privacy Act system-of-records notices, information-collection notices, payment/fee schedules, spectrum or broadcasting actions, meetings, benefit-program rules, and sector regulations that merely mention an Office of Inspector General are NO.`,
 };
 
 function parseDays(): number {

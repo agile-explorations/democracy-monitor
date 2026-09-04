@@ -17,6 +17,12 @@
  *   100/100 with exclusions, pending holdout verification). Includes
  *   adversarial-review additions: news media / members of the media
  *   (28 CFR 50.10 media-subpoena case) and prepublication review.
+ * - v3 (2026-09-03): executiveOversight set (#847, R-EO-FR-FILTER), the
+ *   first exclude-driven set. The category's confirmed FR docs are lexically
+ *   indistinguishable from boilerplate (1–2 buried phrase mentions, no title
+ *   signals — measured against the 588-doc current-term corpus), so only the
+ *   noise classes are named; everything else is kept. Gated on zero false
+ *   drops across all 20 current-term P2-confirmed FR docs.
  * - v2 (2026-09-01): infoAvailability set (#832, R-INFOAVAIL). Derived
  *   against the 187-doc #548 sample (187/187 under the owner's 2026-09-01
  *   class rulings) and gated on a fresh 46-doc owner-adjudicated holdout
@@ -29,13 +35,21 @@
  *   OFF; embedded-transparency program rules OFF.
  */
 
-export const PATTERN_VERSION = 2;
+export const PATTERN_VERSION = 3;
 
 export interface RelevancePatternSet {
-  /** Document is kept only if title or abstract matches at least one. */
+  /** Allow-mode: document is kept only if title or abstract matches at least
+   *  one. Exclude-mode: an allow match RESCUES a doc an exclude would drop. */
   allow: RegExp[];
-  /** Applied after allow — drops routine document classes that mention the topic. */
+  /** Allow-mode: applied after allow — drops routine document classes that
+   *  mention the topic. Exclude-mode: title-identified noise classes dropped
+   *  unless rescued by an allow match. */
   exclude: RegExp[];
+  /** 'allow' (default): keep only allow-matched docs. 'exclude' (#847): keep
+   *  by default — for categories whose relevant docs are lexically
+   *  unidentifiable (executiveOversight: confirmed docs carry no title
+   *  signals), where only the noise classes can be named. */
+  mode?: 'allow' | 'exclude';
 }
 
 export const RETRIEVAL_RELEVANCE_PATTERNS: Partial<Record<string, RelevancePatternSet>> = {
@@ -96,6 +110,74 @@ export const RETRIEVAL_RELEVANCE_PATTERNS: Partial<Record<string, RelevancePatte
       /price index adjustment/i,
       /notice of availability/i,
       /intent to prepare/i,
+    ],
+  },
+  executiveOversight: {
+    mode: 'exclude',
+    // Rescue patterns: an excluded title survives when the doc is visibly
+    // about oversight institutions (title or abstract).
+    allow: [
+      /inspector general/i,
+      /\bOIG\b/,
+      /whistleblower/i,
+      /oversight board/i,
+      /government accountability office/i,
+      /comptroller general/i,
+    ],
+    // Title-identified routine document classes (from the 588-doc
+    // current-term corpus, #847). Everything not matched here is kept.
+    exclude: [
+      /privacy act of \d{4}/i,
+      /system of records/i,
+      /matching program/i,
+      /information collection/i,
+      /submission for omb review/i,
+      /sunshine act/i,
+      /(public|panel|committee|board|advisory) meeting/i,
+      /advisory committee/i,
+      /medicare|medicaid|children.s health insurance/i,
+      /prospective payment|wage index|payment polic(y|ies)|fee schedule|user fee|rate adjustment/i,
+      /radio broadcasting|television broadcasting|broadcast station|construction permit|\b[gm]hz\b|submarine cable|spectrum/i,
+      /petition[s]? for reconsideration/i,
+      /delete, delete, delete/i,
+      /records schedules/i,
+      /self-regulatory organization/i,
+      /performance review board/i,
+      /credit watch/i,
+      /applications? for new awards/i,
+      /airworthiness|special conditions:/i,
+      /air plan approval|state implementation plan|air quality/i,
+      /acquisition regulation/i,
+      /pipeline safety/i,
+      /auction of/i,
+      /marketing order|irrigation|grazing/i,
+      /tariff|duty rates|customs/i,
+      /technical correction|correcting amendment/i,
+      /proposed collection/i,
+      /decision and order/i,
+      /\bpatent\b|trademark/i,
+      /satellite|earth station/i,
+      /motor vehicle|bumper standard/i,
+      /wage rate|labor standards|domestic service/i,
+      /block grant|disaster recovery/i,
+      /certification cost share|crop insurance/i,
+      /escrow account|leverage ratio|regulatory capital|interchange fee/i,
+      /affordable care act|marketplace integrity/i,
+      /environmental impact statement|record of decision/i,
+      /regulatory fees/i,
+      /black lung|self-insurer/i,
+      /\bh-\d[ab]\b|nonimmigrant/i,
+      /rules of (organization|practice|procedure)/i,
+      /endangered|threatened wildlife|sport fish|wildlife restoration/i,
+      /fuel economy|oil and gas|hazardous materials/i,
+      /livestock|erodible land|wetland conservation/i,
+      /rate-of-return|price cap|communications (services|networks)/i,
+      /suicide hotline|broadband/i,
+      /\bvisa\b|immigration services/i,
+      /futures commission|clearing organization|industrial bank/i,
+      /federally assisted programs/i,
+      /retirement system/i,
+      /\bpell\b|tuition/i,
     ],
   },
 };

@@ -47,6 +47,15 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-03',
+    kind: 'correction',
+    scope: 'Government Watchdogs (Inspectors General) category',
+    count: 2000,
+    what: 'A relevance filter removed roughly two thousand routine Federal Register documents from the category’s counts and document lists (Privacy Act notices, paperwork-collection notices, payment and fee schedules, broadcast and spectrum actions, and similar classes that merely mention an oversight office in passing). Zero weekly statuses changed — none of the removed documents had ever driven a detection. Two retrieval queries were also repaired: one had invalid syntax the Federal Register API silently ignored, and one term matched agency citations rather than oversight subjects.',
+    why: 'A measurement audit found the category’s Federal Register stream roughly one percent on-topic per document while its confirmed detections came almost entirely from other source types. Because relevant documents here are lexically indistinguishable from routine text, the filter names only the measured noise classes and keeps everything else, erring toward inclusion. Every confirmed document was verified kept, the change was rehearsed with a zero-status-change result before production ran, and the removed documents remain in the corpus under their other categories.',
+    evidence: [issue(846), issue(847), issue(848)],
+  },
+  {
     date: '2026-09-02',
     kind: 'policy',
     scope: 'All categories — graded evidence rule',
