@@ -64,6 +64,7 @@ pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter 
 pnpm validate:ia-drops # Same audit for infoAvailability (#834; --days N)
 pnpm ia:annotate       # Historical infoAvailability FR relevance annotation (#834; --dry-run, --limit N, --skip-repair) — prod runs are #835 runbook-gated
 pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
+pnpm tips:probe        # R-TIPWIRE (#853–#859, operator-only): fetch each active reporter source once, print status + counts (the canary the scraping exception requires)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 pnpm audit:readers     # Two-outside-reader audit of 50 Pass-2 readings (#816; --sample N --seed ID --out DIR | --score A.json B.json)
