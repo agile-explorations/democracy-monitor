@@ -2,7 +2,7 @@ import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { cronRuns } from '@/lib/db/schema';
 
-export type CronJobName = 'snapshot' | 'legiscan' | 'dump';
+export type CronJobName = 'snapshot' | 'legiscan' | 'dump' | 'tipwire';
 export type CronRunStatus = 'running' | 'success' | 'partial' | 'skipped' | 'failed';
 
 export interface CronRun {
