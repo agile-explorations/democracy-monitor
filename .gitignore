@@ -56,3 +56,5 @@ prod-status-snapshot-*.json
 
 # eval:completeness capture artifacts (#738)
 .eval-completeness/
+# R-TIPWIRE dry-run packets (operator-only, never committed)
+.tipwire-dryrun*/
