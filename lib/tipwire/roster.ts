@@ -39,6 +39,13 @@ export type ReporterFeed =
       articlePathPattern: RegExp;
       /** robots.txt Crawl-delay (ms) for the host. */
       politenessMs: number;
+      /** `<meta>` name/property on article pages carrying the byline(s). */
+      authorMeta: string;
+      /** Optional monthly sitemap to intersect with the listing: only URLs
+       *  present in the last `months` sitemaps are real, dated articles;
+       *  `{YYYYMM}` is substituted. Cuts columnist/index links that share
+       *  the article URL shape and orders newest-first by lastmod. */
+      sitemap?: { urlTemplate: string; months: number };
     };
 
 export interface ReporterEntry {
@@ -66,11 +73,15 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     feed: {
       kind: 'author-page',
       url: 'https://www.notus.org/eric-katz',
-      articlePathPattern: /^https:\/\/www\.notus\.org\/[a-z0-9-]+\/[a-z0-9-]+$/,
+      // /section/slug, excluding site chrome that shares the shape.
+      articlePathPattern:
+        /^https:\/\/www\.notus\.org\/(?!about-us|account|authors?|topics|tags|newsletters|search|cms|legal)[a-z0-9-]+\/[a-z0-9-]+$/,
       politenessMs: 10_000,
+      authorMeta: 'article:author',
+      sitemap: { urlTemplate: 'https://www.notus.org/sitemap-{YYYYMM}.xml', months: 2 },
     },
     active: true,
-    note: 'No RSS anywhere on notus.org; robots allows with Crawl-delay 10.',
+    note: 'No RSS anywhere on notus.org; robots allows with Crawl-delay 10. Author page ∩ monthly sitemap = dated real articles.',
   },
   {
     id: 'wagner',
@@ -95,12 +106,14 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     outlet: 'ProPublica',
     categories: ['immigrationEnforcement'],
     feed: {
-      kind: 'rss',
-      urls: ['https://www.propublica.org/feeds/propublica/main'],
-      author: { in: 'item', element: 'dc:creator' },
+      kind: 'author-page',
+      url: 'https://www.propublica.org/people/mica-rosenberg',
+      articlePathPattern: /^https:\/\/www\.propublica\.org\/article\/[a-z0-9-]+$/,
+      politenessMs: 2_000,
+      authorMeta: 'parsely-author',
     },
     active: true,
-    note: 'Main feed carries dc:creator (verified 2026-09-07); no page fetch needed for attribution.',
+    note: 'Her people page lists ~16 articles (the main RSS shows only the latest 20 site-wide); article pages carry parsely-author metas. robots allows all (verified 2026-09-07).',
   },
   {
     id: 'beavers',

@@ -134,10 +134,10 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
   //     pre-existing intent-data use).
   {
     host: 'www.notus.org',
-    paths: ['/eric-katz', '/2026-election/example-article'],
+    paths: ['/eric-katz', '/2026-election/example-article', '/sitemap-202609.xml'],
     kind: 'crawl',
     status: 'active',
-    note: 'Author page + article pages (JSON-LD, article:author metas). Crawl-delay 10 honored.',
+    note: 'Author page ∩ monthly sitemap, then article pages (JSON-LD, article:author metas). Crawl-delay 10 honored.',
   },
   {
     host: 'www.govexec.com',
@@ -148,9 +148,9 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
   },
   {
     host: 'www.propublica.org',
-    paths: ['/feeds/propublica/main'],
+    paths: ['/people/mica-rosenberg', '/article/example-article', '/feeds/propublica/main'],
     kind: 'crawl',
     status: 'active',
-    note: 'Main RSS feed; dc:creator on items, so no article-page fetch.',
+    note: 'Author (people) page + article pages (parsely-author metas); main RSS kept as a fallback. robots allows all.',
   },
 ];
