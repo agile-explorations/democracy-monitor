@@ -212,11 +212,12 @@ export async function tryValidateFunnel(errors: string[]): Promise<number> {
 }
 
 /**
- * Weekly incremental detector (#704/#706 follow-up): a newly ingested
- * whole-day multi-topic CREC granule (e.g. a conference-report-style record)
- * needs `pnpm crec:build-fragments` re-run to restore per-speech retrieval
- * granularity. Advisory only — reported in the run summary, never gates the
- * digest. The standing full-corpus twin lives in validate:ingest.
+ * Weekly leftover detector (#704/#706 follow-up, #852): the snapshot now
+ * builds CREC fragments itself (snapshot-crec-fragments.ts, before the
+ * embedding pass), so this fires only for granules that step could not
+ * process — a GovInfo fetch miss, or the step failing outright. Advisory
+ * only — reported in the run summary, never gates the digest. The standing
+ * full-corpus twin lives in validate:ingest.
  */
 export async function tryWarnUnfragmentedCrec(errors: string[]): Promise<void> {
   try {
@@ -225,8 +226,9 @@ export async function tryWarnUnfragmentedCrec(errors: string[]): Promise<void> {
     const n = await countUnfragmentedCrecGranules(8);
     if (n > 0) {
       const msg =
-        `${n} whole-day multi-topic CREC granule(s) ingested this week — ` +
-        `run: pnpm crec:build-fragments --confirm (idempotent, #704)`;
+        `${n} whole-day multi-topic CREC granule(s) ingested this week were left ` +
+        `unfragmented by the automated step — retried next run; ` +
+        `or run now: pnpm crec:build-fragments --confirm (idempotent, #704/#852)`;
       errors.push(msg);
       console.warn(`[snapshot] ${msg}`);
     }

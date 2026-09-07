@@ -2,6 +2,7 @@ import { snapshotChrgWindow } from '@/lib/cron/backfill-chrg';
 import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { snapshotClOpinions } from '@/lib/cron/snapshot-cl-opinions';
 import { snapshotCpdWindow } from '@/lib/cron/snapshot-cpd';
+import { tryBuildCrecFragments } from '@/lib/cron/snapshot-crec-fragments';
 import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import {
@@ -435,6 +436,10 @@ async function runPostCategorySteps(
   }
 
   const storedWeekAssessed = await ingestAndAssessSecondarySources(errors);
+
+  // #852: split this week's whole-day CREC granules BEFORE the embedding
+  // pass so the fragments are searchable tonight and ride the 05:00 dump.
+  await tryBuildCrecFragments(errors);
 
   let embeddingsProcessed = 0;
   try {

@@ -1,16 +1,20 @@
 /**
  * #704 Path A: split multi-topic CREC granules into retrieval-grade fragment
- * documents. LOCAL-FIRST: run against the local DB, embed, verify, then
- * promote fragment rows to prod via db:promote (documents WHERE parent_id
- * IS NOT NULL).
+ * documents.
  *
- * Fragments are searchable but deliberately outside the counting and L2
- * populations (counting_scope=false, parent_id set — see #704 Path A/B).
- * Parent blob rows are left completely untouched: no counting change, no
- * assessment change, no re-aggregation, no flip risk.
+ * Runs in two places (#852): as the weekly snapshot step
+ * (`lib/cron/snapshot-crec-fragments.ts`, before the embedding pass so new
+ * fragments are searchable the same night) and as a CLI for backfills.
+ * Safe to run directly against prod (#850): inserts are additive and
+ * idempotent, parents are never modified, and fragments sit outside the
+ * counting and L2 populations (counting_scope=false, parent_id set — see
+ * #704 Path A/B), so there is no counting change, no assessment change, no
+ * re-aggregation and no flip risk.
  *
- * Idempotent and resumable: parents that already have children are skipped;
- * fragment inserts are ON CONFLICT DO NOTHING on (url, category).
+ * Idempotent and resumable: granules that already have fragments (by
+ * granuleId) or carry the `fragmentsAssessed` marker are skipped; fragment
+ * inserts are ON CONFLICT DO NOTHING on (url, category). A GovInfo fetch
+ * miss leaves the granule unmarked so the next run retries it.
  *
  * Usage:
  *   pnpm crec:build-fragments              # Dry run: candidate counts only
@@ -29,12 +33,33 @@ const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const MIN_PARENT_BYTES = 102400;
 const MIN_UNIT_CHARS = 500;
 const FETCH_POLITENESS_MS = 350;
+const PROGRESS_EVERY = 100;
 
 interface ParentRow {
   id: number;
   url: string;
   published_at: string;
   granule_id: string;
+}
+
+export interface CrecFragmentBuildOptions {
+  /** Fetch, split and insert. Without it, only the candidate count is reported. */
+  confirm: boolean;
+  /** Process at most this many granules (CLI convenience). */
+  limit?: number | null;
+  /** GovInfo API key; required when `confirm` is set. */
+  apiKey?: string;
+}
+
+export interface CrecFragmentBuildResult {
+  /** Multi-topic-sized granules that still lacked fragments before the run. */
+  candidates: number;
+  /** Granules fetched, split (or found single-topic) and marked assessed. */
+  processed: number;
+  /** Fragment rows inserted across all categories. */
+  inserted: number;
+  /** Granules whose GovInfo fetch failed — left unmarked, retried next run. */
+  misses: number;
 }
 
 function stripHtmlPreserveLines(html: string): string {
@@ -139,42 +164,55 @@ async function markGranuleAssessed(granuleId: string): Promise<void> {
       AND metadata->>'granuleId' = ${granuleId}`);
 }
 
-async function main(): Promise<void> {
+/** Fetch, split, insert and mark every unfragmented multi-topic-sized
+ *  granule. Shared by the CLI and the weekly snapshot step (#852). */
+export async function runCrecFragmentBuild(
+  options: CrecFragmentBuildOptions,
+): Promise<CrecFragmentBuildResult> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
-  const args = process.argv.slice(2);
-  const confirm = args.includes('--confirm');
-  const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : null;
-  const apiKey = process.env.GOVINFO_API_KEY;
+  const { confirm, apiKey } = options;
+  const limit = options.limit ?? null;
   if (confirm && !apiKey) throw new Error('GOVINFO_API_KEY not configured');
 
   const parents = await selectParents(limit);
   console.log(`[frag] ${parents.length} multi-topic candidates without children`);
+  const result: CrecFragmentBuildResult = {
+    candidates: parents.length,
+    processed: 0,
+    inserted: 0,
+    misses: 0,
+  };
   if (!confirm) {
     console.log('[frag] Dry run complete. Run with --confirm to fetch/split/insert.');
-    return;
+    return result;
   }
 
-  let done = 0;
-  let misses = 0;
-  let fragments = 0;
   for (const parent of parents) {
     await sleep(FETCH_POLITENESS_MS);
     const text = await fetchStructured(parent.granule_id, apiKey as string);
     if (!text) {
-      misses++;
+      result.misses++;
       continue;
     }
-    fragments += await insertFragments(parent, text);
+    result.inserted += await insertFragments(parent, text);
     await markGranuleAssessed(parent.granule_id);
-    done++;
-    if (done % 100 === 0)
+    result.processed++;
+    if (result.processed % PROGRESS_EVERY === 0)
       console.log(
-        `[frag] ${done}/${parents.length} parents, ${fragments} fragments, ${misses} fetch misses`,
+        `[frag] ${result.processed}/${parents.length} parents, ${result.inserted} fragments, ${result.misses} fetch misses`,
       );
   }
   console.log(
-    `[frag] Complete: ${done} parents split, ${fragments} fragment rows inserted, ${misses} fetch misses.`,
+    `[frag] Complete: ${result.processed} parents split, ${result.inserted} fragment rows inserted, ${result.misses} fetch misses.`,
   );
+  return result;
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  const confirm = args.includes('--confirm');
+  const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : null;
+  await runCrecFragmentBuild({ confirm, limit, apiKey: process.env.GOVINFO_API_KEY });
 }
 
 if (require.main === module) {
@@ -182,7 +220,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv.slice(2),
-    'Usage: pnpm crec:build-fragments [--confirm] [--limit N]  (LOCAL-first; prod via db:promote)',
+    'Usage: pnpm crec:build-fragments [--confirm] [--limit N]  (also runs weekly in the snapshot cron, #852)',
   );
   main()
     .then(() => process.exit(0))
