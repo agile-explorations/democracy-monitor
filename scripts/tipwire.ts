@@ -15,13 +15,19 @@
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { isDbAvailable } from '@/lib/db';
 import {
   AiCallBudgetExceededError,
   configureAiCallBudget,
   getAiCallCount,
 } from '@/lib/services/ai-call-budget';
+import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
+import { sendOpsAlert } from '@/lib/services/ops-alert-service';
 import { discoverArticles, probeSource } from '@/lib/tipwire/acquire';
 import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
+import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
+import type { SentRow } from '@/lib/tipwire/cadence';
+import { buildDigestLines, digestSubject } from '@/lib/tipwire/digest';
 import {
   TipDecisionsFileSchema,
   buildPacketMarkdown,
@@ -32,7 +38,22 @@ import {
 import { runPipeline } from '@/lib/tipwire/pipeline';
 import type { PipelineItem } from '@/lib/tipwire/pipeline';
 import { activeReporters } from '@/lib/tipwire/roster';
+import type { ReporterEntry } from '@/lib/tipwire/roster';
+import {
+  dismissCandidate,
+  insertCandidate,
+  insertSkippedForCadence,
+  knownKeysFor,
+  listCandidates,
+  listUnrepliedSent,
+  recordReply,
+  recordSent,
+  sentLogForReporters,
+  upsertArticles,
+} from '@/lib/tipwire/store';
+import { formatError } from '@/lib/utils/api-helpers';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { withCronLock } from '@/lib/utils/cron-lock';
 
 export type TipwireCommand = 'probe' | 'dryrun' | 'score' | 'poll' | 'digest' | 'sent';
 
@@ -63,6 +84,10 @@ const CALLS_PER_ARTICLE_CAP = 2;
 /** Dry-run listing depth: enough article pages to reach two weeks back. */
 const DRYRUN_PAGE_FETCHES = 40;
 const EXIT_CAP_TRIPPED = 3;
+/** Daily poll: hard cap (no --confirm is possible inside a cron); a trip exits 3 and is never retried. */
+const TIPWIRE_DAILY_MAX_CALLS = 30;
+/** Only articles this fresh are judged by the daily poll (older backlog is the dry run's job). */
+const POLL_MAX_ARTICLE_AGE_DAYS = 7;
 
 export function parseTipwireArgs(argv: string[]): TipwireArgs {
   const [first, ...rest] = argv;
@@ -190,6 +215,180 @@ function runScore(args: TipwireArgs): number {
   return 0;
 }
 
+// ---------------------------------------------------------------------------
+// poll / digest / sent (#858)
+// ---------------------------------------------------------------------------
+
+interface PollOutcome {
+  discovered: number;
+  judged: number;
+  tips: number;
+  skippedForCadence: string[];
+  errors: string[];
+  calls: number;
+}
+
+/** Discover new articles per reporter against the stored keys; upsert; return fresh ones. */
+async function discoverNew(reporters: ReporterEntry[], errors: string[]) {
+  const fresh = [];
+  for (const r of reporters) {
+    const known = await knownKeysFor(r.id);
+    const res = await discoverArticles(r, { knownKeys: known });
+    errors.push(...res.errors);
+    const cutoff = new Date(
+      Date.now() - POLL_MAX_ARTICLE_AGE_DAYS * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const recent = res.articles.filter((a) => !a.publishedAt || a.publishedAt >= cutoff);
+    console.log(
+      `[tipwire] ${r.id}: listed ${res.listed} new, fetched ${res.pageFetches}, attributed ${res.articles.length}, recent ${recent.length}`,
+    );
+    fresh.push(...recent);
+  }
+  const ids = await upsertArticles(fresh);
+  return { fresh, ids };
+}
+
+async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> {
+  const outcome: PollOutcome = {
+    discovered: 0,
+    judged: 0,
+    tips: 0,
+    skippedForCadence: [],
+    errors: [],
+    calls: 0,
+  };
+  const reporters = activeReporters();
+  const byId = new Map(reporters.map((r) => [r.id, r]));
+  const { fresh, ids } = await discoverNew(reporters, outcome.errors);
+  outcome.discovered = fresh.length;
+  const sent = await sentLogForReporters(30);
+  const now = new Date();
+  const toJudge = [];
+  for (const a of fresh) {
+    if (!args.ignoreCadence && isInCooldown(a.reporterId, sent, now)) {
+      const id = ids.get(a.articleKey);
+      if (id) await insertSkippedForCadence(id, runId);
+      if (!outcome.skippedForCadence.includes(a.reporterId))
+        outcome.skippedForCadence.push(a.reporterId);
+      continue;
+    }
+    toJudge.push(a);
+  }
+  configureAiCallBudget(args.maxCalls ?? TIPWIRE_DAILY_MAX_CALLS);
+  const items = await runPipeline(toJudge, byId, {
+    now,
+    onItem: (it, i, n) =>
+      console.log(
+        `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.judge.verdict} ${it.article.title.slice(0, 60)}`,
+      ),
+  });
+  for (const it of items) {
+    const id = ids.get(it.article.articleKey);
+    if (!id) continue;
+    await insertCandidate(id, it, runId);
+    outcome.judged++;
+    if (it.judge.verdict === 'tip') outcome.tips++;
+    if (it.judge.verdict === 'error' && it.judge.error) outcome.errors.push(it.judge.error);
+  }
+  outcome.calls = getAiCallCount();
+  return outcome;
+}
+
+async function emailDigest(skippedForCadence: string[]): Promise<void> {
+  const sent = await sentLogForReporters(30);
+  const now = new Date();
+  const cands = await listCandidates('open', (rid) => cadenceLabel(rid, sent as SentRow[], now));
+  if (cands.length === 0) {
+    console.log('[tipwire] no open candidates — no email');
+    return;
+  }
+  const reminders = await listUnrepliedSent(REMINDER_AFTER_DAYS);
+  const ok = await sendOpsAlert(
+    digestSubject(cands),
+    buildDigestLines(cands, reminders, skippedForCadence),
+  );
+  console.log(`[tipwire] digest ${ok ? 'sent' : 'NOT sent'} (${cands.length} candidate(s))`);
+}
+
+async function runPoll(args: TipwireArgs): Promise<number> {
+  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
+  const runId = `poll-${new Date().toISOString().slice(0, 16)}`;
+  let code = 0;
+  const ran = await withCronLock('tipwire', async () => {
+    const cronRunId = await startCronRun('tipwire');
+    try {
+      const o = await pollOnce(args, runId);
+      console.log(
+        `[tipwire] poll done: ${o.discovered} new article(s), ${o.judged} judged, ${o.tips} tip(s), ${o.calls} AI call(s)` +
+          (o.skippedForCadence.length
+            ? `, cadence-skipped: ${o.skippedForCadence.join(', ')}`
+            : ''),
+      );
+      if (args.email) await emailDigest(o.skippedForCadence);
+      await finishCronRun(
+        cronRunId,
+        o.errors.length ? 'partial' : 'success',
+        { ...o, runId },
+        o.errors,
+      );
+    } catch (err) {
+      if (err instanceof AiCallBudgetExceededError) {
+        console.error(
+          `[tipwire] ${err.message} — AI calls this run: ${getAiCallCount()}. Exiting 3.`,
+        );
+        await finishCronRun(cronRunId, 'failed', { runId, calls: getAiCallCount() }, [err.message]);
+        code = EXIT_CAP_TRIPPED;
+        return;
+      }
+      await finishCronRun(cronRunId, 'failed', { runId }, [formatError(err)]);
+      throw err;
+    }
+  });
+  if (!ran) {
+    console.error('[tipwire] another poll holds the lock — skipped');
+    return 2;
+  }
+  return code;
+}
+
+async function runDigest(): Promise<number> {
+  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
+  const sent = await sentLogForReporters(30);
+  const now = new Date();
+  const cands = await listCandidates('open', (rid) => cadenceLabel(rid, sent as SentRow[], now));
+  const reminders = await listUnrepliedSent(REMINDER_AFTER_DAYS);
+  for (const block of buildDigestLines(cands, reminders, [])) console.log(block + '\n');
+  return 0;
+}
+
+async function runSent(args: TipwireArgs): Promise<number> {
+  if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
+  if (!args.candidate) throw new Error('sent needs --candidate <id>');
+  if (args.replied) {
+    const ok = await recordReply(args.candidate);
+    console.log(
+      ok
+        ? `[tipwire] #${args.candidate}: reply recorded — cooldown lifted`
+        : `[tipwire] #${args.candidate}: no unreplied send found`,
+    );
+    return ok ? 0 : 1;
+  }
+  if (args.dismiss) {
+    const ok = await dismissCandidate(args.candidate);
+    console.log(
+      ok
+        ? `[tipwire] #${args.candidate}: dismissed (no cooldown)`
+        : `[tipwire] #${args.candidate}: not open`,
+    );
+    return ok ? 0 : 1;
+  }
+  const reporterId = await recordSent(args.candidate);
+  console.log(
+    `[tipwire] #${args.candidate}: marked sent — ${reporterId} enters the ${REMINDER_AFTER_DAYS}-day reply window / 3-week cooldown`,
+  );
+  return 0;
+}
+
 async function main(args: TipwireArgs): Promise<number> {
   switch (args.command) {
     case 'probe':
@@ -198,9 +397,12 @@ async function main(args: TipwireArgs): Promise<number> {
       return runDryRun(args);
     case 'score':
       return runScore(args);
-    default:
-      console.error(`[tipwire] ${args.command} is not implemented yet (#858)`);
-      return 1;
+    case 'poll':
+      return runPoll(args);
+    case 'digest':
+      return runDigest();
+    case 'sent':
+      return runSent(args);
   }
 }
 
@@ -216,7 +418,7 @@ if (require.main === module) {
     .then(() => main(parseTipwireArgs(argv)))
     .then((code) => process.exit(code))
     .catch((err) => {
-      console.error('[tipwire] Fatal:', err instanceof Error ? err.message : err);
+      console.error('[tipwire] Fatal:', formatError(err));
       process.exit(1);
     });
 }
