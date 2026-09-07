@@ -58,6 +58,58 @@ export async function upsertArticles(articles: DiscoveredArticle[]): Promise<Map
   return new Map(rows.map((r) => [r.key, r.id]));
 }
 
+/**
+ * Stored articles with no verdict row yet, newest first — the poll's work
+ * queue. Covers articles discovered on a run that tripped the cap or crashed
+ * before judging, so nothing is silently skipped forever.
+ */
+export async function listUnjudgedArticles(
+  maxAgeDays: number,
+): Promise<Array<{ id: number; article: DiscoveredArticle }>> {
+  const rows = await getDb()
+    .select({
+      id: tipArticles.id,
+      reporterId: tipArticles.reporterId,
+      outlet: tipArticles.outlet,
+      articleKey: tipArticles.articleKey,
+      url: tipArticles.url,
+      title: tipArticles.title,
+      lede: tipArticles.lede,
+      ledeSource: tipArticles.ledeSource,
+      publishedAt: tipArticles.publishedAt,
+      feedStrategy: tipArticles.feedStrategy,
+      attribution: tipArticles.attribution,
+      coauthorCount: tipArticles.coauthorCount,
+      rawMeta: tipArticles.rawMeta,
+    })
+    .from(tipArticles)
+    .where(
+      and(
+        // Recent by publication; an undated article counts from its discovery.
+        sql`COALESCE(${tipArticles.publishedAt}, ${tipArticles.discoveredAt}) >= ${new Date(Date.now() - maxAgeDays * ONE_DAY_MS)}`,
+        sql`NOT EXISTS (SELECT 1 FROM tip_candidates c WHERE c.article_id = ${tipArticles.id})`,
+      ),
+    )
+    .orderBy(desc(tipArticles.publishedAt));
+  return rows.map((r) => ({
+    id: r.id,
+    article: {
+      reporterId: r.reporterId,
+      outlet: r.outlet,
+      articleKey: r.articleKey,
+      url: r.url,
+      title: r.title,
+      lede: r.lede,
+      ledeSource: r.ledeSource as DiscoveredArticle['ledeSource'],
+      publishedAt: r.publishedAt ? r.publishedAt.toISOString() : null,
+      feedStrategy: r.feedStrategy as DiscoveredArticle['feedStrategy'],
+      attribution: r.attribution,
+      coauthorCount: r.coauthorCount,
+      rawMeta: r.rawMeta ?? {},
+    },
+  }));
+}
+
 /** The reporter's stored titles within RECENT_TITLES_DAYS of `around` (same-story context). */
 export async function recentTitlesFromDb(reporterId: string, around: Date): Promise<string[]> {
   const rows = await getDb()

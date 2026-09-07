@@ -46,6 +46,7 @@ import {
   insertSkippedForCadence,
   knownKeysFor,
   listCandidates,
+  listUnjudgedArticles,
   listUnrepliedSent,
   recentTitlesFromDb,
   recordReply,
@@ -187,24 +188,23 @@ async function runDryRun(args: TipwireArgs): Promise<number> {
     return 0;
   }
   configureAiCallBudget(est.cap);
-  let items: PipelineItem[] = [];
-  try {
-    items = await runPipeline(articles, new Map(activeReporters().map((r) => [r.id, r])), {
-      onItem: (it, i, n) =>
-        console.log(
-          `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.judge.verdict} (${it.judge.calls} call${it.judge.calls === 1 ? '' : 's'}, ${it.match.docs.length} docs) ${it.article.title.slice(0, 60)}`,
-        ),
-    });
-  } catch (err) {
-    if (!(err instanceof AiCallBudgetExceededError)) throw err;
-    console.error(`[tipwire] ${err.message} — AI calls this run: ${getAiCallCount()}.`);
+  const run = await runPipeline(articles, new Map(activeReporters().map((r) => [r.id, r])), {
+    onItem: (it, i, n) =>
+      console.log(
+        `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.judge.verdict} (${it.judge.calls} call${it.judge.calls === 1 ? '' : 's'}, ${it.match.docs.length} docs) ${it.article.title.slice(0, 60)}`,
+      ),
+  });
+  writePacket(args.out, run.items, args.since);
+  const tips = run.items.filter((i) => i.judge.verdict === 'tip').length;
+  console.log(
+    `[tipwire] done: ${run.items.length} judged, ${tips} proposed tip(s), ${getAiCallCount()} AI calls. Score with: pnpm tips:score --decisions ${args.out}/decisions-template.json --packet ${args.out}/packet.json`,
+  );
+  if (run.capTripped) {
+    console.error(
+      `[tipwire] AI-call cap ${est.cap} tripped with ${run.unjudged.length} article(s) unjudged — partial packet written. Exiting 3 (do not retry blindly; review the estimate).`,
+    );
     return EXIT_CAP_TRIPPED;
   }
-  writePacket(args.out, items, args.since);
-  const tips = items.filter((i) => i.judge.verdict === 'tip').length;
-  console.log(
-    `[tipwire] done: ${items.length} judged, ${tips} proposed tip(s), ${getAiCallCount()} AI calls. Score with: pnpm tips:score --decisions ${args.out}/decisions-template.json --packet ${args.out}/packet.json`,
-  );
   return 0;
 }
 
@@ -228,26 +228,23 @@ interface PollOutcome {
   skippedForCadence: string[];
   errors: string[];
   calls: number;
+  capTripped: boolean;
 }
 
-/** Discover new articles per reporter against the stored keys; upsert; return fresh ones. */
-async function discoverNew(reporters: ReporterEntry[], errors: string[]) {
-  const fresh = [];
+/** Discover against stored keys and store EVERY attributed article (so it is
+ *  never re-fetched), whatever its age; judging is decided separately. */
+async function discoverNew(reporters: ReporterEntry[], errors: string[]): Promise<number> {
+  let stored = 0;
   for (const r of reporters) {
     const known = await knownKeysFor(r.id);
     const res = await discoverArticles(r, { knownKeys: known });
     errors.push(...res.errors);
-    const cutoff = new Date(
-      Date.now() - POLL_MAX_ARTICLE_AGE_DAYS * 24 * 60 * 60 * 1000,
-    ).toISOString();
-    const recent = res.articles.filter((a) => !a.publishedAt || a.publishedAt >= cutoff);
     console.log(
-      `[tipwire] ${r.id}: listed ${res.listed} new, fetched ${res.pageFetches}, attributed ${res.articles.length}, recent ${recent.length}`,
+      `[tipwire] ${r.id}: listed ${res.listed} new, fetched ${res.pageFetches}, attributed ${res.articles.length}`,
     );
-    fresh.push(...recent);
+    stored += (await upsertArticles(res.articles)).size;
   }
-  const ids = await upsertArticles(fresh);
-  return { fresh, ids };
+  return stored;
 }
 
 async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> {
@@ -258,18 +255,20 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     skippedForCadence: [],
     errors: [],
     calls: 0,
+    capTripped: false,
   };
   const reporters = activeReporters();
   const byId = new Map(reporters.map((r) => [r.id, r]));
-  const { fresh, ids } = await discoverNew(reporters, outcome.errors);
-  outcome.discovered = fresh.length;
+  outcome.discovered = await discoverNew(reporters, outcome.errors);
+  // Work queue = stored, recent, never judged — survives cap trips and crashes.
+  const queue = await listUnjudgedArticles(POLL_MAX_ARTICLE_AGE_DAYS);
+  const ids = new Map(queue.map((q) => [q.article.articleKey, q.id]));
   const sent = await sentLogForReporters(30);
   const now = new Date();
   const toJudge = [];
-  for (const a of fresh) {
+  for (const { id, article: a } of queue) {
     if (!args.ignoreCadence && isInCooldown(a.reporterId, sent, now)) {
-      const id = ids.get(a.articleKey);
-      if (id) await insertSkippedForCadence(id, runId);
+      await insertSkippedForCadence(id, runId);
       if (!outcome.skippedForCadence.includes(a.reporterId))
         outcome.skippedForCadence.push(a.reporterId);
       continue;
@@ -277,7 +276,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     toJudge.push(a);
   }
   configureAiCallBudget(args.maxCalls ?? TIPWIRE_DAILY_MAX_CALLS);
-  const items = await runPipeline(toJudge, byId, {
+  const run = await runPipeline(toJudge, byId, {
     now,
     // Same-story guard over stored history, not just today's batch.
     recentTitles: (a) =>
@@ -287,7 +286,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
         `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.judge.verdict} ${it.article.title.slice(0, 60)}`,
       ),
   });
-  for (const it of items) {
+  for (const it of run.items) {
     const id = ids.get(it.article.articleKey);
     if (!id) continue;
     await insertCandidate(id, it, runId);
@@ -296,6 +295,12 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     if (it.judge.verdict === 'error' && it.judge.error) outcome.errors.push(it.judge.error);
   }
   outcome.calls = getAiCallCount();
+  outcome.capTripped = run.capTripped;
+  if (run.capTripped) {
+    outcome.errors.push(
+      `AI-call cap tripped; ${run.unjudged.length} article(s) left unjudged for the next run`,
+    );
+  }
   return outcome;
 }
 
@@ -324,27 +329,17 @@ async function runPoll(args: TipwireArgs): Promise<number> {
     try {
       const o = await pollOnce(args, runId);
       console.log(
-        `[tipwire] poll done: ${o.discovered} new article(s), ${o.judged} judged, ${o.tips} tip(s), ${o.calls} AI call(s)` +
+        `[tipwire] poll done: ${o.discovered} article(s) stored, ${o.judged} judged, ${o.tips} tip(s), ${o.calls} AI call(s)` +
           (o.skippedForCadence.length
             ? `, cadence-skipped: ${o.skippedForCadence.join(', ')}`
-            : ''),
+            : '') +
+          (o.capTripped ? ' — CAP TRIPPED, exiting 3' : ''),
       );
       if (args.email) await emailDigest(o.skippedForCadence);
-      await finishCronRun(
-        cronRunId,
-        o.errors.length ? 'partial' : 'success',
-        { ...o, runId },
-        o.errors,
-      );
+      const status = o.capTripped ? 'failed' : o.errors.length ? 'partial' : 'success';
+      await finishCronRun(cronRunId, status, { ...o, runId }, o.errors);
+      if (o.capTripped) code = EXIT_CAP_TRIPPED;
     } catch (err) {
-      if (err instanceof AiCallBudgetExceededError) {
-        console.error(
-          `[tipwire] ${err.message} — AI calls this run: ${getAiCallCount()}. Exiting 3.`,
-        );
-        await finishCronRun(cronRunId, 'failed', { runId, calls: getAiCallCount() }, [err.message]);
-        code = EXIT_CAP_TRIPPED;
-        return;
-      }
       await finishCronRun(cronRunId, 'failed', { runId }, [formatError(err)]);
       throw err;
     }

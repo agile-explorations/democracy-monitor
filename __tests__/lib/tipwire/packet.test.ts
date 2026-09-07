@@ -222,8 +222,9 @@ describe('tipwire pipeline (#857)', () => {
       },
     );
     expect(seen).toEqual(['no_tip', 'no_tip']);
-    expect(out[0].reactive).toBe(true);
-    expect(out[0].recentTitles).toEqual(['Title 2']);
+    expect(out.capTripped).toBe(false);
+    expect(out.items[0].reactive).toBe(true);
+    expect(out.items[0].recentTitles).toEqual(['Title 2']);
 
     const failing = {
       ...match,
@@ -235,12 +236,22 @@ describe('tipwire pipeline (#857)', () => {
       match: failing,
       judge: { provider },
     });
-    expect(errs[0].judge).toMatchObject({ verdict: 'error', error: 'db down' });
+    expect(errs.items[0].judge).toMatchObject({ verdict: 'error', error: 'db down' });
 
-    configureAiCallBudget(0);
-    await expect(
-      runPipeline([art('https://x/1', 'wagner', null)], reporters, { match, judge: { provider } }),
-    ).rejects.toThrow(/budget/);
+    // A cap trip stops the run and RETURNS what was judged (the first live run lost three tips by throwing).
+    configureAiCallBudget(1);
+    const partial = await runPipeline(
+      [
+        art('https://x/1', 'wagner', null),
+        art('https://x/2', 'wagner', null),
+        art('https://x/3', 'wagner', null),
+      ],
+      reporters,
+      { match, judge: { provider } },
+    );
+    expect(partial.capTripped).toBe(true);
+    expect(partial.items).toHaveLength(1);
+    expect(partial.unjudged.map((a) => a.articleKey)).toEqual(['https://x/2', 'https://x/3']);
     configureAiCallBudget(null);
   });
 });

@@ -5,7 +5,7 @@
  * of degrading into a skipped article.
  */
 
-import { assertAiCallBudget } from '@/lib/services/ai-call-budget';
+import { AiCallBudgetExceededError, assertAiCallBudget } from '@/lib/services/ai-call-budget';
 import { formatError } from '@/lib/utils/api-helpers';
 import { ONE_DAY_MS } from '@/lib/utils/date-utils';
 import { isReactive } from './acquire';
@@ -104,12 +104,24 @@ function errorItem(
   };
 }
 
-/** Match + judge every article, in order. Throws only on a budget trip. */
+export interface PipelineRun {
+  items: PipelineItem[];
+  /** The AI-call cap stopped the run; `items` holds everything judged before it. */
+  capTripped: boolean;
+  /** Articles not reached because of the trip (still unjudged; a later run picks them up). */
+  unjudged: DiscoveredArticle[];
+}
+
+/**
+ * Match + judge every article, in order. A budget trip STOPS the run and is
+ * reported in the result rather than thrown, so callers persist what was
+ * judged and exit 3 — the first live run lost three judged tips by throwing.
+ */
 export async function runPipeline(
   articles: DiscoveredArticle[],
   reporters: Map<string, ReporterEntry>,
   deps: PipelineDeps = {},
-): Promise<PipelineItem[]> {
+): Promise<PipelineRun> {
   const now = deps.now ?? new Date();
   const items: PipelineItem[] = [];
   for (let i = 0; i < articles.length; i++) {
@@ -124,7 +136,14 @@ export async function runPipeline(
         ...stored.filter((t) => t !== article.title),
       ]),
     ];
-    assertAiCallBudget();
+    try {
+      assertAiCallBudget();
+    } catch (err) {
+      if (err instanceof AiCallBudgetExceededError) {
+        return { items, capTripped: true, unjudged: articles.slice(i) };
+      }
+      throw err;
+    }
     let item: PipelineItem;
     try {
       const match = await retrieveForArticle(article, reporter, { ...deps.match, now });
@@ -146,5 +165,5 @@ export async function runPipeline(
     items.push(item);
     deps.onItem?.(item, i, articles.length);
   }
-  return items;
+  return { items, capTripped: false, unjudged: [] };
 }
