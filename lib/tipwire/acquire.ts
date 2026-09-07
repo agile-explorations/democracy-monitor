@@ -76,6 +76,10 @@ export interface DiscoverResult {
   listed: number;
   pageFetches: number;
   errors: string[];
+  /** Keys whose page was fetched this run but that are NOT this reporter's
+   *  (or failed to fetch) — the caller records them so they are never
+   *  fetched again. Attributed keys are covered by the stored article. */
+  rejectedKeys: string[];
 }
 
 type Resolved = Required<Omit<DiscoverOptions, 'knownKeys'>> & { knownKeys: ReadonlySet<string> };
@@ -95,7 +99,7 @@ async function polite(ms: number): Promise<void> {
 }
 
 function emptyResult(): DiscoverResult {
-  return { articles: [], listed: 0, pageFetches: 0, errors: [] };
+  return { articles: [], listed: 0, pageFetches: 0, errors: [], rejectedKeys: [] };
 }
 
 /** Fetch one URL, recording HTTP/network failures on the result; null on failure. */
@@ -189,6 +193,7 @@ async function discoverRss(
     if (feed.author.in === 'page' && result.pageFetches >= opts.maxPageFetches) break;
     const article = await rssItemToArticle(entry, feed, item, opts, result);
     if (article) result.articles.push(article);
+    else result.rejectedKeys.push(articleKey(item.link as string));
   }
   return result;
 }
@@ -269,6 +274,7 @@ async function discoverAuthorPage(
     result.pageFetches++;
     const article = await pageToArticle(entry, feed, key, lastmod, opts, result);
     if (article) result.articles.push(article);
+    else result.rejectedKeys.push(key);
   }
   return result;
 }

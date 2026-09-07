@@ -41,19 +41,22 @@ import type { PipelineItem } from '@/lib/tipwire/pipeline';
 import { activeReporters } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
 import {
-  dismissCandidate,
   insertCandidate,
   insertSkippedForCadence,
   knownKeysFor,
   listCandidates,
   listUnjudgedArticles,
-  listUnrepliedSent,
   recentTitlesFromDb,
+  recordSeenKeys,
+  upsertArticles,
+} from '@/lib/tipwire/store';
+import {
+  dismissCandidate,
+  listUnrepliedSent,
   recordReply,
   recordSent,
   sentLogForReporters,
-  upsertArticles,
-} from '@/lib/tipwire/store';
+} from '@/lib/tipwire/store-sent';
 import { formatError } from '@/lib/utils/api-helpers';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
@@ -240,9 +243,10 @@ async function discoverNew(reporters: ReporterEntry[], errors: string[]): Promis
     const res = await discoverArticles(r, { knownKeys: known });
     errors.push(...res.errors);
     console.log(
-      `[tipwire] ${r.id}: listed ${res.listed} new, fetched ${res.pageFetches}, attributed ${res.articles.length}`,
+      `[tipwire] ${r.id}: listed ${res.listed} new, fetched ${res.pageFetches}, attributed ${res.articles.length}, rejected ${res.rejectedKeys.length}`,
     );
     stored += (await upsertArticles(res.articles)).size;
+    await recordSeenKeys(r.id, res.rejectedKeys);
   }
   return stored;
 }

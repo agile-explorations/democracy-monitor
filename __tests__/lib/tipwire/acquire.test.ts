@@ -164,6 +164,10 @@ describe('tipwire acquisition — strategies on fixtures (#854)', () => {
     expect(r.listed).toBe(2);
     expect(r.pageFetches).toBe(2);
     expect(r.articles.map((a) => a.title)).toEqual(['OPM finalizes rule on probationary periods']);
+    // the other reporter's page is remembered so it is never fetched again
+    expect(r.rejectedKeys).toEqual([
+      'https://www.govexec.com/management/2026/09/usda-employees-challenge/415818',
+    ]);
     expect(r.articles[0]).toMatchObject({
       reporterId: 'wagner',
       feedStrategy: 'rss',

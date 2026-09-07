@@ -50,6 +50,7 @@ const CORPUS_DUMP_ARGS = [
   '--exclude-table-data=tip_articles',
   '--exclude-table-data=tip_candidates',
   '--exclude-table-data=tip_sent_log',
+  '--exclude-table-data=tip_seen_keys',
 ];
 const PII_DUMP_ARGS = [
   '-Fc',

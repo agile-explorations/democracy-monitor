@@ -6,7 +6,7 @@
 
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { tipArticles, tipCandidates, tipSentLog } from '@/lib/db/schema';
+import { tipArticles, tipCandidates, tipSeenKeys, tipSentLog } from '@/lib/db/schema';
 import type { TipPayload } from '@/lib/db/schema';
 import { ONE_DAY_MS } from '@/lib/utils/date-utils';
 import type { DiscoveredArticle } from './acquire';
@@ -17,12 +17,29 @@ import type { PipelineItem } from './pipeline';
 import { RECENT_TITLES_DAYS } from './prompt';
 import { getReporter } from './roster';
 
+/** Keys never to fetch again for this reporter: stored articles + rejected pages. */
 export async function knownKeysFor(reporterId: string): Promise<Set<string>> {
-  const rows = await getDb()
-    .select({ key: tipArticles.articleKey })
-    .from(tipArticles)
-    .where(eq(tipArticles.reporterId, reporterId));
-  return new Set(rows.map((r) => r.key));
+  const db = getDb();
+  const [articles, seen] = await Promise.all([
+    db
+      .select({ key: tipArticles.articleKey })
+      .from(tipArticles)
+      .where(eq(tipArticles.reporterId, reporterId)),
+    db
+      .select({ key: tipSeenKeys.articleKey })
+      .from(tipSeenKeys)
+      .where(eq(tipSeenKeys.reporterId, reporterId)),
+  ]);
+  return new Set([...articles, ...seen].map((r) => r.key));
+}
+
+/** Remember fetched-but-not-theirs pages so the per-run fetch cap reaches new bylines. */
+export async function recordSeenKeys(reporterId: string, keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  await getDb()
+    .insert(tipSeenKeys)
+    .values(keys.map((articleKey) => ({ reporterId, articleKey })))
+    .onConflictDoNothing({ target: [tipSeenKeys.reporterId, tipSeenKeys.articleKey] });
 }
 
 /** Insert new articles; returns article ids keyed by article_key (existing rows included). */
@@ -181,18 +198,6 @@ export async function insertSkippedForCadence(articleId: number, runId: string):
   });
 }
 
-export async function sentLogForReporters(days: number): Promise<SentRow[]> {
-  const rows = await getDb()
-    .select({
-      reporterId: tipSentLog.reporterId,
-      sentAt: tipSentLog.sentAt,
-      repliedAt: tipSentLog.repliedAt,
-    })
-    .from(tipSentLog)
-    .where(gte(tipSentLog.sentAt, new Date(Date.now() - Math.max(days * ONE_DAY_MS, COOLDOWN_MS))));
-  return rows;
-}
-
 interface CandidateJoin {
   id: number;
   reporterId: string;
@@ -266,68 +271,4 @@ export async function listCandidates(
       docUrl: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.url ?? null) : null,
       cadence: cadenceFor(r.reporterId),
     }));
-}
-
-export async function listUnrepliedSent(minAgeDays: number): Promise<ReminderRow[]> {
-  const rows = await getDb()
-    .select({
-      candidateId: tipSentLog.candidateId,
-      reporterId: tipSentLog.reporterId,
-      sentAt: tipSentLog.sentAt,
-      title: tipArticles.title,
-    })
-    .from(tipSentLog)
-    .innerJoin(tipCandidates, eq(tipCandidates.id, tipSentLog.candidateId))
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
-    .where(
-      and(
-        isNull(tipSentLog.repliedAt),
-        sql`${tipSentLog.sentAt} <= now() - make_interval(days => ${minAgeDays})`,
-      ),
-    )
-    .orderBy(desc(tipSentLog.sentAt));
-  return rows.map((r) => ({
-    candidateId: r.candidateId,
-    reporterName: getReporter(r.reporterId)?.name ?? r.reporterId,
-    title: r.title,
-    sentAt: r.sentAt,
-  }));
-}
-
-/** `tips:sent --candidate N`: log the send and close the candidate. */
-export async function recordSent(candidateId: number, note?: string): Promise<string> {
-  const db = getDb();
-  const [c] = await db
-    .select({
-      id: tipCandidates.id,
-      reporterId: tipArticles.reporterId,
-      status: tipCandidates.status,
-    })
-    .from(tipCandidates)
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
-    .where(eq(tipCandidates.id, candidateId));
-  if (!c) throw new Error(`candidate ${candidateId} not found`);
-  await db.insert(tipSentLog).values({ candidateId, reporterId: c.reporterId, note: note ?? null });
-  await db.update(tipCandidates).set({ status: 'sent' }).where(eq(tipCandidates.id, candidateId));
-  return c.reporterId;
-}
-
-/** `tips:sent --candidate N --replied`: lift the cooldown for that send. */
-export async function recordReply(candidateId: number): Promise<boolean> {
-  const rows = await getDb()
-    .update(tipSentLog)
-    .set({ repliedAt: new Date() })
-    .where(and(eq(tipSentLog.candidateId, candidateId), isNull(tipSentLog.repliedAt)))
-    .returning({ id: tipSentLog.id });
-  return rows.length > 0;
-}
-
-/** `tips:sent --candidate N --dismiss`: close without a log row (no cooldown). */
-export async function dismissCandidate(candidateId: number): Promise<boolean> {
-  const rows = await getDb()
-    .update(tipCandidates)
-    .set({ status: 'dismissed' })
-    .where(and(eq(tipCandidates.id, candidateId), eq(tipCandidates.status, 'open')))
-    .returning({ id: tipCandidates.id });
-  return rows.length > 0;
 }

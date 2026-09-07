@@ -1055,6 +1055,20 @@ export const tipCandidates = pgTable(
   ],
 );
 
+/** Listing/feed URLs already fetched for a reporter and found NOT to be theirs
+ *  (or unfetchable), so the daily poll never re-fetches them — without this,
+ *  GovExec's 60-item feed re-cost 15 page fetches per run and could starve
+ *  new bylines behind the per-run cap. */
+export const tipSeenKeys = pgTable(
+  'tip_seen_keys',
+  {
+    reporterId: varchar('reporter_id', { length: 40 }).notNull(),
+    articleKey: text('article_key').notNull(),
+    seenAt: timestamp('seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [unique('uq_tip_seen_keys').on(table.reporterId, table.articleKey)],
+);
+
 export const tipSentLog = pgTable(
   'tip_sent_log',
   {
