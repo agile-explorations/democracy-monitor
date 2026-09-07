@@ -102,9 +102,17 @@ function contextSection(it: PipelineItem): string[] {
 
 function itemMarkdown(it: PipelineItem): string {
   const a = it.article;
-  const heading = it.judge.verdict === 'tip' ? 'PROPOSED TIP' : it.judge.verdict.toUpperCase();
+  const verdictLabel = it.skippedNoDocs
+    ? 'NO NEW DOCUMENTS'
+    : it.judge.verdict === 'tip'
+      ? 'PROPOSED TIP'
+      : it.judge.verdict.toUpperCase();
+  const scope =
+    it.kind === 'contradiction'
+      ? 'contradiction check'
+      : `since ${it.since?.slice(0, 10) ?? 'article date'}`;
   return [
-    `## ${heading} — ${it.reporter.name} (${it.reporter.outlet})${it.reactive ? ' — REACTIVE' : ''}`,
+    `## ${verdictLabel} (${scope}) — ${it.reporter.name} (${it.reporter.outlet})${it.reactive ? ' — REACTIVE' : ''}`,
     '',
     `**Article:** ${a.title}`,
     `Published: ${a.publishedAt ?? 'unknown'} · Lede source: ${a.ledeSource}${a.coauthorCount ? ` · co-authors: ${a.coauthorCount}` : ''}`,

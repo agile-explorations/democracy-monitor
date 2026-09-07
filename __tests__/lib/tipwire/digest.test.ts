@@ -64,6 +64,7 @@ function cand(id: number, extra: Partial<DigestCandidate> = {}): DigestCandidate
     ledeSource: 'rss',
     coauthorCount: 0,
     reactive: false,
+    kind: 'forward',
     tip: {
       sentences: ['One.', 'Two.', 'Three.'],
       specificClaim: 'claim',
@@ -92,6 +93,10 @@ describe('tipwire digest (#858)', () => {
     const text = lines.join('\n\n');
     expect(text.indexOf('⚡ REACTIVE')).toBeLessThan(text.indexOf('#1 ·'));
     expect(text).toContain('pnpm tips:sent --candidate 2 --replied');
+    expect(text).toContain('Since their piece: Article 2');
+    const contra = buildDigestLines([cand(4, { kind: 'contradiction' })], [], []).join('\n');
+    expect(contra).toContain('CONTRADICTION CHECK');
+    expect(contra).toContain('Article: Article 4');
     expect(text).toContain('Also proposed for candidate(s) #2 — same document; send one.');
     expect(text.indexOf('TITLE-ONLY MATCHES (1)')).toBeGreaterThan(text.indexOf('#1 ·'));
     expect(text).toContain('read the piece before sending');

@@ -29,7 +29,7 @@ export type JudgeVerdict = 'tip' | 'no_tip' | 'parse_failed' | 'error';
 
 export interface JudgeResult {
   verdict: JudgeVerdict;
-  tip?: TipPayload & { documentRef: number; documentId: number };
+  tip?: TipPayload & { documentRef: number; documentId: number; searchKeys: string[] };
   reasonsNoTip?: string;
   model: string;
   promptVersion: string;
@@ -68,6 +68,7 @@ function toResult(v: TipVerdict, ctx: TipJudgeContext, acc: Accumulator): JudgeR
       specificClaim: v.tip.specific_claim,
       whyUnreportedAppears: v.tip.why_unreported_appears,
       confidence: v.tip.confidence,
+      searchKeys: v.tip.search_keys ?? [],
       documentRef: v.tip.document_ref,
       documentId: ctx.docs[v.tip.document_ref - 1].id,
     },
@@ -117,7 +118,7 @@ export async function judgeArticle(
     calls: 0,
   };
   if (!resolved) return { ...acc, verdict: 'error', error: 'anthropic provider unavailable' };
-  const prompts = { system: buildTipSystemPrompt(), user: buildTipUserPrompt(ctx) };
+  const prompts = { system: buildTipSystemPrompt(ctx.kind), user: buildTipUserPrompt(ctx) };
   let rawHead = '';
   try {
     for (const temperature of [0, PARSE_RETRY_TEMPERATURE]) {

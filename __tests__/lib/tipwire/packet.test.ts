@@ -15,6 +15,7 @@ import type { PipelineItem } from '@/lib/tipwire/pipeline';
 import { getReporter } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
 import type { AIProvider } from '@/lib/types/ai';
+import type { ResearchDocument } from '@/lib/types/search';
 
 function art(
   key: string,
@@ -54,6 +55,7 @@ function judge(verdict: JudgeResult['verdict'], tip = false): JudgeResult {
             specificClaim: 'claim',
             whyUnreportedAppears: 'why',
             confidence: 'medium' as const,
+            searchKeys: [],
             documentRef: 1,
             documentId: 9,
           },
@@ -67,11 +69,14 @@ function item(article: DiscoveredArticle, j: JudgeResult, reactive = false): Pip
     article,
     reporter: { id: article.reporterId, name: article.reporterId, outlet: 'X' },
     reactive,
+    kind: 'forward',
+    since: article.publishedAt,
     recentTitles: [],
     match: {
       query: 'q',
       queryMode: 'title+lede',
-      window: { from: '2026-06-01', to: '2026-09-04' },
+      kind: 'forward',
+      window: { from: '2026-09-01', to: '2026-09-08' },
       docs: [
         {
           ref: 1,
@@ -84,9 +89,10 @@ function item(article: DiscoveredArticle, j: JudgeResult, reactive = false): Pip
         },
       ],
       structural: [],
-      meta: { retrieved: 1, reranked: 1, boosted: 1, minedAliases: 0, retrievalMs: 1 },
+      meta: { retrieved: 1, reranked: 1, boosted: 1, excluded: 0, minedAliases: 0, retrievalMs: 1 },
     },
     judge: j,
+    skippedNoDocs: false,
   };
 }
 
@@ -100,8 +106,8 @@ const items: PipelineItem[] = [
   item(art('https://x/b2', 'b', null), judge('parse_failed')),
 ];
 
-describe('tipwire packet (#857)', () => {
-  it('renders proposed tips first with reactive on top, title-only matches under their own warning heading, then the rest', () => {
+describe('tipwire packet (#857, #864)', () => {
+  it('renders proposed tips first with reactive on top and the forward scope, title-only matches under their own heading, then the rest', () => {
     const md = buildPacketMarkdown(items, meta);
     const iTips = md.indexOf('# PROPOSED TIPS (2)');
     const iTitleOnly = md.indexOf('# ⚠ TITLE-ONLY MATCHES (1)');
@@ -110,6 +116,7 @@ describe('tipwire packet (#857)', () => {
     expect(iTitleOnly).toBeGreaterThan(iTips);
     expect(iRest).toBeGreaterThan(iTitleOnly);
     expect(md.indexOf('REACTIVE')).toBeLessThan(md.indexOf('Title 2'));
+    expect(md).toContain('## PROPOSED TIP (since 2026-09-03)');
     expect(md).toContain('Cited document: [Doc 1] Doc nine — https://d/9 (id 9)');
     expect(md).toContain('would_send');
     expect(md).toContain('Lede: (none — title-only match)');
@@ -162,7 +169,6 @@ describe('tipwire packet (#857)', () => {
     expect(etHour('2026-09-03T12:00:00Z')).toBe(8);
     expect(etHour('2026-09-03T20:00:00Z')).toBe(16);
     const s = scoreDecisions(decisionsTemplate(items, meta), items);
-    // dated: 12Z(8ET), 20Z(16ET), 13Z(9ET), 02Z(22ET prev day) → 2 of 4 before 10 ET
     expect(s.publishedBefore10EtShare).toBeCloseTo(0.5);
     expect(s.recommendMorningSlot).toBe(true);
     expect(renderScore(s).join('\n')).toContain('ADD the 13:30 UTC morning cron slot');
@@ -170,12 +176,49 @@ describe('tipwire packet (#857)', () => {
   });
 });
 
-describe('tipwire pipeline (#857)', () => {
+describe('tipwire pipeline (#857, #862)', () => {
   const must = (id: string): ReporterEntry => {
     const r = getReporter(id);
     if (!r) throw new Error(id);
     return r;
   };
+  const provider: AIProvider = {
+    name: 'fake',
+    isAvailable: () => true,
+    complete: async () => ({
+      content: '{"verdict":"no_tip","reasons_no_tip":"topic"}',
+      model: 'fake',
+      tokensUsed: { input: 1, output: 1 },
+      latencyMs: 1,
+    }),
+  };
+  const someDoc: ResearchDocument = {
+    id: 7,
+    title: 'Doc',
+    content: 'x',
+    url: null,
+    publishedAt: '2026-09-05',
+    sourceType: 'Rule',
+    tier: 'action',
+    sourceOrigin: 'federal_register',
+    caseId: null,
+    category: 'civilService',
+    cosineSimilarity: 0.5,
+    finalScore: null,
+    documentClass: null,
+    p2Assessment: null,
+    p2ErosionType: null,
+    p2Confidence: null,
+    p2Summary: null,
+  };
+  const withDocs = {
+    embed: async () => null,
+    search: async () => ({ documents: [someDoc], minedAliases: [] }),
+    rerank: async (_q: string, d: ResearchDocument[]) => d,
+    enrich: async () => undefined,
+    structural: async () => [],
+  };
+  const empty = { ...withDocs, search: async () => ({ documents: [], minedAliases: [] }) };
 
   it('builds same-story titles from the reporter’s other articles within 14 days', () => {
     const all = [
@@ -187,25 +230,8 @@ describe('tipwire pipeline (#857)', () => {
     expect(recentTitlesFor(all[0], all)).toEqual(['Title 2']);
   });
 
-  it('matches and judges each article with injected deps, records errors per article, and propagates a budget trip', async () => {
-    const provider: AIProvider = {
-      name: 'fake',
-      isAvailable: () => true,
-      complete: async () => ({
-        content: '{"verdict":"no_tip","reasons_no_tip":"topic"}',
-        model: 'fake',
-        tokensUsed: { input: 1, output: 1 },
-        latencyMs: 1,
-      }),
-    };
+  it('judges with the scope the caller provides; a window with no documents costs no judge call', async () => {
     const reporters = new Map([['wagner', must('wagner')]]);
-    const match = {
-      embed: async () => null,
-      search: async () => ({ documents: [], minedAliases: [] }),
-      rerank: async () => [],
-      enrich: async () => undefined,
-      structural: async () => [],
-    };
     configureAiCallBudget(null);
     const seen: string[] = [];
     const out = await runPipeline(
@@ -215,19 +241,58 @@ describe('tipwire pipeline (#857)', () => {
       ],
       reporters,
       {
-        match,
+        match: withDocs,
         judge: { provider },
         now: new Date('2026-09-03T06:00:00Z'),
-        onItem: (it) => seen.push(it.judge.verdict),
+        scopeFor: (a) => ({ kind: 'forward', since: a.publishedAt }),
+        onItem: (it) => seen.push(`${it.kind}:${it.judge.verdict}`),
       },
     );
-    expect(seen).toEqual(['no_tip', 'no_tip']);
-    expect(out.capTripped).toBe(false);
-    expect(out.items[0].reactive).toBe(true);
-    expect(out.items[0].recentTitles).toEqual(['Title 2']);
+    expect(seen).toEqual(['forward:no_tip', 'forward:no_tip']);
+    expect(out.items[0]).toMatchObject({
+      reactive: true,
+      since: '2026-09-03T00:00:00Z',
+      skippedNoDocs: false,
+      recentTitles: ['Title 2'],
+    });
 
+    const quiet = await runPipeline([art('https://x/1', 'wagner', null)], reporters, {
+      match: empty,
+      judge: { provider },
+    });
+    expect(quiet.items[0]).toMatchObject({
+      skippedNoDocs: true,
+      judge: { verdict: 'no_tip', calls: 0 },
+    });
+  });
+
+  it('passes the fetched article body only in contradiction mode', async () => {
+    const reporters = new Map([['wagner', must('wagner')]]);
+    const bodies: string[] = [];
+    await runPipeline([art('https://x/1', 'wagner', '2026-09-03T00:00:00Z')], reporters, {
+      match: withDocs,
+      judge: { provider },
+      scopeFor: () => ({ kind: 'contradiction' }),
+      articleBody: async (a) => {
+        bodies.push(a.articleKey);
+        return 'body';
+      },
+    });
+    await runPipeline([art('https://x/2', 'wagner', '2026-09-03T00:00:00Z')], reporters, {
+      match: withDocs,
+      judge: { provider },
+      articleBody: async (a) => {
+        bodies.push(a.articleKey);
+        return 'body';
+      },
+    });
+    expect(bodies).toEqual(['https://x/1']);
+  });
+
+  it('records errors per article and returns partial results on a cap trip instead of throwing', async () => {
+    const reporters = new Map([['wagner', must('wagner')]]);
     const failing = {
-      ...match,
+      ...withDocs,
       search: async () => {
         throw new Error('db down');
       },
@@ -238,7 +303,6 @@ describe('tipwire pipeline (#857)', () => {
     });
     expect(errs.items[0].judge).toMatchObject({ verdict: 'error', error: 'db down' });
 
-    // A cap trip stops the run and RETURNS what was judged (the first live run lost three tips by throwing).
     configureAiCallBudget(1);
     const partial = await runPipeline(
       [
@@ -247,7 +311,7 @@ describe('tipwire pipeline (#857)', () => {
         art('https://x/3', 'wagner', null),
       ],
       reporters,
-      { match, judge: { provider } },
+      { match: withDocs, judge: { provider } },
     );
     expect(partial.capTripped).toBe(true);
     expect(partial.items).toHaveLength(1);

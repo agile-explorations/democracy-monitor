@@ -1,14 +1,21 @@
 /**
- * R-TIPWIRE judge prompt (#856). One Sonnet call per article decides:
- * a concrete tip (three sentences naming ONE document and one number, date,
- * or finding the article did not mention) or `no_tip`.
+ * R-TIPWIRE judge prompt (#856, #863). One Sonnet call per article-check
+ * decides: a concrete tip (three sentences naming ONE document and one
+ * number, date, or finding) or `no_tip`.
+ *
+ * Two questions (R-TIPWIRE-2 pivot, owner decision 2026-09-07):
+ * - forward: "since this piece was filed, what appeared in the record that
+ *   extends or complicates it?" — the documents shown are all NEWER than the
+ *   article. This is the steady state; a published article is evidence of the
+ *   thread the reporter is on now, and the record moves before the news does.
+ * - contradiction (reactive articles only): "does any document predating
+ *   this piece contradict a claim in it?" — the model sees the article body
+ *   (fetched fresh, never stored) because the lede is not the piece.
  *
  * The concreteness rule and the banned outputs are the whole point: "our
- * tool covers this topic" is a forbidden answer. The honesty clauses reuse
- * the research-answer rules (coverage scoped to this retrieval, matched
- * passages binding, witness tone) and the model is told it cannot verify
- * what the reporter has already covered — the operator does that before
- * sending.
+ * tool covers this topic" is a forbidden answer. Honesty clauses reuse the
+ * research-answer rules (coverage scoped to what was shown, matched passages
+ * binding, witness tone); the operator verifies before sending.
  *
  * BUMP TIP_PROMPT_VERSION (to the change date) whenever the system prompt,
  * the user prompt layout, or the schema changes substantively; it is stored
@@ -18,15 +25,17 @@
 import { z } from 'zod';
 import { extractJsonFromLlm } from '@/lib/utils/ai-helpers';
 import type { DiscoveredArticle } from './acquire';
-import type { RankedDoc, StructuralLine } from './match';
+import type { RankedDoc, StructuralLine, WatchKind } from './match';
 import { categoryLabels } from './roster';
 import type { ReporterEntry } from './roster';
 
-export const TIP_PROMPT_VERSION = 'tip-2026-09-07';
+export const TIP_PROMPT_VERSION = 'tip-2026-09-08-forward';
 /** Content budget per matched document in the user prompt. */
 export const DOC_EXCERPT_CHARS = 1500;
 /** Same-story context: the reporter's other recent titles shown to the judge. */
 export const RECENT_TITLES_DAYS = 14;
+/** Contradiction mode: article body excerpt shown to the judge (never stored). */
+export const ARTICLE_BODY_CHARS = 3000;
 
 export const BANNED_TIP_PHRASES = [
   'our tool covers this topic',
@@ -59,6 +68,10 @@ export const TipVerdictSchema = z.object({
       specific_claim: z.string().min(1),
       why_unreported_appears: z.string().min(1),
       confidence: z.enum(['low', 'medium', 'high']),
+      /** Identifier-grade strings for the coverage check (#861): docket or EO
+       *  numbers, program names, exact figures, case captions. Empty when the
+       *  claim is paraphrasable — then the check reports "not checkable". */
+      search_keys: z.array(z.string().min(1)).max(3).optional(),
     })
     .optional(),
   reasons_no_tip: z.string().optional(),
@@ -68,38 +81,61 @@ export type TipVerdict = z.infer<typeof TipVerdictSchema>;
 export interface TipJudgeContext {
   reporter: ReporterEntry;
   article: Pick<DiscoveredArticle, 'title' | 'lede' | 'publishedAt' | 'url' | 'coauthorCount'>;
+  /** Contradiction mode: bounded body text fetched at judge time; null otherwise. */
+  articleBody?: string | null;
+  kind: WatchKind;
+  /** Forward: the window start the documents were drawn from. */
+  since?: string | null;
   /** The reporter's other article titles from the last RECENT_TITLES_DAYS. */
   recentTitles: string[];
   structural: StructuralLine[];
   docs: RankedDoc[];
 }
 
-function roleSection(): string[] {
-  return [
+function roleSection(kind: WatchKind): string[] {
+  const shared = [
     'You are a research-desk assistant for Democracy Monitor, a nonpartisan archive of',
     'U.S. government documents (rules, orders, opinions, hearings, floor speeches).',
-    'A reporter has just published an article. You will see the article’s title and',
-    'lede, the reporter’s other recent headlines, and the archive documents that',
-    'match the article. Your job is to decide whether the archive holds ONE specific,',
-    'checkable detail the article did not mention that this reporter would want to',
-    'know — and if so, to draft a three-sentence tip an editor will verify before',
-    'anyone sends it.',
+  ];
+  if (kind === 'contradiction') {
+    return [
+      ...shared,
+      'A reporter has just published an article. You will see its title, lede, and body',
+      'excerpt, and archive documents that PREDATE it. Your job is to decide whether any',
+      'of those documents contradicts a specific claim the article makes — a number, a',
+      'date, a holding, who did what — and if so, to draft a three-sentence note an',
+      'editor will verify before anyone sends it. Additions are NOT contradictions.',
+    ];
+  }
+  return [
+    ...shared,
+    'A reporter published an article on the date shown. The reporter is working a',
+    'thread, not a one-off; the article is evidence of what they are watching NOW. You',
+    'will see the article’s title and lede, the reporter’s other recent headlines, and',
+    'archive documents published AFTER the article (since the date given). Your job is',
+    'to decide whether the record has moved on that thread — a new filing in a case the',
+    'piece covered, a rule or order implementing what it described, a hearing, report,',
+    'or floor statement responding to it — and if so, to draft a three-sentence tip an',
+    'editor will verify before anyone sends it: "since your piece on X, this appeared."',
   ];
 }
 
-function concretenessSection(): string[] {
+function concretenessSection(kind: WatchKind): string[] {
+  const noTipWhen =
+    kind === 'contradiction'
+      ? '- If no document plainly contradicts a claim in the article, the answer is no_tip.'
+      : '- If the newer documents merely share the article’s topic without moving its thread, the answer is no_tip.';
   return [
     'CONCRETENESS RULE (non-negotiable):',
     '- A tip must name exactly ONE document by its [Doc N] reference and cite ONE',
     '  specific number, date, quotation, party, or finding from that document.',
-    '- The detail must be something the article, as shown, does not mention.',
-    '- If the best document merely shares the article’s topic, the answer is no_tip.',
+    noTipWhen,
     '- Forbidden outputs, verbatim or in spirit: ' +
       BANNED_TIP_PHRASES.map((p) => `"${p}"`).join(', ') +
       ',',
     '  any offer of a demo or access, any claim about what the reporter will or should',
     '  cover next, any praise of the article.',
-    '- Default to no_tip. Most articles will not yield a tip; that is the expected outcome.',
+    '- Default to no_tip. Most checks will not yield a tip; that is the expected outcome.',
   ];
 }
 
@@ -107,9 +143,9 @@ function honestySection(): string[] {
   return [
     'HONESTY:',
     '- You see one article and a handful of headlines, not the reporter’s full coverage.',
-    '  You CANNOT verify that a detail is unreported. Say so in why_unreported_appears:',
-    '  write what makes it appear unreported (the lede and titles shown do not mention',
-    '  it) and state that the operator must check before sending.',
+    '  You CANNOT verify what they have since reported. Say so in why_unreported_appears:',
+    '  write what you saw and did not see, and state that the operator must check before',
+    '  sending.',
     '- Absence claims are scoped to what you were shown: write "among these documents",',
     '  never "the record" or "the corpus".',
     '- Lines marked "(annotation)" are machine annotations, NOT document text: never',
@@ -118,6 +154,11 @@ function honestySection(): string[] {
     '  a passage shows, and quote numbers exactly as they appear there.',
     '- If a document appears as only a title or a short notice, do not infer contents',
     '  it does not show.',
+    '- confidence: high = the specific claim is visible verbatim in a passage shown;',
+    '  medium = it rests on the content excerpt but not on a quoted passage; low = it',
+    '  is inferred or the document is thin.',
+    '- search_keys: 1–3 identifier-grade strings only (a docket or EO number, a program',
+    '  name, an exact figure, a case caption). Omit when the claim is paraphrasable.',
   ];
 }
 
@@ -142,18 +183,19 @@ function outputSection(): string[] {
     '    "document_ref": N,                       // the [Doc N] number',
     '    "specific_claim": "the number/date/finding, quoted or precisely stated",',
     '    "why_unreported_appears": "what you saw and did not see; operator must verify",',
-    '    "confidence": "low" | "medium" | "high"',
+    '    "confidence": "low" | "medium" | "high",',
+    '    "search_keys": ["..."]                   // 0–3 identifier-grade strings',
     '  },',
     '  "reasons_no_tip": "one sentence"           // only when verdict is "no_tip"',
     '}',
   ];
 }
 
-export function buildTipSystemPrompt(): string {
+export function buildTipSystemPrompt(kind: WatchKind = 'forward'): string {
   return [
-    ...roleSection(),
+    ...roleSection(kind),
     '',
-    ...concretenessSection(),
+    ...concretenessSection(kind),
     '',
     ...honestySection(),
     '',
@@ -163,7 +205,7 @@ export function buildTipSystemPrompt(): string {
   ].join('\n');
 }
 
-function formatDate(iso: string | null): string {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return 'date unknown';
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
@@ -211,32 +253,53 @@ function formatStructural(lines: StructuralLine[]): string[] {
   });
 }
 
-export function buildTipUserPrompt(ctx: TipJudgeContext): string {
-  const { reporter, article } = ctx;
-  const beat = categoryLabels(reporter.categories).join(', ');
-  const ledeLine = article.lede
-    ? `Lede: ${article.lede}`
-    : 'Lede: (not available — the article’s specifics are unknown; require a stronger, more specific match before proposing a tip)';
+function articleSection(ctx: TipJudgeContext): string[] {
+  const { article } = ctx;
   const coauthor =
     article.coauthorCount > 0
       ? ` (co-authored with ${article.coauthorCount} other${article.coauthorCount > 1 ? 's' : ''})`
       : '';
-  return [
-    `REPORTER: ${reporter.name}, ${reporter.outlet}${coauthor}. Beat: ${beat}.`,
-    '',
-    'ARTICLE:',
+  const lines = [
+    `ARTICLE${coauthor}:`,
     `Title: ${article.title}`,
     `Published: ${formatDate(article.publishedAt)}`,
-    ledeLine,
+    article.lede
+      ? `Lede: ${article.lede}`
+      : 'Lede: (not available — the article’s specifics are unknown; require a stronger, more specific match before proposing a tip)',
     article.url ? `URL: ${article.url}` : '',
+  ];
+  if (ctx.kind === 'contradiction') {
+    lines.push(
+      ctx.articleBody
+        ? `Body excerpt (first ${ARTICLE_BODY_CHARS} characters): ${ctx.articleBody.slice(0, ARTICLE_BODY_CHARS)}`
+        : 'Body: (not available — judge only what the lede states)',
+    );
+  }
+  return lines;
+}
+
+function docsHeading(ctx: TipJudgeContext): string {
+  const n = ctx.docs.length;
+  return ctx.kind === 'contradiction'
+    ? `DOCUMENTS PREDATING THE ARTICLE (${n}, best match first; "beat category" marks the reporter's own beat):`
+    : `DOCUMENTS PUBLISHED SINCE ${formatDate(ctx.since ?? ctx.article.publishedAt)} (${n}, best match first; "beat category" marks the reporter's own beat):`;
+}
+
+export function buildTipUserPrompt(ctx: TipJudgeContext): string {
+  const { reporter } = ctx;
+  const beat = categoryLabels(reporter.categories).join(', ');
+  return [
+    `REPORTER: ${reporter.name}, ${reporter.outlet}. Beat: ${beat}.`,
     '',
-    `THIS REPORTER ALSO RECENTLY PUBLISHED (last ${RECENT_TITLES_DAYS} days — a detail covered in one of these is not a tip):`,
+    ...articleSection(ctx),
+    '',
+    `THIS REPORTER ALSO RECENTLY PUBLISHED (last ${RECENT_TITLES_DAYS} days — a development already covered in one of these is not a tip):`,
     ...(ctx.recentTitles.length > 0 ? ctx.recentTitles.map((t) => `  - ${t}`) : ['  (none found)']),
     '',
     "DEMOCRACY MONITOR WEEKLY CONTEXT for the reporter's beat categories:",
     ...formatStructural(ctx.structural),
     '',
-    `MATCHED DOCUMENTS (${ctx.docs.length}, best first; "beat category" marks the reporter's own beat):`,
+    docsHeading(ctx),
     '',
     formatDocsForTip(ctx.docs),
     '',

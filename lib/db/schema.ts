@@ -999,11 +999,17 @@ export const tipArticles = pgTable(
     coauthorCount: integer('coauthor_count').notNull().default(0),
     rawMeta: jsonb('raw_meta').$type<Record<string, string>>(),
     discoveredAt: timestamp('discovered_at', { withTimezone: true }).defaultNow().notNull(),
+    /** R-TIPWIRE-2 (#862): the article is a standing watch on its thread until
+     *  this date (published + WATCH_DAYS); NULL = not watched (undated). */
+    watchUntil: timestamp('watch_until', { withTimezone: true }),
+    /** Forward retrieval resumes from here; NULL = never checked. */
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     unique('uq_tip_articles_reporter_key').on(table.reporterId, table.articleKey),
     index('idx_tip_articles_published').on(table.publishedAt),
+    index('idx_tip_articles_watch_until').on(table.watchUntil),
   ],
 );
 
@@ -1012,6 +1018,8 @@ export interface TipPayload {
   specificClaim: string;
   whyUnreportedAppears: string;
   confidence: 'low' | 'medium' | 'high';
+  /** Identifier-grade strings for the coverage check (#861); may be empty. */
+  searchKeys?: string[];
 }
 
 export interface TipCoverageCheck {
@@ -1051,6 +1059,10 @@ export const tipCandidates = pgTable(
     latencyMs: integer('latency_ms'),
     /** Article published within 24 h of discovery — send-today tip. */
     reactive: boolean('reactive').notNull().default(false),
+    /** forward (documents newer than the piece) | contradiction (older, reactive only) */
+    watchKind: varchar('watch_kind', { length: 20 }).notNull().default('forward'),
+    /** Forward window start used for this check (the previous last_checked_at). */
+    sinceAt: timestamp('since_at', { withTimezone: true }),
     /** Post-gate coverage check (#861): identifier-grade search keys extracted
      *  from the tip, GDELT DOC hit counts + sample URLs per key over a 30-day
      *  window, and a graded label (checkable-zero | niche | likely-covered |

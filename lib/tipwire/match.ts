@@ -1,11 +1,17 @@
 /**
- * R-TIPWIRE matching (#855): one article → the corpus documents most likely
- * to hold a tip, plus the structural context the judge sees.
+ * R-TIPWIRE matching (#855, #862): one article → the corpus documents most
+ * likely to hold a tip, plus the structural context the judge sees.
  *
  * Uses the pure library retrieval path (no HTTP, no Turnstile/token, no spend
  * admission): embed → searchResearchWithMeta (60) → rerankForTier (20) →
- * soft category prior → top 10 → ts_headline passages. This is byte-identical
- * to the served "analytical" path minus the orchestrator. ≈ $0.004/article.
+ * soft category prior → top 10 → ts_headline passages. ≈ $0.004/article.
+ *
+ * Two retrieval scopes (R-TIPWIRE-2 pivot, owner decision 2026-09-07):
+ * - `forward` (steady state): documents published AFTER the article — since
+ *   the previous check when the article is a standing watch. "Since your
+ *   piece on X, this appeared in the record."
+ * - `contradiction` (reactive articles only, once): documents predating the
+ *   article, judged for whether any contradicts it.
  *
  * The beat→category prior is a BOOST, never a filter: the best tip may sit
  * in a cross-category document, which is the corpus's differentiator.
@@ -27,10 +33,22 @@ import type { CategoryKey, ReporterEntry } from './roster';
 export const RETRIEVAL_TOP_K = 60;
 export const RERANK_KEEP = 20;
 export const PROMPT_DOCS = 10;
-/** Window of corpus documents considered, ending the day after the article. */
+/** Contradiction scope: corpus documents this many days before the article. */
 export const WINDOW_DAYS = 84;
-/** Soft prior: fraction of the best score added to docs in the reporter's categories. */
+/** How long an article stays a standing forward watch. */
+export const WATCH_DAYS = 21;
+/** Soft prior: rank-fraction added to docs in the reporter's categories. */
 export const CATEGORY_PRIOR_WEIGHT = 0.15;
+
+export type WatchKind = 'forward' | 'contradiction';
+
+export interface RetrievalScope {
+  kind: WatchKind;
+  /** Forward only: resume from here (the previous check) instead of the article date. */
+  since?: string | null;
+  /** Documents already cited for this article — never re-proposed. */
+  excludeDocIds?: readonly number[];
+}
 
 export interface RankedDoc extends ResearchDocument {
   priorBoosted: boolean;
@@ -50,6 +68,7 @@ export interface StructuralLine {
 export interface MatchResult {
   query: string;
   queryMode: 'title+lede' | 'title+categories';
+  kind: WatchKind;
   window: { from: string; to: string };
   docs: RankedDoc[];
   structural: StructuralLine[];
@@ -57,6 +76,7 @@ export interface MatchResult {
     retrieved: number;
     reranked: number;
     boosted: number;
+    excluded: number;
     minedAliases: number;
     retrievalMs: number;
   };
@@ -79,15 +99,34 @@ export function buildQuery(
   };
 }
 
-/** Retrieval window: `WINDOW_DAYS` before the article to the day after it. */
+const day = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Retrieval window by scope.
+ * - forward: [max(article date, since) → tomorrow] — the record since the piece (or since the last check).
+ * - contradiction: [article − WINDOW_DAYS → article date] — what predates the piece.
+ * Undated articles: forward from `since` or discovery-now; contradiction ends today.
+ */
 export function retrievalWindow(
   publishedAt: string | null,
   now: Date,
+  scope: RetrievalScope = { kind: 'forward' },
 ): { from: string; to: string } {
-  const end = publishedAt ? new Date(publishedAt) : now;
-  const to = new Date(end.getTime() + ONE_DAY_MS);
-  const from = new Date(end.getTime() - WINDOW_DAYS * ONE_DAY_MS);
-  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+  const published = publishedAt ? new Date(publishedAt) : now;
+  if (scope.kind === 'contradiction') {
+    return {
+      from: day(new Date(published.getTime() - WINDOW_DAYS * ONE_DAY_MS)),
+      to: day(published),
+    };
+  }
+  const since = scope.since ? new Date(scope.since) : null;
+  const start = since && since > published ? since : published;
+  return { from: day(start), to: day(new Date(now.getTime() + ONE_DAY_MS)) };
+}
+
+/** Watch expiry for a stored article; null when the article is undated. */
+export function watchUntil(publishedAt: string | null): Date | null {
+  return publishedAt ? new Date(new Date(publishedAt).getTime() + WATCH_DAYS * ONE_DAY_MS) : null;
 }
 
 /**
@@ -153,10 +192,8 @@ interface StructuralRow {
   silence_elevated: boolean | null;
 }
 
-/** One line per roster category for the article's week — or the latest
- *  aggregated week before it when that week has not been computed yet
- *  (mid-week articles; a stale dev database). The line carries its own
- *  weekOf so the judge sees which week it describes. */
+/** One line per roster category for the given week — or the latest
+ *  aggregated week before it when that week has not been computed yet. */
 export async function fetchStructuralLines(
   categories: CategoryKey[],
   weekOf: string,
@@ -188,18 +225,27 @@ export async function fetchStructuralLines(
   }));
 }
 
-/** Retrieve, rerank, boost, trim, and annotate the docs for one article. */
+/** Forward watches describe the record now; contradiction checks the article's week. */
+function structuralWeek(article: DiscoveredArticle, scope: RetrievalScope, now: Date): string {
+  const anchor =
+    scope.kind === 'forward' || !article.publishedAt ? now : new Date(article.publishedAt);
+  return getMonday(anchor);
+}
+
+/** Retrieve, rerank, boost, trim, and annotate the docs for one article under a scope. */
 export async function retrieveForArticle(
   article: DiscoveredArticle,
   reporter: ReporterEntry,
   deps: Partial<MatchDeps> = {},
+  scope: RetrievalScope = { kind: 'forward' },
 ): Promise<MatchResult> {
   const d = { ...defaultDeps(), ...deps };
   const { query, mode } = buildQuery(article, reporter);
-  const window = retrievalWindow(article.publishedAt, d.now);
+  const window = retrievalWindow(article.publishedAt, d.now, scope);
+  const exclude = new Set(scope.excludeDocIds ?? []);
   const started = Date.now();
 
-  const { docs, minedAliases, reranked } = await withRequestDbGate(1, async () => {
+  const { docs, minedAliases, reranked, excluded } = await withRequestDbGate(1, async () => {
     const emb = (await d.embed(query)) ?? undefined;
     const { documents, minedAliases } = await d.search(
       query,
@@ -208,18 +254,24 @@ export async function retrieveForArticle(
       window.from,
       window.to,
     );
-    const reranked = documents.length > 0 ? await d.rerank(query, documents, RERANK_KEEP) : [];
+    const fresh = documents.filter((x) => !exclude.has(x.id));
+    const reranked = fresh.length > 0 ? await d.rerank(query, fresh, RERANK_KEEP) : [];
     const boosted = applyCategoryPrior(reranked, reporter.categories).slice(0, PROMPT_DOCS);
     await d.enrich(boosted, query);
-    return { docs: boosted, minedAliases: minedAliases.length, reranked: reranked.length };
+    return {
+      docs: boosted,
+      minedAliases: minedAliases.length,
+      reranked: reranked.length,
+      excluded: documents.length - fresh.length,
+    };
   });
 
-  const weekOf = getMonday(article.publishedAt ? new Date(article.publishedAt) : d.now);
-  const structural = await d.structural(reporter.categories, weekOf);
+  const structural = await d.structural(reporter.categories, structuralWeek(article, scope, d.now));
 
   return {
     query,
     queryMode: mode,
+    kind: scope.kind,
     window,
     docs,
     structural,
@@ -227,6 +279,7 @@ export async function retrieveForArticle(
       retrieved: reranked === 0 ? 0 : Math.max(reranked, docs.length),
       reranked,
       boosted: docs.filter((x) => x.priorBoosted).length,
+      excluded,
       minedAliases,
       retrievalMs: Date.now() - started,
     },

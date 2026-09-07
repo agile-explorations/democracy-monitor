@@ -13,6 +13,7 @@ import type { DiscoveredArticle } from './acquire';
 import { COOLDOWN_MS } from './cadence';
 import type { SentRow } from './cadence';
 import type { DigestCandidate, ReminderRow } from './digest';
+import { watchUntil } from './match';
 import type { PipelineItem } from './pipeline';
 import { RECENT_TITLES_DAYS } from './prompt';
 import { getReporter } from './roster';
@@ -62,6 +63,7 @@ export async function upsertArticles(articles: DiscoveredArticle[]): Promise<Map
           attribution: a.attribution,
           coauthorCount: a.coauthorCount,
           rawMeta: a.rawMeta,
+          watchUntil: watchUntil(a.publishedAt),
         })),
       )
       .onConflictDoNothing({ target: [tipArticles.reporterId, tipArticles.articleKey] });
@@ -160,8 +162,11 @@ export async function insertCandidate(
             specificClaim: j.tip.specificClaim,
             whyUnreportedAppears: j.tip.whyUnreportedAppears,
             confidence: j.tip.confidence,
+            searchKeys: j.tip.searchKeys,
           }
         : null,
+      watchKind: item.kind,
+      sinceAt: item.since ? new Date(item.since) : null,
       tipDocumentId: j.tip?.documentId ?? null,
       reasonsNoTip: j.reasonsNoTip ?? j.error ?? null,
       matchedDocs: item.match.docs.map((d) => ({
@@ -208,6 +213,7 @@ interface CandidateJoin {
   ledeSource: string;
   coauthorCount: number;
   reactive: boolean;
+  kind: string;
   tip: TipPayload | null;
   tipDocumentId: number | null;
   createdAt: Date;
@@ -225,6 +231,7 @@ async function candidateRows(where: ReturnType<typeof eq>): Promise<CandidateJoi
       ledeSource: tipArticles.ledeSource,
       coauthorCount: tipArticles.coauthorCount,
       reactive: tipCandidates.reactive,
+      kind: tipCandidates.watchKind,
       tip: tipCandidates.tip,
       tipDocumentId: tipCandidates.tipDocumentId,
       createdAt: tipCandidates.createdAt,
@@ -266,6 +273,7 @@ export async function listCandidates(
     .filter((r): r is CandidateJoin & { tip: TipPayload } => r.tip !== null)
     .map((r) => ({
       ...r,
+      kind: (r.kind === 'contradiction' ? 'contradiction' : 'forward') as DigestCandidate['kind'],
       reporterName: getReporter(r.reporterId)?.name ?? r.reporterId,
       docTitle: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.title ?? null) : null,
       docUrl: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.url ?? null) : null,

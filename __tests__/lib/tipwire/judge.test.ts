@@ -20,7 +20,7 @@ function rdoc(id: number, extra: Partial<RankedDoc> = {}): RankedDoc {
     title: `Rule ${id}`,
     content: 'The Office of Personnel Management issues a final rule effective October 1, 2026.',
     url: `https://example.gov/${id}`,
-    publishedAt: '2026-08-20',
+    publishedAt: '2026-09-05',
     sourceType: 'Rule',
     tier: 'action',
     sourceOrigin: 'federal_register',
@@ -63,6 +63,8 @@ function ctx(overrides: Partial<TipJudgeContext> = {}): TipJudgeContext {
       url: 'https://www.govexec.com/x',
       coauthorCount: 0,
     },
+    kind: 'forward',
+    since: '2026-09-03T12:00:00Z',
     recentTitles: ['Unions sue over pay freeze'],
     structural,
     docs: [rdoc(101), rdoc(102, { p2Assessment: 'clearly_concerning', p2Summary: 'machine note' })],
@@ -78,6 +80,7 @@ const TIP_JSON = JSON.stringify({
     specific_claim: 'effective October 1, 2026',
     why_unreported_appears: 'The lede does not mention the effective date; verify before sending.',
     confidence: 'medium',
+    search_keys: ['Executive Order 14410'],
   },
 });
 
@@ -95,28 +98,50 @@ function fakeProvider(responses: string[]): AIProvider {
   };
 }
 
-describe('tipwire judge prompt (#856)', () => {
-  it('system prompt carries the concreteness rule, the banned outputs, honesty and tone clauses, and the JSON contract', () => {
-    const s = buildTipSystemPrompt();
+describe('tipwire judge prompt (#856, #863)', () => {
+  it('forward system prompt asks what moved on the thread since the piece; carries the rules, rubric, and JSON contract', () => {
+    const s = buildTipSystemPrompt('forward');
+    expect(s).toContain('published AFTER the article');
+    expect(s).toContain('since your piece on X, this appeared');
     for (const p of BANNED_TIP_PHRASES) expect(s).toContain(p);
     expect(s).toContain('exactly ONE document');
     expect(s).toContain('Default to no_tip');
     expect(s).toContain('CANNOT verify');
     expect(s).toContain('among these documents');
     expect(s).toContain('crackdown');
+    expect(s).toContain('confidence: high = the specific claim is visible verbatim');
+    expect(s).toContain('search_keys');
     expect(s).toContain('"verdict": "tip" | "no_tip"');
     expect(TIP_PROMPT_VERSION).toMatch(/^tip-\d{4}-\d{2}-\d{2}/);
   });
 
-  it('user prompt shows the article, same-story titles, structural lines, and numbered docs with annotations marked', () => {
+  it('contradiction system prompt asks for contradictions of the article body, not additions', () => {
+    const s = buildTipSystemPrompt('contradiction');
+    expect(s).toContain('PREDATE it');
+    expect(s).toContain('Additions are NOT contradictions');
+    expect(s).not.toContain('since your piece on X');
+  });
+
+  it('forward user prompt shows the article, recent titles, context, and docs labelled as published since the window start', () => {
     const u = buildTipUserPrompt(ctx());
     expect(u).toContain('REPORTER: Erich Wagner, Government Executive');
     expect(u).toContain('Lede: OPM issued a final rule');
     expect(u).toContain('- Unions sue over pay freeze');
     expect(u).toContain('civilService (week of 2026-08-31): status Elevated');
+    expect(u).toContain('DOCUMENTS PUBLISHED SINCE Sep 3, 2026 (2');
     expect(u).toContain('[Doc 1 | ACTION | beat category] Rule 101');
-    expect(u).toContain('[Doc 2 | ACTION | beat category] Rule 102');
     expect(u).toContain('AI Review Note (annotation — NOT document text): machine note');
+    expect(u).not.toContain('Body excerpt');
+  });
+
+  it('contradiction user prompt includes the fetched body excerpt and labels docs as predating', () => {
+    const u = buildTipUserPrompt(
+      ctx({ kind: 'contradiction', articleBody: 'Full body text here. '.repeat(10) }),
+    );
+    expect(u).toContain('DOCUMENTS PREDATING THE ARTICLE');
+    expect(u).toContain('Body excerpt (first 3000 characters): Full body text here.');
+    const noBody = buildTipUserPrompt(ctx({ kind: 'contradiction', articleBody: null }));
+    expect(noBody).toContain('Body: (not available');
   });
 
   it('flags a missing lede explicitly and lists no recent titles gracefully', () => {
@@ -128,12 +153,13 @@ describe('tipwire judge prompt (#856)', () => {
   });
 
   it('truncates document content to the excerpt budget', () => {
-    const long = rdoc(1, { content: 'x'.repeat(5000) });
-    expect(formatDocsForTip([long]).length).toBeLessThan(2000);
+    expect(formatDocsForTip([rdoc(1, { content: 'x'.repeat(5000) })]).length).toBeLessThan(2000);
   });
 
-  it('parses fenced JSON, rejects two-sentence tips, out-of-range refs, and tip verdicts without a tip', () => {
-    expect(parseTipVerdict('```json\n' + TIP_JSON + '\n```', 2)).toMatchObject({ ok: true });
+  it('parses fenced JSON with search keys, rejects two-sentence tips, out-of-range refs, and tip verdicts without a tip', () => {
+    const ok = parseTipVerdict('```json\n' + TIP_JSON + '\n```', 2);
+    expect(ok).toMatchObject({ ok: true });
+    if (ok.ok) expect(ok.verdict.tip?.search_keys).toEqual(['Executive Order 14410']);
     expect(parseTipVerdict(TIP_JSON, 1)).toEqual({ ok: false, reason: 'ref_out_of_range' });
     const two = JSON.parse(TIP_JSON);
     two.tip.sentences = ['One.', 'Two.'];
@@ -147,13 +173,18 @@ describe('tipwire judge prompt (#856)', () => {
   });
 });
 
-describe('tipwire judge (#856)', () => {
-  it('returns a tip mapped to the referenced document id, with tokens and one recorded call', async () => {
+describe('tipwire judge (#856, #863)', () => {
+  it('returns a tip mapped to the referenced document id, with search keys, tokens and one recorded call', async () => {
     configureAiCallBudget(null);
     const before = getAiCallCount();
     const r = await judgeArticle(ctx(), { provider: fakeProvider([TIP_JSON]), model: 'm' });
     expect(r.verdict).toBe('tip');
-    expect(r.tip).toMatchObject({ documentRef: 2, documentId: 102, confidence: 'medium' });
+    expect(r.tip).toMatchObject({
+      documentRef: 2,
+      documentId: 102,
+      confidence: 'medium',
+      searchKeys: ['Executive Order 14410'],
+    });
     expect(r.tip?.sentences).toHaveLength(3);
     expect(r).toMatchObject({
       model: 'm',
