@@ -47,6 +47,24 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-07',
+    kind: 'hold',
+    scope: 'Weekly digest — week of 2026-08-31',
+    what: 'The weekly digest email was held past its Monday send and released the same day, after repair. The snapshot itself completed cleanly — the first full run since the two memory failures in August.',
+    why: 'The digest gate found one derivation-graph violation: three older category-weeks (two in the current term, one in the Biden 2024 baseline) carried a document count one off from their score rows, the late-arrival pattern already tracked as an open bug. Each week was re-derived under the repair harness with zero status changes and all six negative controls inside threshold; the digest was then released to subscribers.',
+    evidence: [issue(825), issue(851)],
+    release: 'v1.24.1',
+  },
+  {
+    date: '2026-09-07',
+    kind: 'correction',
+    scope: 'Biden 2024 baseline statistics',
+    what: 'The Biden 2024–25 baseline statistics for all fourteen categories were recomputed from their current weekly aggregates. For twelve categories the values did not move; for Government Information Availability the average weekly document count fell from 168.5 to 11.0, and for Executive Oversight from 67.8 to 62.8.',
+    why: 'The relevance filters shipped on 2026-09-02 and 2026-09-04 removed off-topic documents from every era but the derived baseline statistics — which feed the thematic-drift context on category pages, not concern status — were never refreshed. The repair of a baseline week triggered the recompute for this one era under the negative-control gate (all six controls held). The other seven eras carry the same staleness and are scheduled for the same refresh.',
+    evidence: [issue(851), issue(835), issue(848)],
+    release: 'v1.24.1',
+  },
+  {
     date: '2026-09-03',
     kind: 'correction',
     scope: 'Government Watchdogs (Inspectors General) category',
