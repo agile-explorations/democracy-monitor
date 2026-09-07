@@ -969,3 +969,143 @@ export const hotEntityDocs = pgTable(
     index('idx_hot_entity_docs_doc_id').on(table.docId),
   ],
 );
+
+/**
+ * R-TIPWIRE (#853): operator-only tip-candidate pipeline. These three tables
+ * hold what listed reporters published (public bylines only), the per-article
+ * Sonnet verdict, and the owner's send/reply log. They are excluded from the
+ * public corpus dump (lib/cron/stream-dump.ts) and are NEVER joined into
+ * `documents` — news does not enter the corpus (PROJECT_KNOWLEDGE.md, Data
+ * sources). Killing the tool = drop these three tables in a later release.
+ */
+export const tipArticles = pgTable(
+  'tip_articles',
+  {
+    id: serial('id').primaryKey(),
+    reporterId: varchar('reporter_id', { length: 40 }).notNull(),
+    outlet: varchar('outlet', { length: 60 }).notNull(),
+    /** Publisher URL, or `gn:<sha1(title|date)>` for Google-News-only rows. */
+    articleKey: text('article_key').notNull(),
+    url: text('url'),
+    title: text('title').notNull(),
+    lede: text('lede'),
+    /** jsonld | og | rss | none */
+    ledeSource: varchar('lede_source', { length: 20 }).notNull(),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    /** rss | author-page | google-news */
+    feedStrategy: varchar('feed_strategy', { length: 20 }).notNull(),
+    /** article:author | sailthru.author | dc:creator | google-news */
+    attribution: varchar('attribution', { length: 30 }).notNull(),
+    coauthorCount: integer('coauthor_count').notNull().default(0),
+    rawMeta: jsonb('raw_meta').$type<Record<string, string>>(),
+    discoveredAt: timestamp('discovered_at', { withTimezone: true }).defaultNow().notNull(),
+    /** R-TIPWIRE-2 (#862): the article is a standing watch on its thread until
+     *  this date (published + WATCH_DAYS); NULL = not watched (undated). */
+    watchUntil: timestamp('watch_until', { withTimezone: true }),
+    /** Forward retrieval resumes from here; NULL = never checked. */
+    lastCheckedAt: timestamp('last_checked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    unique('uq_tip_articles_reporter_key').on(table.reporterId, table.articleKey),
+    index('idx_tip_articles_published').on(table.publishedAt),
+    index('idx_tip_articles_watch_until').on(table.watchUntil),
+  ],
+);
+
+export interface TipPayload {
+  sentences: [string, string, string];
+  specificClaim: string;
+  whyUnreportedAppears: string;
+  confidence: 'low' | 'medium' | 'high';
+  /** Identifier-grade strings for the coverage check (#861); may be empty. */
+  searchKeys?: string[];
+}
+
+export interface TipCoverageCheck {
+  checkedAt: string;
+  windowDays: number;
+  keys: Array<{ key: string; hits: number; sampleUrls: string[] }>;
+  label: 'checkable-zero' | 'niche' | 'likely-covered' | 'not-checkable';
+}
+
+export interface TipMatchedDoc {
+  id: number;
+  title: string;
+  category: string;
+  finalScore: number | null;
+  priorBoosted: boolean;
+}
+
+export const tipCandidates = pgTable(
+  'tip_candidates',
+  {
+    id: serial('id').primaryKey(),
+    articleId: integer('article_id')
+      .notNull()
+      .references(() => tipArticles.id, { onDelete: 'cascade' }),
+    /** tip | no_tip | skipped_cadence | parse_failed | error */
+    verdict: varchar('verdict', { length: 20 }).notNull(),
+    tip: jsonb('tip').$type<TipPayload>(),
+    /** Denormalized for duplicate detection across reporters. */
+    tipDocumentId: integer('tip_document_id'),
+    reasonsNoTip: text('reasons_no_tip'),
+    matchedDocs: jsonb('matched_docs').$type<TipMatchedDoc[]>(),
+    retrievalMeta: jsonb('retrieval_meta').$type<Record<string, unknown>>(),
+    promptVersion: varchar('prompt_version', { length: 30 }),
+    model: varchar('model', { length: 60 }),
+    tokensIn: integer('tokens_in'),
+    tokensOut: integer('tokens_out'),
+    latencyMs: integer('latency_ms'),
+    /** Article published within 24 h of discovery — send-today tip. */
+    reactive: boolean('reactive').notNull().default(false),
+    /** forward (documents newer than the piece) | contradiction (older, reactive only) */
+    watchKind: varchar('watch_kind', { length: 20 }).notNull().default('forward'),
+    /** Forward window start used for this check (the previous last_checked_at). */
+    sinceAt: timestamp('since_at', { withTimezone: true }),
+    /** Post-gate coverage check (#861): identifier-grade search keys extracted
+     *  from the tip, GDELT DOC hit counts + sample URLs per key over a 30-day
+     *  window, and a graded label (checkable-zero | niche | likely-covered |
+     *  not-checkable). Informs the operator; never asserted to the reporter.
+     *  NULL until the check runs. */
+    coverageCheck: jsonb('coverage_check').$type<TipCoverageCheck>(),
+    runId: varchar('run_id', { length: 40 }),
+    /** open | sent | dismissed */
+    status: varchar('status', { length: 20 }).notNull().default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('idx_tip_candidates_status_created').on(table.status, table.createdAt),
+    index('idx_tip_candidates_article').on(table.articleId),
+  ],
+);
+
+/** Listing/feed URLs already fetched for a reporter and found NOT to be theirs
+ *  (or unfetchable), so the daily poll never re-fetches them — without this,
+ *  GovExec's 60-item feed re-cost 15 page fetches per run and could starve
+ *  new bylines behind the per-run cap. */
+export const tipSeenKeys = pgTable(
+  'tip_seen_keys',
+  {
+    reporterId: varchar('reporter_id', { length: 40 }).notNull(),
+    articleKey: text('article_key').notNull(),
+    seenAt: timestamp('seen_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [unique('uq_tip_seen_keys').on(table.reporterId, table.articleKey)],
+);
+
+export const tipSentLog = pgTable(
+  'tip_sent_log',
+  {
+    id: serial('id').primaryKey(),
+    candidateId: integer('candidate_id')
+      .notNull()
+      .references(() => tipCandidates.id, { onDelete: 'cascade' }),
+    reporterId: varchar('reporter_id', { length: 40 }).notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+    repliedAt: timestamp('replied_at', { withTimezone: true }),
+    note: text('note'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('idx_tip_sent_log_reporter_sent').on(table.reporterId, table.sentAt)],
+);

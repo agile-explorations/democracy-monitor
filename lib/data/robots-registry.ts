@@ -125,4 +125,32 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
     kind: 'crawl',
     status: 'planned',
   },
+  // --- R-TIPWIRE (#853): operator-only byline acquisition, probe-gated
+  //     owner approval 2026-09-07. Public bylines only; nothing enters the
+  //     corpus. NOTUS robots: allow all but /search,/cms; Crawl-delay 10.
+  //     GovExec robots: Crawl-delay 1 (we use 2 s). No entry for walled
+  //     outlets (Lawfare, POGO) and none for news.google.com — its robots
+  //     disallow /rss/search, so it is not used (see #860 for the
+  //     pre-existing intent-data use).
+  {
+    host: 'www.notus.org',
+    paths: ['/eric-katz', '/2026-election/example-article', '/sitemap-202609.xml'],
+    kind: 'crawl',
+    status: 'active',
+    note: 'Author page ∩ monthly sitemap, then article pages (JSON-LD, article:author metas). Crawl-delay 10 honored.',
+  },
+  {
+    host: 'www.govexec.com',
+    paths: ['/rss/all/', '/rss/pay-benefits/', '/rss/workforce/', '/management/2026/09/example/1/'],
+    kind: 'crawl',
+    status: 'active',
+    note: 'RSS feeds + one article-page fetch per new item for the sailthru.author byline.',
+  },
+  {
+    host: 'www.propublica.org',
+    paths: ['/people/mica-rosenberg', '/article/example-article', '/feeds/propublica/main'],
+    kind: 'crawl',
+    status: 'active',
+    note: 'Author (people) page + article pages (parsely-author metas); main RSS kept as a fallback. robots allows all.',
+  },
 ];

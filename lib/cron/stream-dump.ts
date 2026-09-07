@@ -46,6 +46,11 @@ const CORPUS_DUMP_ARGS = [
   '--no-privileges',
   '--exclude-table-data=subscribers',
   '--exclude-table-data=feedback',
+  // R-TIPWIRE (#853): operator-only reporter/tip tables never ship publicly.
+  '--exclude-table-data=tip_articles',
+  '--exclude-table-data=tip_candidates',
+  '--exclude-table-data=tip_sent_log',
+  '--exclude-table-data=tip_seen_keys',
 ];
 const PII_DUMP_ARGS = [
   '-Fc',

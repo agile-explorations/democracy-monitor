@@ -1,0 +1,1 @@
+ALTER TABLE "tip_candidates" ADD COLUMN "coverage_check" jsonb;

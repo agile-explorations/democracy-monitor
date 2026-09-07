@@ -159,6 +159,37 @@ services:
       - key: OPS_ALERT_EMAIL
         sync: false
 
+  # R-TIPWIRE (#858): operator-only tip candidates for journalist follow-ups.
+  # 21:30 UTC = 2:30pm Pacific / 5:30pm Eastern, so US-daytime bylines are
+  # judged the same afternoon and a reactive tip can go out within 24 h.
+  # A second slot ('30 13 * * *') is added at ship time if the #857 dry run
+  # shows more than a third of articles publishing before 10:00 ET.
+  # Hard per-run cap of 30 AI calls inside the script (exit 3, never retried).
+  - type: cron
+    name: daily-tipwire
+    runtime: node
+    autoDeploy: false # tag-gated (#628) — deployed with the web service on a v* tag
+    schedule: '30 21 * * *'
+    buildCommand: pnpm install
+    startCommand: npx tsx scripts/tipwire.ts poll --email
+    envVars:
+      - key: NODE_OPTIONS
+        value: '--max-old-space-size=1024'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: epd-db
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        value: Democracy Monitor <updates@democracymonitor.us>
+      - key: OPS_ALERT_EMAIL
+        sync: false
+
   - type: cron
     name: weekly-legiscan
     runtime: node
