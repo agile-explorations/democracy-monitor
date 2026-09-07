@@ -40,6 +40,8 @@ export interface PipelineDeps {
   match?: Partial<MatchDeps>;
   judge?: JudgeDeps;
   now?: Date;
+  /** Extra same-story titles beyond this batch (the poll reads stored history). */
+  recentTitles?: (article: DiscoveredArticle) => Promise<string[]>;
   /** Progress sink (CLI prints; tests collect). */
   onItem?: (item: PipelineItem, index: number, total: number) => void;
 }
@@ -115,7 +117,13 @@ export async function runPipeline(
     const reporter = reporters.get(article.reporterId);
     if (!reporter) continue;
     const reactive = isReactive(article.publishedAt, now);
-    const recentTitles = recentTitlesFor(article, articles);
+    const stored = deps.recentTitles ? await deps.recentTitles(article) : [];
+    const recentTitles = [
+      ...new Set([
+        ...recentTitlesFor(article, articles),
+        ...stored.filter((t) => t !== article.title),
+      ]),
+    ];
     assertAiCallBudget();
     let item: PipelineItem;
     try {

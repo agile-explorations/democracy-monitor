@@ -4,7 +4,6 @@
  * on fixtures in __tests__/lib/tipwire/acquire.test.ts.
  */
 
-import { createHash } from 'node:crypto';
 import { parseStringPromise } from 'xml2js';
 import { stripHtml } from '@/lib/parsers/feed-parser';
 
@@ -271,8 +270,4 @@ export function isReactive(publishedAt: string | null, now: Date): boolean {
   if (Number.isNaN(t)) return false;
   const age = now.getTime() - t;
   return age >= -60 * 60 * 1000 && age <= REACTIVE_WINDOW_MS;
-}
-
-export function sha1(s: string): string {
-  return createHash('sha1').update(s).digest('hex');
 }

@@ -28,6 +28,7 @@ import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
 import { buildDigestLines, digestSubject } from '@/lib/tipwire/digest';
+import { MAX_CALLS_PER_ARTICLE } from '@/lib/tipwire/judge';
 import {
   TipDecisionsFileSchema,
   buildPacketMarkdown,
@@ -46,6 +47,7 @@ import {
   knownKeysFor,
   listCandidates,
   listUnrepliedSent,
+  recentTitlesFromDb,
   recordReply,
   recordSent,
   sentLogForReporters,
@@ -80,7 +82,7 @@ const EST_OUT_TOKENS = 600;
 const SONNET_IN_PER_MTOK = 3;
 const SONNET_OUT_PER_MTOK = 15;
 /** Cap default: every article could take the parse retry. */
-const CALLS_PER_ARTICLE_CAP = 2;
+const CALLS_PER_ARTICLE_CAP = MAX_CALLS_PER_ARTICLE;
 /** Dry-run listing depth: enough article pages to reach two weeks back. */
 const DRYRUN_PAGE_FETCHES = 40;
 const EXIT_CAP_TRIPPED = 3;
@@ -277,6 +279,9 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
   configureAiCallBudget(args.maxCalls ?? TIPWIRE_DAILY_MAX_CALLS);
   const items = await runPipeline(toJudge, byId, {
     now,
+    // Same-story guard over stored history, not just today's batch.
+    recentTitles: (a) =>
+      recentTitlesFromDb(a.reporterId, a.publishedAt ? new Date(a.publishedAt) : now),
     onItem: (it, i, n) =>
       console.log(
         `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.judge.verdict} ${it.article.title.slice(0, 60)}`,
