@@ -1014,6 +1014,13 @@ export interface TipPayload {
   confidence: 'low' | 'medium' | 'high';
 }
 
+export interface TipCoverageCheck {
+  checkedAt: string;
+  windowDays: number;
+  keys: Array<{ key: string; hits: number; sampleUrls: string[] }>;
+  label: 'checkable-zero' | 'niche' | 'likely-covered' | 'not-checkable';
+}
+
 export interface TipMatchedDoc {
   id: number;
   title: string;
@@ -1044,6 +1051,12 @@ export const tipCandidates = pgTable(
     latencyMs: integer('latency_ms'),
     /** Article published within 24 h of discovery — send-today tip. */
     reactive: boolean('reactive').notNull().default(false),
+    /** Post-gate coverage check (#861): identifier-grade search keys extracted
+     *  from the tip, GDELT DOC hit counts + sample URLs per key over a 30-day
+     *  window, and a graded label (checkable-zero | niche | likely-covered |
+     *  not-checkable). Informs the operator; never asserted to the reporter.
+     *  NULL until the check runs. */
+    coverageCheck: jsonb('coverage_check').$type<TipCoverageCheck>(),
     runId: varchar('run_id', { length: 40 }),
     /** open | sent | dismissed */
     status: varchar('status', { length: 20 }).notNull().default('open'),

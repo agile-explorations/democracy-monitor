@@ -470,6 +470,13 @@
       "when": 1788809550566,
       "tag": "0066_nifty_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1788810997041,
+      "tag": "0067_careless_wasp",
+      "breakpoints": true
     }
   ]
 }
