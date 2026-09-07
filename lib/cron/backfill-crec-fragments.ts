@@ -61,17 +61,36 @@ async function fetchStructured(granuleId: string, apiKey: string): Promise<strin
   return stripHtmlPreserveLines(await res.text());
 }
 
-/** Multi-topic candidates that do not yet have fragment children. */
+/** Multi-topic candidates whose granule has not been fragmented yet.
+ *
+ *  "Fragmented" is decided at the GRANULE level (#850): CREC granules are
+ *  stored once per category, and #704 attached each granule's fragments to
+ *  whichever sibling row it processed. Testing `c.parent_id = p.id` therefore
+ *  re-selected the other sibling rows forever — every re-run re-fetched
+ *  ~400 already-split granules and every insert collided on (url, category).
+ *  Fragments carry the parent's granuleId in metadata, so the fragment set
+ *  is keyed by granuleId here; the `fragmentsAssessed` marker (set on every
+ *  per-category row, including single-topic granules that yield nothing)
+ *  excludes the rest, matching the ingest-health detector's predicate. */
 async function selectParents(limit: number | null): Promise<ParentRow[]> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const rows = await db.execute(sql`
+    WITH fragmented AS (
+      SELECT DISTINCT metadata->>'granuleId' AS granule_id
+      FROM documents
+      WHERE parent_id IS NOT NULL AND metadata->>'granuleId' IS NOT NULL
+    )
     SELECT DISTINCT ON (metadata->>'granuleId')
       id, url, published_at, metadata->>'granuleId' AS granule_id
     FROM documents p
-    WHERE source_origin = 'crec' AND length(content) > ${MIN_PARENT_BYTES}
+    WHERE source_origin = 'crec' AND parent_id IS NULL
+      AND length(content) > ${MIN_PARENT_BYTES}
       AND metadata->>'granuleId' IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM documents c WHERE c.parent_id = p.id)
+      AND NOT (metadata ? 'fragmentsAssessed')
+      AND NOT EXISTS (
+        SELECT 1 FROM fragmented f WHERE f.granule_id = p.metadata->>'granuleId'
+      )
     ORDER BY metadata->>'granuleId', id
     ${limit ? sql`LIMIT ${limit}` : sql``}`);
   return rows.rows as unknown as ParentRow[];
