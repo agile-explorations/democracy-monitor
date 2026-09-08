@@ -7,7 +7,7 @@
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { tipArticles, tipCandidates, tipSeenKeys, tipSentLog } from '@/lib/db/schema';
-import type { TipPayload } from '@/lib/db/schema';
+import type { TipCoverageCheck, TipPayload } from '@/lib/db/schema';
 import { ONE_DAY_MS } from '@/lib/utils/date-utils';
 import type { DiscoveredArticle } from './acquire';
 import { COOLDOWN_MS } from './cadence';
@@ -167,6 +167,7 @@ export async function insertCandidate(
         : null,
       watchKind: item.kind,
       sinceAt: item.since ? new Date(item.since) : null,
+      coverageCheck: item.coverage ?? null,
       tipDocumentId: j.tip?.documentId ?? null,
       reasonsNoTip: j.reasonsNoTip ?? j.error ?? null,
       matchedDocs: item.match.docs.map((d) => ({
@@ -214,6 +215,7 @@ interface CandidateJoin {
   coauthorCount: number;
   reactive: boolean;
   kind: string;
+  coverage: TipCoverageCheck | null;
   tip: TipPayload | null;
   tipDocumentId: number | null;
   createdAt: Date;
@@ -232,6 +234,7 @@ async function candidateRows(where: ReturnType<typeof eq>): Promise<CandidateJoi
       coauthorCount: tipArticles.coauthorCount,
       reactive: tipCandidates.reactive,
       kind: tipCandidates.watchKind,
+      coverage: tipCandidates.coverageCheck,
       tip: tipCandidates.tip,
       tipDocumentId: tipCandidates.tipDocumentId,
       createdAt: tipCandidates.createdAt,

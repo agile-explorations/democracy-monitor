@@ -4,6 +4,15 @@ import { parseTipwireArgs } from '../../scripts/tipwire';
 describe('tipwire CLI args (#854)', () => {
   it('parses each subcommand with its flags and defaults', () => {
     expect(parseTipwireArgs(['probe'])).toMatchObject({ command: 'probe', confirm: false });
+    expect(parseTipwireArgs(['probe', '--coverage'])).toMatchObject({
+      command: 'probe',
+      coverage: true,
+    });
+    expect(parseTipwireArgs(['coverage', '--max-calls', '10', '--candidate', '3'])).toMatchObject({
+      command: 'coverage',
+      maxCalls: 10,
+      candidate: 3,
+    });
     expect(
       parseTipwireArgs([
         'dryrun',

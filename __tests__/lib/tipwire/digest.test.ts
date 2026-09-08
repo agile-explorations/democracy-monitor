@@ -65,6 +65,7 @@ function cand(id: number, extra: Partial<DigestCandidate> = {}): DigestCandidate
     coauthorCount: 0,
     reactive: false,
     kind: 'forward',
+    coverage: null,
     tip: {
       sentences: ['One.', 'Two.', 'Three.'],
       specificClaim: 'claim',
@@ -101,6 +102,31 @@ describe('tipwire digest (#858)', () => {
     expect(text.indexOf('TITLE-ONLY MATCHES (1)')).toBeGreaterThan(text.indexOf('#1 ·'));
     expect(text).toContain('read the piece before sending');
     expect(digestSubject(cands)).toBe('[tipwire] 3 tip candidates (1 reactive)');
+  });
+
+  it('renders the coverage line with URLs and sorts likely-covered candidates after the rest', () => {
+    const covered = cand(5, {
+      coverage: {
+        checkedAt: '2026-09-08T00:00:00Z',
+        windowDays: 30,
+        keys: [{ key: '2026-18061', hits: 4, sampleUrls: ['https://www.nytimes.com/x'] }],
+        label: 'likely-covered',
+      },
+    });
+    const zero = cand(6, {
+      coverage: {
+        checkedAt: '2026-09-08T00:00:00Z',
+        windowDays: 30,
+        keys: [{ key: 'EO 14410', hits: 0, sampleUrls: [] }],
+        label: 'checkable-zero',
+      },
+    });
+    expect(orderCandidates([covered, zero, cand(7)]).map((c) => c.id)).toEqual([6, 7, 5]);
+    const text = buildDigestLines([covered, zero, cand(7)], [], []).join('\n');
+    expect(text).toContain('Coverage: 4 hit(s) in 30d — likely covered, read before sending');
+    expect(text).toContain('  · "2026-18061": https://www.nytimes.com/x');
+    expect(text).toContain('Coverage: 0 hits in 30d (checkable claim)');
+    expect(text).toContain('Coverage: not yet checked');
   });
 
   it('adds the unreplied reminder and the cadence-skip footer; empty digest says so', () => {

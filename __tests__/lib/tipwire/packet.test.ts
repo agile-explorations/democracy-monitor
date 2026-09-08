@@ -120,6 +120,19 @@ describe('tipwire packet (#857, #864)', () => {
     expect(md).toContain('Cited document: [Doc 1] Doc nine — https://d/9 (id 9)');
     expect(md).toContain('would_send');
     expect(md).toContain('Lede: (none — title-only match)');
+    expect(md).toContain('Coverage: not yet checked');
+    const checked = {
+      ...items[0],
+      coverage: {
+        checkedAt: 'now',
+        windowDays: 30,
+        keys: [{ key: 'k', hits: 2, sampleUrls: ['https://news.local/1'] }],
+        label: 'niche' as const,
+      },
+    };
+    expect(buildPacketMarkdown([checked], meta)).toContain(
+      'Coverage: 2 hit(s) in 30d, all niche — see URLs',
+    );
   });
 
   it('decisions template has one null-verdict row per article and round-trips the schema', () => {
@@ -264,6 +277,63 @@ describe('tipwire pipeline (#857, #862)', () => {
       skippedNoDocs: true,
       judge: { verdict: 'no_tip', calls: 0 },
     });
+  });
+
+  it('runs the coverage check only for tip verdicts, with the reporter’s own domain, and survives a checker failure', async () => {
+    const reporters = new Map([['wagner', must('wagner')]]);
+    const tipProvider: AIProvider = {
+      name: 'tip',
+      isAvailable: () => true,
+      complete: async () => ({
+        content: JSON.stringify({
+          verdict: 'tip',
+          tip: {
+            sentences: ['a.', 'b.', 'c.'],
+            document_ref: 1,
+            specific_claim: 'x',
+            why_unreported_appears: 'y',
+            confidence: 'high',
+            search_keys: ['2026-18061'],
+          },
+        }),
+        model: 'fake',
+        tokensUsed: { input: 1, output: 1 },
+        latencyMs: 1,
+      }),
+    };
+    const seen: Array<[string[], string | undefined]> = [];
+    const check = async (keys: string[], own?: string) => {
+      seen.push([keys, own]);
+      return {
+        checkedAt: 'now',
+        windowDays: 30,
+        keys: [{ key: keys[0], hits: 0, sampleUrls: [] }],
+        label: 'checkable-zero' as const,
+      };
+    };
+    const withTip = await runPipeline([art('https://x/1', 'wagner', null)], reporters, {
+      match: withDocs,
+      judge: { provider: tipProvider },
+      coverage: check,
+    });
+    expect(withTip.items[0].coverage?.label).toBe('checkable-zero');
+    expect(seen).toEqual([[['2026-18061'], 'govexec.com']]);
+    const noTip = await runPipeline([art('https://x/2', 'wagner', null)], reporters, {
+      match: withDocs,
+      judge: { provider },
+      coverage: check,
+    });
+    expect(noTip.items[0].coverage).toBeUndefined();
+    expect(seen).toHaveLength(1);
+    const broken = await runPipeline([art('https://x/3', 'wagner', null)], reporters, {
+      match: withDocs,
+      judge: { provider: tipProvider },
+      coverage: async () => {
+        throw new Error('gdelt down');
+      },
+    });
+    expect(broken.items[0].judge.verdict).toBe('tip');
+    expect(broken.items[0].coverage?.label).toBe('not-checkable');
   });
 
   it('passes the fetched article body only in contradiction mode', async () => {

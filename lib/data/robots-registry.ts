@@ -89,6 +89,13 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
   },
   { host: 'api.open.fec.gov', paths: ['/v1/'], kind: 'api', status: 'active' },
   { host: 'api.legiscan.com', paths: ['/'], kind: 'api', status: 'active' },
+  {
+    host: 'api.gdeltproject.org',
+    paths: ['/api/v2/doc/doc'],
+    kind: 'api',
+    status: 'active',
+    note: 'R-TIPWIRE-3 coverage check (#861): ≤3 calls per tip, ≥6 s apart, ≤30 per run; the throttle body maps to not-checkable, never zero',
+  },
   // --- Planned sources (feasibility-confirmed 2026-08-08; audit before + during use) ---
   { host: 'osc.gov', paths: ['/news/', '/sitemap.xml'], kind: 'crawl', status: 'planned' },
   {
