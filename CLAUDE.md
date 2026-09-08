@@ -70,6 +70,7 @@ pnpm tips:score        # Score an owner-filled decisions file: --decisions F [--
 pnpm tips:poll         # Daily cron body: discover → cadence guard → match → judge (hard cap 30 calls) → store; --email sends the digest to OPS_ALERT_EMAIL only when tips exist; --ignore-cadence
 pnpm tips:digest       # Print open candidates (reactive first, title-only isolated) + the "sent but unreplied ≥7d — mark these?" reminder
 pnpm tips:sent         # --candidate N [--replied|--dismiss]: owner action that maintains the sent log / cadence guard
+pnpm tips:coverage     # GDELT coverage backfill for open tip candidates lacking one (#861; --max-calls N, --candidate N); `tips:probe --coverage` = one GDELT call, prints JSON-or-throttle (the reachability canary)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 pnpm audit:readers     # Two-outside-reader audit of 50 Pass-2 readings (#816; --sample N --seed ID --out DIR | --score A.json B.json)

@@ -1025,7 +1025,8 @@ export interface TipPayload {
 export interface TipCoverageCheck {
   checkedAt: string;
   windowDays: number;
-  keys: Array<{ key: string; hits: number; sampleUrls: string[] }>;
+  /** `error` set when the key was not checked (throttle, timeout, cap) — never counted as zero. */
+  keys: Array<{ key: string; hits: number; sampleUrls: string[]; error?: string }>;
   label: 'checkable-zero' | 'niche' | 'likely-covered' | 'not-checkable';
 }
 

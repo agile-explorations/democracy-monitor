@@ -52,6 +52,9 @@ export interface ReporterEntry {
   id: string;
   name: string;
   outlet: string;
+  /** The outlet's own domain: GDELT indexes the reporter's piece too, so hits
+   *  from here are dropped from the coverage check (#861). */
+  outletDomain: string;
   /** Beat → categories; used as a soft retrieval prior and as query context. */
   categories: CategoryKey[];
   /** null = no sanctioned acquisition path yet; the entry is inert. */
@@ -69,6 +72,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'katz',
     name: 'Eric Katz',
     outlet: 'NOTUS',
+    outletDomain: 'notus.org',
     categories: ['civilService', 'fiscal'],
     feed: {
       kind: 'author-page',
@@ -87,6 +91,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'wagner',
     name: 'Erich Wagner',
     outlet: 'Government Executive',
+    outletDomain: 'govexec.com',
     categories: ['civilService'],
     feed: {
       kind: 'rss',
@@ -104,6 +109,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'rosenberg',
     name: 'Mica Rosenberg',
     outlet: 'ProPublica',
+    outletDomain: 'propublica.org',
     categories: ['immigrationEnforcement'],
     feed: {
       kind: 'author-page',
@@ -119,6 +125,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'beavers',
     name: 'Jack Beavers',
     outlet: 'US Border News',
+    outletDomain: 'usbordernews.com',
     categories: ['immigrationEnforcement', 'fiscal'],
     feed: {
       kind: 'rss',
@@ -132,6 +139,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'parloff',
     name: 'Roger Parloff',
     outlet: 'Lawfare',
+    outletDomain: 'lawfaremedia.org',
     categories: ['judicialIndependence', 'executiveActions'],
     feed: null,
     active: false,
@@ -141,6 +149,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'schwellenbach',
     name: 'Nick Schwellenbach',
     outlet: 'POGO',
+    outletDomain: 'pogo.org',
     categories: ['executiveOversight', 'fiscal'],
     feed: null,
     active: false,
@@ -150,6 +159,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'natanson',
     name: 'Hannah Natanson',
     outlet: 'The Washington Post',
+    outletDomain: 'washingtonpost.com',
     categories: ['civilService'],
     feed: null,
     active: false,
@@ -159,6 +169,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'diamond',
     name: 'Dan Diamond',
     outlet: 'The Washington Post',
+    outletDomain: 'washingtonpost.com',
     categories: ['infoAvailability', 'executiveOversight'],
     feed: null,
     active: false,
@@ -168,6 +179,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'hesson',
     name: 'Ted Hesson',
     outlet: 'The Washington Post',
+    outletDomain: 'washingtonpost.com',
     categories: ['immigrationEnforcement'],
     feed: null,
     active: false,
@@ -177,6 +189,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'aleaziz',
     name: 'Hamed Aleaziz',
     outlet: 'The New York Times',
+    outletDomain: 'nytimes.com',
     categories: ['immigrationEnforcement', 'civilLiberties'],
     feed: null,
     active: false,
@@ -186,6 +199,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'ainsley',
     name: 'Julia Ainsley',
     outlet: 'NBC News',
+    outletDomain: 'nbcnews.com',
     categories: ['immigrationEnforcement', 'lawEnforcement'],
     feed: null,
     active: false,
@@ -195,6 +209,7 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
     id: 'cooke',
     name: 'Kristina Cooke',
     outlet: 'Reuters',
+    outletDomain: 'reuters.com',
     categories: ['immigrationEnforcement'],
     feed: null,
     active: false,

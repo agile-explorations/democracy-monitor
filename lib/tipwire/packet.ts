@@ -11,6 +11,7 @@
  */
 
 import { z } from 'zod';
+import { coverageLine } from './coverage';
 import type { PipelineItem } from './pipeline';
 import { TIP_PROMPT_VERSION } from './prompt';
 
@@ -69,6 +70,7 @@ function verdictSection(it: PipelineItem): string[] {
       `Specific claim: ${t.specificClaim}`,
       `Why it appears unreported: ${t.whyUnreportedAppears}`,
       `Cited document: [Doc ${t.documentRef}] ${doc?.title ?? '?'} — ${doc?.url ?? 'no url'} (id ${t.documentId})`,
+      ...coverageLine(it.coverage),
     ];
   }
   if (it.judge.reasonsNoTip) return [`No tip because: ${it.judge.reasonsNoTip}`];

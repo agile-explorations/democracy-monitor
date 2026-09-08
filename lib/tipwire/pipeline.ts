@@ -9,11 +9,14 @@
  * first live run lost three judged tips by throwing).
  */
 
+import { COVERAGE_WINDOW_DAYS } from '@/lib/data/coverage-outlets';
+import type { TipCoverageCheck } from '@/lib/db/schema';
 import { AiCallBudgetExceededError, assertAiCallBudget } from '@/lib/services/ai-call-budget';
 import { formatError } from '@/lib/utils/api-helpers';
 import { ONE_DAY_MS } from '@/lib/utils/date-utils';
 import { isReactive } from './acquire';
 import type { DiscoveredArticle } from './acquire';
+import type { CoverageChecker } from './coverage';
 import { judgeArticle } from './judge';
 import type { JudgeDeps, JudgeResult } from './judge';
 import { retrieveForArticle } from './match';
@@ -43,6 +46,8 @@ export interface PipelineItem {
   judge: JudgeResult;
   /** No documents in the window → nothing to judge, no AI spend. */
   skippedNoDocs: boolean;
+  /** GDELT coverage of the tip's search keys (#861); tip verdicts only. Operator-facing. */
+  coverage?: TipCoverageCheck;
 }
 
 export interface PipelineDeps {
@@ -55,6 +60,8 @@ export interface PipelineDeps {
   recentTitles?: (article: DiscoveredArticle) => Promise<string[]>;
   /** Contradiction mode only: the article's body text, fetched fresh, never stored. */
   articleBody?: (article: DiscoveredArticle) => Promise<string | null>;
+  /** Coverage check run after a tip verdict (one checker per run owns spacing + cap). */
+  coverage?: CoverageChecker;
   /** Progress sink (CLI prints; tests collect). */
   onItem?: (item: PipelineItem, index: number, total: number) => void;
 }
@@ -207,7 +214,34 @@ async function processFrame(
     if (err instanceof AiCallBudgetExceededError) return CAP;
     throw err;
   }
-  return baseItem(f, await judgeFrame(f, match, deps), summary);
+  const judge = await judgeFrame(f, match, deps);
+  const item = baseItem(f, judge, summary);
+  if (judge.verdict === 'tip' && judge.tip && deps.coverage) {
+    item.coverage = await checkCoverage(
+      deps.coverage,
+      judge.tip.searchKeys,
+      f.reporter.outletDomain,
+    );
+  }
+  return item;
+}
+
+/** Never lets a coverage failure touch the judged item: failure → not-checkable. */
+async function checkCoverage(
+  check: CoverageChecker,
+  keys: string[],
+  ownDomain: string,
+): Promise<TipCoverageCheck> {
+  try {
+    return await check(keys, ownDomain);
+  } catch {
+    return {
+      checkedAt: new Date().toISOString(),
+      windowDays: COVERAGE_WINDOW_DAYS,
+      keys: [],
+      label: 'not-checkable',
+    };
+  }
 }
 
 /** Match + judge every article, in order. Never throws for per-article problems. */

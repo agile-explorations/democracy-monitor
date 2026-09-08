@@ -28,6 +28,7 @@ import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { fetchArticleBody } from '@/lib/tipwire/article-body';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
+import { GDELT_MAX_CALLS_PER_RUN, createCoverageChecker, probeGdelt } from '@/lib/tipwire/coverage';
 import { buildDigestLines, digestSubject } from '@/lib/tipwire/digest';
 import { MAX_CALLS_PER_ARTICLE } from '@/lib/tipwire/judge';
 import {
@@ -40,7 +41,7 @@ import {
 import { runPipeline } from '@/lib/tipwire/pipeline';
 import type { PipelineItem } from '@/lib/tipwire/pipeline';
 import { ARTICLE_BODY_CHARS } from '@/lib/tipwire/prompt';
-import { activeReporters } from '@/lib/tipwire/roster';
+import { activeReporters, getReporter } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
 import {
   insertCandidate,
@@ -52,6 +53,7 @@ import {
   recordSeenKeys,
   upsertArticles,
 } from '@/lib/tipwire/store';
+import { listOpenTipsLackingCoverage, updateCoverageCheck } from '@/lib/tipwire/store-coverage';
 import {
   dismissCandidate,
   listUnrepliedSent,
@@ -64,7 +66,7 @@ import { formatError } from '@/lib/utils/api-helpers';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
 
-export type TipwireCommand = 'probe' | 'dryrun' | 'score' | 'poll' | 'digest' | 'sent';
+export type TipwireCommand = 'probe' | 'dryrun' | 'score' | 'poll' | 'digest' | 'sent' | 'coverage';
 
 export interface TipwireArgs {
   command: TipwireCommand;
@@ -78,11 +80,21 @@ export interface TipwireArgs {
   candidate?: number;
   replied: boolean;
   dismiss: boolean;
+  /** probe: one GDELT call (reachability canary, #867). */
+  coverage: boolean;
   decisions?: string;
   packet?: string;
 }
 
-const COMMANDS: TipwireCommand[] = ['probe', 'dryrun', 'score', 'poll', 'digest', 'sent'];
+const COMMANDS: TipwireCommand[] = [
+  'probe',
+  'dryrun',
+  'score',
+  'poll',
+  'digest',
+  'sent',
+  'coverage',
+];
 /** Sonnet pricing for the precheck line ($/MTok in, out) and the per-article token shape. */
 const EST_IN_TOKENS = 12_000;
 const EST_OUT_TOKENS = 600;
@@ -110,6 +122,7 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
     ignoreCadence: false,
     replied: false,
     dismiss: false,
+    coverage: false,
   };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -126,6 +139,7 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
     else if (a === '--ignore-cadence') args.ignoreCadence = true;
     else if (a === '--replied') args.replied = true;
     else if (a === '--dismiss') args.dismiss = true;
+    else if (a === '--coverage') args.coverage = true;
     else throw new Error(`unknown flag ${a}`);
   }
   if (args.replied && args.dismiss) throw new Error('--replied and --dismiss are exclusive');
@@ -140,8 +154,13 @@ export function dryRunEstimate(articles: number, maxCalls?: number) {
   return { expectedCalls: `${articles}–${articles * CALLS_PER_ARTICLE_CAP}`, cap, dollars };
 }
 
-export async function runProbe(): Promise<boolean> {
+export async function runProbe(args: TipwireArgs): Promise<boolean> {
   let allOk = true;
+  if (args.coverage) {
+    const g = await probeGdelt();
+    console.log(`${g.ok ? '✓' : '✗'} gdelt [api] ${g.detail}`);
+    return g.ok;
+  }
   for (const r of activeReporters()) {
     const p = await probeSource(r);
     allOk &&= p.ok;
@@ -197,6 +216,7 @@ async function runDryRun(args: TipwireArgs): Promise<number> {
   // Forward from the article date: "since your piece on X, this appeared in the record."
   const run = await runPipeline(articles, new Map(activeReporters().map((r) => [r.id, r])), {
     scopeFor: () => ({ kind: 'forward' }),
+    coverage: createCoverageChecker(),
     onItem: (it, i, n) =>
       console.log(
         `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.skippedNoDocs ? 'no new docs' : it.judge.verdict} (${it.judge.calls} call${it.judge.calls === 1 ? '' : 's'}, ${it.match.docs.length} docs since ${it.since?.slice(0, 10) ?? '?'}) ${it.article.title.slice(0, 60)}`,
@@ -314,6 +334,9 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     calls: 0,
     capTripped: false,
   };
+  // Daily reachability line for #867: one GDELT call, minutes before any coverage check.
+  const gdelt = await probeGdelt();
+  console.log(`[tipwire] gdelt reachability: ${gdelt.ok ? 'ok' : 'unavailable'} — ${gdelt.detail}`);
   const reporters = activeReporters();
   const byId = new Map(reporters.map((r) => [r.id, r]));
   outcome.discovered = await discoverNew(reporters, outcome.errors);
@@ -326,6 +349,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
       recentTitlesFromDb(a.reporterId, a.publishedAt ? new Date(a.publishedAt) : now),
     articleBody: (a: DiscoveredArticle) =>
       a.url ? fetchArticleBody(a.url, ARTICLE_BODY_CHARS) : Promise.resolve(null),
+    coverage: createCoverageChecker(),
     onItem: progress,
   };
 
@@ -436,6 +460,24 @@ async function runPoll(args: TipwireArgs): Promise<number> {
   return code;
 }
 
+/** Backfill coverage for open tips created before the check existed or while GDELT was down. */
+async function runCoverage(args: TipwireArgs): Promise<number> {
+  const rows = await listOpenTipsLackingCoverage(args.candidate);
+  if (rows.length === 0) {
+    console.log('[tipwire] no open tip candidates lacking a coverage check');
+    return 0;
+  }
+  const check = createCoverageChecker({ maxCalls: args.maxCalls ?? GDELT_MAX_CALLS_PER_RUN });
+  for (const r of rows) {
+    const result = await check(r.searchKeys, getReporter(r.reporterId)?.outletDomain);
+    await updateCoverageCheck(r.id, result);
+    console.log(
+      `[tipwire] #${r.id} ${r.reporterId} → ${result.label} (${result.keys.length} key(s))`,
+    );
+  }
+  return 0;
+}
+
 async function runDigest(): Promise<number> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const sent = await sentLogForReporters(30);
@@ -477,7 +519,7 @@ async function runSent(args: TipwireArgs): Promise<number> {
 async function main(args: TipwireArgs): Promise<number> {
   switch (args.command) {
     case 'probe':
-      return (await runProbe()) ? 0 : 1;
+      return (await runProbe(args)) ? 0 : 1;
     case 'dryrun':
       return runDryRun(args);
     case 'score':
@@ -486,6 +528,8 @@ async function main(args: TipwireArgs): Promise<number> {
       return runPoll(args);
     case 'digest':
       return runDigest();
+    case 'coverage':
+      return runCoverage(args);
     case 'sent':
       return runSent(args);
   }

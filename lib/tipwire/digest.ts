@@ -8,8 +8,9 @@
  * does not decay into a permanent mute.
  */
 
-import type { TipPayload } from '@/lib/db/schema';
+import type { TipCoverageCheck, TipPayload } from '@/lib/db/schema';
 import { REMINDER_AFTER_DAYS } from './cadence';
+import { coverageLine } from './coverage';
 
 export interface DigestCandidate {
   id: number;
@@ -24,6 +25,8 @@ export interface DigestCandidate {
   reactive: boolean;
   /** forward: "since your piece on …" · contradiction: predates the piece */
   kind: 'forward' | 'contradiction';
+  /** GDELT coverage check (#861); null until checked. */
+  coverage: TipCoverageCheck | null;
   tip: TipPayload;
   tipDocumentId: number | null;
   docTitle: string | null;
@@ -53,10 +56,15 @@ export function groupDuplicateDocs(cands: DigestCandidate[]): Map<number, number
   return new Map([...byDoc].filter(([, ids]) => ids.length > 1));
 }
 
+const likelyCovered = (c: DigestCandidate) => Number(c.coverage?.label === 'likely-covered');
+
+/** Reactive first; likely-covered last within each group; then newest first. */
 export function orderCandidates(cands: DigestCandidate[]): DigestCandidate[] {
   return [...cands].sort(
     (a, b) =>
-      Number(b.reactive) - Number(a.reactive) || b.createdAt.getTime() - a.createdAt.getTime(),
+      Number(b.reactive) - Number(a.reactive) ||
+      likelyCovered(a) - likelyCovered(b) ||
+      b.createdAt.getTime() - a.createdAt.getTime(),
   );
 }
 
@@ -75,6 +83,7 @@ function candidateBlock(c: DigestCandidate, dupes: Map<number, number[]>): strin
     `Appears unreported because: ${c.tip.whyUnreportedAppears}`,
     `Confidence: ${c.tip.confidence}`,
     `Document: ${c.docTitle ?? `id ${c.tipDocumentId ?? '?'}`}${c.docUrl ? ` — ${c.docUrl}` : ''}`,
+    ...coverageLine(c.coverage),
     `Cadence: ${c.cadence}`,
     others.length
       ? `Also proposed for candidate(s) ${others.map((id) => `#${id}`).join(', ')} — same document; send one.`
