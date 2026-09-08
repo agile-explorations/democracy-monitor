@@ -86,7 +86,18 @@ describe('coverage — pure pieces (#865)', () => {
     expect(summarizeHits(urls, 'govexec.com')).toEqual({
       hits: 4,
       sampleUrls: ['https://news.local/1', 'https://news.local/2', 'https://news.local/3'],
+      nationalHit: false,
     });
+    // a national hit beyond the sample cap still counts
+    expect(summarizeHits([...urls.slice(1), 'https://www.nytimes.com/late'])).toMatchObject({
+      hits: 5,
+      nationalHit: true,
+    });
+    expect(
+      labelCoverage([
+        { key: 'k', hits: 5, sampleUrls: ['https://news.local/1'], nationalHit: true },
+      ]),
+    ).toBe('likely-covered');
     expect(summarizeHits(urls).hits).toBe(5);
     expect(summarizeHits(['not a url']).hits).toBe(0);
   });
@@ -182,8 +193,8 @@ describe('coverage checker — injected deps (#865)', () => {
     expect(h.calls).toHaveLength(2);
     expect(h.waits).toEqual([GDELT_MIN_SPACING_MS]);
     expect(c.keys).toEqual([
-      { key: '2026-18061', hits: 1, sampleUrls: ['https://news.local/1'] },
-      { key: 'Liz Oyer', hits: 1, sampleUrls: ['https://www.nytimes.com/x'] },
+      { key: '2026-18061', hits: 1, sampleUrls: ['https://news.local/1'], nationalHit: false },
+      { key: 'Liz Oyer', hits: 1, sampleUrls: ['https://www.nytimes.com/x'], nationalHit: true },
     ]);
     expect(c.label).toBe('likely-covered');
     expect(c.windowDays).toBe(30);

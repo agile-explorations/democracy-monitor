@@ -112,7 +112,11 @@ export function summarizeHits(urls: string[], ownDomain?: string): Omit<Coverage
     const h = hostOf(u);
     return h !== null && !(ownDomain && hostMatchesDomain(h, ownDomain));
   });
-  return { hits: kept.length, sampleUrls: kept.slice(0, SAMPLE_URLS_PER_KEY) };
+  const nationalHit = kept.some((u) => {
+    const h = hostOf(u);
+    return h !== null && isNationalOutlet(h);
+  });
+  return { hits: kept.length, sampleUrls: kept.slice(0, SAMPLE_URLS_PER_KEY), nationalHit };
 }
 
 export function labelCoverage(keys: CoverageKeyResult[]): TipCoverageCheck['label'] {
@@ -120,11 +124,13 @@ export function labelCoverage(keys: CoverageKeyResult[]): TipCoverageCheck['labe
   const hits = ok.reduce((n, k) => n + k.hits, 0);
   if (ok.length === 0 || (hits === 0 && ok.length < keys.length)) return 'not-checkable';
   if (hits === 0) return 'checkable-zero';
-  const national = ok.some((k) =>
-    k.sampleUrls.some((u) => {
-      const h = hostOf(u);
-      return h !== null && isNationalOutlet(h);
-    }),
+  const national = ok.some(
+    (k) =>
+      k.nationalHit ??
+      k.sampleUrls.some((u) => {
+        const h = hostOf(u);
+        return h !== null && isNationalOutlet(h);
+      }),
   );
   if (national) return 'likely-covered';
   return hits <= NICHE_MAX_HITS ? 'niche' : 'likely-covered';

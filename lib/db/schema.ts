@@ -1026,7 +1026,14 @@ export interface TipCoverageCheck {
   checkedAt: string;
   windowDays: number;
   /** `error` set when the key was not checked (throttle, timeout, cap) — never counted as zero. */
-  keys: Array<{ key: string; hits: number; sampleUrls: string[]; error?: string }>;
+  keys: Array<{
+    key: string;
+    hits: number;
+    sampleUrls: string[];
+    /** Any hit from a national outlet, decided over ALL returned URLs (samples are capped). */
+    nationalHit?: boolean;
+    error?: string;
+  }>;
   label: 'checkable-zero' | 'niche' | 'likely-covered' | 'not-checkable';
 }
 
