@@ -135,6 +135,21 @@ describe('tipwire packet (#857, #864)', () => {
     );
   });
 
+  it('beat items land under PROPOSED TIPS with the beat framing, never under TITLE-ONLY, despite having no lede', () => {
+    const beat: PipelineItem = {
+      ...item(art('beat:a:2026-09-07', 'a', '2026-09-07T00:00:00.000Z', null), judge('tip', true)),
+      kind: 'beat',
+      since: '2026-09-07',
+    };
+    const md = buildPacketMarkdown([beat], meta);
+    expect(md).toContain('# PROPOSED TIPS (1)');
+    expect(md).not.toContain('TITLE-ONLY');
+    expect(md).toContain('## PROPOSED TIP (beat check, week of 2026-09-07)');
+    expect(md).toContain('**Beat check:** no article anchor');
+    expect(md).not.toContain('Lede:');
+    expect(decisionsTemplate([beat], meta).items[0].articleKey).toBe('beat:a:2026-09-07');
+  });
+
   it('decisions template has one null-verdict row per article and round-trips the schema', () => {
     const t = decisionsTemplate(items, meta);
     expect(t.items).toHaveLength(5);

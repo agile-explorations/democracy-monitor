@@ -122,6 +122,20 @@ describe('tipwire judge prompt (#856, #863)', () => {
     expect(s).not.toContain('since your piece on X');
   });
 
+  it('beat prompts have no article anchor: the role asks for a reportable development on the beat, the user prompt shows the beat week and flagged-docs heading, never a lede line', () => {
+    const sys = buildTipSystemPrompt('beat');
+    expect(sys).toContain('NO article anchor');
+    expect(sys).toContain('have you seen this?');
+    expect(sys).toContain('Flagged this week does not mean published this week');
+    expect(sys).not.toContain('since your piece on X');
+    const u = buildTipUserPrompt(ctx({ kind: 'beat', since: '2026-09-07' }));
+    expect(u).toContain('BEAT CHECK — no article anchor · week of 2026-09-07');
+    expect(u).toContain('DOCUMENTS FLAGGED ON THIS BEAT (2');
+    expect(u).not.toContain('Lede:');
+    expect(u).not.toContain('ARTICLE');
+    expect(u).toContain('- Unions sue over pay freeze');
+  });
+
   it('forward user prompt shows the article, recent titles, context, and docs labelled as published since the window start', () => {
     const u = buildTipUserPrompt(ctx());
     expect(u).toContain('REPORTER: Erich Wagner, Government Executive');

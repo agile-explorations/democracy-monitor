@@ -284,7 +284,9 @@ export async function listCandidates(
       title: r.title ?? `Beat check — week of ${r.sinceAt?.toISOString().slice(0, 10) ?? '?'}`,
       ledeSource: r.ledeSource ?? 'beat',
       coauthorCount: r.coauthorCount ?? 0,
-      kind: (r.kind === 'contradiction' ? 'contradiction' : 'forward') as DigestCandidate['kind'],
+      kind: (r.kind === 'contradiction' || r.kind === 'beat'
+        ? r.kind
+        : 'forward') as DigestCandidate['kind'],
       reporterName: getReporter(r.reporterId)?.name ?? r.reporterId,
       docTitle: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.title ?? null) : null,
       docUrl: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.url ?? null) : null,

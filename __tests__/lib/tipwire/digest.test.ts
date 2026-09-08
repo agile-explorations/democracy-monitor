@@ -98,6 +98,14 @@ describe('tipwire digest (#858)', () => {
     const contra = buildDigestLines([cand(4, { kind: 'contradiction' })], [], []).join('\n');
     expect(contra).toContain('CONTRADICTION CHECK');
     expect(contra).toContain('Article: Article 4');
+    const beat = buildDigestLines(
+      [cand(8, { kind: 'beat', ledeSource: 'beat', title: 'Beat check — week of 2026-09-07' })],
+      [],
+      [],
+    ).join('\n');
+    expect(beat).toContain('· BEAT');
+    expect(beat).toContain('no article anchor — a "have you seen this?", not a follow-up');
+    expect(beat).not.toContain('TITLE-ONLY');
     expect(text).toContain('Also proposed for candidate(s) #2 — same document; send one.');
     expect(text.indexOf('TITLE-ONLY MATCHES (1)')).toBeGreaterThan(text.indexOf('#1 ·'));
     expect(text).toContain('read the piece before sending');
