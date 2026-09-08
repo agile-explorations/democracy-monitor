@@ -1,9 +1,9 @@
 /**
  * R-TIPWIRE-3 beat scope retrieval (#869): no query, no embedding, no
  * reranker. The queue (./beat-docs) has already chosen the documents —
- * Pass 2 verdicts on the reporter's beat categories — so this only loads
- * them in queue order, marks the beat categories, and fetches the weekly
- * structural line for the beat week. Read-only on documents.
+ * Pass 2 verdicts on the beat category — so this only loads them in queue
+ * order, marks the beat categories, and fetches the weekly structural line
+ * for the beat week. Read-only on documents.
  */
 
 import { withRequestDbGate } from '@/lib/services/db-work-gate';
@@ -12,7 +12,7 @@ import type { ResearchDocument } from '@/lib/types/search';
 import { fetchStructuralLines, retrievalWindow } from './match';
 import type { MatchDeps, MatchResult, RankedDoc, RetrievalScope } from './match';
 import { categoryLabels } from './roster';
-import type { ReporterEntry } from './roster';
+import type { CategoryKey } from './roster';
 
 export interface BeatDeps {
   byIds: (ids: number[]) => Promise<ResearchDocument[]>;
@@ -42,8 +42,9 @@ export function rankBeatDocs(
   }));
 }
 
+/** `categories`: the beat check's own category (R-TIPWIRE-4), or a reporter's beat. */
 export async function retrieveBeatDocs(
-  reporter: ReporterEntry,
+  categories: readonly CategoryKey[],
   scope: RetrievalScope,
   deps: Partial<BeatDeps> = {},
 ): Promise<MatchResult> {
@@ -51,11 +52,11 @@ export async function retrieveBeatDocs(
   const started = Date.now();
   const ids = [...(scope.docIds ?? [])];
   const docs = ids.length > 0 ? await d.byIds(ids) : [];
-  const ranked = rankBeatDocs(docs, ids, reporter.categories);
+  const ranked = rankBeatDocs(docs, ids, categories);
   const weekOf = scope.weekOf ?? d.now.toISOString().slice(0, 10);
-  const structural = await d.structural(reporter.categories, weekOf);
+  const structural = await d.structural([...categories], weekOf);
   return {
-    query: categoryLabels(reporter.categories).join(', '),
+    query: categoryLabels([...categories]).join(', '),
     queryMode: 'title+categories',
     kind: 'beat',
     window: retrievalWindow(null, d.now, scope),

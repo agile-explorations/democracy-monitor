@@ -13,7 +13,10 @@
  *   (fetched fresh, never stored) because the lede is not the piece.
  * - beat (no article anchor): among documents the pipeline's own review
  *   flagged on the beat this week, is ONE a reportable development the
- *   reporter has not written? — "have you seen this?"
+ *   reporters on it have not written? — "have you seen this?" Since
+ *   R-TIPWIRE-4 (#876) a beat check lists every reporter on the category,
+ *   with headlines per reporter where a feed exists; absence of headlines is
+ *   never evidence (the outlet coverage check answers that after the verdict).
  *
  * The concreteness rule and the banned outputs are the whole point: "our
  * tool covers this topic" is a forbidden answer. Honesty clauses reuse the
@@ -37,9 +40,9 @@ import {
   toneSection,
 } from './prompt-sections';
 import { categoryLabels } from './roster';
-import type { ReporterEntry } from './roster';
+import type { CategoryKey, ReporterEntry } from './roster';
 
-export const TIP_PROMPT_VERSION = 'tip-2026-09-08-beat';
+export const TIP_PROMPT_VERSION = 'tip-2026-09-08-beat-group';
 /** Content budget per matched document in the user prompt. */
 export const DOC_EXCERPT_CHARS = 1500;
 /** Same-story context: the reporter's other recent titles shown to the judge. */
@@ -68,8 +71,24 @@ export const TipVerdictSchema = z.object({
 });
 export type TipVerdict = z.infer<typeof TipVerdictSchema>;
 
+export interface BeatReporterContext {
+  name: string;
+  outlet: string;
+  /** false = no sanctioned byline source; the judge must not read silence as "unwritten". */
+  hasFeed: boolean;
+  recentTitles: string[];
+}
+
+/** Beat checks (R-TIPWIRE-4): the category checked and every reporter on it. */
+export interface BeatJudgeContext {
+  categories: CategoryKey[];
+  reporters: BeatReporterContext[];
+}
+
 export interface TipJudgeContext {
+  /** The anchor's reporter; on a beat check the first of `beat.reporters`. */
   reporter: ReporterEntry;
+  beat?: BeatJudgeContext;
   article: Pick<DiscoveredArticle, 'title' | 'lede' | 'publishedAt' | 'url' | 'coauthorCount'>;
   /** Contradiction mode: bounded body text fetched at judge time; null otherwise. */
   articleBody?: string | null;
@@ -149,8 +168,8 @@ function articleSection(ctx: TipJudgeContext): string[] {
   if (ctx.kind === 'beat') {
     return [
       `BEAT CHECK — no article anchor · week of ${ctx.since?.slice(0, 10) ?? 'unknown'}.`,
-      'The documents below were flagged by Democracy Monitor’s review in this reporter’s beat',
-      'categories this week; each document’s own publication date is shown.',
+      'The documents below were flagged by Democracy Monitor’s review on this beat this',
+      'week; each document’s own publication date is shown.',
     ];
   }
   const coauthor =
@@ -185,16 +204,46 @@ function docsHeading(ctx: TipJudgeContext): string {
     : `DOCUMENTS PUBLISHED SINCE ${formatDate(ctx.since ?? ctx.article.publishedAt)} (${n}, best match first; "beat category" marks the reporter's own beat):`;
 }
 
-export function buildTipUserPrompt(ctx: TipJudgeContext): string {
-  const { reporter } = ctx;
-  const beat = categoryLabels(reporter.categories).join(', ');
+const NO_FEED_NOTE = '(no feed — recent headlines unknown)';
+
+function reporterHeader(ctx: TipJudgeContext): string[] {
+  if (ctx.beat) {
+    return [
+      `REPORTERS ON THIS BEAT (${categoryLabels(ctx.beat.categories).join(', ')}):`,
+      ...ctx.beat.reporters.map(
+        (r) => `  - ${r.name}, ${r.outlet}${r.hasFeed ? '' : ` ${NO_FEED_NOTE}`}`,
+      ),
+    ];
+  }
+  const beat = categoryLabels(ctx.reporter.categories).join(', ');
+  return [`REPORTER: ${ctx.reporter.name}, ${ctx.reporter.outlet}. Beat: ${beat}.`];
+}
+
+function recentTitlesSection(ctx: TipJudgeContext): string[] {
+  if (ctx.beat) {
+    return [
+      `RECENT HEADLINES BY THESE REPORTERS (last ${RECENT_TITLES_DAYS} days — a development already covered in one of these is not a tip; absence of headlines is NOT evidence the story is unwritten):`,
+      ...ctx.beat.reporters.flatMap((r) => [
+        `  ${r.name} (${r.outlet}):`,
+        ...(r.recentTitles.length > 0
+          ? r.recentTitles.map((t) => `    - ${t}`)
+          : [`    ${r.hasFeed ? '(none stored)' : NO_FEED_NOTE}`]),
+      ]),
+    ];
+  }
   return [
-    `REPORTER: ${reporter.name}, ${reporter.outlet}. Beat: ${beat}.`,
+    `THIS REPORTER ALSO RECENTLY PUBLISHED (last ${RECENT_TITLES_DAYS} days — a development already covered in one of these is not a tip):`,
+    ...(ctx.recentTitles.length > 0 ? ctx.recentTitles.map((t) => `  - ${t}`) : ['  (none found)']),
+  ];
+}
+
+export function buildTipUserPrompt(ctx: TipJudgeContext): string {
+  return [
+    ...reporterHeader(ctx),
     '',
     ...articleSection(ctx),
     '',
-    `THIS REPORTER ALSO RECENTLY PUBLISHED (last ${RECENT_TITLES_DAYS} days — a development already covered in one of these is not a tip):`,
-    ...(ctx.recentTitles.length > 0 ? ctx.recentTitles.map((t) => `  - ${t}`) : ['  (none found)']),
+    ...recentTitlesSection(ctx),
     '',
     "DEMOCRACY MONITOR WEEKLY CONTEXT for the reporter's beat categories:",
     ...formatStructural(ctx.structural),

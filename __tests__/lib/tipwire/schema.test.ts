@@ -18,3 +18,19 @@ describe('tip_candidates anchor invariant (#868)', () => {
     );
   });
 });
+
+/** R-TIPWIRE-4 (#873): the per-category beat pass adds two columns and an index — and
+ *  nothing else. The anchor CHECK must survive untouched (reporter_id stays the first
+ *  listed reporter), and the change must be additive for zero-downtime deploys. */
+describe('tip_candidates beat columns (#873)', () => {
+  it('migration 0070 adds beat_category + reporter_ids + an index, and neither drops nor alters anything', () => {
+    const dir = path.join(process.cwd(), 'drizzle');
+    const file = readdirSync(dir).find((f) => f.startsWith('0070_') && f.endsWith('.sql'));
+    expect(file).toBeDefined();
+    const sql = readFileSync(path.join(dir, file as string), 'utf8');
+    expect(sql).toMatch(/ADD COLUMN "beat_category" varchar\(40\)/);
+    expect(sql).toMatch(/ADD COLUMN "reporter_ids" jsonb/);
+    expect(sql).toMatch(/CREATE INDEX "idx_tip_candidates_kind_category_since"/);
+    expect(sql).not.toMatch(/DROP|chk_tip_candidates_anchor|ALTER COLUMN/);
+  });
+});

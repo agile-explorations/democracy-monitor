@@ -9,7 +9,7 @@
  *   contradict a claim in it? (the model sees the article body)
  * - beat (no article anchor): among documents Democracy Monitor's own review
  *   flagged on this beat this week, is ONE a specific, reportable development
- *   the reporter has not already written? — "have you seen this?"
+ *   the reporters on it have not already written? — "have you seen this?"
  */
 
 import type { WatchKind } from './match';
@@ -60,16 +60,18 @@ const ROLE_BY_KIND: Record<WatchKind, string[]> = {
     'editor will verify before anyone sends it: "since your piece on X, this appeared."',
   ],
   beat: [
-    'A reporter covers the beat shown. There is NO article anchor for this check. You',
-    'will see documents that Democracy Monitor’s own review flagged as concerning in the',
-    'reporter’s beat categories this week, plus the reporter’s recent headlines. Your job',
-    'is to decide whether ONE of these documents is a specific, reportable development',
-    'on this beat — a filing, rule, order, report, or opinion with a concrete finding —',
-    'that a reporter on this beat has not already written, and if so, to draft a',
-    'three-sentence "have you seen this?" note an editor will verify before anyone',
-    'sends it. Flagged this week does not mean published this week: check each',
-    'document’s own date, and do not propose what the reporter’s recent headlines show',
-    'they just wrote.',
+    'One or more reporters cover the beat shown. There is NO article anchor for this',
+    'check. You will see documents that Democracy Monitor’s own review flagged as',
+    'concerning on this beat this week, plus recent headlines by those reporters where',
+    'their outlet has a feed. Your job is to decide whether ONE of these documents is a',
+    'specific, reportable development on this beat — a filing, rule, order, report, or',
+    'opinion with a concrete finding — that a reporter on this beat has not already',
+    'written, and if so, to draft a three-sentence "have you seen this?" note an editor',
+    'will verify before anyone sends it.',
+    'Flagged this week does not mean published this week: check each document’s own',
+    'date. Do not propose what the headlines show was just written. But',
+    'absence of headlines is NOT evidence the story is unwritten: several outlets here',
+    'have no feed, and the operator checks outlet coverage after your verdict.',
   ],
 };
 
@@ -78,7 +80,7 @@ const NO_TIP_WHEN: Record<WatchKind, string> = {
     '- If no document plainly contradicts a claim in the article, the answer is no_tip.',
   forward:
     '- If the newer documents merely share the article’s topic without moving its thread, the answer is no_tip.',
-  beat: '- If no flagged document carries a concrete, reportable finding beyond its topic, or the reporter’s recent headlines already cover it, the answer is no_tip.',
+  beat: '- If no flagged document carries a concrete, reportable finding beyond its topic, or the reporters’ recent headlines already cover it, the answer is no_tip.',
 };
 
 export function roleSection(kind: WatchKind): string[] {

@@ -7,14 +7,16 @@
  * judge call and OUTSIDE its try/catch; a trip STOPS the run and is returned
  * (items judged so far + the unjudged remainder), never thrown (#564; the
  * first live run lost three judged tips by throwing).
+ *
+ * Beat checks (R-TIPWIRE-4 #876) run per category and concern every reporter
+ * on it; the item carries `reporters` + `beatCategory` and `reporter` is the
+ * first listed, so storage and the anchor CHECK constraint are unchanged.
  */
 
 import { COVERAGE_WINDOW_DAYS } from '@/lib/data/coverage-outlets';
 import type { TipCoverageCheck } from '@/lib/db/schema';
 import { AiCallBudgetExceededError, assertAiCallBudget } from '@/lib/services/ai-call-budget';
 import { formatError } from '@/lib/utils/api-helpers';
-import { ONE_DAY_MS } from '@/lib/utils/date-utils';
-import { isReactive } from './acquire';
 import type { DiscoveredArticle } from './acquire';
 import type { CoverageChecker } from './coverage';
 import { judgeArticle } from './judge';
@@ -22,8 +24,11 @@ import type { JudgeDeps, JudgeResult } from './judge';
 import { retrieveForArticle } from './match';
 import type { MatchDeps, MatchResult, RankedDoc, RetrievalScope, WatchKind } from './match';
 import { retrieveBeatDocs } from './match-beat';
-import { RECENT_TITLES_DAYS } from './prompt';
-import type { ReporterEntry } from './roster';
+import { beatCategoriesOf, buildFrame, sinceFor } from './pipeline-frame';
+import type { Frame, RecentTitlesLoader } from './pipeline-frame';
+import type { BeatJudgeContext } from './prompt';
+import { getReporter } from './roster';
+import type { CategoryKey, ReporterEntry } from './roster';
 
 export interface DocSummary {
   ref: number;
@@ -35,9 +40,21 @@ export interface DocSummary {
   priorBoosted: boolean;
 }
 
+export interface PipelineReporter {
+  id: string;
+  name: string;
+  outlet: string;
+  outletDomain: string;
+  hasFeed: boolean;
+}
+
 export interface PipelineItem {
   article: DiscoveredArticle;
   reporter: Pick<ReporterEntry, 'id' | 'name' | 'outlet'>;
+  /** Beat only: every reporter on the category (snapshot); `reporter` is the first. */
+  reporters?: PipelineReporter[];
+  /** Beat only: the category the check ran on. */
+  beatCategory?: CategoryKey;
   reactive: boolean;
   kind: WatchKind;
   /** Forward window start actually used (the previous check or the article date). */
@@ -57,8 +74,8 @@ export interface PipelineDeps {
   now?: Date;
   /** Retrieval scope per article (the poll passes the watch state; default forward-from-article). */
   scopeFor?: (article: DiscoveredArticle) => RetrievalScope;
-  /** Extra same-story titles beyond this batch (the poll reads stored history). */
-  recentTitles?: (article: DiscoveredArticle) => Promise<string[]>;
+  /** Extra same-story titles beyond this batch, per reporter (the poll reads stored history). */
+  recentTitles?: RecentTitlesLoader;
   /** Contradiction mode only: the article's body text, fetched fresh, never stored. */
   articleBody?: (article: DiscoveredArticle) => Promise<string | null>;
   /** Coverage check run after a tip verdict (one checker per run owns spacing + cap). */
@@ -75,20 +92,19 @@ export interface PipelineRun {
   unjudged: DiscoveredArticle[];
 }
 
-/** The reporter's other titles within RECENT_TITLES_DAYS of this article. */
-export function recentTitlesFor(article: DiscoveredArticle, all: DiscoveredArticle[]): string[] {
-  const t0 = article.publishedAt ? new Date(article.publishedAt).getTime() : null;
-  return (
-    all
-      // Beat anchors are placeholders, never titles the reporter wrote.
-      .filter((a) => a.reporterId === article.reporterId && a.articleKey !== article.articleKey)
-      .filter((a) => a.attribution !== 'beat')
-      .filter((a) => {
-        if (t0 === null || !a.publishedAt) return true;
-        return Math.abs(new Date(a.publishedAt).getTime() - t0) <= RECENT_TITLES_DAYS * ONE_DAY_MS;
-      })
-      .map((a) => a.title)
-  );
+const toPipelineReporter = (r: ReporterEntry): PipelineReporter => ({
+  id: r.id,
+  name: r.name,
+  outlet: r.outlet,
+  outletDomain: r.outletDomain,
+  hasFeed: r.feed !== null,
+});
+
+/** Every reporter an item concerns; single-reporter items resolve through the roster. */
+export function itemReporters(it: PipelineItem): PipelineReporter[] {
+  if (it.reporters && it.reporters.length > 0) return it.reporters;
+  const r = getReporter(it.reporter.id);
+  return r ? [toPipelineReporter(r)] : [{ ...it.reporter, outletDomain: '', hasFeed: false }];
 }
 
 function summarizeDocs(docs: RankedDoc[]): DocSummary[] {
@@ -124,23 +140,8 @@ function emptyMatch(article: DiscoveredArticle, scope: RetrievalScope) {
   };
 }
 
-interface Frame {
-  article: DiscoveredArticle;
-  reporter: ReporterEntry;
-  reactive: boolean;
-  scope: RetrievalScope;
-  recentTitles: string[];
-}
-
-/** Forward: window start (last check or article date). Beat: the beat week. Contradiction: none. */
-function sinceFor(f: Frame): string | null {
-  if (f.scope.kind === 'forward') return f.scope.since ?? f.article.publishedAt;
-  if (f.scope.kind === 'beat') return f.scope.weekOf ?? null;
-  return null;
-}
-
 function baseItem(f: Frame, judge: JudgeResult, match: PipelineItem['match']): PipelineItem {
-  return {
+  const item: PipelineItem = {
     article: f.article,
     reporter: { id: f.reporter.id, name: f.reporter.name, outlet: f.reporter.outlet },
     reactive: f.reactive,
@@ -151,24 +152,23 @@ function baseItem(f: Frame, judge: JudgeResult, match: PipelineItem['match']): P
     judge,
     skippedNoDocs: false,
   };
+  if (f.scope.kind === 'beat') {
+    item.reporters = f.reporters.map(toPipelineReporter);
+    item.beatCategory = f.scope.category;
+  }
+  return item;
 }
 
-async function frameFor(
-  article: DiscoveredArticle,
-  reporter: ReporterEntry,
-  all: DiscoveredArticle[],
-  deps: PipelineDeps,
-  now: Date,
-): Promise<Frame> {
-  const stored = deps.recentTitles ? await deps.recentTitles(article) : [];
+function beatContext(f: Frame): BeatJudgeContext | undefined {
+  if (f.scope.kind !== 'beat') return undefined;
   return {
-    article,
-    reporter,
-    reactive: isReactive(article.publishedAt, now),
-    scope: deps.scopeFor?.(article) ?? { kind: 'forward' },
-    recentTitles: [
-      ...new Set([...recentTitlesFor(article, all), ...stored.filter((t) => t !== article.title)]),
-    ],
+    categories: beatCategoriesOf(f),
+    reporters: f.reporters.map((r) => ({
+      name: r.name,
+      outlet: r.outlet,
+      hasFeed: r.feed !== null,
+      recentTitles: f.titlesByReporter.get(r.id) ?? [],
+    })),
   };
 }
 
@@ -181,6 +181,7 @@ async function judgeFrame(f: Frame, match: MatchResult, deps: PipelineDeps): Pro
     return await judgeArticle(
       {
         reporter: f.reporter,
+        beat: beatContext(f),
         article: f.article,
         articleBody,
         kind: f.scope.kind,
@@ -208,7 +209,7 @@ async function processFrame(
   try {
     match =
       f.scope.kind === 'beat'
-        ? await retrieveBeatDocs(f.reporter, f.scope, { ...deps.match, now })
+        ? await retrieveBeatDocs(beatCategoriesOf(f), f.scope, { ...deps.match, now })
         : await retrieveForArticle(f.article, f.reporter, { ...deps.match, now }, f.scope);
   } catch (err) {
     const judge: JudgeResult = { ...NO_JUDGE, verdict: 'error', error: formatError(err) };
@@ -232,11 +233,9 @@ async function processFrame(
   const judge = await judgeFrame(f, match, deps);
   const item = baseItem(f, judge, summary);
   if (judge.verdict === 'tip' && judge.tip && deps.coverage) {
-    item.coverage = await checkCoverage(
-      deps.coverage,
-      judge.tip.searchKeys,
-      f.reporter.outletDomain,
-    );
+    // The anchor piece is never "coverage" of its own follow-up; beat anchors have no URL.
+    const own = f.scope.kind !== 'beat' && f.article.url ? [f.article.url] : [];
+    item.coverage = await checkCoverage(deps.coverage, judge.tip.searchKeys, own);
   }
   return item;
 }
@@ -245,10 +244,10 @@ async function processFrame(
 async function checkCoverage(
   check: CoverageChecker,
   keys: string[],
-  ownDomain: string,
+  excludeUrls: string[],
 ): Promise<TipCoverageCheck> {
   try {
-    return await check(keys, ownDomain);
+    return await check(keys, excludeUrls);
   } catch {
     return {
       checkedAt: new Date().toISOString(),
@@ -271,7 +270,16 @@ export async function runPipeline(
     const article = articles[i];
     const reporter = reporters.get(article.reporterId);
     if (!reporter) continue;
-    const f = await frameFor(article, reporter, articles, deps, now);
+    const scope = deps.scopeFor?.(article) ?? { kind: 'forward' };
+    const f = await buildFrame(
+      article,
+      reporter,
+      articles,
+      reporters,
+      scope,
+      deps.recentTitles,
+      now,
+    );
     const result = await processFrame(f, deps, now);
     if (result === CAP) return { items, capTripped: true, unjudged: articles.slice(i) };
     items.push(result);

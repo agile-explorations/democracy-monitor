@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { configureAiCallBudget } from '@/lib/services/ai-call-budget';
 import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
+import { beatAnchor } from '@/lib/tipwire/beat-docs';
 import type { JudgeResult } from '@/lib/tipwire/judge';
 import {
   TipDecisionsFileSchema,
@@ -10,8 +11,9 @@ import {
   renderScore,
   scoreDecisions,
 } from '@/lib/tipwire/packet';
-import { recentTitlesFor, runPipeline } from '@/lib/tipwire/pipeline';
+import { runPipeline } from '@/lib/tipwire/pipeline';
 import type { PipelineItem } from '@/lib/tipwire/pipeline';
+import { recentTitlesFor } from '@/lib/tipwire/pipeline-frame';
 import { getReporter } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
 import type { AIProvider } from '@/lib/types/ai';
@@ -299,7 +301,7 @@ describe('tipwire pipeline (#857, #862)', () => {
     });
   });
 
-  it('runs the coverage check only for tip verdicts, with the reporter’s own domain, and survives a checker failure', async () => {
+  it('runs the coverage check only for tip verdicts, on the search keys alone, and survives a checker failure', async () => {
     const reporters = new Map([['wagner', must('wagner')]]);
     const tipProvider: AIProvider = {
       name: 'tip',
@@ -321,9 +323,9 @@ describe('tipwire pipeline (#857, #862)', () => {
         latencyMs: 1,
       }),
     };
-    const seen: Array<[string[], string | undefined]> = [];
-    const check = async (keys: string[], own?: string) => {
-      seen.push([keys, own]);
+    const seen: Array<[string[], readonly string[] | undefined]> = [];
+    const check = async (keys: string[], exclude?: readonly string[]) => {
+      seen.push([keys, exclude]);
       return {
         checkedAt: 'now',
         windowDays: 30,
@@ -337,7 +339,7 @@ describe('tipwire pipeline (#857, #862)', () => {
       coverage: check,
     });
     expect(withTip.items[0].coverage?.label).toBe('checkable-zero');
-    expect(seen).toEqual([[['2026-18061'], 'govexec.com']]);
+    expect(seen).toEqual([[['2026-18061'], ['https://x/1']]]);
     const noTip = await runPipeline([art('https://x/2', 'wagner', null)], reporters, {
       match: withDocs,
       judge: { provider },
@@ -354,6 +356,55 @@ describe('tipwire pipeline (#857, #862)', () => {
     });
     expect(broken.items[0].judge.verdict).toBe('tip');
     expect(broken.items[0].coverage?.label).toBe('not-checkable');
+  });
+
+  it('a category beat check frames every listed reporter, loads titles per reporter, is never reactive, and renders all names in the packet (#876)', async () => {
+    const reporters = new Map([
+      ['wagner', must('wagner')],
+      ['natanson', must('natanson')],
+      ['katz', must('katz')],
+    ]);
+    configureAiCallBudget(null);
+    const asked: string[] = [];
+    const anchor = beatAnchor('civilService', [must('wagner'), must('natanson')], '2026-09-07');
+    const run = await runPipeline([anchor], reporters, {
+      match: { ...withDocs, byIds: async () => [someDoc] },
+      judge: { provider },
+      now: new Date('2026-09-07T21:30:00Z'),
+      scopeFor: () => ({
+        kind: 'beat',
+        docIds: [7],
+        weekOf: '2026-09-07',
+        category: 'civilService',
+        reporterIds: ['wagner', 'natanson'],
+      }),
+      recentTitles: async (_a, rid) => {
+        asked.push(rid);
+        return rid === 'wagner' ? ['TSP funds were back in the black'] : [];
+      },
+    });
+    const it = run.items[0];
+    expect(it.reporter.id).toBe('wagner');
+    expect(it.reporters?.map((r) => [r.id, r.hasFeed])).toEqual([
+      ['wagner', true],
+      ['natanson', false],
+    ]);
+    expect(it.beatCategory).toBe('civilService');
+    expect(it.reactive).toBe(false);
+    expect(asked).toEqual(['wagner']); // natanson has no feed: nothing stored, no lookup
+    expect(it.recentTitles).toEqual(['TSP funds were back in the black']);
+    expect(it.match.structural).toEqual([]);
+    const md = buildPacketMarkdown(run.items, meta);
+    expect(md).toContain(
+      '— Erich Wagner (Government Executive), Hannah Natanson (The Washington Post)',
+    );
+    expect(md).toContain('  - Hannah Natanson (The Washington Post) — no feed, headlines unknown');
+    // the score attributes the check to every listed reporter, not only the anchor's
+    const byReporter = scoreDecisions(decisionsTemplate(run.items, meta), run.items).byReporter;
+    expect(byReporter.map((r) => [r.reporter, r.articles])).toEqual([
+      ['wagner', 1],
+      ['natanson', 1],
+    ]);
   });
 
   it('passes the fetched article body only in contradiction mode', async () => {

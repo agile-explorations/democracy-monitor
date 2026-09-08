@@ -11,9 +11,11 @@
  */
 
 import { z } from 'zod';
-import { coverageLine } from './coverage';
+import { coverageLine } from './coverage-line';
+import { itemReporters } from './pipeline';
 import type { PipelineItem } from './pipeline';
 import { TIP_PROMPT_VERSION } from './prompt';
+import { categoryLabel } from './roster';
 
 export const GATE_MIN_PROPOSED = 3;
 export const GATE_MIN_PRECISION = 0.5;
@@ -51,7 +53,13 @@ const PACKET_INSTRUCTIONS = [
   '  wrong_fact — the tip misstates the document (a number, date, party, or holding)',
   'Leave no_tip articles as null unless you believe a tip was missed (note it).',
   'Title-only matches had no lede; read the piece before judging the tip.',
+  'A beat check lists every reporter on its category: judge the tip, not the recipient.',
 ];
+
+const reporterLabel = (it: PipelineItem) =>
+  itemReporters(it)
+    .map((r) => `${r.name} (${r.outlet})`)
+    .join(', ');
 
 function judgeLine(it: PipelineItem): string {
   const j = it.judge;
@@ -70,7 +78,10 @@ function verdictSection(it: PipelineItem): string[] {
       `Specific claim: ${t.specificClaim}`,
       `Why it appears unreported: ${t.whyUnreportedAppears}`,
       `Cited document: [Doc ${t.documentRef}] ${doc?.title ?? '?'} — ${doc?.url ?? 'no url'} (id ${t.documentId})`,
-      ...coverageLine(it.coverage),
+      ...coverageLine(
+        it.coverage,
+        itemReporters(it).map((r) => ({ name: r.outlet, domain: r.outletDomain })),
+      ),
     ];
   }
   if (it.judge.reasonsNoTip) return [`No tip because: ${it.judge.reasonsNoTip}`];
@@ -97,7 +108,7 @@ function contextSection(it: PipelineItem): string[] {
     }
   }
   if (it.recentTitles.length > 0) {
-    lines.push('', 'Reporter’s other recent titles:', ...it.recentTitles.map((t) => `  - ${t}`));
+    lines.push('', 'Reporters’ other recent titles:', ...it.recentTitles.map((t) => `  - ${t}`));
   }
   return lines;
 }
@@ -116,10 +127,15 @@ function itemMarkdown(it: PipelineItem): string {
         ? `beat check, week of ${it.since?.slice(0, 10) ?? '?'}`
         : `since ${it.since?.slice(0, 10) ?? 'article date'}`;
   return [
-    `## ${verdictLabel} (${scope}) — ${it.reporter.name} (${it.reporter.outlet})${it.reactive ? ' — REACTIVE' : ''}`,
+    `## ${verdictLabel} (${scope}) — ${reporterLabel(it)}${it.reactive ? ' — REACTIVE' : ''}`,
     '',
     ...(it.kind === 'beat'
-      ? ['**Beat check:** no article anchor — documents flagged on the beat this week']
+      ? [
+          `**Beat check:** ${it.beatCategory ? `${categoryLabel(it.beatCategory)} — ` : ''}no article anchor — documents flagged on the beat this week`,
+          ...itemReporters(it).map(
+            (r) => `  - ${r.name} (${r.outlet})${r.hasFeed ? '' : ' — no feed, headlines unknown'}`,
+          ),
+        ]
       : [
           `**Article:** ${a.title}`,
           `Published: ${a.publishedAt ?? 'unknown'} · Lede source: ${a.ledeSource}${a.coauthorCount ? ` · co-authors: ${a.coauthorCount}` : ''}`,
@@ -219,9 +235,11 @@ export function etHour(iso: string): number | null {
 
 type DecisionLookup = Map<string, TipDecision>;
 
+/** A category beat check counts for every reporter it lists, not only the anchor's. */
 function reporterScores(items: PipelineItem[], byKey: DecisionLookup): ReporterScore[] {
-  return [...new Set(items.map((i) => i.reporter.id))].map((rid) => {
-    const mine = items.filter((i) => i.reporter.id === rid);
+  const idsOf = (i: PipelineItem) => itemReporters(i).map((r) => r.id);
+  return [...new Set(items.flatMap(idsOf))].map((rid) => {
+    const mine = items.filter((i) => idsOf(i).includes(rid));
     const mineDecided = mine
       .filter((i) => i.judge.verdict === 'tip')
       .map((i) => byKey.get(i.article.articleKey)?.verdict ?? null);

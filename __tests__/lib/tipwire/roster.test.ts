@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { CATEGORIES } from '@/lib/data/categories';
-import { ROSTER, activeReporters, categoryLabels, getReporter } from '@/lib/tipwire/roster';
+import {
+  ROSTER,
+  beatReporters,
+  categoryLabels,
+  feedReporters,
+  getReporter,
+  reportersForCategory,
+} from '@/lib/tipwire/roster';
 
 describe('tipwire roster (#853)', () => {
   it('maps every reporter only to real category keys', () => {
@@ -10,10 +17,26 @@ describe('tipwire roster (#853)', () => {
     }
   });
 
-  it('activates exactly three reporters for v1, each with a sanctioned feed', () => {
-    const active = activeReporters();
-    expect(active.map((r) => r.id).sort()).toEqual(['katz', 'rosenberg', 'wagner']);
-    for (const r of active) expect(r.feed).not.toBeNull();
+  it('acquires bylines for exactly three feed reporters, each with a sanctioned feed', () => {
+    const feed = feedReporters();
+    expect(feed.map((r) => r.id).sort()).toEqual(['katz', 'rosenberg', 'wagner']);
+    for (const r of feed) expect(r.feed).not.toBeNull();
+  });
+
+  it('beat pass takes every active reporter, feed or not, and never an inactive one (#872)', () => {
+    const beat = beatReporters();
+    for (const r of feedReporters()) expect(beat).toContain(r);
+    for (const r of beat) expect(r.active, r.id).toBe(true);
+    expect(beat.map((r) => r.id)).not.toContain('beavers');
+    expect(reportersForCategory(ROSTER, 'immigrationEnforcement').map((r) => r.id)).toEqual([
+      'rosenberg',
+      'beavers',
+      'hesson',
+      'aleaziz',
+      'ainsley',
+      'cooke',
+    ]);
+    expect(reportersForCategory(beat, 'judicialIndependence').every((r) => r.active)).toBe(true);
   });
 
   it('keeps reporter ids unique so cadence and sent-log rows cannot collide', () => {

@@ -1,22 +1,28 @@
 /**
- * R-TIPWIRE-3 beat queue (#869): which documents each active reporter's beat
- * check should see. Input is the pipeline's own Pass 2 review — documents in
- * the reporter's categories rated potentially/clearly concerning — new since
- * the reporter's last beat check, minus anything already cited for them.
- * Pass 2 lands with the weekly snapshot, so this is weekly by construction:
- * ≤ 1 judge call per reporter per new week. Read-only on documents.
+ * R-TIPWIRE beat queue (#869; per category since R-TIPWIRE-4 #875): which
+ * documents each beat check should see. Input is the pipeline's own Pass 2
+ * review — documents in a category rated potentially/clearly concerning —
+ * new since that category's last beat check, minus anything already cited by
+ * ANY candidate (one candidate per document, owner decision 2026-09-08).
+ *
+ * One check per category per new Pass 2 week, listing every active reporter
+ * on the beat, feed or not: each document has exactly one category, so
+ * reporters who share a beat never produce duplicate candidates. Pass 2 lands
+ * with the weekly snapshot, so this is weekly by construction. Read-only on
+ * documents.
  */
 
 import { sql } from 'drizzle-orm';
+import { CATEGORIES } from '@/lib/data/categories';
 import { getDb } from '@/lib/db';
-import { ONE_DAY_MS } from '@/lib/utils/date-utils';
+import { ONE_DAY_MS, addDays, getMonday } from '@/lib/utils/date-utils';
 import type { DiscoveredArticle } from './acquire';
-import type { ReporterEntry } from './roster';
+import { categoryLabel, reportersForCategory } from './roster';
+import type { CategoryKey, ReporterEntry } from './roster';
 
 export const BEAT_MAX_DOCS = 10;
-/** A reporter never beat-checked starts from this far back. */
+/** A category never beat-checked starts from this far back. */
 export const BEAT_LOOKBACK_DAYS = 14;
-const WEEK_MS = 7 * ONE_DAY_MS;
 
 export interface FlaggedDoc {
   id: number;
@@ -24,10 +30,12 @@ export interface FlaggedDoc {
 }
 
 export interface BeatLoaders {
-  /** Newest `since_at` among the reporter's beat candidates, as YYYY-MM-DD. */
-  lastBeatWeek: (reporterId: string) => Promise<string | null>;
-  /** Every document already cited for this reporter, any watch kind. */
-  citedDocIds: (reporterId: string) => Promise<number[]>;
+  /** Newest `since_at` among the category's beat candidates, as YYYY-MM-DD (UTC).
+   *  Rows written before the category column (per-reporter checks) do not count:
+   *  their categories re-check once from the lookback, minus the cited docs. */
+  lastBeatWeek: (category: CategoryKey) => Promise<string | null>;
+  /** Every document already cited by any candidate — any kind, any reporter. */
+  citedDocIds: () => Promise<number[]>;
   /** Concerning Pass 2 docs in the categories with week_of in [from, to), best first. */
   flaggedDocs: (
     categories: readonly string[],
@@ -39,7 +47,9 @@ export interface BeatLoaders {
 }
 
 export interface BeatQueueItem {
-  reporter: ReporterEntry;
+  category: CategoryKey;
+  /** Every reporter on the beat, roster order; the anchor is attributed to the first. */
+  reporters: ReporterEntry[];
   /** The beat week the check is attributed to (newest week_of among the docs). */
   weekOf: string;
   docIds: number[];
@@ -47,14 +57,26 @@ export interface BeatQueueItem {
 
 const day = (d: Date) => d.toISOString().slice(0, 10);
 
-/** In-memory article stand-in so runPipeline, cadence, packet, and score work unchanged. Never stored. */
-export function beatAnchor(reporter: ReporterEntry, weekOf: string): DiscoveredArticle {
+/** Categories any of the reporters covers, in CATEGORIES order. */
+export function beatCategories(reporters: readonly ReporterEntry[]): CategoryKey[] {
+  const covered = new Set(reporters.flatMap((r) => r.categories));
+  return CATEGORIES.map((c) => c.key).filter((k) => covered.has(k));
+}
+
+/** In-memory article stand-in so runPipeline, packet, and score work unchanged. Never stored. */
+export function beatAnchor(
+  category: CategoryKey,
+  reporters: readonly ReporterEntry[],
+  weekOf: string,
+): DiscoveredArticle {
+  const lead = reporters[0];
+  if (!lead) throw new Error(`beat anchor for ${category} needs at least one reporter`);
   return {
-    reporterId: reporter.id,
-    outlet: reporter.outlet,
-    articleKey: `beat:${reporter.id}:${weekOf}`,
+    reporterId: lead.id,
+    outlet: lead.outlet,
+    articleKey: `beat:${category}:${weekOf}`,
     url: null,
-    title: `Beat check — week of ${weekOf}`,
+    title: `Beat check — ${categoryLabel(category)} · week of ${weekOf}`,
     lede: null,
     ledeSource: 'none',
     publishedAt: `${weekOf}T00:00:00.000Z`,
@@ -65,61 +87,60 @@ export function beatAnchor(reporter: ReporterEntry, weekOf: string): DiscoveredA
   };
 }
 
-/** Poll queue: one item per reporter with new flagged documents since the last beat week. */
-export async function listBeatQueue(
+async function queueItem(
+  category: CategoryKey,
   reporters: ReporterEntry[],
+  weekFrom: string,
+  weekTo: string | null,
+  cited: readonly number[],
+  loaders: BeatLoaders,
+): Promise<BeatQueueItem | null> {
+  const docs = await loaders.flaggedDocs([category], weekFrom, weekTo, cited, BEAT_MAX_DOCS);
+  if (docs.length === 0) return null;
+  const weekOf = docs
+    .map((d) => d.weekOf)
+    .sort()
+    .at(-1) as string;
+  return { category, reporters, weekOf, docIds: docs.map((d) => d.id) };
+}
+
+/** Poll queue: one item per category with new flagged documents since its last beat week. */
+export async function listBeatQueue(
+  reporters: readonly ReporterEntry[],
   now: Date,
   loaders: BeatLoaders = dbLoaders(),
 ): Promise<BeatQueueItem[]> {
+  const cited = await loaders.citedDocIds();
   const out: BeatQueueItem[] = [];
-  for (const reporter of reporters) {
-    const last = await loaders.lastBeatWeek(reporter.id);
+  for (const category of beatCategories(reporters)) {
+    const onBeat = reportersForCategory(reporters, category);
+    const last = await loaders.lastBeatWeek(category);
     const weekFrom = last
-      ? day(new Date(new Date(last).getTime() + ONE_DAY_MS))
+      ? addDays(last, 1)
       : day(new Date(now.getTime() - BEAT_LOOKBACK_DAYS * ONE_DAY_MS));
-    const cited = await loaders.citedDocIds(reporter.id);
-    const docs = await loaders.flaggedDocs(
-      reporter.categories,
-      weekFrom,
-      null,
-      cited,
-      BEAT_MAX_DOCS,
-    );
-    if (docs.length === 0) continue;
-    const weekOf = docs
-      .map((d) => d.weekOf)
-      .sort()
-      .at(-1) as string;
-    out.push({ reporter, weekOf, docIds: docs.map((d) => d.id) });
+    const item = await queueItem(category, onBeat, weekFrom, null, cited, loaders);
+    if (item) out.push(item);
   }
   return out;
 }
 
-/** Dry-run queue: one item per reporter × each of the last `weeks` Mondays, ignoring the last check. */
+/** Dry-run queue: one item per category × each of the last `weeks` Mondays, ignoring the last check. */
 export async function listBeatWeeks(
-  reporters: ReporterEntry[],
+  reporters: readonly ReporterEntry[],
   weeks: number,
   now: Date,
   loaders: BeatLoaders = dbLoaders(),
 ): Promise<BeatQueueItem[]> {
-  const mondays: string[] = [];
-  const monday = new Date(now);
-  monday.setUTCHours(0, 0, 0, 0);
-  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-  for (let i = 0; i < weeks; i++) mondays.push(day(new Date(monday.getTime() - i * WEEK_MS)));
+  const monday = getMonday(now);
+  const mondays = Array.from({ length: weeks }, (_, i) => addDays(monday, -7 * i));
+  const cited = await loaders.citedDocIds();
   const out: BeatQueueItem[] = [];
-  for (const reporter of reporters) {
-    const cited = await loaders.citedDocIds(reporter.id);
+  for (const category of beatCategories(reporters)) {
+    const onBeat = reportersForCategory(reporters, category);
     for (const weekOf of mondays) {
-      const weekTo = day(new Date(new Date(weekOf).getTime() + WEEK_MS));
-      const docs = await loaders.flaggedDocs(
-        reporter.categories,
-        weekOf,
-        weekTo,
-        cited,
-        BEAT_MAX_DOCS,
-      );
-      if (docs.length > 0) out.push({ reporter, weekOf, docIds: docs.map((d) => d.id) });
+      const weekTo = addDays(weekOf, 7);
+      const item = await queueItem(category, onBeat, weekOf, weekTo, cited, loaders);
+      if (item) out.push(item);
     }
   }
   return out;
@@ -173,17 +194,15 @@ async function loadFlaggedDocs(
 
 export function dbLoaders(): BeatLoaders {
   return {
-    async lastBeatWeek(reporterId) {
+    async lastBeatWeek(category) {
       const r = await getDb().execute(sql`
-        SELECT max(since_at)::date::text AS week FROM tip_candidates
-        WHERE reporter_id = ${reporterId} AND watch_kind = 'beat'`);
+        SELECT to_char(max(since_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS week FROM tip_candidates
+        WHERE watch_kind = 'beat' AND beat_category = ${category}`);
       return (r.rows[0] as { week: string | null } | undefined)?.week ?? null;
     },
-    async citedDocIds(reporterId) {
+    async citedDocIds() {
       const r = await getDb().execute(sql`
-        SELECT c.tip_document_id AS id FROM tip_candidates c
-        LEFT JOIN tip_articles a ON a.id = c.article_id
-        WHERE COALESCE(c.reporter_id, a.reporter_id) = ${reporterId} AND c.tip_document_id IS NOT NULL`);
+        SELECT DISTINCT tip_document_id AS id FROM tip_candidates WHERE tip_document_id IS NOT NULL`);
       return (r.rows as Array<{ id: number }>).map((x) => Number(x.id));
     },
     flaggedDocs: loadFlaggedDocs,

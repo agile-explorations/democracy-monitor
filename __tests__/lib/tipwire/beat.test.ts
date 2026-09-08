@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { CATEGORIES } from '@/lib/data/categories';
 import {
   BEAT_LOOKBACK_DAYS,
   BEAT_MAX_DOCS,
   beatAnchor,
+  beatCategories,
   listBeatQueue,
   listBeatWeeks,
 } from '@/lib/tipwire/beat-docs';
@@ -56,12 +58,13 @@ function loaders(over: Partial<BeatLoaders> = {}) {
   return { l, calls };
 }
 
-describe('beat anchor + queue (#869)', () => {
-  it('builds a stable in-memory anchor that is never an article', () => {
-    const a = beatAnchor(must('wagner'), '2026-09-07');
+describe('beat anchor + per-category queue (#869, #875)', () => {
+  it('builds a stable in-memory anchor per category, attributed to the first listed reporter, never an article', () => {
+    const a = beatAnchor('civilService', [must('wagner'), must('katz')], '2026-09-07');
     expect(a).toMatchObject({
       reporterId: 'wagner',
-      articleKey: 'beat:wagner:2026-09-07',
+      outlet: 'Government Executive',
+      articleKey: 'beat:civilService:2026-09-07',
       url: null,
       lede: null,
       ledeSource: 'none',
@@ -69,12 +72,30 @@ describe('beat anchor + queue (#869)', () => {
       attribution: 'beat',
     });
     expect(a.title).toContain('week of 2026-09-07');
+    expect(() => beatAnchor('civilService', [], '2026-09-07')).toThrow(/at least one reporter/);
   });
 
-  it('poll queue: starts from the last beat week + 1 day (or the lookback), excludes cited docs, caps at BEAT_MAX_DOCS, skips empty reporters, and attributes the newest week', async () => {
+  it('lists the categories the reporters cover in CATEGORIES order', () => {
+    const cats = beatCategories([must('rosenberg'), must('katz')]);
+    expect(new Set(cats)).toEqual(new Set(['civilService', 'fiscal', 'immigrationEnforcement']));
+    const order = CATEGORIES.map((c) => c.key);
+    expect(cats.map((c) => order.indexOf(c))).toEqual(
+      [...cats.map((c) => order.indexOf(c))].sort((x, y) => x - y),
+    );
+  });
+
+  it('poll queue: one item per category listing every reporter on it, one global cited set, a per-category clock, capped docs, newest week attributed', async () => {
+    const lastCalls: string[] = [];
+    let citedCalls = 0;
     const { l, calls } = loaders({
-      lastBeatWeek: async (id) => (id === 'wagner' ? '2026-08-31' : null),
-      citedDocIds: async (id) => (id === 'wagner' ? [7, 8] : []),
+      lastBeatWeek: async (cat) => {
+        lastCalls.push(cat);
+        return cat === 'civilService' ? '2026-08-31' : null;
+      },
+      citedDocIds: async () => {
+        citedCalls++;
+        return [7, 8];
+      },
       flaggedDocs: async (cats, from, to, exclude, limit) => {
         calls.push(`${cats.join('+')} ${from}..${to ?? '∞'} -${exclude.join(',')} lim${limit}`);
         return cats.includes('civilService')
@@ -85,18 +106,24 @@ describe('beat anchor + queue (#869)', () => {
           : [];
       },
     });
-    const q = await listBeatQueue([must('wagner'), must('rosenberg')], NOW, l);
+    const q = await listBeatQueue([must('wagner'), must('katz'), must('rosenberg')], NOW, l);
     expect(q).toHaveLength(1);
-    expect(q[0]).toMatchObject({ weekOf: '2026-09-07', docIds: [1, 2] });
-    expect(q[0].reporter.id).toBe('wagner');
-    expect(calls[0]).toBe(`civilService 2026-09-01..∞ -7,8 lim${BEAT_MAX_DOCS}`);
+    expect(q[0]).toMatchObject({ category: 'civilService', weekOf: '2026-09-07', docIds: [1, 2] });
+    expect(q[0].reporters.map((r) => r.id)).toEqual(['wagner', 'katz']);
+    expect(citedCalls).toBe(1);
+    expect(new Set(lastCalls)).toEqual(
+      new Set(['civilService', 'fiscal', 'immigrationEnforcement']),
+    );
     const lookback = new Date(NOW.getTime() - BEAT_LOOKBACK_DAYS * 24 * 3600 * 1000)
       .toISOString()
       .slice(0, 10);
-    expect(calls[1]).toBe(`immigrationEnforcement ${lookback}..∞ - lim${BEAT_MAX_DOCS}`);
+    expect(calls).toContain(`civilService 2026-09-01..∞ -7,8 lim${BEAT_MAX_DOCS}`);
+    expect(calls).toContain(`fiscal ${lookback}..∞ -7,8 lim${BEAT_MAX_DOCS}`);
+    expect(calls).toContain(`immigrationEnforcement ${lookback}..∞ -7,8 lim${BEAT_MAX_DOCS}`);
+    expect(calls).toHaveLength(3);
   });
 
-  it('dry-run queue: one item per reporter × Monday over the last N weeks, bounded windows, empty weeks skipped', async () => {
+  it('dry-run queue: one item per category × Monday over the last N weeks, bounded windows, empty weeks skipped', async () => {
     const calls: string[] = [];
     const { l } = loaders({
       flaggedDocs: async (cats, from, to, exclude, limit) => {
@@ -105,17 +132,26 @@ describe('beat anchor + queue (#869)', () => {
       },
     });
     const q = await listBeatWeeks([must('katz')], 3, NOW, l);
-    expect(q.map((x) => x.weekOf)).toEqual(['2026-09-07', '2026-08-24']);
-    expect(calls).toEqual([
-      'civilService+fiscal 2026-09-07..2026-09-14 - lim10',
-      'civilService+fiscal 2026-08-31..2026-09-07 - lim10',
-      'civilService+fiscal 2026-08-24..2026-08-31 - lim10',
+    expect(q.map((x) => `${x.category}:${x.weekOf}`)).toEqual([
+      'civilService:2026-09-07',
+      'civilService:2026-08-24',
+      'fiscal:2026-09-07',
+      'fiscal:2026-08-24',
     ]);
+    expect(calls).toEqual([
+      'civilService 2026-09-07..2026-09-14 - lim10',
+      'civilService 2026-08-31..2026-09-07 - lim10',
+      'civilService 2026-08-24..2026-08-31 - lim10',
+      'fiscal 2026-09-07..2026-09-14 - lim10',
+      'fiscal 2026-08-31..2026-09-07 - lim10',
+      'fiscal 2026-08-24..2026-08-31 - lim10',
+    ]);
+    for (const item of q) expect(item.reporters.map((r) => r.id)).toEqual(['katz']);
   });
 });
 
 describe('beat retrieval (#869)', () => {
-  it('keeps queue order, marks beat categories, drops unknown ids, and anchors structural context on the beat week — no query, embed, or rerank', async () => {
+  it('keeps queue order, marks beat categories, drops unknown ids, and anchors structural context on the category and beat week — no query, embed, or rerank', async () => {
     const ranked = rankBeatDocs(
       [doc(2, 'fiscal'), doc(1, 'civilService'), doc(3, 'elections')],
       [1, 2, 99, 3],
@@ -128,15 +164,15 @@ describe('beat retrieval (#869)', () => {
     ]);
     expect(ranked[0].matchScore).toBeGreaterThan(ranked[2].matchScore);
 
-    const weeks: string[] = [];
+    const asked: string[] = [];
     const r = await retrieveBeatDocs(
-      must('wagner'),
-      { kind: 'beat', docIds: [1, 2], weekOf: '2026-09-07' },
+      ['civilService'],
+      { kind: 'beat', docIds: [1, 2], weekOf: '2026-09-07', category: 'civilService' },
       {
         now: NOW,
         byIds: async (ids) => ids.map((id) => doc(id, id === 1 ? 'civilService' : 'fiscal')),
         structural: async (cats, weekOf) => {
-          weeks.push(weekOf);
+          asked.push(`${cats.join('+')}@${weekOf}`);
           return cats.map((category) => ({
             category,
             weekOf,
@@ -153,11 +189,11 @@ describe('beat retrieval (#869)', () => {
     expect(r.window).toEqual({ from: '2026-09-07', to: '2026-09-14' });
     expect(r.docs.map((d) => d.id)).toEqual([1, 2]);
     expect(r.meta).toMatchObject({ retrieved: 2, reranked: 0, boosted: 1, excluded: 0 });
-    expect(weeks).toEqual(['2026-09-07']);
+    expect(asked).toEqual(['civilService@2026-09-07']);
     expect(r.queryMode).toBe('title+categories');
 
     const empty = await retrieveBeatDocs(
-      must('wagner'),
+      ['civilService'],
       { kind: 'beat' },
       {
         now: NOW,

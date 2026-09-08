@@ -1,22 +1,19 @@
 /**
- * R-TIPWIRE persistence (#858): the only module that writes tip_* rows.
- * It never touches `documents` (news does not enter the corpus); the
- * boundary test in __tests__/lib/tipwire/boundary.test.ts enforces it.
+ * R-TIPWIRE persistence (#858): writes tip_articles / tip_seen_keys /
+ * tip_candidates (the sent log lives in ./store-sent; digest reads in
+ * ./store-candidates). It never touches `documents` (news does not enter
+ * the corpus); the boundary test in __tests__/lib/tipwire/digest.test.ts
+ * enforces it.
  */
 
-import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { tipArticles, tipCandidates, tipSeenKeys, tipSentLog } from '@/lib/db/schema';
-import type { TipCoverageCheck, TipPayload } from '@/lib/db/schema';
+import { tipArticles, tipCandidates, tipSeenKeys } from '@/lib/db/schema';
 import { ONE_DAY_MS } from '@/lib/utils/date-utils';
 import type { DiscoveredArticle } from './acquire';
-import { COOLDOWN_MS } from './cadence';
-import type { SentRow } from './cadence';
-import type { DigestCandidate, ReminderRow } from './digest';
 import { watchUntil } from './match';
 import type { PipelineItem } from './pipeline';
 import { RECENT_TITLES_DAYS } from './prompt';
-import { getReporter } from './roster';
 
 /** Keys never to fetch again for this reporter: stored articles + rejected pages. */
 export async function knownKeysFor(reporterId: string): Promise<Set<string>> {
@@ -145,6 +142,17 @@ export async function recentTitlesFromDb(reporterId: string, around: Date): Prom
   return rows.map((r) => r.title);
 }
 
+const tipPayload = (j: PipelineItem['judge']) =>
+  j.tip
+    ? {
+        sentences: j.tip.sentences,
+        specificClaim: j.tip.specificClaim,
+        whyUnreportedAppears: j.tip.whyUnreportedAppears,
+        confidence: j.tip.confidence,
+        searchKeys: j.tip.searchKeys,
+      }
+    : null;
+
 export async function insertCandidate(
   articleId: number | null,
   item: PipelineItem,
@@ -156,16 +164,16 @@ export async function insertCandidate(
     .values({
       articleId,
       reporterId: item.reporter.id,
-      verdict: j.verdict,
-      tip: j.tip
+      // Beat rows since 0070 (#873): the category checked and every reporter listed.
+      // Article rows never name these columns, so they persist on a pre-0070 schema too.
+      ...(item.kind === 'beat'
         ? {
-            sentences: j.tip.sentences,
-            specificClaim: j.tip.specificClaim,
-            whyUnreportedAppears: j.tip.whyUnreportedAppears,
-            confidence: j.tip.confidence,
-            searchKeys: j.tip.searchKeys,
+            beatCategory: item.beatCategory ?? null,
+            reporterIds: item.reporters?.map((r) => r.id) ?? null,
           }
-        : null,
+        : {}),
+      verdict: j.verdict,
+      tip: tipPayload(j),
       watchKind: item.kind,
       sinceAt: item.since ? new Date(item.since) : null,
       coverageCheck: item.coverage ?? null,
@@ -203,93 +211,4 @@ export async function insertSkippedForCadence(articleId: number, runId: string):
     runId,
     status: 'dismissed',
   });
-}
-
-interface CandidateJoin {
-  id: number;
-  reporterId: string;
-  outlet: string | null;
-  title: string | null;
-  url: string | null;
-  publishedAt: Date | null;
-  ledeSource: string | null;
-  coauthorCount: number | null;
-  reactive: boolean;
-  kind: string;
-  coverage: TipCoverageCheck | null;
-  tip: TipPayload | null;
-  tipDocumentId: number | null;
-  sinceAt: Date | null;
-  createdAt: Date;
-}
-
-async function candidateRows(where: ReturnType<typeof eq>): Promise<CandidateJoin[]> {
-  return getDb()
-    .select({
-      id: tipCandidates.id,
-      reporterId: sql<string>`COALESCE(${tipCandidates.reporterId}, ${tipArticles.reporterId})`,
-      outlet: tipArticles.outlet,
-      title: tipArticles.title,
-      url: tipArticles.url,
-      publishedAt: tipArticles.publishedAt,
-      ledeSource: tipArticles.ledeSource,
-      coauthorCount: tipArticles.coauthorCount,
-      reactive: tipCandidates.reactive,
-      kind: tipCandidates.watchKind,
-      coverage: tipCandidates.coverageCheck,
-      tip: tipCandidates.tip,
-      tipDocumentId: tipCandidates.tipDocumentId,
-      sinceAt: tipCandidates.sinceAt,
-      createdAt: tipCandidates.createdAt,
-    })
-    .from(tipCandidates)
-    .leftJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
-    .where(and(where, eq(tipCandidates.verdict, 'tip')))
-    .orderBy(desc(tipCandidates.createdAt));
-}
-
-/** Titles/urls for cited corpus documents — a read-only lookup on `documents`. */
-async function documentLabels(
-  ids: number[],
-): Promise<Map<number, { title: string; url: string | null }>> {
-  if (ids.length === 0) return new Map();
-  const rows = await getDb().execute(
-    sql`SELECT id, title, url FROM documents WHERE id IN (${sql.join(
-      ids.map((i) => sql`${i}`),
-      sql`, `,
-    )})`,
-  );
-  return new Map(
-    (rows.rows as Array<{ id: number; title: string; url: string | null }>).map((r) => [
-      Number(r.id),
-      { title: r.title, url: r.url },
-    ]),
-  );
-}
-
-export async function listCandidates(
-  status: 'open' | 'sent' | 'dismissed',
-  cadenceFor: (reporterId: string) => string,
-): Promise<DigestCandidate[]> {
-  const rows = await candidateRows(eq(tipCandidates.status, status));
-  const labels = await documentLabels([
-    ...new Set(rows.map((r) => r.tipDocumentId).filter((x): x is number => x != null)),
-  ]);
-  return rows
-    .filter((r): r is CandidateJoin & { tip: TipPayload } => r.tip !== null)
-    .map((r) => ({
-      ...r,
-      // Beat-pass rows (no article) render from the roster entry (#868).
-      outlet: r.outlet ?? getReporter(r.reporterId)?.outlet ?? r.reporterId,
-      title: r.title ?? `Beat check — week of ${r.sinceAt?.toISOString().slice(0, 10) ?? '?'}`,
-      ledeSource: r.ledeSource ?? 'beat',
-      coauthorCount: r.coauthorCount ?? 0,
-      kind: (r.kind === 'contradiction' || r.kind === 'beat'
-        ? r.kind
-        : 'forward') as DigestCandidate['kind'],
-      reporterName: getReporter(r.reporterId)?.name ?? r.reporterId,
-      docTitle: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.title ?? null) : null,
-      docUrl: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.url ?? null) : null,
-      cadence: cadenceFor(r.reporterId),
-    }));
 }

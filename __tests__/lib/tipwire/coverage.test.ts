@@ -4,7 +4,6 @@ import { ROBOTS_REGISTRY } from '@/lib/data/robots-registry';
 import {
   GDELT_MAX_KEYS_PER_TIP,
   GDELT_MIN_SPACING_MS,
-  coverageLine,
   createCoverageChecker,
   gdeltUrl,
   isIdentifierGrade,
@@ -14,6 +13,7 @@ import {
   summarizeHits,
 } from '@/lib/tipwire/coverage';
 import type { CoverageKeyResult } from '@/lib/tipwire/coverage';
+import { COVERAGE_UNAVAILABLE_LINE, coverageLine } from '@/lib/tipwire/coverage-line';
 import { ROSTER } from '@/lib/tipwire/roster';
 
 const THROTTLE =
@@ -75,7 +75,7 @@ describe('coverage — pure pieces (#865)', () => {
     expect(parseGdeltArtlist('null')).toBeNull();
   });
 
-  it('drops the reporter’s own outlet from hits and samples at most three URLs', () => {
+  it('counts every hit — the reporter’s own outlet included (#874) — groups URLs by host, and samples at most three', () => {
     const urls = [
       'https://www.govexec.com/a',
       'https://news.local/1',
@@ -83,22 +83,32 @@ describe('coverage — pure pieces (#865)', () => {
       'https://news.local/3',
       'https://news.local/4',
     ];
-    expect(summarizeHits(urls, 'govexec.com')).toEqual({
-      hits: 4,
-      sampleUrls: ['https://news.local/1', 'https://news.local/2', 'https://news.local/3'],
-      nationalHit: false,
+    expect(summarizeHits(urls)).toEqual({
+      hits: 5,
+      sampleUrls: ['https://www.govexec.com/a', 'https://news.local/1', 'https://news.local/2'],
+      nationalHit: true,
+      hitsByDomain: {
+        'www.govexec.com': ['https://www.govexec.com/a'],
+        'news.local': urls.slice(1),
+      },
     });
     // a national hit beyond the sample cap still counts
     expect(summarizeHits([...urls.slice(1), 'https://www.nytimes.com/late'])).toMatchObject({
       hits: 5,
       nationalHit: true,
     });
+    expect(summarizeHits(urls.slice(1))).toMatchObject({ hits: 4, nationalHit: false });
+    // the anchor article itself is never coverage of its own follow-up (query string ignored)
+    expect(summarizeHits(urls, ['https://www.govexec.com/a?utm=x'])).toMatchObject({
+      hits: 4,
+      nationalHit: false,
+      hitsByDomain: { 'news.local': urls.slice(1) },
+    });
     expect(
       labelCoverage([
         { key: 'k', hits: 5, sampleUrls: ['https://news.local/1'], nationalHit: true },
       ]),
     ).toBe('likely-covered');
-    expect(summarizeHits(urls).hits).toBe(5);
     expect(summarizeHits(['not a url']).hits).toBe(0);
   });
 
@@ -125,7 +135,7 @@ describe('coverage — pure pieces (#865)', () => {
     expect(isNationalOutlet('notwashingtonpost.com')).toBe(false);
   });
 
-  it('renders the graded digest line with URLs and the not-yet-checked fallback', () => {
+  it('renders the graded digest line with URLs, the not-yet-checked fallback, and the hand-check wording when GDELT was unavailable', () => {
     expect(coverageLine(null)).toEqual(['Coverage: not yet checked']);
     const lines = coverageLine({
       checkedAt: '2026-09-08T00:00:00Z',
@@ -143,9 +153,65 @@ describe('coverage — pure pieces (#865)', () => {
     expect(lines[0]).toBe('Coverage: 2 hit(s) in 30d, all niche — see URLs');
     expect(lines).toContain('  · "2026-18061": https://news.local/1');
     expect(lines).toContain('  · "Liz Oyer": throttled or invalid response');
-    expect(
-      coverageLine({ checkedAt: '', windowDays: 30, keys: [], label: 'not-checkable' })[0],
-    ).toContain('not checkable');
+    const down = coverageLine({ checkedAt: '', windowDays: 30, keys: [], label: 'not-checkable' }, [
+      { name: 'NOTUS', domain: 'notus.org' },
+    ]);
+    expect(down).toEqual([COVERAGE_UNAVAILABLE_LINE]);
+    expect(down[0]).toContain('search the outlet before sending');
+  });
+
+  it('splits own-outlet hits from others per listed outlet, and says "unknown" for checks stored before the split (#874)', () => {
+    const check = {
+      checkedAt: '2026-09-08T00:00:00Z',
+      windowDays: 30,
+      keys: [
+        {
+          key: '2026-18061',
+          hits: 3,
+          sampleUrls: ['https://www.govexec.com/mine', 'https://news.local/1'],
+          nationalHit: true,
+          hitsByDomain: {
+            'www.govexec.com': ['https://www.govexec.com/mine'],
+            'news.local': ['https://news.local/1'],
+          },
+        },
+        {
+          key: 'Liz Oyer',
+          hits: 2,
+          sampleUrls: ['https://www.washingtonpost.com/x', 'https://news.local/1'],
+          nationalHit: true,
+          hitsByDomain: {
+            'www.washingtonpost.com': ['https://www.washingtonpost.com/x'],
+            'news.local': ['https://news.local/1'],
+          },
+        },
+      ],
+      label: 'likely-covered' as const,
+    };
+    const outlets = [
+      { name: 'Government Executive', domain: 'govexec.com' },
+      { name: 'The Washington Post', domain: 'washingtonpost.com' },
+      // three Post reporters on one beat → one outlet line, not three
+      { name: 'The Washington Post', domain: 'washingtonpost.com' },
+    ];
+    const lines = coverageLine(check, outlets, 14);
+    expect(lines.filter((l) => l.includes('Own outlet — The Washington Post'))).toHaveLength(1);
+    expect(lines[0]).toBe('Coverage: 5 hit(s) in 30d — likely covered, read before sending');
+    expect(lines).toContain('  Own outlet — Government Executive (govexec.com): 1 hit(s)');
+    expect(lines).toContain('    · https://www.govexec.com/mine');
+    expect(lines).toContain('  Own outlet — The Washington Post (washingtonpost.com): 1 hit(s)');
+    // the shared news.local URL is counted once
+    expect(lines).toContain('  Others: 1 hit(s)');
+    expect(coverageLine(check)).not.toContain('  Others: 1 hit(s)');
+
+    const legacy = coverageLine(
+      { ...check, keys: check.keys.map(({ hitsByDomain: _h, ...k }) => k) },
+      outlets.slice(0, 1),
+      14,
+    );
+    expect(legacy).toContain(
+      '  Own outlet — Government Executive (govexec.com): unknown (check predates the outlet split; re-run pnpm tips:coverage --candidate 14)',
+    );
   });
 });
 
@@ -184,17 +250,37 @@ describe('coverage checker — injected deps (#865)', () => {
     return { checker, calls, waits };
   }
 
-  it('queries only identifier-grade keys, serializes them ≥ spacing apart, and drops own-outlet hits', async () => {
+  it('queries only identifier-grade keys, serializes them ≥ spacing apart, and keeps own-outlet hits with their host', async () => {
     const h = harness({
       '2026-18061': artlist(['https://www.govexec.com/mine', 'https://news.local/1']),
       'Liz Oyer': artlist(['https://www.nytimes.com/x']),
     });
-    const c = await h.checker(['pay freeze', '2026-18061', 'Liz Oyer'], 'govexec.com');
+    const c = await h.checker(['pay freeze', '2026-18061', 'Liz Oyer']);
     expect(h.calls).toHaveLength(2);
+    const minusAnchor = await harness({
+      '2026-18061': artlist(['https://www.govexec.com/mine', 'https://news.local/1']),
+    }).checker(['2026-18061'], ['https://www.govexec.com/mine']);
+    expect(minusAnchor.keys[0]).toMatchObject({ hits: 1, nationalHit: false });
+    expect(minusAnchor.label).toBe('niche');
     expect(h.waits).toEqual([GDELT_MIN_SPACING_MS]);
     expect(c.keys).toEqual([
-      { key: '2026-18061', hits: 1, sampleUrls: ['https://news.local/1'], nationalHit: false },
-      { key: 'Liz Oyer', hits: 1, sampleUrls: ['https://www.nytimes.com/x'], nationalHit: true },
+      {
+        key: '2026-18061',
+        hits: 2,
+        sampleUrls: ['https://www.govexec.com/mine', 'https://news.local/1'],
+        nationalHit: true,
+        hitsByDomain: {
+          'www.govexec.com': ['https://www.govexec.com/mine'],
+          'news.local': ['https://news.local/1'],
+        },
+      },
+      {
+        key: 'Liz Oyer',
+        hits: 1,
+        sampleUrls: ['https://www.nytimes.com/x'],
+        nationalHit: true,
+        hitsByDomain: { 'www.nytimes.com': ['https://www.nytimes.com/x'] },
+      },
     ]);
     expect(c.label).toBe('likely-covered');
     expect(c.windowDays).toBe(30);
