@@ -32,11 +32,11 @@ export async function listUnrepliedSent(minAgeDays: number): Promise<ReminderRow
       candidateId: tipSentLog.candidateId,
       reporterId: tipSentLog.reporterId,
       sentAt: tipSentLog.sentAt,
-      title: tipArticles.title,
+      title: sql<string>`COALESCE(${tipArticles.title}, 'Beat check — week of ' || COALESCE(${tipCandidates.sinceAt}::date::text, '?'))`,
     })
     .from(tipSentLog)
     .innerJoin(tipCandidates, eq(tipCandidates.id, tipSentLog.candidateId))
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
+    .leftJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
     .where(
       and(
         isNull(tipSentLog.repliedAt),
@@ -58,11 +58,11 @@ export async function recordSent(candidateId: number, note?: string): Promise<st
   const [c] = await db
     .select({
       id: tipCandidates.id,
-      reporterId: tipArticles.reporterId,
+      reporterId: sql<string>`COALESCE(${tipCandidates.reporterId}, ${tipArticles.reporterId})`,
       status: tipCandidates.status,
     })
     .from(tipCandidates)
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
+    .leftJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
     .where(eq(tipCandidates.id, candidateId));
   if (!c) throw new Error(`candidate ${candidateId} not found`);
   await db.insert(tipSentLog).values({ candidateId, reporterId: c.reporterId, note: note ?? null });
