@@ -181,6 +181,9 @@ describe('tipwire judge prompt (#856, #863)', () => {
   });
 
   it('forward and contradiction prompts are byte-identical to the pre-R-TIPWIRE-4 fixture (no re-gate needed)', () => {
+    // The fixture was rendered in UTC; formatDate is zone-sensitive for date-only publishedAt.
+    const tz = process.env.TZ;
+    process.env.TZ = 'UTC';
     const fixture = readFileSync(
       path.join(process.cwd(), '__tests__/fixtures/tipwire/prompts-forward-contradiction.txt'),
       'utf8',
@@ -197,6 +200,7 @@ describe('tipwire judge prompt (#856, #863)', () => {
         ctx({ kind: 'contradiction', articleBody: 'Full body text here. '.repeat(10) }),
       ),
     ].join('\n');
+    process.env.TZ = tz;
     expect(actual).toBe(fixture);
   });
 

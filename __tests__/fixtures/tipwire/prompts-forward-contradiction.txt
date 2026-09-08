@@ -69,12 +69,12 @@ DEMOCRACY MONITOR WEEKLY CONTEXT for the reporter's beat categories:
   civilService (week of 2026-08-31): status Elevated · 14 documents · confirmed: 1 action-tier, 1 discussion-tier
 DOCUMENTS PUBLISHED SINCE Sep 3, 2026 (2, best match first; "beat category" marks the reporter's own beat):
 [Doc 1 | ACTION | beat category] Rule 101
-  Date: Sep 4, 2026 · Source: Rule (federal_register) · Category: civilService
+  Date: Sep 5, 2026 · Source: Rule (federal_register) · Category: civilService
   URL: https://example.gov/101
   Content: The Office of Personnel Management issues a final rule effective October 1, 2026.
 
 [Doc 2 | ACTION | beat category] Rule 102
-  Date: Sep 4, 2026 · Source: Rule (federal_register) · Category: civilService
+  Date: Sep 5, 2026 · Source: Rule (federal_register) · Category: civilService
   AI Assessment (annotation): clearly_concerning
   AI Review Note (annotation — NOT document text): machine note
   URL: https://example.gov/102
@@ -149,12 +149,12 @@ DEMOCRACY MONITOR WEEKLY CONTEXT for the reporter's beat categories:
   civilService (week of 2026-08-31): status Elevated · 14 documents · confirmed: 1 action-tier, 1 discussion-tier
 DOCUMENTS PREDATING THE ARTICLE (2, best match first; "beat category" marks the reporter's own beat):
 [Doc 1 | ACTION | beat category] Rule 101
-  Date: Sep 4, 2026 · Source: Rule (federal_register) · Category: civilService
+  Date: Sep 5, 2026 · Source: Rule (federal_register) · Category: civilService
   URL: https://example.gov/101
   Content: The Office of Personnel Management issues a final rule effective October 1, 2026.
 
 [Doc 2 | ACTION | beat category] Rule 102
-  Date: Sep 4, 2026 · Source: Rule (federal_register) · Category: civilService
+  Date: Sep 5, 2026 · Source: Rule (federal_register) · Category: civilService
   AI Assessment (annotation): clearly_concerning
   AI Review Note (annotation — NOT document text): machine note
   URL: https://example.gov/102
