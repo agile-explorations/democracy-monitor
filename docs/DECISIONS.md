@@ -12,7 +12,7 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
-## Sprint R-TIPWIRE-3: coverage check + beat pass (#861, #865–#871, milestone 138) — 🟡 Slice A shipped v1.27.0, Slice B built v1.28.0 (2026-09-08); beat pass enters the poll only after the owner-scored gate (#870)
+## Sprint R-TIPWIRE-3: coverage check + beat pass (#861, #865–#871, milestone 138) — ✅ v1.27.0 → v1.29.0 (2026-09-08); beat gate PASS (75% on 4, 0 wrong_fact); GDELT reachability from Render still pending (#867)
 
 **Origin**: two owner expectations the first two sprints had deferred — "is this already covered?" (the tip's load-bearing claim, checkable only by hand) and tips for novel stories on a reporter's beat with no article anchor. Plan approved 2026-09-07 after a diagnostic: concerning Pass 2 documents are sparse (civilService 2, fiscal 5, immigrationEnforcement 11 in 14 days) and arrive only with the weekly snapshot, so the beat pass is weekly by construction.
 
@@ -20,9 +20,13 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 **Slice B (built, gate pending)**: migration 0069 (nullable `article_id` + `reporter_id` + CHECK `chk_tip_candidates_anchor`, pinned by a test), `beat` scope over pre-selected Pass 2 documents (`beat-docs.ts` queue with injected loaders: concerning Pass 2 docs in the beat categories, new since the reporter's last beat week, cited docs excluded, ≤10; `match-beat.ts` loads them in queue order — no query, embed, or rerank), prompt split into `prompt-sections.ts` + beat role ("have you seen this?"; flagged-this-week ≠ published-this-week), packet/digest beat framing, `dryrun --beat --weeks N`. Novelty clock is the Pass 2 week; if the gate surfaces stale documents the fix is a publication-date floor in the queue. Gate (#870) = owner-scored precision ≥ 0.5 on ≥ 3, zero wrong_fact, against the prod corpus; the cron gains pass 3 (B4, #871) only after it passes.
 
+**Beat gate (#870, 2026-09-08)**: `dryrun --beat --weeks 3` on the prod corpus → 4 checks (katz 7 docs, wagner 2, rosenberg 9 + 3), 4 calls, 4 proposed. Owner: TIGTA IRA-spending snapshot → would_send; Slavin v. Parnell (Stars and Stripes First Amendment) → would_send; DHS Operation Rotten Apple release → would_not; Third Circuit Buele Morocho precedential detention opinion → would_send. **Precision 75%, 0 wrong_fact → PASS.** The dry run exposed that the beat judge's "recent titles" came from the batch (placeholders), not the reporter's stored articles — fixed (c2d7855) before the pass entered the poll. GDELT timed out on every key from the laptop → all coverage lines `not-checkable`, as designed.
+
+**B4 (v1.29.0)**: pass 3 in the daily poll after contradiction and forward, only when neither tripped the cap; same cadence filter and stored-titles context; candidates persist with `article_id NULL` + `reporter_id`. Empty six days of seven (Pass 2 arrives Mondays), then ≤1 call per reporter.
+
 **Deploy lesson (v1.27.0)**: the tag workflow deploys only the ids in the `RENDER_SERVICE_IDS` GitHub variable; the tipwire cron (created by blueprint sync at v1.26.0) was missing and stayed on v1.26.0 until added + manually deployed. Any render.yaml service addition must add its id in the same release.
 
-**Lessons so far**: (1) Probe the external API from every network you can before designing around it — the one that "already works" may be load-shedding. (2) A capped sample is not the population: decide any label over all rows, store the samples for display.
+**Lessons learned**: (1) Probe the external API from every network you can before designing around it — the one that "already works" may be load-shedding. (2) A capped sample is not the population: decide any label over all rows, store the samples for display. (3) A dry run's context must match the poll's context (same title source, same deps), or the gate measures a different system than the one that ships. (4) A new Render service is not deployed by later tags until its id is in `RENDER_SERVICE_IDS`; verify with `render deploys list` after every tag that adds a service.
 
 ---
 
