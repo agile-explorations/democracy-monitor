@@ -26,7 +26,7 @@ import { sendOpsAlert } from '@/lib/services/ops-alert-service';
 import { discoverArticles, isReactive, probeSource } from '@/lib/tipwire/acquire';
 import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { fetchArticleBody } from '@/lib/tipwire/article-body';
-import { beatAnchor, listBeatWeeks } from '@/lib/tipwire/beat-docs';
+import { beatAnchor, listBeatQueue, listBeatWeeks } from '@/lib/tipwire/beat-docs';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
 import { GDELT_MAX_CALLS_PER_RUN, createCoverageChecker, probeGdelt } from '@/lib/tipwire/coverage';
@@ -40,7 +40,7 @@ import {
   scoreDecisions,
 } from '@/lib/tipwire/packet';
 import { runPipeline } from '@/lib/tipwire/pipeline';
-import type { PipelineItem } from '@/lib/tipwire/pipeline';
+import type { PipelineDeps, PipelineItem } from '@/lib/tipwire/pipeline';
 import { ARTICLE_BODY_CHARS } from '@/lib/tipwire/prompt';
 import { activeReporters, getReporter } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
@@ -310,6 +310,8 @@ interface PollOutcome {
   tips: number;
   /** Open watches checked this run (forward pass). */
   watches: number;
+  /** Beat checks judged this run (pass 3, #871). */
+  beatChecks: number;
   skippedForCadence: string[];
   errors: string[];
   calls: number;
@@ -366,16 +368,49 @@ async function persistItems(
   outcome: PollOutcome,
 ): Promise<void> {
   for (const it of items) {
-    const id = ids.get(it.article.articleKey);
-    if (!id) continue;
+    // Beat items have no article row (#871); the CHECK constraint requires reporter_id instead.
+    const id = it.kind === 'beat' ? null : (ids.get(it.article.articleKey) ?? null);
+    if (it.kind !== 'beat' && !id) continue;
     if (!it.skippedNoDocs) {
       await insertCandidate(id, it, runId);
       outcome.judged++;
       if (it.judge.verdict === 'tip') outcome.tips++;
       if (it.judge.verdict === 'error' && it.judge.error) outcome.errors.push(it.judge.error);
     }
-    if (it.kind === 'forward') await touchWatch(id, new Date());
+    if (it.kind === 'forward' && id) await touchWatch(id, new Date());
   }
+}
+
+/** Pass 3 — beat (#871): one check per reporter with new Pass 2 documents since their last beat week. */
+async function runBeatPass(
+  args: TipwireArgs,
+  byId: Map<string, ReporterEntry>,
+  sent: SentRow[],
+  now: Date,
+  shared: PipelineDeps,
+  runId: string,
+  outcome: PollOutcome,
+): Promise<boolean> {
+  const queue = await listBeatQueue([...byId.values()], now);
+  const items = queue.map((q) => ({ article: beatAnchor(q.reporter, q.weekOf), q }));
+  const b = cadenceFilter(items, sent, now, args.ignoreCadence);
+  outcome.beatChecks = b.keep.length;
+  outcome.skippedForCadence = [...new Set([...outcome.skippedForCadence, ...b.skipped])];
+  if (b.keep.length === 0) return false;
+  const byKey = new Map(b.keep.map((x) => [x.article.articleKey, x.q]));
+  const beat = await runPipeline(
+    b.keep.map((x) => x.article),
+    byId,
+    {
+      ...shared,
+      scopeFor: (a) => {
+        const q = byKey.get(a.articleKey);
+        return { kind: 'beat', docIds: q?.docIds ?? [], weekOf: q?.weekOf };
+      },
+    },
+  );
+  await persistItems(beat.items, new Map(), runId, outcome);
+  return beat.capTripped;
 }
 
 async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> {
@@ -384,6 +419,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     judged: 0,
     tips: 0,
     watches: 0,
+    beatChecks: 0,
     skippedForCadence: [],
     errors: [],
     calls: 0,
@@ -429,6 +465,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
 
   // Pass 2 — forward: every open watch, since its last check; no judge call without new documents.
   let forwardTripped = false;
+  let beatTripped = false;
   if (!contradiction.capTripped) {
     const watches = await listOpenWatches(now);
     const w = cadenceFilter(watches, sent, now, args.ignoreCadence);
@@ -457,12 +494,14 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     );
     forwardTripped = forward.capTripped;
     outcome.skippedForCadence = [...new Set([...c.skipped, ...w.skipped])];
+    if (!forwardTripped)
+      beatTripped = await runBeatPass(args, byId, sent, now, shared, runId, outcome);
   } else {
     outcome.skippedForCadence = c.skipped;
   }
 
   outcome.calls = getAiCallCount();
-  outcome.capTripped = contradiction.capTripped || forwardTripped;
+  outcome.capTripped = contradiction.capTripped || forwardTripped || beatTripped;
   if (outcome.capTripped)
     outcome.errors.push('AI-call cap tripped; remaining watches are re-checked next run');
   return outcome;
@@ -493,7 +532,7 @@ async function runPoll(args: TipwireArgs): Promise<number> {
     try {
       const o = await pollOnce(args, runId);
       console.log(
-        `[tipwire] poll done: ${o.discovered} article(s) stored, ${o.watches} watch(es) checked, ${o.judged} judged, ${o.tips} tip(s), ${o.calls} AI call(s)` +
+        `[tipwire] poll done: ${o.discovered} article(s) stored, ${o.watches} watch(es) checked, ${o.beatChecks} beat check(s), ${o.judged} judged, ${o.tips} tip(s), ${o.calls} AI call(s)` +
           (o.skippedForCadence.length
             ? `, cadence-skipped: ${o.skippedForCadence.join(', ')}`
             : '') +
