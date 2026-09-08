@@ -256,6 +256,11 @@ describe('tipwire pipeline (#857, #862)', () => {
       art('https://x/4', 'katz', '2026-09-02T00:00:00Z'),
     ];
     expect(recentTitlesFor(all[0], all)).toEqual(['Title 2']);
+    const placeholder = {
+      ...art('beat:wagner:2026-09-07', 'wagner', '2026-09-07T00:00:00Z'),
+      attribution: 'beat',
+    };
+    expect(recentTitlesFor(all[0], [...all, placeholder])).toEqual(['Title 2']);
   });
 
   it('judges with the scope the caller provides; a window with no documents costs no judge call', async () => {
