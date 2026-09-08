@@ -238,6 +238,8 @@ async function runBeatDryRun(args: TipwireArgs): Promise<number> {
         const q = scopes.get(a.articleKey);
         return { kind: 'beat', docIds: q?.docIds ?? [], weekOf: q?.weekOf };
       },
+      // The judge must see what the reporter actually wrote, not the batch's placeholders.
+      recentTitles: (a) => recentTitlesFromDb(a.reporterId, new Date(a.publishedAt ?? Date.now())),
       coverage: createCoverageChecker(),
       onItem: (it, i, n) =>
         console.log(

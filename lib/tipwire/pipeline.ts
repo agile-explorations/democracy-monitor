@@ -78,13 +78,17 @@ export interface PipelineRun {
 /** The reporter's other titles within RECENT_TITLES_DAYS of this article. */
 export function recentTitlesFor(article: DiscoveredArticle, all: DiscoveredArticle[]): string[] {
   const t0 = article.publishedAt ? new Date(article.publishedAt).getTime() : null;
-  return all
-    .filter((a) => a.reporterId === article.reporterId && a.articleKey !== article.articleKey)
-    .filter((a) => {
-      if (t0 === null || !a.publishedAt) return true;
-      return Math.abs(new Date(a.publishedAt).getTime() - t0) <= RECENT_TITLES_DAYS * ONE_DAY_MS;
-    })
-    .map((a) => a.title);
+  return (
+    all
+      // Beat anchors are placeholders, never titles the reporter wrote.
+      .filter((a) => a.reporterId === article.reporterId && a.articleKey !== article.articleKey)
+      .filter((a) => a.attribution !== 'beat')
+      .filter((a) => {
+        if (t0 === null || !a.publishedAt) return true;
+        return Math.abs(new Date(a.publishedAt).getTime() - t0) <= RECENT_TITLES_DAYS * ONE_DAY_MS;
+      })
+      .map((a) => a.title)
+  );
 }
 
 function summarizeDocs(docs: RankedDoc[]): DocSummary[] {
