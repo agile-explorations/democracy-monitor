@@ -13,7 +13,6 @@
 import {
   COVERAGE_WINDOW_DAYS,
   NICHE_MAX_HITS,
-  hostMatchesDomain,
   isNationalOutlet,
 } from '@/lib/data/coverage-outlets';
 import type { TipCoverageCheck } from '@/lib/db/schema';
@@ -44,9 +43,11 @@ export interface CoverageDeps {
   maxCalls: number;
 }
 
+/** `excludeUrls`: the anchor article itself (forward/contradiction) — GDELT indexes it too,
+ *  and a tip is never "covered" by the piece it follows up. Outlet-wide drops are gone (#874). */
 export type CoverageChecker = (
   searchKeys: string[],
-  ownDomain?: string,
+  excludeUrls?: readonly string[],
 ) => Promise<TipCoverageCheck>;
 
 export function gdeltUrl(key: string, windowDays = COVERAGE_WINDOW_DAYS): string {
@@ -109,17 +110,40 @@ function hostOf(url: string): string | null {
   }
 }
 
-/** Drop the reporter's own outlet (GDELT indexes their piece too), count, sample. */
-export function summarizeHits(urls: string[], ownDomain?: string): Omit<CoverageKeyResult, 'key'> {
-  const kept = urls.filter((u) => {
+/** host + path, so feed and GDELT spellings of one article (query string, scheme) agree. */
+function canonical(url: string): string | null {
+  try {
+    const u = new URL(url);
+    return `${u.hostname.toLowerCase()}${u.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Every valid URL counts except the anchor article itself; per-host URLs let the digest split own outlet from others. */
+export function summarizeHits(
+  urls: string[],
+  excludeUrls: readonly string[] = [],
+): Omit<CoverageKeyResult, 'key'> {
+  const excluded = new Set(excludeUrls.map(canonical).filter((c): c is string => c !== null));
+  const hitsByDomain: Record<string, string[]> = {};
+  const valid: string[] = [];
+  let nationalHit = false;
+  for (const u of urls) {
     const h = hostOf(u);
-    return h !== null && !(ownDomain && hostMatchesDomain(h, ownDomain));
-  });
-  const nationalHit = kept.some((u) => {
-    const h = hostOf(u);
-    return h !== null && isNationalOutlet(h);
-  });
-  return { hits: kept.length, sampleUrls: kept.slice(0, SAMPLE_URLS_PER_KEY), nationalHit };
+    if (h === null) continue;
+    const c = canonical(u);
+    if (c !== null && excluded.has(c)) continue;
+    valid.push(u);
+    if (isNationalOutlet(h)) nationalHit = true;
+    (hitsByDomain[h] ??= []).push(u);
+  }
+  return {
+    hits: valid.length,
+    sampleUrls: valid.slice(0, SAMPLE_URLS_PER_KEY),
+    nationalHit,
+    hitsByDomain,
+  };
 }
 
 export function labelCoverage(keys: CoverageKeyResult[]): TipCoverageCheck['label'] {
@@ -162,7 +186,7 @@ export function createCoverageChecker(deps: Partial<CoverageDeps> = {}): Coverag
   let calls = 0;
   let lastCallAt = Number.NEGATIVE_INFINITY;
 
-  async function queryKey(key: string, ownDomain?: string): Promise<CoverageKeyResult> {
+  async function queryKey(key: string, excludeUrls: readonly string[]): Promise<CoverageKeyResult> {
     if (calls >= d.maxCalls) return { key, hits: 0, sampleUrls: [], error: 'run cap reached' };
     const wait = lastCallAt + GDELT_MIN_SPACING_MS - d.now();
     if (wait > 0) await d.sleep(wait);
@@ -171,7 +195,7 @@ export function createCoverageChecker(deps: Partial<CoverageDeps> = {}): Coverag
     try {
       const parsed = parseGdeltArtlist(await d.fetchText(gdeltUrl(key)));
       if (!parsed) return { key, hits: 0, sampleUrls: [], error: 'throttled or invalid response' };
-      return { key, ...summarizeHits(parsed.urls, ownDomain) };
+      return { key, ...summarizeHits(parsed.urls, excludeUrls) };
     } catch (err) {
       return {
         key,
@@ -182,9 +206,9 @@ export function createCoverageChecker(deps: Partial<CoverageDeps> = {}): Coverag
     }
   }
 
-  return async (searchKeys, ownDomain) => {
+  return async (searchKeys, excludeUrls = []) => {
     const keys: CoverageKeyResult[] = [];
-    for (const key of selectKeys(searchKeys)) keys.push(await queryKey(key, ownDomain));
+    for (const key of selectKeys(searchKeys)) keys.push(await queryKey(key, excludeUrls));
     return {
       checkedAt: new Date(d.now()).toISOString(),
       windowDays: COVERAGE_WINDOW_DAYS,
@@ -207,20 +231,4 @@ export async function probeGdelt(
   } catch (err) {
     return { ok: false, detail: formatError(err) };
   }
-}
-
-/** Digest/packet line. Operator-facing; the sent tip never carries this. */
-export function coverageLine(c: TipCoverageCheck | null | undefined): string[] {
-  if (!c) return ['Coverage: not yet checked'];
-  const hits = c.keys.filter((k) => !k.error).reduce((n, k) => n + k.hits, 0);
-  const head = {
-    'checkable-zero': `Coverage: 0 hits in ${c.windowDays}d (checkable claim)`,
-    niche: `Coverage: ${hits} hit(s) in ${c.windowDays}d, all niche — see URLs`,
-    'likely-covered': `Coverage: ${hits} hit(s) in ${c.windowDays}d — likely covered, read before sending`,
-    'not-checkable': 'Coverage: not checkable (no identifier-grade key, or GDELT unavailable)',
-  }[c.label];
-  const urls = c.keys.flatMap((k) =>
-    k.error ? [`  · "${k.key}": ${k.error}`] : k.sampleUrls.map((u) => `  · "${k.key}": ${u}`),
-  );
-  return [head, ...urls];
 }

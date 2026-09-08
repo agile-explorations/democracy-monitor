@@ -3,7 +3,10 @@
  * tip-candidate pipeline: which reporters we follow, how their bylines are
  * acquired, and which categories their beat maps to.
  *
- * Expansion is a config edit: flip `active` (and add a feed) — no code.
+ * Expansion is a config edit: flip `active` — no code. A feed is needed only
+ * for the article watches (forward/contradiction); a feedless entry still joins
+ * the beat pass (R-TIPWIRE-4 #872), where "already written?" is answered by the
+ * outlet coverage check rather than by bylines.
  * The beat→category mapping is a SOFT retrieval prior (a boost, never a
  * filter): the best tip may sit in a cross-category document.
  *
@@ -59,7 +62,7 @@ export interface ReporterEntry {
   categories: CategoryKey[];
   /** null = no sanctioned acquisition path yet; the entry is inert. */
   feed: ReporterFeed | null;
-  /** v1 activates three; the rest wait on the #857 gate + #859. */
+  /** Three feed reporters since v1 (#857 gate); feedless entries flip on after the #878 gate. */
   active: boolean;
   note?: string;
 }
@@ -217,12 +220,30 @@ export const ROSTER: ReadonlyArray<ReporterEntry> = [
   },
 ];
 
-export function activeReporters(): ReporterEntry[] {
+/** Reporters whose bylines we acquire: probe, discovery, forward and contradiction watches. */
+export function feedReporters(): ReporterEntry[] {
   return ROSTER.filter((r) => r.active && r.feed !== null);
+}
+
+/** Reporters on the beat pass (#872): active, feed optional — the check needs no bylines. */
+export function beatReporters(): ReporterEntry[] {
+  return ROSTER.filter((r) => r.active);
+}
+
+export function reportersForCategory(
+  reporters: readonly ReporterEntry[],
+  category: CategoryKey,
+): ReporterEntry[] {
+  return reporters.filter((r) => r.categories.includes(category));
 }
 
 export function getReporter(id: string): ReporterEntry | undefined {
   return ROSTER.find((r) => r.id === id);
+}
+
+/** One category's display title (the key itself when unknown). */
+export function categoryLabel(key: CategoryKey): string {
+  return CATEGORIES.find((c) => c.key === key)?.title ?? key;
 }
 
 /** Human-readable beat context appended to lede-less queries. */

@@ -3,57 +3,47 @@
  *
  *   pnpm tips:probe                      # fetch each active source once; print status + counts
  *   pnpm tips:dryrun --since D --out DIR [--confirm] [--max-calls N] [--pages N]   (#857)
+ *   pnpm tips:dryrun --beat --out DIR [--weeks N] [--reporter a,b] [--confirm]    (#870/#878)
  *   pnpm tips:score  --decisions F --packet F                          (#857)
  *   pnpm tips:poll   [--email] [--max-calls N] [--ignore-cadence]      (#858)
  *   pnpm tips:digest                                                    (#858)
- *   pnpm tips:sent   --candidate <id> [--replied|--dismiss]            (#858)
+ *   pnpm tips:sent   --candidate <id> [--reporter a,b] [--replied|--dismiss]   (#858, #877)
+ *   pnpm tips:coverage [--candidate <id>] [--max-calls N]              (#866)
  *
+ * Beat-pass commands live in ./tipwire-beat; shared pieces in ./tipwire-shared.
  * Operator-only: DB credentials are the authorization (no web surface).
  * Never writes `documents`. The dry run writes files only (no DB rows, no
  * email). Exit codes: 0 ok · 1 error · 3 AI-call cap tripped (never retry 3).
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isDbAvailable } from '@/lib/db';
-import {
-  AiCallBudgetExceededError,
-  configureAiCallBudget,
-  getAiCallCount,
-} from '@/lib/services/ai-call-budget';
+import { configureAiCallBudget, getAiCallCount } from '@/lib/services/ai-call-budget';
 import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
 import { sendOpsAlert } from '@/lib/services/ops-alert-service';
 import { discoverArticles, isReactive, probeSource } from '@/lib/tipwire/acquire';
 import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { fetchArticleBody } from '@/lib/tipwire/article-body';
-import { beatAnchor, listBeatQueue, listBeatWeeks } from '@/lib/tipwire/beat-docs';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
 import { GDELT_MAX_CALLS_PER_RUN, createCoverageChecker, probeGdelt } from '@/lib/tipwire/coverage';
 import { buildDigestLines, digestSubject } from '@/lib/tipwire/digest';
-import { MAX_CALLS_PER_ARTICLE } from '@/lib/tipwire/judge';
-import {
-  TipDecisionsFileSchema,
-  buildPacketMarkdown,
-  decisionsTemplate,
-  renderScore,
-  scoreDecisions,
-} from '@/lib/tipwire/packet';
+import { TipDecisionsFileSchema, renderScore, scoreDecisions } from '@/lib/tipwire/packet';
 import { runPipeline } from '@/lib/tipwire/pipeline';
-import type { PipelineDeps, PipelineItem } from '@/lib/tipwire/pipeline';
+import type { PipelineItem } from '@/lib/tipwire/pipeline';
 import { ARTICLE_BODY_CHARS } from '@/lib/tipwire/prompt';
-import { activeReporters, getReporter } from '@/lib/tipwire/roster';
+import { feedReporters } from '@/lib/tipwire/roster';
 import type { ReporterEntry } from '@/lib/tipwire/roster';
 import {
-  insertCandidate,
   insertSkippedForCadence,
   knownKeysFor,
-  listCandidates,
   listUnjudgedArticles,
   recentTitlesFromDb,
   recordSeenKeys,
   upsertArticles,
 } from '@/lib/tipwire/store';
+import { listCandidates } from '@/lib/tipwire/store-candidates';
 import { listOpenTipsLackingCoverage, updateCoverageCheck } from '@/lib/tipwire/store-coverage';
 import {
   dismissCandidate,
@@ -62,33 +52,22 @@ import {
   recordSent,
   sentLogForReporters,
 } from '@/lib/tipwire/store-sent';
-import { listOpenWatches, touchWatch } from '@/lib/tipwire/store-watches';
+import { listOpenWatches } from '@/lib/tipwire/store-watches';
 import { formatError } from '@/lib/utils/api-helpers';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { withCronLock } from '@/lib/utils/cron-lock';
-
-export type TipwireCommand = 'probe' | 'dryrun' | 'score' | 'poll' | 'digest' | 'sent' | 'coverage';
-
-export interface TipwireArgs {
-  command: TipwireCommand;
-  since?: string;
-  out?: string;
-  confirm: boolean;
-  maxCalls?: number;
-  pages?: number;
-  email: boolean;
-  ignoreCadence: boolean;
-  candidate?: number;
-  replied: boolean;
-  dismiss: boolean;
-  /** probe: one GDELT call (reachability canary, #867). */
-  coverage: boolean;
-  /** dryrun: beat pass over the last --weeks Mondays (#869 gate). */
-  beat: boolean;
-  weeks?: number;
-  decisions?: string;
-  packet?: string;
-}
+import { runBeatDryRun, runBeatPass } from './tipwire-beat';
+import {
+  EST_IN_TOKENS,
+  EST_OUT_TOKENS,
+  EXIT_CAP_TRIPPED,
+  TIPWIRE_DAILY_MAX_CALLS,
+  dryRunEstimate,
+  persistItems,
+  progress,
+  writePacket,
+} from './tipwire-shared';
+import type { PollOutcome, TipwireArgs, TipwireCommand } from './tipwire-shared';
 
 const COMMANDS: TipwireCommand[] = [
   'probe',
@@ -99,20 +78,8 @@ const COMMANDS: TipwireCommand[] = [
   'sent',
   'coverage',
 ];
-/** Sonnet pricing for the precheck line ($/MTok in, out) and the per-article token shape. */
-const EST_IN_TOKENS = 12_000;
-const EST_OUT_TOKENS = 600;
-const SONNET_IN_PER_MTOK = 3;
-const SONNET_OUT_PER_MTOK = 15;
-/** Cap default: every article could take the parse retry. */
-const CALLS_PER_ARTICLE_CAP = MAX_CALLS_PER_ARTICLE;
 /** Dry-run listing depth: enough article pages to reach two weeks back. */
 const DRYRUN_PAGE_FETCHES = 40;
-/** Beat dry run: Mondays to sample when --weeks is not given. */
-const BEAT_DRYRUN_WEEKS = 3;
-const EXIT_CAP_TRIPPED = 3;
-/** Daily poll: hard cap (no --confirm is possible inside a cron); a trip exits 3 and is never retried. */
-const TIPWIRE_DAILY_MAX_CALLS = 30;
 /** Only articles this fresh are judged by the daily poll (older backlog is the dry run's job). */
 const POLL_MAX_ARTICLE_AGE_DAYS = 7;
 
@@ -149,18 +116,15 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
     else if (a === '--coverage') args.coverage = true;
     else if (a === '--beat') args.beat = true;
     else if (a === '--weeks') args.weeks = Number(next());
+    else if (a === '--reporter')
+      args.reporterIds = (next() ?? '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
     else throw new Error(`unknown flag ${a}`);
   }
   if (args.replied && args.dismiss) throw new Error('--replied and --dismiss are exclusive');
   return args;
-}
-
-/** Precheck numbers the spend protocol requires (calls, cap, dollars). */
-export function dryRunEstimate(articles: number, maxCalls?: number) {
-  const cap = maxCalls ?? articles * CALLS_PER_ARTICLE_CAP;
-  const dollars =
-    (articles * (EST_IN_TOKENS * SONNET_IN_PER_MTOK + EST_OUT_TOKENS * SONNET_OUT_PER_MTOK)) / 1e6;
-  return { expectedCalls: `${articles}–${articles * CALLS_PER_ARTICLE_CAP}`, cap, dollars };
 }
 
 export async function runProbe(args: TipwireArgs): Promise<boolean> {
@@ -170,7 +134,7 @@ export async function runProbe(args: TipwireArgs): Promise<boolean> {
     console.log(`${g.ok ? '✓' : '✗'} gdelt [api] ${g.detail}`);
     return g.ok;
   }
-  for (const r of activeReporters()) {
+  for (const r of feedReporters()) {
     const p = await probeSource(r);
     allOk &&= p.ok;
     console.log(`${p.ok ? '✓' : '✗'} ${r.id} [${p.kind}] ${p.detail}`);
@@ -180,7 +144,7 @@ export async function runProbe(args: TipwireArgs): Promise<boolean> {
 
 async function discoverSince(since: string, pages: number): Promise<DiscoveredArticle[]> {
   const out: DiscoveredArticle[] = [];
-  for (const r of activeReporters()) {
+  for (const r of feedReporters()) {
     const res = await discoverArticles(r, { knownKeys: new Set(), maxPageFetches: pages });
     const kept = res.articles.filter((a) => a.publishedAt && a.publishedAt >= since);
     console.log(
@@ -192,67 +156,6 @@ async function discoverSince(since: string, pages: number): Promise<DiscoveredAr
     out.push(...kept);
   }
   return out.sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
-}
-
-function writePacket(out: string, items: PipelineItem[], since: string): void {
-  const meta = {
-    since,
-    generatedAt: new Date().toISOString(),
-    reporters: activeReporters().map((r) => r.id),
-  };
-  mkdirSync(out, { recursive: true });
-  writeFileSync(path.join(out, 'packet.md'), buildPacketMarkdown(items, meta));
-  writeFileSync(path.join(out, 'packet.json'), JSON.stringify(items, null, 1));
-  writeFileSync(
-    path.join(out, 'decisions-template.json'),
-    JSON.stringify(decisionsTemplate(items, meta), null, 2),
-  );
-  console.log(`[tipwire] wrote ${out}/packet.md, packet.json, decisions-template.json`);
-}
-
-/** Beat gate (#869/#870): one item per reporter × week, judged with no article anchor. */
-async function runBeatDryRun(args: TipwireArgs): Promise<number> {
-  if (!args.out) throw new Error('dryrun --beat needs --out DIR');
-  const weeks = args.weeks ?? BEAT_DRYRUN_WEEKS;
-  const reporters = activeReporters();
-  const queue = await listBeatWeeks(reporters, weeks, new Date());
-  const est = dryRunEstimate(queue.length, args.maxCalls);
-  for (const q of queue)
-    console.log(
-      `[tipwire] ${q.reporter.id} week of ${q.weekOf}: ${q.docIds.length} flagged doc(s)`,
-    );
-  console.log(
-    `[tipwire] precheck — beat checks: ${queue.length} (${reporters.length} reporters × ${weeks} weeks, empty weeks skipped); expected AI calls: ${est.expectedCalls}; cap: ${est.cap}; est cost ~$${est.dollars.toFixed(2)}; no retrieval spend`,
-  );
-  if (!args.confirm) {
-    console.log('[tipwire] Precheck only. Re-run with --confirm to judge and write the packet.');
-    return 0;
-  }
-  configureAiCallBudget(est.cap);
-  const scopes = new Map(queue.map((q) => [beatAnchor(q.reporter, q.weekOf).articleKey, q]));
-  const run = await runPipeline(
-    queue.map((q) => beatAnchor(q.reporter, q.weekOf)),
-    new Map(reporters.map((r) => [r.id, r])),
-    {
-      scopeFor: (a) => {
-        const q = scopes.get(a.articleKey);
-        return { kind: 'beat', docIds: q?.docIds ?? [], weekOf: q?.weekOf };
-      },
-      // The judge must see what the reporter actually wrote, not the batch's placeholders.
-      recentTitles: (a) => recentTitlesFromDb(a.reporterId, new Date(a.publishedAt ?? Date.now())),
-      coverage: createCoverageChecker(),
-      onItem: (it, i, n) =>
-        console.log(
-          `[tipwire] ${i + 1}/${n} beat ${it.reporter.id} week of ${it.since?.slice(0, 10)} → ${it.judge.verdict} (${it.judge.calls} call(s), ${it.match.docs.length} docs)`,
-        ),
-    },
-  );
-  writePacket(args.out, run.items, `beat:${weeks}w`);
-  console.log(
-    `[tipwire] done: ${run.items.length} judged, ${run.items.filter((i) => i.judge.verdict === 'tip').length} proposed tip(s), ${getAiCallCount()} AI calls.` +
-      (run.capTripped ? ' CAP TRIPPED.' : ''),
-  );
-  return run.capTripped ? 3 : 0;
 }
 
 async function runDryRun(args: TipwireArgs): Promise<number> {
@@ -269,7 +172,8 @@ async function runDryRun(args: TipwireArgs): Promise<number> {
   }
   configureAiCallBudget(est.cap);
   // Forward from the article date: "since your piece on X, this appeared in the record."
-  const run = await runPipeline(articles, new Map(activeReporters().map((r) => [r.id, r])), {
+  const reporters = feedReporters();
+  const run = await runPipeline(articles, new Map(reporters.map((r) => [r.id, r])), {
     scopeFor: () => ({ kind: 'forward' }),
     coverage: createCoverageChecker(),
     onItem: (it, i, n) =>
@@ -277,7 +181,12 @@ async function runDryRun(args: TipwireArgs): Promise<number> {
         `[tipwire] ${i + 1}/${n} ${it.reporter.id} → ${it.skippedNoDocs ? 'no new docs' : it.judge.verdict} (${it.judge.calls} call${it.judge.calls === 1 ? '' : 's'}, ${it.match.docs.length} docs since ${it.since?.slice(0, 10) ?? '?'}) ${it.article.title.slice(0, 60)}`,
       ),
   });
-  writePacket(args.out, run.items, args.since);
+  writePacket(
+    args.out,
+    run.items,
+    args.since,
+    reporters.map((r) => r.id),
+  );
   const tips = run.items.filter((i) => i.judge.verdict === 'tip').length;
   console.log(
     `[tipwire] done: ${run.items.length} judged, ${tips} proposed tip(s), ${getAiCallCount()} AI calls. Score with: pnpm tips:score --decisions ${args.out}/decisions-template.json --packet ${args.out}/packet.json`,
@@ -303,20 +212,6 @@ function runScore(args: TipwireArgs): number {
 // ---------------------------------------------------------------------------
 // poll / digest / sent (#858)
 // ---------------------------------------------------------------------------
-
-interface PollOutcome {
-  discovered: number;
-  judged: number;
-  tips: number;
-  /** Open watches checked this run (forward pass). */
-  watches: number;
-  /** Beat checks judged this run (pass 3, #871). */
-  beatChecks: number;
-  skippedForCadence: string[];
-  errors: string[];
-  calls: number;
-  capTripped: boolean;
-}
 
 /** Discover against stored keys and store EVERY attributed article (so it is
  *  never re-fetched), whatever its age; judging is decided separately. */
@@ -355,64 +250,6 @@ function cadenceFilter<T extends { article: DiscoveredArticle }>(
   return { keep, skipped };
 }
 
-const progress = (it: PipelineItem, i: number, n: number) =>
-  console.log(
-    `[tipwire] ${i + 1}/${n} ${it.kind} ${it.reporter.id} → ${it.skippedNoDocs ? 'no new docs' : it.judge.verdict} ${it.article.title.slice(0, 60)}`,
-  );
-
-/** Persist a run's items; returns counts. */
-async function persistItems(
-  items: PipelineItem[],
-  ids: Map<string, number>,
-  runId: string,
-  outcome: PollOutcome,
-): Promise<void> {
-  for (const it of items) {
-    // Beat items have no article row (#871); the CHECK constraint requires reporter_id instead.
-    const id = it.kind === 'beat' ? null : (ids.get(it.article.articleKey) ?? null);
-    if (it.kind !== 'beat' && !id) continue;
-    if (!it.skippedNoDocs) {
-      await insertCandidate(id, it, runId);
-      outcome.judged++;
-      if (it.judge.verdict === 'tip') outcome.tips++;
-      if (it.judge.verdict === 'error' && it.judge.error) outcome.errors.push(it.judge.error);
-    }
-    if (it.kind === 'forward' && id) await touchWatch(id, new Date());
-  }
-}
-
-/** Pass 3 — beat (#871): one check per reporter with new Pass 2 documents since their last beat week. */
-async function runBeatPass(
-  args: TipwireArgs,
-  byId: Map<string, ReporterEntry>,
-  sent: SentRow[],
-  now: Date,
-  shared: PipelineDeps,
-  runId: string,
-  outcome: PollOutcome,
-): Promise<boolean> {
-  const queue = await listBeatQueue([...byId.values()], now);
-  const items = queue.map((q) => ({ article: beatAnchor(q.reporter, q.weekOf), q }));
-  const b = cadenceFilter(items, sent, now, args.ignoreCadence);
-  outcome.beatChecks = b.keep.length;
-  outcome.skippedForCadence = [...new Set([...outcome.skippedForCadence, ...b.skipped])];
-  if (b.keep.length === 0) return false;
-  const byKey = new Map(b.keep.map((x) => [x.article.articleKey, x.q]));
-  const beat = await runPipeline(
-    b.keep.map((x) => x.article),
-    byId,
-    {
-      ...shared,
-      scopeFor: (a) => {
-        const q = byKey.get(a.articleKey);
-        return { kind: 'beat', docIds: q?.docIds ?? [], weekOf: q?.weekOf };
-      },
-    },
-  );
-  await persistItems(beat.items, new Map(), runId, outcome);
-  return beat.capTripped;
-}
-
 async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> {
   const outcome: PollOutcome = {
     discovered: 0,
@@ -428,7 +265,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
   // Daily reachability line for #867: one GDELT call, minutes before any coverage check.
   const gdelt = await probeGdelt();
   console.log(`[tipwire] gdelt reachability: ${gdelt.ok ? 'ok' : 'unavailable'} — ${gdelt.detail}`);
-  const reporters = activeReporters();
+  const reporters = feedReporters();
   const byId = new Map(reporters.map((r) => [r.id, r]));
   outcome.discovered = await discoverNew(reporters, outcome.errors);
   const now = new Date();
@@ -436,8 +273,8 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
   configureAiCallBudget(args.maxCalls ?? TIPWIRE_DAILY_MAX_CALLS);
   const shared = {
     now,
-    recentTitles: (a: DiscoveredArticle) =>
-      recentTitlesFromDb(a.reporterId, a.publishedAt ? new Date(a.publishedAt) : now),
+    recentTitles: (a: DiscoveredArticle, reporterId: string) =>
+      recentTitlesFromDb(reporterId, a.publishedAt ? new Date(a.publishedAt) : now),
     articleBody: (a: DiscoveredArticle) =>
       a.url ? fetchArticleBody(a.url, ARTICLE_BODY_CHARS) : Promise.resolve(null),
     coverage: createCoverageChecker(),
@@ -494,8 +331,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     );
     forwardTripped = forward.capTripped;
     outcome.skippedForCadence = [...new Set([...c.skipped, ...w.skipped])];
-    if (!forwardTripped)
-      beatTripped = await runBeatPass(args, byId, sent, now, shared, runId, outcome);
+    if (!forwardTripped) beatTripped = await runBeatPass(args, sent, now, shared, runId, outcome);
   } else {
     outcome.skippedForCadence = c.skipped;
   }
@@ -563,10 +399,13 @@ async function runCoverage(args: TipwireArgs): Promise<number> {
   }
   const check = createCoverageChecker({ maxCalls: args.maxCalls ?? GDELT_MAX_CALLS_PER_RUN });
   for (const r of rows) {
-    const result = await check(r.searchKeys, getReporter(r.reporterId)?.outletDomain);
-    await updateCoverageCheck(r.id, result);
+    const result = await check(r.searchKeys, r.articleUrl ? [r.articleUrl] : []);
+    // A fresh not-checkable (GDELT down again) never erases a label that was measured.
+    const keep =
+      result.label === 'not-checkable' && r.existingLabel && r.existingLabel !== 'not-checkable';
+    if (!keep) await updateCoverageCheck(r.id, result);
     console.log(
-      `[tipwire] #${r.id} ${r.reporterId} → ${result.label} (${result.keys.length} key(s))`,
+      `[tipwire] #${r.id} ${r.reporterId} → ${keep ? `kept ${r.existingLabel} (GDELT unavailable)` : result.label} (${result.keys.length} key(s))`,
     );
   }
   return 0;
@@ -584,9 +423,9 @@ async function runDigest(): Promise<number> {
 
 async function runSent(args: TipwireArgs): Promise<number> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
-  if (!args.candidate) throw new Error('sent needs --candidate <id>');
+  if (!args.candidate) throw new Error('sent needs --candidate <id> [--reporter a,b]');
   if (args.replied) {
-    const ok = await recordReply(args.candidate);
+    const ok = await recordReply(args.candidate, args.reporterIds);
     console.log(
       ok
         ? `[tipwire] #${args.candidate}: reply recorded — cooldown lifted`
@@ -595,6 +434,10 @@ async function runSent(args: TipwireArgs): Promise<number> {
     return ok ? 0 : 1;
   }
   if (args.dismiss) {
+    if (args.reporterIds?.length)
+      throw new Error(
+        '--dismiss closes the whole candidate for every listed reporter; drop --reporter',
+      );
     const ok = await dismissCandidate(args.candidate);
     console.log(
       ok
@@ -603,9 +446,11 @@ async function runSent(args: TipwireArgs): Promise<number> {
     );
     return ok ? 0 : 1;
   }
-  const reporterId = await recordSent(args.candidate);
+  const sentTo = await recordSent(args.candidate, args.reporterIds, {
+    ignoreCadence: args.ignoreCadence,
+  });
   console.log(
-    `[tipwire] #${args.candidate}: marked sent — ${reporterId} enters the ${REMINDER_AFTER_DAYS}-day reply window / 3-week cooldown`,
+    `[tipwire] #${args.candidate}: marked sent — ${sentTo.join(', ')} enter the ${REMINDER_AFTER_DAYS}-day reply window / 3-week cooldown`,
   );
   return 0;
 }
@@ -630,7 +475,7 @@ async function main(args: TipwireArgs): Promise<number> {
 }
 
 const USAGE =
-  'Usage: pnpm tips:<probe|dryrun|score|poll|digest|sent> [flags] — see scripts/tipwire.ts header';
+  'Usage: pnpm tips:<probe|dryrun|score|poll|digest|sent|coverage> [flags] — see scripts/tipwire.ts header';
 
 if (require.main === module) {
   const { loadEnvConfig } = require('@next/env');

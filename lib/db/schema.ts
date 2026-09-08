@@ -1034,6 +1034,9 @@ export interface TipCoverageCheck {
     sampleUrls: string[];
     /** Any hit from a national outlet, decided over ALL returned URLs (samples are capped). */
     nationalHit?: boolean;
+    /** Every hit URL by hostname (R-TIPWIRE-4 #874) so the digest can split "your
+     *  outlet" from "others" per listed reporter. Absent on checks stored earlier. */
+    hitsByDomain?: Record<string, string[]>;
     error?: string;
   }>;
   label: 'checkable-zero' | 'niche' | 'likely-covered' | 'not-checkable';
@@ -1054,8 +1057,15 @@ export const tipCandidates = pgTable(
     /** NULL only for beat-pass candidates (no article anchor, R-TIPWIRE-3 #868);
      *  the CHECK below requires reporter_id in that case. */
     articleId: integer('article_id').references(() => tipArticles.id, { onDelete: 'cascade' }),
-    /** Written on every row since 0069; reads COALESCE with the article's reporter. */
+    /** Written on every row since 0069; reads COALESCE with the article's reporter.
+     *  On a beat row this is the first of `reporter_ids`. */
     reporterId: varchar('reporter_id', { length: 40 }),
+    /** Beat rows since 0070 (R-TIPWIRE-4 #873): the category the check ran on. NULL on
+     *  earlier beat rows (per-reporter checks) and on article-anchored rows. */
+    beatCategory: varchar('beat_category', { length: 40 }),
+    /** Beat rows since 0070: every reporter on the beat when the check ran (snapshot);
+     *  the owner picks recipients and marks sends per reporter. */
+    reporterIds: jsonb('reporter_ids').$type<string[]>(),
     /** tip | no_tip | skipped_cadence | parse_failed | error */
     verdict: varchar('verdict', { length: 20 }).notNull(),
     tip: jsonb('tip').$type<TipPayload>(),
@@ -1092,6 +1102,11 @@ export const tipCandidates = pgTable(
     index('idx_tip_candidates_reporter_kind_since').on(
       table.reporterId,
       table.watchKind,
+      table.sinceAt,
+    ),
+    index('idx_tip_candidates_kind_category_since').on(
+      table.watchKind,
+      table.beatCategory,
       table.sinceAt,
     ),
     check(

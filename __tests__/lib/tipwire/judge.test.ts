@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configureAiCallBudget, getAiCallCount } from '@/lib/services/ai-call-budget';
 import { judgeArticle } from '@/lib/tipwire/judge';
@@ -127,6 +129,7 @@ describe('tipwire judge prompt (#856, #863)', () => {
     expect(sys).toContain('NO article anchor');
     expect(sys).toContain('have you seen this?');
     expect(sys).toContain('Flagged this week does not mean published this week');
+    expect(sys).toContain('absence of headlines is NOT evidence the story is unwritten');
     expect(sys).not.toContain('since your piece on X');
     const u = buildTipUserPrompt(ctx({ kind: 'beat', since: '2026-09-07' }));
     expect(u).toContain('BEAT CHECK — no article anchor · week of 2026-09-07');
@@ -134,6 +137,67 @@ describe('tipwire judge prompt (#856, #863)', () => {
     expect(u).not.toContain('Lede:');
     expect(u).not.toContain('ARTICLE');
     expect(u).toContain('- Unions sue over pay freeze');
+  });
+
+  it('a category beat check names every reporter, shows headlines per reporter, and marks feedless ones instead of implying silence (#876)', () => {
+    const u = buildTipUserPrompt(
+      ctx({
+        kind: 'beat',
+        since: '2026-09-07',
+        beat: {
+          categories: ['civilService'],
+          reporters: [
+            {
+              name: 'Erich Wagner',
+              outlet: 'Government Executive',
+              hasFeed: true,
+              recentTitles: ['Unions sue over pay freeze'],
+            },
+            { name: 'Eric Katz', outlet: 'NOTUS', hasFeed: true, recentTitles: [] },
+            {
+              name: 'Hannah Natanson',
+              outlet: 'The Washington Post',
+              hasFeed: false,
+              recentTitles: [],
+            },
+          ],
+        },
+      }),
+    );
+    expect(u).toContain('REPORTERS ON THIS BEAT (');
+    expect(u).toContain('  - Erich Wagner, Government Executive');
+    expect(u).toContain(
+      '  - Hannah Natanson, The Washington Post (no feed — recent headlines unknown)',
+    );
+    expect(u).toContain('RECENT HEADLINES BY THESE REPORTERS');
+    expect(u).toContain('absence of headlines is NOT evidence the story is unwritten');
+    expect(u).toContain('  Erich Wagner (Government Executive):\n    - Unions sue over pay freeze');
+    expect(u).toContain('  Eric Katz (NOTUS):\n    (none stored)');
+    expect(u).toContain(
+      '  Hannah Natanson (The Washington Post):\n    (no feed — recent headlines unknown)',
+    );
+    expect(u).not.toContain('REPORTER: ');
+    expect(u).not.toContain('THIS REPORTER ALSO RECENTLY PUBLISHED');
+  });
+
+  it('forward and contradiction prompts are byte-identical to the pre-R-TIPWIRE-4 fixture (no re-gate needed)', () => {
+    const fixture = readFileSync(
+      path.join(process.cwd(), '__tests__/fixtures/tipwire/prompts-forward-contradiction.txt'),
+      'utf8',
+    );
+    const actual = [
+      '### SYSTEM forward',
+      buildTipSystemPrompt('forward'),
+      '### USER forward',
+      buildTipUserPrompt(ctx()),
+      '### SYSTEM contradiction',
+      buildTipSystemPrompt('contradiction'),
+      '### USER contradiction',
+      buildTipUserPrompt(
+        ctx({ kind: 'contradiction', articleBody: 'Full body text here. '.repeat(10) }),
+      ),
+    ].join('\n');
+    expect(actual).toBe(fixture);
   });
 
   it('forward user prompt shows the article, recent titles, context, and docs labelled as published since the window start', () => {

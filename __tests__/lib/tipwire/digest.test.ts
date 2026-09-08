@@ -58,6 +58,17 @@ function cand(id: number, extra: Partial<DigestCandidate> = {}): DigestCandidate
     reporterId: 'wagner',
     reporterName: 'Erich Wagner',
     outlet: 'Government Executive',
+    reporters: [
+      {
+        id: 'wagner',
+        name: 'Erich Wagner',
+        outlet: 'Government Executive',
+        outletDomain: 'govexec.com',
+        cadence: 'never tipped',
+        sentAt: null,
+      },
+    ],
+    beatCategory: null,
     title: `Article ${id}`,
     url: `https://g/${id}`,
     publishedAt: daysAgo(1),
@@ -117,7 +128,14 @@ describe('tipwire digest (#858)', () => {
       coverage: {
         checkedAt: '2026-09-08T00:00:00Z',
         windowDays: 30,
-        keys: [{ key: '2026-18061', hits: 4, sampleUrls: ['https://www.nytimes.com/x'] }],
+        keys: [
+          {
+            key: '2026-18061',
+            hits: 4,
+            sampleUrls: ['https://www.nytimes.com/x'],
+            hitsByDomain: { 'www.nytimes.com': ['https://www.nytimes.com/x'] },
+          },
+        ],
         label: 'likely-covered',
       },
     });
@@ -133,19 +151,84 @@ describe('tipwire digest (#858)', () => {
     const text = buildDigestLines([covered, zero, cand(7)], [], []).join('\n');
     expect(text).toContain('Coverage: 4 hit(s) in 30d — likely covered, read before sending');
     expect(text).toContain('  · "2026-18061": https://www.nytimes.com/x');
+    expect(text).toContain('  Own outlet — Government Executive (govexec.com): 0 hit(s)');
+    expect(text).toContain('  Others: 1 hit(s)');
+    // a check stored before the outlet split says so and names the backfill command
+    expect(text).toContain(
+      'Own outlet — Government Executive (govexec.com): unknown (check predates the outlet split; re-run pnpm tips:coverage --candidate 6)',
+    );
     expect(text).toContain('Coverage: 0 hits in 30d (checkable claim)');
     expect(text).toContain('Coverage: not yet checked');
+  });
+
+  it('a multi-reporter beat candidate lists every reporter with cadence and send state, and its commands take --reporter (#877)', () => {
+    const beat = cand(9, {
+      kind: 'beat',
+      ledeSource: 'beat',
+      title: 'Beat check — week of 2026-09-07',
+      beatCategory: 'civilService',
+      reporters: [
+        ...cand(9).reporters,
+        {
+          id: 'natanson',
+          name: 'Hannah Natanson',
+          outlet: 'The Washington Post',
+          outletDomain: 'washingtonpost.com',
+          cadence: 'never tipped',
+          sentAt: daysAgo(1),
+        },
+      ],
+    });
+    const text = buildDigestLines([beat], [], []).join('\n');
+    expect(text).toContain(
+      '#9 · Erich Wagner (Government Executive), Hannah Natanson (The Washington Post) · BEAT (',
+    );
+    expect(text).toContain('Reporters on this beat (mark each send with --reporter):');
+    expect(text).toContain(
+      '  - Erich Wagner (Government Executive) [wagner]: never tipped · unsent',
+    );
+    expect(text).toContain(
+      '  - Hannah Natanson (The Washington Post) [natanson]: never tipped · sent 2026-09-06',
+    );
+    expect(text).toContain(
+      'pnpm tips:sent --candidate 9 --reporter <id>            # mark sent (ids: wagner, natanson)',
+    );
+    expect(text).toContain('pnpm tips:sent --candidate 9 --dismiss');
+    expect(text).not.toContain('Cadence: never tipped');
+    // a reporter on two open candidates is cross-referenced on both (send one at a time)
+    const two = buildDigestLines(
+      [beat, cand(10, { beatCategory: 'fiscal', kind: 'beat', ledeSource: 'beat' })],
+      [],
+      [],
+    ).join('\n');
+    expect(two).toContain('[wagner]: never tipped · unsent · also on #10');
+    expect(two).toContain('Cadence: never tipped · also on #9');
+    // single-reporter blocks keep the one-flag workflow
+    const single = buildDigestLines([cand(1)], [], []).join('\n');
+    expect(single).toContain('Cadence: never tipped');
+    expect(single).toContain('pnpm tips:sent --candidate 1            # mark sent');
   });
 
   it('adds the unreplied reminder and the cadence-skip footer; empty digest says so', () => {
     const lines = buildDigestLines(
       [],
-      [{ candidateId: 4, reporterName: 'Eric Katz', title: 'Old piece', sentAt: daysAgo(9) }],
+      [
+        {
+          candidateId: 4,
+          reporterId: 'katz',
+          reporterName: 'Eric Katz',
+          title: 'Old piece',
+          sentAt: daysAgo(9),
+        },
+      ],
       ['katz'],
     );
     expect(lines[0]).toBe('No open tip candidates.');
     expect(lines.join('\n')).toContain('SENT BUT UNREPLIED FOR ≥ 7 DAYS');
-    expect(lines.join('\n')).toContain('pnpm tips:sent --candidate 4 --replied');
+    expect(lines.join('\n')).toContain('pnpm tips:sent --candidate 4 --reporter katz --replied');
+    // a sent candidate is not open, so the reminder never offers --dismiss
+    expect(lines.join('\n')).not.toContain('--candidate 4 --dismiss');
+    expect(lines.join('\n')).toContain('lifts by itself after 3 weeks');
     expect(lines.join('\n')).toContain('pnpm tips:poll --ignore-cadence');
   });
 });

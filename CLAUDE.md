@@ -65,11 +65,11 @@ pnpm validate:ia-drops # Same audit for infoAvailability (#834; --days N)
 pnpm ia:annotate       # Historical infoAvailability FR relevance annotation (#834; --dry-run, --limit N, --skip-repair) — prod runs are #835 runbook-gated
 pnpm dev:status | dev:suspend | dev:resume  # Dev web+DB lifecycle via the Render API (#791; RENDER_API_KEY)
 pnpm tips:probe        # R-TIPWIRE (#853–#859, operator-only): fetch each active reporter source once, print status + counts (the canary the scraping exception requires)
-pnpm tips:dryrun       # Two-week gate sample: --since D --out DIR [--confirm] [--max-calls N]; precheck first, then judge + write packet.md/packet.json/decisions-template.json (no DB rows, no email)
+pnpm tips:dryrun       # Two-week gate sample: --since D --out DIR [--confirm] [--max-calls N]; precheck first, then judge + write packet.md/packet.json/decisions-template.json (no DB rows, no email). `--beat [--weeks N] [--reporter a,b]` = the per-category beat gate (#878; --reporter reaches inactive roster entries)
 pnpm tips:score        # Score an owner-filled decisions file: --decisions F [--packet F] → would-send precision, wrong_fact, gate verdict, cron-slot recommendation
 pnpm tips:poll         # Daily cron body: discover → cadence guard → match → judge (hard cap 30 calls) → store; --email sends the digest to OPS_ALERT_EMAIL only when tips exist; --ignore-cadence
 pnpm tips:digest       # Print open candidates (reactive first, title-only isolated) + the "sent but unreplied ≥7d — mark these?" reminder
-pnpm tips:sent         # --candidate N [--replied|--dismiss]: owner action that maintains the sent log / cadence guard
+pnpm tips:sent         # --candidate N [--reporter a,b] [--replied|--dismiss]: owner action that maintains the sent log / cadence guard; a candidate listing several reporters takes one send per reporter and stays open until all are sent (#877)
 pnpm tips:coverage     # GDELT coverage backfill for open tip candidates lacking one (#861; --max-calls N, --candidate N); `tips:probe --coverage` = one GDELT call, prints JSON-or-throttle (the reachability canary)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)

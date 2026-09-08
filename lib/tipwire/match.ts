@@ -52,6 +52,10 @@ export interface RetrievalScope {
   docIds?: readonly number[];
   /** Beat only: the beat week (Monday) the check is attributed to. */
   weekOf?: string;
+  /** Beat only (R-TIPWIRE-4): the category the check ran on. */
+  category?: CategoryKey;
+  /** Beat only (R-TIPWIRE-4): every reporter on the beat; the anchor's reporter is the first. */
+  reporterIds?: readonly string[];
 }
 
 export interface RankedDoc extends ResearchDocument {
