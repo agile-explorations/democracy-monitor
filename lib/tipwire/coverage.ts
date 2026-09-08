@@ -21,7 +21,10 @@ import { formatError } from '@/lib/utils/api-helpers';
 import { TIPWIRE_UA } from './acquire';
 
 export const GDELT_MIN_SPACING_MS = 6_000;
-export const GDELT_TIMEOUT_MS = 10_000;
+/** GDELT answers slowly under load — a valid artlist took 25 s from the laptop on
+ *  2026-09-08 while the 10 s abort read it as unavailable (#867). Worst case per
+ *  poll: GDELT_MAX_CALLS_PER_RUN × (this + spacing) ≈ 26 min, all fail-safe. */
+export const GDELT_TIMEOUT_MS = 45_000;
 export const GDELT_MAX_KEYS_PER_TIP = 3;
 /** One poll per day, so per-run ≈ per-day for the cron (6 reporters × ~4 tips × 3 keys ≈ 24). */
 export const GDELT_MAX_CALLS_PER_RUN = 30;
