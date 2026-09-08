@@ -26,6 +26,7 @@ import { sendOpsAlert } from '@/lib/services/ops-alert-service';
 import { discoverArticles, isReactive, probeSource } from '@/lib/tipwire/acquire';
 import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { fetchArticleBody } from '@/lib/tipwire/article-body';
+import { beatAnchor, listBeatWeeks } from '@/lib/tipwire/beat-docs';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
 import { GDELT_MAX_CALLS_PER_RUN, createCoverageChecker, probeGdelt } from '@/lib/tipwire/coverage';
@@ -82,6 +83,9 @@ export interface TipwireArgs {
   dismiss: boolean;
   /** probe: one GDELT call (reachability canary, #867). */
   coverage: boolean;
+  /** dryrun: beat pass over the last --weeks Mondays (#869 gate). */
+  beat: boolean;
+  weeks?: number;
   decisions?: string;
   packet?: string;
 }
@@ -104,6 +108,8 @@ const SONNET_OUT_PER_MTOK = 15;
 const CALLS_PER_ARTICLE_CAP = MAX_CALLS_PER_ARTICLE;
 /** Dry-run listing depth: enough article pages to reach two weeks back. */
 const DRYRUN_PAGE_FETCHES = 40;
+/** Beat dry run: Mondays to sample when --weeks is not given. */
+const BEAT_DRYRUN_WEEKS = 3;
 const EXIT_CAP_TRIPPED = 3;
 /** Daily poll: hard cap (no --confirm is possible inside a cron); a trip exits 3 and is never retried. */
 const TIPWIRE_DAILY_MAX_CALLS = 30;
@@ -123,6 +129,7 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
     replied: false,
     dismiss: false,
     coverage: false,
+    beat: false,
   };
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -140,6 +147,8 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
     else if (a === '--replied') args.replied = true;
     else if (a === '--dismiss') args.dismiss = true;
     else if (a === '--coverage') args.coverage = true;
+    else if (a === '--beat') args.beat = true;
+    else if (a === '--weeks') args.weeks = Number(next());
     else throw new Error(`unknown flag ${a}`);
   }
   if (args.replied && args.dismiss) throw new Error('--replied and --dismiss are exclusive');
@@ -201,7 +210,51 @@ function writePacket(out: string, items: PipelineItem[], since: string): void {
   console.log(`[tipwire] wrote ${out}/packet.md, packet.json, decisions-template.json`);
 }
 
+/** Beat gate (#869/#870): one item per reporter × week, judged with no article anchor. */
+async function runBeatDryRun(args: TipwireArgs): Promise<number> {
+  if (!args.out) throw new Error('dryrun --beat needs --out DIR');
+  const weeks = args.weeks ?? BEAT_DRYRUN_WEEKS;
+  const reporters = activeReporters();
+  const queue = await listBeatWeeks(reporters, weeks, new Date());
+  const est = dryRunEstimate(queue.length, args.maxCalls);
+  for (const q of queue)
+    console.log(
+      `[tipwire] ${q.reporter.id} week of ${q.weekOf}: ${q.docIds.length} flagged doc(s)`,
+    );
+  console.log(
+    `[tipwire] precheck — beat checks: ${queue.length} (${reporters.length} reporters × ${weeks} weeks, empty weeks skipped); expected AI calls: ${est.expectedCalls}; cap: ${est.cap}; est cost ~$${est.dollars.toFixed(2)}; no retrieval spend`,
+  );
+  if (!args.confirm) {
+    console.log('[tipwire] Precheck only. Re-run with --confirm to judge and write the packet.');
+    return 0;
+  }
+  configureAiCallBudget(est.cap);
+  const scopes = new Map(queue.map((q) => [beatAnchor(q.reporter, q.weekOf).articleKey, q]));
+  const run = await runPipeline(
+    queue.map((q) => beatAnchor(q.reporter, q.weekOf)),
+    new Map(reporters.map((r) => [r.id, r])),
+    {
+      scopeFor: (a) => {
+        const q = scopes.get(a.articleKey);
+        return { kind: 'beat', docIds: q?.docIds ?? [], weekOf: q?.weekOf };
+      },
+      coverage: createCoverageChecker(),
+      onItem: (it, i, n) =>
+        console.log(
+          `[tipwire] ${i + 1}/${n} beat ${it.reporter.id} week of ${it.since?.slice(0, 10)} → ${it.judge.verdict} (${it.judge.calls} call(s), ${it.match.docs.length} docs)`,
+        ),
+    },
+  );
+  writePacket(args.out, run.items, `beat:${weeks}w`);
+  console.log(
+    `[tipwire] done: ${run.items.length} judged, ${run.items.filter((i) => i.judge.verdict === 'tip').length} proposed tip(s), ${getAiCallCount()} AI calls.` +
+      (run.capTripped ? ' CAP TRIPPED.' : ''),
+  );
+  return run.capTripped ? 3 : 0;
+}
+
 async function runDryRun(args: TipwireArgs): Promise<number> {
+  if (args.beat) return runBeatDryRun(args);
   if (!args.since || !args.out) throw new Error('dryrun needs --since YYYY-MM-DD and --out DIR');
   const articles = await discoverSince(args.since, args.pages ?? DRYRUN_PAGE_FETCHES);
   const est = dryRunEstimate(articles.length, args.maxCalls);

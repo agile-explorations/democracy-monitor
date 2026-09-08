@@ -146,7 +146,7 @@ export async function recentTitlesFromDb(reporterId: string, around: Date): Prom
 }
 
 export async function insertCandidate(
-  articleId: number,
+  articleId: number | null,
   item: PipelineItem,
   runId: string,
 ): Promise<number> {
@@ -155,6 +155,7 @@ export async function insertCandidate(
     .insert(tipCandidates)
     .values({
       articleId,
+      reporterId: item.reporter.id,
       verdict: j.verdict,
       tip: j.tip
         ? {
@@ -207,17 +208,18 @@ export async function insertSkippedForCadence(articleId: number, runId: string):
 interface CandidateJoin {
   id: number;
   reporterId: string;
-  outlet: string;
-  title: string;
+  outlet: string | null;
+  title: string | null;
   url: string | null;
   publishedAt: Date | null;
-  ledeSource: string;
-  coauthorCount: number;
+  ledeSource: string | null;
+  coauthorCount: number | null;
   reactive: boolean;
   kind: string;
   coverage: TipCoverageCheck | null;
   tip: TipPayload | null;
   tipDocumentId: number | null;
+  sinceAt: Date | null;
   createdAt: Date;
 }
 
@@ -225,7 +227,7 @@ async function candidateRows(where: ReturnType<typeof eq>): Promise<CandidateJoi
   return getDb()
     .select({
       id: tipCandidates.id,
-      reporterId: tipArticles.reporterId,
+      reporterId: sql<string>`COALESCE(${tipCandidates.reporterId}, ${tipArticles.reporterId})`,
       outlet: tipArticles.outlet,
       title: tipArticles.title,
       url: tipArticles.url,
@@ -237,10 +239,11 @@ async function candidateRows(where: ReturnType<typeof eq>): Promise<CandidateJoi
       coverage: tipCandidates.coverageCheck,
       tip: tipCandidates.tip,
       tipDocumentId: tipCandidates.tipDocumentId,
+      sinceAt: tipCandidates.sinceAt,
       createdAt: tipCandidates.createdAt,
     })
     .from(tipCandidates)
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
+    .leftJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
     .where(and(where, eq(tipCandidates.verdict, 'tip')))
     .orderBy(desc(tipCandidates.createdAt));
 }
@@ -276,7 +279,14 @@ export async function listCandidates(
     .filter((r): r is CandidateJoin & { tip: TipPayload } => r.tip !== null)
     .map((r) => ({
       ...r,
-      kind: (r.kind === 'contradiction' ? 'contradiction' : 'forward') as DigestCandidate['kind'],
+      // Beat-pass rows (no article) render from the roster entry (#868).
+      outlet: r.outlet ?? getReporter(r.reporterId)?.outlet ?? r.reporterId,
+      title: r.title ?? `Beat check — week of ${r.sinceAt?.toISOString().slice(0, 10) ?? '?'}`,
+      ledeSource: r.ledeSource ?? 'beat',
+      coauthorCount: r.coauthorCount ?? 0,
+      kind: (r.kind === 'contradiction' || r.kind === 'beat'
+        ? r.kind
+        : 'forward') as DigestCandidate['kind'],
       reporterName: getReporter(r.reporterId)?.name ?? r.reporterId,
       docTitle: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.title ?? null) : null,
       docUrl: r.tipDocumentId != null ? (labels.get(r.tipDocumentId)?.url ?? null) : null,

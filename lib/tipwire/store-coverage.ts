@@ -4,7 +4,7 @@
  * unavailable. Read-only on documents.
  */
 
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { tipArticles, tipCandidates } from '@/lib/db/schema';
 import type { TipCoverageCheck, TipPayload } from '@/lib/db/schema';
@@ -27,9 +27,13 @@ export async function listOpenTipsLackingCoverage(
         isNull(tipCandidates.coverageCheck),
       );
   const rows = await getDb()
-    .select({ id: tipCandidates.id, reporterId: tipArticles.reporterId, tip: tipCandidates.tip })
+    .select({
+      id: tipCandidates.id,
+      reporterId: sql<string>`COALESCE(${tipCandidates.reporterId}, ${tipArticles.reporterId})`,
+      tip: tipCandidates.tip,
+    })
     .from(tipCandidates)
-    .innerJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
+    .leftJoin(tipArticles, eq(tipArticles.id, tipCandidates.articleId))
     .where(where)
     .orderBy(tipCandidates.id);
   return rows.map((r) => ({

@@ -40,7 +40,7 @@ export const WATCH_DAYS = 21;
 /** Soft prior: rank-fraction added to docs in the reporter's categories. */
 export const CATEGORY_PRIOR_WEIGHT = 0.15;
 
-export type WatchKind = 'forward' | 'contradiction';
+export type WatchKind = 'forward' | 'contradiction' | 'beat';
 
 export interface RetrievalScope {
   kind: WatchKind;
@@ -48,6 +48,10 @@ export interface RetrievalScope {
   since?: string | null;
   /** Documents already cited for this article — never re-proposed. */
   excludeDocIds?: readonly number[];
+  /** Beat only: the pre-selected Pass 2 documents, best first (see ./beat-docs). */
+  docIds?: readonly number[];
+  /** Beat only: the beat week (Monday) the check is attributed to. */
+  weekOf?: string;
 }
 
 export interface RankedDoc extends ResearchDocument {
@@ -113,6 +117,10 @@ export function retrievalWindow(
   scope: RetrievalScope = { kind: 'forward' },
 ): { from: string; to: string } {
   const published = publishedAt ? new Date(publishedAt) : now;
+  if (scope.kind === 'beat') {
+    const week = new Date(scope.weekOf ?? getMonday(now));
+    return { from: day(week), to: day(new Date(week.getTime() + 7 * ONE_DAY_MS)) };
+  }
   if (scope.kind === 'contradiction') {
     return {
       from: day(new Date(published.getTime() - WINDOW_DAYS * ONE_DAY_MS)),
@@ -170,6 +178,8 @@ export interface MatchDeps {
   rerank: (q: string, docs: ResearchDocument[], keep: number) => Promise<ResearchDocument[]>;
   enrich: (docs: ResearchDocument[], q: string) => Promise<void>;
   structural: (categories: CategoryKey[], weekOf: string) => Promise<StructuralLine[]>;
+  /** Beat scope: load the pre-selected documents (see ./match-beat). */
+  byIds?: (ids: number[]) => Promise<ResearchDocument[]>;
   now: Date;
 }
 
@@ -227,6 +237,7 @@ export async function fetchStructuralLines(
 
 /** Forward watches describe the record now; contradiction checks the article's week. */
 function structuralWeek(article: DiscoveredArticle, scope: RetrievalScope, now: Date): string {
+  if (scope.kind === 'beat' && scope.weekOf) return scope.weekOf;
   const anchor =
     scope.kind === 'forward' || !article.publishedAt ? now : new Date(article.publishedAt);
   return getMonday(anchor);

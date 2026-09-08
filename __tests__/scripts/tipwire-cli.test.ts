@@ -8,6 +8,12 @@ describe('tipwire CLI args (#854)', () => {
       command: 'probe',
       coverage: true,
     });
+    expect(parseTipwireArgs(['dryrun', '--beat', '--weeks', '3', '--out', 'd'])).toMatchObject({
+      command: 'dryrun',
+      beat: true,
+      weeks: 3,
+      out: 'd',
+    });
     expect(parseTipwireArgs(['coverage', '--max-calls', '10', '--candidate', '3'])).toMatchObject({
       command: 'coverage',
       maxCalls: 10,

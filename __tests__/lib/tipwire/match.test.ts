@@ -98,6 +98,17 @@ describe('tipwire matching — pure (#855, #862)', () => {
     });
   });
 
+  it('beat window is the beat week (Monday to next Monday), defaulting to the current week', () => {
+    expect(retrievalWindow(null, NOW, { kind: 'beat', weekOf: '2026-08-31' })).toEqual({
+      from: '2026-08-31',
+      to: '2026-09-07',
+    });
+    expect(retrievalWindow(null, NOW, { kind: 'beat' })).toEqual({
+      from: '2026-09-07',
+      to: '2026-09-14',
+    });
+  });
+
   it('watches expire WATCH_DAYS after publication; undated articles are not watched', () => {
     expect(WATCH_DAYS).toBe(21);
     expect(watchUntil('2026-09-03T15:00:00Z')?.toISOString()).toBe('2026-09-24T15:00:00.000Z');

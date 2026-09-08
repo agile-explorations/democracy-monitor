@@ -21,6 +21,7 @@ import { judgeArticle } from './judge';
 import type { JudgeDeps, JudgeResult } from './judge';
 import { retrieveForArticle } from './match';
 import type { MatchDeps, MatchResult, RankedDoc, RetrievalScope, WatchKind } from './match';
+import { retrieveBeatDocs } from './match-beat';
 import { RECENT_TITLES_DAYS } from './prompt';
 import type { ReporterEntry } from './roster';
 
@@ -127,13 +128,20 @@ interface Frame {
   recentTitles: string[];
 }
 
+/** Forward: window start (last check or article date). Beat: the beat week. Contradiction: none. */
+function sinceFor(f: Frame): string | null {
+  if (f.scope.kind === 'forward') return f.scope.since ?? f.article.publishedAt;
+  if (f.scope.kind === 'beat') return f.scope.weekOf ?? null;
+  return null;
+}
+
 function baseItem(f: Frame, judge: JudgeResult, match: PipelineItem['match']): PipelineItem {
   return {
     article: f.article,
     reporter: { id: f.reporter.id, name: f.reporter.name, outlet: f.reporter.outlet },
     reactive: f.reactive,
     kind: f.scope.kind,
-    since: f.scope.kind === 'forward' ? (f.scope.since ?? f.article.publishedAt) : null,
+    since: sinceFor(f),
     recentTitles: f.recentTitles,
     match,
     judge,
@@ -172,7 +180,7 @@ async function judgeFrame(f: Frame, match: MatchResult, deps: PipelineDeps): Pro
         article: f.article,
         articleBody,
         kind: f.scope.kind,
-        since: f.scope.kind === 'forward' ? (f.scope.since ?? f.article.publishedAt) : null,
+        since: sinceFor(f),
         recentTitles: f.recentTitles,
         structural: match.structural,
         docs: match.docs,
@@ -194,7 +202,10 @@ async function processFrame(
 ): Promise<PipelineItem | typeof CAP> {
   let match: MatchResult;
   try {
-    match = await retrieveForArticle(f.article, f.reporter, { ...deps.match, now }, f.scope);
+    match =
+      f.scope.kind === 'beat'
+        ? await retrieveBeatDocs(f.reporter, f.scope, { ...deps.match, now })
+        : await retrieveForArticle(f.article, f.reporter, { ...deps.match, now }, f.scope);
   } catch (err) {
     const judge: JudgeResult = { ...NO_JUDGE, verdict: 'error', error: formatError(err) };
     return baseItem(f, judge, emptyMatch(f.article, f.scope));

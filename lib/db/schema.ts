@@ -1,19 +1,21 @@
+import { sql } from 'drizzle-orm';
 import {
+  bigint,
+  boolean,
+  check,
+  customType,
+  date,
+  index,
+  integer,
+  jsonb,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
-  integer,
-  bigint,
-  jsonb,
-  boolean,
-  varchar,
-  real,
-  date,
-  index,
-  uniqueIndex,
-  customType,
   unique,
+  uniqueIndex,
+  varchar,
 } from 'drizzle-orm/pg-core';
 
 const tsvector = customType<{ data: string; driverParam: string }>({
@@ -1049,9 +1051,11 @@ export const tipCandidates = pgTable(
   'tip_candidates',
   {
     id: serial('id').primaryKey(),
-    articleId: integer('article_id')
-      .notNull()
-      .references(() => tipArticles.id, { onDelete: 'cascade' }),
+    /** NULL only for beat-pass candidates (no article anchor, R-TIPWIRE-3 #868);
+     *  the CHECK below requires reporter_id in that case. */
+    articleId: integer('article_id').references(() => tipArticles.id, { onDelete: 'cascade' }),
+    /** Written on every row since 0069; reads COALESCE with the article's reporter. */
+    reporterId: varchar('reporter_id', { length: 40 }),
     /** tip | no_tip | skipped_cadence | parse_failed | error */
     verdict: varchar('verdict', { length: 20 }).notNull(),
     tip: jsonb('tip').$type<TipPayload>(),
@@ -1085,6 +1089,15 @@ export const tipCandidates = pgTable(
   (table) => [
     index('idx_tip_candidates_status_created').on(table.status, table.createdAt),
     index('idx_tip_candidates_article').on(table.articleId),
+    index('idx_tip_candidates_reporter_kind_since').on(
+      table.reporterId,
+      table.watchKind,
+      table.sinceAt,
+    ),
+    check(
+      'chk_tip_candidates_anchor',
+      sql`${table.articleId} IS NOT NULL OR (${table.watchKind} = 'beat' AND ${table.reporterId} IS NOT NULL)`,
+    ),
   ],
 );
 

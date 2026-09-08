@@ -112,14 +112,20 @@ function itemMarkdown(it: PipelineItem): string {
   const scope =
     it.kind === 'contradiction'
       ? 'contradiction check'
-      : `since ${it.since?.slice(0, 10) ?? 'article date'}`;
+      : it.kind === 'beat'
+        ? `beat check, week of ${it.since?.slice(0, 10) ?? '?'}`
+        : `since ${it.since?.slice(0, 10) ?? 'article date'}`;
   return [
     `## ${verdictLabel} (${scope}) — ${it.reporter.name} (${it.reporter.outlet})${it.reactive ? ' — REACTIVE' : ''}`,
     '',
-    `**Article:** ${a.title}`,
-    `Published: ${a.publishedAt ?? 'unknown'} · Lede source: ${a.ledeSource}${a.coauthorCount ? ` · co-authors: ${a.coauthorCount}` : ''}`,
-    a.url ? `URL: ${a.url}` : '',
-    a.lede ? `Lede: ${a.lede}` : 'Lede: (none — title-only match)',
+    ...(it.kind === 'beat'
+      ? ['**Beat check:** no article anchor — documents flagged on the beat this week']
+      : [
+          `**Article:** ${a.title}`,
+          `Published: ${a.publishedAt ?? 'unknown'} · Lede source: ${a.ledeSource}${a.coauthorCount ? ` · co-authors: ${a.coauthorCount}` : ''}`,
+          a.url ? `URL: ${a.url}` : '',
+          a.lede ? `Lede: ${a.lede}` : 'Lede: (none — title-only match)',
+        ]),
     `Article key: \`${a.articleKey}\``,
     '',
     `Judge: ${judgeLine(it)}`,
@@ -133,10 +139,10 @@ function itemMarkdown(it: PipelineItem): string {
 
 /** Proposed tips first (reactive first within), then title-only matches, then the rest. */
 export function buildPacketMarkdown(items: PipelineItem[], meta: PacketMeta): string {
-  const tips = items.filter((i) => i.judge.verdict === 'tip' && i.article.ledeSource !== 'none');
-  const titleOnly = items.filter(
-    (i) => i.judge.verdict === 'tip' && i.article.ledeSource === 'none',
-  );
+  // Beat items have no lede by construction; they are never "title-only matches".
+  const titleOnlyMatch = (i: PipelineItem) => i.kind !== 'beat' && i.article.ledeSource === 'none';
+  const tips = items.filter((i) => i.judge.verdict === 'tip' && !titleOnlyMatch(i));
+  const titleOnly = items.filter((i) => i.judge.verdict === 'tip' && titleOnlyMatch(i));
   const rest = items.filter((i) => i.judge.verdict !== 'tip');
   const byReactive = (a: PipelineItem, b: PipelineItem) => Number(b.reactive) - Number(a.reactive);
   const counts = `${items.length} articles · ${tips.length + titleOnly.length} proposed tips · ${rest.filter((i) => i.judge.verdict === 'no_tip').length} no_tip · ${rest.filter((i) => i.judge.verdict !== 'no_tip').length} failed`;

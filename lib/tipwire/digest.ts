@@ -23,8 +23,8 @@ export interface DigestCandidate {
   ledeSource: string;
   coauthorCount: number;
   reactive: boolean;
-  /** forward: "since your piece on …" · contradiction: predates the piece */
-  kind: 'forward' | 'contradiction';
+  /** forward: "since your piece on …" · contradiction: predates the piece · beat: no article anchor */
+  kind: 'forward' | 'contradiction' | 'beat';
   /** GDELT coverage check (#861); null until checked. */
   coverage: TipCoverageCheck | null;
   tip: TipPayload;
@@ -72,8 +72,10 @@ function candidateBlock(c: DigestCandidate, dupes: Map<number, number[]>): strin
   const others =
     c.tipDocumentId != null ? (dupes.get(c.tipDocumentId) ?? []).filter((id) => id !== c.id) : [];
   const lines = [
-    `${c.reactive ? '⚡ REACTIVE (send today) — ' : ''}#${c.id} · ${c.reporterName} (${c.outlet})${c.coauthorCount ? ` · co-authored ×${c.coauthorCount}` : ''}${c.kind === 'contradiction' ? ' · CONTRADICTION CHECK' : ''}`,
-    `${c.kind === 'contradiction' ? 'Article' : 'Since their piece'}: ${c.title}`,
+    `${c.reactive ? '⚡ REACTIVE (send today) — ' : ''}#${c.id} · ${c.reporterName} (${c.outlet})${c.coauthorCount ? ` · co-authored ×${c.coauthorCount}` : ''}${c.kind === 'contradiction' ? ' · CONTRADICTION CHECK' : c.kind === 'beat' ? ' · BEAT' : ''}`,
+    c.kind === 'beat'
+      ? `${c.title} · no article anchor — a "have you seen this?", not a follow-up`
+      : `${c.kind === 'contradiction' ? 'Article' : 'Since their piece'}: ${c.title}`,
     `Published: ${day(c.publishedAt)}${c.url ? ` · ${c.url}` : ''}`,
     c.ledeSource === 'none' ? 'TITLE-ONLY MATCH — read the piece before sending' : '',
     '',
