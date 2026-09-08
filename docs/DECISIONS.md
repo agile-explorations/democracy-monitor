@@ -12,6 +12,18 @@ This file captures what was planned vs what was built, spec deviations, key deci
 
 ---
 
+## Sprint R-TIPWIRE-3: coverage check + beat pass (#861, #865–#871, milestone 138) — 🟡 Slice A shipped v1.27.0 (2026-09-08); Slice B (beat pass) gated on an owner-scored dry run
+
+**Origin**: two owner expectations the first two sprints had deferred — "is this already covered?" (the tip's load-bearing claim, checkable only by hand) and tips for novel stories on a reporter's beat with no article anchor. Plan approved 2026-09-07 after a diagnostic: concerning Pass 2 documents are sparse (civilService 2, fiscal 5, immigrationEnforcement 11 in 14 days) and arrive only with the weekly snapshot, so the beat pass is weekly by construction.
+
+**Slice A (built)**: GDELT DOC 2.0 coverage check inside `runPipeline` as an injected dep, tip verdicts only, failure-isolated. Identifier-grade keys only (a digit, a "v." caption, or ≥2 capitalised tokens), ≤3 per tip, ≥6 s apart, ≤30 per run; own-outlet hits dropped; national-outlet detection over ALL returned URLs (review finding: the first cut tested only the three stored samples). Labels: checkable-zero / niche (≤3 non-national hits) / likely-covered / not-checkable; likely-covered sorts last in the digest; the sent tip never carries a coverage claim. `tips:coverage` backfill, `tips:probe --coverage` canary, and a daily reachability line at the top of every poll. **GDELT was throttling every path on 2026-09-07** (three UAs, four query shapes, with/without VPN, and a 429 from a third network) — the throttle body maps to not-checkable, never zero; Web NGrams rejected as a bulk ETL for ≤50 lookups/day; owner emailed GDELT with the volume figures. Reachability from Render is the first thing v1.27.0's poll reports.
+
+**Slice B (pending)**: migration 0069 (nullable `article_id` + `reporter_id` + CHECK), `beat` scope over pre-selected Pass 2 documents, prompt split + beat role, `dryrun --beat --weeks N`; gate = owner-scored precision ≥ 0.5 on ≥ 3, zero wrong_fact; the cron gains pass 3 only after the gate.
+
+**Lessons so far**: (1) Probe the external API from every network you can before designing around it — the one that "already works" may be load-shedding. (2) A capped sample is not the population: decide any label over all rows, store the samples for display.
+
+---
+
 ## Sprint R-TIPWIRE-2: from retrospective annotation to standing watches — the forward window, the contradiction pass, and the gate that passed (#862–#864, milestone 137) — ✅ built 2026-09-07, gate PASS (3/3 would_send, 0 wrong_fact)
 
 **Origin**: the R-TIPWIRE dry run proposed ten tips on twelve articles and the owner rejected two of the three scored as _already known to the reporter_ — one was literally in the article body. The judge had been asked "what in the record is relevant to this piece?", which rewards restating context. The owner's reframing: an article is a thread the reporter is on; the useful question is _what appeared in the record since the piece was filed_. Approved as "pivot now".
