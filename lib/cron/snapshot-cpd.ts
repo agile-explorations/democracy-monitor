@@ -12,14 +12,19 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
+import { runLayersForGroups } from '@/lib/cron/snapshot-layers';
+import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import {
+  groupItemsByCategoryWeek,
+  splitGroupsByCategory,
+} from '@/lib/services/category-week-grouping';
+import type { CategoryWeekGroups } from '@/lib/services/category-week-grouping';
 import { fetchCpdHistorical, fetchCpdPackageCount } from '@/lib/services/cpd-fetcher';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
-import { getWeekOfDate } from '@/lib/services/weekly-aggregator';
-import type { ContentItem } from '@/lib/types';
+import { getLastCompletedWeek } from '@/lib/services/weekly-aggregator';
 import { formatError } from '@/lib/utils/api-helpers';
 import { addDays, toDateString } from '@/lib/utils/date-utils';
 
@@ -50,17 +55,14 @@ async function storeAndScore(doc: CpdDocument): Promise<number> {
   return stored;
 }
 
-/** Group the new documents by (category, week) for L2 + aggregation. */
-export function groupByCategoryWeek(docs: CpdDocument[]): Map<string, ContentItem[]> {
-  const groups = new Map<string, ContentItem[]>();
-  for (const doc of docs) {
-    const weekOf = getWeekOfDate(doc.item.pubDate ?? toDateString(new Date()));
-    for (const category of doc.categories) {
-      const key = `${category}|${weekOf}`;
-      groups.set(key, [...(groups.get(key) ?? []), doc.item]);
-    }
-  }
-  return groups;
+/** Group the new documents by (category, week) for L2 + aggregation — the
+ *  shared helper (#825): in-progress-week documents wait for their week's
+ *  sweep instead of creating a partial-week aggregate row. */
+export function groupByCategoryWeek(
+  docs: CpdDocument[],
+  anchorWeekOf: string = getLastCompletedWeek(),
+): CategoryWeekGroups {
+  return groupItemsByCategoryWeek(docs, { anchorWeekOf }).groups;
 }
 
 export async function snapshotCpdWindow(errors: string[]): Promise<void> {
@@ -89,11 +91,11 @@ export async function snapshotCpdWindow(errors: string[]): Promise<void> {
     }
     let stored = 0;
     for (const doc of docs) stored += await storeAndScore(doc);
-    const groups = groupByCategoryWeek(docs);
-    for (const [key, items] of groups) {
-      const [category, weekOf] = key.split('|');
-      const { errors: layerErrors } = await runLayersAndAggregate(items, category, weekOf);
-      errors.push(...layerErrors);
+    const anchorWeekOf = getLastCompletedWeek();
+    const groups = groupByCategoryWeek(docs, anchorWeekOf);
+    const failedAggregates: AggregateFailure[] = [];
+    for (const [category, categoryGroups] of splitGroupsByCategory(groups)) {
+      await runLayersForGroups(categoryGroups, category, anchorWeekOf, errors, failedAggregates);
     }
     console.log(
       `[snapshot] CPD: ${docs.length} new documents → ${stored} rows across ${groups.size} category-weeks (window ${dateFrom}..${dateTo}: ${available} packages)`,

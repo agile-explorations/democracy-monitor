@@ -10,9 +10,17 @@
  * unscored (category, week) pairs and executes the plan.
  */
 
+import { addDays } from '@/lib/utils/date-utils';
+
 export interface CategoryWeek {
   category: string;
   weekOf: string;
+}
+
+/** A category-week plus an optional reason fragment for the error channel
+ *  (e.g. "agg=73 scores=74"). */
+export interface DescribedCategoryWeek extends CategoryWeek {
+  detail?: string;
 }
 
 export interface ReconciliationPlan {
@@ -50,6 +58,26 @@ export function planReconciliation(
 const describePairs = (pairs: CategoryWeek[]) =>
   pairs.map((p) => `${p.category} ${p.weekOf}`).join(', ');
 
+/** The owner-run repair for one baseline week: pipeline:repair over the
+ *  Monday..Sunday span, with the mandatory baseline acknowledgment (#570). */
+export function repairCommandFor(weekOf: string): string {
+  return `pnpm pipeline:repair --from ${weekOf} --to ${addDays(weekOf, 6)} --confirm-baseline`;
+}
+
+/** One error-channel line naming every baseline category-week a step left
+ *  alone, each with its exact repair command — the cron never writes
+ *  baseline-period derived values (standing owner rule). Empty when none. */
+export function describeBaselinePairs(label: string, pairs: DescribedCategoryWeek[]): string {
+  if (pairs.length === 0) return '';
+  const body = pairs
+    .map(
+      (p) =>
+        `${p.category} ${p.weekOf}${p.detail ? ` (${p.detail})` : ''} → ${repairCommandFor(p.weekOf)}`,
+    )
+    .join('; ');
+  return `${label} skipped ${pairs.length} BASELINE category-week(s) (owner approval required): ${body}`;
+}
+
 /** Error-channel lines for the parts of a plan the run did NOT execute. */
 export function describeUnreconciled(plan: ReconciliationPlan): string[] {
   const lines: string[] = [];
@@ -59,9 +87,7 @@ export function describeUnreconciled(plan: ReconciliationPlan): string[] {
     );
   }
   if (plan.baseline.length > 0) {
-    lines.push(
-      `score reconciliation skipped ${plan.baseline.length} BASELINE category-week(s) (owner approval required — pnpm scores:backfill --from <date> --to <date>): ${describePairs(plan.baseline)}`,
-    );
+    lines.push(describeBaselinePairs('score reconciliation', plan.baseline));
   }
   return lines;
 }

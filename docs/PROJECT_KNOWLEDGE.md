@@ -139,9 +139,22 @@ not cover edges with model calls — review:backfill stays a separate, spend-pro
 
 Named invariants checked by `pnpm validate:graph`, by the Monday snapshot's final post-step, and
 on /system/health ("Derivation Graph" panel): G1a/G1b document↔score, G2a/G2b score↔aggregate,
-G3 enrichment freshness, G4/G4h narrative freshness, G5 assessment referential integrity.
-Severity tiers: errors fail the run; warnings (G3L legacy weeks, G4h historical narratives) are
-visibility-only. Two semantics decisions worth remembering:
+G3 enrichment freshness, G4/G4h narrative freshness, G5 assessment referential integrity, G6 no
+orphan categories, G7/G7n assessment week ↔ document week (#825). Severity tiers: errors fail the
+run; warnings (G3L legacy weeks, G4h historical narratives, G2b-baseline, G7, G7n) are
+visibility-only. The snapshot heals what it can before the check: `reconcileUnscoredDocs` (#667,
+G1a's population) then `reconcileAggregateCounts` (#825, G2b's population, current term, bare
+count recompute) — so a hold means a mismatch the run could not repair itself. Baseline weeks are
+never written by the cron; they are named on the error channel with their
+`pipeline:repair --from --to --confirm-baseline` command (`describeBaselinePairs`). Semantics
+decisions worth remembering:
+
+- **Late-arriving documents derive their own week (#825).** Every ingest path groups fetched items
+  by (category, Monday of `published_at`) via `lib/services/category-week-grouping.ts` and runs
+  `runLayersForGroups` per group: L2 rows are stamped with the document's week (not the run's),
+  the touched week's aggregate is re-derived, in-progress-week items wait for their own sweep,
+  baseline weeks are reported, and a status flip on an already-published old week is named on
+  the error channel for a reversals-ledger entry (never a digest hold).
 
 - **`enriched_at` is forward-only.** Rows enriched before #568 keep NULL (their true enrichment
   time is unknowable); they surface as the G3L warning and shrink as repairs re-enrich. No
@@ -180,6 +193,7 @@ For full retrospectives, see `DECISIONS.md` (recent) and `DECISIONS-ARCHIVE.md` 
 
 ### Sprint log
 
+- R-LATE-ARRIVAL (#825, #879–#884, milestone 140, 2026-09-14; restamp runbook #884 pending): three Monday G2b digest holds traced to the category loop deriving L2 + aggregate once under the run week — late-arriving items (GAO Wayback captures, Thu/Fri FR/OIG/GovInfo items) left their old week's count stale and, invisibly, stamped ~296 verdicts into the wrong week since June (a separate 2,423-row non-Monday `week_of` population → #885). One shared category-week grouping replaces the CPD/CHRG copies; `runLayersForGroups` re-derives each current-term week touched, reports baseline weeks by name with the repair command, and names status flips for the ledger; an aggregate-parity step before `validate:graph` heals current-term count mismatches; `G2b-baseline` (warn, owner decision: report only), `G7`/`G7n` added. Full retro in DECISIONS.md.
 - R-TIPWIRE (#853–#859 + #860, milestone 136, 2026-09-07, gate superseded by R-TIPWIRE-2): operator-only tip candidates for journalist follow-ups — `lib/tipwire/` + `scripts/tipwire.ts` (probe/dryrun/score/poll/digest/sent), three `tip_*` tables excluded from the public dump, two sanctioned acquisition strategies (rss with item/page attribution; author-page ∩ monthly sitemap), library retrieval + rank-based soft category prior, Sonnet judge with the concreteness rule and honesty clauses, hard call caps, cadence guard with reply-lift, daily cron at 21:30 UTC (not deployed until #857 passes). No Google News RSS (robots disallow; intent-data use → #860); Parloff/Lawfare manual; Rosenberg/ProPublica in v1.
 - R-TIPWIRE-2 (#862–#864, milestone 137, 2026-09-07, gate PASS): pivot from retrospective annotation to standing watches — forward window from the last check with cited docs excluded, no judge call on an empty window, reactive-only contradiction pass with a fresh (never stored) article body, prompt `tip-2026-09-08-forward` with the confidence rubric and `search_keys`; forward dry run on the prod corpus: 12 judged, 3 proposed, 3/3 would_send, 0 wrong_fact; single 21:30 UTC cron slot.
 - R-TIPWIRE-3 Slice A (#861, #865–#867, milestone 138, v1.27.0, 2026-09-08): GDELT DOC 2.0 coverage check after every tip verdict — identifier-grade keys, ≤3/tip, ≥6 s apart, ≤30/run, own outlet excluded, graded label with sample URLs in digest + packet, fail-safe not-checkable (GDELT throttled every path on 09-07; owner emailed). `tips:coverage` backfill, `tips:probe --coverage`, daily reachability line in the poll. Slice B built v1.28.0 (#868 migration 0069 nullable article_id + reporter_id + anchor CHECK; #869 beat scope over Pass 2 docs, prompt split + beat role, `dryrun --beat`); beat gate #870 PASS (75% on 4, 0 wrong_fact) → v1.29.0 adds the beat pass to the daily poll (#871): pass 3 after forward, ≤1 call per reporter per new Pass 2 week, candidates with article_id NULL + reporter_id. Deploy lesson: new Render services must be added to the `RENDER_SERVICE_IDS` GitHub variable.
@@ -381,6 +395,7 @@ Reusable lessons extracted from sprint retrospectives. See `DECISIONS.md` and `D
 
 ### Credibility guards (R-CREDIBILITY, 2026-08-28)
 
+- **A "late arrival, disclosed" fetcher needs week-aware derivation everywhere downstream.** R-GAO dated late Internet Archive captures by true release date, but the category loop still ran L2 and the aggregate once under the run week — the old week's count went stale (G2b, three Monday holds) and the verdict silently counted toward the current week. Group fetched items by (category, week) at the ingest site and derive per group (`runLayersForGroups`); add an invariant per edge that carries a week (G7). (#825)
 - **Diagnose the current cause, not the issue's cause.** #667's stated mechanism (counting-scope recompute) had been fixed three weeks earlier; the digest holds that kept happening came from late-published documents (LegiScan, GovInfo, OIG) stored outside the two-week sweep. A count-only invariant (G1a reported "3 violations") made this undiagnosable for a month — invariants must name their violators.
 - **`scored_at` is last-write, not first-write.** Upserts refresh it on every sweep, so it cannot date when a document was first scored; reason from `fetched_at` and cron logs instead.
 - **A deterministic check for LLM output must be tuned on the real corpus before it gates anything.** The first number-check pass flagged 26 "probable" category counts across 12 weeks; reading them, most were the model's own analytic tallies ("in six different categories"), hedged figures, or previous-week counts the block never supplied. Precision beats recall for a digest gate; the tuned rules found two real stored miscounts the earlier aggregate-comparison survey had missed.

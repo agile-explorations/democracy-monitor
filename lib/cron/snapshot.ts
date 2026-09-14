@@ -3,13 +3,14 @@ import { routeItemsToCategories } from '@/lib/cron/backfill-crec';
 import { snapshotClOpinions } from '@/lib/cron/snapshot-cl-opinions';
 import { snapshotCpdWindow } from '@/lib/cron/snapshot-cpd';
 import { tryBuildCrecFragments } from '@/lib/cron/snapshot-crec-fragments';
-import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
+import { runLayersAndAggregate, runLayersForGroups } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import {
   gateAndSendDigest,
   retryFailedAggregates,
   tryEnsureWeekHeadline,
   tryGenerateNarratives,
+  tryReconcileAggregateCounts,
   tryReconcileUnscoredDocs,
   tryRefreshTrackedCases,
   tryWarnUnfragmentedCrec,
@@ -21,6 +22,7 @@ import {
 } from '@/lib/cron/snapshot-poststeps';
 import { CATEGORIES } from '@/lib/data/categories';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
+import { groupItemsByCategoryWeek } from '@/lib/services/category-week-grouping';
 import { fetchCrecRecent } from '@/lib/services/crec-fetcher';
 import { finishCronRun, startCronRun } from '@/lib/services/cron-run-store';
 import type { CronRunStatus } from '@/lib/services/cron-run-store';
@@ -158,12 +160,16 @@ async function snapshotCategory(
     console.log(`[snapshot]   Scored ${docScores.length} documents`);
   }
 
-  // Always aggregate — 0-document weeks create a valid aggregate row.
-  // Only aggregate completed weeks (where Sunday has passed).
+  // L2 + aggregate per (category, week) the batch touched (#825): late-
+  // published items re-derive their own week instead of being stamped into
+  // the anchor week. The anchor (last completed) week always gets a group —
+  // 0-document weeks create a valid aggregate row.
   const weekOf = getLastCompletedWeek();
-  const layerResult = await runLayersAndAggregate(items, cat.key, weekOf);
-  errors.push(...layerResult.errors);
-  if (layerResult.aggregateFailure) failedAggregates.push(layerResult.aggregateFailure);
+  const { groups } = groupItemsByCategoryWeek(
+    items.map((item) => ({ item, categories: [cat.key] })),
+    { anchorWeekOf: weekOf, ensureAnchorFor: [cat.key] },
+  );
+  await runLayersForGroups(groups, cat.key, weekOf, errors, failedAggregates);
 
   console.log(`[snapshot]   Done in ${Date.now() - catStart}ms`);
 }
@@ -386,7 +392,7 @@ async function assessStoredWeek(weekOf: string, errors: string[]): Promise<numbe
 async function ingestAndAssessSecondarySources(errors: string[]): Promise<number> {
   await snapshotCpdWindow(errors);
   await snapshotCrec();
-  await snapshotChrgWindow();
+  await snapshotChrgWindow(errors);
   await snapshotRhetoric();
 
   await snapshotClOpinions();
@@ -477,6 +483,7 @@ async function runPostCategorySteps(
   await tryRefreshTrackedCases(errors);
   await tryWarnUnfragmentedCrec(errors);
   await tryReconcileUnscoredDocs(errors);
+  await tryReconcileAggregateCounts(errors);
   const graphErrorViolations = await tryValidateGraph(errors);
   await tryStoreDataReport(errors);
   await tryValidateFunnel(errors);

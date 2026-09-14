@@ -36,4 +36,23 @@ describe('snapshot-cpd (#798)', () => {
     ]);
     expect(groups.get('executiveActions|2026-04-06')).toHaveLength(2);
   });
+
+  it('leaves in-progress-week documents for their own sweep (#825)', () => {
+    const groups = groupByCategoryWeek(
+      [
+        {
+          item: { title: 'Fresh', pubDate: '2026-09-16', content: 'x' },
+          categories: ['executiveActions'],
+          unmappedSubjects: [],
+        },
+        {
+          item: { title: 'Settled', pubDate: '2026-09-10', content: 'y' },
+          categories: ['executiveActions'],
+          unmappedSubjects: [],
+        },
+      ],
+      '2026-09-07',
+    );
+    expect([...groups.keys()]).toEqual(['executiveActions|2026-09-07']);
+  });
 });

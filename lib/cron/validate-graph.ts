@@ -12,6 +12,10 @@
  *   G1b  no score row points at an ineligible or absent document
  *   G2a  every completed category-week has an aggregate row
  *   G2b  aggregate document_count equals the week's score-row count
+ *        (current term; error). G2b-baseline is the same parity over
+ *        baseline weeks at warn severity — the cron may not write those
+ *        aggregates, so a stale baseline count is an owner-run repair, not
+ *        a digest hold (#825, owner decision 2026-09-14)
  *   G2c  every aggregate row is Monday-anchored (no off-grid week_of)
  *   G3   enrichment freshness: enriched_at >= newest assessment in the week
  *   G3L  (warn) legacy weeks (enriched_at never stamped) holding assessments —
@@ -21,12 +25,21 @@
  *        data — regeneration is a per-repair owner decision, so this
  *        reports but never fails the run
  *   G5   no assessment rows for absent or retrieval-excluded documents
+ *   G6   no derived rows under an unknown category
+ *   G7   (warn) every assessment's week_of is the Monday of its document's
+ *        published week — late-arriving documents were stamped with the run
+ *        week until #825; promoted to error once the restamp runbook lands
+ *   G7n  (warn) assessments whose week_of is not a Monday at all (a separate
+ *        backfill stamping bug, #885)
  */
 
 import { sql } from 'drizzle-orm';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
+import type { CategoryWeek } from '@/lib/services/reconciliation-plan';
 import { checkHelp } from '@/lib/utils/cli-help';
+import { addDays } from '@/lib/utils/date-utils';
 
 const GRID_START = '2017-01-20';
 
@@ -181,7 +194,20 @@ async function g2cMondayAnchors(): Promise<GraphInvariantResult> {
   };
 }
 
-async function g2bCountParity(): Promise<GraphInvariantResult> {
+export interface CountParityMismatch extends CategoryWeek {
+  aggCount: number;
+  scoreCount: number;
+}
+
+const PARITY_SCAN_LIMIT = 500;
+
+/** Category-weeks whose aggregate document_count disagrees with the week's
+ *  score-row count — G2b's own population, exported so the snapshot's
+ *  aggregate-parity repair (#825) and the invariant can never disagree
+ *  (the SCORE_ELIGIBLE_DOC_SQL precedent, #566). Bounds are inclusive. */
+export async function findCountParityMismatches(
+  opts: { from?: string; to?: string; limit?: number } = {},
+): Promise<CountParityMismatch[]> {
   const rows = await q(sql`
     SELECT wa.category, wa.week_of::text AS w, wa.document_count AS agg_count, s.n AS score_count
     FROM weekly_aggregates wa
@@ -191,16 +217,44 @@ async function g2bCountParity(): Promise<GraphInvariantResult> {
         AND ds.week_of >= wa.week_of AND ds.week_of < wa.week_of + 7
     ) s ON true
     WHERE wa.document_count != s.n
-    LIMIT 500`);
+      AND (${opts.from ?? null}::date IS NULL OR wa.week_of >= ${opts.from ?? null}::date)
+      AND (${opts.to ?? null}::date IS NULL OR wa.week_of <= ${opts.to ?? null}::date)
+    ORDER BY wa.week_of DESC, wa.category
+    LIMIT ${opts.limit ?? PARITY_SCAN_LIMIT}`);
+  return rows.map((r) => ({
+    category: String(r.category),
+    weekOf: String(r.w),
+    aggCount: Number(r.agg_count),
+    scoreCount: Number(r.score_count),
+  }));
+}
+
+export function describeParityMismatch(m: CountParityMismatch): string {
+  return `${m.category} ${m.weekOf}: agg=${m.aggCount} scores=${m.scoreCount}`;
+}
+
+async function g2bCountParity(): Promise<GraphInvariantResult> {
+  const rows = await findCountParityMismatches({ from: T2_INAUGURATION });
   return {
     id: 'G2b',
     severity: 'error',
-    description: 'aggregate document_count equals score-row count for the week',
+    description: 'aggregate document_count equals score-row count for the week (current term)',
     violations: rows.length,
     pass: rows.length === 0,
-    sample: rows
-      .slice(0, 3)
-      .map((r) => `${r.category} ${r.w}: agg=${r.agg_count} scores=${r.score_count}`),
+    sample: rows.slice(0, 3).map(describeParityMismatch),
+  };
+}
+
+async function g2bBaselineCountParity(): Promise<GraphInvariantResult> {
+  const rows = await findCountParityMismatches({ to: addDays(T2_INAUGURATION, -1) });
+  return {
+    id: 'G2b-baseline',
+    severity: 'warn',
+    description:
+      'aggregate document_count equals score-row count (baseline weeks — owner-run pipeline:repair --confirm-baseline)',
+    violations: rows.length,
+    pass: rows.length === 0,
+    sample: rows.slice(0, 3).map(describeParityMismatch),
   };
 }
 
@@ -340,18 +394,74 @@ async function g6OrphanCategories(): Promise<GraphInvariantResult> {
   };
 }
 
+/** Monday of the document's published week, in UTC — the same anchor
+ *  getWeekOfDate() stamps on score rows. */
+const DOC_WEEK_SQL = sql`((d.published_at AT TIME ZONE 'UTC')::date
+  - (extract(isodow FROM (d.published_at AT TIME ZONE 'UTC'))::int - 1))`;
+
+function describeWeekParityRows(rows: Row[]): string[] {
+  return rows.map((r) => `${r.source_origin ?? 'unknown-origin'}: ${r.n}`);
+}
+
+/**
+ * G7 — every assessment sits in the Monday-anchored week of its document.
+ * Until #825 the category loop stamped every late-arriving verdict with the
+ * run week, so it counted toward the wrong week's status. Warn while the
+ * restamp runbook (#884) is outstanding; error afterwards.
+ */
+async function g7AssessmentWeekParity(): Promise<GraphInvariantResult> {
+  const rows = await q(sql`
+    SELECT d.source_origin, count(*) AS n
+    FROM ai_document_assessments a
+    JOIN documents d ON d.url = a.url AND d.category = a.category
+    WHERE d.published_at >= ${T2_INAUGURATION}
+      AND extract(isodow FROM a.week_of) = 1
+      AND a.week_of <> ${DOC_WEEK_SQL}
+    GROUP BY d.source_origin ORDER BY n DESC`);
+  const total = rows.reduce((acc, r) => acc + Number(r.n), 0);
+  return {
+    id: 'G7',
+    severity: 'warn',
+    description: "assessment week_of is the Monday of its document's published week (current term)",
+    violations: total,
+    pass: total === 0,
+    sample: describeWeekParityRows(rows.slice(0, 5)),
+  };
+}
+
+/** G7n — assessments whose week_of is not a Monday (a backfill stamping path, #885). */
+async function g7nNonMondayAssessmentWeeks(): Promise<GraphInvariantResult> {
+  const rows = await q(sql`
+    SELECT d.source_origin, count(*) AS n
+    FROM ai_document_assessments a
+    JOIN documents d ON d.url = a.url AND d.category = a.category
+    WHERE d.published_at >= ${T2_INAUGURATION}
+      AND extract(isodow FROM a.week_of) <> 1
+    GROUP BY d.source_origin ORDER BY n DESC`);
+  const total = rows.reduce((acc, r) => acc + Number(r.n), 0);
+  return {
+    id: 'G7n',
+    severity: 'warn',
+    description: 'assessment week_of is Monday-anchored (current term)',
+    violations: total,
+    pass: total === 0,
+    sample: describeWeekParityRows(rows.slice(0, 5)),
+  };
+}
+
 /**
  * Cheap invariants — joins over the small aggregates/narratives/assessments
  * tables. Fast enough to run live on a health-page request (#650), so the
  * freshness signals (G3/G4/G4h) are up-to-the-minute, not last-snapshot.
  */
-export const LIVE_INVARIANT_IDS = ['G2a', 'G2b', 'G2c', 'G3', 'G3L', 'G4', 'G4h'];
+export const LIVE_INVARIANT_IDS = ['G2a', 'G2b', 'G2b-baseline', 'G2c', 'G3', 'G3L', 'G4', 'G4h'];
 
 export async function runLiveInvariants(): Promise<GraphInvariantResult[]> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   return [
     await g2aAggregatePresence(),
     await g2bCountParity(),
+    await g2bBaselineCountParity(),
     await g2cMondayAnchors(),
     await g3EnrichmentFreshness(false),
     await g3EnrichmentFreshness(true),
@@ -370,6 +480,8 @@ async function runHeavyInvariants(): Promise<GraphInvariantResult[]> {
     await g1bNoOrphanOrStubScores(),
     await g5AssessmentReferential(),
     await g6OrphanCategories(),
+    await g7AssessmentWeekParity(),
+    await g7nNonMondayAssessmentWeeks(),
   ];
 }
 
@@ -408,7 +520,7 @@ if (require.main === module) {
     argv,
     `Usage: pnpm validate:graph [--json]
 
-Checks the derivation-graph edge contract (G1a..G5 — see
+Checks the derivation-graph edge contract (G1a..G7 — see
 docs/PROJECT_KNOWLEDGE.md "Derivation graph"). Exits nonzero when any
 invariant is violated.`,
   );

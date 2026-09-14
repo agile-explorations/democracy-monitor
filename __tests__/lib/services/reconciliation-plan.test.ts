@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeBaselinePairs,
   describeUnreconciled,
   planReconciliation,
   RECONCILE_MAX_WEEKS,
+  repairCommandFor,
 } from '@/lib/services/reconciliation-plan';
 
 const T2 = '2025-01-20';
@@ -64,6 +66,29 @@ describe('describeUnreconciled', () => {
     expect(lines[0]).toContain('fiscal 2025-06-02');
     expect(lines[1]).toContain('BASELINE');
     expect(lines[1]).toContain('elections 2018-05-07');
-    expect(lines[1]).toContain('scores:backfill');
+    expect(lines[1]).toContain(
+      'pipeline:repair --from 2018-05-07 --to 2018-05-13 --confirm-baseline',
+    );
+  });
+});
+
+describe('repairCommandFor / describeBaselinePairs (#825)', () => {
+  it('spans Monday to Sunday and carries the baseline acknowledgment', () => {
+    expect(repairCommandFor('2024-12-30')).toBe(
+      'pnpm pipeline:repair --from 2024-12-30 --to 2025-01-05 --confirm-baseline',
+    );
+  });
+
+  it('names every pair with its detail and its own command; empty when none', () => {
+    expect(describeBaselinePairs('aggregate parity', [])).toBe('');
+    const line = describeBaselinePairs('aggregate parity', [
+      { category: 'executiveOversight', weekOf: '2024-09-30', detail: 'agg=29 scores=30' },
+      { category: 'fiscal', weekOf: '2022-03-07' },
+    ]);
+    expect(line).toContain('aggregate parity skipped 2 BASELINE category-week(s)');
+    expect(line).toContain(
+      'executiveOversight 2024-09-30 (agg=29 scores=30) → pnpm pipeline:repair --from 2024-09-30 --to 2024-10-06 --confirm-baseline',
+    );
+    expect(line).toContain('fiscal 2022-03-07 → pnpm pipeline:repair --from 2022-03-07');
   });
 });

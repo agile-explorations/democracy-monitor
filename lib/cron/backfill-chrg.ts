@@ -8,15 +8,22 @@
  */
 
 import { eq } from 'drizzle-orm';
-import { runLayersAndAggregate } from '@/lib/cron/snapshot-layers';
+import { runLayersForGroups } from '@/lib/cron/snapshot-layers';
+import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { chrgSeenLedger, documents } from '@/lib/db/schema';
+import {
+  groupItemsByCategoryWeek,
+  parseCategoryWeekKey,
+  splitGroupsByCategory,
+} from '@/lib/services/category-week-grouping';
 import { CHRG_TRAILING_WINDOW_DAYS, fetchChrgWindow } from '@/lib/services/chrg-fetcher';
 import { classifyHearingToCategories } from '@/lib/services/crec-classifier';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
 import { storeDocuments } from '@/lib/services/document-store';
 import {
   computeWeeklyAggregate,
+  getLastCompletedWeek,
   getWeekOfDate,
   storeWeeklyAggregate,
 } from '@/lib/services/weekly-aggregator';
@@ -99,53 +106,46 @@ export async function ledgerDroppedHearings(
   }
 }
 
-/** Store per matched category; score + re-aggregate each affected (category, week). */
+/** Store + score per matched category (every week the batch touches). */
 export async function storeAndScoreHearings(routed: ChrgRoutedItem[]): Promise<number> {
   let stored = 0;
-  const byCategoryWeek = new Map<string, ContentItem[]>();
-
   for (const doc of routed) {
-    const weekOf = getWeekOfDate(doc.item.pubDate);
     for (const category of doc.categories) {
       stored += await storeDocuments([doc.item], category);
-      const key = `${category}|${weekOf}`;
-      if (!byCategoryWeek.has(key)) byCategoryWeek.set(key, []);
-      byCategoryWeek.get(key)!.push(doc.item);
+      await storeDocumentScores(scoreDocumentBatch([doc.item], category));
     }
   }
+  return stored;
+}
 
-  for (const [key, items] of byCategoryWeek) {
-    const [category, weekOf] = key.split('|');
-    await storeDocumentScores(scoreDocumentBatch(items, category));
+/** Backfill-only: bare count aggregates for every (category, week) touched —
+ *  the owner-run CLI passes an explicit window, so baseline weeks are an
+ *  acknowledged write here (unlike the weekly snapshot, #825). */
+async function aggregateTouchedWeeks(routed: ChrgRoutedItem[]): Promise<number> {
+  const touched = new Set<string>();
+  for (const doc of routed) {
+    const weekOf = getWeekOfDate(doc.item.pubDate);
+    for (const category of doc.categories) touched.add(`${category}|${weekOf}`);
+  }
+  for (const key of touched) {
+    const { category, weekOf } = parseCategoryWeekKey(key);
     await storeWeeklyAggregate(await computeWeeklyAggregate(category, weekOf));
   }
-  return stored;
+  return touched.size;
 }
 
 /** New hearings a single weekly run will fetch at most (~30 min of polite fetching). */
 const CHRG_WEEKLY_MAX_FETCHES = 120;
 
-function groupByCategoryWeek(routed: ChrgRoutedItem[]): Map<string, ContentItem[]> {
-  const byCategoryWeek = new Map<string, ContentItem[]>();
-  for (const doc of routed) {
-    const weekOf = getWeekOfDate(doc.item.pubDate);
-    for (const category of doc.categories) {
-      const key = `${category}|${weekOf}`;
-      if (!byCategoryWeek.has(key)) byCategoryWeek.set(key, []);
-      byCategoryWeek.get(key)!.push(doc.item);
-    }
-  }
-  return byCategoryWeek;
-}
-
 /**
  * Weekly snapshot pass: fetch newly published transcripts across the trailing
  * window. CHRG dateIssued is the hearing HELD date and transcripts publish
  * months late, so new documents land in OLD weeks — outside the snapshot's
- * 2-week trailing sweep. This pass therefore re-aggregates (and L2-assesses)
- * every (category, week) it touches itself via runLayersAndAggregate.
+ * 2-week trailing sweep. This pass therefore re-derives (L2 + aggregate)
+ * every current-term (category, week) it touches via runLayersForGroups;
+ * baseline weeks are reported for owner-approved repair (#825).
  */
-export async function snapshotChrgWindow(): Promise<void> {
+export async function snapshotChrgWindow(errors: string[] = []): Promise<void> {
   console.log('[snapshot] Fetching CHRG (hearing transcripts)...');
   try {
     const dateTo = toDateString(new Date());
@@ -166,15 +166,18 @@ export async function snapshotChrgWindow(): Promise<void> {
     await ledgerDroppedHearings(dropped);
     const stored = await storeAndScoreHearings(routed);
 
-    const byCategoryWeek = groupByCategoryWeek(routed);
-    for (const [key, weekItems] of byCategoryWeek) {
-      const [category, weekOf] = key.split('|');
-      await runLayersAndAggregate(weekItems, category, weekOf);
+    const anchorWeekOf = getLastCompletedWeek();
+    const { groups } = groupItemsByCategoryWeek(routed, { anchorWeekOf });
+    // Aggregate failures are already on the error channel via runLayersAndAggregate;
+    // there is no per-category retry outside the main loop.
+    const failedAggregates: AggregateFailure[] = [];
+    for (const [category, categoryGroups] of splitGroupsByCategory(groups)) {
+      await runLayersForGroups(categoryGroups, category, anchorWeekOf, errors, failedAggregates);
     }
 
     console.log(
       `[snapshot] CHRG: ${items.length} new transcripts → ${routed.length} routed ` +
-        `(${dropped.length} ledgered) → ${stored} rows across ${byCategoryWeek.size} category-weeks`,
+        `(${dropped.length} ledgered) → ${stored} rows across ${groups.size} category-weeks`,
     );
   } catch (err) {
     console.error('[snapshot] CHRG fetch failed:', err);
@@ -201,10 +204,11 @@ export async function backfillChrg(from: string, to: string, dryRun: boolean): P
     const { routed, dropped } = routeHearingsToCategories(items);
     await ledgerDroppedHearings(dropped);
     const stored = await storeAndScoreHearings(routed);
+    const weeks = await aggregateTouchedWeeks(routed);
 
     console.log(
       `  CHRG: ${items.length} new hearings → ${routed.length} routed, ` +
-        `${dropped.length} ledgered → ${stored} category entries`,
+        `${dropped.length} ledgered → ${stored} category entries across ${weeks} category-weeks`,
     );
     return stored;
   } catch (err) {
