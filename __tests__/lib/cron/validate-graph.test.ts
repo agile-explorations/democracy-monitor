@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  describeParityMismatch,
   describeUnscoredDoc,
+  findCountParityMismatches,
   findOrphanCategories,
   LIVE_INVARIANT_IDS,
   runGraphValidation,
@@ -35,6 +37,13 @@ describe('runGraphValidation', () => {
     expect(ids).toContain('G1a');
     expect(ids).toContain('G4h');
     expect(ids).toContain('G6');
+    // #825: assessment-week parity (G7, G7n) and the baseline split of G2b.
+    expect(ids).toContain('G7');
+    expect(ids).toContain('G7n');
+    expect(ids).toContain('G2b-baseline');
+    expect(results.find((r) => r.id === 'G7')?.severity).toBe('warn');
+    expect(results.find((r) => r.id === 'G2b-baseline')?.severity).toBe('warn');
+    expect(results.find((r) => r.id === 'G2b')?.severity).toBe('error');
     // Empty data means no violations anywhere.
     expect(results.every((r) => r.pass && r.violations === 0)).toBe(true);
     // Each result carries a severity for gating.
@@ -70,5 +79,18 @@ describe('describeUnscoredDoc (G1a samples, #667)', () => {
     expect(
       describeUnscoredDoc({ id: 1, category: 'fiscal', source_origin: null, published_at: null }),
     ).toBe('#1 fiscal unknown-origin ');
+  });
+});
+
+describe('findCountParityMismatches (G2b population, #825)', () => {
+  it('maps driver rows to typed category-weeks with both counts', async () => {
+    mockExecute.mockResolvedValueOnce({
+      rows: [{ category: 'executiveOversight', w: '2026-08-03', agg_count: '61', score_count: 62 }],
+    });
+    const rows = await findCountParityMismatches({ from: '2025-01-20' });
+    expect(rows).toEqual([
+      { category: 'executiveOversight', weekOf: '2026-08-03', aggCount: 61, scoreCount: 62 },
+    ]);
+    expect(describeParityMismatch(rows[0])).toBe('executiveOversight 2026-08-03: agg=61 scores=62');
   });
 });

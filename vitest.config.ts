@@ -41,6 +41,7 @@ export default defineConfig({
         'lib/services/narrative-pipeline.ts',
         'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
+        'lib/cron/aggregate-reconciliation.ts',
         'lib/cron/backfill-oversight-gov.ts',
         'lib/cron/feedback-moderate.ts',
         // #729 replay/prewarm: pure pieces (arm cache, key/stamp logic) are

@@ -109,6 +109,33 @@ export async function tryReconcileUnscoredDocs(errors: string[]): Promise<number
 }
 
 /**
+ * Aggregate-parity reconciliation (#825): recompute the count row of every
+ * current-term category-week whose aggregate disagrees with its score rows
+ * (late arrivals, filter repairs, dedupe cascades), and name baseline
+ * mismatches with their owner-run repair. Runs after score reconciliation
+ * (which can add score rows) and before the graph check, so G2b holds the
+ * digest only for a mismatch the run could not heal itself.
+ */
+export async function tryReconcileAggregateCounts(errors: string[]): Promise<number> {
+  try {
+    const { reconcileAggregateCounts } = await import('@/lib/cron/aggregate-reconciliation');
+    const result = await reconcileAggregateCounts();
+    errors.push(...result.errors);
+    console.log(
+      `[snapshot] aggregate parity: ${result.recomputed.length} category-week(s) recomputed` +
+        (result.plan.baseline.length > 0
+          ? `, ${result.plan.baseline.length} baseline reported`
+          : '') +
+        (result.plan.deferred.length > 0 ? `, ${result.plan.deferred.length} deferred` : ''),
+    );
+    return result.recomputed.length;
+  } catch (err) {
+    errors.push(`aggregate parity reconciliation failed to run: ${formatError(err)}`);
+    return 0;
+  }
+}
+
+/**
  * Post-run derivation-graph contract check (#571). Runs after every write the
  * snapshot performs so it sees the final state; error-severity violations are
  * appended to the cron error channel (and render on /system/health via
