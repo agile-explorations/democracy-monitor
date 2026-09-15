@@ -26,9 +26,9 @@
  *        reports but never fails the run
  *   G5   no assessment rows for absent or retrieval-excluded documents
  *   G6   no derived rows under an unknown category
- *   G7   (warn) every assessment's week_of is the Monday of its document's
- *        published week — late-arriving documents were stamped with the run
- *        week until #825; promoted to error once the restamp runbook lands
+ *   G7   every assessment's week_of is the Monday of its document's published
+ *        week — late-arriving documents were stamped with the run week until
+ *        #825; error since the #884 restamp (401 rows, 2026-09-14)
  *   G7n  (warn) assessments whose week_of is not a Monday at all (a separate
  *        backfill stamping bug, #885)
  */
@@ -406,8 +406,8 @@ function describeWeekParityRows(rows: Row[]): string[] {
 /**
  * G7 — every assessment sits in the Monday-anchored week of its document.
  * Until #825 the category loop stamped every late-arriving verdict with the
- * run week, so it counted toward the wrong week's status. Warn while the
- * restamp runbook (#884) is outstanding; error afterwards.
+ * run week, so it counted toward the wrong week's status. Error since the
+ * #884 restamp cleared the legacy rows (2026-09-14).
  */
 async function g7AssessmentWeekParity(): Promise<GraphInvariantResult> {
   const rows = await q(sql`
@@ -421,7 +421,7 @@ async function g7AssessmentWeekParity(): Promise<GraphInvariantResult> {
   const total = rows.reduce((acc, r) => acc + Number(r.n), 0);
   return {
     id: 'G7',
-    severity: 'warn',
+    severity: 'error',
     description: "assessment week_of is the Monday of its document's published week (current term)",
     violations: total,
     pass: total === 0,
