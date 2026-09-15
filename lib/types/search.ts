@@ -28,6 +28,10 @@ export interface SearchResultDocument {
   sourceOrigin: string | null;
   caseId: string | null;
   category: string;
+  /** False when the row is not detection evidence for its category (an
+   *  off-topic or unrouted document stored for search) — render "Not routed
+   *  to a category" instead of the category badge. */
+  routed: boolean;
   snippet: string | null;
   /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
   matchSnippet?: string | null;

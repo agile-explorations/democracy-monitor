@@ -17,6 +17,7 @@ import { CacheKeys } from '@/lib/cache/keys';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { DISCUSSION_SOURCE_TYPES } from '@/lib/data/document-tiers';
 import { getDb } from '@/lib/db';
+import { categoryFacetD, searchableD } from '@/lib/db/document-filters';
 import {
   ARM_CACHE_TTL_SECONDS,
   dataWeekStamp,
@@ -55,8 +56,7 @@ export const MAX_MATCH_CAP = 1000;
 export function windowFilters(w: ExpansionWindow) {
   const conditions = [
     sql`d.embedding IS NOT NULL`,
-    sql`d.retrieval_relevant IS NOT FALSE`,
-    sql`d.content_type != 'metadata_only'`,
+    searchableD(),
     sql`d.category != 'intent'`,
     sql`d.source_origin IS NOT NULL`,
     sql`d.source_origin NOT IN (${sql.join(
@@ -66,7 +66,7 @@ export function windowFilters(w: ExpansionWindow) {
   ];
   if (w.dateFrom) conditions.push(sql`d.published_at >= ${w.dateFrom}::timestamptz`);
   if (w.dateTo) conditions.push(sql`d.published_at <= ${w.dateTo}::timestamptz`);
-  if (w.category) conditions.push(sql`d.category = ${w.category}`);
+  if (w.category) conditions.push(categoryFacetD(w.category));
   if (w.tier) {
     const types = sql.join(
       [...DISCUSSION_SOURCE_TYPES].map((t) => sql`${t}`),

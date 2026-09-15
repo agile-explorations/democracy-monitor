@@ -10,6 +10,7 @@ import type { DocumentTier } from '@/lib/data/document-tiers';
 import { DISCUSSION_SOURCE_TYPES } from '@/lib/data/document-tiers';
 import { PROCEDURAL_TITLE_PATTERN, PROCEDURAL_TITLE_PENALTY } from '@/lib/data/procedural-titles';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { searchableD } from '@/lib/db/document-filters';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 import { halfvecDistanceDoc } from '@/lib/services/vector-expr';
 import { buildPublishedAtWindow } from '@/lib/utils/date-window';
@@ -56,7 +57,7 @@ export async function fetchResearchDocRowsByIds(
   try {
     const results = await db.execute(sql`
       SELECT d.id, d.title, LEFT(d.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d.url, d.published_at, d.source_type, d.evidence_tier,
-        d.source_origin, d.case_id, d.category,
+        d.source_origin, d.case_id, d.category, d.retrieval_relevant,
         ${cosineExpr} as cosine_similarity, ds.final_score, ds.document_class,
         ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
         ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
@@ -123,8 +124,7 @@ const COMBINED_SCORE = sql`(cosine_similarity * 0.6 + recency * 0.2
 export function researchCandidateFilters(dateFrom?: string, dateTo?: string, tier?: DocumentTier) {
   return sql`d.embedding IS NOT NULL
     AND d.source_origin NOT IN (${excludedOrigins()})
-    AND d.retrieval_relevant IS NOT FALSE
-    AND d.content_type != 'metadata_only'
+    AND ${searchableD()}
     ${buildPublishedAtWindow(dateFrom, dateTo)}
     ${buildTierFilter(tier)}`;
 }

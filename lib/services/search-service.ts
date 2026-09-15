@@ -10,6 +10,7 @@ import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForDocument } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { categoryFacetD, searchableD } from '@/lib/db/document-filters';
 import type {
   ExploreSearchResult,
   ResearchDocument,
@@ -276,7 +277,7 @@ export async function findSimilarDocuments(
         db,
         sql`
         SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.evidence_tier, d.source_origin, d.category,
-          LEFT(d.content, 250) as snippet, 1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
+          d.retrieval_relevant, LEFT(d.content, 250) as snippet, 1 - (d.embedding <=> ${vectorStr}::vector) as cosine_similarity,
           NULL as text_rank, ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,
           ds.capture_count, ds.drift_count, ds.warning_count, ds.suppressed_count, ds.matches, ds.suppressed,
           ai.assessment as ai_assessment, ai.confidence as ai_confidence,
@@ -285,15 +286,15 @@ export async function findSimilarDocuments(
         LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
         LEFT JOIN ai_document_assessments ai ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
         WHERE d.embedding IS NOT NULL AND d.id != ${documentId} AND ${catCondition}
-          AND d.retrieval_relevant IS NOT FALSE
+          AND ${searchableD()}
         ORDER BY ${halfvecDistanceDoc(vectorStr)}
         LIMIT ${limit}
       `,
       );
 
     const [sameCat, otherCat] = await Promise.all([
-      fetchSimilar(sql`d.category = ${sourceCategory}`),
-      fetchSimilar(sql`d.category != ${sourceCategory}`),
+      fetchSimilar(categoryFacetD(sourceCategory)),
+      fetchSimilar(sql`NOT ${categoryFacetD(sourceCategory)}`),
     ]);
 
     return {

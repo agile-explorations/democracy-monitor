@@ -2,6 +2,7 @@ import { execSync } from 'child_process';
 // @ts-expect-error @next/env ships with Next.js but lacks type declarations
 import { loadEnvConfig } from '@next/env';
 import { Pool } from 'pg';
+import { parseCsvHeader } from '@/lib/db/csv-header';
 import { resolveDbSsl } from './ssl';
 
 loadEnvConfig(process.cwd());
@@ -150,8 +151,13 @@ function restoreFromArchive(connectionString: string, force: boolean): void {
   }
 
   console.log('Restoring documents table...');
+  // Header-driven (R-SEARCH-ORTHOGONAL): the column list comes from the CSV
+  // itself, so a dump taken before a column was added still restores under
+  // the newer schema (the column is left NULL) and vice versa never silently
+  // shifts columns. Names are validated before they reach the shell.
+  const columns = documentsCsvColumns(`/tmp/${DOCS_CSV_FILENAME}`);
   execSync(
-    `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(id, source_type, category, title, content, url, published_at, fetched_at, metadata, source_origin, case_id, speaker, content_type, embedded_at, retrieval_relevant, counting_scope, parent_id, evidence_tier) FROM STDIN WITH CSV HEADER"`,
+    `gunzip -c /tmp/${DOCS_CSV_FILENAME} | psql "${connectionString}" -c "\\copy documents(${columns.join(', ')}) FROM STDIN WITH CSV HEADER"`,
     { stdio: 'inherit' },
   );
 
@@ -164,6 +170,12 @@ function restoreFromArchive(connectionString: string, force: boolean): void {
 
   execSync(`rm -f /tmp/${ARCHIVE_FILENAME} /tmp/${DUMP_FILENAME} /tmp/${DOCS_CSV_FILENAME}`);
   console.log('Database restored from GitHub Releases archive.');
+}
+
+/** Column names from the gzipped CSV's header line, validated as identifiers. */
+function documentsCsvColumns(gzPath: string): string[] {
+  const header = execSync(`gunzip -c ${gzPath} | head -1`).toString().trim();
+  return parseCsvHeader(header);
 }
 
 // ---------------------------------------------------------------------------

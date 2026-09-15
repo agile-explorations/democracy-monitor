@@ -57,7 +57,7 @@ export async function fetchRowsForDocKeys(
     : sql`NULL::float`;
   const results = await db.execute(sql`
     SELECT d.id, d.title, d.url, d.published_at, d.source_type, d.evidence_tier, d.source_origin, d.category, d.case_id,
-      LEFT(d.content, 250) as snippet,
+      d.retrieval_relevant, LEFT(d.content, 250) as snippet,
       ${cosineExpr} as cosine_similarity,
       ${textRankExpr} as text_rank,
       ds.severity_score, ds.final_score, ds.document_class, ds.class_multiplier,

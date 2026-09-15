@@ -1,7 +1,7 @@
 import type { SQL } from 'drizzle-orm';
 import { and, eq, isNull, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { countingScopeOnly, retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { searchable } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { embedBatch, embedText, isTokenLimitError } from './embedding-service';
 
@@ -162,18 +162,17 @@ async function processBatches(
  * Oversized docs (>8192 tokens) are truncated and embedded individually.
  */
 /**
- * Embedding eligibility: unembedded, counting-population docs (+ optional
- * filters). Two deliberate exceptions sit outside the counting population
- * (counting_scope=false) but ARE embedded because retrieval-grade search is
- * their whole purpose: fragments (#704 Path A) and curated-docket RECAP
- * documents (#740, identified by their provenance metadata).
+ * Embedding eligibility (R-SEARCH-ORTHOGONAL): every unembedded searchable
+ * document with a body — the searchable population, not the counting or
+ * analysis-evidence ones. Off-topic rows, unrouted corpus rows, fragments and
+ * curated-docket documents all embed because retrieval-grade search is the
+ * point of storing them.
  */
 function embeddableConditions(category?: string, dateFilter?: SQL): SQL[] {
   const conditions = [
     isNull(documents.embeddedAt),
-    sql`${documents.contentType} != 'metadata_only'`,
-    retrievalRelevantOnly(),
-    sql`(${countingScopeOnly()} OR ${documents.parentId} IS NOT NULL OR ${documents.metadata} ->> 'recapDocumentId' IS NOT NULL)`,
+    searchable(),
+    sql`${documents.content} IS NOT NULL AND ${documents.content} <> ''`,
   ];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);

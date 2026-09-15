@@ -103,6 +103,7 @@ async function applySupersededMark(
     await tx
       .update(documents)
       .set({
+        superseded: true,
         retrievalRelevant: false,
         ...(row.countingScope ? { countingScope: false } : {}),
         metadata: sql`coalesce(${documents.metadata}, '{}'::jsonb) || ${JSON.stringify({ supersededBy: keeperUrl })}::jsonb`,
@@ -122,6 +123,23 @@ async function cascadeDerivedRows(tx: Tx, url: string, category: string): Promis
   await tx
     .delete(aiDocumentAssessments)
     .where(and(eq(aiDocumentAssessments.url, url), eq(aiDocumentAssessments.category, category)));
+}
+
+/** Runbook repair (R-SEARCH-ORTHOGONAL): stamp `superseded = true` on rows
+ *  marked before the column existed (migration 0071 also does this once;
+ *  this reports what it left, expected 0). Idempotent. */
+export async function backfillSupersededFlag(dryRun: boolean): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const db = getDb();
+  const pending = await db.execute(sql`
+    SELECT count(*) AS n FROM documents d
+    WHERE d.metadata ? 'supersededBy' AND d.superseded IS NOT TRUE`);
+  const n = Number((pending.rows[0] as { n: string }).n);
+  if (dryRun || n === 0) return n;
+  await db.execute(sql`
+    UPDATE documents SET superseded = true
+    WHERE metadata ? 'supersededBy' AND superseded IS NOT TRUE`);
+  return n;
 }
 
 /** Runbook repair for rows marked before the cascade existed: remove the

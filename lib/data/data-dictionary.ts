@@ -560,6 +560,12 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
       "Evidence-tier override for the action/discussion distinction (2026-09, graded evidence). NULL = the tier derives from source_type (floor speeches, hearings, remarks, and nomination debates are discussion; everything else is action). 'action' marks Congressional Record granules stored as floor_speech that are instruments READ INTO the record rather than speeches — resolution text, appropriations and explanatory statements, presidential messages, committee-report text — identified positively by title class on speakerless granules. Speeches are never promoted.",
   },
   {
+    name: 'superseded',
+    type: 'boolean|null',
+    description:
+      'Superseded court-opinion revision (2026-09, R-SEARCH-ORTHOGONAL). TRUE when a later same-day revision of the same case replaced this row; the keeper carries the AI review and the count. This is the flag search reads: the searchable population is every document with a body that is not superseded — topic relevance (retrieval_relevant) and counting scope (counting_scope) are analysis-only annotations and never hide a document from search. NULL = current.',
+  },
+  {
     name: 'search_vector',
     type: 'tsvector (database-managed)',
     description:
