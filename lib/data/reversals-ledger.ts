@@ -48,6 +48,16 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
     date: '2026-09-14',
+    kind: 'regeneration',
+    scope: 'Weekly summaries — twenty weeks, 2026-03-23 to 2026-08-31',
+    count: 20,
+    what: 'The weekly summaries for twenty weeks were regenerated. Their statuses and category lists were correct; the document totals they quoted (for example "volume fell from 660 to 404") no longer matched the record, because the counts underneath had moved. Afterwards the deterministic number check finds no mismatches across the span.',
+    why: 'The September relevance filters removed off-topic Federal Register documents from every era, and the same-day whole-term re-derivation moved a few more counts; summaries written before those changes carried the earlier totals. Totals are informational and never drive a status, so the check reports them as drift rather than holding the digest; the owner chose to regenerate rather than leave twenty archived summaries quoting stale numbers.',
+    evidence: [issue(825), issue(884)],
+    release: 'v1.31.3',
+  },
+  {
+    date: '2026-09-14',
     kind: 'flip',
     scope:
       'Free and Fair Elections, Government Watchdogs, Spending Money Congress Approved — five weeks',
