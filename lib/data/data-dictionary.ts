@@ -464,7 +464,11 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     description:
       'Kind of document as ingested: e.g. judicial_opinion, press_release (DOJ API or DHS/ICE/CBP newsrooms — distinguish by source_origin), bill, floor_speech, or a Federal Register type like Rule / Notice. Format change 2026-08: court_opinion (docket-entry stub) rows were retired — the case universe they carried moved to tracked_cases.',
   },
-  { name: 'category', type: 'varchar', description: CATEGORY_DESC },
+  {
+    name: 'category',
+    type: 'varchar',
+    description: `${CATEGORY_DESC} In this table the value may also be the pseudo-category \`corpus\` (2026-09, R-SEARCH-ORTHOGONAL): a document no router placed (Congressional Record, hearings, court opinions, presidential documents, DOJ releases), stored for search with retrieval_relevant = false and outside every count and assessment; search surfaces it as "Not routed to a category".`,
+  },
   { name: 'title', type: 'text', description: 'Document title as published by the source.' },
   {
     name: 'content',
@@ -545,13 +549,13 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
     name: 'retrieval_relevant',
     type: 'boolean|null',
     description:
-      'NULL/true = relevant. false = annotated off-topic for its category by the retrieval-relevance filter; kept for auditability but excluded from assessment, statistics, search, and exports of derived values.',
+      'NULL/true = detection evidence for its category. false = this (url, category) row is NOT evidence: annotated off-topic by a relevance filter, a fetch-time drop stored for search, or an unrouted document under the `corpus` pseudo-category (2026-09, R-SEARCH-ORTHOGONAL). Excluded from assessment, statistics, and exports of derived values, but NOT from search: search reads `superseded` and `content_type` only, and such rows surface labelled "Not routed to a category".',
   },
   {
     name: 'counting_scope',
     type: 'boolean|null',
     description:
-      'NULL/true = inside the counting population. false = a court-category judicial opinion outside the documented counting rule (classifier v1: every SCOTUS opinion; circuit/D.D.C. opinions containing executive-power phrases). Applied uniformly to ALL eras so document counts are method-consistent across the February 2026 collection change. Out-of-scope opinions stay stored and remain AI-review evidence — this flag governs counting only.',
+      'NULL/true = inside the counting population. false = a court-category judicial opinion outside the documented counting rule (classifier v1: every SCOTUS opinion; circuit/D.D.C. opinions containing executive-power phrases). Applied uniformly to ALL eras so document counts are method-consistent across the February 2026 collection change. Out-of-scope opinions stay stored, remain AI-review evidence, and remain searchable — this flag governs counting only (2026-09: search reads `superseded` and `content_type`, never this flag).',
   },
   {
     name: 'evidence_tier',

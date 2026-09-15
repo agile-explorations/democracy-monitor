@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchCategoryIncremental } from '@/lib/services/incremental-fetcher';
 import type { Category } from '@/lib/types';
 
-vi.mock('@/lib/cron/backfill-fetchers', () => ({
+vi.mock('@/lib/cron/backfill-fetchers', async (importOriginal) => ({
+  // The pure dedupe helper is the real one — the result's excludedItems
+  // contract is what these tests check.
+  dedupeExcludedItems: (await importOriginal<typeof import('@/lib/cron/backfill-fetchers')>())
+    .dedupeExcludedItems,
   fetchWeekItemsFr: vi.fn().mockResolvedValue({
     items: [{ title: 'FR Doc 1', link: 'https://fr.gov/1', type: 'Notice' }],
     errors: [],
@@ -51,6 +55,26 @@ describe('fetchCategoryIncremental', () => {
     expect(result.signalResults[0].signalId).toBe('fr-1');
     expect(result.signalResults[0].success).toBe(true);
     expect(result.signalResults[0].documentCount).toBe(1);
+  });
+
+  it('carries excluded items separately: deduped, minus routed URLs, outside documentCount (#891)', async () => {
+    const dropped = { title: 'Routine notice', link: 'https://fr.gov/dropped', type: 'Notice' };
+    mockFetchWeekItemsFr.mockResolvedValueOnce({
+      items: [{ title: 'FR Doc 1', link: 'https://fr.gov/1', type: 'Notice' }],
+      errors: [],
+      excludedItems: [dropped, { ...dropped }, { title: 'Also routed', link: 'https://fr.gov/1' }],
+    });
+
+    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
+
+    expect(result.items.map((i) => i.link)).toEqual(['https://fr.gov/1']);
+    expect(result.excludedItems).toEqual([dropped]);
+    expect(result.signalResults[0].documentCount).toBe(1);
+  });
+
+  it('returns an empty excluded list when no source reports drops', async () => {
+    const result = await fetchCategoryIncremental(testCategory, {}, '2026-02-20');
+    expect(result.excludedItems).toEqual([]);
   });
 
   it('skips signal groups with no signals', async () => {

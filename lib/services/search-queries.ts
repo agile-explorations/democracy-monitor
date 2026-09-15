@@ -4,7 +4,12 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { CORPUS_CATEGORY, categoryFacetD, searchableD } from '@/lib/db/document-filters';
+import {
+  categoryFacetD,
+  CORPUS_CATEGORY,
+  routedOnlyD,
+  searchableD,
+} from '@/lib/db/document-filters';
 import {
   countDistinctDocs,
   fetchRowsForDocKeys,
@@ -34,6 +39,11 @@ export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof
 
   if (filters.category) {
     conditions.push(categoryFacetD(filters.category));
+  }
+  // Explore default (#895): routed documents only — the "Not routed to a
+  // category" facet already selects the complement, so it implies the toggle.
+  if (!filters.includeUnrouted && filters.category !== CORPUS_CATEGORY) {
+    conditions.push(routedOnlyD());
   }
   if (filters.dateFrom) {
     conditions.push(sql`d.published_at >= ${filters.dateFrom}::timestamptz`);

@@ -25,18 +25,24 @@
  *        data — regeneration is a per-repair owner decision, so this
  *        reports but never fails the run
  *   G5   no assessment rows for absent or retrieval-excluded documents
- *   G6   no derived rows under an unknown category
+ *   G6   no rows under an unknown category — `intent` is allowed everywhere,
+ *        `corpus` (unrouted documents, R-SEARCH-ORTHOGONAL) only in documents;
+ *        a corpus score/aggregate/baseline row is an error
  *   G7   every assessment's week_of is the Monday of its document's published
  *        week — late-arriving documents were stamped with the run week until
  *        #825; error since the #884 restamp (401 rows, 2026-09-14)
  *   G7n  (warn) assessments whose week_of is not a Monday at all (a separate
  *        backfill stamping bug, #885)
+ *   G8   population flags agree (#893): a superseded revision is never
+ *        analysis evidence and always names its successor; a corpus row
+ *        carries both analysis flags false
  */
 
 import { sql } from 'drizzle-orm';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import type { CategoryWeek } from '@/lib/services/reconciliation-plan';
 import { checkHelp } from '@/lib/utils/cli-help';
 import { addDays } from '@/lib/utils/date-utils';
@@ -359,38 +365,103 @@ async function g5AssessmentReferential(): Promise<GraphInvariantResult> {
 const VALID_CATEGORY_KEYS = new Set(CATEGORIES.map((c) => c.key));
 // `intent` is the presidential-intent pseudo-category — stored in `documents`
 // for the intent feature, deliberately outside the 14 detection categories and
-// excluded from scoring/aggregation everywhere. A legitimate value, not an orphan.
+// excluded from scoring/aggregation everywhere. `corpus` holds unrouted
+// documents kept for search only (R-SEARCH-ORTHOGONAL), so it is legitimate in
+// `documents` and an orphan in every derived table.
 const ALLOWED_NON_DETECTION_KEYS = new Set(['intent']);
+const ALLOWED_DOCUMENT_ONLY_KEYS = new Set([CORPUS_CATEGORY]);
 
-/** Category values that belong to no known detection category (intent allowlisted). Pure — unit-tested. */
-export function findOrphanCategories(categories: string[]): string[] {
-  return categories.filter(
-    (c) => !VALID_CATEGORY_KEYS.has(c) && !ALLOWED_NON_DETECTION_KEYS.has(c),
-  );
+export interface TableCategory {
+  table: string;
+  category: string;
+}
+
+/** `table: category` pairs that belong to no known detection category, with
+ *  the per-table allowlist applied (intent everywhere, corpus in documents
+ *  only). Pure — unit-tested. */
+export function findOrphanCategories(rows: TableCategory[]): string[] {
+  return rows
+    .filter(({ table, category }) => {
+      if (VALID_CATEGORY_KEYS.has(category) || ALLOWED_NON_DETECTION_KEYS.has(category)) {
+        return false;
+      }
+      return !(table === 'documents' && ALLOWED_DOCUMENT_ONLY_KEYS.has(category));
+    })
+    .map(({ table, category }) => `${table}: ${category}`);
 }
 
 /**
- * G6 — no derived rows under a category outside the detection taxonomy (moved
- * from Data Readiness's Data Integrity section in #647). The Graph is the sole
+ * G6 — no rows under a category outside the detection taxonomy (moved from
+ * Data Readiness's Data Integrity section in #647). The Graph is the sole
  * authority on derived-vs-inputs consistency; an orphan category means some code
- * path wrote scores/aggregates/baselines under an unknown key.
+ * path wrote scores/aggregates/baselines under an unknown key — including the
+ * corpus pseudo-category, which never carries derived rows (#893).
  */
 async function g6OrphanCategories(): Promise<GraphInvariantResult> {
   const rows = await q(sql`
-    SELECT DISTINCT category FROM (
-      SELECT category FROM documents
-      UNION SELECT category FROM document_scores
-      UNION SELECT category FROM weekly_aggregates
-      UNION SELECT category FROM baselines
-    ) t`);
-  const orphans = findOrphanCategories(rows.map((r) => String(r.category)));
+    SELECT DISTINCT t, category FROM (
+      SELECT 'documents' AS t, category FROM documents
+      UNION SELECT 'document_scores', category FROM document_scores
+      UNION SELECT 'weekly_aggregates', category FROM weekly_aggregates
+      UNION SELECT 'baselines', category FROM baselines
+    ) x`);
+  const orphans = findOrphanCategories(
+    rows.map((r) => ({ table: String(r.t), category: String(r.category) })),
+  );
   return {
     id: 'G6',
     severity: 'error',
-    description: 'no derived rows under an unknown category (intent allowlisted)',
+    description: 'no rows under an unknown category (intent allowlisted; corpus in documents only)',
     violations: orphans.length,
     pass: orphans.length === 0,
     sample: orphans.length ? orphans : undefined,
+  };
+}
+
+const G8_SAMPLE_ROWS = 3;
+
+/** The three G8 clauses, each a violation population over `documents`. The
+ *  first and third ride idx_documents_superseded (partial, WHERE superseded IS
+ *  TRUE); the second rides idx_documents_category. */
+const G8_CLAUSES: Array<{ label: string; where: ReturnType<typeof sql> }> = [
+  {
+    label: 'superseded revision still analysis evidence',
+    where: sql`superseded IS TRUE AND retrieval_relevant IS NOT FALSE`,
+  },
+  {
+    label: 'corpus row with an analysis flag on',
+    where: sql`category = ${CORPUS_CATEGORY}
+      AND (retrieval_relevant IS NOT FALSE OR counting_scope IS NOT FALSE)`,
+  },
+  {
+    label: 'superseded revision without metadata.supersededBy',
+    where: sql`superseded IS TRUE AND NOT (metadata ? 'supersededBy')`,
+  },
+];
+
+/** G8 — population-flag consistency (#893). Live: every clause is index-bound. */
+async function g8PopulationFlags(): Promise<GraphInvariantResult> {
+  const sample: string[] = [];
+  let total = 0;
+  for (const { label, where } of G8_CLAUSES) {
+    const rows = await q(sql`
+      SELECT (SELECT count(*) FROM documents WHERE ${where}) AS n,
+        (SELECT array_agg(id) FROM
+          (SELECT id FROM documents WHERE ${where} ORDER BY id LIMIT ${G8_SAMPLE_ROWS}) s) AS ids`);
+    const n = Number(rows[0]?.n ?? 0);
+    if (n === 0) continue;
+    total += n;
+    const ids = ((rows[0]?.ids ?? []) as unknown[]).map((id) => `#${id}`).join(', ');
+    sample.push(`${label}: ${n} (e.g. ${ids})`);
+  }
+  return {
+    id: 'G8',
+    severity: 'error',
+    description:
+      'population flags agree: superseded rows are non-evidence and marked, corpus rows carry both analysis flags false',
+    violations: total,
+    pass: total === 0,
+    sample: sample.length ? sample : undefined,
   };
 }
 
@@ -454,7 +525,17 @@ async function g7nNonMondayAssessmentWeeks(): Promise<GraphInvariantResult> {
  * tables. Fast enough to run live on a health-page request (#650), so the
  * freshness signals (G3/G4/G4h) are up-to-the-minute, not last-snapshot.
  */
-export const LIVE_INVARIANT_IDS = ['G2a', 'G2b', 'G2b-baseline', 'G2c', 'G3', 'G3L', 'G4', 'G4h'];
+export const LIVE_INVARIANT_IDS = [
+  'G2a',
+  'G2b',
+  'G2b-baseline',
+  'G2c',
+  'G3',
+  'G3L',
+  'G4',
+  'G4h',
+  'G8',
+];
 
 export async function runLiveInvariants(): Promise<GraphInvariantResult[]> {
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
@@ -467,6 +548,7 @@ export async function runLiveInvariants(): Promise<GraphInvariantResult[]> {
     await g3EnrichmentFreshness(true),
     await g4NarrativeFreshness(true),
     await g4NarrativeFreshness(false),
+    await g8PopulationFlags(),
   ];
 }
 
@@ -520,7 +602,7 @@ if (require.main === module) {
     argv,
     `Usage: pnpm validate:graph [--json]
 
-Checks the derivation-graph edge contract (G1a..G7 — see
+Checks the derivation-graph edge contract (G1a..G8 — see
 docs/PROJECT_KNOWLEDGE.md "Derivation graph"). Exits nonzero when any
 invariant is violated.`,
   );

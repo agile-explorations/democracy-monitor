@@ -2,8 +2,58 @@ import { describe, expect, it } from 'vitest';
 import {
   matchesComponentSlug,
   parseDojSignalParams,
+  partitionReleases,
   toContentItem,
 } from '@/lib/services/doj-fetcher';
+
+describe('partitionReleases (#892 corpus-only DOJ releases)', () => {
+  const inRange = String(Math.floor(new Date('2026-03-04T12:00:00Z').getTime() / 1000));
+  const outOfRange = String(Math.floor(new Date('2026-02-01T12:00:00Z').getTime() / 1000));
+  const window = { fromDate: new Date('2026-03-02'), toDate: new Date('2026-03-08') };
+  const release = (title: string, component: string, date = inRange) => ({
+    title,
+    url: `/opa/pr/${title.toLowerCase().replace(/\s+/g, '-')}`,
+    date,
+    component: [{ uuid: 'u', name: component }],
+  });
+
+  it('routes releases matching the signal component and sets aside corpus-component rejects', () => {
+    const { items, excludedItems } = partitionReleases(
+      [
+        release('Indictment unsealed', 'Criminal Division'),
+        release('AG statement', 'Office of the Attorney General'),
+        release('Local case', 'U.S. Attorney - District of Nowhere'),
+      ],
+      { component: 'criminal-division', ...window },
+    );
+
+    expect(items.map((i) => i.title)).toEqual(['Indictment unsealed']);
+    expect(excludedItems.map((i) => i.title)).toEqual(['AG statement']);
+  });
+
+  it('applies the date window to both buckets', () => {
+    const { items, excludedItems } = partitionReleases(
+      [
+        release('Old indictment', 'Criminal Division', outOfRange),
+        release('Old AG statement', 'Office of the Attorney General', outOfRange),
+      ],
+      { component: 'criminal-division', ...window },
+    );
+
+    expect(items).toEqual([]);
+    expect(excludedItems).toEqual([]);
+  });
+
+  it('routes everything when the signal has no component filter', () => {
+    const { items, excludedItems } = partitionReleases(
+      [release('AG statement', 'Office of the Attorney General')],
+      { ...window },
+    );
+
+    expect(items).toHaveLength(1);
+    expect(excludedItems).toEqual([]);
+  });
+});
 
 describe('parseDojSignalParams', () => {
   it('extracts component from URL', () => {

@@ -239,12 +239,13 @@ async function enrichPackages(
     const categories = mapSubjectsToCategories(subjects, unmapped);
     for (const s of unmapped) globalUnmapped.add(s);
 
+    // Unmapped documents still get content and are returned with no
+    // categories (#892): the caller stores them search-only under `corpus`.
     if (categories.length === 0) {
       const reason = subjects.length === 0 ? 'no subjects in summary' : 'no mapped subjects';
       console.log(
-        `[cpd-fetcher] Skipped ${packageId} (${reason}): "${summary.title?.slice(0, 80) ?? ''}"`,
+        `[cpd-fetcher] Unrouted ${packageId} (${reason}): "${summary.title?.slice(0, 80) ?? ''}"`,
       );
-      continue;
     }
 
     const item = summaryToContentItem(packageId, summary);
@@ -269,6 +270,19 @@ async function enrichPackages(
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
+
+/** Split fetched CPD documents into the category-routed ones (store + score
+ *  per category) and the unrouted items (search-only under `corpus`, #892).
+ *  Pure. */
+export function partitionCpdDocuments(docs: CpdDocument[]): {
+  routed: CpdDocument[];
+  unrouted: ContentItem[];
+} {
+  return {
+    routed: docs.filter((d) => d.categories.length > 0),
+    unrouted: docs.filter((d) => d.categories.length === 0).map((d) => d.item),
+  };
+}
 
 /** Which found packages to enrich: drop the stored ones, keep order (GovInfo
  *  returns oldest first, so a cap defers the newest — they are what next
@@ -340,8 +354,9 @@ export async function fetchCpdHistorical(params: {
   if (unmappedCount > 0) {
     console.log(`[cpd-fetcher] ${unmappedCount} unmapped subjects encountered (logged for review)`);
   }
+  const unroutedCount = docs.filter((d) => d.categories.length === 0).length;
   console.log(
-    `[cpd-fetcher] ${docs.length} documents with category mappings (${packageIds.length - docs.length} skipped — no category match)`,
+    `[cpd-fetcher] ${docs.length - unroutedCount} documents with category mappings (${unroutedCount} unrouted — corpus only)`,
   );
 
   return docs;

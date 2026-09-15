@@ -6,8 +6,8 @@ import {
   EROSION_TYPE_TIPS,
 } from '@/lib/data/assessment-labels';
 import { labelForSourceType } from '@/lib/data/document-tiers';
-import { verdictColor } from './ExploreCardAssessment';
-import { categoryLabel, formatDate, similarityBar } from './helpers';
+import { CategoryBadge, verdictColor } from './ExploreCardAssessment';
+import { formatDate, similarityBar } from './helpers';
 import { MatchSnippet } from './MatchSnippet';
 import type { ResearchDocResult } from './types';
 
@@ -50,9 +50,7 @@ export function ResearchDocCard({ doc }: { doc: ResearchDocResult }) {
           )}
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[11px] text-dm-muted">
             {doc.publishedAt && <span>{formatDate(doc.publishedAt)}</span>}
-            <span className="px-1.5 py-0 rounded bg-dm-border/50">
-              {categoryLabel(doc.category)}
-            </span>
+            <CategoryBadge doc={doc} />
             {doc.finalScore != null && <span>Score: {doc.finalScore.toFixed(1)}</span>}
             {doc.p2Assessment && (
               <span

@@ -2,6 +2,7 @@
 
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import type { Category } from '@/lib/types';
 import type {
@@ -471,6 +472,7 @@ export async function countUnfragmentedCrecGranules(recentDays?: number): Promis
       FROM documents p
       WHERE p.source_origin = 'crec'
         AND p.parent_id IS NULL
+        AND p.category <> ${CORPUS_CATEGORY}
         AND length(p.content) > 102400
         AND p.metadata->>'granuleId' IS NOT NULL
         AND p.fetched_at > ${CREC_FRAGMENT_BASELINE_DATE}::timestamptz

@@ -1,6 +1,9 @@
 import type { SQL } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+import { CORPUS_CATEGORY } from '@/lib/data/document-populations';
 import { documents } from '@/lib/db/schema';
+
+export { CORPUS_CATEGORY };
 
 /**
  * Three document populations (R-SEARCH-ORTHOGONAL, owner decision
@@ -24,11 +27,6 @@ import { documents } from '@/lib/db/schema';
  * enforces which files may use which predicate.
  */
 
-/** Pseudo-category for documents no router placed (CHRG, CREC, CL, CPD,
- *  DOJ): stored for search with both analysis flags false. The literal lives
- *  here, in validate-graph (G6/G8) and the tripwire only. */
-export const CORPUS_CATEGORY = 'corpus';
-
 /** Searchable population: body present, not superseded. */
 export function searchable(): SQL {
   return sql`${documents.contentType} != 'metadata_only' AND ${documents.superseded} IS NOT TRUE`;
@@ -43,6 +41,18 @@ export function searchableSql(alias: string): string {
  *  every search query uses (no sql.raw — parameterized template only). */
 export function searchableD(): SQL {
   return sql`d.content_type != 'metadata_only' AND d.superseded IS NOT TRUE`;
+}
+
+/** Explore's default population over the `d` alias: rows that are detection
+ *  evidence for a real category (the "include unrouted" toggle lifts it). */
+export function routedOnlyD(): SQL {
+  return sql`d.retrieval_relevant IS NOT FALSE AND d.category <> ${CORPUS_CATEGORY}`;
+}
+
+/** Similar-documents' cross-category bucket: rows that are evidence in some
+ *  OTHER category (never the source category's own off-topic notices). */
+export function routedElsewhereD(category: string): SQL {
+  return sql`(d.category <> ${category} AND d.retrieval_relevant IS NOT FALSE)`;
 }
 
 /**

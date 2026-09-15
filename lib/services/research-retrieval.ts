@@ -140,7 +140,7 @@ export function buildResearchQuery(vectorStr: string, query: string, opts: Resea
   // texts (up to ~1MB each) over the wire measured ~8-10s of the latency.
   return sql`
     SELECT r.id, d2.title, LEFT(d2.content, ${RESEARCH_CONTENT_FETCH_CHARS}) as content, d2.url, d2.published_at, d2.source_type,
-      d2.source_origin, d2.case_id, d2.category, r.cosine_similarity, r.final_score, r.document_class,
+      d2.source_origin, d2.case_id, d2.category, d2.retrieval_relevant, r.cosine_similarity, r.final_score, r.document_class,
       ai.assessment as p2_assessment, ai.erosion_type as p2_erosion_type,
       ai.confidence as p2_confidence, LEFT(ai.reasoning, 300) as p2_summary
     FROM (

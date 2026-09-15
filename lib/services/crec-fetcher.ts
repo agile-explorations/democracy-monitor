@@ -319,6 +319,7 @@ export async function fetchCrecForDate(
   date: string,
   chambers: CrecChamber[],
   apiKey: string,
+  opts: { excludeGranuleIds?: ReadonlySet<string> } = {},
 ): Promise<ContentItem[]> {
   const items: ContentItem[] = [];
   const packageId = `CREC-${date}`;
@@ -327,9 +328,12 @@ export async function fetchCrecForDate(
     const granules = await fetchDayGranules(date, chamber, apiKey);
     await sleep(RATE_LIMIT_DELAY_MS);
 
-    // Filter procedural entries before fetching summaries (save API calls)
+    // Filter procedural entries (and granules the caller already holds)
+    // before fetching summaries — each skipped granule saves two calls.
     const substantive = granules.filter(
-      (g) => !isProceduralGranule(g.title, undefined, g.granuleId),
+      (g) =>
+        !isProceduralGranule(g.title, undefined, g.granuleId) &&
+        !opts.excludeGranuleIds?.has(g.granuleId),
     );
 
     for (const granule of substantive) {

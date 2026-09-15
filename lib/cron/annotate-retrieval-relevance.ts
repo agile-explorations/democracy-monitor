@@ -41,6 +41,7 @@ import {
   frDropLedger,
   p2025Matches,
 } from '@/lib/db/schema';
+import { fetchFrDocumentsByNumber } from '@/lib/services/federal-register-fetcher';
 import {
   assessRetrievalRelevance,
   hasRelevanceFilter,
@@ -49,7 +50,6 @@ import { checkHelp } from '@/lib/utils/cli-help';
 import { chunk } from '@/lib/utils/collections';
 import { addDays, getMonday, toDateString } from '@/lib/utils/date-utils';
 
-const FR_API = 'https://www.federalregister.gov/api/v1/documents';
 const FR_BATCH_SIZE = 20;
 const FR_DELAY_MS = 300;
 /** Earliest analysis period start (trump_2017). */
@@ -103,24 +103,9 @@ export function docNumberFromUrl(url: string): string | null {
 async function fetchAbstracts(docNumbers: string[]): Promise<Map<string, string | null>> {
   const result = new Map<string, string | null>();
   if (docNumbers.length === 0) return result;
-  const url =
-    `${FR_API}/${docNumbers.map(encodeURIComponent).join(',')}.json` +
-    `?fields[]=document_number&fields[]=abstract`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return result;
-    const json = (await res.json()) as {
-      results?: Array<{ document_number?: string; abstract?: string | null }>;
-      document_number?: string;
-      abstract?: string | null;
-    };
-    // Multi-doc responses use {results: [...]}; a single-doc request returns the doc object.
-    const docs = json.results ?? (json.document_number ? [json] : []);
-    for (const d of docs) {
-      if (d.document_number) result.set(d.document_number, d.abstract ?? null);
-    }
-  } catch (err) {
-    console.warn(`[annotate] FR API batch failed (${docNumbers.length} docs):`, err);
+  const docs = await fetchFrDocumentsByNumber(docNumbers, ['document_number', 'abstract']);
+  for (const d of docs) {
+    if (d.document_number) result.set(d.document_number, d.abstract ?? null);
   }
   return result;
 }

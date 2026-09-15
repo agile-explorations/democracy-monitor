@@ -1,4 +1,8 @@
 import { CATEGORIES } from '@/lib/data/categories';
+import { CORPUS_CATEGORY } from '@/lib/data/document-populations';
+
+/** Badge text for documents no router placed (owner decision 2026-09-15). */
+export const UNROUTED_LABEL = 'Not routed to a category';
 
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return '';
@@ -9,6 +13,20 @@ export function formatDate(dateStr: string | null): string {
 
 export function categoryLabel(key: string): string {
   return CATEGORIES.find((c) => c.key === key)?.title ?? key;
+}
+
+/** True when a result row is not detection evidence for a category: the
+ *  server says `routed: false` (off-topic annotation or corpus row) or the
+ *  category is the `corpus` pseudo-category. `routed` is optional because
+ *  cached research payloads predate the flag — only an explicit false
+ *  demotes the badge. */
+export function isUnroutedDocument(doc: { category: string; routed?: boolean }): boolean {
+  return doc.routed === false || doc.category === CORPUS_CATEGORY;
+}
+
+/** Category badge text: the category title, or the unrouted label (#895). */
+export function documentCategoryLabel(doc: { category: string; routed?: boolean }): string {
+  return isUnroutedDocument(doc) ? UNROUTED_LABEL : categoryLabel(doc.category);
 }
 
 export function similarityBar(similarity: number | null): string {

@@ -3,7 +3,30 @@ import type { ContentItem } from '@/lib/types';
 
 vi.mock('@/lib/services/federal-register-fetcher', () => ({
   fetchFederalRegisterHistorical: vi.fn(),
+  fetchFrRawText: vi.fn().mockResolvedValue('Full FR text'),
   parseSignalParams: vi.fn().mockReturnValue({}),
+}));
+
+// Retrieval-relevance filter (#524): keep everything unless a test says otherwise.
+vi.mock('@/lib/services/retrieval-relevance-filter', () => ({
+  partitionByRetrievalRelevance: vi.fn((_category: string, items: ContentItem[]) => ({
+    kept: items,
+    dropped: [],
+  })),
+}));
+
+// The drop ledger records what the fetch would persist, so tests assert on
+// its contents rather than on mock internals.
+const { frDropLedger } = vi.hoisted(() => ({
+  frDropLedger: [] as Array<{ category: string; signalUrl: string; urls: string[] }>,
+}));
+vi.mock('@/lib/services/fr-drop-ledger', () => ({
+  recordFrDrops: vi.fn(
+    async (category: string, signalUrl: string, dropped: Array<{ item: ContentItem }>) => {
+      if (dropped.length > 0)
+        frDropLedger.push({ category, signalUrl, urls: dropped.map((d) => d.item.link ?? '') });
+    },
+  ),
 }));
 
 vi.mock('@/lib/services/courtlistener-fetcher', () => ({
@@ -12,7 +35,7 @@ vi.mock('@/lib/services/courtlistener-fetcher', () => ({
 }));
 
 vi.mock('@/lib/services/doj-fetcher', () => ({
-  fetchDojHistorical: vi.fn(),
+  fetchDojHistoricalPartitioned: vi.fn(),
   parseDojSignalParams: vi.fn().mockReturnValue({}),
 }));
 
@@ -60,6 +83,10 @@ vi.mock('@/lib/utils/async', () => ({
 
 const week = { start: '2025-01-20', end: '2025-01-27' };
 const mockItem = (title: string, link: string): ContentItem => ({ title, link });
+const dojResult = (items: ContentItem[], excludedItems: ContentItem[] = []) => ({
+  items,
+  excludedItems,
+});
 
 describe('fetchWeekItemsFr', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -141,6 +168,57 @@ describe('fetchWeekItemsFr', () => {
     expect(result.errors).toHaveLength(1);
     expect(result.errors[0]).toContain('HTTP 502');
   });
+
+  it('returns retrieval-relevance drops only in excludedItems, with their text filled (#891)', async () => {
+    const { fetchFederalRegisterHistorical } =
+      await import('@/lib/services/federal-register-fetcher');
+    const { partitionByRetrievalRelevance } =
+      await import('@/lib/services/retrieval-relevance-filter');
+    frDropLedger.length = 0;
+
+    const kept = mockItem('Press access rule', 'https://fr.gov/kept');
+    const dropped: ContentItem = {
+      title: 'Routine meeting notice',
+      link: 'https://fr.gov/dropped',
+      metadata: { raw_text_url: 'https://fr.gov/dropped/raw' },
+    };
+    vi.mocked(fetchFederalRegisterHistorical).mockResolvedValue([kept, dropped]);
+    vi.mocked(partitionByRetrievalRelevance).mockImplementationOnce((_c, items) => ({
+      kept: items.filter((i) => i !== dropped),
+      dropped: items.filter((i) => i === dropped).map((item) => ({ item, reason: 'no-match' })),
+    }));
+
+    const { fetchWeekItemsFr } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekItemsFr(
+      [{ url: 'fr://test', type: 'federal_register' }],
+      week,
+      'mediaFreedom',
+    );
+
+    expect(result.items).toEqual([kept]);
+    expect(result.excludedItems).toEqual([dropped]);
+    expect(dropped.content).toBe('Full FR text');
+    // Ledger + fetch-log semantics unchanged: the drop is recorded, not counted.
+    expect(frDropLedger).toEqual([
+      { category: 'mediaFreedom', signalUrl: 'fr://test', urls: ['https://fr.gov/dropped'] },
+    ]);
+    expect(result.contentGaps).toBeUndefined();
+  });
+});
+
+describe('dedupeExcludedItems', () => {
+  it('dedupes by URL and drops any URL a routed item already carries', async () => {
+    const { dedupeExcludedItems } = await import('@/lib/cron/backfill-fetchers');
+    const routed = [mockItem('Routed', 'https://x/routed')];
+    const excluded = [
+      mockItem('Dup A', 'https://x/a'),
+      mockItem('Dup A again', 'https://x/a'),
+      mockItem('Also routed elsewhere', 'https://x/routed'),
+      { title: 'No link' },
+    ];
+
+    expect(dedupeExcludedItems(routed, excluded)).toEqual([mockItem('Dup A', 'https://x/a')]);
+  });
 });
 
 describe('fetchWeekDocuments', () => {
@@ -149,12 +227,14 @@ describe('fetchWeekDocuments', () => {
   it('aggregates sourceResults across groups', async () => {
     const { fetchFederalRegisterHistorical } =
       await import('@/lib/services/federal-register-fetcher');
-    const { fetchDojHistorical } = await import('@/lib/services/doj-fetcher');
+    const { fetchDojHistoricalPartitioned } = await import('@/lib/services/doj-fetcher');
 
     vi.mocked(fetchFederalRegisterHistorical).mockResolvedValue([
       mockItem('FR doc', 'https://fr.gov/1'),
     ]);
-    vi.mocked(fetchDojHistorical).mockResolvedValue([mockItem('DOJ doc', 'https://doj.gov/1')]);
+    vi.mocked(fetchDojHistoricalPartitioned).mockResolvedValue(
+      dojResult([mockItem('DOJ doc', 'https://doj.gov/1')]),
+    );
 
     const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
     const result = await fetchWeekDocuments(
@@ -178,17 +258,67 @@ describe('fetchWeekDocuments', () => {
     expect(result.sourceResults.federal_register.itemCount).toBe(1);
     expect(result.sourceResults.federal_register.errors).toHaveLength(0);
     expect(result.sourceResults.doj.itemCount).toBe(1);
+    expect(result.excludedItems).toEqual([]);
+  });
+
+  it('collects excluded items across sources, deduped and minus routed URLs (#891/#892)', async () => {
+    const { fetchFederalRegisterHistorical } =
+      await import('@/lib/services/federal-register-fetcher');
+    const { partitionByRetrievalRelevance } =
+      await import('@/lib/services/retrieval-relevance-filter');
+    const { fetchDojHistoricalPartitioned } = await import('@/lib/services/doj-fetcher');
+
+    const frKept = mockItem('FR kept', 'https://fr.gov/kept');
+    const frDropped = mockItem('FR dropped', 'https://shared.gov/x');
+    vi.mocked(fetchFederalRegisterHistorical).mockResolvedValue([frKept, frDropped]);
+    vi.mocked(partitionByRetrievalRelevance).mockReturnValueOnce({
+      kept: [frKept],
+      dropped: [{ item: frDropped, reason: 'no-match' }],
+    });
+    // DOJ routes the very URL FR dropped, and rejects Y twice (two signals).
+    const agRelease = mockItem('AG statement', 'https://doj.gov/y');
+    vi.mocked(fetchDojHistoricalPartitioned).mockResolvedValue(
+      dojResult([mockItem('Routed by DOJ', 'https://shared.gov/x')], [agRelease, { ...agRelease }]),
+    );
+
+    const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
+    const result = await fetchWeekDocuments(
+      week,
+      {
+        fr: [{ url: 'fr://test', type: 'federal_register' }],
+        cl: [],
+        doj: [{ url: 'doj://test', type: 'doj_json' }],
+        gi: [],
+        fec: [],
+        oig: [],
+        dhspress: [],
+        gao: [],
+      },
+      'lawEnforcement',
+    );
+
+    expect(result.items.map((i) => i.link)).toEqual([
+      'https://fr.gov/kept',
+      'https://shared.gov/x',
+    ]);
+    // FR drops stay under the signal category; DOJ allowlisted releases go to
+    // the corpus channel (deduped, minus routed URLs) — never a category row.
+    expect(result.excludedItems).toEqual([]);
+    expect(result.corpusItems).toEqual([agRelease]);
+    // Excluded items never count toward a source's item count.
+    expect(result.sourceResults.federal_register.itemCount).toBe(1);
+    expect(result.sourceResults.doj.itemCount).toBe(1);
   });
 
   it('records errors in sourceResults when a source fails all retries', async () => {
     const { fetchFederalRegisterHistorical } =
       await import('@/lib/services/federal-register-fetcher');
-    const { fetchDojHistorical } = await import('@/lib/services/doj-fetcher');
+    const { fetchDojHistoricalPartitioned } = await import('@/lib/services/doj-fetcher');
 
     vi.mocked(fetchFederalRegisterHistorical).mockResolvedValue([
       mockItem('FR doc', 'https://fr.gov/1'),
     ]);
-    vi.mocked(fetchDojHistorical).mockRejectedValue(new Error('Timeout'));
+    vi.mocked(fetchDojHistoricalPartitioned).mockRejectedValue(new Error('Timeout'));
 
     const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
     const result = await fetchWeekDocuments(
@@ -491,13 +621,15 @@ describe('fetchWeekDocuments', () => {
   it('deduplicates items across sources by URL', async () => {
     const { fetchFederalRegisterHistorical } =
       await import('@/lib/services/federal-register-fetcher');
-    const { fetchDojHistorical } = await import('@/lib/services/doj-fetcher');
+    const { fetchDojHistoricalPartitioned } = await import('@/lib/services/doj-fetcher');
 
     const sharedUrl = 'https://shared.gov/doc1';
     vi.mocked(fetchFederalRegisterHistorical).mockResolvedValue([
       mockItem('Shared doc', sharedUrl),
     ]);
-    vi.mocked(fetchDojHistorical).mockResolvedValue([mockItem('Same doc', sharedUrl)]);
+    vi.mocked(fetchDojHistoricalPartitioned).mockResolvedValue(
+      dojResult([mockItem('Same doc', sharedUrl)]),
+    );
 
     const { fetchWeekDocuments } = await import('@/lib/cron/backfill-fetchers');
     const result = await fetchWeekDocuments(

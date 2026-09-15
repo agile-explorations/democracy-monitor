@@ -11,6 +11,7 @@ import { eq } from 'drizzle-orm';
 import { runLayersForGroups } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { chrgSeenLedger, documents } from '@/lib/db/schema';
 import {
   groupItemsByCategoryWeek,
@@ -20,7 +21,7 @@ import {
 import { CHRG_TRAILING_WINDOW_DAYS, fetchChrgWindow } from '@/lib/services/chrg-fetcher';
 import { classifyHearingToCategories } from '@/lib/services/crec-classifier';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { storeDocuments, storeExcludedDocuments } from '@/lib/services/document-store';
 import {
   computeWeeklyAggregate,
   getLastCompletedWeek,
@@ -62,6 +63,15 @@ export function routeHearingsToCategories(items: ContentItem[]): {
   }
 
   return { routed, dropped };
+}
+
+/** Hearings with text that matched no category: stored search-only under
+ *  `corpus` (#892). `no_text` drops have nothing to search and stay
+ *  ledger-only. Pure. */
+export function unroutedHearingItems(
+  dropped: Array<{ item: ContentItem; reason: 'zero_categories' | 'no_text' }>,
+): ContentItem[] {
+  return dropped.filter((d) => d.reason === 'zero_categories').map((d) => d.item);
 }
 
 /** packageIds already stored as documents or ledgered as deliberate drops. */
@@ -164,6 +174,7 @@ export async function snapshotChrgWindow(errors: string[] = []): Promise<void> {
 
     const { routed, dropped } = routeHearingsToCategories(items);
     await ledgerDroppedHearings(dropped);
+    await storeExcludedDocuments(unroutedHearingItems(dropped), CORPUS_CATEGORY);
     const stored = await storeAndScoreHearings(routed);
 
     const anchorWeekOf = getLastCompletedWeek();
@@ -203,6 +214,7 @@ export async function backfillChrg(from: string, to: string, dryRun: boolean): P
 
     const { routed, dropped } = routeHearingsToCategories(items);
     await ledgerDroppedHearings(dropped);
+    await storeExcludedDocuments(unroutedHearingItems(dropped), CORPUS_CATEGORY);
     const stored = await storeAndScoreHearings(routed);
     const weeks = await aggregateTouchedWeeks(routed);
 

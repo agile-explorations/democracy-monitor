@@ -13,7 +13,7 @@ export const CacheKeys = {
   doj: (queryKey: string) => `doj:${queryKey}`,
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
-  searchResearch: (queryHash: string) => `search:research:${queryHash}:v2`,
+  searchResearch: (queryHash: string) => `search:research:${queryHash}:v3`,
   /** docsOnly research responses (#705): doc lists are stable within a data
    *  week; refreshed by the Monday pre-warm (&refresh=true bypass).
    *  Mode-derived version (#758): analytical (and flag-off) requests keep

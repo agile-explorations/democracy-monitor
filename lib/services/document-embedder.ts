@@ -1,5 +1,5 @@
 import type { SQL } from 'drizzle-orm';
-import { and, eq, isNull, asc, sql } from 'drizzle-orm';
+import { and, eq, asc, sql } from 'drizzle-orm';
 import { isDbAvailable, getDb } from '@/lib/db';
 import { searchable } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
@@ -166,20 +166,62 @@ async function processBatches(
  * document with a body — the searchable population, not the counting or
  * analysis-evidence ones. Off-topic rows, unrouted corpus rows, fragments and
  * curated-docket documents all embed because retrieval-grade search is the
- * point of storing them.
+ * point of storing them. Exported so the Data Readiness backlog counter
+ * reports exactly what `embeddings:backfill` would process.
  */
+export function embeddable(): SQL {
+  return sql`${documents.embeddedAt} IS NULL AND ${searchable()}
+    AND ${documents.content} IS NOT NULL AND ${documents.content} <> ''`;
+}
+
 function embeddableConditions(category?: string, dateFilter?: SQL): SQL[] {
-  const conditions = [
-    isNull(documents.embeddedAt),
-    searchable(),
-    sql`${documents.content} IS NOT NULL AND ${documents.content} <> ''`,
-  ];
+  const conditions = [embeddable()];
   if (category) conditions.push(eq(documents.category, category));
   if (dateFilter) conditions.push(dateFilter);
   return conditions;
 }
 
-async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<number> {
+/** Chars-per-token divisor for the dry-run estimate (a rough planning
+ *  figure, not the ~3 chars/token the batcher budgets conservatively). */
+const ESTIMATE_CHARS_PER_TOKEN = 4;
+
+export interface EmbeddableEstimate {
+  count: number;
+  /** Approximate — sum of min(length(content), MAX_EMBED_CHARS) / 4. */
+  approxTokens: number;
+}
+
+/**
+ * Count the rows `embedUnprocessedDocuments` would process, with a token
+ * estimate. `length(content)` detoasts every row it touches (a whole-table
+ * pass cost gigabytes on 2026-07-25), so the sum is scoped by the same
+ * predicate as the embedder — only the unembedded rows are read.
+ */
+export async function countEmbeddable(
+  opts: { category?: string; dateFilter?: SQL } = {},
+): Promise<EmbeddableEstimate> {
+  if (!isDbAvailable()) return { count: 0, approxTokens: 0 };
+  const [row] = await getDb()
+    .select({
+      count: sql<number>`count(*)::int`,
+      approxTokens: sql<number>`(coalesce(sum(least(length(${documents.content}), ${MAX_EMBED_CHARS}::int)), 0) / ${ESTIMATE_CHARS_PER_TOKEN}::int)::bigint`,
+    })
+    .from(documents)
+    .where(and(...embeddableConditions(opts.category, opts.dateFilter)));
+  return { count: Number(row?.count ?? 0), approxTokens: Number(row?.approxTokens ?? 0) };
+}
+
+interface BatchOutcome {
+  /** Rows fetched and sent to the API (successes and marked failures alike). */
+  attempted: number;
+  embedded: number;
+}
+
+async function embedOneBatch(
+  category: string | undefined,
+  dateFilter: SQL | undefined,
+  fetchLimit: number,
+): Promise<BatchOutcome> {
   const db = getDb();
   const conditions = embeddableConditions(category, dateFilter);
 
@@ -188,9 +230,9 @@ async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<numbe
     .from(documents)
     .where(and(...conditions))
     .orderBy(asc(documents.id))
-    .limit(DB_FETCH_LIMIT);
+    .limit(fetchLimit);
 
-  if (unembedded.length === 0) return 0;
+  if (unembedded.length === 0) return { attempted: 0, embedded: 0 };
 
   const allTexts = unembedded.map(docToText);
   const { batches, oversized } = buildBatches(allTexts);
@@ -227,7 +269,33 @@ async function embedOneBatch(category?: string, dateFilter?: SQL): Promise<numbe
   if (markedFailed > 0) {
     console.warn(`[embedding] Marked ${markedFailed} doc(s) as attempted-but-failed`);
   }
-  return embedded;
+  return { attempted: unembedded.length, embedded };
+}
+
+/**
+ * Embed unprocessed documents until the population is exhausted, a whole
+ * batch fails (a provider outage must not march through the backlog marking
+ * every row as tried), or `maxDocs` rows have been attempted — the spend cap
+ * `embeddings:backfill --max-docs` passes through. Attempts count, not
+ * successes: every attempt is an API call.
+ */
+export async function embedWithCap(
+  category?: string,
+  dateFilter?: SQL,
+  maxDocs?: number,
+): Promise<BatchOutcome> {
+  const run: BatchOutcome = { attempted: 0, embedded: 0 };
+  if (!isDbAvailable()) return run;
+
+  for (;;) {
+    const remaining = maxDocs === undefined ? DB_FETCH_LIMIT : maxDocs - run.attempted;
+    if (remaining <= 0) break;
+    const batch = await embedOneBatch(category, dateFilter, Math.min(DB_FETCH_LIMIT, remaining));
+    run.attempted += batch.attempted;
+    run.embedded += batch.embedded;
+    if (batch.embedded === 0) break;
+  }
+  return run;
 }
 
 /**
@@ -239,15 +307,5 @@ export async function embedUnprocessedDocuments(
   category?: string,
   dateFilter?: SQL,
 ): Promise<number> {
-  if (!isDbAvailable()) return 0;
-
-  let total = 0;
-  let batchCount: number;
-
-  do {
-    batchCount = await embedOneBatch(category, dateFilter);
-    total += batchCount;
-  } while (batchCount > 0);
-
-  return total;
+  return (await embedWithCap(category, dateFilter)).embedded;
 }

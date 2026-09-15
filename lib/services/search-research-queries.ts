@@ -5,6 +5,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { CORPUS_CATEGORY } from '@/lib/data/document-populations';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { SEARCH_EXCLUDED_ORIGINS } from '@/lib/services/search-queries';
 
@@ -41,6 +42,9 @@ export interface CorpusStats {
  * @param embedding - Pre-computed query embedding (reused from searchResearch)
  * @param maxDistance - Cosine distance threshold (1 - similarity of least similar retrieved doc)
  */
+/** Unrouted rows report under the corpus pseudo-category, as the facet does. */
+const CATEGORY_OR_CORPUS = sql`CASE WHEN retrieval_relevant IS FALSE THEN ${CORPUS_CATEGORY} ELSE category END`;
+
 export async function searchCorpusStats(
   embedding: number[],
   maxDistance: number,
@@ -64,13 +68,13 @@ export async function searchCorpusStats(
         ORDER BY month
       `),
       db.execute(sql`
-        SELECT category, count(*)::int as count
+        SELECT ${CATEGORY_OR_CORPUS} as category, count(*)::int as count
         FROM documents
         WHERE embedding IS NOT NULL
           AND (embedding <=> ${vectorStr}::vector) < ${maxDistance}
           AND source_origin IS NOT NULL AND source_origin NOT IN (${excludedOriginsList()})
           AND content_type != 'metadata_only' AND superseded IS NOT TRUE
-        GROUP BY category
+        GROUP BY 1
         ORDER BY count DESC
       `),
     ]);

@@ -17,7 +17,6 @@
 
 import { and, eq, gte, lt, sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { aiDocumentAssessments, documents, documentScores } from '@/lib/db/schema';
 import { addDays } from '@/lib/utils/date-utils';
 
@@ -75,8 +74,9 @@ async function loadSameDayOpinions(
         eq(documents.sourceType, 'judicial_opinion'),
         gte(documents.publishedAt, new Date(dateFiled)),
         lt(documents.publishedAt, new Date(addDays(dateFiled, 1))),
-        // IS NOT FALSE — most rows are NULL, and `<> false` would drop them.
-        retrievalRelevantOnly(),
+        // Already-superseded revisions never compete again; corpus rows
+        // (retrieval_relevant=false by construction) must still be found.
+        sql`${documents.superseded} IS NOT TRUE`,
       ),
     );
   return rows.map((r) => ({

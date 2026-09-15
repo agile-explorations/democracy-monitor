@@ -284,8 +284,16 @@ async function handleExplore(
   query: string,
 ): Promise<void> {
   const started = Date.now();
+  // unrouted=1 (#895) widens Explore to documents no router placed; the
+  // default is routed only. Same boolean spellings as the research flags.
+  const includeUnrouted = parseBooleanParam(req.query.unrouted);
+  if (includeUnrouted === null) {
+    res.status(400).json({ error: 'Boolean parameter unrouted accepts true/false/1/0/yes/no' });
+    return;
+  }
   const result = await searchExplore({
     query,
+    includeUnrouted,
     category: req.query.category as string | undefined,
     dateFrom: req.query.dateFrom as string | undefined,
     dateTo: req.query.dateTo as string | undefined,
@@ -311,6 +319,7 @@ async function handleExplore(
       dateFrom: (req.query.dateFrom as string) ?? null,
       dateTo: (req.query.dateTo as string) ?? null,
       page: (req.query.page as string) ?? null,
+      unrouted: includeUnrouted,
     },
     served: result.totalResults === 0 ? 'empty' : 'build',
     docCount: result.totalResults,

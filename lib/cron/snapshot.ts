@@ -21,6 +21,7 @@ import {
   tryValidateGraph,
 } from '@/lib/cron/snapshot-poststeps';
 import { CATEGORIES } from '@/lib/data/categories';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { enhancedIntentAssessment } from '@/lib/services/ai-intent-service';
 import { groupItemsByCategoryWeek } from '@/lib/services/category-week-grouping';
 import { fetchCrecRecent } from '@/lib/services/crec-fetcher';
@@ -33,6 +34,7 @@ import {
   getLastDocumentDateBySource,
   storableDocumentItems,
   storeDocuments,
+  storeExcludedDocuments,
 } from '@/lib/services/document-store';
 import {
   markCategoryItemsStored,
@@ -147,6 +149,11 @@ async function snapshotCategory(
     console.error(`[snapshot] ${msg}`);
     errors.push(msg);
   }
+
+  // Search-only rows (#891): FR drops / DOJ corpus-only releases never reach
+  // scoring or the (category, week) groups below.
+  await storeExcludedDocuments(result.excludedItems, cat.key);
+  await storeExcludedDocuments(result.corpusItems, CORPUS_CATEGORY);
 
   if (items.length > 0) {
     const docScores = scoreDocumentBatch(items, cat.key);
@@ -276,7 +283,8 @@ async function snapshotCrec(): Promise<void> {
       return;
     }
 
-    const routed = routeItemsToCategories(items);
+    const { routed, unrouted } = routeItemsToCategories(items);
+    await storeExcludedDocuments(unrouted, CORPUS_CATEGORY);
     if (routed.length === 0) {
       console.log(`[snapshot] CREC: ${items.length} entries, 0 matched categories`);
       return;

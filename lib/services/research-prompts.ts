@@ -3,6 +3,7 @@ import { SOURCE_COVERAGE_MANIFEST } from '@/lib/data/source-coverage-manifest';
 import { buildComparativeInstruction } from '@/lib/services/era-extraction';
 import { classifyQuestionMode, enumerationInstruction } from '@/lib/services/question-classifier';
 import type { ValidatedAlias } from './query-expansion-service';
+import { formatCorpusStats } from './research-corpus-stats';
 import { draftRules } from './research-draft-rules';
 import { reviewCriteria } from './research-review-criteria';
 import type { CorpusStats } from './search-research-queries';
@@ -83,21 +84,7 @@ function formatDocumentContext(docs: ResearchDocument[]): string {
     .join('\n\n');
 }
 
-export function formatCorpusStats(stats: CorpusStats): string {
-  const monthLines = stats.monthlyBreakdown.map((m) => `  ${m.month}: ${m.count}`).join('\n');
-  const catLines = stats.categoryBreakdown.map((c) => `  ${c.category}: ${c.count}`).join('\n');
-  return [
-    '--- CORPUS STATISTICS ---',
-    `Total matching documents across full corpus: ${stats.totalMatching}`,
-    `(The ${stats.categoryBreakdown.length > 0 ? 'documents below' : 'retrieved documents'} are the most relevant sample.)`,
-    '',
-    'Monthly distribution:',
-    monthLines,
-    '',
-    'Category distribution:',
-    catLines,
-  ].join('\n');
-}
+export { formatCorpusStats };
 
 export function computeDateRange(docs: ResearchDocument[]): { earliest: string; latest: string } {
   const dates = docs

@@ -76,6 +76,9 @@ export interface ResearchDocResult {
   sourceOrigin: string | null;
   caseId?: string | null;
   category: string;
+  /** False when the row is not detection evidence for its category (#895);
+   *  optional because cached payloads predate the flag. */
+  routed?: boolean;
   cosineSimilarity: number;
   finalScore: number | null;
   documentClass: string | null;
@@ -109,6 +112,9 @@ export interface ExploreDocResult {
   sourceOrigin: string | null;
   caseId?: string | null;
   category: string;
+  /** False for off-topic or `corpus` rows (#895) — the badge reads "Not
+   *  routed to a category". Optional: older cached payloads lack it. */
+  routed?: boolean;
   snippet: string | null;
   /** Matched-passage excerpt (#702) — present when a keyword arm surfaced this doc. */
   matchSnippet?: string | null;

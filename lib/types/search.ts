@@ -17,6 +17,12 @@ export interface SearchFilters {
   sort?: 'relevance' | 'date' | 'score';
   page?: number;
   pageSize?: number;
+  /** Explore only (#895, owner decision 2026-09-15): the date-sorted browse
+   *  mode defaults to routed documents; `true` (URL `unrouted=1`) also
+   *  returns rows no router placed — off-topic annotations and the `corpus`
+   *  pseudo-category. Research ranking never reads this: it uses everything
+   *  searchable. */
+  includeUnrouted?: boolean;
 }
 
 export interface SearchResultDocument {
@@ -68,6 +74,8 @@ export interface ExploreSearchResult {
 export interface ResearchDocument {
   id: number;
   title: string;
+  /** False for off-topic or unrouted rows stored for search (see SearchResultDocument.routed). */
+  routed: boolean;
   content: string | null;
   url: string | null;
   publishedAt: string | null;

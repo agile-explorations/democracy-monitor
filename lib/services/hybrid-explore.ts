@@ -123,6 +123,9 @@ function exploreKeyedArms(
     scoreMin: filters.scoreMin != null ? String(filters.scoreMin) : null,
     scoreMax: filters.scoreMax != null ? String(filters.scoreMax) : null,
     documentClass: filters.documentClass ?? null,
+    // The routed-only default vs. "include unrouted" changes the arm's WHERE
+    // clause (#895), so the two populations must not share cached arms.
+    includeUnrouted: filters.includeUnrouted ? '1' : '0',
   };
   const paramsHash = hashArmParams(armParams);
   return aliases.map((a) => ({

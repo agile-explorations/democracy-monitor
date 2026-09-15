@@ -10,7 +10,12 @@ import { sql } from 'drizzle-orm';
 import type { DocumentTier } from '@/lib/data/document-tiers';
 import { composeTieredResults, tierForDocument } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { categoryFacetD, searchableD } from '@/lib/db/document-filters';
+import {
+  categoryFacetD,
+  CORPUS_CATEGORY,
+  routedElsewhereD,
+  searchableD,
+} from '@/lib/db/document-filters';
 import type {
   ExploreSearchResult,
   ResearchDocument,
@@ -218,6 +223,7 @@ export function mapToResearchDoc(row: Record<string, unknown>): ResearchDocument
   return {
     id: Number(row.id),
     title: row.title as string,
+    routed: row.retrieval_relevant !== false && row.category !== CORPUS_CATEGORY,
     // Read-time boilerplate strip (#736): storage keeps full originals
     // (R-CONTENT), but CSS-contaminated CPD vintages must not spend the
     // synthesis excerpt budget on style rules.
@@ -286,6 +292,7 @@ export async function findSimilarDocuments(
         LEFT JOIN document_scores ds ON ds.url = d.url AND ds.category = d.category
         LEFT JOIN ai_document_assessments ai ON ai.url = d.url AND ai.category = d.category AND ai.pass = 2
         WHERE d.embedding IS NOT NULL AND d.id != ${documentId} AND ${catCondition}
+          AND d.url IS DISTINCT FROM (SELECT url FROM documents WHERE id = ${documentId})
           AND ${searchableD()}
         ORDER BY ${halfvecDistanceDoc(vectorStr)}
         LIMIT ${limit}
@@ -294,7 +301,7 @@ export async function findSimilarDocuments(
 
     const [sameCat, otherCat] = await Promise.all([
       fetchSimilar(categoryFacetD(sourceCategory)),
-      fetchSimilar(sql`NOT ${categoryFacetD(sourceCategory)}`),
+      fetchSimilar(routedElsewhereD(sourceCategory)),
     ]);
 
     return {

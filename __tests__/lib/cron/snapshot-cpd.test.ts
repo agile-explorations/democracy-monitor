@@ -11,6 +11,20 @@ describe('snapshot-cpd (#798)', () => {
     expect(CPD_TRAILING_WINDOW_DAYS).toBeGreaterThanOrEqual(90);
   });
 
+  it('never groups a zero-category (corpus-only) document into any category-week (#892)', () => {
+    const groups = groupByCategoryWeek(
+      [
+        {
+          item: { title: 'Remarks at a dinner', pubDate: '2026-08-05' },
+          categories: [],
+          unmappedSubjects: ['Dinners'],
+        },
+      ],
+      '2026-08-24',
+    );
+    expect(groups.size).toBe(0);
+  });
+
   it('groups new documents by (category, week) for L2 + aggregation', () => {
     const groups = groupByCategoryWeek([
       {
