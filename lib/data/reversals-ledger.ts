@@ -48,6 +48,17 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
     date: '2026-09-14',
+    kind: 'flip',
+    scope:
+      'Free and Fair Elections, Government Watchdogs, Spending Money Congress Approved — five weeks',
+    count: 5,
+    what: 'Five weekly statuses changed after the review verdicts of late-arriving documents were moved to the weeks those documents were actually published: Free and Fair Elections for the weeks of 2026-03-16 and 2026-03-30 rose from Elevated to Confirmed Concern (the executive orders creating the fraud task force and the citizenship-verification requirement now count in their own weeks) while the week of 2026-04-20, which had carried both, fell from Confirmed Concern to Elevated; Government Watchdogs for the week of 2026-08-03 rose from Elevated to Confirmed Concern (the GAO report on FEMA workforce reductions); Spending Money Congress Approved for the week of 2026-08-24 rose from Stable to Elevated (a Treasury inspector general report on IRS compliance trends). The five weeks’ narratives were regenerated to match.',
+    why: 'Until 2026-09-14 the weekly ingest stamped every document’s review verdict with the week of the run rather than the week the document was published, so a document that surfaced a few days late counted toward the following week’s status. Four hundred and one verdicts across the current term were moved to their documents’ weeks and every week was re-derived under the repair harness; all six negative controls held. The ingest defect itself was fixed the same day.',
+    evidence: [issue(884), issue(825)],
+    release: 'v1.31.2',
+  },
+  {
+    date: '2026-09-14',
     kind: 'correction',
     scope: 'Weekly summary — week of 2026-09-07',
     count: 1,

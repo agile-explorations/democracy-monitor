@@ -41,7 +41,8 @@ describe('runGraphValidation', () => {
     expect(ids).toContain('G7');
     expect(ids).toContain('G7n');
     expect(ids).toContain('G2b-baseline');
-    expect(results.find((r) => r.id === 'G7')?.severity).toBe('warn');
+    expect(results.find((r) => r.id === 'G7')?.severity).toBe('error');
+    expect(results.find((r) => r.id === 'G7n')?.severity).toBe('warn');
     expect(results.find((r) => r.id === 'G2b-baseline')?.severity).toBe('warn');
     expect(results.find((r) => r.id === 'G2b')?.severity).toBe('error');
     // Empty data means no violations anywhere.
