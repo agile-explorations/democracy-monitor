@@ -47,6 +47,25 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-14',
+    kind: 'correction',
+    scope: 'Weekly summary — week of 2026-09-07',
+    count: 1,
+    what: 'The weekly summary was regenerated once and then one sentence of the expert version was edited by hand before the digest went out. The generated text called the week "the largest week-over-week de-escalation in the monitoring period"; the edited sentence says it matches the largest (Christmas week 2025-12-22, twelve elevated categories to two) and, like that week, coincides with a holiday recess. Every number in the summary was checked against the record and stands; the public version carried no such claim and was not edited.',
+    why: 'The summary writer sees only the current and previous week, so it cannot check a comparative claim against the term. A regeneration repeated the claim. The deterministic number check verifies counts, not superlatives; a follow-up gives the writer the term series and extends the check.',
+    evidence: [issue(886), issue(825)],
+    release: 'v1.31.1',
+  },
+  {
+    date: '2026-09-14',
+    kind: 'hold',
+    scope: 'Weekly digest — week of 2026-09-07',
+    what: 'The weekly digest email was held past its Monday send and released the same day after repair and a one-sentence correction (entry above). The snapshot itself completed cleanly in 72 minutes.',
+    why: 'The digest gate found the same derivation-graph violation as the two previous Mondays: two current-term category-weeks carried a document count one off from their score rows because reports the Internet Archive captured late were scored into their true week without that week being re-derived. Both weeks were re-derived under the repair harness (zero status changes, all six negative controls inside threshold). The root cause — every ingest path deriving under the run week — shipped the same day in v1.31.0, together with a finding that the same defect had stamped roughly four hundred review verdicts into the wrong week since February; their restamp is a separate, gated repair.',
+    evidence: [issue(825), issue(884)],
+    release: 'v1.31.1',
+  },
+  {
     date: '2026-09-07',
     kind: 'hold',
     scope: 'Weekly digest — week of 2026-08-31',
