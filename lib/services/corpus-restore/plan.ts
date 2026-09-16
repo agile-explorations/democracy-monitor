@@ -3,7 +3,7 @@
  * anti-join arithmetic, per-source candidate selection, and date walking.
  * No I/O — every function here is unit-tested directly.
  */
-import { isCorpusComponent } from '@/lib/data/doj-corpus-components';
+import { componentNames, isCorpusComponent } from '@/lib/data/doj-corpus-components';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { ContentItem } from '@/lib/types';
@@ -64,7 +64,8 @@ export function selectUnroutedCpd(docs: CpdDocument[]): ContentItem[] {
 /** Minimal DOJ feed release shape the corpus filter needs. */
 export interface DojFeedRelease {
   date?: string;
-  component?: Array<{ name: string }>;
+  /** Array of refs, a single ref, or a string — see componentNames(). */
+  component?: unknown;
 }
 
 /** DOJ feed `date` is Unix seconds as a string. */
@@ -83,7 +84,7 @@ export function selectCorpusReleases<T extends DojFeedRelease>(
   return releases.filter((release) => {
     const date = dojReleaseDate(release);
     if (!date || date < fromDate || date > toDate) return false;
-    return isCorpusComponent((release.component ?? []).map((c) => c.name));
+    return isCorpusComponent(componentNames(release.component));
   });
 }
 

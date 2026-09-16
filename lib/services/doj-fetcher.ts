@@ -1,4 +1,8 @@
-import { componentNameMatchesSlug, isCorpusComponent } from '@/lib/data/doj-corpus-components';
+import {
+  componentNameMatchesSlug,
+  componentNames,
+  isCorpusComponent,
+} from '@/lib/data/doj-corpus-components';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
@@ -19,7 +23,8 @@ export interface DojPressRelease {
   date?: string;
   changed?: string;
   created?: string;
-  component?: DojNamedRef[];
+  /** Usually an array of { name }; older feed entries carry one object or a string. */
+  component?: DojNamedRef[] | DojNamedRef | string;
   topic?: DojNamedRef[];
   url?: string;
   number?: string;
@@ -67,7 +72,7 @@ export function toContentItem(release: DojPressRelease): ContentItem {
 
   const pubDate = release.date ? new Date(parseInt(release.date) * 1000).toISOString() : undefined;
 
-  const agency = release.component?.[0]?.name || 'Department of Justice';
+  const agency = componentNames(release.component)[0] || 'Department of Justice';
 
   const bodyText = release.body || release.teaser;
   const summary = bodyText ? stripHtmlBasic(bodyText) : undefined;
@@ -90,12 +95,13 @@ export function toContentItem(release: DojPressRelease): ContentItem {
  * If slug is undefined, matches all releases (no filter).
  */
 export function matchesComponentSlug(
-  components: DojNamedRef[] | undefined,
+  components: DojNamedRef[] | DojNamedRef | string | undefined,
   slug: string | undefined,
 ): boolean {
   if (!slug) return true;
-  if (!components || components.length === 0) return false;
-  return components.some((c) => componentNameMatchesSlug(c.name, slug));
+  const names = componentNames(components);
+  if (names.length === 0) return false;
+  return names.some((name) => componentNameMatchesSlug(name, slug));
 }
 
 /** Routed vs. corpus-only releases from one historical DOJ fetch (#892). */
@@ -124,7 +130,7 @@ export function partitionReleases(
     if (!d || d < params.fromDate || d > params.toDate) continue;
     if (matchesComponentSlug(release.component, params.component)) {
       items.push(toContentItem(release));
-    } else if (isCorpusComponent((release.component ?? []).map((c) => c.name))) {
+    } else if (isCorpusComponent(componentNames(release.component))) {
       excludedItems.push(toContentItem(release));
     }
   }
