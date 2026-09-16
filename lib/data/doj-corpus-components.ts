@@ -36,6 +36,16 @@ export function componentNameMatchesSlug(name: string, slug: string): boolean {
 }
 
 /** True when any of a release's component names belongs to a corpus component. */
+/** The feed's `component` field is normally an array of `{ name }`, but older
+ *  releases carry a single object, a string, or nothing — normalise before
+ *  mapping (the 2026-09-16 DOJ restore died on `.map is not a function`). */
+export function componentNames(component: unknown): string[] {
+  const list = Array.isArray(component) ? component : component ? [component] : [];
+  return list
+    .map((c) => (typeof c === 'string' ? c : (c as { name?: unknown } | null)?.name))
+    .filter((n): n is string => typeof n === 'string' && n.length > 0);
+}
+
 export function isCorpusComponent(componentNames: string[]): boolean {
   return componentNames.some((name) =>
     DOJ_CORPUS_COMPONENTS.some((slug) => componentNameMatchesSlug(name, slug)),

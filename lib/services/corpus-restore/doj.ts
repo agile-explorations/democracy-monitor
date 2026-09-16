@@ -12,6 +12,7 @@
  */
 import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { fetchDojPage, findStartPage, toContentItem } from '@/lib/services/doj-fetcher';
+import type { DojApiResponse, DojPressRelease } from '@/lib/services/doj-fetcher';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { antiJoinByUrl, dojReleaseDate, selectCorpusReleases } from './plan';
@@ -22,20 +23,6 @@ const POLITENESS_DELAY_MS = 2000;
 const FETCH_TIMEOUT_MS = 30_000;
 const PAGE_SIZE = 50;
 
-interface DojFeedRelease {
-  title?: string;
-  body?: string;
-  teaser?: string;
-  date?: string;
-  component?: Array<{ uuid: string; name: string }>;
-  url?: string;
-}
-
-interface DojFeedPage {
-  results?: DojFeedRelease[];
-  metadata?: { resultset?: { count: string } };
-}
-
 interface WalkState {
   matched: number;
   netNew: number;
@@ -45,7 +32,7 @@ interface WalkState {
 
 /** Fold one feed page into the walk; returns false when the walk should stop. */
 async function consumePage(
-  releases: DojFeedRelease[],
+  releases: DojPressRelease[],
   range: { fromDate: Date; toDate: Date },
   maxDocs: number | undefined,
   state: WalkState,

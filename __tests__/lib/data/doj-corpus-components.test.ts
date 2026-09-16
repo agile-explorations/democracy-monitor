@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CATEGORIES } from '@/lib/data/categories';
 import {
   componentNameMatchesSlug,
+  componentNames,
   DOJ_CORPUS_COMPONENTS,
   isCorpusComponent,
 } from '@/lib/data/doj-corpus-components';
@@ -39,5 +40,17 @@ describe('DOJ corpus components (#892)', () => {
     expect(isCorpusComponent(['U.S. Attorney - District of Columbia'])).toBe(false);
     expect(isCorpusComponent(['Antitrust Division', 'Tax Division'])).toBe(false);
     expect(isCorpusComponent([])).toBe(false);
+  });
+});
+
+describe('componentNames', () => {
+  it('normalises the feed shapes: array of refs, single ref, string, nothing', () => {
+    expect(
+      componentNames([{ name: 'Tax Division' }, { name: 'Office of Public Affairs' }]),
+    ).toEqual(['Tax Division', 'Office of Public Affairs']);
+    expect(componentNames({ name: 'Civil Division' })).toEqual(['Civil Division']);
+    expect(componentNames('Criminal Division')).toEqual(['Criminal Division']);
+    expect(componentNames(undefined)).toEqual([]);
+    expect(componentNames([{ name: '' }, null, { other: 1 }])).toEqual([]);
   });
 });
