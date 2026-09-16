@@ -24,6 +24,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import { isMultiUnitGranule, splitStructuredGranule } from '@/lib/services/crec-splitter';
 import { sleep } from '@/lib/utils/async';
@@ -110,6 +111,7 @@ async function selectParents(limit: number | null): Promise<ParentRow[]> {
       id, url, published_at, metadata->>'granuleId' AS granule_id
     FROM documents p
     WHERE source_origin = 'crec' AND parent_id IS NULL
+      AND category <> ${CORPUS_CATEGORY}
       AND length(content) > ${MIN_PARENT_BYTES}
       AND metadata->>'granuleId' IS NOT NULL
       AND NOT (metadata ? 'fragmentsAssessed')

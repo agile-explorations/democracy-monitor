@@ -1,7 +1,7 @@
-import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
 import { tierForIngestItem, tierForSourceType } from '@/lib/data/document-tiers';
 import { isDbAvailable, getDb } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { CORPUS_CATEGORY, retrievalRelevantOnly } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { SCORING_MIN_CONTENT_CHARS } from '@/lib/services/document-scorer';
 import { itemCountingScope } from '@/lib/services/opinion-scope-classifier';
@@ -150,6 +150,12 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
             fetchedAt: sql`excluded.fetched_at`,
             metadata: sql`excluded.metadata`,
             sourceOrigin: sql`excluded.source_origin`,
+            // A document the signal now returns as relevant is evidence again
+            // (a fetch-time drop stored for search, or an annotation the
+            // current patterns no longer support); a superseded revision stays
+            // out — the keeper carries the review (R-SEARCH-ORTHOGONAL).
+            retrievalRelevant: sql`CASE WHEN ${documents.superseded} IS TRUE
+              THEN ${documents.retrievalRelevant} ELSE NULL END`,
             caseId: sql`excluded.case_id`,
             speaker: sql`excluded.speaker`,
             // Refreshed content can change scope-phrase matches — but when the
@@ -175,6 +181,70 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
   }
 
   return stored;
+}
+
+/** Row for a search-only document (#891/#892): `retrieval_relevant = false`
+ *  says "not detection evidence"; under the `corpus` pseudo-category the row
+ *  also leaves the counting population, since no category's statistics own
+ *  an unrouted document. */
+function buildExcludedDocumentRow(item: ContentItem, category: string) {
+  return {
+    ...buildDocumentRow(item, category),
+    retrievalRelevant: false,
+    ...(category === CORPUS_CATEGORY ? { countingScope: false } : {}),
+  };
+}
+
+/**
+ * Store documents for search only — FR fetch-time drops under their signal's
+ * category, unrouted cross-cutting documents under `corpus`. Insert-only:
+ * a routed row already present at (url, category) is never demoted (that is
+ * the annotate script's job), and nothing here scores or reviews. Returns the
+ * number of rows actually inserted.
+ */
+export async function storeExcludedDocuments(
+  items: ContentItem[],
+  category: string,
+): Promise<number> {
+  if (!isDbAvailable()) return 0;
+  const storable = storableDocumentItems(items);
+  if (storable.length === 0) return 0;
+
+  const db = getDb();
+  // A corpus row must not shadow a document that is evidence elsewhere: the
+  // pseudo-category anti-joins by URL across every category (the restore
+  // path does the same); a real category only conflicts on its own row.
+  const shadowed = category === CORPUS_CATEGORY ? await urlsStoredAnywhere(storable) : new Set();
+  let stored = 0;
+  for (const item of storable) {
+    if (shadowed.has(item.link)) continue;
+    try {
+      const inserted = await db
+        .insert(documents)
+        .values(buildExcludedDocumentRow(item, category))
+        .onConflictDoNothing({ target: [documents.url, documents.category] })
+        .returning({ id: documents.id });
+      stored += inserted.length;
+    } catch (err) {
+      console.error(`Failed to store excluded document ${item.link}:`, err);
+    }
+  }
+
+  console.log(
+    `[document-store] ${category}: stored ${stored} excluded (search-only) of ${storable.length}`,
+  );
+  return stored;
+}
+
+/** URLs among `items` that already have a documents row in ANY category. */
+async function urlsStoredAnywhere(items: ContentItem[]): Promise<Set<string>> {
+  const urls = items.map((i) => i.link).filter((u): u is string => !!u);
+  if (urls.length === 0) return new Set();
+  const rows = await getDb()
+    .selectDistinct({ url: documents.url })
+    .from(documents)
+    .where(inArray(documents.url, urls));
+  return new Set(rows.map((r) => r.url).filter((u): u is string => !!u));
 }
 
 /**

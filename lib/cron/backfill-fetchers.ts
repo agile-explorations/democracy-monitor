@@ -13,7 +13,7 @@ import {
   fetchDhsPressHistorical,
   parseDhsPressParams,
 } from '@/lib/services/dhs-press-fetcher';
-import { fetchDojHistorical, parseDojSignalParams } from '@/lib/services/doj-fetcher';
+import { fetchDojHistoricalPartitioned, parseDojSignalParams } from '@/lib/services/doj-fetcher';
 import { fetchDojOigHistorical, fetchDojOigPdfUrl } from '@/lib/services/doj-oig-fetcher';
 import { fetchFecEnrichedContent } from '@/lib/services/fec-content';
 import { fetchFecHistorical, parseFecParams } from '@/lib/services/fec-fetcher';
@@ -71,12 +71,31 @@ export interface SourceFetchResult {
   items: ContentItem[];
   errors: string[];
   contentGaps?: ContentGaps;
+  /** Fetched but not detection evidence (#891): FR retrieval-relevance drops,
+   *  DOJ corpus-only releases. Stored search-only by the caller; never
+   *  counted in `items`, `contentGaps`, or the fetch log. */
+  excludedItems?: ContentItem[];
+  /** Documents a cross-cutting source returned that no signal routes — stored
+   *  under the corpus pseudo-category (DOJ allowlisted components), never
+   *  under the fetching signal's category. */
+  corpusItems?: ContentItem[];
 }
 
 export interface WeekFetchResult {
   items: ContentItem[];
   sourceResults: Record<string, { itemCount: number; errors: string[] }>;
   contentGaps: ContentGaps[];
+  /** Excluded items from every source, deduped by URL, minus any URL a
+   *  routed item already carries. */
+  excludedItems: ContentItem[];
+  corpusItems: ContentItem[];
+}
+
+/** Excluded items deduped by URL and minus any URL present in the routed
+ *  items — a document one signal keeps and another drops is evidence. Pure. */
+export function dedupeExcludedItems(items: ContentItem[], excluded: ContentItem[]): ContentItem[] {
+  const routedUrls = new Set(items.map((i) => i.link).filter(Boolean));
+  return deduplicateByUrl(excluded).filter((i) => !routedUrls.has(i.link));
 }
 
 const SOURCE_ORIGIN_MAP: Record<keyof SignalGroups, string> = {
@@ -288,6 +307,7 @@ export async function fetchWeekItemsFr(
   categoryKey: string,
 ): Promise<SourceFetchResult> {
   const items: ContentItem[] = [];
+  const excludedItems: ContentItem[] = [];
   const errors: string[] = [];
 
   for (const signal of frSignals) {
@@ -306,14 +326,17 @@ export async function fetchWeekItemsFr(
       week.start,
     );
     // Retrieval relevance filter (#524): per-signal, so a drop here never
-    // affects the same document fetched by another category's signal.
+    // affects the same document fetched by another category's signal. Drops
+    // stay searchable (#891): they ride the excluded channel with full text.
     const { kept, dropped } = partitionByRetrievalRelevance(categoryKey, result.items);
     await recordFrDrops(categoryKey, signal.url, dropped);
     items.push(...kept);
+    excludedItems.push(...dropped.map((d) => d.item));
     if (result.error) errors.push(result.error);
   }
 
   await fillFrContent(items);
+  await fillFrContent(excludedItems);
 
   const nullCount = items.filter(
     (i) => !i.content && (i.metadata as Record<string, unknown>)?.raw_text_url,
@@ -321,7 +344,7 @@ export async function fetchWeekItemsFr(
   const contentGaps: ContentGaps | undefined =
     nullCount > 0 ? { source: 'FR', nullCount, shortCount: 0 } : undefined;
 
-  return { items, errors, contentGaps };
+  return { items, errors, contentGaps, excludedItems };
 }
 
 export async function fetchWeekItemsCourtListener(
@@ -355,12 +378,24 @@ export async function fetchWeekItemsDoj(
   categoryKey: string,
 ): Promise<SourceFetchResult> {
   const items: ContentItem[] = [];
+  const corpusItems: ContentItem[] = [];
   const errors: string[] = [];
 
   for (const signal of signals) {
     const params = parseDojSignalParams(signal.url);
+    // Corpus-only releases (#892) are collected as a side channel of the
+    // retried fetch: a failed attempt throws before returning anything, so
+    // only the successful attempt's rejects land here.
     const result = await fetchSignalWithRetry(
-      () => fetchDojHistorical({ ...params, dateFrom: week.start, dateTo: week.end }),
+      async () => {
+        const split = await fetchDojHistoricalPartitioned({
+          ...params,
+          dateFrom: week.start,
+          dateTo: week.end,
+        });
+        corpusItems.push(...split.excludedItems);
+        return split.items;
+      },
       'DOJ',
       categoryKey,
       week.start,
@@ -369,7 +404,7 @@ export async function fetchWeekItemsDoj(
     if (result.error) errors.push(result.error);
   }
 
-  return { items, errors };
+  return { items, errors, corpusItems };
 }
 
 export async function fetchWeekItemsGovInfo(
@@ -570,6 +605,8 @@ export async function fetchWeekDocuments(
   categoryKey: string,
 ): Promise<WeekFetchResult> {
   const allItems: ContentItem[] = [];
+  const allCorpus: ContentItem[] = [];
+  const allExcluded: ContentItem[] = [];
   const sourceResults: Record<string, { itemCount: number; errors: string[] }> = {};
   const contentGaps: ContentGaps[] = [];
 
@@ -577,6 +614,8 @@ export async function fetchWeekDocuments(
     if (signalGroups[key].length === 0) continue;
     const result = await fn(signalGroups[key], week, categoryKey);
     allItems.push(...result.items);
+    allExcluded.push(...(result.excludedItems ?? []));
+    allCorpus.push(...(result.corpusItems ?? []));
     sourceResults[SOURCE_ORIGIN_MAP[key]] = {
       itemCount: result.items.length,
       errors: result.errors,
@@ -584,5 +623,12 @@ export async function fetchWeekDocuments(
     if (result.contentGaps) contentGaps.push(result.contentGaps);
   }
 
-  return { items: deduplicateByUrl(allItems), sourceResults, contentGaps };
+  const items = deduplicateByUrl(allItems);
+  return {
+    items,
+    sourceResults,
+    contentGaps,
+    excludedItems: dedupeExcludedItems(items, allExcluded),
+    corpusItems: dedupeExcludedItems(items, allCorpus),
+  };
 }

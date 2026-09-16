@@ -43,9 +43,21 @@ describe('documents dump/restore column lists match the schema', () => {
     expect(new Set(cols)).toEqual(expected);
   });
 
-  it('lib/db/init.ts restores every schema column', () => {
+  it('lib/db/init.ts restores from the header the dump wrote (no hardcoded list)', () => {
     const ts = readFileSync(join(REPO_ROOT, 'lib', 'db', 'init.ts'), 'utf8');
-    const cols = extractColumnList(ts, /copy documents\(([^)]+)\) FROM STDIN/);
-    expect(new Set(cols)).toEqual(expected);
+    expect(ts).toContain('documentsCsvColumns(');
+    expect(ts).toContain('copy documents(${columns.join');
+    expect(ts).not.toMatch(/copy documents\(id, source_type/);
+  });
+
+  it('parseCsvHeader accepts the dump header and rejects unsafe names', async () => {
+    const { parseCsvHeader } = await import('@/lib/db/csv-header');
+    expect(parseCsvHeader('id,source_type,"category",superseded')).toEqual([
+      'id',
+      'source_type',
+      'category',
+      'superseded',
+    ]);
+    expect(() => parseCsvHeader('id,drop table')).toThrow(/Unsafe column name/);
   });
 });

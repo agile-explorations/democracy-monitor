@@ -17,6 +17,7 @@ import { sql } from 'drizzle-orm';
 import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
 import {
+  backfillSupersededFlag,
   cascadeSupersededDerivedRows,
   markSupersededRevisions,
 } from '@/lib/services/opinion-revision-dedup';
@@ -66,11 +67,20 @@ Options:
   --confirm       Apply the marks
   --cascade       Remove score + AI-review rows of already-marked superseded docs
                   (idempotent repair; combine with --confirm to apply)
+  --backfill-flag Stamp documents.superseded on rows marked before the column
+                  existed (idempotent; combine with --confirm to apply)
   --from <date>   Earliest decision day to touch (default 2025-01-20; earlier
                   groups are counted, never touched)`,
   );
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const confirm = args.includes('--confirm');
+  if (args.includes('--backfill-flag')) {
+    const n = await backfillSupersededFlag(!confirm);
+    console.log(
+      `[cl-dedupe] ${confirm ? 'Stamped' : 'Would stamp'} superseded=true on ${n} row(s) carrying metadata.supersededBy`,
+    );
+    process.exit(0);
+  }
   if (args.includes('--cascade')) {
     // Repair for rows marked before the marker cascaded derived rows.
     const t = await cascadeSupersededDerivedRows(!confirm);

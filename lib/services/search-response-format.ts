@@ -63,6 +63,7 @@ export function formatDocList(docs: ResearchDocument[]) {
     sourceOrigin: doc.sourceOrigin,
     caseId: doc.caseId ?? null,
     category: doc.category,
+    routed: doc.routed,
     cosineSimilarity: doc.cosineSimilarity,
     finalScore: doc.finalScore,
     documentClass: doc.documentClass,

@@ -1,9 +1,10 @@
 /** CPD backfill — fetch and store presidential documents with subject-based category routing. */
 
-import { fetchCpdHistorical } from '@/lib/services/cpd-fetcher';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
+import { fetchCpdHistorical, partitionCpdDocuments } from '@/lib/services/cpd-fetcher';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { storeDocuments, storeExcludedDocuments } from '@/lib/services/document-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
@@ -77,19 +78,22 @@ export async function backfillCpd(weeks: WeekRange[], dryRun: boolean): Promise<
         continue;
       }
 
-      // Store each document in its mapped categories
+      // Unrouted documents go to search only (#892); the rest store + score
+      // in each mapped category.
+      const { routed, unrouted } = partitionCpdDocuments(docs);
+      await storeExcludedDocuments(unrouted, CORPUS_CATEGORY);
       let weekStored = 0;
-      for (const doc of docs) {
+      for (const doc of routed) {
         weekStored += await storeCpdDocument(doc);
       }
 
       // Score and aggregate
       const affectedWeeks = new Set([week.start]);
-      await scoreCpdDocuments(docs, affectedWeeks);
+      await scoreCpdDocuments(routed, affectedWeeks);
 
       totalStored += weekStored;
       console.log(
-        `  CPD ${week.start}: ${docs.length} documents → ${weekStored} category entries stored`,
+        `  CPD ${week.start}: ${docs.length} documents (${unrouted.length} corpus-only) → ${weekStored} category entries stored`,
       );
     } catch (err) {
       console.error(`  CPD error for ${week.start}: ${formatError(err)}`);

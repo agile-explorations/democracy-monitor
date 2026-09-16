@@ -13,7 +13,7 @@ export const CacheKeys = {
   doj: (queryKey: string) => `doj:${queryKey}`,
   govinfo: (queryKey: string) => `gi:${queryKey}`,
   fec: (queryKey: string) => `fec:${queryKey}`,
-  searchResearch: (queryHash: string) => `search:research:${queryHash}:v2`,
+  searchResearch: (queryHash: string) => `search:research:${queryHash}:v3`,
   /** docsOnly research responses (#705): doc lists are stable within a data
    *  week; refreshed by the Monday pre-warm (&refresh=true bypass).
    *  Mode-derived version (#758): analytical (and flag-off) requests keep
@@ -23,28 +23,28 @@ export const CacheKeys = {
   // v4/v5 (#744): matched-passage snippets skip mastheads; earlier
   // generations carried header text.
   searchResearchDocs: (keyHash: string, enumeration = false) =>
-    `search:rdocs:${keyHash}:${enumeration ? 'v5' : 'v4'}`,
+    `search:rdocs:${keyHash}:${enumeration ? 'v7' : 'v6'}`,
   /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
    *  provider round-trip per cold search. Query text only, never documents. */
   queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,
   /** LLM alias proposals for hybrid retrieval (#702), keyed by query hash. */
   queryExpansion: (queryHash: string) => `search:qexp:${queryHash}:v1`,
   /** Corpus-validated aliases, keyed by (query, window) hash. */
-  queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v2`,
+  queryExpansionValidated: (keyHash: string) => `search:qexpv:${keyHash}:v3`,
   /** Shortlist-judge picks for enumeration questions (#758), keyed per
    *  (question, data week). */
   searchEntityJudge: (keyHash: string) => `search:qjudge:${keyHash}:v1`,
   /** Complete alias-arm results (#729), keyed by (kind, data week, filter
    *  params, phrase) — aliases recur across differently-worded queries. */
   searchArm: (kind: string, week: string, paramsHash: string, phraseHash: string) =>
-    `search:arm:${kind}:${week}:${paramsHash}:${phraseHash}:v1`,
+    `search:arm:${kind}:${week}:${paramsHash}:${phraseHash}:v2`,
   /** Per-alias validation corpus-count (#729 follow-up): validation pays the
    *  same phrase-recheck cost the arms do, per NOVEL WORDING — this key is
    *  per alias, so recurring topics stop re-paying it. */
   searchAliasCount: (week: string, windowHash: string, phraseHash: string) =>
-    `search:vcount:${week}:${windowHash}:${phraseHash}:v1`,
+    `search:vcount:${week}:${windowHash}:${phraseHash}:v2`,
   /** Validation window-size count, keyed per (window, data week). */
-  searchWindowTotal: (week: string, windowHash: string) => `search:vtotal:${week}:${windowHash}:v1`,
+  searchWindowTotal: (week: string, windowHash: string) => `search:vtotal:${week}:${windowHash}:v2`,
   /** In-flight docsOnly build marker (#729) — coalesces retries/concurrent
    *  identical searches into one build via 202 wait-poll. */
   searchInflight: (docsHash: string) => `search:inflight:${docsHash}:v1`,
@@ -69,7 +69,7 @@ export const CacheKeys = {
   /** Existing ops cooldowns, registered here (#794) instead of inline. */
   opsSearchTimingAlert: () => 'ops:search-timing-alert-cooldown:v1',
   opsPrewarmMopup: () => 'ops:prewarm-mopup-cooldown:v1',
-  documentCount: () => 'stats:doc-count:v4',
+  documentCount: () => 'stats:doc-count:v5',
   /** Era-sliced Pass-1/Pass-2 rates for the methodology page (#772). */
   methodologyVerdictRates: () => 'methodology:verdict-rates:v1',
   validateGraph: () => 'health:validate-graph:v1',

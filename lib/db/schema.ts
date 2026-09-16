@@ -89,6 +89,12 @@ export const documents = pgTable(
      *  statistics, embeddings, and drift, but kept stored and still eligible
      *  as L2 assessment evidence. */
     countingScope: boolean('counting_scope'),
+    /** Superseded opinion revision (#741, R-SEARCH-ORTHOGONAL): true when a
+     *  later same-day revision of the same case replaced this row; the keeper
+     *  carries the review. Search reads THIS flag (`searchable()`), never the
+     *  topic flag; the marker also sets retrieval_relevant=false so G1b/G5
+     *  keep forbidding derived rows. NULL = current. */
+    superseded: boolean('superseded'),
     /** Evidence-tier OVERRIDE (#841, R-GRADED-EVIDENCE). NULL = derive the
      *  action/discussion tier from source_type as before; 'action' marks
      *  speakerless CREC text that is an instrument read into the record
@@ -103,6 +109,9 @@ export const documents = pgTable(
     index('idx_documents_category').on(table.category),
     index('idx_documents_source_origin').on(table.sourceOrigin),
     index('idx_documents_case_id').on(table.caseId),
+    index('idx_documents_superseded')
+      .on(table.id)
+      .where(sql`${table.superseded} IS TRUE`),
   ],
 );
 

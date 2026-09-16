@@ -13,6 +13,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 interface CategoryCount {
@@ -33,13 +34,14 @@ async function analyze(): Promise<{ total: number; byCategory: CategoryCount[] }
   const db = getDb();
 
   const totalResult = await db.execute(sql`
-    SELECT count(*) as count FROM documents WHERE source_origin = 'legiscan'
+    SELECT count(*) as count FROM documents
+    WHERE source_origin = 'legiscan' AND category <> ${CORPUS_CATEGORY}
   `);
   const total = Number(totalResult.rows[0]?.count ?? 0);
 
   const byCategoryResult = await db.execute(sql`
     SELECT category, count(*) as count FROM documents
-    WHERE source_origin = 'legiscan'
+    WHERE source_origin = 'legiscan' AND category <> ${CORPUS_CATEGORY}
     GROUP BY category ORDER BY count DESC
   `);
 
@@ -55,8 +57,11 @@ async function purge(): Promise<PurgeResult> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
 
-  const noiseIds = sql`SELECT id FROM documents WHERE source_origin = 'legiscan'`;
-  const noiseUrls = sql`SELECT url FROM documents WHERE source_origin = 'legiscan'`;
+  // Unrouted corpus rows are search-only (R-SEARCH-ORTHOGONAL); a purge of
+  // routed LegiScan data must never reach them.
+  const noiseCondition = sql`source_origin = 'legiscan' AND category <> ${CORPUS_CATEGORY}`;
+  const noiseIds = sql`SELECT id FROM documents WHERE ${noiseCondition}`;
+  const noiseUrls = sql`SELECT url FROM documents WHERE ${noiseCondition}`;
 
   // Delete from ai_document_assessments (references documents.id)
   const assessResult = await db.execute(sql`
@@ -73,9 +78,9 @@ async function purge(): Promise<PurgeResult> {
     DELETE FROM p2025_matches WHERE document_id IN (${noiseIds})
   `);
 
-  // Delete all LegiScan documents
+  // Delete all routed LegiScan documents
   const docResult = await db.execute(sql`
-    DELETE FROM documents WHERE source_origin = 'legiscan'
+    DELETE FROM documents WHERE ${noiseCondition}
   `);
 
   // Clear legiscan_datasets tracking table to force re-download

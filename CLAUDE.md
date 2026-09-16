@@ -20,6 +20,8 @@ pnpm snapshot              # Run weekly snapshot cron (incremental fetch + full 
 pnpm backfill              # Backfill historical data (fetch → score → aggregate → embed)
 pnpm backfill:gaps         # Show incomplete/failed fetches from backfill pipeline
 pnpm db:prewarm          # Re-warm search indexes after the weekly dump evicts them (pg_prewarm)
+pnpm cache:bust          # Delete named cache entries (--key document-count | validate-graph | validate-data) so the next request recomputes them
+pnpm corpus:restore      # Store previously discarded documents for search only (--source fr|chrg|cl|cpd|doj|crec, --dry-run default, --confirm, --max-docs N exits 3 on cap, --from/--to for cpd/doj/crec); R-SEARCH-ORTHOGONAL #894
 pnpm aliases:replay      # Pre-pay last data week's cache-miss arms + counts into the fresh week, budgeted (#729/#788)
 pnpm backfill:content      # Backfill null-content docs (--source fr|govinfo|oig|fec|doj, --dry-run, --limit N)
 pnpm validate:ingest       # Ingest health: source coverage, content gaps, pagination fitness

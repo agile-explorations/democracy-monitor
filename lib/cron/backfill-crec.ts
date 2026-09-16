@@ -6,11 +6,12 @@
  * Follows the same pattern as backfill-cpd.ts.
  */
 
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { CrecChamber } from '@/lib/services/crec-fetcher';
 import { fetchCrecHistorical } from '@/lib/services/crec-fetcher';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { storeDocuments, storeExcludedDocuments } from '@/lib/services/document-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
 import { formatError } from '@/lib/utils/api-helpers';
@@ -28,21 +29,26 @@ export interface CrecRoutedItem {
 const DEFAULT_CHAMBERS: CrecChamber[] = ['SENATE', 'HOUSE'];
 
 /**
- * Classify CREC items into categories and return routed items.
- * Items that match zero categories are dropped (procedural noise that passed filters).
+ * Classify CREC items into categories. Items that match zero categories are
+ * returned as `unrouted` — not detection evidence for any category, but
+ * still part of the searchable corpus (#892), so the caller stores them
+ * under `corpus`.
  */
-export function routeItemsToCategories(items: ContentItem[]): CrecRoutedItem[] {
+export function routeItemsToCategories(items: ContentItem[]): {
+  routed: CrecRoutedItem[];
+  unrouted: ContentItem[];
+} {
   const routed: CrecRoutedItem[] = [];
+  const unrouted: ContentItem[] = [];
 
   for (const item of items) {
     const text = item.content || '';
     const categories = classifyCrecToCategories(item.title || '', text);
-    if (categories.length === 0) continue;
-
-    routed.push({ item, categories });
+    if (categories.length === 0) unrouted.push(item);
+    else routed.push({ item, categories });
   }
 
-  return routed;
+  return { routed, unrouted };
 }
 
 /**
@@ -109,7 +115,8 @@ export async function backfillCrec(weeks: WeekRange[], dryRun: boolean): Promise
         continue;
       }
 
-      const routed = routeItemsToCategories(items);
+      const { routed, unrouted } = routeItemsToCategories(items);
+      await storeExcludedDocuments(unrouted, CORPUS_CATEGORY);
       if (routed.length === 0) {
         console.log(`  CREC ${week.start}: ${items.length} entries, 0 matched categories`);
         continue;

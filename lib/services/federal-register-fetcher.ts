@@ -1,9 +1,13 @@
 import { stripHtml } from '@/lib/parsers/feed-parser';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
+import { chunk } from '@/lib/utils/collections';
 
 const MAX_SUMMARY_LENGTH = 800;
 const FETCH_TIMEOUT_MS = 30_000;
+/** FR's documents endpoint accepts a comma-separated list of document numbers. */
+const FR_LOOKUP_BATCH_SIZE = 20;
+const FR_LOOKUP_DELAY_MS = 300;
 
 /** Fields to request from the FR search API.
  *  The default response omits raw_text_url, which is needed to fetch full text
@@ -50,7 +54,8 @@ export function buildFrApiUrl(
   return `https://www.federalregister.gov/api/v1/documents.json?${qs.toString()}`;
 }
 
-interface FrApiDocument {
+export interface FrApiDocument {
+  document_number?: string;
   title?: string;
   html_url?: string;
   publication_date?: string;
@@ -78,6 +83,51 @@ export function toContentItem(doc: FrApiDocument): ContentItem {
     sourceOrigin: 'federal_register',
     ...(Object.keys(metadata).length > 0 && { metadata }),
   };
+}
+
+/** One documents-by-number lookup. A failed batch is logged and yields []. */
+async function fetchFrDocumentBatch(numbers: string[], fields: string[]): Promise<FrApiDocument[]> {
+  const qs = new URLSearchParams();
+  for (const field of fields) qs.append('fields[]', field);
+  const url =
+    `https://www.federalregister.gov/api/v1/documents/` +
+    `${numbers.map(encodeURIComponent).join(',')}.json?${qs.toString()}`;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': 'DemocracyMonitor/1.0 (backfill)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      console.warn(`[fr-fetcher] HTTP ${res.status} looking up ${numbers.length} document(s)`);
+      return [];
+    }
+    const json = (await res.json()) as { results?: FrApiDocument[] } & FrApiDocument;
+    // Multi-doc responses use {results: [...]}; a single-doc request returns the doc object.
+    return json.results ?? (json.document_number ? [json] : []);
+  } catch (err) {
+    console.warn(`[fr-fetcher] document lookup failed (${numbers.length} docs):`, err);
+    return [];
+  }
+}
+
+/**
+ * Look up FR documents by document number, batched ${FR_LOOKUP_BATCH_SIZE}
+ * per API call with a politeness delay between batches. `fields` should
+ * include `document_number` so callers can key the result (the default set
+ * is the search fields plus the number, so `toContentItem` applies as-is).
+ * Numbers the API cannot resolve, and failed batches, are simply absent.
+ */
+export async function fetchFrDocumentsByNumber(
+  numbers: string[],
+  fields: string[] = [...FR_API_FIELDS, 'document_number'],
+): Promise<FrApiDocument[]> {
+  const docs: FrApiDocument[] = [];
+  const batches = chunk(numbers, FR_LOOKUP_BATCH_SIZE);
+  for (let i = 0; i < batches.length; i++) {
+    if (i > 0) await sleep(FR_LOOKUP_DELAY_MS);
+    docs.push(...(await fetchFrDocumentBatch(batches[i], fields)));
+  }
+  return docs;
 }
 
 /**

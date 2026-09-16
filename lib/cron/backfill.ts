@@ -10,11 +10,16 @@ import {
   buildActiveSourceCondition,
 } from '@/lib/data/analysis-periods';
 import { CATEGORIES } from '@/lib/data/categories';
+import { CORPUS_CATEGORY } from '@/lib/data/document-populations';
 import { getDb } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
 import { embedUnprocessedDocuments } from '@/lib/services/document-embedder';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { getDocumentsForWeek, storeDocuments } from '@/lib/services/document-store';
+import {
+  getDocumentsForWeek,
+  storeDocuments,
+  storeExcludedDocuments,
+} from '@/lib/services/document-store';
 import { getCompletedWeekStarts, recordWeekFetchResults } from '@/lib/services/fetch-log-store';
 import { computeWeeklyAggregate, storeWeeklyAggregate } from '@/lib/services/weekly-aggregator';
 import type { ContentItem } from '@/lib/types';
@@ -94,6 +99,8 @@ async function processWeek(
     if (items.length > 0) {
       stored = await storeDocuments(items, categoryKey);
     }
+    await storeExcludedDocuments(fetchResult.excludedItems, categoryKey);
+    await storeExcludedDocuments(fetchResult.corpusItems, CORPUS_CATEGORY);
   }
 
   if (items.length > 0) {

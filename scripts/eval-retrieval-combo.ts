@@ -180,8 +180,7 @@ function tierFilter(discussionOnly: boolean) {
 
 const BASE_FILTERS = sql`
   d.embedding IS NOT NULL
-  AND d.retrieval_relevant IS NOT FALSE
-  AND d.content_type != 'metadata_only'
+  AND d.content_type != 'metadata_only' AND d.superseded IS NOT TRUE
   AND d.source_origin IS NOT NULL AND d.source_origin NOT IN ('gdelt', 'whitehouse')
   AND d.category != 'intent'`;
 

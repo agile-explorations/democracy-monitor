@@ -137,3 +137,139 @@ describe('storeDocuments docket routing (#695 stub retirement)', () => {
     vi.resetModules();
   });
 });
+
+describe('storeExcludedDocuments (#891/#892 search-only rows)', () => {
+  /** Insert mock that records each row and honours a "row already exists"
+   *  set the way ON CONFLICT DO NOTHING does (returns no rows). */
+  function mockInsertingDb(existingUrls: Set<string> = new Set(), anywhereUrls = existingUrls) {
+    const rows: Array<Record<string, unknown>> = [];
+    const conflictTargets: unknown[] = [];
+    // The corpus path pre-checks URLs across every category (selectDistinct …
+    // where inArray); answer with the URLs the test declares as stored anywhere.
+    const selectDistinct = vi.fn(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(async () => [...anywhereUrls].map((url) => ({ url }))),
+      })),
+    }));
+    const values = vi.fn((row: Record<string, unknown>) => ({
+      onConflictDoNothing: vi.fn((opts: { target: unknown }) => {
+        conflictTargets.push(opts.target);
+        return {
+          returning: vi.fn(async () => {
+            rows.push(row);
+            return existingUrls.has(row.url as string) ? [] : [{ id: rows.length }];
+          }),
+        };
+      }),
+    }));
+    const insert = vi.fn(() => ({ values }));
+    vi.doMock('@/lib/db', () => ({
+      isDbAvailable: () => true,
+      getDb: () => ({ insert, selectDistinct }),
+    }));
+    return { rows, insert, conflictTargets, selectDistinct };
+  }
+
+  async function loadStore() {
+    vi.resetModules();
+    const mod = await import('@/lib/services/document-store');
+    return mod.storeExcludedDocuments;
+  }
+
+  const frDrop = {
+    title: 'Routine notice',
+    link: 'https://fr.gov/routine',
+    pubDate: '2026-09-01T00:00:00Z',
+    type: 'Notice',
+    content: 'x'.repeat(300),
+  };
+
+  it('stores an FR drop under its signal category with retrieval_relevant=false and counting scope intact', async () => {
+    const db = mockInsertingDb();
+    const storeExcludedDocuments = await loadStore();
+
+    const stored = await storeExcludedDocuments([frDrop] as never[], 'mediaFreedom');
+
+    expect(stored).toBe(1);
+    expect(db.rows).toHaveLength(1);
+    expect(db.rows[0]).toMatchObject({
+      category: 'mediaFreedom',
+      url: 'https://fr.gov/routine',
+      retrievalRelevant: false,
+      sourceOrigin: 'federal_register',
+    });
+    expect(db.rows[0].countingScope).not.toBe(false);
+    vi.doUnmock('@/lib/db');
+  });
+
+  it('stores an unrouted document under corpus with BOTH analysis flags false', async () => {
+    const db = mockInsertingDb();
+    const storeExcludedDocuments = await loadStore();
+
+    await storeExcludedDocuments([frDrop] as never[], 'corpus');
+
+    expect(db.rows[0]).toMatchObject({
+      category: 'corpus',
+      retrievalRelevant: false,
+      countingScope: false,
+    });
+    vi.doUnmock('@/lib/db');
+  });
+
+  it('never shadows a document that is evidence in another category with a corpus row', async () => {
+    const db = mockInsertingDb(new Set(), new Set(['https://fr.gov/routine']));
+    const storeExcludedDocuments = await loadStore();
+
+    const stored = await storeExcludedDocuments([frDrop] as never[], 'corpus');
+
+    expect(stored).toBe(0);
+    expect(db.rows).toEqual([]);
+    expect(db.selectDistinct).toHaveBeenCalledTimes(1);
+    vi.doUnmock('@/lib/db');
+  });
+
+  it('never demotes an existing (url, category) row — insert-only, DO NOTHING on conflict', async () => {
+    const db = mockInsertingDb(new Set(['https://fr.gov/routine']));
+    const storeExcludedDocuments = await loadStore();
+
+    const stored = await storeExcludedDocuments([frDrop] as never[], 'mediaFreedom');
+
+    expect(stored).toBe(0);
+    expect(db.insert).toHaveBeenCalledTimes(1);
+    // Conflict target is the (url, category) key, not url alone.
+    expect(db.conflictTargets[0]).toHaveLength(2);
+    vi.doUnmock('@/lib/db');
+  });
+
+  it('skips unstorable items (errors, no link, docket entries) like storeDocuments does', async () => {
+    const db = mockInsertingDb();
+    const storeExcludedDocuments = await loadStore();
+
+    const stored = await storeExcludedDocuments(
+      [
+        { ...frDrop, isError: true },
+        { ...frDrop, link: undefined },
+        { ...frDrop, type: 'court_opinion' },
+      ] as never[],
+      'mediaFreedom',
+    );
+
+    expect(stored).toBe(0);
+    expect(db.rows).toEqual([]);
+    vi.doUnmock('@/lib/db');
+  });
+
+  it('returns 0 without touching the database when it is unavailable', async () => {
+    vi.doMock('@/lib/db', () => ({
+      isDbAvailable: () => false,
+      getDb: () => {
+        throw new Error('should not be called');
+      },
+    }));
+    const storeExcludedDocuments = await loadStore();
+
+    expect(await storeExcludedDocuments([frDrop] as never[], 'corpus')).toBe(0);
+    vi.doUnmock('@/lib/db');
+    vi.resetModules();
+  });
+});

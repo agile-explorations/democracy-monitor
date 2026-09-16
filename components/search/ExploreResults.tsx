@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { CaseContext } from '@/components/shared/CaseContext';
 import { DisputeLink } from '@/components/shared/DisputeLink';
 import { CATEGORIES } from '@/lib/data/categories';
+import { CORPUS_CATEGORY } from '@/lib/data/document-populations';
 import { CardAssessment } from './ExploreCardAssessment';
-import { formatDate } from './helpers';
+import { formatDate, UNROUTED_LABEL } from './helpers';
 import { AlsoSearchedChips, MatchSnippet } from './MatchSnippet';
 import type { ExploreDocResult, ExploreResult } from './types';
 
@@ -125,6 +126,8 @@ export function ExploreFilters({
   setFilterSource,
   filterSort,
   setFilterSort,
+  includeUnrouted,
+  setIncludeUnrouted,
 }: {
   filterCategory: string;
   setFilterCategory: (v: string) => void;
@@ -132,6 +135,8 @@ export function ExploreFilters({
   setFilterSource: (v: string) => void;
   filterSort: string;
   setFilterSort: (v: string) => void;
+  includeUnrouted: boolean;
+  setIncludeUnrouted: (v: boolean) => void;
 }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
@@ -146,6 +151,7 @@ export function ExploreFilters({
             {c.title}
           </option>
         ))}
+        <option value={CORPUS_CATEGORY}>{UNROUTED_LABEL}</option>
       </select>
       <select
         value={filterSource}
@@ -174,6 +180,15 @@ export function ExploreFilters({
         <option value="date">Sort: Date</option>
         <option value="score">Sort: Assessment score</option>
       </select>
+      <label className="col-span-2 sm:col-span-3 flex items-center gap-2 text-xs text-dm-text-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          checked={includeUnrouted}
+          onChange={(e) => setIncludeUnrouted(e.target.checked)}
+          className="accent-dm-accent"
+        />
+        <span>Include documents not routed to a category</span>
+      </label>
     </div>
   );
 }

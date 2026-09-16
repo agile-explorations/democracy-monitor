@@ -68,6 +68,9 @@ export default function SearchPage() {
   const [filterSource, setFilterSource] = useState('');
   const [filterSort, setFilterSort] = useState('relevance');
   const [filterPage, setFilterPage] = useState(1);
+  /** Explore only (#895): off by default — routed documents; on = also the
+   *  rows no router placed. URL param `unrouted=1`. */
+  const [includeUnrouted, setIncludeUnrouted] = useState(false);
   // Research facet (#552): 'all' = action-weighted tiered default
   const [tierFilter, setTierFilter] = useState<TierFilterValue>('all');
 
@@ -134,6 +137,7 @@ export default function SearchPage() {
         if (filterCategory) params.set('category', filterCategory);
         if (filterSource) params.set('source', filterSource);
         if (filterSort !== 'relevance') params.set('sort', filterSort);
+        if (includeUnrouted) params.set('unrouted', '1');
         if (page > 1) params.set('page', String(page));
       }
       router.replace(`/search?${params.toString()}`, undefined, { shallow: true });
@@ -167,6 +171,7 @@ export default function SearchPage() {
       filterDateTo,
       filterSource,
       filterSort,
+      includeUnrouted,
       tierFilter,
       router,
     ],
@@ -405,6 +410,9 @@ export default function SearchPage() {
     if (router.query.dateTo) setFilterDateTo(router.query.dateTo as string);
     if (router.query.source) setFilterSource(router.query.source as string);
     if (router.query.sort) setFilterSort(router.query.sort as string);
+    if (router.query.unrouted === '1' || router.query.unrouted === 'true') {
+      setIncludeUnrouted(true);
+    }
     if (router.query.page) setFilterPage(Number(router.query.page));
     const t = router.query.tier as string | undefined;
     if (t === 'action' || t === 'discussion') setTierFilter(t);
@@ -585,6 +593,8 @@ export default function SearchPage() {
             setFilterSource,
             filterSort,
             setFilterSort,
+            includeUnrouted,
+            setIncludeUnrouted,
           }}
         />
       )}

@@ -5,6 +5,7 @@
  */
 
 import {
+  dedupeExcludedItems,
   fetchWeekItemsFr,
   fetchWeekItemsCourtListener,
   fetchWeekItemsDoj,
@@ -24,6 +25,10 @@ import { toDateString } from '@/lib/utils/date-utils';
 export interface IncrementalFetchResult {
   items: ContentItem[];
   signalResults: SignalFetchResult[];
+  /** Search-only items (#891): every source's excluded items, deduped by URL,
+   *  minus any URL a routed item carries. Not in any signal's documentCount. */
+  excludedItems: ContentItem[];
+  corpusItems: ContentItem[];
 }
 
 type GroupedSignals = {
@@ -96,6 +101,8 @@ export async function fetchCategoryIncremental(
   const fetchEnd = endDate ?? toDateString(new Date());
   const groups = groupSignals(cat.signals);
   const allItems: ContentItem[] = [];
+  const allCorpus: ContentItem[] = [];
+  const allExcluded: ContentItem[] = [];
   const allResults: SignalFetchResult[] = [];
 
   const fetchers: Array<{
@@ -121,8 +128,15 @@ export async function fetchCategoryIncremental(
     const start = Date.now();
     const result = await fn(signals, week, cat.key);
     allItems.push(...result.items);
+    allExcluded.push(...(result.excludedItems ?? []));
+    allCorpus.push(...(result.corpusItems ?? []));
     allResults.push(sourceResultToSignalResult(signals[0], result, start));
   }
 
-  return { items: allItems, signalResults: allResults };
+  return {
+    items: allItems,
+    signalResults: allResults,
+    excludedItems: dedupeExcludedItems(allItems, allExcluded),
+    corpusItems: dedupeExcludedItems(allItems, allCorpus),
+  };
 }

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ExploreResults } from '@/components/search/ExploreResults';
+import { ExploreFilters, ExploreResults } from '@/components/search/ExploreResults';
 import type { ExploreDocResult, ExploreResult } from '@/components/search/types';
 
 function doc(overrides: Partial<ExploreDocResult>): ExploreDocResult {
@@ -75,5 +75,72 @@ describe('ExploreResults (#728)', () => {
     expect(screen.getAllByText('formal override')[0].getAttribute('title')).toMatch(
       /institutional protections/i,
     );
+  });
+});
+
+describe('ExploreResults unrouted badge (#895)', () => {
+  it('labels rows no router placed "Not routed to a category" instead of a category', () => {
+    render(
+      <ExploreResults
+        result={result(
+          [doc({ category: 'civilService' }), doc({ id: 2, category: 'corpus', routed: false })],
+          1,
+        )}
+        page={1}
+        onPageChange={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Assessment details' }));
+    const badge = screen.getByText('Not routed to a category');
+    expect(badge.getAttribute('title')).toMatch(/not detection evidence/i);
+    expect(screen.queryByText('corpus')).toBeNull();
+    // The routed sibling row still wears its category title.
+    expect(screen.getByText('Government Worker Protections')).toBeTruthy();
+  });
+
+  it('labels an off-topic row unrouted even though it carries a real category', () => {
+    render(
+      <ExploreResults
+        result={result([doc({ category: 'mediaFreedom', routed: false })], 1)}
+        page={1}
+        onPageChange={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Assessment details' }));
+    expect(screen.getByText('Not routed to a category')).toBeTruthy();
+    expect(screen.queryByText('Press Freedom')).toBeNull();
+  });
+});
+
+describe('ExploreFilters unrouted toggle (#895)', () => {
+  function renderFilters(includeUnrouted: boolean, setIncludeUnrouted: (v: boolean) => void) {
+    render(
+      <ExploreFilters
+        filterCategory=""
+        setFilterCategory={() => {}}
+        filterSource=""
+        setFilterSource={() => {}}
+        filterSort="relevance"
+        setFilterSort={() => {}}
+        includeUnrouted={includeUnrouted}
+        setIncludeUnrouted={setIncludeUnrouted}
+      />,
+    );
+  }
+
+  it('is off by default and reports a change when ticked', () => {
+    const calls: boolean[] = [];
+    renderFilters(false, (v) => calls.push(v));
+    const box = screen.getByRole('checkbox', {
+      name: 'Include documents not routed to a category',
+    }) as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    fireEvent.click(box);
+    expect(calls).toEqual([true]);
+  });
+
+  it('offers the "Not routed to a category" facet in the category select', () => {
+    renderFilters(false, () => {});
+    expect(screen.getByRole('option', { name: 'Not routed to a category' })).toBeTruthy();
   });
 });

@@ -1,3 +1,4 @@
+import { componentNameMatchesSlug, isCorpusComponent } from '@/lib/data/doj-corpus-components';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 
@@ -10,7 +11,7 @@ interface DojNamedRef {
   name: string;
 }
 
-interface DojPressRelease {
+export interface DojPressRelease {
   uuid?: string;
   title?: string;
   body?: string;
@@ -24,7 +25,7 @@ interface DojPressRelease {
   number?: string;
 }
 
-interface DojApiResponse {
+export interface DojApiResponse {
   results?: DojPressRelease[];
   metadata?: { resultset?: { count: string; pagesize: number; page: number } };
 }
@@ -94,8 +95,40 @@ export function matchesComponentSlug(
 ): boolean {
   if (!slug) return true;
   if (!components || components.length === 0) return false;
-  const pattern = slug.replace(/-/g, ' ').toLowerCase();
-  return components.some((c) => c.name.toLowerCase().includes(pattern));
+  return components.some((c) => componentNameMatchesSlug(c.name, slug));
+}
+
+/** Routed vs. corpus-only releases from one historical DOJ fetch (#892). */
+export interface DojHistoricalResult {
+  /** Releases matching the signal's component filter — detection evidence. */
+  items: ContentItem[];
+  /** Releases that failed the signal filter but come from a corpus component
+   *  (AG, Deputy AG, Public Affairs, or a signal division): stored for search
+   *  only, never scored. */
+  excludedItems: ContentItem[];
+}
+
+/**
+ * Sort one API page's releases into routed / corpus-only / discarded for a
+ * signal. Pure — the date window is applied first so neither bucket ever
+ * carries an out-of-range release.
+ */
+export function partitionReleases(
+  releases: DojPressRelease[],
+  params: { component?: string; fromDate: Date; toDate: Date },
+): DojHistoricalResult {
+  const items: ContentItem[] = [];
+  const excludedItems: ContentItem[] = [];
+  for (const release of releases) {
+    const d = parseUnixDate(release.date);
+    if (!d || d < params.fromDate || d > params.toDate) continue;
+    if (matchesComponentSlug(release.component, params.component)) {
+      items.push(toContentItem(release));
+    } else if (isCorpusComponent((release.component ?? []).map((c) => c.name))) {
+      excludedItems.push(toContentItem(release));
+    }
+  }
+  return { items, excludedItems };
 }
 
 /** Parse Set-Cookie header into a cookie string for subsequent requests. */
@@ -122,7 +155,7 @@ function buildDojUrl(page: number): string {
 }
 
 /** Fetch a single page from the DOJ API, returning parsed data and updated cookies. */
-async function fetchDojPage(
+export async function fetchDojPage(
   page: number,
   cookies: string,
 ): Promise<{ data: DojApiResponse; cookies: string } | null> {
@@ -153,7 +186,7 @@ function firstDateOnPage(results: DojPressRelease[]): Date | null {
  * Results are DESC-sorted, so higher page numbers = older dates.
  * Returns the page number where results are at or just after targetDate.
  */
-async function findStartPage(targetDate: Date, totalPages: number): Promise<number> {
+export async function findStartPage(targetDate: Date, totalPages: number): Promise<number> {
   let lo = 0;
   let hi = totalPages - 1;
   let cookies = '';
@@ -206,24 +239,34 @@ export async function fetchDojRecent(params: {
   return filtered.slice(0, 20).map(toContentItem);
 }
 
-/** Fetch historical DOJ press releases for the backfill pipeline. */
-export async function fetchDojHistorical(params: {
+interface DojHistoricalParams {
   component?: string;
   topic?: string;
   dateFrom: string;
   dateTo: string;
   maxPages?: number;
-}): Promise<ContentItem[]> {
+}
+
+/**
+ * Fetch historical DOJ press releases for the backfill pipeline, returning
+ * the signal-routed releases AND the corpus-only releases the signal filter
+ * rejected (#892), so leadership-office releases reach search. Routed-item
+ * behavior is unchanged from the former `fetchDojHistorical`.
+ */
+export async function fetchDojHistoricalPartitioned(
+  params: DojHistoricalParams,
+): Promise<DojHistoricalResult> {
   const { maxPages = 50 } = params;
   const fromDate = new Date(params.dateFrom);
   const toDate = new Date(params.dateTo);
+  const empty: DojHistoricalResult = { items: [], excludedItems: [] };
 
   // Fetch page 0 to get total count for binary search
   const initial = await fetchDojPage(0, '');
-  if (!initial) return [];
+  if (!initial) return empty;
 
   const totalCount = parseInt(initial.data.metadata?.resultset?.count || '0');
-  if (totalCount === 0) return [];
+  if (totalCount === 0) return empty;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   // Binary search for the page containing dateTo (start of our range in DESC order)
@@ -236,6 +279,7 @@ export async function fetchDojHistorical(params: {
 
   // Paginate forward from startPage (increasing page = older dates)
   const allItems: ContentItem[] = [];
+  const excludedItems: ContentItem[] = [];
   let { cookies } = initial;
 
   for (let i = 0; i < maxPages; i++) {
@@ -250,18 +294,17 @@ export async function fetchDojHistorical(params: {
     const releases = result.data.results || [];
     if (releases.length === 0) break;
 
-    const filtered = releases.filter((r) => {
-      if (!matchesComponentSlug(r.component, params.component)) return false;
-      const d = parseUnixDate(r.date);
-      return d && d >= fromDate && d <= toDate;
-    });
-    allItems.push(...filtered.map(toContentItem));
+    const split = partitionReleases(releases, { component: params.component, fromDate, toDate });
+    allItems.push(...split.items);
+    excludedItems.push(...split.excludedItems);
 
     // With DESC sort, stop when last item's date is before our range
     const lastDate = parseUnixDate(releases[releases.length - 1]?.date);
     if (lastDate && lastDate < fromDate) break;
   }
 
-  console.log(`  [doj] Found ${allItems.length} items in range`);
-  return allItems;
+  console.log(
+    `  [doj] Found ${allItems.length} items in range (${excludedItems.length} corpus-only)`,
+  );
+  return { items: allItems, excludedItems };
 }

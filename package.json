@@ -1,6 +1,6 @@
 {
   "name": "democracy-monitor",
-  "version": "1.31.3",
+  "version": "1.32.0",
   "description": "Live dashboard tracking signals of executive-power centralization across US government institutions",
   "license": "MIT",
   "author": "Michael Kelly",
@@ -40,6 +40,7 @@
     "db:promote": "tsx scripts/db-promote.ts",
     "db:promote:dry-run": "tsx scripts/db-promote.ts --dry-run",
     "db:prewarm": "tsx lib/cron/prewarm-indexes.ts",
+    "cache:bust": "tsx lib/cron/cache-bust.ts",
     "aliases:replay": "tsx lib/cron/replay-slow-aliases.ts",
     "db:push-prod": "./scripts/db-push-prod.sh",
     "snapshot": "tsx lib/cron/snapshot.ts",
@@ -66,6 +67,7 @@
     "seed:apply": "tsx lib/seed/apply-decisions.ts",
     "seed:cycle-factors": "tsx lib/services/cycle-adjustment-service.ts",
     "backfill:content": "tsx lib/cron/backfill-content.ts",
+    "corpus:restore": "tsx lib/cron/restore-corpus.ts",
     "routing:reapply": "tsx lib/cron/routing-reapply.ts",
     "backfill:opinions": "tsx lib/cron/backfill-opinions.ts",
     "backfill:gaps": "tsx lib/cron/backfill-gaps.ts",

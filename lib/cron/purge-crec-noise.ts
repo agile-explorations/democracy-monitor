@@ -16,6 +16,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 const AMENDMENT_SUBCLASSES = ['SAMENDMENTTEXTIND', 'SAMENDMENTTEXT', 'SAMENDMENTSSUB'];
@@ -37,13 +38,14 @@ async function analyze(): Promise<{ total: number; noise: number; byCategory: Ca
   const db = getDb();
 
   const totalResult = await db.execute(sql`
-    SELECT count(*) as count FROM documents WHERE source_origin = 'crec'
+    SELECT count(*) as count FROM documents
+    WHERE source_origin = 'crec' AND category <> ${CORPUS_CATEGORY}
   `);
   const total = Number(totalResult.rows[0]?.count ?? 0);
 
   const noiseResult = await db.execute(sql`
     SELECT category, count(*) as count FROM documents
-    WHERE source_origin = 'crec'
+    WHERE source_origin = 'crec' AND category <> ${CORPUS_CATEGORY}
     AND metadata->>'subGranuleClass' IN (${sql.join(
       AMENDMENT_SUBCLASSES.map((c) => sql`${c}`),
       sql`, `,
@@ -65,8 +67,10 @@ async function purge(): Promise<PurgeResult> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
 
+  // Unrouted corpus rows are search-only (R-SEARCH-ORTHOGONAL); a purge of
+  // category noise must never reach them.
   const noiseCondition = sql`
-    source_origin = 'crec'
+    source_origin = 'crec' AND category <> ${CORPUS_CATEGORY}
     AND metadata->>'subGranuleClass' IN (${sql.join(
       AMENDMENT_SUBCLASSES.map((c) => sql`${c}`),
       sql`, `,

@@ -4,7 +4,7 @@ import {
   EROSION_TYPE_LABELS,
   EROSION_TYPE_TIPS,
 } from '@/lib/data/assessment-labels';
-import { categoryLabel } from './helpers';
+import { categoryLabel, documentCategoryLabel, isUnroutedDocument } from './helpers';
 import type { ExploreDocResult } from './types';
 
 /**
@@ -129,18 +129,37 @@ export function CardAssessment({ categories }: { categories: ExploreDocResult[] 
   );
 }
 
+/** Category badge shared by Explore rows and Research cards (#895): routed
+ *  rows wear their category title; rows no router placed wear the muted
+ *  "Not routed to a category" label instead of a category they were filtered
+ *  out of. */
+export function CategoryBadge({ doc }: { doc: { category: string; routed?: boolean } }) {
+  const unrouted = isUnroutedDocument(doc);
+  return (
+    <span
+      className={
+        unrouted
+          ? 'px-1.5 py-0 rounded border border-dashed border-dm-border text-dm-muted/70 italic cursor-help'
+          : 'px-1.5 py-0 rounded bg-dm-border/50 text-dm-muted cursor-help'
+      }
+      title={
+        unrouted
+          ? 'Stored and searchable, but not detection evidence for any monitoring category — no router placed it, or a relevance filter annotated it off-topic'
+          : 'Monitoring category this document was routed to — one document can be assessed in several categories, each with its own scores'
+      }
+    >
+      {documentCategoryLabel(doc)}
+    </span>
+  );
+}
+
 /** Erosion-lens badges per category row (#728: tooltips + humanized labels
  *  as the interim legibility fix — the full redesign belongs to the lens
  *  model, DECISIONS 2026-08-16). */
 export function CategoryRow({ doc }: { doc: ExploreDocResult }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px]">
-      <span
-        className="px-1.5 py-0 rounded bg-dm-border/50 text-dm-muted cursor-help"
-        title="Monitoring category this document was routed to — one document can be assessed in several categories, each with its own scores"
-      >
-        {categoryLabel(doc.category)}
-      </span>
+      <CategoryBadge doc={doc} />
       {doc.finalScore != null && (
         <span
           className="text-dm-text-secondary cursor-help"

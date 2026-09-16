@@ -22,6 +22,7 @@ import {
   getLayerScorePopulation,
   getNarrativeCoverage,
 } from './data-validation-queries';
+import { embeddable } from './document-embedder';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -163,8 +164,10 @@ export async function getStageCompleteness(category?: string): Promise<StageComp
   const [docStats] = await db
     .select({
       total: sql<number>`count(*)::int`,
-      missingEmbeddings: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.countingScope} is not false and ${documents.category} != 'intent')::int`,
-      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${documents.embeddedAt} is null and ${documents.contentType} != 'metadata_only' and ${documents.retrievalRelevant} is not false and ${documents.countingScope} is not false and ${documents.category} = 'intent')::int`,
+      // The embedder's own predicate (searchable + body + unembedded), so the
+      // backlog reports exactly what `embeddings:backfill` would process.
+      missingEmbeddings: sql<number>`count(*) filter (where ${embeddable()} and ${documents.category} != 'intent')::int`,
+      missingEmbeddingsIntent: sql<number>`count(*) filter (where ${embeddable()} and ${documents.category} = 'intent')::int`,
       metadataOnlyCount: sql<number>`count(*) filter (where ${documents.contentType} = 'metadata_only')::int`,
     })
     .from(documents)

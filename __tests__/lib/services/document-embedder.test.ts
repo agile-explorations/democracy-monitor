@@ -103,4 +103,71 @@ describe('document-embedder', () => {
 
     expect(result).toBe(2);
   });
+
+  describe('embedWithCap (--max-docs, #889)', () => {
+    const doc = (id: number) => ({ id, title: `Doc ${id}`, content: 'body' });
+
+    it('stops after maxDocs attempted rows and shrinks the last fetch to the remainder', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      // An inexhaustible population that honours the fetch limit: any fetch
+      // wider than the remaining cap, or any extra fetch, inflates `attempted`.
+      const pool = [doc(1), doc(2), doc(3), doc(4), doc(5)];
+      mockLimit.mockImplementation(async (n: number) => pool.slice(0, n));
+      mockEmbedBatch.mockImplementation(async (texts: string[]) => texts.map(() => [0.1]));
+
+      const { embedWithCap } = await import('@/lib/services/document-embedder');
+      const outcome = await embedWithCap(undefined, undefined, 3);
+
+      expect(outcome).toEqual({ attempted: 3, embedded: 3 });
+    });
+
+    it('counts a marked failure as an attempt (every attempt is an API call)', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      mockLimit.mockResolvedValueOnce([doc(1), doc(2)]).mockResolvedValue([]);
+      mockEmbedBatch.mockResolvedValue([[0.1], null]);
+
+      const { embedWithCap } = await import('@/lib/services/document-embedder');
+      const outcome = await embedWithCap(undefined, undefined, 10);
+
+      expect(outcome).toEqual({ attempted: 2, embedded: 1 });
+    });
+
+    it('runs uncapped to exhaustion when maxDocs is omitted', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      mockLimit
+        .mockResolvedValueOnce([doc(1)])
+        .mockResolvedValueOnce([doc(2)])
+        .mockResolvedValue([]);
+      mockEmbedBatch.mockImplementation(async (texts: string[]) => texts.map(() => [0.1]));
+
+      const { embedWithCap } = await import('@/lib/services/document-embedder');
+      expect(await embedWithCap()).toEqual({ attempted: 2, embedded: 2 });
+      expect(mockLimit).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('countEmbeddable (--dry-run, #889)', () => {
+    it('returns the row count and approximate token estimate as numbers', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(true);
+      mockWhere.mockResolvedValueOnce([{ count: 42, approxTokens: '123456' }]);
+
+      const { countEmbeddable } = await import('@/lib/services/document-embedder');
+      expect(await countEmbeddable({ category: 'elections' })).toEqual({
+        count: 42,
+        approxTokens: 123456,
+      });
+    });
+
+    it('is zero without a database', async () => {
+      const { isDbAvailable } = await import('@/lib/db');
+      vi.mocked(isDbAvailable).mockReturnValue(false);
+
+      const { countEmbeddable } = await import('@/lib/services/document-embedder');
+      expect(await countEmbeddable()).toEqual({ count: 0, approxTokens: 0 });
+    });
+  });
 });

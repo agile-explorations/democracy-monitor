@@ -377,12 +377,15 @@ export function DetailedContent() {
           term queries for the Press Freedom category had matched administrative boilerplate
           (Privacy Act statements, paperwork notices) in routine documents from unrelated agencies.
           A verified title-and-abstract relevance filter now screens these at fetch time, and 17,241
-          historical off-topic documents (2017–2026) were annotated and excluded from assessment,
-          statistics, search, and exports — annotated, not deleted, and every exclusion is recorded
-          in a public drop ledger. Recomputing nine years of Press Freedom history with the
-          corrected corpus changed 2 week-statuses (one week rose to Elevated, one ConfirmedConcern
-          week was revised to Elevated), confirming that detection had been driven by real signal
-          rather than the noise.
+          historical off-topic documents (2017–2026) were annotated and excluded from assessment and
+          statistics — annotated, not deleted: they remain stored, embedded, and searchable
+          (labelled &ldquo;Not routed to a category&rdquo;), and every exclusion is recorded in a
+          public drop ledger. Recomputing nine years of Press Freedom history with the corrected
+          corpus changed 2 week-statuses (one week rose to Elevated, one ConfirmedConcern week was
+          revised to Elevated), confirming that detection had been driven by real signal rather than
+          the noise. The same rule applies to every source going forward (September 2026): relevance
+          triage happens in assessment, never at ingest, and documents a router cannot place are
+          kept for search under &ldquo;Not routed to a category.&rdquo;
         </p>
       </Section>
 

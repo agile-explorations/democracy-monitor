@@ -13,8 +13,9 @@ import {
 import type { ContentItem } from '@/lib/types';
 
 // Capture what the pass stores, so tests assert on real output rather than mock internals.
-const { storedDocs } = vi.hoisted(() => ({
+const { storedDocs, corpusDocs } = vi.hoisted(() => ({
   storedDocs: [] as Array<{ items: ContentItem[]; category: string }>,
+  corpusDocs: [] as Array<{ items: ContentItem[]; category: string }>,
 }));
 
 // sleep → instant so the 2s rate-limit delays don't slow tests
@@ -27,6 +28,10 @@ vi.mock('@/lib/services/cl-bulk-staging', () => ({
 vi.mock('@/lib/services/document-store', () => ({
   storeDocuments: vi.fn(async (items: ContentItem[], category: string) => {
     storedDocs.push({ items, category });
+    return items.length;
+  }),
+  storeExcludedDocuments: vi.fn(async (items: ContentItem[], category: string) => {
+    corpusDocs.push({ items, category });
     return items.length;
   }),
 }));
@@ -45,8 +50,17 @@ vi.mock('@/lib/services/cl-cluster-ledger', () => ({
     ledgerWrites.push({ clusterId: row.clusterId, reason });
   }),
 }));
+// Revision dedup (#741): record which (case, category, day, keeper) each store checks.
+const { revisionChecks } = vi.hoisted(() => ({
+  revisionChecks: [] as Array<{ caseId: string; category: string; filed: string; keep?: string }>,
+}));
 vi.mock('@/lib/services/opinion-revision-dedup', () => ({
-  markSupersededRevisions: vi.fn(async () => []),
+  markSupersededRevisions: vi.fn(
+    async (caseId: string, category: string, filed: string, keep?: string) => {
+      revisionChecks.push({ caseId, category, filed, keep });
+      return [];
+    },
+  ),
 }));
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -273,6 +287,7 @@ describe('court-scoped queries (#528)', () => {
 describe('emergency docket + per-cluster memory + routing (#741)', () => {
   beforeEach(() => {
     storedDocs.length = 0;
+    corpusDocs.length = 0;
     ledgerState.clear();
     ledgerWrites.length = 0;
   });
@@ -339,6 +354,49 @@ describe('emergency docket + per-cluster memory + routing (#741)', () => {
     expect(result.opinionsStored).toBe(0);
     expect(storedDocs).toHaveLength(0);
     expect(ledgerWrites).toEqual([{ clusterId: 1, reason: 'no_text' }]);
+  });
+
+  it('stores an unrouted opinion under corpus for search, ledgered zero_categories (#892)', async () => {
+    // Surfaced by a court query only; the text matches no category and no
+    // first-amendment phrase → not evidence anywhere, but still searchable.
+    revisionChecks.length = 0;
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/search/')) {
+        return jsonResponse({ next: null, results: url.includes('court=') ? [cluster()] : [] });
+      }
+      if (url.includes('/opinions/')) {
+        return jsonResponse({
+          id: 5001,
+          type: '020lead',
+          plain_text: 'The motion for an extension of time to file the joint appendix is granted.',
+          absolute_url: '/opinion/1/doe-v-state/',
+        });
+      }
+      return jsonResponse({}, false, 404);
+    }) as unknown as typeof fetch;
+
+    const result = await apiOpinionFirstPass('2026-06-22', '2026-06-28', false, {
+      useLedger: true,
+    });
+
+    expect(storedDocs).toHaveLength(0);
+    expect(corpusDocs).toHaveLength(1);
+    expect(corpusDocs[0].category).toBe('corpus');
+    expect(corpusDocs[0].items[0].link).toBe(
+      'https://www.courtlistener.com/opinion/1/doe-v-state/',
+    );
+    expect(result).toEqual({ docketsFound: 1, opinionsStored: 0, corpusStored: 1 });
+    expect(ledgerWrites).toEqual([{ clusterId: 1, reason: 'zero_categories' }]);
+    // Revision dedup runs for the corpus row exactly as it does for routed rows.
+    expect(revisionChecks).toEqual([
+      {
+        caseId: 'cl:100',
+        category: 'corpus',
+        filed: '2026-06-24',
+        keep: 'https://www.courtlistener.com/opinion/1/doe-v-state/',
+      },
+    ]);
   });
 
   it('skips a cluster the ledger already holds as stored, and records a fresh store', async () => {

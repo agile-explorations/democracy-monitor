@@ -5,6 +5,12 @@
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import {
+  categoryFacetD,
+  CORPUS_CATEGORY,
+  routedOnlyD,
+  searchableD,
+} from '@/lib/db/document-filters';
+import {
   countDistinctDocs,
   fetchRowsForDocKeys,
   orderedUniqueDocKeys,
@@ -19,20 +25,25 @@ const VECTOR_CANDIDATE_LIMIT = 500;
 export const SEARCH_EXCLUDED_ORIGINS = ['gdelt', 'whitehouse'] as const;
 
 export function buildFilterConditions(filters: SearchFilters): ReturnType<typeof sql>[] {
-  // Unconditional exclusions: annotated off-topic docs (#544), body-less
-  // metadata records, the intent-assessment working set (internal analysis
-  // plumbing under the non-monitored 'intent' category, null source_origin),
-  // and legacy origins — every searchable doc belongs to a listed source.
+  // Unconditional exclusions: the searchable population (body present, not a
+  // superseded revision — topic is not a search criterion), the
+  // intent-assessment working set (internal analysis plumbing under the
+  // non-monitored 'intent' category, null source_origin), and legacy origins
+  // — every searchable doc belongs to a listed source.
   const conditions: ReturnType<typeof sql>[] = [
-    sql`d.retrieval_relevant IS NOT FALSE`,
-    sql`d.content_type != 'metadata_only'`,
+    searchableD(),
     sql`d.category != 'intent'`,
     sql`d.source_origin IS NOT NULL`,
     sql`d.source_origin NOT IN ('gdelt', 'whitehouse')`,
   ];
 
   if (filters.category) {
-    conditions.push(sql`d.category = ${filters.category}`);
+    conditions.push(categoryFacetD(filters.category));
+  }
+  // Explore default (#895): routed documents only — the "Not routed to a
+  // category" facet already selects the complement, so it implies the toggle.
+  if (!filters.includeUnrouted && filters.category !== CORPUS_CATEGORY) {
+    conditions.push(routedOnlyD());
   }
   if (filters.dateFrom) {
     conditions.push(sql`d.published_at >= ${filters.dateFrom}::timestamptz`);
@@ -66,6 +77,7 @@ export function mapToSearchResult(row: Record<string, unknown>): SearchResultDoc
     sourceOrigin: row.source_origin as string | null,
     caseId: row.case_id as string | null,
     category: row.category as string,
+    routed: row.retrieval_relevant !== false && row.category !== CORPUS_CATEGORY,
     snippet: row.snippet as string | null,
     ...(row.match_snippet ? { matchSnippet: row.match_snippet as string } : {}),
     ...(row.matched_alias ? { matchedAlias: row.matched_alias as string } : {}),

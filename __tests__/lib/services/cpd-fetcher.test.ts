@@ -1,5 +1,89 @@
-import { describe, it, expect } from 'vitest';
-import { selectNewPackages, summaryToContentItem } from '@/lib/services/cpd-fetcher';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import {
+  fetchCpdHistorical,
+  partitionCpdDocuments,
+  selectNewPackages,
+  summaryToContentItem,
+} from '@/lib/services/cpd-fetcher';
+import type { CpdDocument } from '@/lib/services/cpd-fetcher';
+
+vi.mock('@/lib/utils/async', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
+
+describe('partitionCpdDocuments (#892)', () => {
+  const routed: CpdDocument = {
+    item: { title: 'EO on Iraq', link: 'https://govinfo/1' },
+    categories: ['executiveActions'],
+    unmappedSubjects: [],
+  };
+  const unrouted: CpdDocument = {
+    item: { title: 'Remarks at a dinner', link: 'https://govinfo/2' },
+    categories: [],
+    unmappedSubjects: ['Dinners'],
+  };
+
+  it('keeps routed documents whole and hands back only the items of unrouted ones', () => {
+    expect(partitionCpdDocuments([routed, unrouted])).toEqual({
+      routed: [routed],
+      unrouted: [unrouted.item],
+    });
+  });
+
+  it('returns two empty lists for no documents', () => {
+    expect(partitionCpdDocuments([])).toEqual({ routed: [], unrouted: [] });
+  });
+});
+
+describe('fetchCpdHistorical zero-category packages (#892)', () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.GOVINFO_API_KEY;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    process.env.GOVINFO_API_KEY = originalKey;
+  });
+
+  /** One package whose only subject is unmapped, with a fetchable body. */
+  function mockGovInfo(): void {
+    process.env.GOVINFO_API_KEY = 'test-key';
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const json = (body: unknown) =>
+        ({ ok: true, status: 200, json: async () => body, text: async () => '' }) as Response;
+      if (url.includes('/search')) {
+        return json({ results: [{ packageId: 'DCPD-202600001' }], offsetMark: null, count: 1 });
+      }
+      if (url.endsWith('/summary?api_key=test-key')) {
+        return json({
+          title: 'Remarks at a Dinner',
+          dateIssued: '2026-03-01',
+          subject: [{ level1: 'Dinners, unmapped' }],
+          dcpdCategory: [{ level1: 'Remarks' }],
+        });
+      }
+      if (url.endsWith('/htm?api_key=test-key')) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => '<html><body><p>Thank you all for coming.</p></body></html>',
+        } as Response;
+      }
+      return { ok: false, status: 404, text: async () => '' } as Response;
+    }) as unknown as typeof fetch;
+  }
+
+  it('returns the package with categories: [] and its content instead of skipping it', async () => {
+    mockGovInfo();
+
+    const docs = await fetchCpdHistorical({ dateFrom: '2026-03-01', dateTo: '2026-03-07' });
+
+    expect(docs).toHaveLength(1);
+    expect(docs[0].categories).toEqual([]);
+    expect(docs[0].unmappedSubjects).toEqual(['Dinners, unmapped']);
+    expect(docs[0].item.title).toBe('Remarks at a Dinner');
+    expect(docs[0].item.content).toContain('Thank you all for coming.');
+    expect(partitionCpdDocuments(docs).unrouted).toEqual([docs[0].item]);
+  });
+});
 
 describe('summaryToContentItem', () => {
   it('converts a CPD summary to a ContentItem with correct fields', () => {

@@ -24,6 +24,7 @@
  */
 
 import { COURT_QUERIES, FIRST_AMENDMENT_QUERY } from '@/lib/data/court-queries';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { backfillOpinionsByDate, isBulkOpinionDbAvailable } from '@/lib/services/cl-bulk-staging';
 import { getClusterLedger, recordClusterOutcome } from '@/lib/services/cl-cluster-ledger';
 import { planClusterAttempts } from '@/lib/services/cl-cluster-plan';
@@ -39,15 +40,20 @@ import {
   RATE_LIMIT_DELAY_MS,
 } from '@/lib/services/courtlistener-fetcher';
 import { classifyOpinionToCategories } from '@/lib/services/crec-classifier';
-import { storeDocuments } from '@/lib/services/document-store';
+import { storeDocuments, storeExcludedDocuments } from '@/lib/services/document-store';
 import { markSupersededRevisions } from '@/lib/services/opinion-revision-dedup';
+import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { fetchWithRetry } from '@/lib/utils/fetch-retry';
 import { isSameHostHttps } from '@/lib/utils/pagination';
 
 export interface OpinionFirstResult {
   docketsFound: number;
+  /** Category rows stored — detection evidence. */
   opinionsStored: number;
+  /** Clusters with text that matched no category, stored search-only under
+   *  `corpus` (#892). Their ledger outcome stays `zero_categories`. */
+  corpusStored: number;
 }
 
 /** Days the weekly trailing pass looks back (#741): CourtListener extracts
@@ -150,9 +156,8 @@ async function fetchOpinionSearchResults(
     // Follow the API-supplied next URL only if it stays on the CourtListener
     // host over https (#630).
     next = data.next && isSameHostHttps(data.next, CL_BASE_URL) ? data.next : null;
-    if (data.next && !next) {
+    if (data.next && !next)
       console.warn(`[cl-opinion-first] pagination halted — next URL off-host: ${data.next}`);
-    }
     page++;
     if (next) await sleep(RATE_LIMIT_DELAY_MS);
   }
@@ -190,14 +195,11 @@ async function collectMatchedClusters(
     for (const row of rows) {
       if (!row.cluster_id || !row.docket_id) continue;
       if (!isFederalJurisdiction(row.court_jurisdiction)) continue;
-      const existing = byCluster.get(row.cluster_id);
-      const match =
-        existing ??
-        ({
-          row,
-          firstAmendment: false,
-          courtQueries: new Set<string>(),
-        } satisfies MatchedCluster);
+      const match: MatchedCluster = byCluster.get(row.cluster_id) ?? {
+        row,
+        firstAmendment: false,
+        courtQueries: new Set<string>(),
+      };
       if (q.courtKey) match.courtQueries.add(q.courtKey);
       else match.firstAmendment = true;
       byCluster.set(row.cluster_id, match);
@@ -263,21 +265,27 @@ function opinionIdsOf(row: OpinionSearchResult): string[] {
     .map(String);
 }
 
-/** Fetch one cluster's opinion text, route, and store it. Returns clusters found
- *  (1 if substantive opinion text was retrieved), documents stored, and the
- *  ledger outcome (#741). A stored revision marks the same case's earlier
- *  same-day rows superseded. */
+/** A stored revision marks the same case's earlier same-day rows superseded. */
+async function markRevisions(item: ContentItem, category: string, filed: string): Promise<void> {
+  const marks = await markSupersededRevisions(item.caseId!, category, filed, item.link);
+  if (marks.length === 0) return;
+  console.log(
+    `[cl-opinion-first] cluster ${item.metadata?.clusterId}: ${marks.length} earlier revision row(s) marked superseded in ${category}`,
+  );
+}
+
+/** Fetch one cluster's opinion text, route, and store it. Returns clusters
+ *  found (1 if substantive opinion text was retrieved), category rows stored,
+ *  corpus-only stores, and the ledger outcome (#741). An opinion with text
+ *  but no category is stored search-only under `corpus` (#892); its ledger
+ *  outcome stays `zero_categories` (final — never re-fetched). */
 async function storeClusterOpinion(
   match: MatchedCluster,
   fallbackDate: string,
-): Promise<{ found: number; stored: number; outcome: ClusterOutcome }> {
-  const opinionIds = opinionIdsOf(match.row);
+): Promise<{ found: number; stored: number; corpusStored: number; outcome: ClusterOutcome }> {
   const dateFiled = match.row.dateFiled ?? fallbackDate;
-  const opData = await buildOpinionDataFromSubOpinions(opinionIds, dateFiled);
-  if (!opData) return { found: 0, stored: 0, outcome: 'no_text' };
-
-  const categories = routeMatchedCluster(match, opData.text);
-  if (categories.length === 0) return { found: 1, stored: 0, outcome: 'zero_categories' };
+  const opData = await buildOpinionDataFromSubOpinions(opinionIdsOf(match.row), dateFiled);
+  if (!opData) return { found: 0, stored: 0, corpusStored: 0, outcome: 'no_text' };
 
   const item = buildOpinionContentItem(opData, {
     caseName: match.row.caseName ?? '(untitled case)',
@@ -287,17 +295,19 @@ async function storeClusterOpinion(
     clQueries: provenanceOf(match),
     clusterId: match.row.cluster_id,
   });
+  const categories = routeMatchedCluster(match, opData.text);
+  if (categories.length === 0) {
+    await storeExcludedDocuments([item], CORPUS_CATEGORY);
+    await markRevisions(item, CORPUS_CATEGORY, dateFiled);
+    return { found: 1, stored: 0, corpusStored: 1, outcome: 'zero_categories' };
+  }
+
   let stored = 0;
   for (const category of categories) {
     stored += await storeDocuments([item], category);
-    const marks = await markSupersededRevisions(item.caseId!, category, dateFiled, item.link);
-    if (marks.length > 0) {
-      console.log(
-        `[cl-opinion-first] cluster ${match.row.cluster_id}: ${marks.length} earlier revision row(s) marked superseded in ${category}`,
-      );
-    }
+    await markRevisions(item, category, dateFiled);
   }
-  return { found: 1, stored, outcome: 'stored' };
+  return { found: 1, stored, corpusStored: 0, outcome: 'stored' };
 }
 
 /** Ledger row shape for a matched cluster. */
@@ -351,28 +361,27 @@ export async function apiOpinionFirstPass(
   console.log(`[cl-opinion-first] ${from}→${to}: ${matched.length} matched opinion clusters`);
   const clusters = dryRun ? matched : await selectClustersToAttempt(matched, opts);
 
-  let docketsFound = 0;
-  let opinionsStored = 0;
+  const totals: OpinionFirstResult = { docketsFound: 0, opinionsStored: 0, corpusStored: 0 };
   const stats = createQueryStats();
 
   for (let i = 0; i < clusters.length; i++) {
     const match = clusters[i];
-    const opinionIds = opinionIdsOf(match.row);
-    if (opinionIds.length === 0) continue;
+    if (opinionIdsOf(match.row).length === 0) continue;
 
     if (dryRun) {
       const routed = routeMatchedCluster(match).length;
       stats.bump(match, routed);
-      docketsFound++;
-      opinionsStored += routed;
+      totals.docketsFound++;
+      totals.opinionsStored += routed;
       continue;
     }
 
     try {
-      const { found, stored, outcome } = await storeClusterOpinion(match, to);
+      const { found, stored, corpusStored, outcome } = await storeClusterOpinion(match, to);
       if (found > 0) stats.bump(match, stored);
-      docketsFound += found;
-      opinionsStored += stored;
+      totals.docketsFound += found;
+      totals.opinionsStored += stored;
+      totals.corpusStored += corpusStored;
       if (opts.useLedger) await recordClusterOutcome(ledgerRowOf(match), outcome);
     } catch (err) {
       console.warn(
@@ -383,18 +392,19 @@ export async function apiOpinionFirstPass(
 
     if ((i + 1) % 100 === 0) {
       console.log(
-        `[cl-opinion-first] ${i + 1}/${clusters.length} clusters, ${opinionsStored} opinions stored`,
+        `[cl-opinion-first] ${i + 1}/${clusters.length} clusters, ${totals.opinionsStored} opinions stored`,
       );
     }
   }
 
   const statsLine = stats.summary();
   console.log(
-    `[cl-opinion-first] Complete: ${docketsFound} opinions, ` +
-      `${opinionsStored} docs ${dryRun ? '(dry run; court-query routing is caseName-only)' : 'stored'}` +
+    `[cl-opinion-first] Complete: ${totals.docketsFound} opinions, ` +
+      `${totals.opinionsStored} docs ${dryRun ? '(dry run; court-query routing is caseName-only)' : 'stored'}, ` +
+      `${totals.corpusStored} corpus-only` +
       (statsLine ? ` | ${statsLine}` : ''),
   );
-  return { docketsFound, opinionsStored };
+  return totals;
 }
 
 /**
@@ -409,7 +419,9 @@ export async function opinionFirstPass(
   opts: OpinionFirstOptions = {},
 ): Promise<OpinionFirstResult> {
   if (await isBulkOpinionDbAvailable()) {
-    return backfillOpinionsByDate(from, to, dryRun);
+    // The bulk-staging path routes by content too but keeps its own store
+    // loop; corpus-only storage is an API-path feature (#892).
+    return { ...(await backfillOpinionsByDate(from, to, dryRun)), corpusStored: 0 };
   }
   return apiOpinionFirstPass(from, to, dryRun, opts);
 }

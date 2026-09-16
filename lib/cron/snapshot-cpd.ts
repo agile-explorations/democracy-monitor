@@ -15,15 +15,20 @@ import { sql } from 'drizzle-orm';
 import { runLayersForGroups } from '@/lib/cron/snapshot-layers';
 import type { AggregateFailure } from '@/lib/cron/snapshot-layers';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import {
   groupItemsByCategoryWeek,
   splitGroupsByCategory,
 } from '@/lib/services/category-week-grouping';
 import type { CategoryWeekGroups } from '@/lib/services/category-week-grouping';
-import { fetchCpdHistorical, fetchCpdPackageCount } from '@/lib/services/cpd-fetcher';
+import {
+  fetchCpdHistorical,
+  fetchCpdPackageCount,
+  partitionCpdDocuments,
+} from '@/lib/services/cpd-fetcher';
 import type { CpdDocument } from '@/lib/services/cpd-fetcher';
 import { scoreDocumentBatch, storeDocumentScores } from '@/lib/services/document-scorer';
-import { storeDocuments } from '@/lib/services/document-store';
+import { storeDocuments, storeExcludedDocuments } from '@/lib/services/document-store';
 import { getLastCompletedWeek } from '@/lib/services/weekly-aggregator';
 import { formatError } from '@/lib/utils/api-helpers';
 import { addDays, toDateString } from '@/lib/utils/date-utils';
@@ -89,16 +94,20 @@ export async function snapshotCpdWindow(errors: string[]): Promise<void> {
       console.log(`[snapshot] CPD: no new documents (${available} in window, all stored)`);
       return;
     }
+    // Unrouted documents are searchable, not evidence (#892): stored under
+    // `corpus`, never scored or grouped.
+    const { routed, unrouted } = partitionCpdDocuments(docs);
+    await storeExcludedDocuments(unrouted, CORPUS_CATEGORY);
     let stored = 0;
-    for (const doc of docs) stored += await storeAndScore(doc);
+    for (const doc of routed) stored += await storeAndScore(doc);
     const anchorWeekOf = getLastCompletedWeek();
-    const groups = groupByCategoryWeek(docs, anchorWeekOf);
+    const groups = groupByCategoryWeek(routed, anchorWeekOf);
     const failedAggregates: AggregateFailure[] = [];
     for (const [category, categoryGroups] of splitGroupsByCategory(groups)) {
       await runLayersForGroups(categoryGroups, category, anchorWeekOf, errors, failedAggregates);
     }
     console.log(
-      `[snapshot] CPD: ${docs.length} new documents → ${stored} rows across ${groups.size} category-weeks (window ${dateFrom}..${dateTo}: ${available} packages)`,
+      `[snapshot] CPD: ${docs.length} new documents (${unrouted.length} corpus-only) → ${stored} rows across ${groups.size} category-weeks (window ${dateFrom}..${dateTo}: ${available} packages)`,
     );
   } catch (err) {
     errors.push(`CPD fetch failed: ${formatError(err)}`);

@@ -47,6 +47,15 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-15',
+    kind: 'policy',
+    scope: 'Search corpus — every source',
+    what: 'The July rule that off-topic documents "must not reach … search or exports" is reversed for search (they were never removed from the public dump). Roughly 57,000 stored Federal Register documents that a relevance filter had annotated off-topic become searchable again, fetch-time drops are now stored instead of discarded, and documents no router places are kept under "Not routed to a category". Nothing changes for assessment or statistics: those documents remain outside every count and every weekly status. Explore (the date-sorted browse) shows routed documents by default with a toggle to include the rest; Research (the ranked answer) reads everything.',
+    why: 'The corpus and the analysis are independent uses of the record. Topic relevance is an analysis annotation — it says a document is not evidence for a category, not that the document does not exist — while integrity (a body, not a superseded revision) is the only corpus criterion. Hiding annotated documents from search made the public record narrower than the stored one and let a filter mistake become invisible. Measured before the change: no search-latency regression on the dev copy.',
+    evidence: [issue(825), issue(887), issue(891), issue(894), issue(896)],
+    release: 'v1.32.0',
+  },
+  {
     date: '2026-09-14',
     kind: 'regeneration',
     scope: 'Weekly summaries — twenty weeks, 2026-03-23 to 2026-08-31',

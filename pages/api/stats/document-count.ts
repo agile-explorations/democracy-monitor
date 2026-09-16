@@ -16,7 +16,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { getDb } from '@/lib/db';
-import { retrievalRelevantOnly } from '@/lib/db/document-filters';
+import { searchable } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import { requireDb, requireMethod, sendCached } from '@/lib/utils/api-helpers';
 
@@ -41,15 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = getDb();
     // fullText MUST NOT touch documents.content: length(content) detoasts
     // ~6GB per request and hangs the endpoint (2026-07-25 homepage incident).
-    // "Searchable full-text" = what research search can actually return:
-    // embedded and not metadata-only.
+    // The searchable population (R-SEARCH-ORTHOGONAL): body present, not a
+    // superseded revision — topic is not a search criterion. fullText = the
+    // rows research search can return (embedding present; a NULL-bitmap check,
+    // no detoast).
     const [row] = await db
       .select({
         total: countDistinct(documents.url),
-        fullText: sql<number>`count(DISTINCT ${documents.url}) FILTER (WHERE ${documents.embeddedAt} IS NOT NULL AND ${documents.contentType} != 'metadata_only')`,
+        fullText: sql<number>`count(DISTINCT ${documents.url}) FILTER (WHERE ${documents.embedding} IS NOT NULL)`,
       })
       .from(documents)
-      .where(retrievalRelevantOnly());
+      .where(searchable());
     const counts: CorpusCounts = { total: row.total, fullText: Number(row.fullText) };
     await cacheSet(CacheKeys.documentCount(), counts, ONE_WEEK);
     sendCached(res, counts);

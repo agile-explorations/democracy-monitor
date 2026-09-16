@@ -42,12 +42,25 @@ export default defineConfig({
         'lib/cron/backfill-content.ts',
         'lib/cron/backfill-gaps.ts',
         'lib/cron/aggregate-reconciliation.ts',
+        // #894 corpus restore: CLI + per-source fetch/DB I/O; the planner,
+        // arg parser, and selectors are pure and covered in corpus-restore tests
+        'lib/cron/restore-corpus.ts',
+        'lib/services/corpus-restore/stored-urls.ts',
+        'lib/services/corpus-restore/govinfo-key.ts',
+        'lib/services/corpus-restore/index.ts',
+        'lib/services/corpus-restore/fr.ts',
+        'lib/services/corpus-restore/chrg.ts',
+        'lib/services/corpus-restore/cl.ts',
+        'lib/services/corpus-restore/cpd.ts',
+        'lib/services/corpus-restore/doj.ts',
+        'lib/services/corpus-restore/crec.ts',
         'lib/cron/backfill-oversight-gov.ts',
         'lib/cron/feedback-moderate.ts',
         // #729 replay/prewarm: pure pieces (arm cache, key/stamp logic) are
         // unit-tested in arm-cache.test.ts; these carry the DB I/O + CLI glue
         'lib/cron/replay-slow-aliases.ts',
         'lib/cron/prewarm-indexes.ts',
+        'lib/cron/cache-bust.ts',
         // CL bulk staging — DB COPY ops, execSync pipes, not unit-testable
         'lib/services/cl-bulk-staging.ts',
         // #750 entity mining I/O (DB fetch + arm runs); the pure extraction
