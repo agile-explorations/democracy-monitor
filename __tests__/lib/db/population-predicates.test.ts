@@ -95,6 +95,24 @@ const PURGE_SCRIPTS_GUARDING_CORPUS = [
   'lib/cron/purge-legiscan-noise.ts',
 ];
 
+/** The corpus exclusion as raw-SQL builders spell it. */
+const CORPUS_EXCLUSION = 'category <> ${CORPUS_CATEGORY}';
+
+/**
+ * Negative-control rate queries (#907): each Pass-1 flag-rate denominator
+ * over `documents` excludes the corpus pseudo-category, and nothing more —
+ * the NC baselines were computed over a population that keeps
+ * `retrieval_relevant = false` rows, so the narrow exclusion is the only
+ * one allowed. One entry per denominator query in the file.
+ */
+const RATE_QUERY_FILES_EXCLUDING_CORPUS: Array<{ file: string; denominators: number }> = [
+  { file: 'lib/services/event-validation-queries.ts', denominators: 3 },
+];
+
+function countOccurrences(src: string, needle: string): number {
+  return src.split(needle).length - 1;
+}
+
 // Drop line and block comments so prose that names the pseudo-category
 // (JSDoc, rationale) does not count as a code literal.
 function stripComments(src: string): string {
@@ -166,7 +184,18 @@ describe('the corpus pseudo-category', () => {
     (file) => {
       const src = read(file);
       expect(src).toMatch(CORPUS_IMPORT);
-      expect(src).toContain('category <> ${CORPUS_CATEGORY}');
+      expect(src).toContain(CORPUS_EXCLUSION);
+    },
+  );
+
+  it.each(RATE_QUERY_FILES_EXCLUDING_CORPUS)(
+    '$file excludes corpus from every rate denominator, and only corpus',
+    ({ file, denominators }) => {
+      const src = stripComments(read(file));
+      expect(src).toMatch(CORPUS_IMPORT);
+      expect(countOccurrences(src, CORPUS_EXCLUSION)).toBe(denominators);
+      expect(src.includes('routedOnlyD(')).toBe(false);
+      expect(src.includes('retrieval_relevant')).toBe(false);
     },
   );
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { sqlText as text } from '@/__tests__/helpers/sql-text';
 import {
   CORPUS_CATEGORY,
   categoryFacetD,
@@ -8,20 +9,6 @@ import {
   searchableD,
   searchableSql,
 } from '@/lib/db/document-filters';
-
-/** Render a drizzle SQL chunk to its parameter-inlined text for assertions. */
-function text(chunk: ReturnType<typeof searchable>): string {
-  const render = (c: unknown): string => {
-    if (typeof c === 'string') return c;
-    const anyC = c as { queryChunks?: unknown[]; value?: unknown; name?: string };
-    if (Array.isArray(anyC.queryChunks)) return anyC.queryChunks.map(render).join('');
-    if (Array.isArray(anyC.value)) return anyC.value.join('');
-    if (anyC.value !== undefined) return String(anyC.value);
-    if (anyC.name) return anyC.name;
-    return '';
-  };
-  return render(chunk).replace(/\s+/g, ' ').trim();
-}
 
 describe('population predicates (R-SEARCH-ORTHOGONAL)', () => {
   it('searchable = body present and not superseded; topic is not a search criterion', () => {
