@@ -11,6 +11,12 @@
  * Invoked by the dump runner after the B2 uploads and BEFORE the final
  * index prewarm — the replay's own heap reads are then mopped up by the
  * prewarm that follows. Best-effort per alias; exit 0 unless setup fails.
+ *
+ * After a nomination-rule change (R-ALIAS-TAIL, #914) the first Monday
+ * replays up to one week of phrases the new rules no longer nominate —
+ * inside the fixed budget, behind the live phrases the pre-release
+ * `--refresh` runs re-ledgered with a newer lastSeenAt. Self-heals the
+ * second Monday; not worth a per-row index join.
  */
 
 import { desc, gte, sql } from 'drizzle-orm';

@@ -29,6 +29,8 @@ export default defineConfig({
         // DB I/O and CLI modules — pure functions tested, DB ops need integration tests
         'lib/services/category-summary-service.ts',
         'lib/services/data-validation-queries.ts',
+        // #911: the four salience nomination queries (DB I/O); ranking + gate are pure and covered
+        'lib/services/hot-entity-nomination-queries.ts',
         'lib/services/document-review-queries.ts',
         'lib/services/ingest-validation-queries.ts',
         'lib/services/funnel-validation-queries.ts',

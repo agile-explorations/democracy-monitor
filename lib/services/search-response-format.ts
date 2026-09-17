@@ -118,10 +118,12 @@ export function formatResearchResponse(
   return response;
 }
 
-/** docsOnly cache key material: query + every retrieval-affecting parameter. */
+/** docsOnly cache key material: query + every retrieval-affecting parameter.
+ *  `rules` (#914): the active salience rules for enumeration pools, so a
+ *  knob change on the server rebuilds them instead of serving week-old pools. */
 export function hashDocsKey(
   query: string,
-  params: { dateFrom?: string; dateTo?: string; tier?: string; eras?: string },
+  params: { dateFrom?: string; dateTo?: string; tier?: string; eras?: string; rules?: string },
 ): string {
   const material = [
     query.toLowerCase().trim(),
@@ -129,6 +131,7 @@ export function hashDocsKey(
     params.dateTo ?? '',
     params.tier ?? '',
     params.eras ?? '',
+    ...(params.rules ? [params.rules] : []),
   ].join('|');
   return createHash('sha256').update(material).digest('hex').slice(0, 16);
 }

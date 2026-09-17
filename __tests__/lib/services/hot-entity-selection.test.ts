@@ -342,3 +342,11 @@ describe('question-evidence gate (#806)', () => {
     expect(hasQuestionEvidence([poolRow('stray', 1)], [])).toBe(false);
   });
 });
+
+describe('finalizeArms null-judge fallback', () => {
+  it('stands in the whole (already gated) shortlist when the judge fails, bounded like a judged window', () => {
+    const shortlist = [entity('A'), entity('B'), entity('C')];
+    const arms = finalizeArms(shortlist, null, [], []).map((a) => a.phrase);
+    expect(arms).toEqual(['A', 'B', 'C']);
+  });
+});
