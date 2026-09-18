@@ -9,11 +9,34 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { dataWeekStamp } from '@/lib/services/arm-cache';
 import type { EntityEra, EntityRow, PoolEntityRow } from '@/lib/services/hot-entity-ranking';
 
 /** Shortlist slots the global (era-wide, question-blind) channel may offer. */
 export const SHORTLIST_GLOBAL = 20;
 const QUESTION_CHANNEL_LIMIT = 20;
+
+const dftPercentileMemo = new Map<string, Promise<number>>();
+
+/** The era's `doc_freq_term` percentile (#911 blind-channel cap), memoized
+ *  per data week — the index only changes on the Monday refresh. */
+export function queryEraDftPercentile(era: EntityEra, percentile: number): Promise<number> {
+  const key = `${dataWeekStamp()}|${era}|${percentile}`;
+  const hit = dftPercentileMemo.get(key);
+  if (hit) return hit;
+  const pending = getDb()
+    .execute(
+      sql`SELECT percentile_cont(${percentile / 100}) WITHIN GROUP (ORDER BY doc_freq_term) AS cap
+          FROM hot_entities WHERE era = ${era}`,
+    )
+    .then((r) => Number((r.rows[0] as { cap: number | string | null })?.cap ?? 0))
+    .catch((err) => {
+      dftPercentileMemo.delete(key);
+      throw err;
+    });
+  dftPercentileMemo.set(key, pending);
+  return pending;
+}
 
 export interface NominationRows {
   poolRows: PoolEntityRow[];

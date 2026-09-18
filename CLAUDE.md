@@ -100,7 +100,7 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `CRON_SECRET` — Bearer token shared between web service and dump cron job
 - `SEARCH_MACHINE_TOKEN` — Bearer token that lets our own harnesses (prewarm workflow, eval, loadtest, golden) through the search front door (#792); humans get a Turnstile-issued pass instead
 - `SEARCH_PASS_SECRET` — HMAC secret for the `dm_pass` cookie (falls back to `CRON_SECRET`)
-- `SALIENCE_BLIND_GATE` / `SALIENCE_BLIND_DFT_CAP` / `SALIENCE_ROSTER_TIGHTEN` / `SALIENCE_JUDGE_MAX_PICKS` — research-search salience knobs (R-ALIAS-TAIL #911–#913; `lib/services/salience-knobs.ts`). Their values are part of the enumeration pool key, so a change rebuilds pools on the next request
+- `SALIENCE_BLIND_GATE` / `SALIENCE_BLIND_DFT_PCT` / `SALIENCE_BLIND_DFT_CAP` / `SALIENCE_TOPUP_CORROBORATED` / `SALIENCE_ROSTER_TIGHTEN` / `SALIENCE_JUDGE_MAX_PICKS` — research-search salience knobs (R-ALIAS-TAIL #911–#913; `lib/services/salience-knobs.ts`). Their values are part of the enumeration pool key, so a change rebuilds pools on the next request
 
 ### Local development
 

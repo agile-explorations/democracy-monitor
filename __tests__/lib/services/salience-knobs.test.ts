@@ -31,7 +31,7 @@ describe('salience knobs (#911–#913)', () => {
   it('the rules stamp names every knob and moves when one flips', () => {
     for (const k of KNOBS) delete process.env[k];
     const on = salienceRulesStamp();
-    expect(on).toMatch(/^gate=1,cap=\d+,tighten=1,picks=\d+$/);
+    expect(on).toMatch(/^gate=1,pct=\d+,cap=\d+,topup=1,tighten=1,picks=\d+$/);
     process.env.SALIENCE_BLIND_GATE = 'off';
     expect(salienceRulesStamp()).not.toBe(on);
     expect(salienceRulesStamp()).toMatch(/^gate=0,/);

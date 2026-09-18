@@ -31,8 +31,9 @@ export function logSalienceOutcome(o: {
   shortlist: Array<{ phrase: string; channel?: string }>;
   picks: string[] | null;
   arms: Array<{ phrase: string }>;
-  /** Blind-channel gate drops (#911), by channel. */
+  /** Blind-channel gate drops (#911), by channel, and the cap used. */
   dropped?: { category: number; global: number };
+  dftCap?: number;
 }): void {
   // Global-channel nominees are barred from the mechanical top-up (#799);
   // the count shows how much of the shortlist that rule touched.
@@ -41,7 +42,7 @@ export function logSalienceOutcome(o: {
   console.log(
     `[salience] eras=${o.eras.join('+')} pool=${o.poolRows.length} q=${o.questionRows.length} ` +
       `shortlist=${o.shortlist.length} judge=${o.picks ? o.picks.length + ' picks' : 'NULL(fallback)'} ` +
-      `global-excluded=${globalExcluded} dropped=cat:${dropped.category},global:${dropped.global} ` +
+      `global-excluded=${globalExcluded} dropped=cat:${dropped.category},global:${dropped.global} cap=${o.dftCap ?? '-'} ` +
       `picks=${pickChannelTally(o.shortlist, o.arms)} ` +
       `arms=${o.arms.length}: ${o.arms.map((a) => a.phrase).join(' | ')}`,
   );
@@ -62,9 +63,10 @@ export function logSalienceOutcome(o: {
 export function logSalienceGated(
   eras: EntityEra[],
   dropped: { category: number; global: number },
+  dftCap: number,
 ): void {
   console.log(
-    `[salience] eras=${eras.join('+')} shortlist=0 dropped=cat:${dropped.category},global:${dropped.global} — nothing admissible after the blind-channel gate (#911), salience skipped`,
+    `[salience] eras=${eras.join('+')} shortlist=0 dropped=cat:${dropped.category},global:${dropped.global} cap=${dftCap} — nothing admissible after the blind-channel gate (#911), salience skipped`,
   );
 }
 

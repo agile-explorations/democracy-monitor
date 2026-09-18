@@ -34,10 +34,13 @@
 
 import { isDbAvailable } from '@/lib/db';
 import {
+  BLIND_CHANNEL_DFT_PCT,
   blindChannelGateEnabled,
   corroboratedPhrases,
   gateChannelRows,
+  isBlindChannel,
   NO_DROPS,
+  resolveBlindDftCap,
   uncorroboratedArms,
 } from '@/lib/services/hot-entity-corroboration';
 import type { BlindDrops } from '@/lib/services/hot-entity-corroboration';
@@ -45,6 +48,7 @@ import type { JudgeCandidate } from '@/lib/services/hot-entity-judge';
 import { judgeShortlist } from '@/lib/services/hot-entity-judge';
 import {
   nominateFromDb,
+  queryEraDftPercentile,
   queryGlobalCategoryShares,
   SHORTLIST_GLOBAL,
 } from '@/lib/services/hot-entity-nomination-queries';
@@ -62,6 +66,7 @@ import {
   logSalienceSkipped,
 } from '@/lib/services/hot-entity-trace';
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
+import { topUpCorroboratedOnly } from '@/lib/services/salience-knobs';
 
 export type {
   EntityRow,
@@ -204,14 +209,22 @@ export function hasQuestionEvidence(
   return questionRows.length > 0 || poolRows.some((r) => r.poolMentions >= minMentions);
 }
 
-/** Nominees eligible for the judge-bypassing top-up (#799): every channel
- *  but `global`. The 2026-08-29 battery measured the global channel's
- *  era-wide breadth leaders ("Public Law 119-21" on 29 of 31 questions,
- *  EO 14219 on 28) riding into the top-up of nearly every question — they
- *  are question-blind by construction, so they must earn a seat from the
- *  judge. Untagged rows (older callers, tests) stay eligible. Pure. */
-export function topUpEligible(shortlist: EntityRow[]): EntityRow[] {
-  return shortlist.filter((r) => r.channel !== 'global');
+/** Nominees eligible for the judge-bypassing top-up: question-conditioned
+ *  channels only. #799 barred `global` (the 2026-08-29 battery measured its
+ *  breadth leaders riding into nearly every question's top-up); #911 bars
+ *  `category` the same way — measured on dev 2026-09-17, the breadth-ranked
+ *  category top-up handed the same eight entities to every question sharing
+ *  dominant categories, which the gate alone could not touch. Question-blind
+ *  nominees earn a seat from the judge. Untagged rows (older callers, tests)
+ *  stay eligible. `SALIENCE_TOPUP_CORROBORATED=off` restores the #799 rule.
+ *  Pure. */
+export function topUpEligible(
+  shortlist: EntityRow[],
+  corroboratedOnly: boolean = topUpCorroboratedOnly(),
+): EntityRow[] {
+  return corroboratedOnly
+    ? shortlist.filter((r) => !isBlindChannel(r.channel))
+    : shortlist.filter((r) => r.channel !== 'global');
 }
 
 /** Floor ∪ judge picks ∪ top mechanical nominees (#762), deduped and
@@ -273,11 +286,25 @@ interface GatedNominations {
   corroborated: Set<string>;
   dropped: BlindDrops;
   gated: boolean;
+  dftCap: number;
+}
+
+/** The window's blind-channel cap (#911): the per-era percentile of the
+ *  index, resolved once per window (memoized per data week underneath). */
+async function blindDftCapFor(eras: EntityEra[]): Promise<number> {
+  const percentiles = await Promise.all(
+    eras.map((era) => queryEraDftPercentile(era, BLIND_CHANNEL_DFT_PCT)),
+  );
+  return resolveBlindDftCap(percentiles);
 }
 
 /** Nominate the shortlist with the blind-channel gate applied to the
  *  category and global rows BEFORE they are ranked and sliced (#911). */
-function nominateGated(rows: NominationRows, excludePhrases: string[]): GatedNominations {
+function nominateGated(
+  rows: NominationRows,
+  excludePhrases: string[],
+  dftCap: number,
+): GatedNominations {
   const gated = blindChannelGateEnabled();
   const corroborated = corroboratedPhrases(
     rows.poolRows,
@@ -285,10 +312,10 @@ function nominateGated(rows: NominationRows, excludePhrases: string[]): GatedNom
     MIN_POOL_MENTIONS,
   );
   const category = gated
-    ? gateChannelRows(rows.categoryRows, corroborated)
+    ? gateChannelRows(rows.categoryRows, corroborated, dftCap)
     : { kept: rows.categoryRows, dropped: 0 };
   const global = gated
-    ? gateChannelRows(rows.globalRows, corroborated)
+    ? gateChannelRows(rows.globalRows, corroborated, dftCap)
     : { kept: rows.globalRows, dropped: 0 };
   const shortlist = nominateShortlist(
     rows.poolRows,
@@ -298,7 +325,7 @@ function nominateGated(rows: NominationRows, excludePhrases: string[]): GatedNom
     rows.questionRows,
   );
   const dropped = gated ? { category: category.dropped, global: global.dropped } : NO_DROPS;
-  return { shortlist, corroborated, dropped, gated };
+  return { shortlist, corroborated, dropped, gated, dftCap };
 }
 
 /** Nominate → gate → judge → finalize, for one question and era window. */
@@ -322,9 +349,10 @@ async function selectFromNominations(
     logSalienceSkipped(eras, rows.poolRows.length);
     return NO_SALIENCE;
   }
-  const nominations = nominateGated(rows, excludePhrases);
+  const dftCap = blindChannelGateEnabled() ? await blindDftCapFor(eras) : 0;
+  const nominations = nominateGated(rows, excludePhrases, dftCap);
   if (nominations.shortlist.length === 0) {
-    logSalienceGated(eras, nominations.dropped);
+    logSalienceGated(eras, nominations.dropped, dftCap);
     return NO_SALIENCE;
   }
   return judgeAndFinalize(question, excludePhrases, { ...rows, eras, ...nominations });
@@ -353,6 +381,7 @@ async function judgeAndFinalize(
     picks,
     arms,
     dropped: ctx.dropped,
+    dftCap: ctx.dftCap,
   });
   const inArms = new Set(arms.map((a) => a.phrase.toLowerCase()));
   return {

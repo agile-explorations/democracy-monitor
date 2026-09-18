@@ -7,6 +7,7 @@ import {
   isBlindChannel,
   isCorroboratedRow,
   NO_DROPS,
+  resolveBlindDftCap,
   uncorroboratedArms,
 } from '@/lib/services/hot-entity-corroboration';
 import type {
@@ -67,11 +68,17 @@ describe('admitsBlindNominee / gateChannelRows (#911)', () => {
     expect(admitsBlindNominee(giant, new Set(), 30)).toBe(false);
   });
 
-  it('uses the configured cap by default: strictly under the cap admits', () => {
-    expect(admitsBlindNominee(row('Under', undefined, BLIND_CHANNEL_DFT_CAP - 1), new Set())).toBe(
-      true,
-    );
-    expect(admitsBlindNominee(row('At', undefined, BLIND_CHANNEL_DFT_CAP), new Set())).toBe(false);
+  it('strictly under the cap admits; at the cap does not', () => {
+    expect(admitsBlindNominee(row('Under', undefined, 29), new Set(), 30)).toBe(true);
+    expect(admitsBlindNominee(row('At', undefined, 30), new Set(), 30)).toBe(false);
+  });
+
+  it('resolves the window cap from the most lenient era percentile unless an absolute override is set', () => {
+    expect(resolveBlindDftCap([17, 34, 45], 0)).toBe(45);
+    expect(resolveBlindDftCap([17], 0)).toBe(17);
+    expect(resolveBlindDftCap([17, 34], 30)).toBe(30);
+    expect(resolveBlindDftCap([], 0)).toBe(0);
+    expect(BLIND_CHANNEL_DFT_CAP).toBeGreaterThanOrEqual(0);
   });
 
   it('exports a zero drop record', () => {

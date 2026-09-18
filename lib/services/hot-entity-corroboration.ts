@@ -15,11 +15,12 @@
  * The rule is mechanical and content-neutral: a question-blind nominee is
  * ADMITTED only if it is CORROBORATED (the seed pool or the question's own
  * words also nominated it) or SPECIFIC (era-wide document frequency below
- * the cap). It is applied to each channel's rows BEFORE ranking and slot
- * slicing, so the channel's shortlist slots go to admissible nominees
- * instead of being spent on the giants and then emptied. No lists, no
- * names. Knobs live in salience-knobs.ts. Pure; every function is
- * unit-tested.
+ * the cap — a per-era percentile, see salience-knobs.ts). It is applied to
+ * each channel's rows BEFORE ranking and slot slicing, so the channel's
+ * shortlist slots go to admissible nominees instead of being spent on the
+ * giants and then emptied. The judge-bypassing mechanical top-up likewise
+ * draws only question-conditioned rows. No lists, no names. Pure; every
+ * function is unit-tested.
  */
 
 import type {
@@ -29,7 +30,22 @@ import type {
 } from '@/lib/services/hot-entity-ranking';
 import { BLIND_CHANNEL_DFT_CAP } from '@/lib/services/salience-knobs';
 
-export { BLIND_CHANNEL_DFT_CAP, blindChannelGateEnabled } from '@/lib/services/salience-knobs';
+export {
+  BLIND_CHANNEL_DFT_CAP,
+  BLIND_CHANNEL_DFT_PCT,
+  blindChannelGateEnabled,
+} from '@/lib/services/salience-knobs';
+
+/** The window's cap: the absolute override when set, else the highest of
+ *  the window's per-era percentile values (a multi-era window takes the
+ *  most lenient era so no era's canon is cut by another's scale). */
+export function resolveBlindDftCap(
+  eraPercentiles: number[],
+  absolute: number = BLIND_CHANNEL_DFT_CAP,
+): number {
+  if (absolute > 0) return absolute;
+  return Math.max(0, ...eraPercentiles);
+}
 
 export type BlindChannel = 'category' | 'global';
 
@@ -64,7 +80,7 @@ export function corroboratedPhrases(
 export function admitsBlindNominee(
   r: EntityRow,
   corroborated: Set<string>,
-  dftCap: number = BLIND_CHANNEL_DFT_CAP,
+  dftCap: number,
 ): boolean {
   return corroborated.has(r.phrase.toLowerCase()) || r.docFreqTerm < dftCap;
 }
@@ -77,7 +93,7 @@ export const NO_DROPS: BlindDrops = { category: 0, global: 0 };
 export function gateChannelRows(
   rows: EntityRow[],
   corroborated: Set<string>,
-  dftCap: number = BLIND_CHANNEL_DFT_CAP,
+  dftCap: number,
 ): { kept: EntityRow[]; dropped: number } {
   const kept = rows.filter((r) => admitsBlindNominee(r, corroborated, dftCap));
   return { kept, dropped: rows.length - kept.length };
