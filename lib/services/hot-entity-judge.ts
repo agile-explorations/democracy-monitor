@@ -23,10 +23,12 @@ import { cacheGet, cacheSet } from '@/lib/cache';
 import { CacheKeys } from '@/lib/cache/keys';
 import { MODEL_ROSTER } from '@/lib/data/model-roster';
 import { dataWeekStamp } from '@/lib/services/arm-cache';
+import { MAX_JUDGE_PICKS } from '@/lib/services/salience-knobs';
+
+export { MAX_JUDGE_PICKS } from '@/lib/services/salience-knobs';
 
 const JUDGE_MODEL = MODEL_ROSTER.retrievalHelpers.id;
 const JUDGE_CACHE_TTL = 7 * 86400;
-export const MAX_JUDGE_PICKS = 12;
 
 export interface JudgeCandidate {
   phrase: string;
@@ -40,7 +42,7 @@ export function buildJudgePrompt(question: string, candidates: JudgeCandidate[])
   const list = candidates
     .map(
       (c, i) =>
-        `${i + 1}. "${c.phrase}" — ${c.entityClass} — categories: ${c.categories.join(', ')} — ${c.docFreqTerm} mentions this term`,
+        `${i + 1}. "${c.phrase}" — ${c.entityClass} — categories: ${c.categories.join(', ')} — mentioned in ${c.docFreqTerm} documents across ${c.categories.length} categories (era-wide)`,
     )
     .join('\n');
   return (
@@ -55,7 +57,10 @@ export function buildJudgePrompt(question: string, candidates: JudgeCandidate[])
     `relevant first, at most ${MAX_JUDGE_PICKS}. Skip entities that are merely from ` +
     `the same broad policy area. An entity that would fit most questions about this ` +
     `era — an omnibus law, a marquee executive order, a task force — does not fit ` +
-    `this one unless the question is about it. Return ONLY a JSON array of phrase strings.\n\n` +
+    `this one unless the question is about it. The more documents and categories an entity ` +
+    `spans era-wide, the less likely it is specific to this question. Return [] when none ` +
+    `fit — an empty list is a normal answer; never pad the list to reach the maximum. ` +
+    `Return ONLY a JSON array of phrase strings.\n\n` +
     `Question: "${question}"\n\nEntities:\n${list}`
   );
 }
@@ -85,15 +90,24 @@ export function parseJudgeResponse(content: string, candidatePhrases: string[]):
 }
 
 function hashJudgeKey(question: string, candidatePhrases: string[]): string {
-  // The shortlist is part of the key (v3); v4 = the #806 prompt. Picks cached against one
-  // shortlist replayed against a different one during the 2026-08-24 gate
-  // runs — the question channel's nominees changed but the stale picks won.
+  // The shortlist is part of the key (v3); v4 = the #806 prompt; v5 = the
+  // #912 prompt + the quota. Picks cached against one shortlist replayed
+  // against a different one during the 2026-08-24 gate runs — the question
+  // channel's nominees changed but the stale picks won.
   const shortlistHash = createHash('sha256')
     .update([...candidatePhrases].sort().join('|').toLowerCase())
     .digest('hex')
     .slice(0, 12);
   return createHash('sha256')
-    .update(['v4', dataWeekStamp(), question.toLowerCase().trim(), shortlistHash].join('|'))
+    .update(
+      [
+        'v5',
+        String(MAX_JUDGE_PICKS),
+        dataWeekStamp(),
+        question.toLowerCase().trim(),
+        shortlistHash,
+      ].join('|'),
+    )
     .digest('hex')
     .slice(0, 16);
 }

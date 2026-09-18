@@ -16,13 +16,14 @@
  * retrieval sprint, written before that sprint's code changes.
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { checkHelp } from '@/lib/utils/cli-help';
 import {
   DEFAULT_THRESHOLDS,
   diffRuns,
   gateFailures,
+  mergeCaptures,
   renderRun,
   runMetrics,
 } from '@/lib/utils/retrieval-hygiene';
@@ -37,7 +38,8 @@ const USAGE = `Usage:
   --base URL     Server to capture from (prod: https://democracymonitor.us).
   --out FILE     Capture output (JSON of HygieneCapture[]).
   --set          Which bank to run (default all).
-  --only A,B     Capture only these question ids (re-capture stale rows).
+  --only A,B     Re-capture these ids into an existing --out file; other rows are
+                 kept and the file keeps bank order (#908).
   --refresh      Rebuild every pool on the server (refresh=true) — REQUIRED for a
                  gate run after a deploy: docsOnly pools are cached for 7 days, so
                  without it a capture measures whatever code built the cache.
@@ -113,6 +115,7 @@ async function capture(base: string, q: BankQuestion, refresh: boolean): Promise
     const d = (await res.json()) as {
       documents?: Array<Record<string, unknown>>;
       alsoSearched?: string[];
+      contributingAliases?: string[];
       strata?: Array<{ label: string; docCount: number }>;
       builtAt?: string;
     };
@@ -133,6 +136,9 @@ async function capture(base: string, q: BankQuestion, refresh: boolean): Promise
         title: String(x.title ?? ''),
       })),
       alsoSearched: d.alsoSearched ?? [],
+      // Absent on pre-#910 servers: keep the field absent so the report can
+      // say "n/a" instead of counting zero.
+      ...(d.contributingAliases ? { contributingAliases: d.contributingAliases } : {}),
       strata: d.strata?.map((s) => `${s.label}:${s.docCount}`) ?? null,
     };
   }
@@ -168,15 +174,26 @@ async function main(): Promise<void> {
   if (!base || !out) throw new Error(USAGE);
   const pace = Number(arg(args, '--pace') ?? 6000);
   const only = arg(args, '--only')?.split(',');
-  const bank = loadBank(arg(args, '--set') ?? 'all').filter((q) => !only || only.includes(q.id));
+  const fullBank = loadBank(arg(args, '--set') ?? 'all');
+  const bank = fullBank.filter((q) => !only || only.includes(q.id));
+  const unknown = (only ?? []).filter((id) => !fullBank.some((q) => q.id === id));
+  if (unknown.length > 0) {
+    throw new Error(`--only names ids not in the selected bank: ${unknown.join(', ')}`);
+  }
   const refresh = args.includes('--refresh');
-  const captures: HygieneCapture[] = [];
+  // --only re-captures INTO the existing file (#908): without the merge the
+  // flag overwrote a 31-row capture with the two rows it re-ran (2026-09-16).
+  const existing = only && existsSync(out) ? readCaptures(out) : [];
+  const fullBankIds = fullBank.map((q) => q.id);
+  const captured: HygieneCapture[] = [];
+  let captures: HygieneCapture[] = [];
   for (const q of bank) {
     const c = await capture(base, q, refresh);
-    captures.push(c);
+    captured.push(c);
     console.log(
       `[hygiene] ${q.id.padEnd(16)} docs=${c.docs.length} ${c.ms != null ? `${(c.ms / 1000).toFixed(0)}s` : ''} ${c.error ?? ''}`,
     );
+    captures = only ? mergeCaptures(existing, captured, fullBankIds) : captured;
     writeFileSync(out, JSON.stringify(captures, null, 1));
     await sleep(c.ms != null && c.ms < 3000 ? pace : 30_000);
   }

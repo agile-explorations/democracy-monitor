@@ -6,6 +6,9 @@
 
 import type { ValidatedAlias } from '@/lib/services/query-expansion-service';
 import type { ArmHit } from '@/lib/services/research-fusion';
+import { rosterTighteningEnabled } from '@/lib/services/salience-knobs';
+
+export { rosterTighteningEnabled } from '@/lib/services/salience-knobs';
 
 /** Enumeration-loop ceiling on arm-guaranteed slots (half the pool). */
 export const GUARANTEED_SLOTS = 30;
@@ -17,12 +20,33 @@ export const PER_ARM_CAP = 2;
  *  Measured (#762 candidate run 1): 48 concurrent cold arm queries
  *  saturated the DB pool — 121s arms stage; slot-justified width only. */
 export const MAX_ROSTER_ARMS = 18;
+/** Slot cap for an arm whose nominee was question-blind and uncorroborated
+ *  (#913): it earned its seat only by being specific, so it places one doc,
+ *  not two. `SALIENCE_ROSTER_TIGHTEN=off` restores the flat cap. */
+export const UNCORROBORATED_ARM_CAP = 1;
 
 export interface SlotArm {
   phrase: string;
   /** Corpus match count — ordering key (sharpest arm first). */
   matches: number;
   items: ArmHit[];
+  /** Per-arm slot cap override (#913); the pool-wide cap applies otherwise. */
+  perArmCap?: number;
+}
+
+/** Roster inputs after tightening (#913): uncorroborated judge picks lose
+ *  their priority seat and every uncorroborated arm gets the smaller cap.
+ *  Pure; a no-op when the knob is off. */
+export function applyRosterTightening(
+  selection: { judgedPhrases: string[]; uncorroboratedPhrases: string[] },
+  enabled: boolean = rosterTighteningEnabled(),
+): { priorityPhrases: string[]; lowCapPhrases: Set<string> } {
+  if (!enabled) return { priorityPhrases: selection.judgedPhrases, lowCapPhrases: new Set() };
+  const lowCapPhrases = new Set(selection.uncorroboratedPhrases.map((ph) => ph.toLowerCase()));
+  return {
+    priorityPhrases: selection.judgedPhrases.filter((ph) => !lowCapPhrases.has(ph.toLowerCase())),
+    lowCapPhrases,
+  };
 }
 
 /**
@@ -49,7 +73,7 @@ export function composeArmSlotPool(
     let advanced = false;
     for (const arm of ordered) {
       if (picked.length >= totalSlots) return picked;
-      if ((taken.get(arm) ?? 0) >= perArmCap) continue;
+      if ((taken.get(arm) ?? 0) >= (arm.perArmCap ?? perArmCap)) continue;
       let cursor = cursors.get(arm) ?? 0;
       while (cursor < arm.items.length) {
         const hit = arm.items[cursor];
@@ -94,4 +118,19 @@ export function composeRoster(
     .filter((a) => !taken.has(a.phrase.toLowerCase()))
     .sort((a, b) => a.matches - b.matches || a.phrase.localeCompare(b.phrase));
   return [...priority, ...rest].slice(0, maxArms);
+}
+
+/** Dedupe aliases across sources by lowercase phrase, preserving order. */
+export function dedupeAliases(groups: ValidatedAlias[][]): ValidatedAlias[] {
+  const seen = new Set<string>();
+  const out: ValidatedAlias[] = [];
+  for (const group of groups) {
+    for (const alias of group) {
+      const key = alias.phrase.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(alias);
+    }
+  }
+  return out;
 }

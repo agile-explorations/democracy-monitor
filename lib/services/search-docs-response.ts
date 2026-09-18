@@ -14,6 +14,7 @@ import type {
   RetrievalResult,
   RetrievalTimings,
 } from '@/lib/services/research-doc-retrieval';
+import { salienceRulesStamp } from '@/lib/services/salience-knobs';
 import { buildDebugTrace } from '@/lib/services/search-debug-trace';
 import {
   buildDocsOnlyPayload,
@@ -94,13 +95,15 @@ export function docsCacheRefs(
   query: string,
   req: NextApiRequest,
 ): { docsHash: string; docsCacheKey: string } {
+  const enumeration = classifyQuestionMode(query) === 'enumeration';
   const docsHash = hashDocsKey(query, {
     dateFrom: req.query.dateFrom as string | undefined,
     dateTo: req.query.dateTo as string | undefined,
     tier: req.query.tier as string | undefined,
     eras: req.query.eras as string | undefined,
+    // Salience runs only on the enumeration path (#914).
+    ...(enumeration ? { rules: salienceRulesStamp() } : {}),
   });
-  const enumeration = classifyQuestionMode(query) === 'enumeration';
   return { docsHash, docsCacheKey: CacheKeys.searchResearchDocs(docsHash, enumeration) };
 }
 

@@ -21,9 +21,11 @@ export const CacheKeys = {
    *  caches — no deploy-day rebuild stampede; enumeration doc sets differ
    *  and get their own v3 namespace. */
   // v4/v5 (#744): matched-passage snippets skip mastheads; earlier
-  // generations carried header text.
+  // generations carried header text. Enumeration v8 (R-ALIAS-TAIL, #914):
+  // salience nomination rules changed; salience runs only on the
+  // enumeration path, so the analytical namespace stays warm.
   searchResearchDocs: (keyHash: string, enumeration = false) =>
-    `search:rdocs:${keyHash}:${enumeration ? 'v7' : 'v6'}`,
+    `search:rdocs:${keyHash}:${enumeration ? 'v8' : 'v6'}`,
   /** Search-query embeddings (#722), keyed by normalized-text hash — saves a
    *  provider round-trip per cold search. Query text only, never documents. */
   queryEmbedding: (textHash: string) => `search:qemb:${textHash}:v1`,

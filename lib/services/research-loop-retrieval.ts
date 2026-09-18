@@ -25,11 +25,14 @@
  */
 
 import {
+  applyRosterTightening,
   composeArmSlotPool,
   composeRoster,
+  dedupeAliases,
   GUARANTEED_SLOTS,
   MAX_ROSTER_ARMS,
   PER_ARM_CAP,
+  UNCORROBORATED_ARM_CAP,
 } from '@/lib/services/arm-slot-compose';
 import type { SlotArm } from '@/lib/services/arm-slot-compose';
 import { composeAspectPools } from '@/lib/services/aspect-composition';
@@ -155,21 +158,6 @@ async function rerankComposedPool(
   }
 }
 
-/** Dedupe aliases across sources by lowercase phrase, preserving order. */
-function dedupeAliases(groups: ValidatedAlias[][]): ValidatedAlias[] {
-  const seen = new Set<string>();
-  const out: ValidatedAlias[] = [];
-  for (const group of groups) {
-    for (const alias of group) {
-      const key = alias.phrase.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(alias);
-    }
-  }
-  return out;
-}
-
 /** Run every productive arm (expansion + mined + salience) into a roster.
  *  Arm queries route through the per-(phrase, window) cache — the seed
  *  sweep already ran the expansion/mined arms, so those are cache hits. */
@@ -179,12 +167,20 @@ async function buildArmRoster(
   dateFrom: string | undefined,
   dateTo: string | undefined,
   priorityPhrases: string[] = [],
+  lowCapPhrases: Set<string> = new Set(),
 ): Promise<SlotArm[]> {
   const bounded = composeRoster(aliases, priorityPhrases);
   if (bounded.length === 0) return [];
   const arms = await runArmsForAliases(bounded, dateFrom, dateTo);
   return arms
-    .map((arm, i) => ({ phrase: bounded[i].phrase, matches: bounded[i].matches, items: arm.items }))
+    .map((arm, i) => ({
+      phrase: bounded[i].phrase,
+      matches: bounded[i].matches,
+      items: arm.items,
+      ...(lowCapPhrases.has(bounded[i].phrase.toLowerCase())
+        ? { perArmCap: UNCORROBORATED_ARM_CAP }
+        : {}),
+    }))
     .filter((a) => a.items.length > 0);
 }
 
@@ -216,11 +212,13 @@ export async function applySalienceStage(opts: {
     [opts.era],
   );
   const salience = selection.arms;
+  const tightened = applyRosterTightening(selection);
   const roster = await buildArmRoster(
     dedupeAliases([salience, opts.extraArms ?? []]),
     opts.dateFrom,
     opts.dateTo,
-    selection.judgedPhrases,
+    tightened.priorityPhrases,
+    tightened.lowCapPhrases,
   );
   if (roster.length === 0) return { docs: opts.docs, salience };
   const keep = opts.docs.length;
@@ -255,11 +253,13 @@ async function runArmStage(
   const judgeMs = Date.now() - j0;
   const novelSalience = selection.arms;
   const f0 = Date.now();
+  const tightened = applyRosterTightening(selection);
   const roster = await buildArmRoster(
     dedupeAliases([novelSalience, expansionTerms, seed.minedAliases]),
     p.dateFrom,
     p.dateTo,
-    selection.judgedPhrases,
+    tightened.priorityPhrases,
+    tightened.lowCapPhrases,
   );
   // The bug #762 fixed: exclude only the KEPT seed prefix, so a doc the
   // seed ranked past the reservation line can still earn an arm slot

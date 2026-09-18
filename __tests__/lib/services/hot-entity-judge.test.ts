@@ -29,7 +29,7 @@ describe('buildJudgePrompt', () => {
       },
     ]);
     expect(prompt).toContain('1. "J.G.G. v. Trump" — caption — categories: immigrationEnforcement');
-    expect(prompt).toContain('19 mentions this term');
+    expect(prompt).toContain('mentioned in 19 documents across 1 categories (era-wide)');
     expect(prompt).toContain('What documents address X?');
   });
 });
@@ -57,5 +57,34 @@ describe('parseJudgeResponse', () => {
 
   it('an empty array is a legitimate none-fit verdict, not a failure', () => {
     expect(parseJudgeResponse('[]', shortlist)).toEqual([]);
+  });
+});
+
+describe('buildJudgePrompt quota and breadth (#912)', () => {
+  const candidates = [
+    {
+      phrase: 'Executive Order 14192',
+      entityClass: 'eo',
+      categories: ['a', 'b', 'c'],
+      docFreqTerm: 513,
+    },
+  ];
+  it('tells the judge an empty list is a normal answer and names the cap', () => {
+    const prompt = buildJudgePrompt('q', candidates);
+    expect(prompt).toMatch(/Return \[\] when none fit/);
+    expect(prompt).toMatch(/never pad the list/);
+    expect(prompt).toContain(`at most ${MAX_JUDGE_PICKS}`);
+  });
+  it('shows era-wide breadth so the judge can see an entity that is everywhere', () => {
+    expect(buildJudgePrompt('q', candidates)).toContain(
+      'mentioned in 513 documents across 3 categories (era-wide)',
+    );
+    expect(buildJudgePrompt('q', candidates)).toMatch(
+      /less likely it is specific to this question/,
+    );
+  });
+  it('keeps the quota within the 1–12 range the knob allows', () => {
+    expect(MAX_JUDGE_PICKS).toBeGreaterThanOrEqual(1);
+    expect(MAX_JUDGE_PICKS).toBeLessThanOrEqual(12);
   });
 });

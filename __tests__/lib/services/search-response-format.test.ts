@@ -171,3 +171,15 @@ describe('contributingAliases (#806)', () => {
     expect(payload.contributingAliases).toEqual(['Schedule F', 'Executive Order 13957']);
   });
 });
+
+describe('hashDocsKey salience rules stamp (#914)', () => {
+  it('changes the key when the rules stamp changes and ignores an absent stamp', () => {
+    const base = hashDocsKey('Schedule F', { dateFrom: '2025-01-20' });
+    expect(hashDocsKey('Schedule F', { dateFrom: '2025-01-20', rules: '' })).toBe(base);
+    const gated = hashDocsKey('Schedule F', { dateFrom: '2025-01-20', rules: 'gate=1,cap=30' });
+    expect(gated).not.toBe(base);
+    expect(hashDocsKey('Schedule F', { dateFrom: '2025-01-20', rules: 'gate=0,cap=30' })).not.toBe(
+      gated,
+    );
+  });
+});

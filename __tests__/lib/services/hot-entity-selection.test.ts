@@ -229,6 +229,29 @@ describe('finalizeArms mechanical top-up (#762)', () => {
     for (const l of locals) expect(arms).toContain(l.phrase);
   });
 
+  it('never draws the top-up from the category channel either (#911) unless the knob restores the old rule', () => {
+    // A statute, not a caption: the stability floor (#760) keeps the top
+    // two captions of the gated shortlist regardless of channel.
+    const cat = {
+      ...entity('Category Giant', 500),
+      entityClass: 'statute',
+      channel: 'category' as const,
+    };
+    const q = { ...entity('Question Row', 20), channel: 'question' as const };
+    const p = { ...entity('Pool Row', 20), channel: 'pool' as const };
+    expect(topUpEligible([cat, q, p], true).map((r) => r.phrase)).toEqual([
+      'Question Row',
+      'Pool Row',
+    ]);
+    expect(topUpEligible([cat, q, p], false).map((r) => r.phrase)).toEqual([
+      'Category Giant',
+      'Question Row',
+      'Pool Row',
+    ]);
+    const arms = finalizeArms([cat, q, p], [], [], []).map((a) => a.phrase);
+    expect(arms).not.toContain('Category Giant');
+  });
+
   it('still runs a global-channel entity the judge picked (#799)', () => {
     const giant = {
       ...row('United States v. Comey', 'caption'),
@@ -340,5 +363,13 @@ describe('question-evidence gate (#806)', () => {
   it('has no evidence when the pool is empty or only incidental and the question matched nothing', () => {
     expect(hasQuestionEvidence([], [])).toBe(false);
     expect(hasQuestionEvidence([poolRow('stray', 1)], [])).toBe(false);
+  });
+});
+
+describe('finalizeArms null-judge fallback', () => {
+  it('stands in the whole (already gated) shortlist when the judge fails, bounded like a judged window', () => {
+    const shortlist = [entity('A'), entity('B'), entity('C')];
+    const arms = finalizeArms(shortlist, null, [], []).map((a) => a.phrase);
+    expect(arms).toEqual(['A', 'B', 'C']);
   });
 });

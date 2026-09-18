@@ -5,6 +5,7 @@ import {
   diffRuns,
   gateFailures,
   isArmDoc,
+  mergeCaptures,
   questionMetrics,
   renderRun,
   runMetrics,
@@ -12,6 +13,29 @@ import {
 import type { HygieneCapture, HygieneThresholds } from '@/lib/utils/retrieval-hygiene';
 
 const captures = battery as HygieneCapture[];
+
+/** A minimal capture with one seed doc so it counts as a non-empty pool. */
+function stub(id: string, alsoSearched: string[], contributingAliases?: string[]): HygieneCapture {
+  return {
+    id,
+    q: `question ${id}`,
+    ms: 1000,
+    docs: [{ id: 1, cosineSimilarity: 0.6, provenance: 'seed' }],
+    alsoSearched,
+    ...(contributingAliases ? { contributingAliases } : {}),
+    strata: null,
+  };
+}
+
+/** Five questions: "Omnibus Act" is searched on all five but contributes on
+ *  only two; "Insurrection Act" is searched AND contributes on four. */
+const withContributing: HygieneCapture[] = [
+  stub('Q1', ['Insurrection Act', 'Omnibus Act'], ['Insurrection Act', 'Omnibus Act']),
+  stub('Q2', ['Insurrection Act', 'Omnibus Act'], ['Insurrection Act', 'Omnibus Act']),
+  stub('Q3', ['Insurrection Act', 'Omnibus Act'], ['Insurrection Act']),
+  stub('Q4', ['Insurrection Act', 'Omnibus Act'], ['Insurrection Act']),
+  stub('Q5', ['Omnibus Act'], []),
+];
 
 describe('pool-hygiene metrics (#803) on the 2026-08-29 battery fixture', () => {
   it('reads arm docs from provenance when present, else from a zero cosine', () => {
@@ -87,5 +111,62 @@ describe('pool-hygiene metrics (#803) on the 2026-08-29 battery fixture', () => 
     const lines = diffRuns(m, better);
     expect(lines[0]).toMatch(/top-10 arm share \d+% → 0%/);
     expect(lines.length).toBe(1 + better.questions.length);
+  });
+});
+
+describe('contributing aliases (#910)', () => {
+  it('counts only aliases that surfaced a document, within the shared set', () => {
+    const m = runMetrics(withContributing);
+    expect(m.sharedAliases.map((a) => a.alias)).toEqual(['Omnibus Act', 'Insurrection Act']);
+    expect(m.sharedContributingAliases).toEqual([
+      { alias: 'Insurrection Act', questions: ['Q1', 'Q2', 'Q3', 'Q4'] },
+    ]);
+    const shared = new Set(m.sharedAliases.map((a) => a.alias));
+    for (const a of m.sharedContributingAliases) expect(shared.has(a.alias)).toBe(true);
+  });
+
+  it('reports none for captures predating the field, leaving shared aliases as before', () => {
+    const m = runMetrics(captures);
+    expect(m.sharedContributingAliases).toEqual([]);
+    expect(m.sharedAliases.map((a) => a.alias)).toContain('Public Law 119-21');
+    // The 6-capture fixture has nine aliases on ≥ 4 questions; the new field must not move it.
+    expect(m.sharedAliases.length).toBe(9);
+  });
+
+  it('shows the searched and contributing counts side by side in reports and diffs', () => {
+    const m = runMetrics(withContributing);
+    expect(renderRun(m)[0]).toContain('shared aliases 2 (contributing 1)');
+    // The 08-29 fixture predates the field: its side reads n/a, not 0.
+    expect(diffRuns(runMetrics(captures), m)[0]).toMatch(
+      /shared aliases \d+ \(contributing n\/a\) → 2 \(contributing 1\)/,
+    );
+  });
+
+  it('reports n/a instead of zero when a measured capture lacks the field', () => {
+    const mixed = [...withContributing.slice(0, 2), stub('old', ['x'])];
+    expect(runMetrics(mixed).contributingMeasured).toBe(false);
+    expect(renderRun(runMetrics(mixed))[0]).toContain('(contributing n/a)');
+  });
+});
+
+describe('mergeCaptures (#908)', () => {
+  const existing = [stub('A', ['x']), stub('B', ['y']), stub('C', ['z']), stub('ZZ-retired', [])];
+  const freshB = { ...stub('B', ['y2']), ms: 42 };
+
+  it('replaces the re-captured row and keeps every other row', () => {
+    const merged = mergeCaptures(existing, [freshB], ['A', 'B', 'C']);
+    expect(merged.map((c) => c.id)).toEqual(['A', 'B', 'C', 'ZZ-retired']);
+    expect(merged.find((c) => c.id === 'B')).toEqual(freshB);
+    expect(merged.find((c) => c.id === 'A')).toEqual(existing[0]);
+  });
+
+  it('orders by the bank and appends ids the bank no longer lists', () => {
+    const merged = mergeCaptures(existing, [stub('D', [])], ['D', 'C', 'B', 'A']);
+    expect(merged.map((c) => c.id)).toEqual(['D', 'C', 'B', 'A', 'ZZ-retired']);
+  });
+
+  it('is a plain capture when nothing existed before', () => {
+    const fresh = [stub('B', []), stub('A', [])];
+    expect(mergeCaptures([], fresh, ['A', 'B']).map((c) => c.id)).toEqual(['A', 'B']);
   });
 });

@@ -1,44 +1,12 @@
 {
-  "_comment": "Pool-hygiene question bank (#803). NOVEL questions are never used for tuning; rotate a third out per retrieval sprint (retired questions may join the tuning sets), written BEFORE the sprint's code changes. OUTREACH questions are the tuned-on set and are reported, not held out.",
+  "_comment": "Pool-hygiene question bank (#803). NOVEL questions are never used for tuning; rotate a third out per retrieval sprint (retired questions may join the tuning sets), written BEFORE the sprint's code changes. OUTREACH questions are the tuned-on set and are reported, not held out. Rotation 2026-09-16 (R-ALIAS-TAIL, #909): N01/N03/N04/N05 retired to outreach (named in #806/#807 analysis); N13-N16 written before the sprint code changes.",
   "novel": [
-    {
-      "id": "N01-military",
-      "category": "military",
-      "written": "2026-08-29",
-      "tunedOn": false,
-      "question": "What court rulings and executive actions address the use of the Insurrection Act or federal troops in U.S. cities since 2020?",
-      "params": {}
-    },
     {
       "id": "N02-fiscal",
       "category": "fiscal",
       "written": "2026-08-29",
       "tunedOn": false,
       "question": "Which agencies have withheld or delayed congressionally appropriated funds since January 2025, and what did GAO or the courts say about it?",
-      "params": {}
-    },
-    {
-      "id": "N03-media",
-      "category": "mediaFreedom",
-      "written": "2026-08-29",
-      "tunedOn": false,
-      "question": "How have FCC and FTC actions toward media companies and broadcasters changed across administrations?",
-      "params": {}
-    },
-    {
-      "id": "N04-foia",
-      "category": "infoAvailability",
-      "written": "2026-08-29",
-      "tunedOn": false,
-      "question": "What executive orders and rules have changed how federal agencies handle FOIA requests and public data since 2017?",
-      "params": {}
-    },
-    {
-      "id": "N05-courts",
-      "category": "judicialIndependence",
-      "written": "2026-08-29",
-      "tunedOn": false,
-      "question": "What government documents address compliance with or defiance of federal court orders by executive agencies since 2025?",
       "params": {}
     },
     {
@@ -95,6 +63,38 @@
       "written": "2026-08-29",
       "tunedOn": false,
       "question": "What actions and court cases involve the revocation of visas or deportation of students and scholars for their speech since 2025?",
+      "params": {}
+    },
+    {
+      "id": "N13-hatch",
+      "category": "hatch",
+      "written": "2026-09-16",
+      "tunedOn": false,
+      "question": "What Office of Special Counsel findings, agency actions, and congressional responses address Hatch Act violations by senior executive-branch officials across the last three administrations?",
+      "params": {}
+    },
+    {
+      "id": "N14-whistleblower",
+      "category": "civilService",
+      "written": "2026-09-16",
+      "tunedOn": false,
+      "question": "What inspector general reports, Merit Systems Protection Board decisions, and congressional hearings address retaliation against federal whistleblowers since 2017?",
+      "params": {}
+    },
+    {
+      "id": "N15-statistics",
+      "category": "infoAvailability",
+      "written": "2026-09-16",
+      "tunedOn": false,
+      "question": "What government documents address the independence of federal statistical agencies, including leadership changes at BLS or the Census Bureau and altered or withdrawn data releases, since 2017?",
+      "params": {}
+    },
+    {
+      "id": "N16-judges",
+      "category": "judicialIndependence",
+      "written": "2026-09-16",
+      "tunedOn": false,
+      "question": "What court orders, Justice Department statements, and congressional statements address threats against federal judges or calls to impeach them over their rulings since 2025?",
       "params": {}
     }
   ],
@@ -264,6 +264,38 @@
       "written": "2026-08-10",
       "tunedOn": true,
       "question": "What congressional statements and government reports address DHS Inspector General independence across administrations since 2017?",
+      "params": {}
+    },
+    {
+      "id": "N01-military",
+      "category": "military",
+      "written": "2026-08-29",
+      "tunedOn": true,
+      "question": "What court rulings and executive actions address the use of the Insurrection Act or federal troops in U.S. cities since 2020?",
+      "params": {}
+    },
+    {
+      "id": "N03-media",
+      "category": "mediaFreedom",
+      "written": "2026-08-29",
+      "tunedOn": true,
+      "question": "How have FCC and FTC actions toward media companies and broadcasters changed across administrations?",
+      "params": {}
+    },
+    {
+      "id": "N04-foia",
+      "category": "infoAvailability",
+      "written": "2026-08-29",
+      "tunedOn": true,
+      "question": "What executive orders and rules have changed how federal agencies handle FOIA requests and public data since 2017?",
+      "params": {}
+    },
+    {
+      "id": "N05-courts",
+      "category": "judicialIndependence",
+      "written": "2026-08-29",
+      "tunedOn": true,
+      "question": "What government documents address compliance with or defiance of federal court orders by executive agencies since 2025?",
       "params": {}
     }
   ]

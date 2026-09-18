@@ -234,6 +234,8 @@ export interface EntityRow {
   docFreqTerm: number;
   docFreqBaseline: number;
   channel?: NominationChannel;
+  /** Index era of the row (#911: the blind-channel cap is per era). */
+  era?: EntityEra;
 }
 
 export interface PoolEntityRow extends EntityRow {

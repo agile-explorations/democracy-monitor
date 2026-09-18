@@ -26,7 +26,11 @@ export interface HygieneCapture {
   /** Wall-clock of the docsOnly request that returned documents (ms). */
   ms: number | null;
   docs: HygieneDoc[];
+  /** Every searched phrase (expansion + mined + salience aliases). */
   alsoSearched: string[];
+  /** Searched aliases that surfaced ≥ 1 pool document (#806 C; absent on
+   *  captures predating #910). */
+  contributingAliases?: string[];
   strata: string[] | null;
   error?: string;
 }
@@ -44,12 +48,22 @@ export interface QuestionMetrics {
   ms: number | null;
 }
 
+export interface SharedAlias {
+  alias: string;
+  questions: string[];
+}
+
 export interface RunMetrics {
   questions: QuestionMetrics[];
   /** Documents that appear in ≥ `docRecurrenceMin` different pools. */
   recurringDocs: Array<{ id: number; title: string; questions: string[] }>;
   /** Aliases searched on ≥ `aliasShareMin` different questions. */
-  sharedAliases: Array<{ alias: string; questions: string[] }>;
+  sharedAliases: SharedAlias[];
+  /** The subset of `sharedAliases` that surfaced a pool document on
+   *  ≥ `aliasShareMin` questions — the tail a reader actually meets (#910). */
+  sharedContributingAliases: SharedAlias[];
+  /** Whether every measured capture carries `contributingAliases` (#910). */
+  contributingMeasured: boolean;
   /** Captures with zero documents or an error. */
   emptyPools: string[];
   meanTop10ArmShare: number;
@@ -102,6 +116,45 @@ export function questionMetrics(c: HygieneCapture): QuestionMetrics {
   };
 }
 
+/** Aliases that `pick` yields on ≥ `shareMin` different captures, most-shared
+ *  first. One tally for both alias metrics so their definitions cannot drift. */
+function sharedAliasTally(
+  captures: HygieneCapture[],
+  pick: (c: HygieneCapture) => string[],
+  shareMin: number,
+): SharedAlias[] {
+  const byAlias = new Map<string, Set<string>>();
+  for (const c of captures) {
+    for (const a of pick(c)) {
+      const s = byAlias.get(a) ?? new Set<string>();
+      s.add(c.id);
+      byAlias.set(a, s);
+    }
+  }
+  return [...byAlias.entries()]
+    .filter(([, s]) => s.size >= shareMin)
+    .map(([alias, s]) => ({ alias, questions: [...s].sort() }))
+    .sort((a, b) => b.questions.length - a.questions.length || a.alias.localeCompare(b.alias));
+}
+
+function recurringDocTally(
+  captures: HygieneCapture[],
+  recurrenceMin: number,
+): RunMetrics['recurringDocs'] {
+  const byDoc = new Map<number, { title: string; questions: Set<string> }>();
+  for (const c of captures) {
+    for (const d of c.docs) {
+      const e = byDoc.get(d.id) ?? { title: d.title ?? '', questions: new Set<string>() };
+      e.questions.add(c.id);
+      byDoc.set(d.id, e);
+    }
+  }
+  return [...byDoc.entries()]
+    .filter(([, e]) => e.questions.size >= recurrenceMin)
+    .map(([id, e]) => ({ id, title: e.title, questions: [...e.questions].sort() }))
+    .sort((a, b) => b.questions.length - a.questions.length || a.id - b.id);
+}
+
 /** Whole-run metrics over a set of captures. Pure. */
 export function runMetrics(
   captures: HygieneCapture[],
@@ -109,33 +162,17 @@ export function runMetrics(
 ): RunMetrics {
   const ok = captures.filter((c) => !c.error && c.docs.length > 0);
   const questions = ok.map(questionMetrics);
-  const byDoc = new Map<number, { title: string; questions: Set<string> }>();
-  const byAlias = new Map<string, Set<string>>();
-  for (const c of ok) {
-    for (const d of c.docs) {
-      const e = byDoc.get(d.id) ?? { title: d.title ?? '', questions: new Set<string>() };
-      e.questions.add(c.id);
-      byDoc.set(d.id, e);
-    }
-    for (const a of c.alsoSearched) {
-      const s = byAlias.get(a) ?? new Set<string>();
-      s.add(c.id);
-      byAlias.set(a, s);
-    }
-  }
-  const recurringDocs = [...byDoc.entries()]
-    .filter(([, e]) => e.questions.size >= t.docRecurrenceMin)
-    .map(([id, e]) => ({ id, title: e.title, questions: [...e.questions].sort() }))
-    .sort((a, b) => b.questions.length - a.questions.length || a.id - b.id);
-  const sharedAliases = [...byAlias.entries()]
-    .filter(([, s]) => s.size >= t.aliasShareMin)
-    .map(([alias, s]) => ({ alias, questions: [...s].sort() }))
-    .sort((a, b) => b.questions.length - a.questions.length || a.alias.localeCompare(b.alias));
   const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
   return {
     questions,
-    recurringDocs,
-    sharedAliases,
+    recurringDocs: recurringDocTally(ok, t.docRecurrenceMin),
+    sharedAliases: sharedAliasTally(ok, (c) => c.alsoSearched, t.aliasShareMin),
+    contributingMeasured: ok.length > 0 && ok.every((c) => c.contributingAliases !== undefined),
+    sharedContributingAliases: sharedAliasTally(
+      ok,
+      (c) => c.contributingAliases ?? [],
+      t.aliasShareMin,
+    ),
     emptyPools: captures.filter((c) => c.error || c.docs.length === 0).map((c) => c.id),
     meanTop10ArmShare: mean(questions.map((q) => q.top10ArmShare)),
     meanTop10Cosine: mean(questions.map((q) => q.top10MeanCosine)),
@@ -163,11 +200,16 @@ export function gateFailures(m: RunMetrics, t: HygieneThresholds = DEFAULT_THRES
 
 const pct = (x: number) => `${(x * 100).toFixed(0)}%`;
 
+/** `N (contributing M)` — searched-shared count with the reader-facing subset;
+ *  `n/a` when no measured capture carries the field (pre-#910 captures). */
+const sharedAliasPair = (m: RunMetrics) =>
+  `${m.sharedAliases.length} (contributing ${m.contributingMeasured ? m.sharedContributingAliases.length : 'n/a'})`;
+
 /** Console rendering. */
 export function renderRun(m: RunMetrics, label = 'hygiene'): string[] {
   const lines = [
     `[${label}] ${m.questions.length} questions — top-10 arm share ${pct(m.meanTop10ArmShare)}, ` +
-      `top-10 mean cosine ${m.meanTop10Cosine.toFixed(2)}, shared aliases ${m.sharedAliases.length}, ` +
+      `top-10 mean cosine ${m.meanTop10Cosine.toFixed(2)}, shared aliases ${sharedAliasPair(m)}, ` +
       `recurring docs ${m.recurringDocs.length}, empty pools ${m.emptyPools.length}`,
   ];
   for (const q of m.questions) {
@@ -189,7 +231,7 @@ export function diffRuns(a: RunMetrics, b: RunMetrics): string[] {
   const byId = new Map(a.questions.map((q) => [q.id, q]));
   const lines = [
     `top-10 arm share ${pct(a.meanTop10ArmShare)} → ${pct(b.meanTop10ArmShare)}; ` +
-      `shared aliases ${a.sharedAliases.length} → ${b.sharedAliases.length}; ` +
+      `shared aliases ${sharedAliasPair(a)} → ${sharedAliasPair(b)}; ` +
       `recurring docs ${a.recurringDocs.length} → ${b.recurringDocs.length}`,
   ];
   for (const q of b.questions) {
@@ -205,4 +247,22 @@ export function diffRuns(a: RunMetrics, b: RunMetrics): string[] {
     );
   }
   return lines;
+}
+
+/** Re-captured rows replace same-id rows in `existing`; untouched rows are
+ *  kept. Output follows `bankOrder`; ids the bank no longer lists go last in
+ *  their prior order. Pure — the `--only` fix for #908 (the flag used to
+ *  overwrite a 31-row file with the two rows it re-captured). */
+export function mergeCaptures(
+  existing: HygieneCapture[],
+  fresh: HygieneCapture[],
+  bankOrder: string[],
+): HygieneCapture[] {
+  const byId = new Map(existing.map((c) => [c.id, c]));
+  for (const c of fresh) byId.set(c.id, c);
+  const rank = new Map(bankOrder.map((id, i) => [id, i]));
+  const inBank = (id: string) => rank.has(id);
+  const ordered = [...byId.keys()].filter(inBank).sort((a, b) => rank.get(a)! - rank.get(b)!);
+  const orphaned = [...byId.keys()].filter((id) => !inBank(id));
+  return [...ordered, ...orphaned].map((id) => byId.get(id)!);
 }

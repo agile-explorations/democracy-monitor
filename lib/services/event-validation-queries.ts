@@ -5,6 +5,7 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
+import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { getMonday } from '@/lib/utils/date-utils';
 import { ALL_KNOWN_EVENTS } from '@/lib/validation/known-events';
 
@@ -102,6 +103,16 @@ export async function fetchFedExecConcernCounts(
   };
 }
 
+/**
+ * Pass-1 flag rate per category. The denominator deliberately keeps
+ * `retrieval_relevant = false` rows (no routedOnlyD()): the negative-control
+ * baselines were computed over that population and would shift if it were
+ * narrowed. Only the `corpus` pseudo-category (search-only rows, never
+ * assessed, new in v1.32.0) is excluded, beside the `intent` exclusion,
+ * because it dilutes the denominator without ever being flagged (#907).
+ * The same narrow exclusion applies to fetchT2RoutineRate and
+ * fetchWeekP1FlagRate below.
+ */
 export async function fetchP1FlagRates(
   from: string,
   to: string,
@@ -119,6 +130,7 @@ export async function fetchP1FlagRates(
     WHERE d.published_at >= ${new Date(from)} AND d.published_at < ${new Date(to)}
       AND (d.content_type IS NULL OR d.content_type != 'metadata_only')
       AND d.category != 'intent'
+      AND d.category <> ${CORPUS_CATEGORY}
       ${catClause}
     GROUP BY d.category
   `);
@@ -178,6 +190,7 @@ export async function fetchT2RoutineRate(): Promise<number> {
     WHERE d.published_at >= ${new Date('2025-01-20')}
       AND (d.content_type IS NULL OR d.content_type != 'metadata_only')
       AND d.category != 'intent'
+      AND d.category <> ${CORPUS_CATEGORY}
   `);
   const row = result.rows[0] as Record<string, unknown>;
   const total = Number(row?.total_docs ?? 0);
@@ -196,6 +209,7 @@ export async function fetchWeekP1FlagRate(weekStart: string, weekEnd: string): P
     WHERE d.published_at >= ${new Date(weekStart)} AND d.published_at < ${new Date(weekEnd)}
       AND (d.content_type IS NULL OR d.content_type != 'metadata_only')
       AND d.category != 'intent'
+      AND d.category <> ${CORPUS_CATEGORY}
   `);
   const row = result.rows[0] as Record<string, unknown>;
   const total = Number(row?.total_docs ?? 0);

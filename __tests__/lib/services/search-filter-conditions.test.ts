@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { sqlText as text } from '@/__tests__/helpers/sql-text';
 import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { buildFilterConditions } from '@/lib/services/search-queries';
 
@@ -6,18 +7,6 @@ vi.mock('@/lib/db', () => ({ getDb: () => ({}), isDbAvailable: () => false }));
 
 /** Render a drizzle SQL chunk to its parameter-inlined text for assertions
  *  (same helper as __tests__/lib/db/document-filters.test.ts). */
-function text(chunk: unknown): string {
-  const render = (c: unknown): string => {
-    if (typeof c === 'string') return c;
-    const anyC = c as { queryChunks?: unknown[]; value?: unknown; name?: string };
-    if (Array.isArray(anyC.queryChunks)) return anyC.queryChunks.map(render).join('');
-    if (Array.isArray(anyC.value)) return anyC.value.join('');
-    if (anyC.value !== undefined) return String(anyC.value);
-    if (anyC.name) return anyC.name;
-    return '';
-  };
-  return render(chunk).replace(/\s+/g, ' ').trim();
-}
 
 const ROUTED_ONLY = `d.retrieval_relevant IS NOT FALSE AND d.category <> ${CORPUS_CATEGORY}`;
 
