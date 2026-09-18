@@ -84,14 +84,19 @@ export interface HygieneThresholds {
   aliasShareMin: number;
 }
 
-/** Thresholds (#803, re-based #806): the 2026-08-29 baseline measured
+/** Thresholds (#803, re-based #806 and #915): the 2026-08-29 baseline measured
  *  cosine 0.30 / arm share 36% / 67 shared aliases / 84 recurring docs on 31
- *  questions; v1.18.1 reached 0.49 / 19% with the tail unchanged. */
+ *  questions; v1.18.1 reached 0.49 / 19% with the tail unchanged. The ≤10 /
+ *  ≤25 tail targets were never met on prod; R-ALIAS-TAIL (v1.33.0,
+ *  2026-09-18) measured 66 shared / 89 recurring on the 35-question bank
+ *  (60 / 66 on the original 31, from 83 / 75), and the owner re-based the
+ *  gate to that level with a small margin. The tail that remains is
+ *  corroborated recurrence and the seed sweep's own overlap (#915). */
 export const DEFAULT_THRESHOLDS: HygieneThresholds = {
   minTop10Cosine: 0.45,
   maxTop10ArmShare: 0.3,
-  maxSharedAliases: 10,
-  maxRecurringDocs: 25,
+  maxSharedAliases: 70,
+  maxRecurringDocs: 90,
   docRecurrenceMin: 3,
   aliasShareMin: 4,
 };
