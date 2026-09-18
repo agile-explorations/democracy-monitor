@@ -33,7 +33,7 @@ export function logSalienceOutcome(o: {
   arms: Array<{ phrase: string }>;
   /** Blind-channel gate drops (#911), by channel, and the cap used. */
   dropped?: { category: number; global: number };
-  dftCap?: number;
+  dftCaps?: Record<string, number>;
 }): void {
   // Global-channel nominees are barred from the mechanical top-up (#799);
   // the count shows how much of the shortlist that rule touched.
@@ -42,7 +42,7 @@ export function logSalienceOutcome(o: {
   console.log(
     `[salience] eras=${o.eras.join('+')} pool=${o.poolRows.length} q=${o.questionRows.length} ` +
       `shortlist=${o.shortlist.length} judge=${o.picks ? o.picks.length + ' picks' : 'NULL(fallback)'} ` +
-      `global-excluded=${globalExcluded} dropped=cat:${dropped.category},global:${dropped.global} cap=${o.dftCap ?? '-'} ` +
+      `global-excluded=${globalExcluded} dropped=cat:${dropped.category},global:${dropped.global} cap=${renderCaps(o.dftCaps)} ` +
       `picks=${pickChannelTally(o.shortlist, o.arms)} ` +
       `arms=${o.arms.length}: ${o.arms.map((a) => a.phrase).join(' | ')}`,
   );
@@ -63,11 +63,19 @@ export function logSalienceOutcome(o: {
 export function logSalienceGated(
   eras: EntityEra[],
   dropped: { category: number; global: number },
-  dftCap: number,
+  dftCaps: Record<string, number>,
 ): void {
   console.log(
-    `[salience] eras=${eras.join('+')} shortlist=0 dropped=cat:${dropped.category},global:${dropped.global} cap=${dftCap} — nothing admissible after the blind-channel gate (#911), salience skipped`,
+    `[salience] eras=${eras.join('+')} shortlist=0 dropped=cat:${dropped.category},global:${dropped.global} cap=${renderCaps(dftCaps)} — nothing admissible after the blind-channel gate (#911), salience skipped`,
   );
+}
+
+/** `trump_t2:20,biden:37` — one cap per era (#911). */
+export function renderCaps(caps: Record<string, number> | undefined): string {
+  if (!caps || Object.keys(caps).length === 0) return '-';
+  return Object.entries(caps)
+    .map(([era, cap]) => `${era}:${Math.round(cap)}`)
+    .join(',');
 }
 
 /** The evidence gate fired (#806): no pool doc mentions a tracked entity and

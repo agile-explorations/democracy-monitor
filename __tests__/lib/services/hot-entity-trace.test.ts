@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pickChannelTally } from '@/lib/services/hot-entity-trace';
+import { pickChannelTally, renderCaps } from '@/lib/services/hot-entity-trace';
 
 describe('pickChannelTally (#910)', () => {
   it('attributes each arm to the channel that nominated it', () => {
@@ -17,5 +17,13 @@ describe('pickChannelTally (#910)', () => {
     expect(pickChannelTally([{ phrase: 'a', channel: 'pool' }], [{ phrase: 'A' }])).toBe(
       'pool:1,q:0,cat:0,global:0',
     );
+  });
+});
+
+describe('renderCaps (#911)', () => {
+  it('prints one rounded cap per era and a dash when the gate is off', () => {
+    expect(renderCaps({ trump_t2: 17.4, biden: 34 })).toBe('trump_t2:17,biden:34');
+    expect(renderCaps(undefined)).toBe('-');
+    expect(renderCaps({})).toBe('-');
   });
 });

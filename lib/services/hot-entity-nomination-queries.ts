@@ -81,6 +81,7 @@ function mapEntityRow(r: Record<string, unknown>): EntityRow {
     ftsMatches: r.fts_matches as number,
     docFreqTerm: r.doc_freq_term as number,
     docFreqBaseline: r.doc_freq_baseline as number,
+    ...(r.era ? { era: r.era as EntityEra } : {}),
   };
 }
 
@@ -116,7 +117,7 @@ async function queryGlobalTop(eras: EntityEra[]): Promise<EntityRow[]> {
   for (const era of eras) {
     const result = await db.execute(sql`
       SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
-             e.doc_freq_term, e.doc_freq_baseline
+             e.doc_freq_term, e.doc_freq_baseline, e.era
       FROM hot_entities e
       WHERE e.era = ${era}
       ORDER BY (e.doc_freq_term * greatest(1, jsonb_array_length(e.categories)))
@@ -176,7 +177,7 @@ async function queryCategoryMatch(categories: string[], eras: EntityEra[]): Prom
   const db = getDb();
   const result = await db.execute(sql`
     SELECT e.phrase, e.entity_class, e.categories, e.fts_matches,
-           e.doc_freq_term, e.doc_freq_baseline
+           e.doc_freq_term, e.doc_freq_baseline, e.era
     FROM hot_entities e
     WHERE e.era IN (${sql.join(
       eras.map((e) => sql`${e}`),

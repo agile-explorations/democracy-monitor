@@ -36,15 +36,26 @@ export {
   blindChannelGateEnabled,
 } from '@/lib/services/salience-knobs';
 
-/** The window's cap: the absolute override when set, else the highest of
- *  the window's per-era percentile values (a multi-era window takes the
- *  most lenient era so no era's canon is cut by another's scale). */
-export function resolveBlindDftCap(
-  eraPercentiles: number[],
+/** Per-era caps for a window. The absolute override, when set, applies to
+ *  every era; otherwise each era gets its own percentile value, and a row
+ *  without an era (older callers) gets the strictest one — dev Run 3
+ *  (2026-09-18) showed a window-wide "most lenient era" cap of 55 on
+ *  comparative questions re-admitting the whole current-term tail. */
+export type EraCaps = Record<string, number>;
+
+export function resolveBlindDftCaps(
+  eraPercentiles: Record<string, number>,
   absolute: number = BLIND_CHANNEL_DFT_CAP,
-): number {
-  if (absolute > 0) return absolute;
-  return Math.max(0, ...eraPercentiles);
+): EraCaps {
+  if (absolute > 0)
+    return Object.fromEntries(Object.keys(eraPercentiles).map((e) => [e, absolute]));
+  return { ...eraPercentiles };
+}
+
+export function capForRow(r: EntityRow, caps: EraCaps): number {
+  const values = Object.values(caps);
+  if (values.length === 0) return 0;
+  return (r.era && caps[r.era]) ?? Math.min(...values);
 }
 
 export type BlindChannel = 'category' | 'global';
@@ -76,13 +87,14 @@ export function corroboratedPhrases(
   return out;
 }
 
-/** The nomination predicate: corroborated, or specific. */
+/** The nomination predicate: corroborated, or specific (under its era's cap). */
 export function admitsBlindNominee(
   r: EntityRow,
   corroborated: Set<string>,
-  dftCap: number,
+  caps: EraCaps | number,
 ): boolean {
-  return corroborated.has(r.phrase.toLowerCase()) || r.docFreqTerm < dftCap;
+  const cap = typeof caps === 'number' ? caps : capForRow(r, caps);
+  return corroborated.has(r.phrase.toLowerCase()) || r.docFreqTerm < cap;
 }
 
 export type BlindDrops = Record<BlindChannel, number>;
@@ -93,9 +105,9 @@ export const NO_DROPS: BlindDrops = { category: 0, global: 0 };
 export function gateChannelRows(
   rows: EntityRow[],
   corroborated: Set<string>,
-  dftCap: number,
+  caps: EraCaps | number,
 ): { kept: EntityRow[]; dropped: number } {
-  const kept = rows.filter((r) => admitsBlindNominee(r, corroborated, dftCap));
+  const kept = rows.filter((r) => admitsBlindNominee(r, corroborated, caps));
   return { kept, dropped: rows.length - kept.length };
 }
 

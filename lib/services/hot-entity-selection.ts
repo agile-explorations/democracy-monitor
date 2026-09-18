@@ -40,10 +40,10 @@ import {
   gateChannelRows,
   isBlindChannel,
   NO_DROPS,
-  resolveBlindDftCap,
+  resolveBlindDftCaps,
   uncorroboratedArms,
 } from '@/lib/services/hot-entity-corroboration';
-import type { BlindDrops } from '@/lib/services/hot-entity-corroboration';
+import type { EraCaps, BlindDrops } from '@/lib/services/hot-entity-corroboration';
 import type { JudgeCandidate } from '@/lib/services/hot-entity-judge';
 import { judgeShortlist } from '@/lib/services/hot-entity-judge';
 import {
@@ -286,16 +286,18 @@ interface GatedNominations {
   corroborated: Set<string>;
   dropped: BlindDrops;
   gated: boolean;
-  dftCap: number;
+  dftCaps: EraCaps;
 }
 
-/** The window's blind-channel cap (#911): the per-era percentile of the
+/** The window's blind-channel caps (#911): each era's percentile of the
  *  index, resolved once per window (memoized per data week underneath). */
-async function blindDftCapFor(eras: EntityEra[]): Promise<number> {
+async function blindDftCapsFor(eras: EntityEra[]): Promise<EraCaps> {
   const percentiles = await Promise.all(
-    eras.map((era) => queryEraDftPercentile(era, BLIND_CHANNEL_DFT_PCT)),
+    eras.map(
+      async (era) => [era, await queryEraDftPercentile(era, BLIND_CHANNEL_DFT_PCT)] as const,
+    ),
   );
-  return resolveBlindDftCap(percentiles);
+  return resolveBlindDftCaps(Object.fromEntries(percentiles));
 }
 
 /** Nominate the shortlist with the blind-channel gate applied to the
@@ -303,7 +305,7 @@ async function blindDftCapFor(eras: EntityEra[]): Promise<number> {
 function nominateGated(
   rows: NominationRows,
   excludePhrases: string[],
-  dftCap: number,
+  dftCaps: EraCaps,
 ): GatedNominations {
   const gated = blindChannelGateEnabled();
   const corroborated = corroboratedPhrases(
@@ -312,10 +314,10 @@ function nominateGated(
     MIN_POOL_MENTIONS,
   );
   const category = gated
-    ? gateChannelRows(rows.categoryRows, corroborated, dftCap)
+    ? gateChannelRows(rows.categoryRows, corroborated, dftCaps)
     : { kept: rows.categoryRows, dropped: 0 };
   const global = gated
-    ? gateChannelRows(rows.globalRows, corroborated, dftCap)
+    ? gateChannelRows(rows.globalRows, corroborated, dftCaps)
     : { kept: rows.globalRows, dropped: 0 };
   const shortlist = nominateShortlist(
     rows.poolRows,
@@ -325,7 +327,7 @@ function nominateGated(
     rows.questionRows,
   );
   const dropped = gated ? { category: category.dropped, global: global.dropped } : NO_DROPS;
-  return { shortlist, corroborated, dropped, gated, dftCap };
+  return { shortlist, corroborated, dropped, gated, dftCaps };
 }
 
 /** Nominate → gate → judge → finalize, for one question and era window. */
@@ -349,10 +351,10 @@ async function selectFromNominations(
     logSalienceSkipped(eras, rows.poolRows.length);
     return NO_SALIENCE;
   }
-  const dftCap = blindChannelGateEnabled() ? await blindDftCapFor(eras) : 0;
-  const nominations = nominateGated(rows, excludePhrases, dftCap);
+  const dftCaps = blindChannelGateEnabled() ? await blindDftCapsFor(eras) : {};
+  const nominations = nominateGated(rows, excludePhrases, dftCaps);
   if (nominations.shortlist.length === 0) {
-    logSalienceGated(eras, nominations.dropped, dftCap);
+    logSalienceGated(eras, nominations.dropped, dftCaps);
     return NO_SALIENCE;
   }
   return judgeAndFinalize(question, excludePhrases, { ...rows, eras, ...nominations });
@@ -381,7 +383,7 @@ async function judgeAndFinalize(
     picks,
     arms,
     dropped: ctx.dropped,
-    dftCap: ctx.dftCap,
+    dftCaps: ctx.dftCaps,
   });
   const inArms = new Set(arms.map((a) => a.phrase.toLowerCase()));
   return {

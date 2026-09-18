@@ -6,8 +6,9 @@ import {
   gateChannelRows,
   isBlindChannel,
   isCorroboratedRow,
+  capForRow,
   NO_DROPS,
-  resolveBlindDftCap,
+  resolveBlindDftCaps,
   uncorroboratedArms,
 } from '@/lib/services/hot-entity-corroboration';
 import type {
@@ -73,11 +74,22 @@ describe('admitsBlindNominee / gateChannelRows (#911)', () => {
     expect(admitsBlindNominee(row('At', undefined, 30), new Set(), 30)).toBe(false);
   });
 
-  it('resolves the window cap from the most lenient era percentile unless an absolute override is set', () => {
-    expect(resolveBlindDftCap([17, 34, 45], 0)).toBe(45);
-    expect(resolveBlindDftCap([17], 0)).toBe(17);
-    expect(resolveBlindDftCap([17, 34], 30)).toBe(30);
-    expect(resolveBlindDftCap([], 0)).toBe(0);
+  it('caps each era separately, applies the absolute override to every era, and gives era-less rows the strictest cap', () => {
+    const caps = resolveBlindDftCaps({ trump_t2: 17, trump_t1: 45 }, 0);
+    expect(caps).toEqual({ trump_t2: 17, trump_t1: 45 });
+    expect(resolveBlindDftCaps({ trump_t2: 17, trump_t1: 45 }, 30)).toEqual({
+      trump_t2: 30,
+      trump_t1: 30,
+    });
+    const t2 = { ...row('Current Giant', undefined, 30), era: 'trump_t2' as const };
+    const t1 = { ...row('Old Canon', undefined, 30), era: 'trump_t1' as const };
+    const noEra = row('Legacy', undefined, 30);
+    expect(capForRow(t2, caps)).toBe(17);
+    expect(capForRow(t1, caps)).toBe(45);
+    expect(capForRow(noEra, caps)).toBe(17);
+    expect(gateChannelRows([t2, t1, noEra], new Set(), caps).kept.map((r) => r.phrase)).toEqual([
+      'Old Canon',
+    ]);
     expect(BLIND_CHANNEL_DFT_CAP).toBeGreaterThanOrEqual(0);
   });
 
