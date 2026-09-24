@@ -1,105 +1,81 @@
 /**
- * R-TIPWIRE-3 coverage check (#861, #865): after a `tip` verdict, ask GDELT
- * DOC 2.0 whether the tip's identifier-grade search keys already have news
- * coverage. The result informs the operator (a graded digest line with
- * sample URLs) and is NEVER asserted to a reporter.
+ * Tipwire coverage check (R-TIPWIRE-3 #861, #865; provider seam R-TIPWIRE-5
+ * #920): after a `tip` verdict, ask a search provider whether the tip's
+ * identifier-grade search keys already have news coverage. The result informs
+ * the operator (a graded digest line with sample URLs) and is NEVER asserted
+ * to a reporter.
  *
- * Fail-safe by construction: the throttle body ("Please limit requests…"),
- * a 429, a timeout, non-JSON, or the per-run cap all mark the key as failed,
- * and a check with no positive hit and any failure is `not-checkable` —
- * never a hollow zero. Calls are serialized ≥ GDELT_MIN_SPACING_MS apart.
+ * Fail-safe by construction: a rate limit, an auth or quota error, a timeout,
+ * non-JSON, or the per-run cap all mark the key as failed, and a check with no
+ * positive hit and any failure is `not-checkable` — never a hollow zero. Calls
+ * are serialized ≥ provider.minSpacingMs apart. Providers: ./coverage-brave
+ * (the default once its key is set) and ./coverage-gdelt (dormant fallback).
  */
 
 import {
   COVERAGE_WINDOW_DAYS,
   NICHE_MAX_HITS,
   isNationalOutlet,
+  isNonCoverageHost,
+  isPrimarySource,
 } from '@/lib/data/coverage-outlets';
 import type { TipCoverageCheck } from '@/lib/db/schema';
 import { formatError } from '@/lib/utils/api-helpers';
 import { TIPWIRE_UA } from './acquire';
+import { BRAVE_API_KEY_ENV, createBraveProvider } from './coverage-brave';
+import { GDELT_PROVIDER } from './coverage-gdelt';
+import { buildQuery, classifyKey, passesTermGate } from './coverage-keys';
+import type { SearchHit, SearchProvider, SearchRequest } from './coverage-provider';
 
-export const GDELT_MIN_SPACING_MS = 6_000;
-/** GDELT answers slowly under load — a valid artlist took 25 s from the laptop on
- *  2026-09-08 while the 10 s abort read it as unavailable (#867). Worst case per
- *  poll: GDELT_MAX_CALLS_PER_RUN × (this + spacing) ≈ 26 min, all fail-safe. */
-export const GDELT_TIMEOUT_MS = 45_000;
-export const GDELT_MAX_KEYS_PER_TIP = 3;
+export const COVERAGE_MAX_KEYS_PER_TIP = 3;
 /** One poll per day, so per-run ≈ per-day for the cron (6 reporters × ~4 tips × 3 keys ≈ 24). */
-export const GDELT_MAX_CALLS_PER_RUN = 30;
-export const GDELT_MAX_RECORDS = 25;
-const GDELT_DOC_API = 'https://api.gdeltproject.org/api/v2/doc/doc';
+export const COVERAGE_MAX_CALLS_PER_RUN = 30;
 const SAMPLE_URLS_PER_KEY = 3;
-const KEY_MIN_CHARS = 4;
-const KEY_MAX_CHARS = 80;
+const PROBE_KEY = 'Federal Register';
+const PROBE_WINDOW_DAYS = 7;
 
 export type CoverageKeyResult = TipCoverageCheck['keys'][number];
+export type FetchResponse = (req: SearchRequest) => Promise<{ status: number; text: string }>;
 
 export interface CoverageDeps {
-  /** Raw response body for a URL (any status); throws on network failure. */
-  fetchText: (url: string) => Promise<string>;
+  provider: SearchProvider;
+  /** Status + raw body for a request (any status); throws on network failure. */
+  fetchResponse: FetchResponse;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
   maxCalls: number;
 }
 
-/** `excludeUrls`: the anchor article itself (forward/contradiction) — GDELT indexes it too,
+/** `excludeUrls`: the anchor article itself (forward/contradiction) — the index carries it too,
  *  and a tip is never "covered" by the piece it follows up. Outlet-wide drops are gone (#874). */
 export type CoverageChecker = (
   searchKeys: string[],
   excludeUrls?: readonly string[],
 ) => Promise<TipCoverageCheck>;
 
-export function gdeltUrl(key: string, windowDays = COVERAGE_WINDOW_DAYS): string {
-  const params = new URLSearchParams({
-    query: `"${key.replace(/"/g, '').trim()}"`,
-    mode: 'artlist',
-    maxrecords: String(GDELT_MAX_RECORDS),
-    format: 'json',
-    timespan: `${windowDays}d`,
-  });
-  return `${GDELT_DOC_API}?${params.toString()}`;
+export interface CoverageRun {
+  check: CoverageChecker;
+  provider: SearchProvider;
+  /** Provider calls made so far in this run. */
+  calls: () => number;
 }
 
-/** Identifier-grade: a number/date/docket, a case caption, or a multi-word proper name.
- *  Paraphrasable phrases ("workplace discrimination") are rejected — a zero
- *  for those would be meaningless. */
-export function isIdentifierGrade(key: string): boolean {
-  const k = key.trim();
-  if (k.length < KEY_MIN_CHARS || k.length > KEY_MAX_CHARS) return false;
-  if (/\d/.test(k)) return true;
-  if (/\bv\.?\s/i.test(k)) return true;
-  const capitalised = k.split(/\s+/).filter((t) => /^[A-Z][A-Za-z'’./&-]+$/.test(t));
-  return capitalised.length >= 2;
+/** Brave when its key is set, else GDELT with one warning. Call lazily: the CLI
+ *  loads .env inside its require.main block, after every import. */
+export function selectProvider(env: NodeJS.ProcessEnv = process.env): SearchProvider {
+  const brave = createBraveProvider(env);
+  if (brave.isConfigured()) return brave;
+  console.warn(
+    `[tipwire] ${BRAVE_API_KEY_ENV} unset — coverage falls back to GDELT, which has throttled every request since 2026-09-07`,
+  );
+  return GDELT_PROVIDER;
 }
 
-/** Search keys worth querying, in order, capped. */
+/** Search keys a web index can answer (see ./coverage-keys), in order, capped. */
 export function selectKeys(searchKeys: string[]): string[] {
   return [...new Set(searchKeys.map((k) => k.trim()))]
-    .filter(isIdentifierGrade)
-    .slice(0, GDELT_MAX_KEYS_PER_TIP);
-}
-
-export interface ParsedArtlist {
-  urls: string[];
-}
-
-/** GDELT artlist body → article URLs; null for the throttle text, a 429 page,
- *  or anything without an `articles` array. */
-export function parseGdeltArtlist(body: string): ParsedArtlist | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(body);
-  } catch {
-    return null;
-  }
-  if (!parsed || typeof parsed !== 'object') return null;
-  const articles = (parsed as { articles?: unknown }).articles;
-  if (!Array.isArray(articles)) return null;
-  const urls = articles
-    .map((a) => (a && typeof a === 'object' ? (a as { url?: unknown }).url : undefined))
-    .filter((u): u is string => typeof u === 'string' && u.length > 0);
-  return { urls };
+    .filter((k) => classifyKey(k) !== null)
+    .slice(0, COVERAGE_MAX_KEYS_PER_TIP);
 }
 
 function hostOf(url: string): string | null {
@@ -110,7 +86,7 @@ function hostOf(url: string): string | null {
   }
 }
 
-/** host + path, so feed and GDELT spellings of one article (query string, scheme) agree. */
+/** host + path, so feed and index spellings of one article (query string, scheme) agree. */
 function canonical(url: string): string | null {
   try {
     const u = new URL(url);
@@ -120,12 +96,14 @@ function canonical(url: string): string | null {
   }
 }
 
-/** Every valid URL counts except the anchor article itself; per-host URLs let the digest split own outlet from others. */
+/** Every valid URL counts once except the anchor article, the record's own hosts and
+ *  non-coverage hosts (#921); per-host URLs let the digest split own outlet from others. */
 export function summarizeHits(
   urls: string[],
   excludeUrls: readonly string[] = [],
 ): Omit<CoverageKeyResult, 'key'> {
   const excluded = new Set(excludeUrls.map(canonical).filter((c): c is string => c !== null));
+  const seen = new Set<string>();
   const hitsByDomain: Record<string, string[]> = {};
   const valid: string[] = [];
   let nationalHit = false;
@@ -133,7 +111,9 @@ export function summarizeHits(
     const h = hostOf(u);
     if (h === null) continue;
     const c = canonical(u);
-    if (c !== null && excluded.has(c)) continue;
+    if (c !== null && (excluded.has(c) || seen.has(c))) continue;
+    if (c !== null) seen.add(c);
+    if (isPrimarySource(h) || isNonCoverageHost(h)) continue;
     valid.push(u);
     if (isNationalOutlet(h)) nationalHit = true;
     (hitsByDomain[h] ??= []).push(u);
@@ -150,7 +130,9 @@ export function labelCoverage(keys: CoverageKeyResult[]): TipCoverageCheck['labe
   const ok = keys.filter((k) => !k.error);
   const hits = ok.reduce((n, k) => n + k.hits, 0);
   if (ok.length === 0 || (hits === 0 && ok.length < keys.length)) return 'not-checkable';
-  if (hits === 0) return 'checkable-zero';
+  // A quoted report or docket number matches only pages that print it (#925): zero
+  // on code keys alone says nothing about coverage.
+  if (hits === 0) return ok.some((k) => k.kind !== 'code') ? 'checkable-zero' : 'not-checkable';
   const national = ok.some(
     (k) =>
       k.nationalHit ??
@@ -163,72 +145,110 @@ export function labelCoverage(keys: CoverageKeyResult[]): TipCoverageCheck['labe
   return hits <= NICHE_MAX_HITS ? 'niche' : 'likely-covered';
 }
 
-async function fetchGdeltText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { Accept: 'application/json', 'User-Agent': TIPWIRE_UA },
-    signal: AbortSignal.timeout(GDELT_TIMEOUT_MS),
-  });
-  return res.text();
-}
-
-function defaultDeps(): CoverageDeps {
-  return {
-    fetchText: fetchGdeltText,
-    sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
-    now: () => Date.now(),
-    maxCalls: GDELT_MAX_CALLS_PER_RUN,
+function defaultFetch(provider: SearchProvider): FetchResponse {
+  return async (req) => {
+    const res = await fetch(req.url, {
+      headers: { 'User-Agent': TIPWIRE_UA, ...req.headers },
+      signal: AbortSignal.timeout(provider.timeoutMs),
+    });
+    return { status: res.status, text: await res.text() };
   };
 }
 
-/** One checker per run: it owns the spacing clock and the call counter. */
-export function createCoverageChecker(deps: Partial<CoverageDeps> = {}): CoverageChecker {
-  const d = { ...defaultDeps(), ...deps };
+const failedKey = (key: string, error: string): CoverageKeyResult => ({
+  key,
+  hits: 0,
+  sampleUrls: [],
+  error,
+});
+
+/** One run per poll: it owns the provider, the spacing clock and the call counter. */
+export function createCoverageRun(deps: Partial<CoverageDeps> = {}): CoverageRun {
+  const provider = deps.provider ?? selectProvider();
+  const d: CoverageDeps = {
+    provider,
+    fetchResponse: deps.fetchResponse ?? defaultFetch(provider),
+    sleep: deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))),
+    now: deps.now ?? (() => Date.now()),
+    maxCalls: deps.maxCalls ?? COVERAGE_MAX_CALLS_PER_RUN,
+  };
   let calls = 0;
   let lastCallAt = Number.NEGATIVE_INFINITY;
 
   async function queryKey(key: string, excludeUrls: readonly string[]): Promise<CoverageKeyResult> {
-    if (calls >= d.maxCalls) return { key, hits: 0, sampleUrls: [], error: 'run cap reached' };
-    const wait = lastCallAt + GDELT_MIN_SPACING_MS - d.now();
+    if (calls >= d.maxCalls) return failedKey(key, 'run cap reached');
+    const wait = lastCallAt + provider.minSpacingMs - d.now();
     if (wait > 0) await d.sleep(wait);
     calls++;
     lastCallAt = d.now();
+    const kind = classifyKey(key) ?? 'phrase';
     try {
-      const parsed = parseGdeltArtlist(await d.fetchText(gdeltUrl(key)));
-      if (!parsed) return { key, hits: 0, sampleUrls: [], error: 'throttled or invalid response' };
-      return { key, ...summarizeHits(parsed.urls, excludeUrls) };
+      const query = buildQuery(key, kind);
+      const res = await d.fetchResponse(
+        provider.buildRequest(query, COVERAGE_WINDOW_DAYS, d.now()),
+      );
+      const parsed = provider.parse(res.status, res.text);
+      if ('error' in parsed) return failedKey(key, parsed.error);
+      const relevant =
+        kind === 'phrase' ? parsed.results.filter((h) => passesTermGate(key, h)) : parsed.results;
+      const urls = relevant.map((h: SearchHit) => h.url);
+      return { key, kind, rawHits: parsed.results.length, ...summarizeHits(urls, excludeUrls) };
     } catch (err) {
-      return {
-        key,
-        hits: 0,
-        sampleUrls: [],
-        error: formatError(err),
-      };
+      return failedKey(key, formatError(err));
     }
   }
 
-  return async (searchKeys, excludeUrls = []) => {
+  const check: CoverageChecker = async (searchKeys, excludeUrls = []) => {
     const keys: CoverageKeyResult[] = [];
     for (const key of selectKeys(searchKeys)) keys.push(await queryKey(key, excludeUrls));
     return {
       checkedAt: new Date(d.now()).toISOString(),
       windowDays: COVERAGE_WINDOW_DAYS,
+      provider: provider.name,
       keys,
       label: labelCoverage(keys),
     };
   };
+  return { check, provider, calls: () => calls };
 }
 
-/** Reachability canary (A0, #867): one call, JSON-or-throttle, no persistence. */
-export async function probeGdelt(
-  fetchText: (url: string) => Promise<string> = fetchGdeltText,
+/** The checker alone, for call sites that never read the call count. */
+export function createCoverageChecker(deps: Partial<CoverageDeps> = {}): CoverageChecker {
+  return createCoverageRun(deps).check;
+}
+
+/** Reachability canary (#867, #920): one call, results-or-error, no persistence. */
+export async function probeCoverage(
+  provider: SearchProvider,
+  fetchResponse: FetchResponse = defaultFetch(provider),
 ): Promise<{ ok: boolean; detail: string }> {
   try {
-    const body = await fetchText(gdeltUrl('Federal Register', 7));
-    const parsed = parseGdeltArtlist(body);
-    return parsed
-      ? { ok: true, detail: `JSON, ${parsed.urls.length} article(s) for "Federal Register" in 7d` }
-      : { ok: false, detail: `throttled/invalid: ${body.slice(0, 100).replace(/\s+/g, ' ')}` };
+    const query = buildQuery(PROBE_KEY, 'phrase');
+    const res = await fetchResponse(provider.buildRequest(query, PROBE_WINDOW_DAYS, Date.now()));
+    const parsed = provider.parse(res.status, res.text);
+    if ('error' in parsed) {
+      const head = res.text.slice(0, 100).replace(/\s+/g, ' ');
+      return { ok: false, detail: `${parsed.error}: ${head}` };
+    }
+    const n = parsed.results.length;
+    return { ok: true, detail: `JSON, ${n} result(s) for "${PROBE_KEY}" in ${PROBE_WINDOW_DAYS}d` };
   } catch (err) {
     return { ok: false, detail: formatError(err) };
   }
+}
+
+/** Brave ToS §3(b): results are held only while the candidate is open. Counts, label,
+ *  national flag and hostnames survive; every URL goes. Pure. */
+export function pruneCoverageUrls(check: TipCoverageCheck, prunedAt: string): TipCoverageCheck {
+  return {
+    ...check,
+    urlsPrunedAt: prunedAt,
+    keys: check.keys.map((k) => ({
+      ...k,
+      sampleUrls: [],
+      ...(k.hitsByDomain
+        ? { hitsByDomain: Object.fromEntries(Object.keys(k.hitsByDomain).map((h) => [h, []])) }
+        : {}),
+    })),
+  };
 }

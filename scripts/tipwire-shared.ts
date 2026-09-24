@@ -28,7 +28,7 @@ export interface TipwireArgs {
   candidate?: number;
   replied: boolean;
   dismiss: boolean;
-  /** probe: one GDELT call (reachability canary, #867). */
+  /** probe: one search-provider call (reachability canary, #867/#920). */
   coverage: boolean;
   /** dryrun: beat pass over the last --weeks Mondays (#869 gate). */
   beat: boolean;

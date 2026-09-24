@@ -55,8 +55,8 @@ export interface ReporterEntry {
   id: string;
   name: string;
   outlet: string;
-  /** The outlet's own domain: GDELT indexes the reporter's piece too, so hits
-   *  from here are dropped from the coverage check (#861). */
+  /** The outlet's own domain: the coverage check splits hits from here ("your
+   *  outlet already ran this") from every other host (#861, #874). */
   outletDomain: string;
   /** Beat → categories; used as a soft retrieval prior and as query context. */
   categories: CategoryKey[];

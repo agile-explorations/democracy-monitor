@@ -45,7 +45,7 @@ export interface DigestCandidate {
   reactive: boolean;
   /** forward: "since your piece on …" · contradiction: predates the piece · beat: no article anchor */
   kind: 'forward' | 'contradiction' | 'beat';
-  /** GDELT coverage check (#861); null until checked. */
+  /** Search-provider coverage check (#861, #920); null until checked. */
   coverage: TipCoverageCheck | null;
   tip: TipPayload;
   tipDocumentId: number | null;

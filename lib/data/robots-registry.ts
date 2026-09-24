@@ -90,11 +90,18 @@ export const ROBOTS_REGISTRY: ReadonlyArray<RobotsRegistryEntry> = [
   { host: 'api.open.fec.gov', paths: ['/v1/'], kind: 'api', status: 'active' },
   { host: 'api.legiscan.com', paths: ['/'], kind: 'api', status: 'active' },
   {
+    host: 'api.search.brave.com',
+    paths: ['/res/v1/web/search'],
+    kind: 'api',
+    status: 'active',
+    note: 'R-TIPWIRE-5 coverage check (#920): keyed, ≤3 calls per tip, ≥1.1 s apart, ≤30 per run; ToS — hit URLs pruned once a candidate closes, "Powered by Brave" rendered with the results',
+  },
+  {
     host: 'api.gdeltproject.org',
     paths: ['/api/v2/doc/doc'],
     kind: 'api',
     status: 'active',
-    note: 'R-TIPWIRE-3 coverage check (#861): ≤3 calls per tip, ≥6 s apart, ≤30 per run; the throttle body maps to not-checkable, never zero',
+    note: 'R-TIPWIRE-3 coverage check (#861), dormant fallback since R-TIPWIRE-5 (#920): the DOC API has throttled every request since 2026-09-07 (mid-migration per GDELT, 2026-09-24); used only when no Brave key is set; the throttle body maps to not-checkable, never zero',
   },
   // --- Planned sources (feasibility-confirmed 2026-08-08; audit before + during use) ---
   { host: 'osc.gov', paths: ['/news/', '/sitemap.xml'], kind: 'crawl', status: 'planned' },
