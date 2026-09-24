@@ -98,9 +98,36 @@ Tipwire daily polls (21:30 UTC) ran clean every night 09-18 → 09-23; one tip j
 7. 81 informational document-total drifts in older weekly summaries (from the #884 restamp) — regenerate or accept.
 8. Queued product idea (owner, 2026-09-07): per-category narrative subscriptions in addition to the weekly summary. Not scoped. Subscriber count was 3 at the time; measure demand before building.
 
-## 4. Open work by theme (see `gh issue list` for the full 60)
+## 4. Corpus backfill still to do
 
-- **Milestone 142 R-SEARCH-ORTHOGONAL-3** (9 issues, #898–#906): deferred corpus recovery items, all p2, none started.
+Context: R-SEARCH-ORTHOGONAL (v1.32.0, runbook #897 closed 2026-09-16) made the corpus independent of the analysis and recovered what the fetchers had discarded. Phase 1 (forward ingest stores unrouted rows under `corpus`) and Phase 2 (recovery) are DONE on prod: FR 325, CL 15, CHRG 903, CPD 3,042, DOJ 1,386, CREC current term 10,371 documents (16,042 rows), then 17,329 embeddings; hero count 299,935 → 315,860. Everything below is what was deliberately deferred or was never in scope. None of it has started.
+
+**Phase 3 — milestone 142 (#898–#906), all p2, deferred by owner decision 2026-09-15.** The issue bodies are one-liners; the plan and inventory are in the R-SEARCH-ORTHOGONAL entry of `docs/DECISIONS.md` (diagnostic paragraph) and on the milestone.
+
+| Issue | Backfill                                                                                                          | Size / cost                              | Blocker or note                                                                                   |
+| ----- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| #898  | CREC 2017–2024 re-enumeration into corpus (the drops were never recorded, so re-enumeration is the only recovery) | ~4.5 GB, ~$10 embeddings                 | Disk decision. Storage autoscaling is on, but the dump (8.3 GB, 21 min) and prewarm grow with it. |
+| #899  | CREC procedural/amendment subclasses (`SAMENDMENTTEXT*`, appropriations text) as corpus rows                      | not sized                                | Forward + historical; needs the splitter to skip them as it does other corpus granules.           |
+| #900  | LegiScan zero-category bills as corpus rows                                                                       | ~37k thin title+description rows, 0.6 GB | Low search value per row; owner deferred.                                                         |
+| #901  | DHS CBP local-media-release port roundups                                                                         | not sized                                | Falls under the scraping exception; needs the same robots/canary discipline as tipwire.           |
+| #902  | RECAP short court orders (`skip_short_order`) as corpus rows; party papers stay drops                             | not sized                                | Forward change in the CL fetcher plus a bounded historical pass.                                  |
+| #903  | CHRG `no_text` hearings: retry when GPO publishes the text                                                        | ledgered in `chrg_seen_ledger`           | Analysis gap, not just corpus: those hearings never get scored either.                            |
+| #904  | Corpus promotion: routing-reapply treats corpus rows as candidates when routing terms expand                      | code change, no data run                 | Without it, a row stored as `corpus` never becomes evidence even after the keyword lists grow.    |
+| #905  | GAO unparseable Wayback captures: ledger the productId instead of console-only                                    | code change                              | Closely related to the G7 parser finding in §2c; do them together.                                |
+| #906  | DOJ full feed: drop the component allowlist (Tax/ENRD/Civil routine case releases)                                | ~48% of the DOJ feed                     | Gated on measuring pool hygiene with the allowlist in place first (#916/#917 metric).             |
+
+**Content repairs outside milestone 142 (older, still open):**
+
+- **#742 (p1)** — 10,932 CourtListener opinions stored truncated at exactly 8,000/8,001 chars (pre-cap-removal vintage). Their search vectors and embeddings were built from the truncated text, so retrieval is blind past char 8,000. Work: a `cl` handler for `backfill:content`, re-fetch via the CL API or local bulk staging, null `embedded_at` for re-embedding. No AI re-assessment expected; verify on a sample first.
+- **#736 (p1)** — CPD CSS re-extract and the legacy 8k truncation refetch for FR/CPD (same vintage as #742), plus the synthesis excerpt budget.
+- **#903** above is also an analysis-coverage backfill once the text exists.
+
+**Sources never ingested (research proposals, not backfills of existing sources):** #770 GAO B-number decisions (impoundment/appropriations), #732 OMB memoranda (M-25-xx/M-26-xx), #771 verify minority views in congressional reports. GAO reports themselves are ingested via Wayback since #739 (closed).
+
+**Baseline-era caveat for any of the above:** historical runs that touch weeks before 2025-01-20 (all of #898, parts of #900/#906 with `--baselines`) need one owner approval per `--confirm` run and an `nc:margins` diff before/after, as the #897 runbook did. Restores go through `pnpm corpus:restore --source … --max-docs N` (dry-run default, exit 3 on cap), then `embeddings:backfill --all-dates --dry-run` and a capped run, then `pnpm cache:bust --key document-count` as a Render one-off job.
+
+## 5. Other open work by theme (see `gh issue list` for the full 60)
+
 - **Milestone 133 R-DETECT-HEALTH** (#836 audit index, #838 P1 recalibration, #839 rollup double-count).
 - **Milestone 124 R-LOAD** (#779–#782): pre-outreach load testing, outreach-gate.
 - **Search quality follow-ups** from R-ALIAS-TAIL: #916 (seed-sweep overlap), #917 (earned vs question-blind recurrence metric); older: #807–#811, #831, #746–#750.
@@ -108,7 +135,7 @@ Tipwire daily polls (21:30 UTC) ran clean every night 09-18 → 09-23; one tip j
 - **Late-arrival follow-ups**: #885 (2,423 non-Monday `week_of` rows: CL 2,306, LegiScan 105), #886 (term series for the summary writer).
 - **Not yet filed**: GAO parser/grouping fix (§2c); pg pool has no TCP keepalive or query timeout, so a network drop leaves CLI runs hung forever (seen during #897 embeddings); pre-push hook load flakes on the interim laptop (environmental, may not apply on the primary machine).
 
-## 5. How-tos that were re-learned on the interim laptop
+## 6. How-tos that were re-learned on the interim laptop
 
 - **Read-only prod probe without psql**: write a small `.cjs` that requires `node_modules/pg`, `source .env.prod.local && export DATABASE_URL && node --no-warnings probe.cjs`. Use `ssl: { rejectUnauthorized: false }`. Never print the URL.
 - **Cron logs**: `render logs -r <crn> --start <ISO> --end <ISO> -o text --confirm --limit 1000`. Ids: snapshot `crn-d6pikr3h46gs73c76h00`, dump `crn-d6n645haae7s73b77aa0`, legiscan `crn-d6n645haae7s73b77ac0`, tipwire `crn-dafk5s740ujc73blh0jg`. `render services get` does not work for cron ids.
