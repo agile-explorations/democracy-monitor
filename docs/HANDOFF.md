@@ -34,7 +34,7 @@ Current-week statuses (week of 2026-09-14):
 | Elevated         | civilService, elections, executiveOversight, judicialIndependence, lawEnforcement (CC gate applied: 6 discussion-confirmed, 0 action), mediaFreedom, military |
 | Stable           | fiscal, hatch, infoAvailability                                                                                                                               |
 
-### 2a. The late-arrival runner worked
+### 2a. The late-arrival runner worked — ✅ all four flips accepted 2026-09-24 (issue 825 comment; ledger entries committed e48a3ff)
 
 Late items were re-derived into their own weeks (the `late-arrival:` log lines). Four status flips resulted. **None is ledgered yet** — each needs a `lib/data/reversals-ledger.ts` entry before the next release (this is a ledger requirement, not a digest hold):
 
@@ -43,7 +43,7 @@ Late items were re-derived into their own weeks (the `late-arrival:` log lines).
 3. **rulemaking 2026-08-10: Stable → Elevated.** Same signing remarks, `formal_override` 0.88 (bypasses ACIP).
 4. **judicialIndependence 2026-08-10: Stable → Elevated.** Same EO 14420, `formal_override` 0.85. Weakest of the four: the reasoning is federal-vs-state override, not the judiciary. Owner should eyeball before ledgering.
 
-### 2b. Baseline writes waiting for per-invocation approval
+### 2b. Baseline writes — ✅ all four run 2026-09-24 with `--confirm-baseline` (0 flips each, NC 6/6, parity 217/217)
 
 The runner correctly refused to touch baseline weeks. Seven late GAO reports dated Oct 2024–Jan 2025 want these repairs (each an owner-approved baseline write):
 
@@ -54,7 +54,9 @@ pnpm pipeline:repair --from 2024-12-16 --to 2024-12-22 --confirm-baseline   # al
 pnpm pipeline:repair --from 2025-01-06 --to 2025-01-12 --confirm-baseline
 ```
 
-### 2c. Digest for 2026-09-14 is HELD — root cause verified
+### 2c. Digest for 2026-09-14 — ✅ RELEASED 2026-09-24 (row fix + repair 2025-10-20..11-23, 0 flips, G7 = 0, summary regenerated to 621 docs, sent to 3; code follow-ups filed as #918 / #919)
+
+Original note kept for the record:
 
 `validate:graph` reported **G7 = 1 (gao)**: one assessment sits in the wrong week. Still unfixed as of 2026-09-24 (row unchanged; no repair run since Monday).
 
@@ -87,7 +89,7 @@ pnpm digest:send --week 2026-09-14                           # after reviewing t
 
 Tipwire daily polls (21:30 UTC) ran clean every night 09-18 → 09-23; one tip judged and sent on 09-19, zero otherwise.
 
-## 3. Owner decisions outstanding (in priority order)
+## 3. Owner decisions outstanding (in priority order) — items 1–3 DONE 2026-09-24; item 4 ran (packet in `~/democracy-monitor-gates/tipwire-beat-2026-09-24/`, owner scoring pending); item 5 superseded by R-TIPWIRE-5 (milestone 144, Brave Search provider built on develop 6c2e77b, gate #924 pending)
 
 1. Run the G7 fix + repair, then release the 2026-09-14 digest (§2c).
 2. Accept or reject the four flips; then the ledger entries get written (§2a).
