@@ -1,20 +1,24 @@
 /**
- * #704 Path A: split multi-topic CREC granules into retrieval-grade fragment
- * documents.
+ * #704 Path A / #929 composite: split CREC granules into retrieval-grade
+ * fragment documents — one per topic, and one per speaker inside a topic
+ * where several members spoke.
  *
  * Runs in two places (#852): as the weekly snapshot step
  * (`lib/cron/snapshot-crec-fragments.ts`, before the embedding pass so new
  * fragments are searchable the same night) and as a CLI for backfills.
  * Safe to run directly against prod (#850): inserts are additive and
- * idempotent, parents are never modified, and fragments sit outside the
- * counting and L2 populations (counting_scope=false, parent_id set — see
- * #704 Path A/B), so there is no counting change, no assessment change, no
- * re-aggregation and no flip risk.
+ * idempotent, parents are never modified beyond the assessed marker, and
+ * fragments sit outside the counting and L2 populations
+ * (counting_scope=false, parent_id set — see #704 Path A/B), so there is no
+ * counting change, no assessment change, no re-aggregation and no flip risk.
  *
- * Idempotent and resumable: granules that already have fragments (by
- * granuleId) or carry the `fragmentsAssessed` marker are skipped; fragment
- * inserts are ON CONFLICT DO NOTHING on (url, category). A GovInfo fetch
- * miss leaves the granule unmarked so the next run retries it.
+ * Idempotent and resumable: granules carrying the `fragmentsAssessedV2`
+ * marker are skipped; fragment inserts are ON CONFLICT DO NOTHING on
+ * (url, category). A topic fragment stored by the V1 (topic-only) build whose
+ * text turns out to hold several speakers is superseded once its speaker
+ * children exist (superseded + retrieval_relevant=false + supersededBy — the
+ * G8 contract). A GovInfo fetch miss leaves the granule unmarked so the next
+ * run retries it.
  *
  * Usage:
  *   pnpm crec:build-fragments              # Dry run: candidate counts only
@@ -25,22 +29,29 @@
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
+import { stripHtmlPreserveLines } from '@/lib/parsers/feed-parser';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
-import { isMultiUnitGranule, splitStructuredGranule } from '@/lib/services/crec-splitter';
+import type { CrecSpeaker } from '@/lib/services/crec-fetcher';
+import { qualifiesComposite, splitComposite } from '@/lib/services/crec-splitter';
+import type { CompositeFragment } from '@/lib/services/crec-splitter';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
 
 const GOVINFO_API_BASE = 'https://api.govinfo.gov';
-const MIN_PARENT_BYTES = 102400;
-const MIN_UNIT_CHARS = 500;
+/** Whole-day granules are always candidates; smaller ones only when several members spoke (#927). */
+const MIN_WHOLE_DAY_BYTES = 102400;
 const FETCH_POLITENESS_MS = 350;
 const PROGRESS_EVERY = 100;
+/** The composite build's marker; the V1 `fragmentsAssessed` key is left as is. */
+export const FRAGMENTS_ASSESSED_MARKER = 'fragmentsAssessedV2';
 
 interface ParentRow {
   id: number;
   url: string;
+  title: string;
   published_at: string;
   granule_id: string;
+  speakers: CrecSpeaker[] | null;
 }
 
 export interface CrecFragmentBuildOptions {
@@ -53,30 +64,16 @@ export interface CrecFragmentBuildOptions {
 }
 
 export interface CrecFragmentBuildResult {
-  /** Multi-topic-sized granules that still lacked fragments before the run. */
+  /** Granules (whole-day or multi-speaker) not yet assessed by the composite build. */
   candidates: number;
-  /** Granules fetched, split (or found single-topic) and marked assessed. */
+  /** Granules fetched, split (or found single-leaf) and marked assessed. */
   processed: number;
   /** Fragment rows inserted across all categories. */
   inserted: number;
+  /** V1 topic fragments superseded by their speaker children. */
+  superseded: number;
   /** Granules whose GovInfo fetch failed — left unmarked, retried next run. */
   misses: number;
-}
-
-function stripHtmlPreserveLines(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 }
 
 async function fetchStructured(granuleId: string, apiKey: string): Promise<string | null> {
@@ -87,72 +84,112 @@ async function fetchStructured(granuleId: string, apiKey: string): Promise<strin
   return stripHtmlPreserveLines(await res.text());
 }
 
-/** Multi-topic candidates whose granule has not been fragmented yet.
- *
- *  "Fragmented" is decided at the GRANULE level (#850): CREC granules are
- *  stored once per category, and #704 attached each granule's fragments to
- *  whichever sibling row it processed. Testing `c.parent_id = p.id` therefore
- *  re-selected the other sibling rows forever — every re-run re-fetched
- *  ~400 already-split granules and every insert collided on (url, category).
- *  Fragments carry the parent's granuleId in metadata, so the fragment set
- *  is keyed by granuleId here; the `fragmentsAssessed` marker (set on every
- *  per-category row, including single-topic granules that yield nothing)
- *  excludes the rest, matching the ingest-health detector's predicate. */
+/** SQL predicate shared with the ingest-health detector: a granule the composite
+ *  build should look at — whole-day sized, or flagged multi-speaker — that it has
+ *  not assessed yet. Granule level (one row per category; fragments hang off one). */
+export function compositeCandidateSql() {
+  return sql`source_origin = 'crec' AND parent_id IS NULL
+    AND category <> ${CORPUS_CATEGORY}
+    AND metadata->>'granuleId' IS NOT NULL
+    AND (length(content) > ${MIN_WHOLE_DAY_BYTES} OR coalesce(metadata, '{}'::jsonb) ? 'speakerAmbiguous')
+    AND NOT (coalesce(metadata, '{}'::jsonb) ? ${FRAGMENTS_ASSESSED_MARKER})`;
+}
+
 async function selectParents(limit: number | null): Promise<ParentRow[]> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const rows = await db.execute(sql`
-    WITH fragmented AS (
-      SELECT DISTINCT metadata->>'granuleId' AS granule_id
-      FROM documents
-      WHERE parent_id IS NOT NULL AND metadata->>'granuleId' IS NOT NULL
-    )
     SELECT DISTINCT ON (metadata->>'granuleId')
-      id, url, published_at, metadata->>'granuleId' AS granule_id
-    FROM documents p
-    WHERE source_origin = 'crec' AND parent_id IS NULL
-      AND category <> ${CORPUS_CATEGORY}
-      AND length(content) > ${MIN_PARENT_BYTES}
-      AND metadata->>'granuleId' IS NOT NULL
-      AND NOT (metadata ? 'fragmentsAssessed')
-      AND NOT EXISTS (
-        SELECT 1 FROM fragmented f WHERE f.granule_id = p.metadata->>'granuleId'
-      )
+      id, url, title, published_at, metadata->>'granuleId' AS granule_id, metadata->'speakers' AS speakers
+    FROM documents
+    WHERE ${compositeCandidateSql()}
     ORDER BY metadata->>'granuleId', id
     ${limit ? sql`LIMIT ${limit}` : sql``}`);
   return rows.rows as unknown as ParentRow[];
 }
 
-async function insertFragments(parent: ParentRow, structuredText: string): Promise<number> {
+/** Categories for a leaf: the classifier's, plus — for a speaker child — every
+ *  category its stored topic fragment reached, so no category loses coverage. */
+async function leafCategories(parent: ParentRow, leaf: CompositeFragment): Promise<string[]> {
+  const own = classifyCrecToCategories(leaf.heading, leaf.text.slice(0, 6000));
+  if (!leaf.splitBySpeaker) return own;
+  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
+  const stored = await getDb().execute(sql`
+    SELECT category FROM documents WHERE url = ${`${parent.url}#frag-${leaf.topicIndex}`}`);
+  return [...new Set([...own, ...stored.rows.map((r) => (r as { category: string }).category)])];
+}
+
+function leafMetadata(parent: ParentRow, leaf: CompositeFragment): string {
+  const speaker = leaf.speaker ?? null;
+  return JSON.stringify({
+    granuleId: parent.granule_id,
+    fragmentIndex: leaf.topicIndex,
+    topicHeading: leaf.topicHeading,
+    fragmentMode: 'composite',
+    ...(leaf.speakerIndex !== undefined ? { speakerIndex: leaf.speakerIndex } : {}),
+    ...(leaf.speakerSurname ? { speakerSurname: leaf.speakerSurname } : {}),
+    ...(speaker
+      ? {
+          speakers: [speaker],
+          agency: `${speaker.memberName} (${speaker.party || '?'}-${speaker.state || '?'})`,
+        }
+      : {}),
+  });
+}
+
+async function insertLeaf(parent: ParentRow, leaf: CompositeFragment): Promise<number> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
-  const units = splitStructuredGranule(structuredText);
-  if (!isMultiUnitGranule(units)) return 0;
   let inserted = 0;
-  let idx = 0;
-  for (const unit of units) {
-    idx++;
-    if (unit.text.length < MIN_UNIT_CHARS) continue;
-    const categories = classifyCrecToCategories(unit.heading, unit.text.slice(0, 6000));
-    for (const category of categories) {
-      const result = await db.execute(sql`
-        INSERT INTO documents (
-          source_type, category, title, content, url, published_at,
-          source_origin, content_type, parent_id, counting_scope, metadata
-        ) VALUES (
-          'floor_speech', ${category}, ${unit.heading}, ${unit.text},
-          ${`${parent.url}#frag-${idx}`}, ${parent.published_at},
-          'crec', 'full_text', ${parent.id}, false,
-          ${JSON.stringify({ granuleId: parent.granule_id, fragmentIndex: idx })}::jsonb
-        )
-        ON CONFLICT (url, category) DO NOTHING`);
-      inserted += Number(result.rowCount ?? 0);
-    }
+  for (const category of await leafCategories(parent, leaf)) {
+    const result = await db.execute(sql`
+      INSERT INTO documents (
+        source_type, category, title, content, url, published_at,
+        source_origin, content_type, parent_id, counting_scope, speaker, metadata
+      ) VALUES (
+        'floor_speech', ${category}, ${leaf.heading}, ${leaf.text},
+        ${`${parent.url}${leaf.suffix}`}, ${parent.published_at},
+        'crec', 'full_text', ${parent.id}, false, ${leaf.speaker?.memberName ?? null},
+        ${leafMetadata(parent, leaf)}::jsonb
+      )
+      ON CONFLICT (url, category) DO NOTHING`);
+    inserted += Number(result.rowCount ?? 0);
   }
   return inserted;
 }
 
-/** Record that a granule was fragment-assessed — including single-topic
+/** A V1 topic fragment whose speaker children now exist leaves search the way a
+ *  superseded opinion revision does (#741, G8): superseded, out of evidence,
+ *  with the keeper recorded. Only when at least one child row is present. */
+async function supersedeTopicFragment(parent: ParentRow, topicIndex: number): Promise<number> {
+  // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
+  const db = getDb();
+  const topicUrl = `${parent.url}#frag-${topicIndex}`;
+  const result = await db.execute(sql`
+    UPDATE documents
+    SET superseded = true, retrieval_relevant = false,
+        metadata = coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({ supersededBy: `${topicUrl}-s*` })}::jsonb
+    WHERE url = ${topicUrl} AND parent_id IS NOT NULL AND superseded IS NOT TRUE
+      AND EXISTS (SELECT 1 FROM documents c WHERE c.url LIKE ${`${topicUrl}-s%`})`);
+  return Number(result.rowCount ?? 0);
+}
+
+async function insertComposite(
+  parent: ParentRow,
+  structuredText: string,
+): Promise<{ inserted: number; superseded: number }> {
+  const leaves = splitComposite(structuredText, parent.speakers ?? [], parent.title);
+  if (!qualifiesComposite(leaves)) return { inserted: 0, superseded: 0 };
+  let inserted = 0;
+  let superseded = 0;
+  for (const leaf of leaves) inserted += await insertLeaf(parent, leaf);
+  const splitTopics = new Set(leaves.filter((l) => l.splitBySpeaker).map((l) => l.topicIndex));
+  for (const topicIndex of splitTopics)
+    superseded += await supersedeTopicFragment(parent, topicIndex);
+  return { inserted, superseded };
+}
+
+/** Record that a granule was assessed by the composite build — including
  *  granules that produced zero fragments — so the ingest-health detector
  *  (countUnfragmentedCrecGranules) never re-flags it. Set on every
  *  per-category row of the granule. */
@@ -161,13 +198,13 @@ async function markGranuleAssessed(granuleId: string): Promise<void> {
   const db = getDb();
   await db.execute(sql`
     UPDATE documents
-    SET metadata = metadata || '{"fragmentsAssessed": true}'::jsonb
+    SET metadata = coalesce(metadata, '{}'::jsonb) || ${JSON.stringify({ [FRAGMENTS_ASSESSED_MARKER]: true })}::jsonb
     WHERE source_origin = 'crec' AND parent_id IS NULL
       AND metadata->>'granuleId' = ${granuleId}`);
 }
 
-/** Fetch, split, insert and mark every unfragmented multi-topic-sized
- *  granule. Shared by the CLI and the weekly snapshot step (#852). */
+/** Fetch, split, insert and mark every unassessed candidate granule.
+ *  Shared by the CLI and the weekly snapshot step (#852). */
 export async function runCrecFragmentBuild(
   options: CrecFragmentBuildOptions,
 ): Promise<CrecFragmentBuildResult> {
@@ -177,11 +214,12 @@ export async function runCrecFragmentBuild(
   if (confirm && !apiKey) throw new Error('GOVINFO_API_KEY not configured');
 
   const parents = await selectParents(limit);
-  console.log(`[frag] ${parents.length} multi-topic candidates without children`);
+  console.log(`[frag] ${parents.length} candidate granule(s) not yet assessed (composite)`);
   const result: CrecFragmentBuildResult = {
     candidates: parents.length,
     processed: 0,
     inserted: 0,
+    superseded: 0,
     misses: 0,
   };
   if (!confirm) {
@@ -196,16 +234,18 @@ export async function runCrecFragmentBuild(
       result.misses++;
       continue;
     }
-    result.inserted += await insertFragments(parent, text);
+    const r = await insertComposite(parent, text);
+    result.inserted += r.inserted;
+    result.superseded += r.superseded;
     await markGranuleAssessed(parent.granule_id);
     result.processed++;
     if (result.processed % PROGRESS_EVERY === 0)
       console.log(
-        `[frag] ${result.processed}/${parents.length} parents, ${result.inserted} fragments, ${result.misses} fetch misses`,
+        `[frag] ${result.processed}/${parents.length} parents, ${result.inserted} fragments, ${result.superseded} superseded, ${result.misses} fetch misses`,
       );
   }
   console.log(
-    `[frag] Complete: ${result.processed} parents split, ${result.inserted} fragment rows inserted, ${result.misses} fetch misses.`,
+    `[frag] Complete: ${result.processed} parents assessed, ${result.inserted} fragment rows inserted, ${result.superseded} topic fragments superseded, ${result.misses} fetch misses.`,
   );
   return result;
 }
@@ -222,7 +262,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv.slice(2),
-    'Usage: pnpm crec:build-fragments [--confirm] [--limit N]  (also runs weekly in the snapshot cron, #852)',
+    'Usage: pnpm crec:build-fragments [--confirm] [--limit N]  (also runs weekly in the snapshot cron, #852; composite topic × speaker since #929)',
   );
   main()
     .then(() => process.exit(0))

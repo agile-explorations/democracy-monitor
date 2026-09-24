@@ -61,6 +61,12 @@ export const ELECTIONS_FLATTENED = ELECTIONS_STRUCTURED.replace(/\s+/g, ' ').tri
 /** A single-speaker granule in both forms. */
 export const GRASSLEY_STRUCTURED = [
   'NOMINATION OF JOHN DOE',
-  'Mr. GRASSLEY. Mr. President, I rise today to speak on the nomination before the Senate. The nominee has served the Judiciary Committee well and answered every question put to him in writing and in person, and I urge my colleagues to support his confirmation when the vote is called later today.',
+  'Mr. GRASSLEY. Mr. President, I rise today to speak on the nomination before the Senate. The nominee has served the Judiciary Committee well and answered every question put to him in writing and in person. He has managed a docket of more than four hundred matters a year without a single reversal for delay, and the committee received letters of support from both bar associations in his district. I have read the record, I have met the nominee twice, and I have no reservation about his temperament or his respect for precedent. I urge my colleagues to support his confirmation when the vote is called later today.',
 ].join('\n');
 export const GRASSLEY_FLATTENED = GRASSLEY_STRUCTURED.replace(/\s+/g, ' ').trim();
+
+/** Two topics in one granule: the multi-speaker ELECTIONS debate followed by a
+ *  single-speaker nomination speech — the shape the composite split must keep
+ *  as `#frag-1-s*` children plus a plain `#frag-2`. */
+export const TWO_TOPIC_STRUCTURED = `${ELECTIONS_STRUCTURED}\n${GRASSLEY_STRUCTURED}`;
+export const TWO_TOPIC_MEMBERS: CrecSpeaker[] = [...ELECTIONS_MEMBERS, ...SINGLE_MEMBER];

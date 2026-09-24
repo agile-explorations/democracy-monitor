@@ -16,6 +16,7 @@ import { sql } from 'drizzle-orm';
 import { getProvider } from '@/lib/ai/provider';
 import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
+import { stripHtmlPreserveLines } from '@/lib/parsers/feed-parser';
 import { configureAiCallBudget, getAiCallCount } from '@/lib/services/ai-call-budget';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import { isMultiUnitGranule, splitStructuredGranule } from '@/lib/services/crec-splitter';
@@ -38,22 +39,6 @@ interface BlobRow {
   published_at: string;
   len: number;
   granule_id: string;
-}
-
-function stripHtmlPreserveLines(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
 }
 
 async function fetchStructured(granuleId: string, apiKey: string): Promise<string | null> {

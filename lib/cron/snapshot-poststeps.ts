@@ -253,9 +253,9 @@ export async function tryWarnUnfragmentedCrec(errors: string[]): Promise<void> {
     const n = await countUnfragmentedCrecGranules(8);
     if (n > 0) {
       const msg =
-        `${n} whole-day multi-topic CREC granule(s) ingested this week were left ` +
+        `${n} multi-topic or multi-speaker CREC granule(s) ingested this week were left ` +
         `unfragmented by the automated step — retried next run; ` +
-        `or run now: pnpm crec:build-fragments --confirm (idempotent, #704/#852)`;
+        `or run now: pnpm crec:build-fragments --confirm (idempotent, #704/#852/#929)`;
       errors.push(msg);
       console.warn(`[snapshot] ${msg}`);
     }
