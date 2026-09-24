@@ -109,6 +109,27 @@ const items: PipelineItem[] = [
 ];
 
 describe('tipwire packet (#857, #864)', () => {
+  it('renders a date-guard flag under the cited document and counts it in the score (#931)', () => {
+    const flagged = {
+      ...items[0],
+      judge: {
+        ...items[0].judge,
+        tip: {
+          ...items[0].judge.tip!,
+          dateFlags: [
+            'tip says "Sept. 12" (2026-09-12); nearest document date is 2026-09-14 (2 day(s) off); no document text mentions it',
+          ],
+        },
+      },
+    } as PipelineItem;
+    const md = buildPacketMarkdown([flagged, items[2]], meta);
+    expect(md).toContain('⚠ date not in evidence: tip says "Sept. 12"');
+    expect(md).toContain('date not in evidence');
+    const s = scoreDecisions(decisionsTemplate([flagged, items[2]], meta), [flagged, items[2]]);
+    expect(s.dateFlagged).toBe(1);
+    expect(renderScore(s).join('\n')).toContain('date guard: 1 proposed tip(s)');
+  });
+
   it('renders proposed tips first with reactive on top and the forward scope, title-only matches under their own heading, then the rest', () => {
     const md = buildPacketMarkdown(items, meta);
     const iTips = md.indexOf('# PROPOSED TIPS (2)');

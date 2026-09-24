@@ -12,6 +12,7 @@ import type { TipPayload } from '@/lib/db/schema';
 import { recordAiCall } from '@/lib/services/ai-call-budget';
 import type { AIProvider } from '@/lib/types/ai';
 import { formatError } from '@/lib/utils/api-helpers';
+import { checkTipDates, describeDateViolation } from './date-guard';
 import {
   TIP_PROMPT_VERSION,
   buildTipSystemPrompt,
@@ -29,7 +30,12 @@ export type JudgeVerdict = 'tip' | 'no_tip' | 'parse_failed' | 'error';
 
 export interface JudgeResult {
   verdict: JudgeVerdict;
-  tip?: TipPayload & { documentRef: number; documentId: number; searchKeys: string[] };
+  tip?: TipPayload & {
+    documentRef: number;
+    documentId: number;
+    searchKeys: string[];
+    dateFlags: string[];
+  };
   reasonsNoTip?: string;
   model: string;
   promptVersion: string;
@@ -55,6 +61,19 @@ function resolveProvider(deps: JudgeDeps): { provider: AIProvider; model: string
 
 type Accumulator = Omit<JudgeResult, 'verdict'>;
 
+/** Every date the tip states, checked against the documents the judge was shown
+ *  (#931): publication dates ±1 day, or the date written in a document's text. */
+function dateFlagsFor(tip: NonNullable<TipVerdict['tip']>, ctx: TipJudgeContext): string[] {
+  const cited = ctx.docs[tip.document_ref - 1];
+  const year = cited?.publishedAt ? new Date(cited.publishedAt).getUTCFullYear() : undefined;
+  const evidence = ctx.docs.map((d) => ({
+    publishedAt: d.publishedAt,
+    text: [d.content, d.queryExcerpt, d.matchSnippet].filter(Boolean).join(' '),
+  }));
+  const text = [...tip.sentences, tip.specific_claim].join(' ');
+  return checkTipDates(text, evidence, { defaultYear: year }).map(describeDateViolation);
+}
+
 /** Map a validated verdict onto the result row (document_ref → real doc id). */
 function toResult(v: TipVerdict, ctx: TipJudgeContext, acc: Accumulator): JudgeResult {
   if (v.verdict === 'no_tip' || !v.tip) {
@@ -69,6 +88,7 @@ function toResult(v: TipVerdict, ctx: TipJudgeContext, acc: Accumulator): JudgeR
       whyUnreportedAppears: v.tip.why_unreported_appears,
       confidence: v.tip.confidence,
       searchKeys: v.tip.search_keys ?? [],
+      dateFlags: dateFlagsFor(v.tip, ctx),
       documentRef: v.tip.document_ref,
       documentId: ctx.docs[v.tip.document_ref - 1].id,
     },

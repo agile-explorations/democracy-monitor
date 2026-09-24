@@ -157,6 +157,7 @@ function candidateBlock(
     ...c.tip.sentences.map((s, i) => `${i + 1}. ${s}`),
     '',
     `Claim: ${c.tip.specificClaim}`,
+    ...(c.tip.dateFlags ?? []).map((f) => `⚠ date not in evidence: ${f} — verify before sending`),
     `Appears unreported because: ${c.tip.whyUnreportedAppears}`,
     `Confidence: ${c.tip.confidence}`,
     `Document: ${c.docTitle ?? `id ${c.tipDocumentId ?? '?'}`}${c.docUrl ? ` — ${c.docUrl}` : ''}`,

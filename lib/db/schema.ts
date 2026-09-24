@@ -1036,6 +1036,9 @@ export interface TipPayload {
   confidence: 'low' | 'medium' | 'high';
   /** Identifier-grade strings for the coverage check (#861); may be empty. */
   searchKeys?: string[];
+  /** Dates the tip states that no matched document supports (date guard, #931) —
+   *  operator-facing lines; empty or absent when every date is in evidence. */
+  dateFlags?: string[];
 }
 
 export interface TipCoverageCheck {

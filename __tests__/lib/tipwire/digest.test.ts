@@ -93,6 +93,22 @@ function cand(id: number, extra: Partial<DigestCandidate> = {}): DigestCandidate
 }
 
 describe('tipwire digest (#858)', () => {
+  it('shows a date-guard flag under the claim with the verify-before-sending rule (#931)', () => {
+    const base = cand(11);
+    const flagged = cand(11, {
+      tip: {
+        ...base.tip,
+        dateFlags: [
+          'tip says "Sept. 12" (2026-09-12); nearest document date is 2026-09-14 (2 day(s) off); no document text mentions it',
+        ],
+      },
+    });
+    const text = buildDigestLines([flagged], [], []).join('\n');
+    expect(text).toContain('Claim: claim\n⚠ date not in evidence: tip says "Sept. 12"');
+    expect(text).toContain('verify before sending');
+    expect(buildDigestLines([base], [], []).join('\n')).not.toContain('date not in evidence');
+  });
+
   it('orders reactive first, renders commands per candidate, cross-references duplicate documents, and isolates title-only matches', () => {
     const cands = [
       cand(1),

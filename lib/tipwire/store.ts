@@ -150,6 +150,7 @@ const tipPayload = (j: PipelineItem['judge']) =>
         whyUnreportedAppears: j.tip.whyUnreportedAppears,
         confidence: j.tip.confidence,
         searchKeys: j.tip.searchKeys,
+        dateFlags: j.tip.dateFlags,
       }
     : null;
 

@@ -266,6 +266,8 @@ describe('tipwire judge (#856, #863)', () => {
       documentId: 102,
       confidence: 'medium',
       searchKeys: ['Executive Order 14410'],
+      // "October 1, 2026" is written in the document text → in evidence
+      dateFlags: [],
     });
     expect(r.tip?.sentences).toHaveLength(3);
     expect(r).toMatchObject({
@@ -275,6 +277,21 @@ describe('tipwire judge (#856, #863)', () => {
       tokensIn: 100,
     });
     expect(getAiCallCount() - before).toBe(1);
+  });
+
+  it('flags a date the tip states that no shown document supports (#931)', async () => {
+    configureAiCallBudget(null);
+    const slipped = JSON.parse(TIP_JSON);
+    slipped.tip.sentences = ['A Sept. 12 floor speech disclosed the complaint.', 'Two.', 'Three.'];
+    slipped.tip.specific_claim = 'disclosed publicly Sept. 12, 2026';
+    const r = await judgeArticle(ctx(), {
+      provider: fakeProvider([JSON.stringify(slipped)]),
+      model: 'm',
+    });
+    expect(r.verdict).toBe('tip');
+    expect(r.tip?.dateFlags).toHaveLength(1);
+    expect(r.tip?.dateFlags[0]).toContain('tip says "Sept. 12"');
+    expect(r.tip?.dateFlags[0]).toContain('nearest document date is 2026-09-05');
   });
 
   it('retries once at a warmer temperature when the first response is unparseable', async () => {
