@@ -62,6 +62,11 @@ export const documents = pgTable(
     sourceOrigin: varchar('source_origin', { length: 30 }),
     contentType: varchar('content_type', { length: 20 }).notNull().default('full_text'),
     caseId: varchar('case_id', { length: 100 }),
+    /** Floor speeches (CREC): the one member who spoke, as GovInfo names them
+     *  ("Padilla, Alex"). NULL when nobody is listed AND when several members
+     *  spoke in the granule (`metadata.speakerAmbiguous`, #927) — the first
+     *  listed member is not the speaker of a debate. Fragments split per
+     *  speech carry their own member. */
     speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),

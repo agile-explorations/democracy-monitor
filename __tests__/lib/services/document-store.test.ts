@@ -1,9 +1,35 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   buildMetadata,
+  extractSpeaker,
+  hasAttributedMember,
   inferSourceOrigin,
   storableDocumentItems,
 } from '@/lib/services/document-store';
+
+describe('extractSpeaker / hasAttributedMember (#927)', () => {
+  const one = { metadata: { speakers: [{ memberName: 'Grassley, Chuck' }] } };
+  const debate = {
+    metadata: {
+      speakers: [{ memberName: 'Padilla, Alex' }, { memberName: 'Murphy, Christopher' }],
+      speakerAmbiguous: true,
+    },
+  };
+  const none = { metadata: { granuleId: 'x' } };
+
+  it('attributes a lone speaker, never the first member of a debate', () => {
+    expect(extractSpeaker(one)).toBe('Grassley, Chuck');
+    expect(extractSpeaker(debate)).toBeNull();
+    expect(extractSpeaker(none)).toBeNull();
+    expect(extractSpeaker({})).toBeNull();
+  });
+
+  it('still counts a debate as attributed speech for the evidence-tier override', () => {
+    expect(hasAttributedMember(one)).toBe(true);
+    expect(hasAttributedMember(debate)).toBe(true);
+    expect(hasAttributedMember(none)).toBe(false);
+  });
+});
 
 describe('storableDocumentItems', () => {
   it('excludes CL docket items — they route to tracked_cases, not documents', () => {

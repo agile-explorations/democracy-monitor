@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { crecActionSubtype, tierForDocument } from '@/lib/data/document-tiers';
+import { crecActionSubtype, tierForDocument, tierForIngestItem } from '@/lib/data/document-tiers';
+
+describe('tierForIngestItem (#841/#927)', () => {
+  it('promotes only a speakerless instrument; a debate on a resolution stays discussion', () => {
+    const title = 'SENATE RESOLUTION 663--HONORING THE SERVICE AND SACRIFICE';
+    expect(tierForIngestItem({ sourceType: 'floor_speech', hasSpeaker: false, title })).toBe(
+      'action',
+    );
+    // several members spoke: hasAttributedMember is true, so no promotion
+    expect(tierForIngestItem({ sourceType: 'floor_speech', hasSpeaker: true, title })).toBe(
+      'discussion',
+    );
+    expect(
+      tierForIngestItem({ sourceType: 'floor_speech', hasSpeaker: false, title: 'HOLDING ICE' }),
+    ).toBe('discussion');
+  });
+});
 
 describe('crecActionSubtype (#841)', () => {
   it('identifies resolution text', () => {

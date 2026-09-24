@@ -244,6 +244,35 @@ describe('toContentItem', () => {
     expect(item.content!.length).toBe(1000);
   });
 
+  it('flags a granule where several members spoke and keeps agency as GovInfo listed it (#927)', () => {
+    const single = toContentItem(summary, 'Mr. GRASSLEY. Mr. President, I rise today.');
+    expect((single.metadata as Record<string, unknown>).speakerAmbiguous).toBeUndefined();
+
+    // GovInfo listed one member; the text has two turns.
+    const twoTurns = toContentItem(
+      summary,
+      'Mr. GRASSLEY. Mr. President, I rise today. Mr. DURBIN. Mr. President, I object.',
+    );
+    expect((twoTurns.metadata as Record<string, unknown>).speakerAmbiguous).toBe(true);
+    expect(twoTurns.agency).toBe('Grassley, Chuck (R-IA)');
+
+    // GovInfo listed several members; the text is unavailable.
+    const debate = toContentItem(
+      {
+        ...summary,
+        members: [
+          { memberName: 'Padilla, Alex', party: 'D', state: 'CA' },
+          { memberName: 'Murphy, Christopher', party: 'D', state: 'CT' },
+        ],
+      },
+      null,
+    );
+    const meta = debate.metadata as Record<string, unknown>;
+    expect(meta.speakerAmbiguous).toBe(true);
+    expect((meta.speakers as unknown[]).length).toBe(2);
+    expect(debate.agency).toBe('Padilla, Alex (D-CA)');
+  });
+
   it('handles null text', () => {
     const item = toContentItem(summary, null);
     expect(item.content).toBeUndefined();
