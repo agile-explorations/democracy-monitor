@@ -39,7 +39,8 @@ export const NATIONAL_OUTLET_DOMAINS: readonly string[] = [
  *  Every `.gov` / `.mil` host is excluded by rule, not by list. */
 const PRIMARY_SOURCE_DOMAINS: readonly string[] = [
   'courtlistener.com',
-  'law.justia.com',
+  'justia.com',
+  'usps.com',
   'casetext.com',
   'pacermonitor.com',
   'docketalarm.com',
@@ -52,6 +53,7 @@ const PRIMARY_SOURCE_DOMAINS: readonly string[] = [
  *  Every `.edu` host is excluded by rule (university advisories, not coverage). */
 const NON_COVERAGE_DOMAINS: readonly string[] = [
   'wikipedia.org',
+  'britannica.com',
   'linkedin.com',
   'x.com',
   'twitter.com',

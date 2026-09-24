@@ -134,12 +134,15 @@ describe('coverage — pure pieces (#865)', () => {
       'www.defense.mil',
       'www.courtlistener.com',
       'law.justia.com',
+      'supreme.justia.com',
+      'about.usps.com',
     ])
       expect(isPrimarySource(primary), primary).toBe(true);
     expect(isPrimarySource('www.govexec.com')).toBe(false);
     expect(isPrimarySource('gov.uk')).toBe(false);
     expect(isNonCoverageHost('en.wikipedia.org')).toBe(true);
     expect(isNonCoverageHost('isso.columbia.edu')).toBe(true);
+    expect(isNonCoverageHost('www.britannica.com')).toBe(true);
     expect(isNonCoverageHost('reason.com')).toBe(false);
   });
 
