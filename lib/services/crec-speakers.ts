@@ -76,13 +76,28 @@ export function memberSurname(memberName: string): string {
   return memberName.split(',')[0].trim().toUpperCase();
 }
 
-/** The listed member a Record marker refers to, or null when GovInfo omitted them. */
-export function resolveMember(
-  surname: string,
-  members: readonly CrecSpeaker[],
-): CrecSpeaker | null {
-  const wanted = surname.toUpperCase().replace(/[’']/g, "'");
-  return members.find((m) => memberSurname(m.memberName).replace(/[’']/g, "'") === wanted) ?? null;
+const norm = (s: string) => s.toUpperCase().replace(/[’']/g, "'").trim();
+
+/** The listed member a Record marker refers to, or null when GovInfo omitted them.
+ *  The House prints a full name when two members share a surname ("Mr. RODNEY
+ *  DAVIS.", "Ms. MICHELLE LUJAN GRISHAM."): the surname is then the marker's
+ *  last one, two or three words and the leading word must open the member's
+ *  given name ("Davis, Rodney"; "Lujan Grisham, Michelle"). */
+export function resolveMember(marker: string, members: readonly CrecSpeaker[]): CrecSpeaker | null {
+  const wanted = norm(marker);
+  const exact = members.find((m) => norm(memberSurname(m.memberName)) === wanted);
+  if (exact) return exact;
+  const words = wanted.split(' ');
+  for (let n = 1; n < words.length; n++) {
+    const first = words.slice(0, n).join(' ');
+    const surname = words.slice(n).join(' ');
+    const hit = members.find((m) => {
+      const [last, given = ''] = m.memberName.split(',').map((p) => norm(p));
+      return last === surname && given.startsWith(first);
+    });
+    if (hit) return hit;
+  }
+  return null;
 }
 
 /** Several members listed, or several distinct member markers in the text. */

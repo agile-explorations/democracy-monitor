@@ -7,6 +7,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { stripHtmlPreserveLines } from '@/lib/parsers/feed-parser';
 
@@ -17,12 +18,15 @@ const MIN_WHOLE_DAY_BYTES = 102400;
 export const FRAGMENTS_ASSESSED_MARKER = 'fragmentsAssessedV2';
 
 /** A granule the composite build should look at — whole-day sized, or flagged
- *  multi-speaker — that it has not assessed yet. Granule level (one row per
- *  category; fragments hang off one representative row). */
-export function compositeCandidateSql() {
+ *  multi-speaker — that it has not assessed yet, published on or after `from`
+ *  (the current term by default: baseline-era writes need owner approval per
+ *  invocation, and the 2026-09-24 rehearsal showed baseline whole-day House
+ *  records yield ~80 rows each). Granule level (one row per category). */
+export function compositeCandidateSql(from: string = T2_INAUGURATION) {
   return sql`source_origin = 'crec' AND parent_id IS NULL
     AND category <> ${CORPUS_CATEGORY}
     AND metadata->>'granuleId' IS NOT NULL
+    AND published_at >= ${from}::date
     AND (length(content) > ${MIN_WHOLE_DAY_BYTES} OR coalesce(metadata, '{}'::jsonb) ? 'speakerAmbiguous')
     AND NOT (coalesce(metadata, '{}'::jsonb) ? ${FRAGMENTS_ASSESSED_MARKER})`;
 }

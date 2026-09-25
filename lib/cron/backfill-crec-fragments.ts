@@ -27,6 +27,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { CrecSpeaker } from '@/lib/services/crec-fetcher';
@@ -59,6 +60,9 @@ export interface CrecFragmentBuildOptions {
   limit?: number | null;
   /** GovInfo API key; required when `confirm` is set. */
   apiKey?: string;
+  /** Earliest publication date to consider (YYYY-MM-DD); the current term by default.
+   *  Earlier dates reach baseline periods and need owner approval per invocation. */
+  from?: string;
 }
 
 export interface CrecFragmentBuildResult {
@@ -74,14 +78,14 @@ export interface CrecFragmentBuildResult {
   misses: number;
 }
 
-async function selectParents(limit: number | null): Promise<ParentRow[]> {
+async function selectParents(limit: number | null, from: string): Promise<ParentRow[]> {
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const rows = await db.execute(sql`
     SELECT DISTINCT ON (metadata->>'granuleId')
       id, url, title, published_at, metadata->>'granuleId' AS granule_id, metadata->'speakers' AS speakers
     FROM documents
-    WHERE ${compositeCandidateSql()}
+    WHERE ${compositeCandidateSql(from)}
     ORDER BY metadata->>'granuleId', id
     ${limit ? sql`LIMIT ${limit}` : sql``}`);
   return rows.rows as unknown as ParentRow[];
@@ -190,10 +194,13 @@ export async function runCrecFragmentBuild(
   if (!isDbAvailable()) throw new Error('DATABASE_URL not configured');
   const { confirm, apiKey } = options;
   const limit = options.limit ?? null;
+  const from = options.from ?? T2_INAUGURATION;
   if (confirm && !apiKey) throw new Error('GOVINFO_API_KEY not configured');
 
-  const parents = await selectParents(limit);
-  console.log(`[frag] ${parents.length} candidate granule(s) not yet assessed (composite)`);
+  const parents = await selectParents(limit, from);
+  console.log(
+    `[frag] ${parents.length} candidate granule(s) not yet assessed (composite, published ≥ ${from})`,
+  );
   const result: CrecFragmentBuildResult = {
     candidates: parents.length,
     processed: 0,
@@ -233,7 +240,13 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const confirm = args.includes('--confirm');
   const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : null;
-  await runCrecFragmentBuild({ confirm, limit, apiKey: process.env.GOVINFO_API_KEY });
+  const from = args.includes('--from') ? args[args.indexOf('--from') + 1] : T2_INAUGURATION;
+  if (from < T2_INAUGURATION && !args.includes('--confirm-baseline')) {
+    throw new Error(
+      `--from ${from} reaches baseline periods (< ${T2_INAUGURATION}); rerun with --confirm-baseline once approved`,
+    );
+  }
+  await runCrecFragmentBuild({ confirm, limit, from, apiKey: process.env.GOVINFO_API_KEY });
 }
 
 if (require.main === module) {
@@ -241,7 +254,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv.slice(2),
-    'Usage: pnpm crec:build-fragments [--confirm] [--limit N]  (also runs weekly in the snapshot cron, #852; composite topic × speaker since #929)',
+    'Usage: pnpm crec:build-fragments [--confirm] [--limit N] [--from YYYY-MM-DD [--confirm-baseline]]  (current term by default; also runs weekly in the snapshot cron, #852; composite topic × speaker since #929)',
   );
   main()
     .then(() => process.exit(0))
