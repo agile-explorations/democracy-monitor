@@ -30,6 +30,8 @@ import type { SearchHit, SearchProvider, SearchRequest } from './coverage-provid
 export const COVERAGE_MAX_KEYS_PER_TIP = 3;
 /** One poll per day, so per-run ≈ per-day for the cron (6 reporters × ~4 tips × 3 keys ≈ 24). */
 export const COVERAGE_MAX_CALLS_PER_RUN = 30;
+/** The per-key error a run cap leaves; the backfill re-runs checks carrying it. */
+export const RUN_CAP_ERROR = 'run cap reached';
 const SAMPLE_URLS_PER_KEY = 3;
 const PROBE_KEY = 'Federal Register';
 const PROBE_WINDOW_DAYS = 7;
@@ -176,7 +178,7 @@ export function createCoverageRun(deps: Partial<CoverageDeps> = {}): CoverageRun
   let lastCallAt = Number.NEGATIVE_INFINITY;
 
   async function queryKey(key: string, excludeUrls: readonly string[]): Promise<CoverageKeyResult> {
-    if (calls >= d.maxCalls) return failedKey(key, 'run cap reached');
+    if (calls >= d.maxCalls) return failedKey(key, RUN_CAP_ERROR);
     const wait = lastCallAt + provider.minSpacingMs - d.now();
     if (wait > 0) await d.sleep(wait);
     calls++;

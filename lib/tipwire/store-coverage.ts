@@ -11,7 +11,7 @@ import { COVERAGE_URL_RETENTION_DAYS } from '@/lib/data/coverage-outlets';
 import { getDb } from '@/lib/db';
 import { tipArticles, tipCandidates } from '@/lib/db/schema';
 import type { TipCoverageCheck, TipPayload } from '@/lib/db/schema';
-import { pruneCoverageUrls } from './coverage';
+import { RUN_CAP_ERROR, pruneCoverageUrls } from './coverage';
 
 const DAY_MS = 86_400_000;
 
@@ -25,9 +25,13 @@ export interface CoverageBackfillRow {
   existingLabel: TipCoverageCheck['label'] | null;
 }
 
-/** A check is worth (re)running when absent, or when no key carries the per-host split. */
+/** A check is worth (re)running when absent, when no key carries the per-host
+ *  split, or when the run cap cut it short (a partial check is not a measurement —
+ *  the 2026-09-24 canary left #12 not-checkable on two answered keys and one capped). */
 export function needsCoverage(check: TipCoverageCheck | null): boolean {
-  return !check || !check.keys.some((k) => !k.error && k.hitsByDomain !== undefined);
+  if (!check) return true;
+  if (check.keys.some((k) => k.error === RUN_CAP_ERROR)) return true;
+  return !check.keys.some((k) => !k.error && k.hitsByDomain !== undefined);
 }
 
 /** Open tip candidates whose coverage is absent or predates the split (or one specific candidate). */

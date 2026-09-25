@@ -27,6 +27,7 @@ import {
 } from '@/lib/tipwire/coverage-line';
 import type { SearchProvider } from '@/lib/tipwire/coverage-provider';
 import { ROSTER } from '@/lib/tipwire/roster';
+import { needsCoverage } from '@/lib/tipwire/store-coverage';
 
 const THROTTLE =
   'Please limit requests to one every 5 seconds or contact kalev.leetaru5@gmail.com for larger queries.';
@@ -333,6 +334,41 @@ describe('coverage — pure pieces (#865)', () => {
     );
     expect(lines.some((l) => l.includes('https://'))).toBe(false);
     expect(lines.filter((l) => l === POWERED_BY_BRAVE_LINE)).toHaveLength(1);
+  });
+});
+
+describe('needsCoverage — what the backfill re-runs (#866, #924)', () => {
+  const measured = { key: 'k', hits: 2, sampleUrls: [], hitsByDomain: { 'a.com': [] } };
+  it('re-runs an absent check, a pre-split check, and a check the run cap cut short', () => {
+    expect(needsCoverage(null)).toBe(true);
+    expect(
+      needsCoverage({
+        checkedAt: '',
+        windowDays: 30,
+        keys: [{ key: 'k', hits: 1, sampleUrls: [] }],
+        label: 'niche',
+      }),
+    ).toBe(true);
+    expect(
+      needsCoverage({
+        checkedAt: '',
+        windowDays: 30,
+        keys: [measured, { key: 'j', hits: 0, sampleUrls: [], error: 'run cap reached' }],
+        label: 'niche',
+      }),
+    ).toBe(true);
+    expect(needsCoverage({ checkedAt: '', windowDays: 30, keys: [measured], label: 'niche' })).toBe(
+      false,
+    );
+    // a provider failure on one key is a measurement of the others, not a cap
+    expect(
+      needsCoverage({
+        checkedAt: '',
+        windowDays: 30,
+        keys: [measured, { key: 'j', hits: 0, sampleUrls: [], error: 'rate limited' }],
+        label: 'niche',
+      }),
+    ).toBe(false);
   });
 });
 
