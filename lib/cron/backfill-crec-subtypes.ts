@@ -17,7 +17,7 @@
  *   pnpm crec:subtypes --dry-run    # classify + per-class counts, no writes
  *   pnpm crec:subtypes              # apply
  */
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { crecActionSubtype } from '@/lib/data/document-tiers';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { documents } from '@/lib/db/schema';
@@ -48,6 +48,11 @@ Marks speakerless CREC legislative/presidential text as action-tier (#841).
         eq(documents.sourceOrigin, 'crec'),
         eq(documents.sourceType, 'floor_speech'),
         isNull(documents.speaker),
+        // A debate has speaker NULL because several spoke (#927), and a fragment
+        // carries no speaker column of its own — neither is an instrument read
+        // into the record.
+        sql`NOT (coalesce(${documents.metadata}, '{}'::jsonb) ? 'speakerAmbiguous')`,
+        isNull(documents.parentId),
         isNull(documents.evidenceTier),
       ),
     );

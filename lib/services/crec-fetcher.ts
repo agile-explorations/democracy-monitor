@@ -1,4 +1,5 @@
 import { stripHtml } from '@/lib/parsers/feed-parser';
+import { resolveGranuleSpeaker } from '@/lib/services/crec-speakers';
 import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { toDateString } from '@/lib/utils/date-utils';
@@ -175,10 +176,14 @@ export function primarySpeakerName(summary: CrecGranuleSummary): string | null {
   return speakers.length > 0 ? speakers[0].memberName : null;
 }
 
-/** Convert a CREC granule summary + text into a ContentItem. */
+/** Convert a CREC granule summary + text into a ContentItem. `agency` keeps
+ *  GovInfo's first member (it feeds the agency-distribution baseline); the
+ *  `speakerAmbiguous` flag (#927) marks granules where several members spoke,
+ *  so `documents.speaker` is attributed only to a lone speaker. */
 export function toContentItem(summary: CrecGranuleSummary, text: string | null): ContentItem {
   const speakers = extractSpeakers(summary);
   const primary = speakers[0];
+  const { ambiguous } = resolveGranuleSpeaker(text, speakers);
   const crecContentType = classifyCrecContentType(summary.title, summary.subGranuleClass);
 
   const detailsUrl =
@@ -202,6 +207,7 @@ export function toContentItem(summary: CrecGranuleSummary, text: string | null):
       crecContentType,
       chamber: summary.granuleClass === 'SENATE' ? 'senate' : 'house',
       speakers: speakers.length > 0 ? speakers : undefined,
+      ...(ambiguous ? { speakerAmbiguous: true } : {}),
       pagePrefix: summary.pagePrefix,
     },
   };

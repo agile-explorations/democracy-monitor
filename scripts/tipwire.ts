@@ -27,7 +27,13 @@ import type { DiscoveredArticle } from '@/lib/tipwire/acquire';
 import { fetchArticleBody } from '@/lib/tipwire/article-body';
 import { REMINDER_AFTER_DAYS, cadenceLabel, isInCooldown } from '@/lib/tipwire/cadence';
 import type { SentRow } from '@/lib/tipwire/cadence';
-import { GDELT_MAX_CALLS_PER_RUN, createCoverageChecker, probeGdelt } from '@/lib/tipwire/coverage';
+import {
+  COVERAGE_MAX_CALLS_PER_RUN,
+  createCoverageChecker,
+  createCoverageRun,
+  probeCoverage,
+  selectProvider,
+} from '@/lib/tipwire/coverage';
 import { buildDigestLines, digestSubject } from '@/lib/tipwire/digest';
 import { TipDecisionsFileSchema, renderScore, scoreDecisions } from '@/lib/tipwire/packet';
 import { runPipeline } from '@/lib/tipwire/pipeline';
@@ -44,7 +50,11 @@ import {
   upsertArticles,
 } from '@/lib/tipwire/store';
 import { listCandidates } from '@/lib/tipwire/store-candidates';
-import { listOpenTipsLackingCoverage, updateCoverageCheck } from '@/lib/tipwire/store-coverage';
+import {
+  listOpenTipsLackingCoverage,
+  sweepCoverageUrls,
+  updateCoverageCheck,
+} from '@/lib/tipwire/store-coverage';
 import {
   dismissCandidate,
   listUnrepliedSent,
@@ -130,8 +140,9 @@ export function parseTipwireArgs(argv: string[]): TipwireArgs {
 export async function runProbe(args: TipwireArgs): Promise<boolean> {
   let allOk = true;
   if (args.coverage) {
-    const g = await probeGdelt();
-    console.log(`${g.ok ? '✓' : '✗'} gdelt [api] ${g.detail}`);
+    const provider = selectProvider();
+    const g = await probeCoverage(provider);
+    console.log(`${g.ok ? '✓' : '✗'} ${provider.name} [api] ${g.detail}`);
     return g.ok;
   }
   for (const r of feedReporters()) {
@@ -262,9 +273,14 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
     calls: 0,
     capTripped: false,
   };
-  // Daily reachability line for #867: one GDELT call, minutes before any coverage check.
-  const gdelt = await probeGdelt();
-  console.log(`[tipwire] gdelt reachability: ${gdelt.ok ? 'ok' : 'unavailable'} — ${gdelt.detail}`);
+  // Daily reachability line (#867, #920): one provider call, minutes before any coverage check.
+  // The probe and the checker share one provider object so the fallback warning prints once.
+  const provider = selectProvider();
+  const reach = await probeCoverage(provider);
+  console.log(
+    `[tipwire] ${provider.name} reachability: ${reach.ok ? 'ok' : 'unavailable'} — ${reach.detail}`,
+  );
+  const coverageRun = createCoverageRun({ provider });
   const reporters = feedReporters();
   const byId = new Map(reporters.map((r) => [r.id, r]));
   outcome.discovered = await discoverNew(reporters, outcome.errors);
@@ -277,7 +293,7 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
       recentTitlesFromDb(reporterId, a.publishedAt ? new Date(a.publishedAt) : now),
     articleBody: (a: DiscoveredArticle) =>
       a.url ? fetchArticleBody(a.url, ARTICLE_BODY_CHARS) : Promise.resolve(null),
-    coverage: createCoverageChecker(),
+    coverage: coverageRun.check,
     onItem: progress,
   };
 
@@ -340,6 +356,13 @@ async function pollOnce(args: TipwireArgs, runId: string): Promise<PollOutcome> 
   outcome.capTripped = contradiction.capTripped || forwardTripped || beatTripped;
   if (outcome.capTripped)
     outcome.errors.push('AI-call cap tripped; remaining watches are re-checked next run');
+  const coverageUsd = (coverageRun.calls() * provider.costPerCallUsd).toFixed(3);
+  console.log(
+    `[tipwire] coverage: ${coverageRun.calls()} call(s) via ${provider.name} (~$${coverageUsd})`,
+  );
+  const pruned = await sweepCoverageUrls(now);
+  if (pruned > 0)
+    console.log(`[tipwire] coverage URLs pruned on ${pruned} closed or expired candidate(s)`);
   return outcome;
 }
 
@@ -390,24 +413,25 @@ async function runPoll(args: TipwireArgs): Promise<number> {
   return code;
 }
 
-/** Backfill coverage for open tips created before the check existed or while GDELT was down. */
+/** Backfill coverage for open tips created before the check existed or while the provider was down. */
 async function runCoverage(args: TipwireArgs): Promise<number> {
   const rows = await listOpenTipsLackingCoverage(args.candidate);
   if (rows.length === 0) {
     console.log('[tipwire] no open tip candidates lacking a coverage check');
     return 0;
   }
-  const check = createCoverageChecker({ maxCalls: args.maxCalls ?? GDELT_MAX_CALLS_PER_RUN });
+  const run = createCoverageRun({ maxCalls: args.maxCalls ?? COVERAGE_MAX_CALLS_PER_RUN });
   for (const r of rows) {
-    const result = await check(r.searchKeys, r.articleUrl ? [r.articleUrl] : []);
-    // A fresh not-checkable (GDELT down again) never erases a label that was measured.
+    const result = await run.check(r.searchKeys, r.articleUrl ? [r.articleUrl] : []);
+    // A fresh not-checkable (provider down again) never erases a label that was measured.
     const keep =
       result.label === 'not-checkable' && r.existingLabel && r.existingLabel !== 'not-checkable';
     if (!keep) await updateCoverageCheck(r.id, result);
     console.log(
-      `[tipwire] #${r.id} ${r.reporterId} → ${keep ? `kept ${r.existingLabel} (GDELT unavailable)` : result.label} (${result.keys.length} key(s))`,
+      `[tipwire] #${r.id} ${r.reporterId} → ${keep ? `kept ${r.existingLabel} (${run.provider.name} unavailable)` : result.label} (${result.keys.length} key(s))`,
     );
   }
+  console.log(`[tipwire] coverage: ${run.calls()} call(s) via ${run.provider.name}`);
   return 0;
 }
 
@@ -444,6 +468,7 @@ async function runSent(args: TipwireArgs): Promise<number> {
         ? `[tipwire] #${args.candidate}: dismissed (no cooldown)`
         : `[tipwire] #${args.candidate}: not open`,
     );
+    if (ok) await sweepCoverageUrls(new Date());
     return ok ? 0 : 1;
   }
   const sentTo = await recordSent(args.candidate, args.reporterIds, {
@@ -452,6 +477,8 @@ async function runSent(args: TipwireArgs): Promise<number> {
   console.log(
     `[tipwire] #${args.candidate}: marked sent — ${sentTo.join(', ')} enter the ${REMINDER_AFTER_DAYS}-day reply window / 3-week cooldown`,
   );
+  // A candidate closes once every listed reporter is sent; the sweep prunes its hit URLs then.
+  await sweepCoverageUrls(new Date());
   return 0;
 }
 

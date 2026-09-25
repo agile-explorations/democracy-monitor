@@ -45,7 +45,7 @@ export interface DigestCandidate {
   reactive: boolean;
   /** forward: "since your piece on …" · contradiction: predates the piece · beat: no article anchor */
   kind: 'forward' | 'contradiction' | 'beat';
-  /** GDELT coverage check (#861); null until checked. */
+  /** Search-provider coverage check (#861, #920); null until checked. */
   coverage: TipCoverageCheck | null;
   tip: TipPayload;
   tipDocumentId: number | null;
@@ -157,6 +157,7 @@ function candidateBlock(
     ...c.tip.sentences.map((s, i) => `${i + 1}. ${s}`),
     '',
     `Claim: ${c.tip.specificClaim}`,
+    ...(c.tip.dateFlags ?? []).map((f) => `⚠ date not in evidence: ${f} — verify before sending`),
     `Appears unreported because: ${c.tip.whyUnreportedAppears}`,
     `Confidence: ${c.tip.confidence}`,
     `Document: ${c.docTitle ?? `id ${c.tipDocumentId ?? '?'}`}${c.docUrl ? ` — ${c.docUrl}` : ''}`,

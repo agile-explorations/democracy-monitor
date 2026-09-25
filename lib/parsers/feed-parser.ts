@@ -56,6 +56,24 @@ export function stripHtml(html: string): string {
     .trim();
 }
 
+/** stripHtml, but the whitespace collapse keeps line boundaries — the CREC
+ *  splitter reads ALL-CAPS heading lines and speaker turns from them (#704, #929). */
+export function stripHtmlPreserveLines(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function extractSummary(item: FeedPayloadItem): string | undefined {
   const raw =
     item['content:encoded'] ||

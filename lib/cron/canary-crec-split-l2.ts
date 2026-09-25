@@ -18,6 +18,7 @@ import { CATEGORIES } from '@/lib/data/categories';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { configureAiCallBudget, getAiCallCount } from '@/lib/services/ai-call-budget';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
+import { fetchStructuredGranule } from '@/lib/services/crec-fragments';
 import { isMultiUnitGranule, splitStructuredGranule } from '@/lib/services/crec-splitter';
 import type { GranuleUnit } from '@/lib/services/crec-splitter';
 import { assessPass1, assessPass2 } from '@/lib/services/document-review-assessment-service';
@@ -25,7 +26,6 @@ import type { ContentItem } from '@/lib/types';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
 
-const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 const P1_MODEL = 'gpt-4o-mini';
 const P2_MODEL = 'claude-sonnet-4-5-20250929';
 /** Per-blob fragment cap keeps one giant day from dominating the sample. */
@@ -38,30 +38,6 @@ interface BlobRow {
   published_at: string;
   len: number;
   granule_id: string;
-}
-
-function stripHtmlPreserveLines(html: string): string {
-  return html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;|&apos;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-async function fetchStructured(granuleId: string, apiKey: string): Promise<string | null> {
-  const packageId = granuleId.split('-').slice(0, 4).join('-');
-  const url = `${GOVINFO_API_BASE}/packages/${packageId}/granules/${granuleId}/htm?api_key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return stripHtmlPreserveLines(await res.text());
 }
 
 async function sampleBlobs(): Promise<BlobRow[]> {
@@ -157,7 +133,7 @@ async function main(): Promise<void> {
   let expectedP1 = 0;
   for (const blob of blobs) {
     await sleep(400);
-    const text = await fetchStructured(blob.granule_id, apiKey);
+    const text = await fetchStructuredGranule(blob.granule_id, apiKey);
     if (!text) {
       console.log(`  blob ${blob.id}: fetch miss, skipped`);
       continue;

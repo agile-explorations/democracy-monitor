@@ -531,7 +531,8 @@ const TABLE_DOCUMENTS: DictionaryEntry[] = [
   {
     name: 'speaker',
     type: 'varchar|null',
-    description: 'Attributed speaker for floor speeches (CREC).',
+    description:
+      'Attributed speaker for floor speeches (CREC), as GovInfo names the member ("Padilla, Alex"). Null when no member is listed and when several members spoke in the granule (metadata.speakerAmbiguous = true) — a debate is not attributed to whichever member GovInfo listed first. Fragments split per speech carry their own speaker.',
   },
   {
     name: 'embedding',

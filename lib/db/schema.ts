@@ -62,6 +62,11 @@ export const documents = pgTable(
     sourceOrigin: varchar('source_origin', { length: 30 }),
     contentType: varchar('content_type', { length: 20 }).notNull().default('full_text'),
     caseId: varchar('case_id', { length: 100 }),
+    /** Floor speeches (CREC): the one member who spoke, as GovInfo names them
+     *  ("Padilla, Alex"). NULL when nobody is listed AND when several members
+     *  spoke in the granule (`metadata.speakerAmbiguous`, #927) — the first
+     *  listed member is not the speaker of a debate. Fragments split per
+     *  speech carry their own member. */
     speaker: varchar('speaker', { length: 200 }),
     embedding: vector('embedding'),
     embeddedAt: timestamp('embedded_at', { withTimezone: true }),
@@ -1031,14 +1036,27 @@ export interface TipPayload {
   confidence: 'low' | 'medium' | 'high';
   /** Identifier-grade strings for the coverage check (#861); may be empty. */
   searchKeys?: string[];
+  /** Dates the tip states that no matched document supports (date guard, #931) —
+   *  operator-facing lines; empty or absent when every date is in evidence. */
+  dateFlags?: string[];
 }
 
 export interface TipCoverageCheck {
   checkedAt: string;
   windowDays: number;
+  /** Which search provider answered (R-TIPWIRE-5 #920); absent on checks stored before it. */
+  provider?: 'brave' | 'gdelt';
+  /** Set once the hit URLs were removed (Brave ToS: results are held only while the
+   *  candidate is open — see `pruneCoverageUrls`); counts, label and hostnames remain. */
+  urlsPrunedAt?: string;
   /** `error` set when the key was not checked (throttle, timeout, cap) — never counted as zero. */
   keys: Array<{
     key: string;
+    /** How the key was queried (#925): caption/code quoted, phrase unquoted + relevance gate.
+     *  Zero hits on code keys alone is not-checkable. Absent on earlier checks. */
+    kind?: 'caption' | 'code' | 'phrase';
+    /** Results the provider returned before host exclusion and the relevance gate (#925). */
+    rawHits?: number;
     hits: number;
     sampleUrls: string[];
     /** Any hit from a national outlet, decided over ALL returned URLs (samples are capped). */
@@ -1094,11 +1112,11 @@ export const tipCandidates = pgTable(
     watchKind: varchar('watch_kind', { length: 20 }).notNull().default('forward'),
     /** Forward window start used for this check (the previous last_checked_at). */
     sinceAt: timestamp('since_at', { withTimezone: true }),
-    /** Post-gate coverage check (#861): identifier-grade search keys extracted
-     *  from the tip, GDELT DOC hit counts + sample URLs per key over a 30-day
-     *  window, and a graded label (checkable-zero | niche | likely-covered |
-     *  not-checkable). Informs the operator; never asserted to the reporter.
-     *  NULL until the check runs. */
+    /** Post-gate coverage check (#861, provider seam #920): identifier-grade
+     *  search keys extracted from the tip, search-API hit counts + sample URLs
+     *  per key over a 30-day window, and a graded label (checkable-zero | niche |
+     *  likely-covered | not-checkable). Informs the operator; never asserted to
+     *  the reporter. NULL until the check runs. */
     coverageCheck: jsonb('coverage_check').$type<TipCoverageCheck>(),
     runId: varchar('run_id', { length: 40 }),
     /** open | sent | dismissed */

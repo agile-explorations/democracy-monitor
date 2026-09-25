@@ -17,6 +17,8 @@ export interface CrecFragmentBuildResult {
   candidates: number;
   processed: number;
   inserted: number;
+  /** V1 topic fragments superseded by speaker children (#929). */
+  superseded?: number;
   misses: number;
 }
 
@@ -35,11 +37,13 @@ export function describeFragmentBuild(r: {
   candidates: number;
   processed: number;
   inserted: number;
+  superseded?: number;
   misses: number;
 }): string {
+  const superseded = r.superseded ? `, ${r.superseded} topic fragment(s) superseded` : '';
   return (
     `CREC fragments: ${r.candidates} candidate granule(s) → ` +
-    `${r.processed} processed, ${r.inserted} fragment rows, ${r.misses} fetch miss(es)`
+    `${r.processed} processed, ${r.inserted} fragment rows${superseded}, ${r.misses} fetch miss(es)`
   );
 }
 

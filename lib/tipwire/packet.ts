@@ -51,6 +51,8 @@ const PACKET_INSTRUCTIONS = [
   '  would_send — concrete, correct, and the article really did not cover it',
   '  would_not  — not worth sending (already covered, not specific enough, off-beat)',
   '  wrong_fact — the tip misstates the document (a number, date, party, or holding)',
+  'A "⚠ date not in evidence" line means no matched document carries that date (#931):',
+  'check it against the document before scoring — it is usually a wrong_fact.',
   'Leave no_tip articles as null unless you believe a tip was missed (note it).',
   'Title-only matches had no lede; read the piece before judging the tip.',
   'A beat check lists every reporter on its category: judge the tip, not the recipient.',
@@ -78,6 +80,7 @@ function verdictSection(it: PipelineItem): string[] {
       `Specific claim: ${t.specificClaim}`,
       `Why it appears unreported: ${t.whyUnreportedAppears}`,
       `Cited document: [Doc ${t.documentRef}] ${doc?.title ?? '?'} — ${doc?.url ?? 'no url'} (id ${t.documentId})`,
+      ...(t.dateFlags ?? []).map((f) => `⚠ date not in evidence: ${f}`),
       ...coverageLine(
         it.coverage,
         itemReporters(it).map((r) => ({ name: r.outlet, domain: r.outletDomain })),
@@ -210,6 +213,8 @@ export interface TipScore {
   wouldSend: number;
   wouldNot: number;
   wrongFact: number;
+  /** Proposed tips carrying at least one date the documents do not support (#931). */
+  dateFlagged: number;
   /** would_send / decided proposed tips; null when nothing was decided. */
   precision: number | null;
   noTipRate: number;
@@ -286,6 +291,7 @@ export function scoreDecisions(decisions: TipDecisionsFile, items: PipelineItem[
     wouldSend,
     wouldNot: count('would_not'),
     wrongFact,
+    dateFlagged: proposed.filter((i) => (i.judge.tip?.dateFlags?.length ?? 0) > 0).length,
     precision,
     noTipRate: judged.length
       ? judged.filter((i) => i.judge.verdict === 'no_tip').length / judged.length
@@ -307,6 +313,7 @@ export function renderScore(s: TipScore): string[] {
   const lines = [
     `Tipwire dry-run score: ${s.articles} articles, ${s.judged} judged, ${s.proposed} proposed tips (${pct(s.noTipRate)} no_tip)`,
     `  decided: ${s.decidedProposed} · would_send ${s.wouldSend} · would_not ${s.wouldNot} · wrong_fact ${s.wrongFact} · precision ${pct(s.precision)}`,
+    `  date guard: ${s.dateFlagged} proposed tip(s) state a date no matched document supports`,
   ];
   if (!s.measurable) {
     lines.push(

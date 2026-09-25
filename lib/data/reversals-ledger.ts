@@ -47,6 +47,24 @@ const decisionsArchive = `${GH}/blob/main/docs/DECISIONS-ARCHIVE.md`;
 
 export const REVERSALS_LEDGER: ReversalEntry[] = [
   {
+    date: '2026-09-24',
+    kind: 'hold',
+    scope: 'Weekly digest — week of 2026-09-14',
+    what: 'The weekly digest for the week of 2026-09-14 was held by the Monday integrity check and released by hand three days later, after one misplaced review verdict was moved to its document’s week, the six affected weeks were re-derived (no status changed, all six negative controls held), and the weekly summary was regenerated so its document total (621, not 664) matched the record.',
+    why: 'A GAO report page carries two dates — an internal “Published” date and a later “Publicly Released” date — and the parser took the first, so a late-arriving verdict for that report was filed under a week five weeks before the document’s stored publication date. The integrity check refused to send a digest while a verdict sat in the wrong week. The parser now prefers the release date, and the late-arrival grouping is being changed to follow the stored date so parser drift cannot misfile a verdict again.',
+    evidence: [issue(918), issue(919)],
+  },
+  {
+    date: '2026-09-21',
+    kind: 'flip',
+    scope:
+      'Immigration Enforcement, Federal Law Enforcement, Independent Agency Rules, Following Court Orders — four weeks',
+    count: 4,
+    what: 'Four weekly statuses rose from Stable to Elevated when documents that surfaced weeks after publication were reviewed and counted in the weeks they were actually published: Immigration Enforcement for the week of 2026-09-07 (a DHS inspector general’s unannounced inspection of ICE’s Florida soft-sided facility, in which the department refused all ten recommendations), and Federal Law Enforcement, Independent Agency Rules, and Following Court Orders for the week of 2026-08-10 (Executive Order 14420 on childhood vaccine recommendations and its signing remarks, which direct the Attorney General to litigate against state exemption laws and bypass the federal advisory committee on immunization). The owner reviewed and accepted all four; the Following Court Orders flip is the weakest, since its reasoning concerns federal override of state law rather than the judiciary.',
+    why: 'Sources publish late — inspector-general reports appear days after their date and presidential documents reach the compilation of presidential documents about six weeks late. Since 2026-09-14 the weekly ingest re-derives the week a late document belongs to instead of counting it in the week it arrived; this was the first Monday that rule ran live, and these are the statuses it changed.',
+    evidence: [issue(825, 5819244017), issue(825)],
+  },
+  {
     date: '2026-09-15',
     kind: 'policy',
     scope: 'Search corpus — every source',

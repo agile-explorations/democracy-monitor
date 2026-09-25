@@ -43,10 +43,34 @@ export function inferSourceOrigin(item: ContentItem): string | null {
   return null;
 }
 
-/** Extract speaker name from CREC metadata, if present. */
+/** The one attributable speaker of a CREC granule, or null. Null when GovInfo
+ *  listed nobody AND when several members spoke (`speakerAmbiguous`, #927) —
+ *  the first listed member is not the speaker of a debate. */
 export function extractSpeaker(item: ContentItem): string | null {
+  if (item.metadata?.speakerAmbiguous === true) return null;
   const speakers = item.metadata?.speakers as Array<{ memberName: string }> | undefined;
   return speakers?.[0]?.memberName ?? null;
+}
+
+/** Any member attributed at all — one, or several. A debate is still speech: the
+ *  evidence-tier override for speakerless instruments must never see it as
+ *  speakerless (#841/#927). */
+export function hasAttributedMember(item: ContentItem): boolean {
+  const speakers = item.metadata?.speakers as unknown[] | undefined;
+  return (speakers?.length ?? 0) > 0 || item.metadata?.speakerAmbiguous === true;
+}
+
+/** Cron markers on `metadata` that a re-fetch must not erase (the weekly CREC
+ *  re-ingest upserts the last seven days; the fetched metadata never carries
+ *  them). Everything else in metadata is the fetcher's to refresh. */
+const PIPELINE_METADATA_MARKERS = ['fragmentsAssessed', 'fragmentsAssessedV2'] as const;
+
+function metadataUpsertSql() {
+  const pairs = sql.join(
+    PIPELINE_METADATA_MARKERS.map((k) => sql`${k}::text, ${documents.metadata}->${k}`),
+    sql`, `,
+  );
+  return sql`coalesce(excluded.metadata, '{}'::jsonb) || jsonb_strip_nulls(jsonb_build_object(${pairs}))`;
 }
 
 /**
@@ -87,7 +111,7 @@ function buildDocumentRow(item: ContentItem, category: string) {
 function itemEvidenceTier(item: ContentItem): string | null {
   const tier = tierForIngestItem({
     sourceType: item.type,
-    hasSpeaker: extractSpeaker(item) !== null,
+    hasSpeaker: hasAttributedMember(item),
     title: item.title,
   });
   // Only store an override where it DIFFERS from the source_type derivation.
@@ -148,7 +172,7 @@ export async function storeDocuments(items: ContentItem[], category: string): Pr
               THEN ${documents.content}
               ELSE excluded.content END`,
             fetchedAt: sql`excluded.fetched_at`,
-            metadata: sql`excluded.metadata`,
+            metadata: metadataUpsertSql(),
             sourceOrigin: sql`excluded.source_origin`,
             // A document the signal now returns as relevant is evidence again
             // (a fetch-time drop stored for search, or an annotation the

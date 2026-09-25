@@ -59,8 +59,9 @@ pnpm backfill:opinions # Opinion-first CL backfill (bulk staging locally, CL API
 pnpm search:backfill-rank      # Backfill documents.search_rank_vector (keyset; trigger maintains new rows)
 pnpm audit:annotations         # Sampled P2 annotation-vs-document audit (#711; --confirm, --sample N, --out FILE)
 pnpm audit:symmetry            # Swap audit of P2 verdicts — administration tokens exchanged vs control re-run (#772; --sample N, --max-calls N, --confirm, --out FILE, --second-control, --from/--to for the mirror arm)
-pnpm crec:build-fragments      # Split multi-topic CREC granules into fragment docs (#704; --confirm, --limit N)
-pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison)
+pnpm crec:build-fragments      # Split CREC granules into fragment docs by topic × speaker (#704/#929; --confirm, --limit N; also the weekly snapshot post-step)
+pnpm crec:rehearse-split       # CREC splitter rehearsal (dual-mode boundary comparison; `--composite` = topic × speaker precheck for the fragment fleet, #929)
+pnpm crec:restamp-speakers     # speaker NULL + metadata.speakerAmbiguous on stored Record granules where several members spoke (#928; dry-run default, --confirm, --from/--to, --confirm-baseline per invocation)
 pnpm crec:canary-l2            # No-persist L2 canary on split CREC fragments (--blobs N)
 pnpm validate:mf-drops # Audit mediaFreedom drop ledger against the live filter (--days N)
 pnpm validate:ia-drops # Same audit for infoAvailability (#834; --days N)
@@ -72,7 +73,7 @@ pnpm tips:score        # Score an owner-filled decisions file: --decisions F [--
 pnpm tips:poll         # Daily cron body: discover → cadence guard → match → judge (hard cap 30 calls) → store; --email sends the digest to OPS_ALERT_EMAIL only when tips exist; --ignore-cadence
 pnpm tips:digest       # Print open candidates (reactive first, title-only isolated) + the "sent but unreplied ≥7d — mark these?" reminder
 pnpm tips:sent         # --candidate N [--reporter a,b] [--replied|--dismiss]: owner action that maintains the sent log / cadence guard; a candidate listing several reporters takes one send per reporter and stays open until all are sent (#877)
-pnpm tips:coverage     # GDELT coverage backfill for open tip candidates lacking one (#861; --max-calls N, --candidate N); `tips:probe --coverage` = one GDELT call, prints JSON-or-throttle (the reachability canary)
+pnpm tips:coverage     # Coverage backfill for open tip candidates lacking one (#861/#920; --max-calls N, --candidate N); `tips:probe --coverage` = one search-provider call (Brave, or GDELT when no key), prints results-or-error (the reachability canary)
 pnpm verify:enrichment-sql # Execute the passage-excerpt SQL (every masthead branch) against DATABASE_URL — enrichment swallows SQL errors, so this is the only loud check (#744)
 pnpm retrieval:golden  # Retrieval-shape golden capture/diff via ?debug=1 (#782; --base URL --out FILE [--loadtest N] [--eval] | --diff A B)
 pnpm audit:readers     # Two-outside-reader audit of 50 Pass-2 readings (#816; --sample N --seed ID --out DIR | --score A.json B.json)
@@ -100,6 +101,7 @@ Copy `.env.example` to `.env.local` for local overrides. Variables:
 - `CRON_SECRET` — Bearer token shared between web service and dump cron job
 - `SEARCH_MACHINE_TOKEN` — Bearer token that lets our own harnesses (prewarm workflow, eval, loadtest, golden) through the search front door (#792); humans get a Turnstile-issued pass instead
 - `SEARCH_PASS_SECRET` — HMAC secret for the `dm_pass` cookie (falls back to `CRON_SECRET`)
+- `BRAVE_SEARCH_API_KEY` — Brave Search API key (optional; the tipwire coverage check's provider, #920. Unset → GDELT fallback, which has throttled since 2026-09. Operator-only, ≤30 calls/run, hit URLs pruned when a candidate closes per Brave's ToS)
 - `SALIENCE_BLIND_GATE` / `SALIENCE_BLIND_DFT_PCT` / `SALIENCE_BLIND_DFT_CAP` / `SALIENCE_TOPUP_CORROBORATED` / `SALIENCE_ROSTER_TIGHTEN` / `SALIENCE_JUDGE_MAX_PICKS` — research-search salience knobs (R-ALIAS-TAIL #911–#913; `lib/services/salience-knobs.ts`). Their values are part of the enumeration pool key, so a change rebuilds pools on the next request
 
 ### Local development

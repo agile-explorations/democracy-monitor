@@ -64,7 +64,7 @@ export interface PipelineItem {
   judge: JudgeResult;
   /** No documents in the window → nothing to judge, no AI spend. */
   skippedNoDocs: boolean;
-  /** GDELT coverage of the tip's search keys (#861); tip verdicts only. Operator-facing. */
+  /** Search-provider coverage of the tip's search keys (#861, #920); tip verdicts only. Operator-facing. */
   coverage?: TipCoverageCheck;
 }
 
@@ -248,7 +248,8 @@ async function checkCoverage(
 ): Promise<TipCoverageCheck> {
   try {
     return await check(keys, excludeUrls);
-  } catch {
+  } catch (err) {
+    console.warn(`[tipwire] coverage check threw — stored as not-checkable: ${formatError(err)}`);
     return {
       checkedAt: new Date().toISOString(),
       windowDays: COVERAGE_WINDOW_DAYS,
