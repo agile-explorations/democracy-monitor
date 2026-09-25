@@ -2,10 +2,11 @@
  * Tipwire date guard (R-CREC-SPEAKERS #931). A judge-written tip said "Sept.
  * 13" for a Congressional Record dated Sept. 14 — a Sunday. The judge sees
  * dates as "Sep 14, 2026" and writes them back in its own words; nothing
- * checked them. Every calendar date in a tip must be *in evidence*: within a
- * day of a matched document's publication date (CourtListener files an
- * opinion the day after its date; the tolerance absorbs that), or written in
- * a matched document's text (tips legitimately cite dates inside documents —
+ * checked them. Every calendar date in a tip must be *in evidence*: equal to
+ * a matched document's publication date — within a day for a CourtListener
+ * opinion, which is filed the day after its date; exact for every other
+ * source, a Record or Register date being exact — or written in a matched
+ * document's text (tips legitimately cite dates inside documents —
  * "operation July 27–August 29", "the Aug. 3 rule corrected Aug. 25").
  *
  * Pure, like `checkNarrativeNumbers`; the caller does I/O and rendering.
@@ -18,6 +19,8 @@ import { ONE_DAY_MS, parseDatesInText } from '@/lib/utils/date-utils';
 
 export interface DateEvidenceDoc {
   publishedAt: string | null;
+  /** `courtlistener` earns the one-day filing tolerance; every other origin is exact. */
+  sourceOrigin?: string | null;
   /** Content plus any verbatim excerpts the judge saw. */
   text?: string | null;
 }
@@ -32,13 +35,19 @@ export interface DateViolation {
 }
 
 export interface DateGuardOptions {
-  /** Days a tip date may differ from a document's publication date. */
+  /** Override the per-source tolerance (days a tip date may differ from a publication date). */
   toleranceDays?: number;
   /** Year assumed for a tip date written without one ("Sept. 13"). */
   defaultYear?: number;
 }
 
-const DEFAULT_TOLERANCE_DAYS = 1;
+/** Opinions carry the cluster's filing date, a day after the decision (#741). */
+const COURTLISTENER_TOLERANCE_DAYS = 1;
+
+function toleranceFor(doc: DateEvidenceDoc, override?: number): number {
+  if (override !== undefined) return override;
+  return doc.sourceOrigin === 'courtlistener' ? COURTLISTENER_TOLERANCE_DAYS : 0;
+}
 
 const dayOf = (iso: string | null): string | null => (iso ? iso.slice(0, 10) : null);
 
@@ -53,14 +62,21 @@ function datesInDoc(doc: DateEvidenceDoc): Set<string> {
   return new Set(parseDatesInText(doc.text ?? '', year).map((d) => d.iso));
 }
 
+interface PublishedDate {
+  day: string;
+  tolerance: number;
+}
+
 /** Dates the tip states that no matched document supports. One violation per date. */
 export function checkTipDates(
   tipText: string,
   docs: readonly DateEvidenceDoc[],
   opts: DateGuardOptions = {},
 ): DateViolation[] {
-  const tolerance = opts.toleranceDays ?? DEFAULT_TOLERANCE_DAYS;
-  const published = docs.map((d) => dayOf(d.publishedAt)).filter((d): d is string => !!d);
+  const published: PublishedDate[] = docs.flatMap((d) => {
+    const day = dayOf(d.publishedAt);
+    return day ? [{ day, tolerance: toleranceFor(d, opts.toleranceDays) }] : [];
+  });
   const mentioned = new Set(docs.flatMap((d) => [...datesInDoc(d)]));
   const seen = new Set<string>();
   const violations: DateViolation[] = [];
@@ -68,13 +84,13 @@ export function checkTipDates(
     if (seen.has(date.iso)) continue;
     seen.add(date.iso);
     if (mentioned.has(date.iso)) continue;
-    const distances = published.map((p) => ({ p, d: daysBetween(p, date.iso) }));
-    if (distances.some(({ d }) => d <= tolerance)) continue;
+    const distances = published.map((p) => ({ ...p, d: daysBetween(p.day, date.iso) }));
+    if (distances.some(({ d, tolerance }) => d <= tolerance)) continue;
     const nearest = distances.sort((a, b) => a.d - b.d)[0];
     violations.push({
       raw: date.raw,
       iso: date.iso,
-      nearestPublished: nearest?.p ?? null,
+      nearestPublished: nearest?.day ?? null,
       distanceDays: nearest ? Math.round(nearest.d) : null,
     });
   }

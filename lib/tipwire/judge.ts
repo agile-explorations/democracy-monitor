@@ -68,6 +68,7 @@ function dateFlagsFor(tip: NonNullable<TipVerdict['tip']>, ctx: TipJudgeContext)
   const year = cited?.publishedAt ? new Date(cited.publishedAt).getUTCFullYear() : undefined;
   const evidence = ctx.docs.map((d) => ({
     publishedAt: d.publishedAt,
+    sourceOrigin: d.sourceOrigin,
     text: [d.content, d.queryExcerpt, d.matchSnippet].filter(Boolean).join(' '),
   }));
   const text = [...tip.sentences, tip.specific_claim].join(' ');

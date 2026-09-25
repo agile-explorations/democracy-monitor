@@ -33,34 +33,47 @@ describe('parseDatesInText (#931)', () => {
 });
 
 describe('checkTipDates (#931)', () => {
-  const record = { publishedAt: '2026-09-14', text: 'Madam President, on the DHS whistleblower…' };
+  const record = {
+    publishedAt: '2026-09-14',
+    sourceOrigin: 'crec',
+    text: 'Madam President, on the DHS whistleblower…',
+  };
 
-  it('tolerates a one-day slip against a publication date and flags anything further', () => {
-    // Sept. 13 vs Sept. 14 is one day apart — the CourtListener filing-day
-    // tolerance absorbs it, so the guard stays quiet on a one-day slip.
-    expect(
-      checkTipDates('A Sept. 13 Senate floor speech disclosed…', [record], { defaultYear: 2026 }),
-    ).toEqual([]);
-    // Two days off is a flag.
-    const v = checkTipDates('A Sept. 12 Senate floor speech disclosed…', [record], {
+  it('flags the judge\'s "Sept. 13" against a Record dated Sept. 14 — Record dates are exact', () => {
+    const v = checkTipDates('A Sept. 13 Senate floor speech disclosed…', [record], {
       defaultYear: 2026,
     });
     expect(v).toHaveLength(1);
     expect(v[0]).toMatchObject({
-      raw: 'Sept. 12',
-      iso: '2026-09-12',
+      raw: 'Sept. 13',
+      iso: '2026-09-13',
       nearestPublished: '2026-09-14',
-      distanceDays: 2,
+      distanceDays: 1,
     });
     expect(describeDateViolation(v[0])).toBe(
-      'tip says "Sept. 12" (2026-09-12); nearest document date is 2026-09-14 (2 day(s) off); no document text mentions it',
+      'tip says "Sept. 13" (2026-09-13); nearest document date is 2026-09-14 (1 day(s) off); no document text mentions it',
     );
+    expect(checkTipDates('the September 14, 2026 speech', [record])).toEqual([]);
+  });
+
+  it('gives a CourtListener opinion one day of slack — it is filed the day after its date', () => {
+    const opinion = { publishedAt: '2026-09-15', sourceOrigin: 'courtlistener', text: '' };
+    expect(checkTipDates('decided September 14, 2026', [opinion])).toEqual([]);
+    expect(checkTipDates('decided September 13, 2026', [opinion])).toHaveLength(1);
+    // an explicit tolerance overrides the per-source rule
+    expect(checkTipDates('decided September 13, 2026', [opinion], { toleranceDays: 2 })).toEqual(
+      [],
+    );
+    expect(
+      checkTipDates('A Sept. 13 speech', [record], { defaultYear: 2026, toleranceDays: 1 }),
+    ).toEqual([]);
   });
 
   it('accepts a date written inside a matched document even when far from every publication date', () => {
     const docs = [
       {
         publishedAt: '2026-09-05',
+        sourceOrigin: 'doj',
         text: 'Operation Rotten Apple ran July 27–August 29, 2026, with 2,197 arrests.',
       },
     ];
@@ -79,11 +92,5 @@ describe('checkTipDates (#931)', () => {
     ]);
     expect(v.map((x) => x.iso)).toEqual(['2024-03-03', '2024-04-09']);
     expect(describeDateViolation(v[0])).toContain('no matched document carries a date');
-  });
-
-  it('a tolerance of zero makes the one-day slip a flag', () => {
-    expect(
-      checkTipDates('A Sept. 13 speech', [record], { defaultYear: 2026, toleranceDays: 0 }),
-    ).toHaveLength(1);
   });
 });

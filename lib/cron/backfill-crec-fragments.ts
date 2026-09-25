@@ -28,22 +28,20 @@
 
 import { sql } from 'drizzle-orm';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
-import { stripHtmlPreserveLines } from '@/lib/parsers/feed-parser';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { CrecSpeaker } from '@/lib/services/crec-fetcher';
+import {
+  FRAGMENTS_ASSESSED_MARKER,
+  compositeCandidateSql,
+  fetchStructuredGranule,
+} from '@/lib/services/crec-fragments';
 import { qualifiesComposite, splitComposite } from '@/lib/services/crec-splitter';
 import type { CompositeFragment } from '@/lib/services/crec-splitter';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
 
-const GOVINFO_API_BASE = 'https://api.govinfo.gov';
-/** Whole-day granules are always candidates; smaller ones only when several members spoke (#927). */
-const MIN_WHOLE_DAY_BYTES = 102400;
 const FETCH_POLITENESS_MS = 350;
 const PROGRESS_EVERY = 100;
-/** The composite build's marker; the V1 `fragmentsAssessed` key is left as is. */
-export const FRAGMENTS_ASSESSED_MARKER = 'fragmentsAssessedV2';
 
 interface ParentRow {
   id: number;
@@ -74,25 +72,6 @@ export interface CrecFragmentBuildResult {
   superseded: number;
   /** Granules whose GovInfo fetch failed — left unmarked, retried next run. */
   misses: number;
-}
-
-async function fetchStructured(granuleId: string, apiKey: string): Promise<string | null> {
-  const packageId = granuleId.split('-').slice(0, 4).join('-');
-  const url = `${GOVINFO_API_BASE}/packages/${packageId}/granules/${granuleId}/htm?api_key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return stripHtmlPreserveLines(await res.text());
-}
-
-/** SQL predicate shared with the ingest-health detector: a granule the composite
- *  build should look at — whole-day sized, or flagged multi-speaker — that it has
- *  not assessed yet. Granule level (one row per category; fragments hang off one). */
-export function compositeCandidateSql() {
-  return sql`source_origin = 'crec' AND parent_id IS NULL
-    AND category <> ${CORPUS_CATEGORY}
-    AND metadata->>'granuleId' IS NOT NULL
-    AND (length(content) > ${MIN_WHOLE_DAY_BYTES} OR coalesce(metadata, '{}'::jsonb) ? 'speakerAmbiguous')
-    AND NOT (coalesce(metadata, '{}'::jsonb) ? ${FRAGMENTS_ASSESSED_MARKER})`;
 }
 
 async function selectParents(limit: number | null): Promise<ParentRow[]> {
@@ -229,7 +208,7 @@ export async function runCrecFragmentBuild(
 
   for (const parent of parents) {
     await sleep(FETCH_POLITENESS_MS);
-    const text = await fetchStructured(parent.granule_id, apiKey as string);
+    const text = await fetchStructuredGranule(parent.granule_id, apiKey as string);
     if (!text) {
       result.misses++;
       continue;

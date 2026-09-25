@@ -5,6 +5,7 @@ import { isDbAvailable, getDb } from '@/lib/db';
 import { CORPUS_CATEGORY } from '@/lib/db/document-filters';
 import { documents } from '@/lib/db/schema';
 import type { Category } from '@/lib/types';
+import { compositeCandidateSql } from './crec-fragments';
 import type {
   ContentCompleteness,
   DocumentCoverage,
@@ -456,7 +457,6 @@ export async function getMetadataOnlyClassification(): Promise<MetadataOnlyStats
 export async function countUnfragmentedCrecGranules(recentDays?: number): Promise<number> {
   if (!isDbAvailable()) return 0;
   const db = getDb();
-  const { compositeCandidateSql } = await import('@/lib/cron/backfill-crec-fragments');
   const recentFilter = recentDays
     ? sql`AND fetched_at > now() - make_interval(days => ${recentDays})`
     : sql``;

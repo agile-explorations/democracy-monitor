@@ -17,11 +17,10 @@
  */
 
 import { sql } from 'drizzle-orm';
-import { compositeCandidateSql } from '@/lib/cron/backfill-crec-fragments';
 import { getDb, isDbAvailable } from '@/lib/db';
-import { stripHtmlPreserveLines } from '@/lib/parsers/feed-parser';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { CrecSpeaker } from '@/lib/services/crec-fetcher';
+import { compositeCandidateSql, fetchStructuredGranule } from '@/lib/services/crec-fragments';
 import { resolveMember, speakerTurns } from '@/lib/services/crec-speakers';
 import {
   MIN_UNIT_CHARS,
@@ -33,8 +32,6 @@ import {
 } from '@/lib/services/crec-splitter';
 import { sleep } from '@/lib/utils/async';
 import { checkHelp } from '@/lib/utils/cli-help';
-
-const GOVINFO_API_BASE = 'https://api.govinfo.gov';
 
 interface SampleRow {
   id: number;
@@ -50,14 +47,6 @@ function normalizeHeading(h: string): string {
   return h.replace(/[^A-Z0-9]/g, '');
 }
 
-async function fetchStructured(granuleId: string, apiKey: string): Promise<string | null> {
-  const packageId = granuleId.split('-').slice(0, 4).join('-');
-  const url = `${GOVINFO_API_BASE}/packages/${packageId}/granules/${granuleId}/htm?api_key=${apiKey}`;
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  return stripHtmlPreserveLines(await res.text());
-}
-
 // eslint-disable-next-line max-lines-per-function
 async function rehearseTopics(rows: SampleRow[], apiKey: string): Promise<void> {
   let sumStructUnits = 0;
@@ -71,7 +60,7 @@ async function rehearseTopics(rows: SampleRow[], apiKey: string): Promise<void> 
   let multiUnit = 0;
   for (const r of rows) {
     await sleep(400);
-    const structured = await fetchStructured(r.granule_id as string, apiKey);
+    const structured = await fetchStructuredGranule(r.granule_id as string, apiKey);
     const flatUnits = splitFlattenedGranule(r.content);
     sumFlatUnits += flatUnits.length;
     sampleKb += r.len / 1024;
@@ -139,7 +128,7 @@ async function rehearseComposite(rows: SampleRow[], apiKey: string): Promise<voi
   let routedRows = 0;
   for (const r of rows) {
     await sleep(400);
-    const structured = await fetchStructured(r.granule_id as string, apiKey);
+    const structured = await fetchStructuredGranule(r.granule_id as string, apiKey);
     if (!structured) {
       console.log(`  doc ${r.id}: FETCH MISS`);
       continue;
