@@ -74,6 +74,25 @@ describe('Record speaker turns (#927)', () => {
     expect(resolveMember('cantwell', ELECTIONS_MEMBERS)?.state).toBe('WA');
     // Schumer opened the granule; GovInfo never listed him.
     expect(resolveMember('SCHUMER', ELECTIONS_MEMBERS)).toBeNull();
+    // The House prints full names when two members share a surname.
+    const house = [
+      { memberName: 'Davis, Rodney' },
+      { memberName: 'Davis, Danny K.' },
+      { memberName: 'Lujan Grisham, Michelle' },
+      { memberName: 'Johnson, Eddie Bernice' },
+      { memberName: 'Johnson, Hank' },
+    ];
+    expect(resolveMember('RODNEY DAVIS', house)?.memberName).toBe('Davis, Rodney');
+    expect(resolveMember('DANNY K. DAVIS', house)?.memberName).toBe('Davis, Danny K.');
+    expect(resolveMember('MICHELLE LUJAN GRISHAM', house)?.memberName).toBe(
+      'Lujan Grisham, Michelle',
+    );
+    expect(resolveMember('LUJAN GRISHAM', house)?.memberName).toBe('Lujan Grisham, Michelle');
+    expect(resolveMember('EDDIE BERNICE JOHNSON', house)?.memberName).toBe(
+      'Johnson, Eddie Bernice',
+    );
+    expect(resolveMember('JOHNSON', house)?.memberName).toBe('Johnson, Eddie Bernice');
+    expect(resolveMember('SAM DAVIS', house)).toBeNull();
   });
 
   it('calls a granule multi-speaker on several listed members OR several markers in the text', () => {

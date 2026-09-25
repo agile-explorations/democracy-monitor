@@ -17,6 +17,7 @@
  */
 
 import { sql } from 'drizzle-orm';
+import { T2_INAUGURATION } from '@/lib/data/analysis-periods';
 import { getDb, isDbAvailable } from '@/lib/db';
 import { classifyCrecToCategories } from '@/lib/services/crec-classifier';
 import type { CrecSpeaker } from '@/lib/services/crec-fetcher';
@@ -189,11 +190,12 @@ async function main(): Promise<void> {
   const sampleN = args.includes('--sample') ? Number(args[args.indexOf('--sample') + 1]) : 40;
   const minKb = args.includes('--min-kb') ? Number(args[args.indexOf('--min-kb') + 1]) : 100;
   const composite = args.includes('--composite');
+  const from = args.includes('--from') ? args[args.indexOf('--from') + 1] : T2_INAUGURATION;
 
   // nosemgrep: opengrep.cron-needs-env-config — loadEnvConfig called in CLI entry block below
   const db = getDb();
   const where = composite
-    ? compositeCandidateSql()
+    ? compositeCandidateSql(from)
     : sql`source_origin = 'crec' AND length(content) > ${minKb * 1024} AND metadata->>'granuleId' IS NOT NULL`;
   const rows = (
     await db.execute(sql`
@@ -205,7 +207,7 @@ async function main(): Promise<void> {
       ORDER BY metadata->>'granuleId', md5(id::text) LIMIT ${sampleN}`)
   ).rows as unknown as SampleRow[];
   console.log(
-    `[rehearse] sample: ${rows.length} stored CREC granules (${composite ? 'composite candidates' : `> ${minKb}KB`})`,
+    `[rehearse] sample: ${rows.length} stored CREC granules (${composite ? `composite candidates published ≥ ${from}` : `> ${minKb}KB`})`,
   );
   if (composite) await rehearseComposite(rows, apiKey);
   else await rehearseTopics(rows, apiKey);
@@ -216,7 +218,7 @@ if (require.main === module) {
   loadEnvConfig(process.cwd());
   checkHelp(
     process.argv.slice(2),
-    'Usage: pnpm crec:rehearse-split [--sample N] [--min-kb N] [--composite]',
+    'Usage: pnpm crec:rehearse-split [--sample N] [--min-kb N] [--composite [--from YYYY-MM-DD]]',
   );
   main()
     .then(() => process.exit(0))
