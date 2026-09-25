@@ -6,7 +6,9 @@
  * granule of 2026-09-14 opens with Schumer and is stored under Padilla).
  * Applies the ingest rule of #927 to stored rows: where several members are
  * listed OR the text carries several speaker markers, `speaker` becomes NULL
- * and `metadata.speakerAmbiguous = true`. `metadata.speakers` and
+ * and `metadata.speakerAmbiguous = true`. Rows with no member listed at all
+ * are scanned too — their `speaker` is already NULL, but the flag is what
+ * makes them candidates for the composite fragment build (#929). `metadata.speakers` and
  * `metadata.agency` are untouched (agency feeds the agency-distribution
  * baseline). Nothing derived reads `speaker`, so no repair follows; the rule
  * in crec-fetcher keeps the weekly re-ingest from undoing it.
@@ -83,7 +85,6 @@ async function fetchBatch(afterId: number, opts: RestampOptions): Promise<Restam
     SELECT id, url, content, metadata->'speakers' AS speakers
     FROM documents
     WHERE source_origin = 'crec' AND parent_id IS NULL
-      AND metadata ? 'speakers'
       AND NOT (coalesce(metadata, '{}'::jsonb) ? 'speakerAmbiguous')
       AND published_at >= ${opts.from}::date ${to}
       AND id > ${afterId}
